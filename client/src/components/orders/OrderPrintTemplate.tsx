@@ -146,25 +146,40 @@ export default function OrderPrintTemplate({
             size: A4 landscape;
             margin: 8mm;
           }
+          html, body {
+            height: auto !important;
+            overflow: visible !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
           body * {
             visibility: hidden;
           }
           .print-page, .print-page * {
-            visibility: visible;
+            visibility: visible !important;
           }
           .print-page {
             position: absolute;
             left: 0;
             top: 0;
             width: 100%;
+            height: auto !important;
+            overflow: visible !important;
+            page-break-after: avoid;
+            page-break-inside: avoid;
           }
-          .no-print {
+          .no-print, .no-print * {
             display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            width: 0 !important;
+            overflow: hidden !important;
+            position: absolute !important;
           }
         }
       `}</style>
 
-      <div className="print-page hidden print:block">
+      <div className="print-page" style={{ display: "none" }}>
         <PrintContent
           order={order}
           customer={customer}
@@ -206,7 +221,7 @@ function PrintContent({
   );
 
   return (
-    <div style={{ fontFamily: "Arial, sans-serif", direction: "rtl", padding: "12mm", background: "#fff", minHeight: "190mm" }}>
+    <div style={{ fontFamily: "Arial, sans-serif", direction: "rtl", padding: "12mm", background: "#fff" }}>
       
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8mm", paddingBottom: "6mm", borderBottom: "3px solid #1e40af" }}>
