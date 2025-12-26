@@ -152,23 +152,16 @@ export default function OrderPrintTemplate({
             margin: 0 !important;
             padding: 0 !important;
           }
-          body {
-            visibility: hidden;
-          }
-          .print-page {
-            visibility: visible !important;
-            display: block !important;
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: auto !important;
-          }
-          .print-page * {
-            visibility: visible !important;
+          #root > *:not(.print-page) {
+            display: none !important;
           }
           .no-print {
             display: none !important;
+          }
+          .print-page {
+            display: block !important;
+            width: 279mm;
+            margin: 0 auto;
           }
         }
       `}</style>
