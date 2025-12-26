@@ -204,12 +204,6 @@ function PrintContent({
   const totalRequiredQty = orderProductionOrders.reduce(
     (sum: number, po: any) => sum + parseFloat(po.final_quantity_kg || po.quantity_kg || 0), 0
   );
-  const totalProducedQty = orderProductionOrders.reduce(
-    (sum: number, po: any) => sum + parseFloat(po.produced_quantity_kg || 0), 0
-  );
-  const totalNetQty = orderProductionOrders.reduce(
-    (sum: number, po: any) => sum + parseFloat(po.net_quantity_kg || 0), 0
-  );
 
   return (
     <div style={{ fontFamily: "Arial, sans-serif", direction: "rtl", padding: "12mm", background: "#fff", minHeight: "190mm" }}>
@@ -320,13 +314,13 @@ function PrintContent({
               <th style={{ border: "1px solid #e2e8f0", padding: "8px 6px", fontWeight: "bold", color: "#334155", width: "14%" }}>المنتج</th>
               <th style={{ border: "1px solid #e2e8f0", padding: "8px 6px", fontWeight: "bold", color: "#334155", width: "10%" }}>المقاس</th>
               <th style={{ border: "1px solid #e2e8f0", padding: "8px 6px", fontWeight: "bold", color: "#334155", width: "6%" }}>العرض</th>
+              <th style={{ border: "1px solid #e2e8f0", padding: "8px 6px", fontWeight: "bold", color: "#334155", width: "6%" }}>الطول</th>
               <th style={{ border: "1px solid #e2e8f0", padding: "8px 6px", fontWeight: "bold", color: "#334155", width: "6%" }}>السماكة</th>
               <th style={{ border: "1px solid #e2e8f0", padding: "8px 6px", fontWeight: "bold", color: "#334155", width: "8%" }}>اللون</th>
+              <th style={{ border: "1px solid #e2e8f0", padding: "8px 6px", fontWeight: "bold", color: "#334155", width: "8%" }}>التخريم</th>
               <th style={{ border: "1px solid #e2e8f0", padding: "8px 6px", fontWeight: "bold", color: "#334155", width: "5%" }}>طباعة</th>
               <th style={{ border: "1px solid #e2e8f0", padding: "8px 6px", fontWeight: "bold", color: "#334155", width: "8%" }}>الكمية (كجم)</th>
-              <th style={{ border: "1px solid #e2e8f0", padding: "8px 6px", fontWeight: "bold", color: "#334155", width: "8%" }}>المنتج (كجم)</th>
-              <th style={{ border: "1px solid #e2e8f0", padding: "8px 6px", fontWeight: "bold", color: "#334155", width: "8%" }}>الصافي (كجم)</th>
-              <th style={{ border: "1px solid #e2e8f0", padding: "8px 6px", fontWeight: "bold", color: "#334155", width: "15%" }}>ملاحظات</th>
+              <th style={{ border: "1px solid #e2e8f0", padding: "8px 6px", fontWeight: "bold", color: "#334155", width: "17%" }}>ملاحظات</th>
             </tr>
           </thead>
           <tbody>
@@ -336,8 +330,6 @@ function PrintContent({
               const colorInfo = getMasterBatchInfo(customerProduct?.master_batch_id);
               
               const requiredQty = parseFloat(po.final_quantity_kg || po.quantity_kg || 0);
-              const producedQty = parseFloat(po.produced_quantity_kg || 0);
-              const netQty = parseFloat(po.net_quantity_kg || 0);
 
               return (
                 <tr key={po.id} style={{ background: index % 2 === 0 ? "#fff" : "#f8fafc" }}>
@@ -346,6 +338,7 @@ function PrintContent({
                   <td style={{ border: "1px solid #e2e8f0", padding: "6px" }}>{item?.name_ar || item?.name || "-"}</td>
                   <td style={{ border: "1px solid #e2e8f0", padding: "6px", textAlign: "center" }}>{customerProduct?.size_caption || "-"}</td>
                   <td style={{ border: "1px solid #e2e8f0", padding: "6px", textAlign: "center" }}>{customerProduct?.width || "-"}</td>
+                  <td style={{ border: "1px solid #e2e8f0", padding: "6px", textAlign: "center" }}>{customerProduct?.cutting_length_cm ? `${customerProduct.cutting_length_cm} سم` : "-"}</td>
                   <td style={{ border: "1px solid #e2e8f0", padding: "6px", textAlign: "center" }}>{customerProduct?.thickness || "-"}</td>
                   <td style={{ border: "1px solid #e2e8f0", padding: "6px", textAlign: "center" }}>
                     <span style={{ 
@@ -359,6 +352,7 @@ function PrintContent({
                       {colorInfo.name_ar}
                     </span>
                   </td>
+                  <td style={{ border: "1px solid #e2e8f0", padding: "6px", textAlign: "center", fontSize: "9px" }}>{customerProduct?.punching || "-"}</td>
                   <td style={{ border: "1px solid #e2e8f0", padding: "6px", textAlign: "center" }}>
                     {customerProduct?.is_printed ? (
                       <span style={{ color: "#16a34a", fontWeight: "bold" }}>✓ نعم</span>
@@ -367,8 +361,6 @@ function PrintContent({
                     )}
                   </td>
                   <td style={{ border: "1px solid #e2e8f0", padding: "6px", textAlign: "center", fontWeight: "bold" }}>{requiredQty.toFixed(2)}</td>
-                  <td style={{ border: "1px solid #e2e8f0", padding: "6px", textAlign: "center" }}>{producedQty.toFixed(2)}</td>
-                  <td style={{ border: "1px solid #e2e8f0", padding: "6px", textAlign: "center", fontWeight: "bold", color: "#16a34a" }}>{netQty.toFixed(2)}</td>
                   <td style={{ border: "1px solid #e2e8f0", padding: "6px", fontSize: "9px", color: "#64748b" }}>{po.notes || "-"}</td>
                 </tr>
               );
@@ -376,10 +368,8 @@ function PrintContent({
           </tbody>
           <tfoot>
             <tr style={{ background: "#1e40af", color: "#fff" }}>
-              <td colSpan={8} style={{ border: "1px solid #1e40af", padding: "8px", fontWeight: "bold", textAlign: "left" }}>المجموع الإجمالي:</td>
+              <td colSpan={10} style={{ border: "1px solid #1e40af", padding: "8px", fontWeight: "bold", textAlign: "left" }}>المجموع الإجمالي:</td>
               <td style={{ border: "1px solid #1e40af", padding: "8px", textAlign: "center", fontWeight: "bold" }}>{totalRequiredQty.toFixed(2)}</td>
-              <td style={{ border: "1px solid #1e40af", padding: "8px", textAlign: "center", fontWeight: "bold" }}>{totalProducedQty.toFixed(2)}</td>
-              <td style={{ border: "1px solid #1e40af", padding: "8px", textAlign: "center", fontWeight: "bold" }}>{totalNetQty.toFixed(2)}</td>
               <td style={{ border: "1px solid #1e40af", padding: "8px" }}></td>
             </tr>
           </tfoot>
