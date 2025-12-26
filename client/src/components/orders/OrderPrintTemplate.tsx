@@ -149,29 +149,31 @@ export default function OrderPrintTemplate({
         @media print {
           @page {
             size: A4 landscape;
-            margin: 0;
+            margin: 5mm;
           }
-          body {
+          html, body {
+            height: auto !important;
+            overflow: visible !important;
             margin: 0 !important;
             padding: 0 !important;
-            height: auto !important;
-            min-height: 0 !important;
             background: white !important;
           }
-          #root > *:not(.print-only) {
-            display: none !important;
+          body * {
+            visibility: hidden !important;
+          }
+          .print-only, .print-only * {
+            visibility: visible !important;
+            display: block !important;
+          }
+          .print-only {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            background: white !important;
           }
           .no-print {
             display: none !important;
-          }
-          .print-only {
-            display: block !important;
-            position: relative !important;
-            width: 100% !important;
-            height: auto !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
           }
         }
       `}</style>
