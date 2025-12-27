@@ -1,493 +1,582 @@
 /* 
- * Compact Print Styles for Orders - Professional A4 Landscape
- * Optimized to fit 5 production orders on one page
+ * Professional Print Styles for Orders - A4 Landscape
+ * نظام طباعة احترافي لأوامر الإنتاج - A4 عرضي
  */
 
-/* Hide print container on screen, show only when printing */
-.print-container {
-  display: none;
-}
-
-/* Screen preview styles */
-.compact-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-  padding-bottom: 10px;
-  border-bottom: 2px solid #1a1a1a;
-}
-
-.header-logo svg,
-.header-logo img {
-  max-width: 120px;
-  height: auto;
-}
-
-.header-center {
-  flex: 1;
-  text-align: center;
-}
-
-.header-title {
-  font-size: 22px;
-  font-weight: bold;
-  margin: 0;
-  color: #1a1a1a;
-}
-
-.header-subtitle {
-  font-size: 12px;
-  margin: 3px 0 0 0;
-  color: #666;
-}
-
-.header-qr img {
-  max-width: 70px;
-  height: auto;
-}
-
-.compact-info-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-bottom: 15px;
-  padding: 10px;
-  background: #f8f9fa;
-  border: 1px solid #ddd;
-  font-size: 11px;
-}
-
-.info-cell {
-  display: flex;
-  gap: 5px;
-}
-
-.info-label {
-  font-weight: bold;
-  color: #333;
-}
-
-.info-value {
-  color: #000;
-}
-
-.info-badge {
-  background: #e0e8ff;
-  padding: 2px 8px;
-  border-radius: 3px;
-  font-weight: bold;
-  border: 1px solid #b0c0ff;
-}
-
-.compact-section {
-  margin-bottom: 15px;
-}
-
-.section-title {
-  font-size: 14px;
-  font-weight: bold;
-  margin-bottom: 8px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid #666;
-}
-
-.compact-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 10px;
-}
-
-.compact-table th {
-  background: #1a1a1a;
-  color: white;
-  padding: 6px 4px;
-  text-align: right;
-  font-weight: 900;
-  border: 1px solid #000;
-  font-size: 10px;
-  line-height: 1.2;
-}
-
-.compact-table td {
-  padding: 4px;
-  border: 1px solid #666;
-  text-align: right;
-  font-size: 9px;
-  line-height: 1.3;
-}
-
-.compact-table tbody tr:nth-child(even) {
-  background: #f9f9f9;
-}
-
-.compact-table tfoot td {
-  font-weight: bold;
-  background: #e9e9e9;
-  border-top: 2px solid #000;
-}
-
-.specs-cell div {
-  font-size: 8px;
-  line-height: 1.4;
-  margin: 1px 0;
-}
-
-.qty-cell {
-  text-align: center !important;
-}
-
-.qty-cell div {
-  font-size: 8px;
-  line-height: 1.4;
-  padding: 1px 0;
-}
-
-.notes-cell {
-  font-size: 8px !important;
-  line-height: 1.3;
-  max-width: 200px;
-  max-height: 35px;
-  overflow: hidden;
-  word-wrap: break-word;
-  white-space: normal;
-}
-
-.compact-notes {
-  margin: 10px 0;
-  padding: 8px;
-  background: #f5f5f5;
-  border: 1px solid #ddd;
-  font-size: 10px;
-}
-
-.compact-footer {
-  margin-top: 15px;
-  padding-top: 10px;
-  border-top: 1px solid #999;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-}
-
-.footer-signatures {
-  display: flex;
-  gap: 40px;
-}
-
-.signature-box {
-  text-align: center;
-  font-size: 10px;
-}
-
-.signature-line {
-  width: 120px;
-  border-bottom: 1px solid #000;
-  margin-bottom: 5px;
-  padding-top: 30px;
-}
-
-.footer-info {
-  display: flex;
-  flex-direction: column;
-  text-align: left;
-  font-size: 9px;
-  color: #666;
-  gap: 3px;
+/* ==========================================
+   1. PRINT PAGE SETUP - إعدادات الصفحة
+   ========================================== */
+@page {
+  size: A4 landscape;
+  margin: 10mm 15mm;
 }
 
 @media print {
-  /* Hide everything except print-container */
-  body * {
-    visibility: hidden;
-  }
-
-  .print-container,
-  .print-container * {
-    visibility: visible !important;
-  }
-
-  .print-container {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-  }
-
-  .no-print {
-    display: none !important;
-  }
-
-  /* Page setup for A4 Landscape */
-  @page {
-    size: A4 landscape;
-    margin: 10mm 12mm 10mm 12mm;
-  }
-
-  body {
-    margin: 0;
-    padding: 0;
-    font-family: 'Arial', 'Helvetica', 'Tahoma', sans-serif;
-    font-size: 8pt;
-    line-height: 1.2;
-    color: #000;
-    background: white;
-    direction: rtl;
-  }
-
-  .print-container {
-    display: block !important;
-    width: 100%;
-    max-width: none;
-    margin: 0;
-    padding: 0;
-    background: white;
-  }
-
-  /* Compact Header */
-  .compact-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-    padding-bottom: 6px;
-    border-bottom: 2px solid #1a1a1a;
-  }
-
-  .header-logo svg,
-  .header-logo img {
-    max-width: 100px;
-    max-height: 50px;
-    display: block;
-  }
-
-  .header-center {
-    flex: 1;
-    text-align: center;
-  }
-
-  .header-title {
-    font-size: 14pt;
-    font-weight: bold;
-    margin: 0;
-  }
-
-  .header-subtitle {
-    font-size: 8pt;
-    margin: 2px 0 0 0;
-    color: #333;
-  }
-
-  .header-qr img {
-    max-width: 55px;
-    max-height: 55px;
-    display: block;
-  }
-
-  /* Compact Info Grid */
-  .compact-info-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 4px;
-    margin-bottom: 8px;
-    padding: 6px;
-    background: #f8f9fa;
-    border: 1px solid #ddd;
-    font-size: 7.5pt;
-    line-height: 1.3;
-  }
-
-  .info-cell {
-    display: flex;
-    gap: 4px;
-  }
-
-  .info-label {
-    font-weight: bold;
-    color: #333;
-  }
-
-  .info-value {
-    color: #000;
-  }
-
-  .info-badge {
-    background: #e0e8ff;
-    padding: 1px 6px;
-    border-radius: 2px;
-    font-weight: bold;
-    border: 1px solid #b0c0ff;
-    font-size: 7pt;
-  }
-
-  /* Compact Section */
-  .compact-section {
-    margin-bottom: 8px;
-  }
-
-  .section-title {
-    font-size: 10pt;
-    font-weight: bold;
-    margin-bottom: 5px;
-    padding-bottom: 3px;
-    border-bottom: 1px solid #666;
-  }
-
-  /* Super Compact Table */
-  .compact-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 7pt;
-    line-height: 1.1;
-  }
-
-  .compact-table th {
-    background: #1a1a1a;
-    color: white;
-    padding: 3px 2px;
-    text-align: right;
-    font-weight: 900;
-    border: 1px solid #000;
-    font-size: 7.5pt;
-    line-height: 1.1;
-  }
-
-  .compact-table td {
-    padding: 2px;
-    border: 1px solid #666;
-    text-align: right;
-    font-size: 7pt;
-    line-height: 1.2;
-  }
-
-  .compact-table tbody tr:nth-child(even) {
-    background: #f9f9f9;
-  }
-
-  .compact-table tfoot td {
-    font-weight: bold;
-    background: #e9e9e9;
-    border-top: 2px solid #000;
-    font-size: 7.5pt;
-  }
-
-  /* Specifications Cell - Very Compact */
-  .specs-cell {
-    font-size: 6.5pt !important;
-    line-height: 1.2;
-    padding: 2px !important;
-  }
-
-  .specs-cell div {
-    margin: 0;
-    padding: 0;
-  }
-
-  /* Quantity Cell - Stacked */
-  .qty-cell {
-    text-align: center !important;
-    padding: 2px !important;
-  }
-
-  .qty-cell div {
-    font-size: 6.5pt;
-    line-height: 1.3;
-    margin: 0;
-    padding: 0;
-  }
-
-  /* Notes Cell - Multi-line with max height */
-  .notes-cell {
-    font-size: 6.5pt !important;
-    line-height: 1.2;
-    max-width: 180px;
-    max-height: 30px;
-    overflow: hidden;
-    word-wrap: break-word;
-    white-space: normal;
-  }
-
-  /* Compact Notes */
-  .compact-notes {
-    margin: 6px 0;
-    padding: 5px;
-    background: #f5f5f5;
-    border: 1px solid #ddd;
-    font-size: 7.5pt;
-    line-height: 1.3;
-  }
-
-  /* Compact Footer */
-  .compact-footer {
-    margin-top: 10px;
-    padding-top: 6px;
-    border-top: 1px solid #999;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    page-break-inside: avoid;
-  }
-
-  .footer-signatures {
-    display: flex;
-    gap: 30px;
-  }
-
-  .signature-box {
-    text-align: center;
-    font-size: 7.5pt;
-  }
-
-  .signature-line {
-    width: 100px;
-    border-bottom: 1px solid #000;
-    margin-bottom: 4px;
-    padding-top: 25px;
-  }
-
-  .footer-info {
-    display: flex;
-    flex-direction: column;
-    text-align: left;
-    font-size: 7pt;
-    color: #666;
-    gap: 2px;
-  }
-
-  /* Print enhancements */
-  * {
+  /* إخفاء كل العناصر في الصفحة ما عدا المحتوى المراد طباعته */
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: white !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     color-adjust: exact !important;
   }
-
-  a {
-    text-decoration: none;
-    color: #000;
+  
+  body * {
+    visibility: hidden;
   }
-
-  img {
-    max-width: 100%;
-    height: auto;
-    display: block;
+  
+  .print-area,
+  .print-area * {
+    visibility: visible !important;
   }
-
-  /* Avoid breaks */
-  .compact-header,
-  .compact-info-grid,
-  .compact-section,
-  .compact-footer {
-    page-break-inside: avoid;
+  
+  .print-area {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 0;
+    margin: 0;
   }
-
-  /* Text optimization */
-  p, div, span {
-    orphans: 2;
-    widows: 2;
+  
+  .print-page {
+    width: 100%;
+    padding: 0;
+    margin: 0;
   }
+  
+  .no-print {
+    display: none !important;
+  }
+  
+  /* منع الظلال والتأثيرات */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+}
 
-  h1, h2, h3, h4, h5, h6 {
-    page-break-after: avoid;
-    page-break-inside: avoid;
+/* ==========================================
+   2. PRINT AREA CONTENT - محتوى الطباعة
+   ========================================== */
+
+/* Hide print area on screen, show only when printing */
+.print-area {
+  display: none;
+}
+
+.print-page {
+  direction: rtl;
+  font-family: 'Cairo', 'Arial', 'Tahoma', sans-serif;
+  font-size: 11pt;
+  line-height: 1.4;
+  color: #000;
+  background: white;
+  width: 100%;
+  max-width: 277mm; /* A4 landscape width minus margins */
+  margin: 0 auto;
+  padding: 5mm;
+  box-sizing: border-box;
+}
+
+/* ==========================================
+   3. HEADER SECTION - قسم الترويسة
+   ========================================== */
+.print-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 8mm;
+  margin-bottom: 8mm;
+  border-bottom: 3px solid #1e40af;
+}
+
+.print-header-right {
+  flex: 1;
+}
+
+.print-header-center {
+  flex: 2;
+  text-align: center;
+}
+
+.print-header-left {
+  flex: 1;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.print-title {
+  font-size: 22pt;
+  font-weight: 900;
+  color: #1e40af;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.print-subtitle {
+  font-size: 10pt;
+  color: #666;
+  margin-top: 2mm;
+}
+
+.print-order-number {
+  font-size: 14pt;
+  font-weight: bold;
+  background: #1e40af;
+  color: white;
+  padding: 3mm 6mm;
+  border-radius: 4px;
+  display: inline-block;
+  margin-top: 3mm;
+}
+
+.print-date {
+  font-size: 11pt;
+  color: #333;
+  margin-top: 3mm;
+}
+
+.print-company {
+  font-size: 16pt;
+  font-weight: bold;
+  color: #1e40af;
+  margin: 0;
+}
+
+.print-qr {
+  max-width: 55mm;
+  max-height: 55mm;
+}
+
+/* ==========================================
+   4. INFO GRID - شبكة المعلومات
+   ========================================== */
+.print-info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5mm;
+  margin-bottom: 8mm;
+}
+
+.print-info-box {
+  border: 2px solid #333;
+  border-radius: 4px;
+  padding: 4mm;
+  background: #fff;
+}
+
+.print-info-box.highlight {
+  background: #e0f2fe;
+  border-color: #1e40af;
+}
+
+.print-info-label {
+  font-size: 9pt;
+  color: #666;
+  margin-bottom: 2mm;
+}
+
+.print-info-value {
+  font-size: 13pt;
+  font-weight: bold;
+  color: #000;
+}
+
+.print-info-value.large {
+  font-size: 16pt;
+  color: #1e40af;
+}
+
+/* ==========================================
+   5. TABLE STYLES - تنسيق الجداول
+   ========================================== */
+.print-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 8mm;
+  font-size: 10pt;
+}
+
+.print-table thead {
+  background: #1e40af;
+  color: white;
+}
+
+.print-table th {
+  padding: 4mm 3mm;
+  text-align: right;
+  font-weight: bold;
+  border: 1px solid #000;
+  font-size: 11pt;
+}
+
+.print-table td {
+  padding: 3mm;
+  border: 1px solid #333;
+  text-align: right;
+  vertical-align: middle;
+}
+
+.print-table tbody tr:nth-child(even) {
+  background: #f8f9fa;
+}
+
+.print-table tfoot {
+  background: #e5e7eb;
+  font-weight: bold;
+}
+
+.print-table tfoot td {
+  border-top: 2px solid #000;
+}
+
+.print-table .text-center {
+  text-align: center;
+}
+
+.print-table .text-left {
+  text-align: left;
+}
+
+.print-table .font-bold {
+  font-weight: bold;
+}
+
+/* ==========================================
+   6. PRODUCT SPECS - مواصفات المنتج
+   ========================================== */
+.print-specs-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4mm;
+  padding: 4mm;
+  background: #f8f9fa;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 6mm;
+}
+
+.print-specs-item {
+  font-size: 9pt;
+}
+
+.print-specs-item strong {
+  display: block;
+  color: #333;
+  font-size: 8pt;
+  margin-bottom: 1mm;
+}
+
+/* ==========================================
+   7. STATS CARDS - بطاقات الإحصائيات
+   ========================================== */
+.print-stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5mm;
+  margin-bottom: 6mm;
+}
+
+.print-stat-card {
+  text-align: center;
+  padding: 4mm;
+  border: 1px solid #ddd;
+  background: #f8f9fa;
+  border-radius: 4px;
+}
+
+.print-stat-label {
+  font-size: 9pt;
+  color: #666;
+  margin-bottom: 2mm;
+}
+
+.print-stat-value {
+  font-size: 14pt;
+  font-weight: bold;
+  color: #1e40af;
+}
+
+/* ==========================================
+   8. NOTES SECTION - قسم الملاحظات
+   ========================================== */
+.print-notes {
+  padding: 4mm;
+  background: #fffbeb;
+  border: 1px solid #f59e0b;
+  border-radius: 4px;
+  margin-bottom: 6mm;
+}
+
+.print-notes-title {
+  font-weight: bold;
+  font-size: 10pt;
+  margin-bottom: 2mm;
+  color: #92400e;
+}
+
+.print-notes-content {
+  font-size: 10pt;
+  line-height: 1.5;
+}
+
+/* ==========================================
+   9. SIGNATURES - التوقيعات
+   ========================================== */
+.print-signatures {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20mm;
+  margin-top: 10mm;
+  padding-top: 5mm;
+}
+
+.print-signature-box {
+  text-align: center;
+}
+
+.print-signature-line {
+  border-top: 2px solid #000;
+  margin-bottom: 3mm;
+  height: 15mm;
+}
+
+.print-signature-label {
+  font-size: 10pt;
+  font-weight: bold;
+  color: #333;
+}
+
+/* ==========================================
+   10. FOOTER - التذييل
+   ========================================== */
+.print-footer {
+  margin-top: 8mm;
+  padding-top: 4mm;
+  border-top: 1px solid #ccc;
+  text-align: center;
+  font-size: 8pt;
+  color: #666;
+}
+
+.print-footer p {
+  margin: 1mm 0;
+}
+
+/* ==========================================
+   11. UTILITY CLASSES - فئات مساعدة
+   ========================================== */
+.print-page-break {
+  page-break-before: always;
+}
+
+.print-avoid-break {
+  page-break-inside: avoid;
+}
+
+.print-section {
+  margin-bottom: 6mm;
+  page-break-inside: avoid;
+}
+
+.print-section-title {
+  font-size: 12pt;
+  font-weight: bold;
+  color: #1e40af;
+  border-bottom: 2px solid #1e40af;
+  padding-bottom: 2mm;
+  margin-bottom: 4mm;
+}
+
+/* ==========================================
+   12. BADGE STYLES - أنماط الشارات
+   ========================================== */
+.print-badge {
+  display: inline-block;
+  padding: 1mm 4mm;
+  border-radius: 3px;
+  font-size: 9pt;
+  font-weight: bold;
+}
+
+.print-badge-success {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #22c55e;
+}
+
+.print-badge-warning {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #f59e0b;
+}
+
+.print-badge-info {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #3b82f6;
+}
+
+.print-badge-danger {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #ef4444;
+}
+
+/* ==========================================
+   13. PROGRESS BAR - شريط التقدم
+   ========================================== */
+.print-progress-container {
+  width: 100%;
+  height: 8mm;
+  background: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid #ccc;
+}
+
+.print-progress-bar {
+  height: 100%;
+  background: #1e40af;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 9pt;
+  font-weight: bold;
+  transition: width 0.3s;
+}
+
+/* ==========================================
+   14. SCREEN PREVIEW - معاينة الشاشة
+   ========================================== */
+.print-preview-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.9);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 30px;
+  overflow-y: auto;
+}
+
+.print-preview-toolbar {
+  width: 297mm;
+  max-width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  background: white;
+  padding: 15px 25px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.print-preview-toolbar-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.print-preview-toolbar-title h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: #111827;
+}
+
+.print-preview-toolbar-title span {
+  background: #e5e7eb;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.print-preview-toolbar-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.print-preview-btn-print {
+  background: #1e40af;
+  color: white;
+  border: none;
+  padding: 10px 30px;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.print-preview-btn-print:hover {
+  background: #1e3a8a;
+}
+
+.print-preview-btn-close {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.print-preview-btn-close:hover {
+  background: #e5e7eb;
+}
+
+/* A4 Landscape Paper Simulation */
+.print-preview-paper {
+  width: 297mm;
+  min-height: 210mm;
+  max-width: 100%;
+  background: white;
+  padding: 15mm;
+  box-sizing: border-box;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  border-radius: 2px;
+}
+
+/* Responsive adjustments for smaller screens */
+@media screen and (max-width: 1200px) {
+  .print-preview-paper,
+  .print-preview-toolbar {
+    width: 95vw;
+    max-width: 297mm;
+  }
+  
+  .print-preview-paper {
+    padding: 10mm;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .print-preview-overlay {
+    padding: 15px;
+  }
+  
+  .print-preview-toolbar {
+    flex-direction: column;
+    gap: 15px;
+    padding: 15px;
+  }
+  
+  .print-preview-paper {
+    min-height: auto;
   }
 }

@@ -1,7 +1,7 @@
 import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
+import "../../print.css";
 
-// 1. تعريف الأنواع لضمان عدم ظهور أخطاء TypeScript
 interface OrderPrintTemplateProps {
   order: any;
   customer: any;
@@ -11,7 +11,6 @@ interface OrderPrintTemplateProps {
   onClose: () => void;
 }
 
-// 2. دوال مساعدة
 const masterBatchColors = [
   { id: "PT-111111", name_ar: "أبيض" },
   { id: "PT-000000", name_ar: "أسود" },
@@ -22,7 +21,6 @@ const getMasterBatchInfo = (id: string) => {
   return masterBatchColors.find(c => c.id === id) || { name_ar: "غير محدد" };
 };
 
-// 3. المكون الأساسي
 export default function OrderPrintTemplate({
   order,
   customer,
@@ -31,113 +29,49 @@ export default function OrderPrintTemplate({
   items,
   onClose,
 }: OrderPrintTemplateProps) {
-
-  // استدعاء المستخدمين (للمندوب)
   const { data: users } = useQuery<any[]>({
     queryKey: ["/api/users"],
   });
 
   const salesRep = users?.find((u: any) => u.id === customer?.sales_rep_id);
-
-  // تجهيز البيانات
   const customerProductsMap = new Map(customerProducts?.map(cp => [cp.id, cp]) || []);
   const itemsMap = new Map(items?.map(i => [i.id, i]) || []);
   const filteredOrders = productionOrders?.filter(po => po.order_id === order.id) || [];
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <>
-      <style>{`
-        /* تنسيق العرض على الكمبيوتر (المعاينة) */
-        #print-modal-overlay {
-          position: fixed;
-          inset: 0;
-          background: rgba(31, 41, 55, 0.9);
-          z-index: 9999;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: flex-start;
-          padding: 40px;
-          overflow-y: auto;
-        }
-
-        .preview-actions {
-          width: 297mm;
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 20px;
-          background: white;
-          padding: 15px 25px;
-          border-radius: 8px;
-          box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-
-        .paper-sheet {
-          background: white;
-          width: 297mm;
-          min-height: 210mm;
-          padding: 20mm;
-          box-sizing: border-box;
-          box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-          border-radius: 2px;
-        }
-
-        /* تنسيق الطباعة النهائي للورقة */
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          #actual-print-content, #actual-print-content * {
-            visibility: visible !important;
-          }
-          #actual-print-content {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            display: block !important;
-          }
-          #print-modal-overlay {
-            display: none !important;
-          }
-          @page {
-            size: A4 landscape;
-            margin: 0;
-          }
-        }
-
-        #actual-print-content {
-          display: none;
-        }
-      `}</style>
-
-      {/* واجهة المعاينة على الشاشة */}
-      <div id="print-modal-overlay">
-        <div className="preview-actions">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <h2 style={{ margin: 0, fontSize: '1.2rem', color: '#111827' }}>أمر تشغيل إنتاج [cite: 1]</h2>
-            <span style={{ background: '#E5E7EB', padding: '4px 12px', borderRadius: '4px', fontWeight: 'bold' }}>
-               #{order.order_number} [cite: 2]
-            </span>
+      {/* شريط أدوات المعاينة */}
+      <div className="print-preview-overlay no-print">
+        <div className="print-preview-toolbar">
+          <div className="print-preview-toolbar-title">
+            <h2>أمر تشغيل إنتاج</h2>
+            <span>#{order.order_number}</span>
           </div>
-          <div style={{ display: 'flex', gap: '10px' }}>
+          <div className="print-preview-toolbar-actions">
             <button 
-              onClick={() => window.print()} 
-              style={{ background: '#2563EB', color: 'white', border: 'none', padding: '10px 30px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
+              onClick={handlePrint} 
+              className="print-preview-btn-print"
+              data-testid="button-print-order"
             >
-              طباعة الورقة
+              طباعة
             </button>
             <button 
               onClick={onClose} 
-              style={{ background: '#F3F4F6', color: '#374151', border: '1px solid #D1D5DB', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer' }}
+              className="print-preview-btn-close"
+              data-testid="button-close-print-preview"
             >
-              إغلاق المعاينة
+              إغلاق
             </button>
           </div>
         </div>
 
-        <div className="paper-sheet">
-          <PrintBody 
+        {/* معاينة الورقة على الشاشة */}
+        <div className="print-preview-paper">
+          <PrintContentInner 
             order={order} 
             customer={customer} 
             salesRep={salesRep} 
@@ -148,99 +82,166 @@ export default function OrderPrintTemplate({
         </div>
       </div>
 
-      {/* المحتوى الفعلي الذي يرسل للطابعة فقط */}
-      <div id="actual-print-content">
-        <div style={{ padding: '15mm' }}>
-          <PrintBody 
-            order={order} 
-            customer={customer} 
-            salesRep={salesRep} 
-            filteredOrders={filteredOrders}
-            customerProductsMap={customerProductsMap}
-            itemsMap={itemsMap}
-          />
-        </div>
+      {/* المحتوى الفعلي للطباعة - مخفي على الشاشة ويظهر فقط عند الطباعة */}
+      <div className="print-area">
+        <PrintContentInner 
+          order={order} 
+          customer={customer} 
+          salesRep={salesRep} 
+          filteredOrders={filteredOrders}
+          customerProductsMap={customerProductsMap}
+          itemsMap={itemsMap}
+        />
       </div>
     </>
   );
 }
 
-// مكون المحتوى الفعلي
-function PrintBody({ order, customer, salesRep, filteredOrders, customerProductsMap, itemsMap }: any) {
+interface PrintContentProps {
+  order: any;
+  customer: any;
+  salesRep: any;
+  filteredOrders: any[];
+  customerProductsMap: Map<any, any>;
+  itemsMap: Map<any, any>;
+}
 
-  // حساب الإجمالي مع التأكد من النوع
+function PrintContentInner({ 
+  order, 
+  customer, 
+  salesRep, 
+  filteredOrders, 
+  customerProductsMap, 
+  itemsMap 
+}: PrintContentProps) {
   const totalWeight = filteredOrders.reduce((sum: number, po: any) => {
     return sum + Number(po.final_quantity_kg || po.quantity_kg || 0);
-  }, 0); 
+  }, 0);
+
+  const orderDate = order.created_at 
+    ? format(new Date(order.created_at), "yyyy/MM/dd") 
+    : format(new Date(), "yyyy/MM/dd");
 
   return (
-    <div style={{ direction: "rtl", fontFamily: "Arial, sans-serif", width: "100%" }}>
-      {/* الترويسة العليا */}
-      <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "4px solid #1e40af", paddingBottom: "15px", marginBottom: "30px" }}>
-        <div>
-          <h1 style={{ margin: 0, color: "#1e40af", fontSize: "32px", fontWeight: "900" }}>أمر تشغيل إنتاج [cite: 1]</h1>
-          <div style={{ fontSize: "18px", marginTop: "5px" }}>رقم الطلب: <b>#{order.order_number} [cite: 2]</b></div>
+    <div className="print-page">
+      {/* الترويسة */}
+      <div className="print-header">
+        <div className="print-header-right">
+          <h1 className="print-title">أمر تشغيل إنتاج</h1>
+          <div className="print-order-number">#{order.order_number}</div>
         </div>
-        <div style={{ textAlign: "left" }}>
-          <h2 style={{ margin: 0, color: "#1e40af", fontSize: "26px" }}>مصنع الرواد للبلاستيك [cite: 3]</h2>
-          <div style={{ marginTop: "5px", fontWeight: "bold" }}>تاريخ: {order.created_at ? format(new Date(order.created_at), "yyyy/MM/dd") : "2025/12/03"} [cite: 5]</div>
+        <div className="print-header-center">
+          <h2 className="print-company">مصنع الرواد للبلاستيك</h2>
+          <p className="print-subtitle">Al-Rowad Plastic Factory</p>
+        </div>
+        <div className="print-header-left">
+          <div className="print-date">تاريخ: {orderDate}</div>
         </div>
       </div>
 
-      {/* بيانات العميل */}
-      <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr", gap: "20px", marginBottom: "30px" }}>
-        <div style={{ border: "2px solid #000", padding: "15px", borderRadius: "8px" }}>
-          <div style={{ fontSize: "13px", color: "#666", marginBottom: "5px" }}>العميل: [cite: 4]</div>
-          <div style={{ fontSize: "20px", fontWeight: "bold" }}>{customer?.name_ar || "2000 مركز"} [cite: 4]</div>
+      {/* بيانات العميل والطلب */}
+      <div className="print-info-grid">
+        <div className="print-info-box">
+          <div className="print-info-label">العميل</div>
+          <div className="print-info-value">{customer?.name_ar || customer?.name || "غير محدد"}</div>
         </div>
-        <div style={{ border: "2px solid #000", padding: "15px", borderRadius: "8px" }}>
-          <div style={{ fontSize: "13px", color: "#666", marginBottom: "5px" }}>المندوب:</div>
-          <div style={{ fontSize: "18px" }}>{salesRep?.full_name || "المناديب"} [cite: 4]</div>
+        <div className="print-info-box">
+          <div className="print-info-label">المندوب</div>
+          <div className="print-info-value">{salesRep?.full_name || "غير محدد"}</div>
         </div>
-        <div style={{ border: "2px solid #1e40af", padding: "15px", borderRadius: "8px", backgroundColor: "#f0f7ff" }}>
-          <div style={{ fontSize: "13px", color: "#1e40af", marginBottom: "5px" }}>إجمالي الكمية: [cite: 4]</div>
-          <div style={{ fontSize: "24px", fontWeight: "bold", color: "#1e40af" }}>{totalWeight.toFixed(2)} كجم </div>
+        <div className="print-info-box highlight">
+          <div className="print-info-label">إجمالي الكمية</div>
+          <div className="print-info-value large">{totalWeight.toFixed(2)} كجم</div>
         </div>
       </div>
 
       {/* جدول الأصناف */}
-      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "40px" }}>
-        <thead>
-          <tr style={{ backgroundColor: "#1e40af", color: "white" }}>
-            <th style={{ border: "1px solid #000", padding: "12px", fontSize: "16px" }}># [cite: 6]</th>
-            <th style={{ border: "1px solid #000", padding: "12px", fontSize: "16px", textAlign: "right" }}>الصنف [cite: 15]</th>
-            <th style={{ border: "1px solid #000", padding: "12px", fontSize: "16px" }}>المقاس [cite: 7]</th>
-            <th style={{ border: "1px solid #000", padding: "12px", fontSize: "16px" }}>العرض [cite: 8]</th>
-            <th style={{ border: "1px solid #000", padding: "12px", fontSize: "16px" }}>اللون [cite: 10]</th>
-            <th style={{ border: "1px solid #000", padding: "12px", fontSize: "16px" }}>الكمية [cite: 11]</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredOrders.map((po: any, index: number) => {
-            const cp = customerProductsMap.get(po.customer_product_id);
-            const item = itemsMap.get(cp?.item_id);
-            const color = getMasterBatchInfo(cp?.master_batch_id);
-            const qty = Number(po.final_quantity_kg || po.quantity_kg || 0);
-            return (
-              <tr key={po.id}>
-                <td style={{ border: "1px solid #000", padding: "12px", textAlign: "center", fontWeight: "bold" }}>{index + 1} [cite: 6]</td>
-                <td style={{ border: "1px solid #000", padding: "12px", fontSize: "16px", fontWeight: "bold" }}>{item?.name_ar || "أكياس - 1 - LD"} [cite: 15]</td>
-                <td style={{ border: "1px solid #000", padding: "12px", textAlign: "center" }}>{cp?.size_caption || "82X0"} [cite: 7]</td>
-                <td style={{ border: "1px solid #000", padding: "12px", textAlign: "center" }}>{cp?.width || "82.00"} [cite: 8]</td>
-                <td style={{ border: "1px solid #000", padding: "12px", textAlign: "center" }}>{color.name_ar || "شفاف"} [cite: 10]</td>
-                <td style={{ border: "1px solid #000", padding: "12px", textAlign: "center", fontSize: "18px", fontWeight: "bold" }}>{qty.toFixed(2)} [cite: 11]</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <div className="print-section print-avoid-break">
+        <h3 className="print-section-title">تفاصيل الأصناف ({filteredOrders.length} صنف)</h3>
+        <table className="print-table">
+          <thead>
+            <tr>
+              <th style={{ width: "5%" }}>#</th>
+              <th style={{ width: "25%" }}>الصنف</th>
+              <th style={{ width: "12%" }}>المقاس</th>
+              <th style={{ width: "10%" }}>العرض (سم)</th>
+              <th style={{ width: "10%" }}>السماكة</th>
+              <th style={{ width: "10%" }}>اللون</th>
+              <th style={{ width: "10%" }}>الخامة</th>
+              <th style={{ width: "8%" }}>الطباعة</th>
+              <th style={{ width: "10%" }}>الكمية (كجم)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredOrders.map((po: any, index: number) => {
+              const cp = customerProductsMap.get(po.customer_product_id);
+              const item = itemsMap.get(cp?.item_id);
+              const color = getMasterBatchInfo(cp?.master_batch_id);
+              const qty = Number(po.final_quantity_kg || po.quantity_kg || 0);
+              
+              return (
+                <tr key={po.id}>
+                  <td className="text-center font-bold">{index + 1}</td>
+                  <td className="font-bold">{item?.name_ar || item?.name || "غير محدد"}</td>
+                  <td className="text-center">{cp?.size_caption || "-"}</td>
+                  <td className="text-center">{cp?.width || "-"}</td>
+                  <td className="text-center">{cp?.thickness || "-"}</td>
+                  <td className="text-center">{color.name_ar}</td>
+                  <td className="text-center">{cp?.raw_material || "-"}</td>
+                  <td className="text-center">
+                    <span className={cp?.is_printed ? "print-badge print-badge-success" : "print-badge print-badge-info"}>
+                      {cp?.is_printed ? "نعم" : "لا"}
+                    </span>
+                  </td>
+                  <td className="text-center font-bold">{qty.toFixed(2)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colSpan={8} style={{ textAlign: "left" }}>
+                <strong>إجمالي الكمية:</strong>
+              </td>
+              <td className="text-center">
+                <strong>{totalWeight.toFixed(2)} كجم</strong>
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
 
-      {/* منطقة التواقيع */}
-      <div style={{ marginTop: "auto", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "40px", textAlign: "center" }}>
-        <div style={{ borderTop: "2px solid #000", paddingTop: "10px", fontWeight: "bold", fontSize: "16px" }}>توقيع الإنتاج [cite: 12]</div>
-        <div style={{ borderTop: "2px solid #000", paddingTop: "10px", fontWeight: "bold", fontSize: "16px" }}>توقيع الجودة [cite: 13]</div>
-        <div style={{ borderTop: "2px solid #000", paddingTop: "10px", fontWeight: "bold", fontSize: "16px" }}>استلام المستودع [cite: 14]</div>
+      {/* ملاحظات الطلب */}
+      {order.notes && (
+        <div className="print-notes print-avoid-break">
+          <div className="print-notes-title">ملاحظات الطلب:</div>
+          <div className="print-notes-content">{order.notes}</div>
+        </div>
+      )}
+
+      {/* التوقيعات */}
+      <div className="print-signatures print-avoid-break">
+        <div className="print-signature-box">
+          <div className="print-signature-line"></div>
+          <div className="print-signature-label">توقيع الإنتاج</div>
+        </div>
+        <div className="print-signature-box">
+          <div className="print-signature-line"></div>
+          <div className="print-signature-label">توقيع الجودة</div>
+        </div>
+        <div className="print-signature-box">
+          <div className="print-signature-line"></div>
+          <div className="print-signature-label">استلام المستودع</div>
+        </div>
+      </div>
+
+      {/* التذييل */}
+      <div className="print-footer">
+        <p>هذا المستند تم إنشاؤه إلكترونياً بتاريخ {format(new Date(), "dd/MM/yyyy - HH:mm")}</p>
+        <p>نظام إدارة الإنتاج - Factory IQ</p>
       </div>
     </div>
   );
 }
+
+const PrintContent = PrintContentInner;

@@ -28,7 +28,6 @@ export default function ProductionOrderPrintTemplate({
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
 
   useEffect(() => {
-    // Generate QR code for the production order
     const generateQRCode = async () => {
       try {
         const QRCode = (await import("qrcode")).default;
@@ -41,7 +40,7 @@ export default function ProductionOrderPrintTemplate({
           date: productionOrder.created_at,
         });
         const qrUrl = await QRCode.toDataURL(qrData, {
-          width: 150,
+          width: 120,
           margin: 1,
           errorCorrectionLevel: "M",
         });
@@ -52,14 +51,11 @@ export default function ProductionOrderPrintTemplate({
     };
 
     generateQRCode();
-
-    // Auto print after QR code is generated (small delay)
-    const timer = setTimeout(() => {
-      window.print();
-    }, 500);
-
-    return () => clearTimeout(timer);
   }, [productionOrder, order, customer]);
+
+  const handlePrint = () => {
+    window.print();
+  };
 
   const getStatusText = (status: string) => {
     const statusMap: Record<string, string> = {
@@ -69,6 +65,15 @@ export default function ProductionOrderPrintTemplate({
       cancelled: "ملغي",
     };
     return statusMap[status] || status;
+  };
+
+  const getStatusBadgeClass = (status: string) => {
+    switch (status) {
+      case "completed": return "print-badge print-badge-success";
+      case "active": return "print-badge print-badge-info";
+      case "cancelled": return "print-badge print-badge-danger";
+      default: return "print-badge print-badge-warning";
+    }
   };
 
   const getRollStageText = (stage: string) => {
@@ -81,7 +86,6 @@ export default function ProductionOrderPrintTemplate({
     return stageMap[stage] || stage;
   };
 
-  // Calculate statistics
   const totalRolls = rolls.length;
   const completedRolls = rolls.filter((r: any) => r.stage === "done").length;
   const totalWeight = rolls.reduce(
@@ -95,222 +99,208 @@ export default function ProductionOrderPrintTemplate({
 
   return (
     <>
-      {/* Preview on screen */}
-      <div className="no-print fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-        <div className="bg-white rounded-lg p-4 max-w-4xl max-h-[90vh] overflow-y-auto">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold">معاينة طباعة أمر الإنتاج</h2>
-            <button
-              onClick={onClose}
-              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+      {/* شريط أدوات المعاينة */}
+      <div className="print-preview-overlay no-print">
+        <div className="print-preview-toolbar">
+          <div className="print-preview-toolbar-title">
+            <h2>أمر إنتاج</h2>
+            <span>#{productionOrder.production_order_number}</span>
+          </div>
+          <div className="print-preview-toolbar-actions">
+            <button 
+              onClick={handlePrint} 
+              className="print-preview-btn-print"
+              data-testid="button-print-production-order"
+            >
+              طباعة
+            </button>
+            <button 
+              onClick={onClose} 
+              className="print-preview-btn-close"
               data-testid="button-close-print"
             >
               إغلاق
             </button>
           </div>
-          <div className="border border-gray-300 p-6 bg-white">
-            <PrintContent
-              productionOrder={productionOrder}
-              order={order}
-              customer={customer}
-              customerProduct={customerProduct}
-              item={item}
-              machine={machine}
-              operator={operator}
-              rolls={rolls}
-              qrCodeUrl={qrCodeUrl}
-              totalRolls={totalRolls}
-              completedRolls={completedRolls}
-              totalWeight={totalWeight}
-              progressPercentage={progressPercentage}
-              getStatusText={getStatusText}
-              getRollStageText={getRollStageText}
-            />
-          </div>
+        </div>
+
+        {/* معاينة الورقة على الشاشة */}
+        <div className="print-preview-paper">
+          <PrintContentInner
+            productionOrder={productionOrder}
+            order={order}
+            customer={customer}
+            customerProduct={customerProduct}
+            item={item}
+            qrCodeUrl={qrCodeUrl}
+            totalRolls={totalRolls}
+            completedRolls={completedRolls}
+            totalWeight={totalWeight}
+            progressPercentage={progressPercentage}
+            getStatusText={getStatusText}
+            getStatusBadgeClass={getStatusBadgeClass}
+            getRollStageText={getRollStageText}
+            rolls={rolls}
+          />
         </div>
       </div>
 
-      {/* Actual print content */}
-      <div className="print-container">
-        <PrintContent
+      {/* المحتوى الفعلي للطباعة - مخفي على الشاشة ويظهر فقط عند الطباعة */}
+      <div className="print-area">
+        <PrintContentInner
           productionOrder={productionOrder}
           order={order}
           customer={customer}
           customerProduct={customerProduct}
           item={item}
-          machine={machine}
-          operator={operator}
-          rolls={rolls}
           qrCodeUrl={qrCodeUrl}
           totalRolls={totalRolls}
           completedRolls={completedRolls}
           totalWeight={totalWeight}
           progressPercentage={progressPercentage}
           getStatusText={getStatusText}
+          getStatusBadgeClass={getStatusBadgeClass}
           getRollStageText={getRollStageText}
+          rolls={rolls}
         />
       </div>
     </>
   );
 }
 
-function PrintContent({
+function PrintContentInner({
   productionOrder,
   order,
   customer,
   customerProduct,
   item,
-  machine,
-  operator,
-  rolls,
   qrCodeUrl,
   totalRolls,
   completedRolls,
   totalWeight,
   progressPercentage,
   getStatusText,
+  getStatusBadgeClass,
   getRollStageText,
+  rolls,
 }: any) {
   return (
-    <>
-      {/* Header */}
+    <div className="print-page">
+      {/* الترويسة */}
       <div className="print-header">
-        <div>
+        <div className="print-header-right">
           <h1 className="print-title">أمر إنتاج</h1>
           <p className="print-subtitle">Production Order</p>
+          <div className="print-order-number">#{productionOrder.production_order_number}</div>
         </div>
-        {qrCodeUrl && (
-          <img src={qrCodeUrl} alt="QR Code" className="print-qr" />
-        )}
+        <div className="print-header-center">
+          <h2 className="print-company">مصنع الرواد للبلاستيك</h2>
+          <p className="print-subtitle">Al-Rowad Plastic Factory</p>
+        </div>
+        <div className="print-header-left">
+          {qrCodeUrl && (
+            <img src={qrCodeUrl} alt="QR Code" className="print-qr" />
+          )}
+        </div>
       </div>
 
-      {/* Document Info */}
-      <div className="print-info">
-        <div className="print-info-item">
-          <span className="print-info-label">رقم أمر الإنتاج:</span>
-          <span className="print-info-value">
-            {productionOrder.production_order_number}
-          </span>
+      {/* معلومات أمر الإنتاج */}
+      <div className="print-info-grid">
+        <div className="print-info-box">
+          <div className="print-info-label">رقم الطلب</div>
+          <div className="print-info-value">{order?.order_number || "غير محدد"}</div>
         </div>
-        <div className="print-info-item">
-          <span className="print-info-label">تاريخ الإصدار:</span>
-          <span className="print-info-value">
-            {format(new Date(), "dd/MM/yyyy - HH:mm")}
-          </span>
+        <div className="print-info-box">
+          <div className="print-info-label">العميل</div>
+          <div className="print-info-value">{customer?.name_ar || customer?.name || "غير محدد"}</div>
         </div>
-        <div className="print-info-item">
-          <span className="print-info-label">رقم الطلب:</span>
-          <span className="print-info-value">
-            {order?.order_number || "غير محدد"}
-          </span>
+        <div className="print-info-box">
+          <div className="print-info-label">الحالة</div>
+          <div className="print-info-value">
+            <span className={getStatusBadgeClass(productionOrder.status)}>
+              {getStatusText(productionOrder.status)}
+            </span>
+          </div>
         </div>
-        <div className="print-info-item">
-          <span className="print-info-label">العميل:</span>
-          <span className="print-info-value">
-            {customer?.name_ar || customer?.name || "غير محدد"}
-          </span>
-        </div>
-        <div className="print-info-item">
-          <span className="print-info-label">تاريخ الإنشاء:</span>
-          <span className="print-info-value">
+        <div className="print-info-box">
+          <div className="print-info-label">تاريخ الإنشاء</div>
+          <div className="print-info-value">
             {productionOrder.created_at
               ? format(new Date(productionOrder.created_at), "dd/MM/yyyy")
               : "غير محدد"}
-          </span>
+          </div>
         </div>
-        <div className="print-info-item">
-          <span className="print-info-label">الحالة:</span>
-          <span className="print-badge print-badge-info">
-            {getStatusText(productionOrder.status)}
-          </span>
-        </div>
-        <div className="print-info-item">
-          <span className="print-info-label">الكمية المطلوبة:</span>
-          <span className="print-info-value">
+        <div className="print-info-box highlight">
+          <div className="print-info-label">الكمية المطلوبة</div>
+          <div className="print-info-value large">
             {parseFloat(productionOrder.quantity_kg || 0).toFixed(2)} كجم
-          </span>
+          </div>
         </div>
-        <div className="print-info-item">
-          <span className="print-info-label">التقدم:</span>
-          <span className="print-info-value">
-            {progressPercentage.toFixed(1)}%
-          </span>
+        <div className="print-info-box">
+          <div className="print-info-label">نسبة الإنجاز</div>
+          <div className="print-info-value">{progressPercentage.toFixed(1)}%</div>
         </div>
       </div>
 
-      
-
-      {/* Product Specifications */}
-      <div className="print-section avoid-page-break">
+      {/* مواصفات المنتج */}
+      <div className="print-section print-avoid-break">
         <h3 className="print-section-title">مواصفات المنتج</h3>
-        <div
-          style={{
-            padding: "10px",
-            border: "1px solid #ddd",
-            background: "#fafafa",
-          }}
-        >
-          <h4 style={{ marginBottom: "10px", fontWeight: "bold" }}>
-            {item?.name_ar || item?.name || "منتج"} -{" "}
+        <div className="print-specs-grid">
+          <div className="print-specs-item">
+            <strong>اسم الصنف:</strong>
+            {item?.name_ar || item?.name || "غير محدد"}
+          </div>
+          <div className="print-specs-item">
+            <strong>المقاس:</strong>
             {customerProduct?.size_caption || "غير محدد"}
-          </h4>
-          <div className="print-grid-3">
-            <div>
-              <strong>العرض:</strong>{" "}
-              {customerProduct?.width || "غير محدد"} سم
-            </div>
-            <div>
-              <strong>الدخلات يمين:</strong>{" "}
-              {customerProduct?.right_facing || "غير محدد"} سم
-            </div>
-            <div>
-              <strong>الدخلات يسار:</strong>{" "}
-              {customerProduct?.left_facing || "غير محدد"} سم
-            </div>
-            <div>
-              <strong>السماكة:</strong>{" "}
-              {customerProduct?.thickness || "غير محدد"} مايكرون
-            </div>
-            <div>
-              <strong>طول القص:</strong>{" "}
-              {customerProduct?.cutting_length_cm || "غير محدد"} سم
-            </div>
-            <div>
-              <strong>سلندر الطباعة:</strong>{" "}
-              {customerProduct?.printing_cylinder || "غير محدد"}
-            </div>
-            <div>
-              <strong>الخامة:</strong>{" "}
-              {customerProduct?.raw_material || "غير محدد"}
-            </div>
-            <div>
-              <strong>اللون:</strong>{" "}
-              {customerProduct?.master_batch_id || "غير محدد"}
-            </div>
-            <div>
-              <strong>الطباعة:</strong>{" "}
-              {customerProduct?.is_printed ? "نعم" : "لا"}
-            </div>
-            <div>
-              <strong>التخريم:</strong>{" "}
-              {customerProduct?.punching || "غير محدد"}
-            </div>
-            <div>
-              <strong>وحدة القطع:</strong>{" "}
-              {customerProduct?.cutting_unit || "غير محدد"}
-            </div>
-            <div>
-              <strong>وزن الوحدة:</strong>{" "}
-              {customerProduct?.unit_weight_kg || "غير محدد"} كجم
-            </div>
+          </div>
+          <div className="print-specs-item">
+            <strong>العرض:</strong>
+            {customerProduct?.width || "غير محدد"} سم
+          </div>
+          <div className="print-specs-item">
+            <strong>السماكة:</strong>
+            {customerProduct?.thickness || "غير محدد"} مايكرون
+          </div>
+          <div className="print-specs-item">
+            <strong>الدخلات يمين:</strong>
+            {customerProduct?.right_facing || "غير محدد"} سم
+          </div>
+          <div className="print-specs-item">
+            <strong>الدخلات يسار:</strong>
+            {customerProduct?.left_facing || "غير محدد"} سم
+          </div>
+          <div className="print-specs-item">
+            <strong>طول القص:</strong>
+            {customerProduct?.cutting_length_cm || "غير محدد"} سم
+          </div>
+          <div className="print-specs-item">
+            <strong>الخامة:</strong>
+            {customerProduct?.raw_material || "غير محدد"}
+          </div>
+          <div className="print-specs-item">
+            <strong>سلندر الطباعة:</strong>
+            {customerProduct?.printing_cylinder || "غير محدد"}
+          </div>
+          <div className="print-specs-item">
+            <strong>الطباعة:</strong>
+            {customerProduct?.is_printed ? "نعم" : "لا"}
+          </div>
+          <div className="print-specs-item">
+            <strong>التخريم:</strong>
+            {customerProduct?.punching || "غير محدد"}
+          </div>
+          <div className="print-specs-item">
+            <strong>وحدة القطع:</strong>
+            {customerProduct?.cutting_unit || "غير محدد"}
           </div>
         </div>
       </div>
 
-      {/* Progress Statistics */}
-      <div className="print-section avoid-page-break">
+      {/* إحصائيات الإنتاج */}
+      <div className="print-section print-avoid-break">
         <h3 className="print-section-title">إحصائيات الإنتاج</h3>
-        <div className="print-stats">
+        <div className="print-stats-row">
           <div className="print-stat-card">
             <div className="print-stat-label">إجمالي الرولات</div>
             <div className="print-stat-value">{totalRolls}</div>
@@ -321,34 +311,28 @@ function PrintContent({
           </div>
           <div className="print-stat-card">
             <div className="print-stat-label">الوزن المنتج</div>
-            <div className="print-stat-value">
-              {totalWeight.toFixed(2)} كجم
-            </div>
+            <div className="print-stat-value">{totalWeight.toFixed(2)} كجم</div>
           </div>
           <div className="print-stat-card">
             <div className="print-stat-label">نسبة الاكتمال</div>
-            <div className="print-stat-value">
-              {progressPercentage.toFixed(1)}%
-            </div>
+            <div className="print-stat-value">{progressPercentage.toFixed(1)}%</div>
           </div>
         </div>
 
-        <div className="print-progress" style={{ marginTop: "15px" }}>
+        <div className="print-progress-container">
           <div
             className="print-progress-bar"
             style={{ width: `${Math.min(progressPercentage, 100)}%` }}
           >
-            {progressPercentage.toFixed(1)}%
+            {progressPercentage > 10 && `${progressPercentage.toFixed(1)}%`}
           </div>
         </div>
       </div>
 
-      {/* Rolls Table */}
+      {/* جدول الرولات */}
       {rolls.length > 0 && (
-        <div className="print-section avoid-page-break">
-          <h3 className="print-section-title">
-            سجل الإنتاج - الرولات ({totalRolls})
-          </h3>
+        <div className="print-section print-avoid-break">
+          <h3 className="print-section-title">سجل الإنتاج - الرولات ({totalRolls})</h3>
           <table className="print-table">
             <thead>
               <tr>
@@ -363,21 +347,21 @@ function PrintContent({
             <tbody>
               {rolls.map((roll: any, index: number) => (
                 <tr key={roll.id}>
-                  <td>{index + 1}</td>
-                  <td>{roll.roll_number}</td>
-                  <td>{parseFloat(roll.weight_kg || 0).toFixed(2)}</td>
-                  <td>
+                  <td className="text-center">{index + 1}</td>
+                  <td className="text-center font-bold">{roll.roll_number}</td>
+                  <td className="text-center">{parseFloat(roll.weight_kg || 0).toFixed(2)}</td>
+                  <td className="text-center">
                     <span
-                      className={`print-badge ${
+                      className={
                         roll.stage === "done"
-                          ? "print-badge-success"
-                          : "print-badge-warning"
-                      }`}
+                          ? "print-badge print-badge-success"
+                          : "print-badge print-badge-warning"
+                      }
                     >
                       {getRollStageText(roll.stage)}
                     </span>
                   </td>
-                  <td>
+                  <td className="text-center">
                     {roll.created_at
                       ? format(new Date(roll.created_at), "dd/MM/yyyy HH:mm")
                       : "-"}
@@ -400,40 +384,35 @@ function PrintContent({
         </div>
       )}
 
-      {/* Notes */}
+      {/* ملاحظات */}
       {productionOrder.notes && (
-        <div className="print-notes avoid-page-break">
+        <div className="print-notes print-avoid-break">
           <div className="print-notes-title">ملاحظات:</div>
-          <div className="print-notes-content">
-            {productionOrder.notes}
-          </div>
+          <div className="print-notes-content">{productionOrder.notes}</div>
         </div>
       )}
 
-      {/* Signatures */}
-      <div className="print-signatures">
-        <div className="print-signature">
+      {/* التوقيعات */}
+      <div className="print-signatures print-avoid-break">
+        <div className="print-signature-box">
           <div className="print-signature-line"></div>
           <div className="print-signature-label">مسؤول الإنتاج</div>
         </div>
-        <div className="print-signature">
+        <div className="print-signature-box">
           <div className="print-signature-line"></div>
           <div className="print-signature-label">مشرف القسم</div>
         </div>
-        <div className="print-signature">
+        <div className="print-signature-box">
           <div className="print-signature-line"></div>
           <div className="print-signature-label">مدير الإنتاج</div>
         </div>
       </div>
 
-      {/* Footer */}
+      {/* التذييل */}
       <div className="print-footer">
-        <p>
-          هذا المستند تم إنشاؤه إلكترونياً بتاريخ{" "}
-          {format(new Date(), "dd/MM/yyyy - HH:mm")}
-        </p>
+        <p>هذا المستند تم إنشاؤه إلكترونياً بتاريخ {format(new Date(), "dd/MM/yyyy - HH:mm")}</p>
         <p>نظام إدارة الإنتاج - Factory IQ</p>
       </div>
-    </>
+    </div>
   );
 }
