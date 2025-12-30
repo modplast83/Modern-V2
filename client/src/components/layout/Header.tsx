@@ -1,6 +1,6 @@
 import { useAuth } from "../../hooks/use-auth";
 import { NotificationBell } from "../notifications/NotificationBell";
-import FactoryLogoPath from "../../../attached_assets/FactoryLogoHPNGW.png";
+import FactoryLogoPath from "../../../../attached_assets/FactoryLogoHPNGW.png";
 
 export default function Header() {
   const { user, logout } = useAuth();

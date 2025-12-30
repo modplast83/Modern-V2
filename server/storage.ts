@@ -696,6 +696,7 @@ export interface IStorage {
 
   // HR System - Attendance Management
   getAttendance(): Promise<Attendance[]>;
+  getAttendanceByDate(date: string): Promise<any[]>;
   createAttendance(attendance: InsertAttendance): Promise<Attendance>;
   updateAttendance(
     id: number,
@@ -712,6 +713,14 @@ export interface IStorage {
     hasCheckedOut: boolean;
     currentStatus: string;
   }>;
+  upsertManualAttendance(entries: {
+    user_id: number;
+    date: string;
+    check_in_time?: string | null;
+    check_out_time?: string | null;
+    status: string;
+    notes?: string;
+  }[]): Promise<any[]>;
 
   // Users list
   getUsers(): Promise<User[]>;
@@ -9898,6 +9907,159 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error("Error fetching attendance:", error);
       throw new Error("فشل في جلب بيانات الحضور");
+    }
+  }
+
+  // Get attendance by date with all users
+  async getAttendanceByDate(date: string): Promise<any[]> {
+    try {
+      // Get all active users
+      const allUsers = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          display_name: users.display_name,
+          display_name_ar: users.display_name_ar,
+          role_id: users.role_id,
+          role_name: roles.name,
+          role_name_ar: roles.name_ar,
+        })
+        .from(users)
+        .leftJoin(roles, eq(users.role_id, roles.id))
+        .where(eq(users.status, 'active'))
+        .orderBy(users.display_name_ar, users.username);
+
+      // Get attendance records for the date
+      const attendanceRecords = await db
+        .select({
+          id: attendance.id,
+          user_id: attendance.user_id,
+          status: attendance.status,
+          check_in_time: attendance.check_in_time,
+          check_out_time: attendance.check_out_time,
+          lunch_start_time: attendance.lunch_start_time,
+          lunch_end_time: attendance.lunch_end_time,
+          notes: attendance.notes,
+          date: attendance.date,
+        })
+        .from(attendance)
+        .where(eq(attendance.date, date));
+
+      // Create a map for quick lookup
+      const attendanceMap = new Map<number, any>();
+      for (const record of attendanceRecords) {
+        // Keep only the main record per user
+        if (!attendanceMap.has(record.user_id)) {
+          attendanceMap.set(record.user_id, record);
+        } else {
+          // Merge times if there are multiple records
+          const existing = attendanceMap.get(record.user_id);
+          if (record.check_in_time && !existing.check_in_time) {
+            existing.check_in_time = record.check_in_time;
+          }
+          if (record.check_out_time && !existing.check_out_time) {
+            existing.check_out_time = record.check_out_time;
+          }
+          if (record.lunch_start_time && !existing.lunch_start_time) {
+            existing.lunch_start_time = record.lunch_start_time;
+          }
+          if (record.lunch_end_time && !existing.lunch_end_time) {
+            existing.lunch_end_time = record.lunch_end_time;
+          }
+        }
+      }
+
+      // Combine users with their attendance
+      return allUsers.map(user => {
+        const record = attendanceMap.get(user.id);
+        return {
+          user_id: user.id,
+          username: user.username,
+          display_name: user.display_name,
+          display_name_ar: user.display_name_ar,
+          role_name: user.role_name,
+          role_name_ar: user.role_name_ar,
+          attendance_id: record?.id || null,
+          status: record?.status || 'غائب',
+          check_in_time: record?.check_in_time || null,
+          check_out_time: record?.check_out_time || null,
+          lunch_start_time: record?.lunch_start_time || null,
+          lunch_end_time: record?.lunch_end_time || null,
+          notes: record?.notes || '',
+          date: date,
+        };
+      });
+    } catch (error) {
+      console.error("Error fetching attendance by date:", error);
+      throw new Error("فشل في جلب بيانات الحضور للتاريخ المحدد");
+    }
+  }
+
+  // Bulk upsert manual attendance entries
+  async upsertManualAttendance(entries: {
+    user_id: number;
+    date: string;
+    check_in_time?: string | null;
+    check_out_time?: string | null;
+    status: string;
+    notes?: string;
+  }[]): Promise<any[]> {
+    try {
+      const results: any[] = [];
+      
+      for (const entry of entries) {
+        // Check if attendance record exists for this user and date
+        const existingRecords = await db
+          .select()
+          .from(attendance)
+          .where(and(
+            eq(attendance.user_id, entry.user_id),
+            eq(attendance.date, entry.date)
+          ));
+
+        if (existingRecords.length > 0) {
+          // Update existing record
+          const existing = existingRecords[0];
+          const [updated] = await db
+            .update(attendance)
+            .set({
+              status: entry.status,
+              check_in_time: entry.check_in_time ? new Date(entry.check_in_time) : null,
+              check_out_time: entry.check_out_time ? new Date(entry.check_out_time) : null,
+              notes: entry.notes || existing.notes,
+              updated_at: new Date(),
+            })
+            .where(eq(attendance.id, existing.id))
+            .returning();
+          results.push(updated);
+        } else {
+          // Create new record
+          const insertData: any = {
+            user_id: entry.user_id,
+            date: entry.date,
+            status: entry.status,
+            notes: entry.notes || '',
+            created_at: new Date(),
+            updated_at: new Date(),
+          };
+          if (entry.check_in_time) {
+            insertData.check_in_time = new Date(entry.check_in_time);
+          }
+          if (entry.check_out_time) {
+            insertData.check_out_time = new Date(entry.check_out_time);
+          }
+          const [created] = await db
+            .insert(attendance)
+            .values(insertData)
+            .returning();
+          results.push(created);
+        }
+      }
+      
+      return results;
+    } catch (error) {
+      console.error("Error upserting manual attendance:", error);
+      throw new Error("فشل في حفظ بيانات الحضور اليدوي");
     }
   }
 

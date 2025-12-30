@@ -5533,6 +5533,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get attendance by date for manual entry (all users)
+  app.get("/api/attendance/manual", async (req, res) => {
+    try {
+      const date = (req.query.date as string) || new Date().toISOString().split("T")[0];
+      const attendanceData = await storage.getAttendanceByDate(date);
+      res.json({ data: attendanceData, date });
+    } catch (error) {
+      console.error("Error fetching attendance by date:", error);
+      res.status(500).json({ message: "خطأ في جلب بيانات الحضور للتاريخ المحدد" });
+    }
+  });
+
+  // Bulk upsert manual attendance
+  app.post("/api/attendance/manual", async (req, res) => {
+    try {
+      const { entries } = req.body;
+      
+      if (!entries || !Array.isArray(entries) || entries.length === 0) {
+        return res.status(400).json({ message: "يجب توفير بيانات الحضور" });
+      }
+      
+      const results = await storage.upsertManualAttendance(entries);
+      res.json({ 
+        success: true, 
+        message: `تم حفظ حضور ${results.length} موظف بنجاح`,
+        data: results 
+      });
+    } catch (error) {
+      console.error("Error saving manual attendance:", error);
+      res.status(500).json({ message: "خطأ في حفظ بيانات الحضور اليدوي" });
+    }
+  });
+
   // تسجيل الحضور مع تحقق الموقع الجغرافي المحسّن
   app.post("/api/attendance", async (req, res) => {
     try {
