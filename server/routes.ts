@@ -5624,10 +5624,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // =============== التحقق من دور المستخدم (مندوب مبيعات) ===============
+      const SALES_REP_ROLE_ID = 7; // دور مندوب المبيعات
+      const user = await storage.getUserById(req.body.user_id);
+      const isSalesRep = user?.role_id === SALES_REP_ROLE_ID;
+      
+      if (isSalesRep) {
+        console.log(`📍 [مندوب مبيعات] المستخدم ${req.body.user_id} (${user?.display_name_ar || user?.username}) - السماح بتسجيل الحضور من أي موقع`);
+      }
+
       // =============== جلب مواقع المصانع النشطة ===============
       const activeLocations = await storage.getActiveFactoryLocations();
 
-      if (activeLocations.length === 0) {
+      // مندوب المبيعات لا يحتاج لمواقع مصانع نشطة
+      if (activeLocations.length === 0 && !isSalesRep) {
         return res.status(400).json({
           message: "لا توجد مواقع مصانع نشطة. يرجى التواصل مع الإدارة.",
           code: "NO_ACTIVE_LOCATIONS"
