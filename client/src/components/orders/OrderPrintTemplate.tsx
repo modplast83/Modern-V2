@@ -1,27 +1,102 @@
-import React, { useEffect, useMemo, useCallback } from "react";
-import { format } from "date-fns";
+
+import React, { useEffect, useMemo, useCallback, useRef, useState } from "react";
+// إذا أردت استخدام date-fns مع locale العربية:
+// import { format } from "date-fns";
+// import { ar } from "date-fns/locale";
 import { useQuery } from "@tanstack/react-query";
 import "../../print.css";
 
+// ========================
+// Types
+// ========================
+interface Order {
+  id: string;
+  order_number: string | number;
+  created_at?: string | Date;
+  notes?: string;
+}
+
+interface Customer {
+  id: string;
+  name_ar?: string;
+  name?: string;
+  sales_rep_id?: string;
+}
+
+interface ProductionOrder {
+  id: string;
+  order_id: string;
+  customer_product_id: string;
+  quantity_kg?: number | string;
+  final_quantity_kg?: number | string;
+}
+
+interface CustomerProduct {
+  id: string;
+  item_id: string;
+  size_caption?: string;
+  width?: number | string;
+  thickness?: number | string;
+  raw_material?: string;
+  is_printed?: boolean;
+  master_batch_id?: string;
+}
+
+interface Item {
+  id: string;
+  name_ar?: string;
+  name?: string;
+}
+
+interface User {
+  id: string;
+  full_name?: string;
+}
+
 interface OrderPrintTemplateProps {
-  order: any;
-  customer: any;
-  productionOrders: any[];
-  customerProducts: any[];
-  items: any[];
+  order: Order | null | undefined;
+  customer: Customer | null | undefined;
+  productionOrders: ProductionOrder[];
+  customerProducts: CustomerProduct[];
+  items: Item[];
   onClose: () => void;
 }
 
-const masterBatchColors = [
-  { id: "PT-111111", name_ar: "أبيض" },
-  { id: "PT-000000", name_ar: "أسود" },
-  { id: "PT-CLEAR", name_ar: "شفاف" },
+// ========================
+// Constants & Helpers
+// ========================
+const masterBatchColors: Array<{ id: string; name_ar: string; name_en?: string }> = [
+  { id: "PT-111111", name_ar: "أبيض", name_en: "White" },
+  { id: "PT-000000", name_ar: "أسود", name_en: "Black" },
+  { id: "PT-CLEAR", name_ar: "شفاف", name_en: "Clear" },
 ];
 
-const getMasterBatchInfo = (id: string) => {
-  return masterBatchColors.find((c) => c.id === id) || { name_ar: "غير محدد" };
+const getMasterBatchInfo = (id?: string) => {
+  if (!id) return { name_ar: "غير محدد", name_en: "Not specified" };
+  return masterBatchColors.find((c) => c.id === id) ?? { name_ar: "غير محدد", name_en: "Not specified" };
 };
 
+// عربي قياسي للأرقام
+const formatNumber = (value: number, options?: Intl.NumberFormatOptions) =>
+  new Intl.NumberFormat("ar-EG", { minimumFractionDigits: 2, maximumFractionDigits: 2, ...options }).format(value);
+
+// عربي قياسي للتاريخ (بدون الاعتماد على date-fns)
+const formatDate = (date: Date) =>
+  new Intl.DateTimeFormat("ar-EG", { year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+
+const formatDateTime = (date: Date) =>
+  new Intl.DateTimeFormat("ar-EG", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+
+// ========================
+// Component
+// ========================
 export default function OrderPrintTemplate({
   order,
   customer,
@@ -30,9 +105,14 @@ export default function OrderPrintTemplate({
   items,
   onClose,
 }: OrderPrintTemplateProps) {
-  const { data: users } = useQuery<any[]>({
+  // لاحظ: يفضّل تعريف queryFn هنا؛ إن كانت API جاهزة لديك أضفها.
+  const { data: users } = useQuery<User[]>({
     queryKey: ["/api/users"],
+    // queryFn: () => fetch("/api/users").then((res) => res.json()),
+    staleTime: 5 * 60 * 1000,
   });
+
+  const [isPrinting, setIsPrinting] = useState(false);
 
   // ثبّت المراجع لتجنب race conditions وقت الطباعة
   const customerProductsMap = useMemo(
@@ -40,44 +120,50 @@ export default function OrderPrintTemplate({
     [customerProducts]
   );
 
-  const itemsMap = useMemo(
-    () => new Map(items?.map((i) => [i.id, i]) || []),
-    [items]
-  );
+  const itemsMap = useMemo(() => new Map(items?.map((i) => [i.id, i]) || []), [items]);
 
   const filteredOrders = useMemo(
     () => productionOrders?.filter((po) => po.order_id === order?.id) || [],
     [productionOrders, order?.id]
   );
 
+  // ترتيب ثابت بحسب id أو رقم الصنف لتجنب تغيّر الجدول بين عرض/طباعة
+  const sortedOrders = useMemo(() => {
+    return [...filteredOrders].sort((a, b) => (a.id > b.id ? 1 : a.id < b.id ? -1 : 0));
+  }, [filteredOrders]);
+
   const salesRep = useMemo(() => {
-    return users?.find((u: any) => u.id === customer?.sales_rep_id);
+    return users?.find((u) => u.id === customer?.sales_rep_id);
   }, [users, customer?.sales_rep_id]);
 
-  const canPrint = Boolean(order?.id) && Boolean(customer?.id);
+  const canPrint = Boolean(order?.id) && Boolean(customer?.id) && sortedOrders.length > 0;
 
   const handlePrint = useCallback(async () => {
-    if (!canPrint) return;
+    if (!canPrint || isPrinting) return;
+    setIsPrinting(true);
 
-    // انتظر الخطوط (لو مدعومة) ثم إطارين رسم لضمان اكتمال الـ DOM قبل الطباعة
     try {
-      // بعض المتصفحات لا تدعم document.fonts
-      // @ts-ignore
+      // انتظر الخطوط (لو مدعومة)
+      // @ts-expect-error: document.fonts غير معرّف في بعض البيئات
       if (document?.fonts?.ready) {
-        // @ts-ignore
+        // @ts-expect-error
         await document.fonts.ready;
       }
     } catch {
-      // ignore
+      // تجاهل الخطأ
     }
 
+    // انتظر إطارين رسم لضمان اكتمال DOM قبل الطباعة
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
+    // تنفيذ الطباعة
     window.print();
-  }, [canPrint]);
 
-  // اختياري: بعد انتهاء الطباعة، أبقِ المستخدم في شاشة المعاينة (لا نغلق تلقائياً)
+    // نؤخر إعادة تمكين الزر قليلاً لتجنب ضغطات متتالية
+    setTimeout(() => setIsPrinting(false), 300);
+  }, [canPrint, isPrinting]);
+
   useEffect(() => {
     const onAfterPrint = () => {
       // يمكنك تفعيل الإغلاق التلقائي إذا رغبت:
@@ -86,6 +172,30 @@ export default function OrderPrintTemplate({
     window.addEventListener("afterprint", onAfterPrint);
     return () => window.removeEventListener("afterprint", onAfterPrint);
   }, [onClose]);
+
+  // تاريخ الطلب
+  const orderDateStr = useMemo(() => {
+    const d =
+      order?.created_at instanceof Date
+        ? order.created_at
+        : order?.created_at
+        ? new Date(order.created_at)
+        : new Date();
+    return formatDate(d);
+    // إن رغبت باستخدام date-fns:
+    // return format(d, "yyyy/MM/dd", { locale: ar });
+  }, [order?.created_at]);
+
+  // إجمالي الوزن
+  const totalWeight = useMemo(() => {
+    return sortedOrders.reduce((sum, po) => {
+      const raw =
+        po.final_quantity_kg !== undefined && po.final_quantity_kg !== null
+          ? Number(po.final_quantity_kg)
+          : Number(po.quantity_kg ?? 0);
+      return sum + (isFinite(raw) ? raw : 0);
+    }, 0);
+  }, [sortedOrders]);
 
   return (
     <>
@@ -97,11 +207,11 @@ export default function OrderPrintTemplate({
       </style>
 
       {/* شريط أدوات المعاينة */}
-      <div className="print-preview-overlay no-print">
+      <div className="print-preview-overlay no-print" role="region" aria-label="معاينة الطباعة">
         <div className="print-preview-toolbar">
           <div className="print-preview-toolbar-title">
             <h2>أمر تشغيل إنتاج</h2>
-            <span>#{order?.order_number}</span>
+            <span>#{order?.order_number ?? "-"}</span>
           </div>
 
           <div className="print-preview-toolbar-actions">
@@ -109,17 +219,25 @@ export default function OrderPrintTemplate({
               onClick={handlePrint}
               className="print-preview-btn-print"
               data-testid="button-print-order"
-              disabled={!canPrint}
-              title={!canPrint ? "البيانات غير مكتملة للطباعة" : "طباعة"}
+              disabled={!canPrint || isPrinting}
+              title={
+                !canPrint
+                  ? "البيانات غير مكتملة للطباعة"
+                  : isPrinting
+                  ? "جاري التحضير للطباعة..."
+                  : "طباعة"
+              }
+              aria-label="طباعة أمر التشغيل"
               style={!canPrint ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
             >
-              طباعة
+              {isPrinting ? "جاري الطباعة..." : "طباعة"}
             </button>
 
             <button
               onClick={onClose}
               className="print-preview-btn-close"
               data-testid="button-close-print-preview"
+              aria-label="إغلاق المعاينة"
             >
               إغلاق
             </button>
@@ -128,26 +246,30 @@ export default function OrderPrintTemplate({
 
         {/* معاينة الورقة على الشاشة */}
         <div className="print-preview-paper">
-          <PrintContentInner
+          <PrintContent
             order={order}
             customer={customer}
             salesRep={salesRep}
-            filteredOrders={filteredOrders}
+            productionOrders={sortedOrders}
             customerProductsMap={customerProductsMap}
             itemsMap={itemsMap}
+            totalWeight={totalWeight}
+            orderDateStr={orderDateStr}
           />
         </div>
       </div>
 
       {/* المحتوى الفعلي للطباعة - مخفي على الشاشة ويظهر فقط عند الطباعة */}
       <div className="print-area">
-        <PrintContentInner
+        <PrintContent
           order={order}
           customer={customer}
           salesRep={salesRep}
-          filteredOrders={filteredOrders}
+          productionOrders={sortedOrders}
           customerProductsMap={customerProductsMap}
           itemsMap={itemsMap}
+          totalWeight={totalWeight}
+          orderDateStr={orderDateStr}
         />
       </div>
     </>
@@ -155,41 +277,33 @@ export default function OrderPrintTemplate({
 }
 
 interface PrintContentProps {
-  order: any;
-  customer: any;
-  salesRep: any;
-  filteredOrders: any[];
-  customerProductsMap: Map<any, any>;
-  itemsMap: Map<any, any>;
+  order: Order | null | undefined;
+  customer: Customer | null | undefined;
+  salesRep: User | undefined;
+  productionOrders: ProductionOrder[];
+  customerProductsMap: Map<string, CustomerProduct>;
+  itemsMap: Map<string, Item>;
+  totalWeight: number;
+  orderDateStr: string;
 }
 
-function PrintContentInner({
+function PrintContent({
   order,
   customer,
   salesRep,
-  filteredOrders,
+  productionOrders,
   customerProductsMap,
   itemsMap,
+  totalWeight,
+  orderDateStr,
 }: PrintContentProps) {
-  const totalWeight = useMemo(() => {
-    return filteredOrders.reduce((sum: number, po: any) => {
-      return sum + Number(po.final_quantity_kg || po.quantity_kg || 0);
-    }, 0);
-  }, [filteredOrders]);
-
-  const orderDate = useMemo(() => {
-    return order?.created_at
-      ? format(new Date(order.created_at), "yyyy/MM/dd")
-      : format(new Date(), "yyyy/MM/dd");
-  }, [order?.created_at]);
-
   return (
     <div className="print-page">
       {/* الترويسة */}
       <div className="print-header">
         <div className="print-header-right">
           <h1 className="print-title">أمر تشغيل إنتاج</h1>
-          <div className="print-order-number">#{order?.order_number}</div>
+          <div className="print-order-number">#{order?.order_number ?? "-"}</div>
         </div>
 
         <div className="print-header-center">
@@ -198,7 +312,7 @@ function PrintContentInner({
         </div>
 
         <div className="print-header-left">
-          <div className="print-date">تاريخ: {orderDate}</div>
+          <div className="print-date">تاريخ: {orderDateStr}</div>
         </div>
       </div>
 
@@ -206,9 +320,7 @@ function PrintContentInner({
       <div className="print-info-grid">
         <div className="print-info-box">
           <div className="print-info-label">العميل</div>
-          <div className="print-info-value">
-            {customer?.name_ar || customer?.name || "غير محدد"}
-          </div>
+          <div className="print-info-value">{customer?.name_ar || customer?.name || "غير محدد"}</div>
         </div>
 
         <div className="print-info-box">
@@ -218,15 +330,13 @@ function PrintContentInner({
 
         <div className="print-info-box highlight">
           <div className="print-info-label">إجمالي الكمية</div>
-          <div className="print-info-value large">{totalWeight.toFixed(2)} كجم</div>
+          <div className="print-info-value large">{formatNumber(totalWeight)} كجم</div>
         </div>
       </div>
 
       {/* جدول الأصناف */}
       <div className="print-section print-avoid-break">
-        <h3 className="print-section-title">
-          تفاصيل الأصناف ({filteredOrders.length} صنف)
-        </h3>
+        <h3 className="print-section-title">تفاصيل الأصناف ({productionOrders.length} صنف)</h3>
 
         <table className="print-table">
           <thead>
@@ -244,35 +354,36 @@ function PrintContentInner({
           </thead>
 
           <tbody>
-            {filteredOrders.map((po: any, index: number) => {
+            {productionOrders.map((po, index) => {
               const cp = customerProductsMap.get(po.customer_product_id);
-              const item = itemsMap.get(cp?.item_id);
+              const item = cp ? itemsMap.get(cp.item_id) : undefined;
               const color = getMasterBatchInfo(cp?.master_batch_id);
-              const qty = Number(po.final_quantity_kg || po.quantity_kg || 0);
+
+              const qtyRaw =
+                po.final_quantity_kg !== undefined && po.final_quantity_kg !== null
+                  ? Number(po.final_quantity_kg)
+                  : Number(po.quantity_kg ?? 0);
+              const qty = isFinite(qtyRaw) ? qtyRaw : 0;
 
               return (
                 <tr key={po.id}>
                   <td className="text-center font-bold">{index + 1}</td>
-                  <td className="font-bold">
-                    {item?.name_ar || item?.name || "غير محدد"}
-                  </td>
+                  <td className="font-bold">{item?.name_ar || item?.name || "غير محدد"}</td>
                   <td className="text-center">{cp?.size_caption || "-"}</td>
-                  <td className="text-center">{cp?.width || "-"}</td>
-                  <td className="text-center">{cp?.thickness || "-"}</td>
+                  <td className="text-center">{cp?.width ?? "-"}</td>
+                  <td className="text-center">{cp?.thickness ?? "-"}</td>
                   <td className="text-center">{color.name_ar}</td>
                   <td className="text-center">{cp?.raw_material || "-"}</td>
                   <td className="text-center">
                     <span
                       className={
-                        cp?.is_printed
-                          ? "print-badge print-badge-success"
-                          : "print-badge print-badge-info"
+                        cp?.is_printed ? "print-badge print-badge-success" : "print-badge print-badge-info"
                       }
                     >
                       {cp?.is_printed ? "نعم" : "لا"}
                     </span>
                   </td>
-                  <td className="text-center font-bold">{qty.toFixed(2)}</td>
+                  <td className="text-center font-bold">{formatNumber(qty)}</td>
                 </tr>
               );
             })}
@@ -284,7 +395,7 @@ function PrintContentInner({
                 <strong>إجمالي الكمية:</strong>
               </td>
               <td className="text-center">
-                <strong>{totalWeight.toFixed(2)} كجم</strong>
+                <strong>{formatNumber(totalWeight)} كجم</strong>
               </td>
             </tr>
           </tfoot>
@@ -319,11 +430,9 @@ function PrintContentInner({
 
       {/* التذييل */}
       <div className="print-footer">
-        <p>هذا المستند تم إنشاؤه إلكترونياً بتاريخ {format(new Date(), "dd/MM/yyyy - HH:mm")}</p>
+        <p>هذا المستند تم إنشاؤه إلكترونياً بتاريخ {formatDateTime(new Date())}</p>
         <p>نظام إدارة الإنتاج - Factory IQ</p>
       </div>
     </div>
   );
 }
-
-const PrintContent = PrintContentInner;
