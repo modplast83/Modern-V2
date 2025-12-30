@@ -174,7 +174,7 @@ export default function OrderPrintTemplate({
       // أبعاد A4 أفقي بالملم
       const pageWidth = 297;
       const pageHeight = 210;
-      const margin = 10;
+      const margin = 6;
       const contentWidth = pageWidth - margin * 2;
       const contentHeight = pageHeight - margin * 2;
 
@@ -277,7 +277,7 @@ export default function OrderPrintTemplate({
       {/* ضمان A4 أفقي حتى لو لم تُحمّل print.css لأي سبب */}
       <style>
         {`
-          @page { size: A4 landscape; margin: 10mm 15mm; }
+          @page { size: A4 landscape; margin: 6mm 10mm; }
         `}
       </style>
 
