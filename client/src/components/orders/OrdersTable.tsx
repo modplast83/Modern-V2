@@ -14,6 +14,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "../ui/dropdown-menu";
 import {
   FileText,
@@ -21,10 +26,16 @@ import {
   Trash2,
   Edit,
   RefreshCw,
-  ChevronDown,
+  MoreHorizontal,
+  Printer,
+  Download,
+  ExternalLink,
+  Settings2,
 } from "lucide-react";
 import { format } from "date-fns";
 import ProductionProgress from "./ProductionProgress";
+
+type PrintMode = "html" | "pdf" | "standalone";
 
 interface OrdersTableProps {
   orders: any[];
@@ -32,7 +43,7 @@ interface OrdersTableProps {
   users: any[];
   productionOrders?: any[];
   onViewOrder: (order: any) => void;
-  onPrintOrder: (order: any) => void;
+  onPrintOrder: (order: any, mode?: PrintMode) => void;
   onEditOrder?: (order: any) => void;
   onDeleteOrder: (order: any) => void;
   onStatusChange: (order: any, status: string) => void;
@@ -356,98 +367,124 @@ export default function OrdersTable({
                 {getStatusBadge(order.status || "pending")}
               </TableCell>
               <TableCell>
-                <div className="grid grid-cols-3 gap-1">
+                <div className="flex items-center justify-center gap-1">
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    className="text-blue-600 border-blue-600 hover:bg-blue-50 p-1"
+                    className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                     onClick={() => onViewOrder(order)}
-                    title="عرض"
+                    title="عرض التفاصيل"
                     data-testid={`button-view-${order.id}`}
                   >
                     <Eye className="h-4 w-4" />
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-green-600 border-green-600 hover:bg-green-50 p-1"
-                    onClick={() => onPrintOrder(order)}
-                    title="طباعة"
-                    data-testid={`button-print-${order.id}`}
-                  >
-                    <FileText className="h-4 w-4" />
-                  </Button>
-                  {isAdmin && onEditOrder && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-purple-600 border-purple-600 hover:bg-purple-50 p-1"
-                      onClick={() => onEditOrder(order)}
-                      title="تعديل"
-                      data-testid={`button-edit-${order.id}`}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  )}
+                  
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
-                        className="text-orange-600 border-orange-600 hover:bg-orange-50 p-1"
-                        title="تغيير الحالة"
-                        data-testid={`button-status-${order.id}`}
+                        className="h-8 w-8 p-0 text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+                        data-testid={`button-actions-${order.id}`}
                       >
-                        <RefreshCw className="h-3 w-3" />
+                        <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuContent align="end" className="w-56"  style={{ direction: 'rtl' }}>
+                      <DropdownMenuLabel className="text-xs text-muted-foreground">
+                        طباعة وتصدير
+                      </DropdownMenuLabel>
                       <DropdownMenuItem
-                        onClick={() => onStatusChange(order, "for_production")}
+                        onClick={() => onPrintOrder(order, "html")}
+                        className="cursor-pointer"
+                        data-testid={`button-print-html-${order.id}`}
                       >
-                        <div className="flex items-center w-full">
-                          <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
-                          إلى الإنتاج
-                        </div>
+                        <Printer className="h-4 w-4 ml-2 text-green-600" />
+                        <span>طباعة مباشرة</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={() => onStatusChange(order, "on_hold")}
+                        onClick={() => onPrintOrder(order, "pdf")}
+                        className="cursor-pointer"
+                        data-testid={`button-print-pdf-${order.id}`}
                       >
-                        <div className="flex items-center w-full">
-                          <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
-                          إيقاف مؤقت
-                        </div>
+                        <Download className="h-4 w-4 ml-2 text-blue-600" />
+                        <span>تصدير PDF</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => onPrintOrder(order, "standalone")}
+                        className="cursor-pointer"
+                        data-testid={`button-print-standalone-${order.id}`}
+                      >
+                        <ExternalLink className="h-4 w-4 ml-2 text-purple-600" />
+                        <span>فتح في صفحة جديدة</span>
+                      </DropdownMenuItem>
+                      
+                      <DropdownMenuSeparator />
+                      
+                      <DropdownMenuLabel className="text-xs text-muted-foreground">
+                        تغيير الحالة
+                      </DropdownMenuLabel>
+                      <DropdownMenuItem
+                        onClick={() => onStatusChange(order, "for_production")}
+                        className="cursor-pointer"
+                      >
+                        <div className="w-2.5 h-2.5 bg-blue-500 rounded-full ml-2"></div>
+                        <span>إلى الإنتاج</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => onStatusChange(order, "pending")}
+                        className="cursor-pointer"
                       >
-                        <div className="flex items-center w-full">
-                          <div className="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>
-                          في الانتظار
-                        </div>
+                        <div className="w-2.5 h-2.5 bg-yellow-500 rounded-full ml-2"></div>
+                        <span>في الانتظار</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => onStatusChange(order, "on_hold")}
+                        className="cursor-pointer"
+                      >
+                        <div className="w-2.5 h-2.5 bg-red-500 rounded-full ml-2"></div>
+                        <span>إيقاف مؤقت</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => onStatusChange(order, "completed")}
+                        className="cursor-pointer"
                       >
-                        <div className="flex items-center w-full">
-                          <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-                          مكتمل
-                        </div>
+                        <div className="w-2.5 h-2.5 bg-green-500 rounded-full ml-2"></div>
+                        <span>مكتمل</span>
                       </DropdownMenuItem>
+                      
+                      {(isAdmin && onEditOrder) || isAdmin ? (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuLabel className="text-xs text-muted-foreground">
+                            إدارة
+                          </DropdownMenuLabel>
+                        </>
+                      ) : null}
+                      
+                      {isAdmin && onEditOrder && (
+                        <DropdownMenuItem
+                          onClick={() => onEditOrder(order)}
+                          className="cursor-pointer"
+                          data-testid={`button-edit-${order.id}`}
+                        >
+                          <Edit className="h-4 w-4 ml-2 text-purple-600" />
+                          <span>تعديل الطلب</span>
+                        </DropdownMenuItem>
+                      )}
+                      
+                      {isAdmin && (
+                        <DropdownMenuItem
+                          onClick={() => onDeleteOrder(order)}
+                          className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                          data-testid={`button-delete-${order.id}`}
+                        >
+                          <Trash2 className="h-4 w-4 ml-2" />
+                          <span>حذف الطلب</span>
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  {isAdmin && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-red-600 border-red-600 hover:bg-red-50 p-1"
-                      onClick={() => onDeleteOrder(order)}
-                      title="حذف"
-                      data-testid={`button-delete-${order.id}`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
                 </div>
               </TableCell>
             </TableRow>
@@ -554,19 +591,36 @@ export default function OrdersTable({
                   onClick={() => onViewOrder(order)}
                   data-testid={`button-view-mobile-${order.id}`}
                 >
-                  <Eye className="h-3 w-3 mr-1" />
+                  <Eye className="h-3 w-3 ml-1" />
                   عرض
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 text-green-600"
-                  onClick={() => onPrintOrder(order)}
-                  data-testid={`button-print-mobile-${order.id}`}
-                >
-                  <FileText className="h-3 w-3 mr-1" />
-                  طباعة
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 text-green-600"
+                      data-testid={`button-print-mobile-${order.id}`}
+                    >
+                      <Printer className="h-3 w-3 ml-1" />
+                      طباعة
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" style={{ direction: 'rtl' }}>
+                    <DropdownMenuItem onClick={() => onPrintOrder(order, "html")}>
+                      <Printer className="h-4 w-4 ml-2 text-green-600" />
+                      طباعة مباشرة
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onPrintOrder(order, "pdf")}>
+                      <Download className="h-4 w-4 ml-2 text-blue-600" />
+                      تصدير PDF
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onPrintOrder(order, "standalone")}>
+                      <ExternalLink className="h-4 w-4 ml-2 text-purple-600" />
+                      صفحة مستقلة
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
           );

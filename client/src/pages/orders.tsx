@@ -73,6 +73,7 @@ export default function Orders() {
   const [viewingOrder, setViewingOrder] = useState<any>(null);
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   const [printingOrder, setPrintingOrder] = useState<any>(null);
+  const [printMode, setPrintMode] = useState<"html" | "pdf" | "standalone">("html");
 
   const { user } = useAuth();
   const { toast } = useToast();
@@ -701,7 +702,8 @@ export default function Orders() {
     setIsViewOrderDialogOpen(true);
   };
 
-  const handlePrintOrder = (order: any) => {
+  const handlePrintOrder = (order: any, mode: "html" | "pdf" | "standalone" = "html") => {
+    setPrintMode(mode);
     setPrintingOrder(order);
   };
 
@@ -876,6 +878,7 @@ export default function Orders() {
           customerProducts={customerProducts}
           items={items}
           onClose={() => setPrintingOrder(null)}
+          mode={printMode}
         />
       )}
     </PageLayout>

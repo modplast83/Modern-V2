@@ -1,18 +1,20 @@
-
-import { useEffect, useMemo, useCallback, useRef, useState } from "react";
+import { useMemo, useCallback, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { X, Printer, Download, ExternalLink } from "lucide-react";
+import { Button } from "../ui/button";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import "../../print.css";
 
-// ========================
-// Types
-// ========================
+type PrintMode = "html" | "pdf" | "standalone";
+
 interface Order {
   id: string;
   order_number: string | number;
   created_at?: string | Date;
+  delivery_days?: number;
   notes?: string;
+  status?: string;
 }
 
 interface Customer {
@@ -20,6 +22,7 @@ interface Customer {
   name_ar?: string;
   name?: string;
   sales_rep_id?: string;
+  phone?: string;
 }
 
 interface ProductionOrder {
@@ -28,6 +31,7 @@ interface ProductionOrder {
   customer_product_id: string;
   quantity_kg?: number | string;
   final_quantity_kg?: number | string;
+  notes?: string;
 }
 
 interface CustomerProduct {
@@ -39,6 +43,7 @@ interface CustomerProduct {
   raw_material?: string;
   is_printed?: boolean;
   master_batch_id?: string;
+  print_colors?: string;
 }
 
 interface Item {
@@ -59,43 +64,36 @@ interface OrderPrintTemplateProps {
   customerProducts: CustomerProduct[];
   items: Item[];
   onClose: () => void;
+  mode?: PrintMode;
 }
 
-// ========================
-// Constants & Helpers
-// ========================
 const masterBatchColors: Array<{ id: string; name_ar: string; name_en?: string }> = [
   { id: "PT-111111", name_ar: "أبيض", name_en: "White" },
   { id: "PT-000000", name_ar: "أسود", name_en: "Black" },
   { id: "PT-CLEAR", name_ar: "شفاف", name_en: "Clear" },
+  { id: "PT-RED", name_ar: "أحمر", name_en: "Red" },
+  { id: "PT-BLUE", name_ar: "أزرق", name_en: "Blue" },
+  { id: "PT-GREEN", name_ar: "أخضر", name_en: "Green" },
+  { id: "PT-YELLOW", name_ar: "أصفر", name_en: "Yellow" },
 ];
 
 const getMasterBatchInfo = (id?: string) => {
-  if (!id) return { name_ar: "غير محدد", name_en: "Not specified" };
-  return masterBatchColors.find((c) => c.id === id) ?? { name_ar: "غير محدد", name_en: "Not specified" };
+  if (!id) return { name_ar: "غير محدد", name_en: "-" };
+  return masterBatchColors.find((c) => c.id === id) ?? { name_ar: id, name_en: "" };
 };
 
-// عربي قياسي للأرقام
-const formatNumber = (value: number, options?: Intl.NumberFormatOptions) =>
-  new Intl.NumberFormat("ar-EG", { minimumFractionDigits: 2, maximumFractionDigits: 2, ...options }).format(value);
+const formatNumber = (value: number) =>
+  new Intl.NumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(value);
 
-// عربي قياسي للتاريخ (بدون الاعتماد على date-fns)
 const formatDate = (date: Date) =>
-  new Intl.DateTimeFormat("ar-EG", { year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+  new Intl.DateTimeFormat("en-GB", { year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
 
-const formatDateTime = (date: Date) =>
-  new Intl.DateTimeFormat("ar-EG", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(date);
+const getDeliveryDate = (createdDate: Date, days: number = 0) => {
+  const result = new Date(createdDate);
+  result.setDate(result.getDate() + days);
+  return result;
+};
 
-// ========================
-// Component
-// ========================
 export default function OrderPrintTemplate({
   order,
   customer,
@@ -103,18 +101,16 @@ export default function OrderPrintTemplate({
   customerProducts,
   items,
   onClose,
+  mode = "html",
 }: OrderPrintTemplateProps) {
-  // لاحظ: يفضّل تعريف queryFn هنا؛ إن كانت API جاهزة لديك أضفها.
   const { data: users } = useQuery<User[]>({
     queryKey: ["/api/users"],
-    // queryFn: () => fetch("/api/users").then((res) => res.json()),
-    staleTime: 5 * 60 * 1000,
+    staleTime: Infinity,
   });
 
   const [isPrinting, setIsPrinting] = useState(false);
-  const printContentRef = useRef<HTMLDivElement>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
-  // ثبّت المراجع لتجنب race conditions وقت الطباعة
   const customerProductsMap = useMemo(
     () => new Map(customerProducts?.map((cp) => [cp.id, cp]) || []),
     [customerProducts]
@@ -127,7 +123,6 @@ export default function OrderPrintTemplate({
     [productionOrders, order?.id]
   );
 
-  // ترتيب ثابت بحسب id أو رقم الصنف لتجنب تغيّر الجدول بين عرض/طباعة
   const sortedOrders = useMemo(() => {
     return [...filteredOrders].sort((a, b) => (a.id > b.id ? 1 : a.id < b.id ? -1 : 0));
   }, [filteredOrders]);
@@ -136,80 +131,99 @@ export default function OrderPrintTemplate({
     return users?.find((u) => u.id === customer?.sales_rep_id);
   }, [users, customer?.sales_rep_id]);
 
-  const canPrint = Boolean(order?.id) && Boolean(customer?.id) && sortedOrders.length > 0;
+  const canPrint = Boolean(order?.id) && sortedOrders.length > 0;
 
-  const handlePrint = useCallback(async () => {
-    if (!canPrint || isPrinting || !printContentRef.current) return;
+  const orderDateObj = useMemo(
+    () => (order?.created_at ? new Date(order.created_at) : new Date()),
+    [order?.created_at]
+  );
+  const orderDateStr = useMemo(() => formatDate(orderDateObj), [orderDateObj]);
+  const deliveryDateStr = useMemo(() => {
+    if (!order?.delivery_days) return "-";
+    return formatDate(getDeliveryDate(orderDateObj, order.delivery_days));
+  }, [order?.delivery_days, orderDateObj]);
+
+  const totalWeight = useMemo(() => {
+    return sortedOrders.reduce((sum, po) => {
+      const raw = po.final_quantity_kg ?? po.quantity_kg ?? 0;
+      return sum + Number(raw);
+    }, 0);
+  }, [sortedOrders]);
+
+  const qrUrl = useMemo(() => {
+    const data = `Order:${order?.order_number}`;
+    return `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(data)}&color=000000`;
+  }, [order?.order_number]);
+
+  const handleHtmlPrint = useCallback(async () => {
+    if (!canPrint || isPrinting) return;
     setIsPrinting(true);
+    try {
+      await new Promise((r) => setTimeout(r, 300));
+      window.print();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setTimeout(() => setIsPrinting(false), 500);
+    }
+  }, [canPrint, isPrinting]);
+
+  const handlePdfExport = useCallback(async () => {
+    if (!canPrint || isExporting) return;
+    setIsExporting(true);
 
     try {
-      // انتظر الخطوط (لو مدعومة)
-      try {
-        if ((document as any)?.fonts?.ready) {
-          await (document as any).fonts.ready;
-        }
-      } catch {
-        // تجاهل الخطأ
+      const printArea = document.querySelector(".print-area") as HTMLElement;
+      if (!printArea) {
+        console.error("لم يتم العثور على منطقة الطباعة");
+        return;
       }
 
-      // انتظر إطارين رسم لضمان اكتمال DOM
-      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      await new Promise((r) => setTimeout(r, 500));
 
-      // التقاط المحتوى كصورة بجودة عالية
-      const canvas = await html2canvas(printContentRef.current, {
+      const canvas = await html2canvas(printArea, {
         scale: 2,
         useCORS: true,
-        logging: false,
+        allowTaint: true,
         backgroundColor: "#ffffff",
+        logging: false,
       });
 
-      // إنشاء PDF بحجم A4 أفقي
+      const pageWidth = 297;
+      const pageHeight = 210;
+      const margin = 6;
+
+      const contentWidth = pageWidth - margin * 2;
+      const contentHeight = pageHeight - margin * 2;
+
+      const scaledWidth = contentWidth;
+      const scaledHeight = (canvas.height * scaledWidth) / canvas.width;
+
       const pdf = new jsPDF({
         orientation: "landscape",
         unit: "mm",
         format: "a4",
       });
 
-      // أبعاد A4 أفقي بالملم
-      const pageWidth = 297;
-      const pageHeight = 210;
-      const margin = 6;
-      const contentWidth = pageWidth - margin * 2;
-      const contentHeight = pageHeight - margin * 2;
-
-      // حساب النسبة للعرض فقط (للحفاظ على التناسب)
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
-      const widthRatio = contentWidth / imgWidth;
-      const scaledWidth = contentWidth;
-      const scaledHeight = imgHeight * widthRatio;
-
-      // إذا كان المحتوى أطول من صفحة واحدة، نقسمه على صفحات متعددة
-      const pageContentHeight = contentHeight; // ارتفاع المحتوى في كل صفحة بالملم
+      const pageContentHeight = contentHeight;
       const totalPages = Math.ceil(scaledHeight / pageContentHeight);
-
-      // ارتفاع جزء الصورة المقابل لكل صفحة
-      const sourcePageHeight = (pageContentHeight / widthRatio);
 
       for (let page = 0; page < totalPages; page++) {
         if (page > 0) {
           pdf.addPage();
         }
 
-        // إنشاء canvas مؤقت لجزء من الصورة
         const tempCanvas = document.createElement("canvas");
         tempCanvas.width = canvas.width;
-        const remainingHeight = canvas.height - page * sourcePageHeight;
-        tempCanvas.height = Math.min(sourcePageHeight, remainingHeight);
-        
+        const thisPagePixelHeight = (pageContentHeight / scaledHeight) * canvas.height;
+        tempCanvas.height = Math.min(thisPagePixelHeight, canvas.height - page * thisPagePixelHeight);
+
         const ctx = tempCanvas.getContext("2d");
         if (ctx) {
-          // رسم الجزء المطلوب من الصورة الأصلية
           ctx.drawImage(
             canvas,
             0,
-            page * sourcePageHeight,
+            page * thisPagePixelHeight,
             canvas.width,
             tempCanvas.height,
             0,
@@ -220,107 +234,182 @@ export default function OrderPrintTemplate({
 
           const imgData = tempCanvas.toDataURL("image/png");
           const thisPageHeight = Math.min(pageContentHeight, scaledHeight - page * pageContentHeight);
-          
-          // إضافة الصورة مع توسيط أفقي
-          const x = margin;
-          const y = margin;
-          pdf.addImage(imgData, "PNG", x, y, scaledWidth, thisPageHeight);
+
+          pdf.addImage(imgData, "PNG", margin, margin, scaledWidth, thisPageHeight);
         }
       }
 
-      // تحميل الملف
       const fileName = `أمر_تشغيل_${order?.order_number || "غير_محدد"}.pdf`;
       pdf.save(fileName);
-
     } catch (error) {
       console.error("خطأ في تصدير PDF:", error);
     } finally {
-      setIsPrinting(false);
+      setIsExporting(false);
     }
-  }, [canPrint, isPrinting, order?.order_number]);
+  }, [canPrint, isExporting, order?.order_number]);
+
+  const handleStandalone = useCallback(() => {
+    const printArea = document.querySelector(".print-area");
+    if (!printArea) return;
+
+    const newWindow = window.open("", "_blank");
+    if (!newWindow) return;
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html lang="ar" dir="rtl">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>أمر تشغيل #${order?.order_number}</title>
+        <style>
+          @page { size: A4 landscape; margin: 6mm 10mm; }
+          @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; background: #f5f5f5; padding: 20px; }
+          .print-page { background: #fff; padding: 15px; max-width: 1123px; margin: 0 auto; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+          .factory-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 2px solid #1a365d; margin-bottom: 10px; }
+          .header-col { display: flex; flex-direction: column; }
+          .header-col h1 { font-size: 18px; color: #1a365d; margin: 0; }
+          .header-col p { font-size: 12px; color: #666; margin: 2px 0 0; }
+          .company-details { font-size: 10px; color: #888; margin-top: 4px; }
+          .order-title-box { text-align: center; }
+          .order-title-box h2 { font-size: 16px; color: #1a365d; margin: 0; }
+          .order-title-box h3 { font-size: 11px; color: #666; margin: 2px 0 0; font-weight: normal; }
+          .order-meta-box { text-align: left; font-size: 11px; }
+          .meta-row { display: flex; gap: 8px; margin-bottom: 3px; }
+          .meta-row .label { color: #666; }
+          .meta-row .value { font-weight: bold; color: #1a365d; }
+          .info-section { margin-bottom: 10px; }
+          .info-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+          .info-table td { padding: 6px 10px; border: 1px solid #ddd; }
+          .label-cell { background: #f8f9fa; color: #666; width: 80px; }
+          .value-cell { font-weight: 600; color: #1a365d; }
+          .highlight-label { background: #1a365d !important; color: #fff !important; }
+          .highlight-value { background: #e8f4fd; font-size: 14px; color: #1a365d; }
+          .items-section { margin-bottom: 10px; }
+          .factory-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+          .factory-table th { background: #e8f4fd; color: #000; padding: 6px 4px; border: 1px solid #ddd; font-weight: 600; text-align: center; }
+          .factory-table td { padding: 5px 4px; border: 1px solid #ddd; text-align: center; }
+          .factory-table tbody tr:nth-child(even) { background: #f9f9f9; }
+          .item-name-ar { font-weight: 600; color: #1a365d; text-align: right; }
+          .item-caption { font-size: 9px; color: #888; text-align: right; }
+          .qty-cell { font-weight: bold; font-size: 12px; color: #1a365d; }
+          .print-mark { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 600; }
+          .print-mark.yes { background: #d4edda; color: #155724; }
+          .print-mark.no { background: #f8d7da; color: #721c24; }
+          .notes-section { margin-bottom: 10px; }
+          .section-title { font-size: 11px; font-weight: 600; color: #1a365d; margin-bottom: 4px; }
+          .notes-box { background: #f8f9fa; border: 1px solid #ddd; padding: 8px; font-size: 10px; color: #666; min-height: 30px; border-radius: 4px; }
+          .signatures-footer { display: flex; justify-content: space-around; padding-top: 10px; border-top: 1px solid #ddd; }
+          .signature-block { text-align: center; width: 120px; }
+          .sig-title { font-size: 10px; color: #666; margin-bottom: 20px; }
+          .sig-line { border-top: 1px solid #333; }
+          .page-bottom-info { display: flex; justify-content: space-between; font-size: 8px; color: #999; margin-top: 10px; padding-top: 5px; border-top: 1px dashed #ddd; }
+          .toolbar { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; padding: 15px; background: #1a365d; border-radius: 8px; }
+          .toolbar button { padding: 10px 20px; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+          .btn-print { background: #10b981; color: #fff; }
+          .btn-print:hover { background: #059669; }
+          .btn-pdf { background: #3b82f6; color: #fff; }
+          .btn-pdf:hover { background: #2563eb; }
+          .btn-close { background: #6b7280; color: #fff; }
+          .btn-close:hover { background: #4b5563; }
+          @media print { .toolbar { display: none !important; } body { background: #fff; padding: 0; } .print-page { box-shadow: none; max-width: 100%; } }
+        </style>
+      </head>
+      <body>
+        <div class="toolbar">
+          <button class="btn-print" onclick="window.print()">🖨️ طباعة</button>
+          <button class="btn-close" onclick="window.close()">✕ إغلاق</button>
+        </div>
+        ${printArea.innerHTML}
+      </body>
+      </html>
+    `;
+
+    newWindow.document.write(htmlContent);
+    newWindow.document.close();
+  }, [order?.order_number]);
 
   useEffect(() => {
-    const onAfterPrint = () => {
-      // يمكنك تفعيل الإغلاق التلقائي إذا رغبت:
-      // onClose();
-    };
-    window.addEventListener("afterprint", onAfterPrint);
-    return () => window.removeEventListener("afterprint", onAfterPrint);
-  }, [onClose]);
-
-  // تاريخ الطلب
-  const orderDateStr = useMemo(() => {
-    const d =
-      order?.created_at instanceof Date
-        ? order.created_at
-        : order?.created_at
-        ? new Date(order.created_at)
-        : new Date();
-    return formatDate(d);
-    // إن رغبت باستخدام date-fns:
-    // return format(d, "yyyy/MM/dd", { locale: ar });
-  }, [order?.created_at]);
-
-  // إجمالي الوزن
-  const totalWeight = useMemo(() => {
-    return sortedOrders.reduce((sum, po) => {
-      const raw =
-        po.final_quantity_kg !== undefined && po.final_quantity_kg !== null
-          ? Number(po.final_quantity_kg)
-          : Number(po.quantity_kg ?? 0);
-      return sum + (isFinite(raw) ? raw : 0);
-    }, 0);
-  }, [sortedOrders]);
+    if (mode === "html" && canPrint) {
+      const timer = setTimeout(() => {
+        handleHtmlPrint();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+    if (mode === "pdf" && canPrint) {
+      const timer = setTimeout(() => {
+        handlePdfExport();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+    if (mode === "standalone" && canPrint) {
+      const timer = setTimeout(() => {
+        handleStandalone();
+        onClose();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [mode, canPrint, handleHtmlPrint, handlePdfExport, handleStandalone, onClose]);
 
   return (
     <>
-      {/* ضمان A4 أفقي حتى لو لم تُحمّل print.css لأي سبب */}
       <style>
-        {`
-          @page { size: A4 landscape; margin: 6mm 10mm; }
-        `}
+        {`@page { size: A4 landscape; margin: 6mm 10mm; }`}
       </style>
 
-      {/* شريط أدوات المعاينة */}
       <div className="print-preview-overlay no-print" role="region" aria-label="معاينة الطباعة">
         <div className="print-preview-toolbar">
           <div className="print-preview-toolbar-title">
             <h2>أمر تشغيل إنتاج</h2>
-            <span>#{order?.order_number ?? "-"}</span>
+            <span className="text-sm text-muted-foreground">#{order?.order_number ?? "-"}</span>
           </div>
 
           <div className="print-preview-toolbar-actions">
-            <button
-              onClick={handlePrint}
-              className="print-preview-btn-print"
-              data-testid="button-print-order"
+            <Button
+              onClick={handleHtmlPrint}
               disabled={!canPrint || isPrinting}
-              title={
-                !canPrint
-                  ? "البيانات غير مكتملة للتصدير"
-                  : isPrinting
-                  ? "جاري تصدير PDF..."
-                  : "تصدير PDF"
-              }
-              aria-label="تصدير أمر التشغيل كـ PDF"
-              style={!canPrint ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
+              className="bg-green-600 hover:bg-green-700 text-white"
+              data-testid="button-print-html"
             >
-              {isPrinting ? "جاري التصدير..." : "تصدير PDF"}
-            </button>
+              <Printer className="h-4 w-4 ml-2" />
+              {isPrinting ? "جاري الطباعة..." : "طباعة مباشرة"}
+            </Button>
 
-            <button
-              onClick={onClose}
-              className="print-preview-btn-close"
-              data-testid="button-close-print-preview"
-              aria-label="إغلاق المعاينة"
+            <Button
+              onClick={handlePdfExport}
+              disabled={!canPrint || isExporting}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              data-testid="button-export-pdf"
             >
-              إغلاق
-            </button>
+              <Download className="h-4 w-4 ml-2" />
+              {isExporting ? "جاري التصدير..." : "تصدير PDF"}
+            </Button>
+
+            <Button
+              onClick={handleStandalone}
+              disabled={!canPrint}
+              variant="outline"
+              className="border-purple-600 text-purple-600 hover:bg-purple-50"
+              data-testid="button-standalone"
+            >
+              <ExternalLink className="h-4 w-4 ml-2" />
+              صفحة مستقلة
+            </Button>
+
+            <Button
+              onClick={onClose}
+              variant="ghost"
+              className="text-gray-600 hover:text-gray-800"
+              data-testid="button-close-print-preview"
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
         </div>
 
-        {/* معاينة الورقة على الشاشة */}
-        <div className="print-preview-paper" ref={printContentRef}>
+        <div className="print-preview-paper">
           <PrintContent
             order={order}
             customer={customer}
@@ -330,11 +419,12 @@ export default function OrderPrintTemplate({
             itemsMap={itemsMap}
             totalWeight={totalWeight}
             orderDateStr={orderDateStr}
+            deliveryDateStr={deliveryDateStr}
+            qrUrl={qrUrl}
           />
         </div>
       </div>
 
-      {/* المحتوى الفعلي للطباعة - مخفي على الشاشة ويظهر فقط عند الطباعة */}
       <div className="print-area">
         <PrintContent
           order={order}
@@ -345,24 +435,16 @@ export default function OrderPrintTemplate({
           itemsMap={itemsMap}
           totalWeight={totalWeight}
           orderDateStr={orderDateStr}
+          deliveryDateStr={deliveryDateStr}
+          qrUrl={qrUrl}
         />
       </div>
     </>
   );
 }
 
-interface PrintContentProps {
-  order: Order | null | undefined;
-  customer: Customer | null | undefined;
-  salesRep: User | undefined;
-  productionOrders: ProductionOrder[];
-  customerProductsMap: Map<string, CustomerProduct>;
-  itemsMap: Map<string, Item>;
-  totalWeight: number;
-  orderDateStr: string;
-}
-
 function PrintContent({
+  qrUrl,
   order,
   customer,
   salesRep,
@@ -371,142 +453,154 @@ function PrintContent({
   itemsMap,
   totalWeight,
   orderDateStr,
-}: PrintContentProps) {
+  deliveryDateStr,
+}: any) {
   return (
     <div className="print-page">
-      {/* الترويسة */}
-      <div className="print-header">
-        <div className="print-header-right">
-          <h1 className="print-title">أمر تشغيل إنتاج</h1>
-          <div className="print-order-number">#{order?.order_number ?? "-"}</div>
+      <header className="factory-header">
+        <div className="header-col right" style={{ flex: 1 }}>
+          <h1>مصنع الرواد للبلاستيك</h1>
+          <p>Al-Rowad Plastic Factory</p>
+          <div className="company-details">الرياض - المدينة الصناعية الثانية</div>
         </div>
 
-        <div className="print-header-center">
-          <h2 className="print-company">مصنع الرواد للبلاستيك</h2>
-          <p className="print-subtitle">Al-Rowad Plastic Factory</p>
+        <div className="header-col center" style={{ flex: 1, textAlign: "center" }}>
+          <div className="order-title-box">
+            <h2>أمر تشغيل إنتاج</h2>
+            <h3>PRODUCTION ORDER</h3>
+          </div>
         </div>
 
-        <div className="print-header-left">
-          <div className="print-date">تاريخ: {orderDateStr}</div>
+        <div
+          className="header-col left"
+          style={{ flex: 1, display: "flex", justifyContent: "flex-end", gap: "15px", alignItems: "center" }}
+        >
+          <div className="order-meta-box">
+            <div className="meta-row">
+              <span className="label">رقم الطلب:</span>
+              <span className="value">#{order?.order_number}</span>
+            </div>
+            <div className="meta-row">
+              <span className="label">التاريخ:</span>
+              <span className="value">{orderDateStr}</span>
+            </div>
+            <div className="meta-row">
+              <span className="label">التسليم:</span>
+              <span className="value">{deliveryDateStr}</span>
+            </div>
+          </div>
+          <div style={{ background: "white", padding: "2px", border: "1px solid #ccc" }}>
+            <img src={qrUrl} alt="QR" width="80" height="80" style={{ display: "block" }} />
+          </div>
         </div>
-      </div>
+      </header>
 
-      {/* بيانات العميل والطلب */}
-      <div className="print-info-grid">
-        <div className="print-info-box">
-          <div className="print-info-label">العميل</div>
-          <div className="print-info-value">{customer?.name_ar || customer?.name || "غير محدد"}</div>
-        </div>
+      <section className="info-section">
+        <table className="info-table">
+          <tbody>
+            <tr>
+              <td className="label-cell">العميل</td>
+              <td className="value-cell">
+                {customer?.name_ar || customer?.name}
+                {customer?.phone && (
+                  <span style={{ fontSize: "11px", display: "block", fontWeight: "normal", marginTop: "2px" }}>
+                    {customer.phone}
+                  </span>
+                )}
+              </td>
+              <td className="label-cell">المندوب</td>
+              <td className="value-cell">{salesRep?.full_name || "-"}</td>
+              <td className="label-cell highlight-label">الإجمالي</td>
+              <td className="value-cell highlight-value">
+                {formatNumber(totalWeight)} <span style={{ fontSize: "12px" }}>كجم</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
 
-        <div className="print-info-box">
-          <div className="print-info-label">المندوب</div>
-          <div className="print-info-value">{salesRep?.full_name || "غير محدد"}</div>
-        </div>
-
-        <div className="print-info-box highlight">
-          <div className="print-info-label">إجمالي الكمية</div>
-          <div className="print-info-value large">{formatNumber(totalWeight)} كجم</div>
-        </div>
-      </div>
-
-      {/* جدول الأصناف */}
-      <div className="print-section print-avoid-break">
-        <h3 className="print-section-title">تفاصيل الأصناف ({productionOrders.length} صنف)</h3>
-
-        <table className="print-table">
+      <section className="items-section">
+        <table className="factory-table">
           <thead>
             <tr>
-              <th style={{ width: "5%" }}>#</th>
-              <th style={{ width: "25%" }}>الصنف</th>
-              <th style={{ width: "12%" }}>المقاس</th>
-              <th style={{ width: "10%" }}>العرض (سم)</th>
-              <th style={{ width: "10%" }}>السماكة</th>
-              <th style={{ width: "10%" }}>اللون</th>
+              <th style={{ width: "4%" }}>#</th>
+              <th style={{ width: "22%", textAlign: "right" }}>الصنف</th>
+              <th style={{ width: "10%" }}>المقاس</th>
+              <th style={{ width: "12%" }}>سمك / لون</th>
               <th style={{ width: "10%" }}>الخامة</th>
-              <th style={{ width: "8%" }}>الطباعة</th>
-              <th style={{ width: "10%" }}>الكمية (كجم)</th>
+              <th style={{ width: "12%" }}>طباعة</th>
+              <th style={{ width: "12%" }}>الكمية (كجم)</th>
+              <th style={{ width: "18%" }}>ملاحظات</th>
             </tr>
           </thead>
-
           <tbody>
-            {productionOrders.map((po, index) => {
+            {productionOrders.map((po: any, index: number) => {
               const cp = customerProductsMap.get(po.customer_product_id);
               const item = cp ? itemsMap.get(cp.item_id) : undefined;
-              const color = getMasterBatchInfo(cp?.master_batch_id);
-
-              const qtyRaw =
-                po.final_quantity_kg !== undefined && po.final_quantity_kg !== null
-                  ? Number(po.final_quantity_kg)
-                  : Number(po.quantity_kg ?? 0);
-              const qty = isFinite(qtyRaw) ? qtyRaw : 0;
+              const colorInfo = getMasterBatchInfo(cp?.master_batch_id);
+              const qty = Number(po.final_quantity_kg ?? po.quantity_kg ?? 0);
 
               return (
                 <tr key={po.id}>
-                  <td className="text-center font-bold">{index + 1}</td>
-                  <td className="font-bold">{item?.name_ar || item?.name || "غير محدد"}</td>
-                  <td className="text-center">{cp?.size_caption || "-"}</td>
-                  <td className="text-center">{cp?.width ?? "-"}</td>
-                  <td className="text-center">{cp?.thickness ?? "-"}</td>
-                  <td className="text-center">{color.name_ar}</td>
-                  <td className="text-center">{cp?.raw_material || "-"}</td>
-                  <td className="text-center">
-                    <span
-                      className={
-                        cp?.is_printed ? "print-badge print-badge-success" : "print-badge print-badge-info"
-                      }
-                    >
-                      {cp?.is_printed ? "نعم" : "لا"}
-                    </span>
+                  <td className="text-center" style={{ fontWeight: "bold" }}>
+                    {index + 1}
                   </td>
-                  <td className="text-center font-bold">{formatNumber(qty)}</td>
+                  <td>
+                    <div className="item-name-ar">{item?.name_ar || item?.name || "-"}</div>
+                    {cp?.size_caption && <div className="item-caption">{cp.size_caption}</div>}
+                  </td>
+                  <td className="text-center font-bold" dir="ltr">
+                    {cp?.width ? `${cp.width} cm` : "-"}
+                  </td>
+                  <td className="text-center">
+                    <div style={{ direction: "ltr", fontWeight: "bold" }}>{cp?.thickness || "-"} mic</div>
+                    <div style={{ fontSize: "10px", color: "#666" }}>{colorInfo.name_ar}</div>
+                  </td>
+                  <td className="text-center font-bold">{cp?.raw_material || "بيور"}</td>
+                  <td className="text-center">
+                    {cp?.is_printed ? (
+                      <div>
+                        <span className="print-mark yes">نعم</span>
+                        {cp.print_colors && (
+                          <div style={{ fontSize: "9px", marginTop: "2px", fontWeight: "bold" }}>{cp.print_colors}</div>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="print-mark no">لا</span>
+                    )}
+                  </td>
+                  <td className="qty-cell">{formatNumber(qty)}</td>
+                  <td style={{ fontSize: "9px", textAlign: "right" }}>{po.notes || "-"}</td>
                 </tr>
               );
             })}
           </tbody>
-
-          <tfoot>
-            <tr>
-              <td colSpan={8} style={{ textAlign: "left" }}>
-                <strong>إجمالي الكمية:</strong>
-              </td>
-              <td className="text-center">
-                <strong>{formatNumber(totalWeight)} كجم</strong>
-              </td>
-            </tr>
-          </tfoot>
         </table>
-      </div>
+      </section>
 
-      {/* ملاحظات الطلب */}
-      {order?.notes && (
-        <div className="print-notes print-avoid-break">
-          <div className="print-notes-title">ملاحظات الطلب:</div>
-          <div className="print-notes-content">{order.notes}</div>
+      <section className="notes-section">
+        <div className="section-title">ملاحظات عامة</div>
+        <div className="notes-box">{order?.notes || "لا توجد ملاحظات."}</div>
+      </section>
+
+      <footer className="signatures-footer">
+        <div className="signature-block">
+          <div className="sig-title">الإنتاج</div>
+          <div className="sig-line"></div>
         </div>
-      )}
-
-      {/* التوقيعات */}
-      <div className="print-signatures print-avoid-break">
-        <div className="print-signature-box">
-          <div className="print-signature-line"></div>
-          <div className="print-signature-label">توقيع الإنتاج</div>
+        <div className="signature-block">
+          <div className="sig-title">الجودة</div>
+          <div className="sig-line"></div>
         </div>
-
-        <div className="print-signature-box">
-          <div className="print-signature-line"></div>
-          <div className="print-signature-label">توقيع الجودة</div>
+        <div className="signature-block">
+          <div className="sig-title">المستودع</div>
+          <div className="sig-line"></div>
         </div>
+      </footer>
 
-        <div className="print-signature-box">
-          <div className="print-signature-line"></div>
-          <div className="print-signature-label">استلام المستودع</div>
-        </div>
-      </div>
-
-      {/* التذييل */}
-      <div className="print-footer">
-        <p>هذا المستند تم إنشاؤه إلكترونياً بتاريخ {formatDateTime(new Date())}</p>
-        <p>نظام إدارة الإنتاج - Factory IQ</p>
+      <div className="page-bottom-info">
+        <span>FACTORY IQ SYSTEM</span>
+        <span>{new Date().toLocaleDateString("en-GB")}</span>
       </div>
     </div>
   );
