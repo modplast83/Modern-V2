@@ -19,11 +19,16 @@ import {
 } from "../ui/collapsible";
 import { useAuth } from "../../hooks/use-auth";
 import { canAccessRoute } from "../../utils/roleUtils";
-import { navigationItems, getQuickAccessItems, groupNavigationItems } from "../../config/navigationConfig";
+import { navigationItems, getQuickAccessItems, groupNavigationItems, getLocalizedName } from "../../config/navigationConfig";
+import { LanguageSwitcher } from "../ui/LanguageSwitcher";
+import { useTranslation } from "react-i18next";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 export default function MobileShell() {
   const [location] = useLocation();
   const { user } = useAuth();
+  const { t } = useTranslation();
+  const { language } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
@@ -59,7 +64,7 @@ export default function MobileShell() {
           data-testid={`${testIdPrefix}nav-item-${item.path.replace(/\//g, '-')}`}
         >
           <Icon className="h-5 w-5" />
-          <span className="font-medium">{item.name_ar}</span>
+          <span className="font-medium">{getLocalizedName(item, language)}</span>
         </button>
       </Link>
     );
@@ -101,14 +106,14 @@ export default function MobileShell() {
                 data-testid="mobile-menu-trigger"
               >
                 <Menu className="h-5 w-5 mb-1" />
-                <span className="text-xs leading-tight">القائمة</span>
+                <span className="text-xs leading-tight">{t('navigation.menu', 'القائمة')}</span>
               </button>
             </DrawerTrigger>
 
             <DrawerContent className="max-h-[85vh]" data-testid="mobile-drawer">
               <DrawerHeader className="border-b">
                 <div className="flex items-center justify-between">
-                  <DrawerTitle className="text-xl font-bold">القائمة الرئيسية</DrawerTitle>
+                  <DrawerTitle className="text-xl font-bold">{t('navigation.mainMenu', 'القائمة الرئيسية')}</DrawerTitle>
                   <DrawerClose asChild>
                     <Button variant="ghost" size="icon" data-testid="close-drawer">
                       <X className="h-5 w-5" />
@@ -128,7 +133,7 @@ export default function MobileShell() {
                             className="w-full flex items-center justify-between px-4 py-2 text-sm font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                             data-testid="drawer-group-toggle-primary"
                           >
-                            <span>العمليات الرئيسية</span>
+                            <span>{t('navigation.primaryOperations', 'العمليات الرئيسية')}</span>
                             <ChevronDown className={`h-4 w-4 transition-transform ${expandedGroups.primary !== false ? 'rotate-180' : ''}`} />
                           </button>
                         </CollapsibleTrigger>
@@ -143,7 +148,7 @@ export default function MobileShell() {
                   {groupedItems.support.length > 0 && (
                     <>
                       <Separator />
-                      {renderGroup('الدعم والمتابعة', groupedItems.support, 'support', 'drawer-')}
+                      {renderGroup(t('navigation.supportOperations', 'الدعم والمتابعة'), groupedItems.support, 'support', 'drawer-')}
                     </>
                   )}
 
@@ -151,14 +156,24 @@ export default function MobileShell() {
                   {groupedItems.admin.length > 0 && (
                     <>
                       <Separator />
-                      {renderGroup('الإدارة والإعدادات', groupedItems.admin, 'admin', 'drawer-')}
+                      {renderGroup(t('navigation.adminOperations', 'الإدارة والإعدادات'), groupedItems.admin, 'admin', 'drawer-')}
                     </>
                   )}
                 </div>
 
+                {/* Language Switcher */}
+                <div className="mt-4 pt-4 border-t">
+                  <div className="px-4 py-2 flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {t('common.language')}
+                    </span>
+                    <LanguageSwitcher variant="button" size="sm" />
+                  </div>
+                </div>
+
                 {/* User Info at bottom */}
                 {user && (
-                  <div className="mt-6 pt-6 border-t">
+                  <div className="mt-4 pt-4 border-t">
                     <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
                       <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                         {user.display_name_ar || user.display_name || user.username}
@@ -190,7 +205,7 @@ export default function MobileShell() {
                 >
                   <Icon className="h-5 w-5 mb-1" />
                   <span className="text-xs leading-tight truncate max-w-[60px]">
-                    {item.name_ar}
+                    {getLocalizedName(item, language)}
                   </span>
                 </button>
               </Link>

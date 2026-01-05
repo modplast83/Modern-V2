@@ -1,9 +1,12 @@
 import { useAuth } from "../../hooks/use-auth";
 import { NotificationBell } from "../notifications/NotificationBell";
+import { LanguageSwitcher } from "../ui/LanguageSwitcher";
 import FactoryLogoPath from "../../../../attached_assets/FactoryLogoHPNGW.png";
+import { useTranslation } from "react-i18next";
 
 export default function Header() {
   const { user, logout } = useAuth();
+  const { t } = useTranslation();
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
@@ -19,12 +22,13 @@ export default function Header() {
           <div>
             <h1 className="text-xl font-bold text-gray-900">MPBF Next</h1>
             <p className="text-sm text-gray-600">
-              نظام إدارة مصنع الأكياس البلاستيكية
+              {t('common.appName')}
             </p>
           </div>
         </div>
 
         <div className="flex items-center space-x-3 space-x-reverse">
+          <LanguageSwitcher variant="dropdown" size="sm" />
           <NotificationBell />
 
           <div className="flex items-center space-x-3 space-x-reverse">

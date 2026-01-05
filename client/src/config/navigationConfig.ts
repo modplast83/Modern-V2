@@ -3,16 +3,18 @@ import { LucideIcon, Home, LayoutDashboard, FileText, Activity, Monitor, Clipboa
 export interface NavigationItem {
   name: string;
   name_ar: string;
+  name_en: string;
   icon: LucideIcon;
   path: string;
-  priority: number; // 1-4 للعناصر السريعة على الجوال، 5+ للعناصر الأخرى
-  group: 'primary' | 'support' | 'admin'; // تجميع العناصر في الـ drawer
+  priority: number;
+  group: 'primary' | 'support' | 'admin';
 }
 
 export const navigationItems: NavigationItem[] = [
   {
     name: "الرئيسية",
     name_ar: "الرئيسية",
+    name_en: "Home",
     icon: Home,
     path: "/",
     priority: 1,
@@ -21,6 +23,7 @@ export const navigationItems: NavigationItem[] = [
   {
     name: "لوحة التحكم",
     name_ar: "لوحة التحكم",
+    name_en: "Dashboard",
     icon: LayoutDashboard,
     path: "/user-dashboard",
     priority: 5,
@@ -29,6 +32,7 @@ export const navigationItems: NavigationItem[] = [
   {
     name: "الطلبات والإنتاج",
     name_ar: "الطلبات والإنتاج",
+    name_en: "Orders & Production",
     icon: FileText,
     path: "/orders",
     priority: 2,
@@ -37,6 +41,7 @@ export const navigationItems: NavigationItem[] = [
   {
     name: "لوحة الإنتاج",
     name_ar: "لوحة الإنتاج",
+    name_en: "Production Dashboard",
     icon: Activity,
     path: "/production-dashboard",
     priority: 3,
@@ -45,6 +50,7 @@ export const navigationItems: NavigationItem[] = [
   {
     name: "مراقبة الإنتاج",
     name_ar: "مراقبة الإنتاج",
+    name_en: "Production Monitoring",
     icon: Monitor,
     path: "/production-monitoring",
     priority: 6,
@@ -53,6 +59,7 @@ export const navigationItems: NavigationItem[] = [
   {
     name: "الجودة",
     name_ar: "الجودة",
+    name_en: "Quality",
     icon: ClipboardCheck,
     path: "/quality",
     priority: 7,
@@ -61,6 +68,7 @@ export const navigationItems: NavigationItem[] = [
   {
     name: "الصيانة",
     name_ar: "الصيانة",
+    name_en: "Maintenance",
     icon: Wrench,
     path: "/maintenance",
     priority: 8,
@@ -69,6 +77,7 @@ export const navigationItems: NavigationItem[] = [
   {
     name: "الموارد البشرية",
     name_ar: "الموارد البشرية",
+    name_en: "Human Resources",
     icon: Users,
     path: "/hr",
     priority: 9,
@@ -77,6 +86,7 @@ export const navigationItems: NavigationItem[] = [
   {
     name: "المستودع",
     name_ar: "المستودع",
+    name_en: "Warehouse",
     icon: Warehouse,
     path: "/warehouse",
     priority: 4,
@@ -85,6 +95,7 @@ export const navigationItems: NavigationItem[] = [
   {
     name: "التعريفات",
     name_ar: "التعريفات",
+    name_en: "Definitions",
     icon: Database,
     path: "/definitions",
     priority: 10,
@@ -93,6 +104,7 @@ export const navigationItems: NavigationItem[] = [
   {
     name: "التقارير",
     name_ar: "التقارير",
+    name_en: "Reports",
     icon: BarChart3,
     path: "/reports",
     priority: 11,
@@ -101,6 +113,7 @@ export const navigationItems: NavigationItem[] = [
   {
     name: "الأدوات",
     name_ar: "الأدوات",
+    name_en: "Tools",
     icon: Wrench,
     path: "/tools",
     priority: 12,
@@ -109,6 +122,7 @@ export const navigationItems: NavigationItem[] = [
   {
     name: "الإعدادات",
     name_ar: "الإعدادات",
+    name_en: "Settings",
     icon: Settings,
     path: "/settings",
     priority: 13,
@@ -117,12 +131,17 @@ export const navigationItems: NavigationItem[] = [
   {
     name: "مراقبة النظام",
     name_ar: "مراقبة النظام",
+    name_en: "System Monitoring",
     icon: Gauge,
     path: "/system-monitoring",
     priority: 14,
     group: 'admin',
   },
 ];
+
+export const getLocalizedName = (item: NavigationItem, language: 'ar' | 'en'): string => {
+  return language === 'en' ? item.name_en : item.name_ar;
+};
 
 export const getQuickAccessItems = (items: NavigationItem[]): NavigationItem[] => {
   return items.filter(item => item.priority <= 4).sort((a, b) => a.priority - b.priority);

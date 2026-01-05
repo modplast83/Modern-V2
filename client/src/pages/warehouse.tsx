@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Card,
@@ -94,6 +95,7 @@ const movementFormSchema = z.object({
 });
 
 export default function Warehouse() {
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
@@ -522,7 +524,7 @@ export default function Warehouse() {
   };
 
   return (
-    <PageLayout title="إدارة المستودع" description="متابعة وإدارة المخزون والمواد الخام والمنتجات النهائية">
+    <PageLayout title={t('warehouse.title')} description={t('warehouse.movements')}>
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
         <Card>
@@ -615,7 +617,7 @@ export default function Warehouse() {
             </TabsTrigger>
           ))}
           <TabsTrigger value="movements" className="shrink-0">
-            حركات المخزون
+            {t('warehouse.movements')}
           </TabsTrigger>
         </TabsList>
 
@@ -646,7 +648,7 @@ export default function Warehouse() {
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <Input
-                        placeholder="البحث في المخزون..."
+                        placeholder={t('common.search')}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="pl-10 w-64"

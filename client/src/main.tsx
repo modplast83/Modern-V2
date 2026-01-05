@@ -3,9 +3,11 @@ import { createRoot } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 import "./index.css";
+import "./i18n/config";
 
-import { ToastProvider } from "./hooks/use-toast"; // تأكد المسار
-import { queryClient } from "./lib/queryClient"; // تأكد المسار
+import { ToastProvider } from "./hooks/use-toast";
+import { queryClient } from "./lib/queryClient";
+import { LanguageProvider } from "./contexts/LanguageContext";
 
 // Targeted error suppression for React Query AbortErrors only
 // ضع هذا المستمع قبل أي رندر
@@ -48,9 +50,11 @@ if (!container) {
 createRoot(container).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <ToastProvider>
-        <App />
-      </ToastProvider>
+      <LanguageProvider>
+        <ToastProvider>
+          <App />
+        </ToastProvider>
+      </LanguageProvider>
     </QueryClientProvider>
   </React.StrictMode>
 );

@@ -43,6 +43,36 @@ The system is built with a modern stack emphasizing efficiency and scalability, 
 
 ## Recent Changes
 
+### Internationalization (i18n) - English Language Support (January 5, 2026)
+
+**Implementation:**
+- Added full English language support using react-i18next
+- Users can switch between Arabic and English via language switcher in Header and Mobile menu
+- RTL/LTR direction switches automatically based on language selection
+- Language preference persisted to localStorage
+
+**Files Added:**
+- `client/src/i18n/config.ts` - i18n initialization with language detection
+- `client/src/i18n/locales/ar.json` - Arabic translations
+- `client/src/i18n/locales/en.json` - English translations
+- `client/src/contexts/LanguageContext.tsx` - Language state management and RTL/LTR switching
+- `client/src/components/ui/LanguageSwitcher.tsx` - Language toggle component (dropdown/button variants)
+
+**Updated Components:**
+- `main.tsx` - Added LanguageProvider wrapper
+- `Header.tsx` - Added language switcher dropdown
+- `MobileShell.tsx` - Added language switcher and localized navigation labels
+- `Sidebar.tsx` - Uses localized navigation names
+- `navigationConfig.ts` - Added `name_en` field and `getLocalizedName` helper
+
+**Pages with i18n Support:**
+- Orders, Dashboard, Warehouse, HR, Quality, Maintenance pages now use `useTranslation` hook
+
+**Translation Keys Structure:**
+- `common.*` - Shared UI text (buttons, labels, actions)
+- `navigation.*` - Menu and navigation items
+- `orders.*`, `production.*`, `warehouse.*`, etc. - Domain-specific translations
+
 ### Enhanced Attendance & Location Verification System (December 6, 2025)
 
 **Security Improvements:**

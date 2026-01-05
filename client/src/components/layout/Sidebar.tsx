@@ -1,11 +1,13 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "../../hooks/use-auth";
 import { canAccessRoute } from "../../utils/roleUtils";
-import { navigationItems } from "../../config/navigationConfig";
+import { navigationItems, getLocalizedName } from "../../config/navigationConfig";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 export default function Sidebar() {
   const [location] = useLocation();
   const { user } = useAuth();
+  const { language } = useLanguage();
 
   // Filter modules based on user permissions
   const accessibleModules = navigationItems.filter(module => {
@@ -28,7 +30,7 @@ export default function Sidebar() {
                   <div className="w-full">
                     <div className="flex items-center space-x-3 space-x-reverse">
                       <Icon className="h-5 w-5" />
-                      <span className="font-medium">{module.name_ar}</span>
+                      <span className="font-medium">{getLocalizedName(module, language)}</span>
                     </div>
                   </div>
                 </div>

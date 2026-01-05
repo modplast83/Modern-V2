@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import PageLayout from "../components/layout/PageLayout";
 import { Badge } from "../components/ui/badge";
@@ -114,6 +115,7 @@ const maintenanceRequestSchema = z.object({
 });
 
 export default function Maintenance() {
+  const { t } = useTranslation();
   const [currentTab, setCurrentTab] = useState("requests");
   const [selectedRequestId, setSelectedRequestId] = useState<number | null>(
     null,
@@ -293,7 +295,7 @@ export default function Maintenance() {
   };
 
   return (
-    <PageLayout title="إدارة الصيانة" description="نظام متكامل لإدارة الصيانة وتتبع الأعطال">
+    <PageLayout title={t('maintenance.title')} description={t('maintenance.maintenanceType')}>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <Card>
               <CardContent className="p-6">
@@ -444,7 +446,7 @@ export default function Maintenance() {
                     <div className="text-center py-8">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                       <p className="mt-2 text-sm text-muted-foreground">
-                        جاري التحميل...
+                        {t('common.loading')}
                       </p>
                     </div>
                   ) : (
@@ -456,25 +458,25 @@ export default function Maintenance() {
                               رقم الطلب
                             </th>
                             <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                              المعدة
+                              {t('maintenance.machineName')}
                             </th>
                             <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                              نوع المشكلة
+                              {t('maintenance.maintenanceType')}
                             </th>
                             <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
                               مستوى الإلحاح
                             </th>
                             <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                              الحالة
+                              {t('common.status')}
                             </th>
                             <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
                               وصف المشكلة
                             </th>
                             <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                              المُكلف
+                              {t('maintenance.technician')}
                             </th>
                             <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                              تاريخ الإبلاغ
+                              {t('common.date')}
                             </th>
                           </tr>
                         </thead>
