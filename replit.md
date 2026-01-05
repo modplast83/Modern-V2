@@ -66,12 +66,26 @@ The system is built with a modern stack emphasizing efficiency and scalability, 
 - `navigationConfig.ts` - Added `name_en` field and `getLocalizedName` helper
 
 **Pages with i18n Support:**
-- Orders, Dashboard, Warehouse, HR, Quality, Maintenance pages now use `useTranslation` hook
+- All pages now use `useTranslation` hook for full bilingual support
+- Core pages: Orders, Dashboard, Warehouse, HR, Quality, Maintenance
+- Production pages: ProductionDashboard, ProductionOrdersManagement, ProductionQueues, ProductionReports
+- Operator dashboards: FilmOperatorDashboard, PrintingOperatorDashboard, CuttingOperatorDashboard
+- System pages: SystemHealth, AlertsCenter, RollSearch
+- Tools & Definitions: ToolsPage, Definitions, MaterialMixing, ProductionMonitoring
+- WhatsApp pages: All 5 WhatsApp setup/troubleshoot/template pages
+- Other pages: Login, Settings, Notifications, UserDashboard, NotFound
 
 **Translation Keys Structure:**
 - `common.*` - Shared UI text (buttons, labels, actions)
 - `navigation.*` - Menu and navigation items
-- `orders.*`, `production.*`, `warehouse.*`, etc. - Domain-specific translations
+- `auth.*` - Login and authentication messages
+- `orders.*` - Order management
+- `production.*` - Production dashboards, orders, queues, reports
+- `operators.*` - Operator-specific dashboards (film, printing, cutting)
+- `system.*` - System health, alerts, roll search
+- `tools.*`, `definitions.*`, `mixing.*`, `monitoring.*` - Tools and settings
+- `whatsapp.*` - WhatsApp integration setup and troubleshooting
+- `settings.*`, `notifications.*`, `userDashboard.*`, `errors.*` - Other pages
 
 ### Enhanced Attendance & Location Verification System (December 6, 2025)
 
