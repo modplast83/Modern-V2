@@ -47,7 +47,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { useToast } from "../hooks/use-toast";
 
 const COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
@@ -123,12 +123,13 @@ export default function ProductionReports() {
     setActiveFilters(defaultFilters);
   };
 
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     try {
-      const workbook = XLSX.utils.book_new();
+      const workbook = new ExcelJS.Workbook();
 
       if (summary?.data) {
-        const summaryData = [
+        const summarySheet = workbook.addWorksheet("Summary");
+        summarySheet.addRows([
           [t('production.reports.totalOrders'), summary.data.totalOrders],
           [t('production.reports.activeOrders'), summary.data.activeOrders],
           [t('production.statuses.completed'), summary.data.completedOrders],
@@ -137,32 +138,46 @@ export default function ProductionReports() {
           [t('production.reports.avgProductionTime') + " (" + t('production.reports.hour') + ")", summary.data.avgProductionTime?.toFixed(2)],
           [t('production.reports.wastePercentage') + " %", summary.data.wastePercentage?.toFixed(2)],
           [t('production.reports.completionRate') + " %", summary.data.completionRate?.toFixed(2)],
-        ];
-        const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
-        XLSX.utils.book_append_sheet(workbook, summarySheet, "Summary");
+        ]);
       }
 
-      if (productionByDate?.data) {
-        const dateSheet = XLSX.utils.json_to_sheet(productionByDate.data);
-        XLSX.utils.book_append_sheet(workbook, dateSheet, "Daily Production");
+      if (productionByDate?.data && productionByDate.data.length > 0) {
+        const dateSheet = workbook.addWorksheet("Daily Production");
+        const headers = Object.keys(productionByDate.data[0]);
+        dateSheet.addRow(headers);
+        productionByDate.data.forEach((row: any) => dateSheet.addRow(Object.values(row)));
       }
 
-      if (productionByProduct?.data) {
-        const productSheet = XLSX.utils.json_to_sheet(productionByProduct.data);
-        XLSX.utils.book_append_sheet(workbook, productSheet, "By Product");
+      if (productionByProduct?.data && productionByProduct.data.length > 0) {
+        const productSheet = workbook.addWorksheet("By Product");
+        const headers = Object.keys(productionByProduct.data[0]);
+        productSheet.addRow(headers);
+        productionByProduct.data.forEach((row: any) => productSheet.addRow(Object.values(row)));
       }
 
-      if (machinePerformance?.data) {
-        const machineSheet = XLSX.utils.json_to_sheet(machinePerformance.data);
-        XLSX.utils.book_append_sheet(workbook, machineSheet, "Machine Performance");
+      if (machinePerformance?.data && machinePerformance.data.length > 0) {
+        const machineSheet = workbook.addWorksheet("Machine Performance");
+        const headers = Object.keys(machinePerformance.data[0]);
+        machineSheet.addRow(headers);
+        machinePerformance.data.forEach((row: any) => machineSheet.addRow(Object.values(row)));
       }
 
-      if (operatorPerformance?.data) {
-        const operatorSheet = XLSX.utils.json_to_sheet(operatorPerformance.data);
-        XLSX.utils.book_append_sheet(workbook, operatorSheet, "Operator Performance");
+      if (operatorPerformance?.data && operatorPerformance.data.length > 0) {
+        const operatorSheet = workbook.addWorksheet("Operator Performance");
+        const headers = Object.keys(operatorPerformance.data[0]);
+        operatorSheet.addRow(headers);
+        operatorPerformance.data.forEach((row: any) => operatorSheet.addRow(Object.values(row)));
       }
 
-      XLSX.writeFile(workbook, `Production_Report_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Production_Report_${format(new Date(), "yyyy-MM-dd")}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+
       toast({
         title: t('production.reports.exportSuccess'),
         description: t('production.reports.exportSuccessDesc'),

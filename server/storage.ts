@@ -7553,7 +7553,7 @@ export class DatabaseStorage implements IStorage {
         case "json":
           return JSON.stringify(data, null, 2);
         case "excel":
-          return this.convertToExcel(data, tableName);
+          return await this.convertToExcelAsync(data, tableName);
         default:
           return JSON.stringify(data, null, 2);
       }
@@ -8061,35 +8061,29 @@ export class DatabaseStorage implements IStorage {
     return templates[tableName || ""] || ["id", "name", "description"];
   }
 
-  private convertToExcel(data: any[], tableName?: string): Buffer {
-    // Use dynamic import for ES modules compatibility
-    const XLSX = require("xlsx");
+  private async convertToExcelAsync(data: any[], tableName?: string): Promise<Buffer> {
+    const ExcelJS = require("exceljs");
+    const workbook = new ExcelJS.Workbook();
 
     if (!data || data.length === 0) {
-      // Create empty template with proper column headers for the table
       const templateHeaders = this.getTableTemplate(tableName);
-      const ws = XLSX.utils.aoa_to_sheet([templateHeaders]);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "قالب_البيانات");
-      return Buffer.from(XLSX.write(wb, { bookType: "xlsx", type: "buffer" }));
+      const worksheet = workbook.addWorksheet("قالب_البيانات");
+      worksheet.addRow(templateHeaders);
+      const buffer = await workbook.xlsx.writeBuffer();
+      return Buffer.from(buffer);
     }
 
-    // Convert data to worksheet
-    const ws = XLSX.utils.json_to_sheet(data);
+    const worksheet = workbook.addWorksheet("البيانات");
+    const headers = Object.keys(data[0]);
+    worksheet.addRow(headers);
+    data.forEach((row) => {
+      worksheet.addRow(headers.map((h) => row[h]));
+    });
 
-    // Create workbook and add worksheet
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "البيانات");
-
-    // Return as buffer for proper Excel format
-    return Buffer.from(
-      XLSX.write(wb, {
-        bookType: "xlsx",
-        type: "buffer",
-        cellStyles: true, // Enable proper text formatting
-      }),
-    );
+    const buffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(buffer);
   }
+
 
   private parseCSV(csvData: string): any[] {
     const lines = csvData.split("\n");

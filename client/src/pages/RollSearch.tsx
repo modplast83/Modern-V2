@@ -36,7 +36,7 @@ import { format } from "date-fns";
 import { ar } from "date-fns/locale";
 import RollDetailsCard from "../components/production/RollDetailsCard";
 import { queryClient } from "../lib/queryClient";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 interface RollSearchResult {
   roll_id: number;
@@ -180,7 +180,7 @@ export default function RollSearch() {
     },
   });
 
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     if (!searchResults || searchResults.length === 0) {
       toast({
         title: t('system.search.noDataToExport'),
@@ -189,21 +189,41 @@ export default function RollSearch() {
       return;
     }
 
-    const data = searchResults.map((roll: RollSearchResult) => ({
-      [t('system.search.rollNumber')]: roll.roll_number,
-      [t('system.search.productionOrder')]: roll.production_order_number,
-      [t('system.search.orderNumber')]: roll.order_number,
-      [t('orders.customer')]: roll.customer_name_ar || roll.customer_name,
-      [t('production.product')]: roll.item_name_ar || roll.item_name || "-",
-      [t('production.specifications')]: roll.size_caption || "-",
-      [t('system.search.stage')]: getStageLabel(roll.stage),
-      [t('system.search.weight')]: roll.weight_kg,
-    }));
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet(t('system.search.searchResults'));
 
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, t('system.search.searchResults'));
-    XLSX.writeFile(wb, `roll_search_${format(new Date(), "yyyy-MM-dd_HH-mm")}.xlsx`);
+    worksheet.columns = [
+      { header: t('system.search.rollNumber'), key: 'rollNumber', width: 15 },
+      { header: t('system.search.productionOrder'), key: 'productionOrder', width: 20 },
+      { header: t('system.search.orderNumber'), key: 'orderNumber', width: 15 },
+      { header: t('orders.customer'), key: 'customer', width: 25 },
+      { header: t('production.product'), key: 'product', width: 20 },
+      { header: t('production.specifications'), key: 'specs', width: 15 },
+      { header: t('system.search.stage'), key: 'stage', width: 12 },
+      { header: t('system.search.weight'), key: 'weight', width: 10 },
+    ];
+
+    searchResults.forEach((roll: RollSearchResult) => {
+      worksheet.addRow({
+        rollNumber: roll.roll_number,
+        productionOrder: roll.production_order_number,
+        orderNumber: roll.order_number,
+        customer: roll.customer_name_ar || roll.customer_name,
+        product: roll.item_name_ar || roll.item_name || "-",
+        specs: roll.size_caption || "-",
+        stage: getStageLabel(roll.stage),
+        weight: roll.weight_kg,
+      });
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `roll_search_${format(new Date(), "yyyy-MM-dd_HH-mm")}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
 
     toast({
       title: t('system.search.exportSuccess'),

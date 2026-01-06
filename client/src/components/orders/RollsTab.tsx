@@ -37,7 +37,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 interface RollData {
   roll_id: number;
@@ -182,34 +182,59 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
     return <Icon className="h-4 w-4" />;
   };
 
-  // تصدير إلى Excel
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     if (filteredRolls.length === 0) {
       alert("لا توجد بيانات للتصدير");
       return;
     }
 
-    const data = filteredRolls.map((roll) => ({
-      "رقم الرول": roll.roll_number,
-      "رقم أمر الإنتاج": roll.production_order_number,
-      "رقم الطلب": roll.order_number,
-      "العميل": roll.customer_name_ar || roll.customer_name,
-      "المنتج": roll.item_name_ar || roll.item_name || "-",
-      "المقاس": roll.size_caption || "-",
-      "المرحلة": getStageNameAr(roll.stage),
-      "الوزن (كجم)": roll.weight_kg,
-      "فيلم بواسطة": roll.created_by_name || "-",
-      "طبع بواسطة": roll.printed_by_name || "-",
-      "قطع بواسطة": roll.cut_by_name || "-",
-      "وزن التقطيع": roll.cut_weight_total_kg || "-",
-      "الهدر": roll.waste_kg || "-",
-      "تاريخ الإنشاء": format(new Date(roll.created_at), "yyyy-MM-dd HH:mm", { locale: ar }),
-    }));
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("الرولات");
 
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "الرولات");
-    XLSX.writeFile(wb, `rolls-${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+    worksheet.columns = [
+      { header: "رقم الرول", key: "rollNumber", width: 15 },
+      { header: "رقم أمر الإنتاج", key: "productionOrder", width: 20 },
+      { header: "رقم الطلب", key: "orderNumber", width: 15 },
+      { header: "العميل", key: "customer", width: 25 },
+      { header: "المنتج", key: "product", width: 20 },
+      { header: "المقاس", key: "size", width: 12 },
+      { header: "المرحلة", key: "stage", width: 12 },
+      { header: "الوزن (كجم)", key: "weight", width: 12 },
+      { header: "فيلم بواسطة", key: "filmBy", width: 15 },
+      { header: "طبع بواسطة", key: "printBy", width: 15 },
+      { header: "قطع بواسطة", key: "cutBy", width: 15 },
+      { header: "وزن التقطيع", key: "cutWeight", width: 12 },
+      { header: "الهدر", key: "waste", width: 10 },
+      { header: "تاريخ الإنشاء", key: "createdAt", width: 18 },
+    ];
+
+    filteredRolls.forEach((roll) => {
+      worksheet.addRow({
+        rollNumber: roll.roll_number,
+        productionOrder: roll.production_order_number,
+        orderNumber: roll.order_number,
+        customer: roll.customer_name_ar || roll.customer_name,
+        product: roll.item_name_ar || roll.item_name || "-",
+        size: roll.size_caption || "-",
+        stage: getStageNameAr(roll.stage),
+        weight: roll.weight_kg,
+        filmBy: roll.created_by_name || "-",
+        printBy: roll.printed_by_name || "-",
+        cutBy: roll.cut_by_name || "-",
+        cutWeight: roll.cut_weight_total_kg || "-",
+        waste: roll.waste_kg || "-",
+        createdAt: format(new Date(roll.created_at), "yyyy-MM-dd HH:mm", { locale: ar }),
+      });
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `rolls-${format(new Date(), "yyyy-MM-dd")}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   // مسح الفلاتر
