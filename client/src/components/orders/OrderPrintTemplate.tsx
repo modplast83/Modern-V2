@@ -280,17 +280,18 @@ export default function OrderPrintTemplate({
             /* Hide the preview interface specifically */
             .print-preview-overlay, 
             .print-preview-toolbar, 
+            .print-preview-paper,
             .no-print {
               display: none !important;
             }
 
-            /* Show ONLY the print area and its children */
-            .print-area, .print-area * {
+            /* Show ONLY this specific print area and its children */
+            .order-print-area, .order-print-area * {
               visibility: visible;
             }
 
             /* Position the print area to fill the page */
-            .print-area {
+            .order-print-area {
               position: fixed;
               left: 0;
               top: 0;
@@ -375,7 +376,7 @@ export default function OrderPrintTemplate({
       {/* Note: We render this separately so we can apply the 'position: fixed' hack 
          without messing up the scrollable preview overlay.
       */}
-      <div className="print-area" style={{ display: isPrinting ? 'block' : 'none' }}>
+      <div className="order-print-area" style={{ display: isPrinting ? 'block' : 'none' }}>
          <PrintContent 
             data={{ order, customer, salesRep, productionOrders: sortedOrders, customerProductsMap, itemsMap, totalWeight, orderDateStr, deliveryDateStr, qrUrl }} 
           />
@@ -406,8 +407,8 @@ function PrintContent({ data }: { data: any }) {
       {/* Header */}
       <div style={styles.header}>
         <div style={{ flex: 1 }}>
-          <h1 style={styles.h1}>مصنع الرواد للبلاستيك</h1>
-          <p style={{ margin: "2px 0", fontSize: "12px", color: "#666" }}>Al-Rowad Plastic Factory</p>
+          <h1 style={styles.h1}>مصنع أكياس البلاستيك الحديث</h1>
+          <p style={{ margin: "2px 0", fontSize: "12px", color: "#666" }}>Modern Plastic Bags factory</p>
         </div>
         <div style={{ flex: 1, textAlign: "center" }}>
           <h2 style={{ fontSize: "18px", margin: 0, color: "#1a365d" }}>أمر تشغيل إنتاج</h2>

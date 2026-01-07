@@ -219,7 +219,7 @@ export default function Definitions() {
     status: "active",
   });
   const [showPassword, setShowPassword] = useState(false);
-  
+
   // Search term for customer selection in customer products form
   const [customerSearchTermInProducts, setCustomerSearchTermInProducts] = useState("");
 
@@ -616,7 +616,7 @@ export default function Definitions() {
         <p>نظام إدارة مصنع الأكياس البلاستيكية</p>
         <p>رقم المنتج: ${product.id}</p>
       </div>
-      
+
       <div class="section">
         <h3>معلومات أساسية</h3>
         <div class="detail-row">
@@ -734,7 +734,7 @@ export default function Definitions() {
       <div class="print-date">
         تم الطباعة بتاريخ: ${new Date().toLocaleDateString("ar")} - ${new Date().toLocaleTimeString("ar")}
       </div>
-      
+
       <script>
         window.onload = function() {
           window.print();
@@ -4613,7 +4613,7 @@ export default function Definitions() {
                         </Select>
                       </div>
                     </div>
-                    
+
                     {/* حالة الماكينة */}
                     <div>
                       <Label htmlFor="status">حالة الماكينة</Label>
@@ -4636,7 +4636,7 @@ export default function Definitions() {
                         </SelectContent>
                       </Select>
                     </div>
-                    
+
                     {/* قدرة الإنتاج حسب الحجم */}
                     <div className="border-t pt-4 mt-4">
                       <h3 className="text-sm font-medium mb-3">قدرة الإنتاج (كجم/ساعة)</h3>

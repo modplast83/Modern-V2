@@ -99,6 +99,48 @@ export default function ProductionOrderPrintTemplate({
 
   return (
     <>
+      {/* Scoped print styles for this component */}
+      <style>
+        {`
+          @media print {
+            /* Hide everything by default */
+            body * {
+              visibility: hidden;
+            }
+
+            /* Hide the preview interface */
+            .print-preview-overlay, 
+            .print-preview-toolbar, 
+            .print-preview-paper,
+            .no-print {
+              display: none !important;
+            }
+
+            /* Show ONLY this specific production print area */
+            .production-print-area, .production-print-area * {
+              visibility: visible;
+            }
+
+            /* Position the print area */
+            .production-print-area {
+              position: fixed;
+              left: 0;
+              top: 0;
+              width: 100%;
+              margin: 0;
+              padding: 5mm;
+              background: white;
+              z-index: 9999;
+            }
+
+            @page {
+              size: A4 landscape;
+              margin: 0;
+            }
+          }
+        `}
+      </style>
+
       {/* شريط أدوات المعاينة */}
       <div className="print-preview-overlay no-print">
         <div className="print-preview-toolbar">
@@ -146,7 +188,7 @@ export default function ProductionOrderPrintTemplate({
       </div>
 
       {/* المحتوى الفعلي للطباعة - مخفي على الشاشة ويظهر فقط عند الطباعة */}
-      <div className="print-area">
+      <div className="production-print-area">
         <PrintContentInner
           productionOrder={productionOrder}
           order={order}
@@ -194,8 +236,8 @@ function PrintContentInner({
           <div className="print-order-number">#{productionOrder.production_order_number}</div>
         </div>
         <div className="print-header-center">
-          <h2 className="print-company">مصنع الرواد للبلاستيك</h2>
-          <p className="print-subtitle">Al-Rowad Plastic Factory</p>
+          <h2 className="print-company"> مصنع أكياس البلاستيك الحديث</h2>
+          <p className="print-subtitle">Modern Plastic Bags factory </p>
         </div>
         <div className="print-header-left">
           {qrCodeUrl && (
