@@ -394,14 +394,7 @@ export default function OrdersTable({
                       <DropdownMenuLabel className="text-xs text-muted-foreground">
                         طباعة وتصدير
                       </DropdownMenuLabel>
-                      <DropdownMenuItem
-                        onClick={() => onPrintOrder(order, "html")}
-                        className="cursor-pointer"
-                        data-testid={`button-print-html-${order.id}`}
-                      >
-                        <Printer className="h-4 w-4 ml-2 text-green-600" />
-                        <span>طباعة مباشرة</span>
-                      </DropdownMenuItem>
+                      
                       <DropdownMenuItem
                         onClick={() => onPrintOrder(order, "pdf")}
                         className="cursor-pointer"
@@ -416,7 +409,7 @@ export default function OrdersTable({
                         data-testid={`button-print-standalone-${order.id}`}
                       >
                         <ExternalLink className="h-4 w-4 ml-2 text-purple-600" />
-                        <span>فتح في صفحة جديدة</span>
+                        <span>طباعة</span>
                       </DropdownMenuItem>
                       
                       <DropdownMenuSeparator />
