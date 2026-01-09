@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
-import { Cog, Printer, Scissors, CheckCircle, AlertTriangle, XCircle, Activity } from "lucide-react";
+import { Printer, Scissors, CheckCircle, AlertTriangle, XCircle, Activity } from "lucide-react";
 
 interface Machine {
   id: string;
@@ -25,14 +25,47 @@ interface Section {
   name_ar?: string;
 }
 
-const getMachineIcon = (type: string) => {
+const FilmExtruderIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <circle cx="12" cy="8" r="5" />
+    <path d="M12 13v8" />
+    <path d="M8 17h8" />
+    <path d="M7 21h10" />
+    <circle cx="12" cy="8" r="2" />
+  </svg>
+);
+
+const PrintingMachineIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <rect x="3" y="8" width="18" height="10" rx="2" />
+    <path d="M7 8V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v3" />
+    <path d="M7 15h10" />
+    <path d="M7 18h10" />
+    <circle cx="17" cy="11" r="1" fill="currentColor" />
+  </svg>
+);
+
+const CuttingMachineIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <rect x="4" y="6" width="16" height="12" rx="1" />
+    <path d="M4 12h16" />
+    <path d="M12 6v12" />
+    <path d="M8 9v6" />
+    <path d="M16 9v6" />
+  </svg>
+);
+
+const getMachineIcon = (type: string, sectionId?: string) => {
+  if (sectionId === "SEC03" || type === "extruder") {
+    return FilmExtruderIcon;
+  }
+  if (sectionId === "SEC04" || type === "printer") {
+    return PrintingMachineIcon;
+  }
+  if (sectionId === "SEC05" || type === "cutter") {
+    return CuttingMachineIcon;
+  }
   switch (type) {
-    case "extruder":
-      return Cog;
-    case "printer":
-      return Printer;
-    case "cutter":
-      return Scissors;
     case "quality_check":
       return CheckCircle;
     default:
@@ -95,9 +128,9 @@ const getTypeLabel = (type: string, t: any) => {
 };
 
 const sectionPositions: Record<string, { x: number; y: number; width: number; height: number; label: string }> = {
-  SEC03: { x: 50, y: 80, width: 280, height: 200, label: "قسم الفيلم" },
-  SEC04: { x: 370, y: 80, width: 280, height: 200, label: "قسم الطباعة" },
-  SEC05: { x: 690, y: 80, width: 280, height: 200, label: "قسم القص" },
+  SEC03: { x: 30, y: 80, width: 380, height: 320, label: "قسم الفيلم" },
+  SEC04: { x: 430, y: 80, width: 380, height: 320, label: "قسم الطباعة" },
+  SEC05: { x: 830, y: 80, width: 380, height: 320, label: "قسم القص" },
 };
 
 export default function FactoryFloorMap() {
@@ -179,9 +212,9 @@ export default function FactoryFloorMap() {
         <CardContent>
           <div className="relative bg-gradient-to-b from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 rounded-xl p-4 overflow-x-auto">
             <svg
-              viewBox="0 0 1020 380"
-              className="w-full min-w-[800px]"
-              style={{ minHeight: "350px" }}
+              viewBox="0 0 1240 520"
+              className="w-full min-w-[1000px]"
+              style={{ minHeight: "480px" }}
             >
               <defs>
                 <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
@@ -194,7 +227,7 @@ export default function FactoryFloorMap() {
 
               <rect width="100%" height="100%" fill="url(#grid)" />
 
-              <text x="510" y="40" textAnchor="middle" className="fill-slate-700 dark:fill-slate-300" style={{ fontSize: "20px", fontWeight: 700 }}>
+              <text x="620" y="45" textAnchor="middle" className="fill-slate-700 dark:fill-slate-300" style={{ fontSize: "22px", fontWeight: 700 }}>
                 {t("factory.productionHall", "صالة الإنتاج")}
               </text>
 
@@ -227,13 +260,13 @@ export default function FactoryFloorMap() {
                     </text>
 
                     {sectionMachines.map((machine, idx) => {
-                      const cols = 3;
+                      const cols = 4;
                       const row = Math.floor(idx / cols);
                       const col = idx % cols;
-                      const machineX = pos.x + 40 + col * 80;
-                      const machineY = pos.y + 55 + row * 70;
+                      const machineX = pos.x + 50 + col * 85;
+                      const machineY = pos.y + 60 + row * 75;
                       const statusColor = getStatusColor(machine.status);
-                      const Icon = getMachineIcon(machine.type);
+                      const Icon = getMachineIcon(machine.type, machine.section_id);
 
                       return (
                         <TooltipProvider key={machine.id}>
@@ -288,35 +321,35 @@ export default function FactoryFloorMap() {
               })}
 
               <g>
-                <rect x="50" y="310" width="920" height="50" rx="8" fill="#1e40af" opacity="0.1" stroke="#1e40af" strokeWidth="1" />
-                <text x="510" y="340" textAnchor="middle" className="fill-blue-700 dark:fill-blue-400" style={{ fontSize: "12px", fontWeight: 600 }}>
+                <rect x="30" y="420" width="1180" height="60" rx="8" fill="#1e40af" opacity="0.1" stroke="#1e40af" strokeWidth="1" />
+                <text x="620" y="455" textAnchor="middle" className="fill-blue-700 dark:fill-blue-400" style={{ fontSize: "14px", fontWeight: 600 }}>
                   {t("factory.warehouseArea", "منطقة المستودعات والتخزين")}
                 </text>
               </g>
 
               <g>
-                <circle cx="80" y="25" r="8" fill="#22c55e" />
-                <text x="95" y="30" className="fill-slate-600 dark:fill-slate-300" style={{ fontSize: "11px" }}>{t("factory.status.active", "تعمل")}</text>
-                <circle cx="160" cy="25" r="8" fill="#f59e0b" />
-                <text x="175" y="30" className="fill-slate-600 dark:fill-slate-300" style={{ fontSize: "11px" }}>{t("factory.status.maintenance", "صيانة")}</text>
-                <circle cx="240" cy="25" r="8" fill="#ef4444" />
-                <text x="255" y="30" className="fill-slate-600 dark:fill-slate-300" style={{ fontSize: "11px" }}>{t("factory.status.down", "متوقفة")}</text>
+                <circle cx="100" cy="30" r="8" fill="#22c55e" />
+                <text x="115" y="35" className="fill-slate-600 dark:fill-slate-300" style={{ fontSize: "11px" }}>{t("factory.status.active", "تعمل")}</text>
+                <circle cx="180" cy="30" r="8" fill="#f59e0b" />
+                <text x="195" y="35" className="fill-slate-600 dark:fill-slate-300" style={{ fontSize: "11px" }}>{t("factory.status.maintenance", "صيانة")}</text>
+                <circle cx="270" cy="30" r="8" fill="#ef4444" />
+                <text x="285" y="35" className="fill-slate-600 dark:fill-slate-300" style={{ fontSize: "11px" }}>{t("factory.status.down", "متوقفة")}</text>
               </g>
             </svg>
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2 justify-center">
             <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full">
-              <Cog className="w-4 h-4 text-slate-600" />
-              <span className="text-sm">{t("factory.type.extruder", "فيلم")}</span>
+              <FilmExtruderIcon className="w-4 h-4 text-slate-600" />
+              <span className="text-sm">{t("factory.type.extruder", "نفخ الفيلم")}</span>
             </div>
             <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full">
-              <Printer className="w-4 h-4 text-slate-600" />
-              <span className="text-sm">{t("factory.type.printer", "طباعة")}</span>
+              <PrintingMachineIcon className="w-4 h-4 text-slate-600" />
+              <span className="text-sm">{t("factory.type.printer", "الطباعة")}</span>
             </div>
             <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full">
-              <Scissors className="w-4 h-4 text-slate-600" />
-              <span className="text-sm">{t("factory.type.cutter", "قص")}</span>
+              <CuttingMachineIcon className="w-4 h-4 text-slate-600" />
+              <span className="text-sm">{t("factory.type.cutter", "التقطيع")}</span>
             </div>
           </div>
         </CardContent>
@@ -329,7 +362,7 @@ export default function FactoryFloorMap() {
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-3">
                   {(() => {
-                    const Icon = getMachineIcon(selectedMachine.type);
+                    const Icon = getMachineIcon(selectedMachine.type, selectedMachine.section_id);
                     const statusColor = getStatusColor(selectedMachine.status);
                     return (
                       <div
