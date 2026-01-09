@@ -41,6 +41,7 @@ import ProductionDashboard from "./pages/ProductionDashboard";
 import RollSearch from "./pages/RollSearch";
 import ProductionReports from "./pages/ProductionReports";
 import SystemMonitoring from "./pages/system-monitoring";
+import FactoryFloor from "./pages/FactoryFloor";
 
 function AppRoutes() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -192,6 +193,12 @@ function AppRoutes() {
       <Route path="/production-monitoring">
         <ProtectedRoute path="/production-monitoring">
           <ProductionMonitoring />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/factory-floor">
+        <ProtectedRoute path="/factory-floor">
+          <FactoryFloor />
         </ProtectedRoute>
       </Route>
 
