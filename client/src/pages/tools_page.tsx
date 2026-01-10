@@ -273,12 +273,107 @@ function ResultCard({ label, value, highlight }: ResultCardProps): JSX.Element {
 
 type BagType = "flat" | "side-gusset" | "table-cover";
 
+interface BagWeightRecord {
+  id: string;
+  createdAt: string;
+  bagType: BagType;
+  widthCm: number;
+  lengthCm: number;
+  sideGussetCm: number;
+  thicknessMicron: number;
+  layers: number;
+  density: number;
+  gramsPerBag: number;
+  bagsPerKg: number;
+  areaM2: number;
+}
+
+const BAG_HISTORY_KEY = "mpbf_bag_weight_history";
+
+function useBagWeightHistory() {
+  const [history, setHistory] = useState<BagWeightRecord[]>(() => {
+    try {
+      const saved = localStorage.getItem(BAG_HISTORY_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+
+  const addRecord = (record: Omit<BagWeightRecord, "id" | "createdAt">) => {
+    const newRecord: BagWeightRecord = {
+      ...record,
+      id: Date.now().toString(),
+      createdAt: new Date().toLocaleString("ar-SA"),
+    };
+    const updated = [newRecord, ...history].slice(0, 10);
+    setHistory(updated);
+    try { localStorage.setItem(BAG_HISTORY_KEY, JSON.stringify(updated)); } catch {}
+  };
+
+  const clearHistory = () => {
+    setHistory([]);
+    try { localStorage.removeItem(BAG_HISTORY_KEY); } catch {}
+  };
+
+  const deleteRecord = (id: string) => {
+    const updated = history.filter(r => r.id !== id);
+    setHistory(updated);
+    try { localStorage.setItem(BAG_HISTORY_KEY, JSON.stringify(updated)); } catch {}
+  };
+
+  return { history, addRecord, clearHistory, deleteRecord };
+}
+
+function FlatBagSvg({ className, label }: { className?: string; label: string }): JSX.Element {
+  return (
+    <svg viewBox="0 0 120 160" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="10" y="10" width="100" height="140" rx="4" className="fill-blue-100 dark:fill-blue-900/30 stroke-blue-500" strokeWidth="2" />
+      <line x1="10" y1="30" x2="110" y2="30" className="stroke-blue-400" strokeWidth="1" strokeDasharray="4 2" />
+      <text x="60" y="90" textAnchor="middle" className="fill-blue-600 dark:fill-blue-400 text-[10px] font-medium">{label}</text>
+      <path d="M25 50 L35 60 L25 70" className="stroke-blue-400" strokeWidth="1.5" fill="none" />
+      <path d="M95 50 L85 60 L95 70" className="stroke-blue-400" strokeWidth="1.5" fill="none" />
+    </svg>
+  );
+}
+
+function SideGussetBagSvg({ className, label }: { className?: string; label: string }): JSX.Element {
+  return (
+    <svg viewBox="0 0 120 160" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M10 10 L25 25 L25 135 L10 150 L10 10 Z" className="fill-green-200 dark:fill-green-900/40 stroke-green-500" strokeWidth="2" />
+      <rect x="25" y="10" width="70" height="140" className="fill-green-100 dark:fill-green-900/30 stroke-green-500" strokeWidth="2" />
+      <path d="M95 10 L110 25 L110 135 L95 150 L95 10 Z" className="fill-green-200 dark:fill-green-900/40 stroke-green-500" strokeWidth="2" />
+      <line x1="25" y1="30" x2="95" y2="30" className="stroke-green-400" strokeWidth="1" strokeDasharray="4 2" />
+      <text x="60" y="90" textAnchor="middle" className="fill-green-600 dark:fill-green-400 text-[10px] font-medium">{label}</text>
+      <path d="M15 60 L22 70 L15 80" className="stroke-green-500" strokeWidth="1.5" fill="none" />
+      <path d="M105 60 L98 70 L105 80" className="stroke-green-500" strokeWidth="1.5" fill="none" />
+    </svg>
+  );
+}
+
+function TableCoverSvg({ className, label }: { className?: string; label: string }): JSX.Element {
+  return (
+    <svg viewBox="0 0 160 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="80" cy="50" rx="70" ry="40" className="fill-purple-100 dark:fill-purple-900/30 stroke-purple-500" strokeWidth="2" />
+      <ellipse cx="80" cy="50" rx="50" ry="28" className="stroke-purple-300 dark:stroke-purple-600" strokeWidth="1" strokeDasharray="4 2" fill="none" />
+      <text x="80" y="55" textAnchor="middle" className="fill-purple-600 dark:fill-purple-400 text-[10px] font-medium">{label}</text>
+    </svg>
+  );
+}
+
+function BagTypeSvg({ type, className, label }: { type: BagType; className?: string; label: string }): JSX.Element {
+  switch (type) {
+    case "flat": return <FlatBagSvg className={className} label={label} />;
+    case "side-gusset": return <SideGussetBagSvg className={className} label={label} />;
+    case "table-cover": return <TableCoverSvg className={className} label={label} />;
+  }
+}
+
 interface BagWeightCalculatorProps {
   onBagWeight?: (gramsPerBag: number) => void;
   onDims?: (d: { widthCm: number; lengthCm: number }) => void;
 }
 
 function BagWeightCalculator({ onBagWeight, onDims }: BagWeightCalculatorProps): JSX.Element {
+  const { t } = useTranslation();
   const [bagType, setBagType] = useState<BagType>("flat");
   const [widthCm, setWidthCm] = useState<number>(30);
   const [lengthCm, setLengthCm] = useState<number>(40);
@@ -286,6 +381,8 @@ function BagWeightCalculator({ onBagWeight, onDims }: BagWeightCalculatorProps):
   const [layers, setLayers] = useState<number>(2);
   const [density, setDensity] = useState<number>(0.95);
   const [sideGussetCm, setSideGussetCm] = useState<number>(0);
+  const { history, addRecord, clearHistory, deleteRecord } = useBagWeightHistory();
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => { onDims?.({ widthCm, lengthCm }); }, [widthCm, lengthCm, onDims]);
 
@@ -294,50 +391,207 @@ function BagWeightCalculator({ onBagWeight, onDims }: BagWeightCalculatorProps):
     let effWidth = toNumber(widthCm);
     if (bagType === "side-gusset") effWidth = toNumber(widthCm) + 2 * toNumber(sideGussetCm);
     const gramsPerBag = Math.max(0, effWidth * toNumber(lengthCm) * toNumber(layers) * t_cm * toNumber(density));
-    const kgPer1000 = gramsPerBag;
-    return { gramsPerBag, kgPer1000 } as const;
+    const bagsPerKg = gramsPerBag > 0 ? 1000 / gramsPerBag : 0;
+    const areaM2 = (effWidth / 100) * (toNumber(lengthCm) / 100);
+    return { gramsPerBag, bagsPerKg, areaM2 } as const;
   }, [bagType, widthCm, lengthCm, thicknessMicron, layers, density, sideGussetCm]);
 
   useEffect(() => { onBagWeight?.(result.gramsPerBag || 0); }, [result.gramsPerBag, onBagWeight]);
 
+  const handleSaveRecord = () => {
+    addRecord({
+      bagType, widthCm, lengthCm, sideGussetCm, thicknessMicron, layers, density,
+      gramsPerBag: result.gramsPerBag, bagsPerKg: result.bagsPerKg, areaM2: result.areaM2,
+    });
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === history.length) setSelectedIds(new Set());
+    else setSelectedIds(new Set(history.map(r => r.id)));
+  };
+
+  const handlePrintSelected = () => {
+    if (selectedIds.size === 0) return;
+    window.print();
+  };
+
+  const selectedRecords = history.filter(r => selectedIds.has(r.id));
+  const getBagTypeLabel = (type: BagType) => {
+    switch (type) {
+      case "flat": return t("tools.bagWeight.flat", "كيس مسطح");
+      case "side-gusset": return t("tools.bagWeight.sideGusset", "بدخلات جانبية");
+      case "table-cover": return t("tools.bagWeight.tableCover", "سفرة مسطحة");
+    }
+  };
+
   return (
-    <div className="grid md:grid-cols-2 gap-6">
-      <div className="space-y-4">
-        <SelectField
-          label="نوع الكيس"
-          value={bagType}
-          onChange={(v) => setBagType(v as BagType)}
-          options={[
-            { value: "flat", label: "كيس مسطح (بدون دخلات)" },
-            { value: "side-gusset", label: "كيس بدخلات جانبية" },
-            { value: "table-cover", label: "سفرة مسطحة" },
-          ]}
-        />
-        <div className="grid grid-cols-2 gap-3">
-          <InputField label="العرض (سم)" value={widthCm} onChange={setWidthCm} suffix="سم" />
-          <InputField label="الطول (سم)" value={lengthCm} onChange={setLengthCm} suffix="سم" />
+    <div className="space-y-6">
+      <div className="grid lg:grid-cols-3 gap-6">
+        <div className="space-y-4 lg:col-span-2">
+          <div className="flex items-start gap-4">
+            <div className="flex-1 space-y-4">
+              <SelectField
+                label={t("tools.bagWeight.type", "نوع الكيس")}
+                value={bagType}
+                onChange={(v) => setBagType(v as BagType)}
+                options={[
+                  { value: "flat", label: t("tools.bagWeight.flat", "كيس مسطح (بدون دخلات)") },
+                  { value: "side-gusset", label: t("tools.bagWeight.sideGusset", "كيس بدخلات جانبية") },
+                  { value: "table-cover", label: t("tools.bagWeight.tableCover", "سفرة مسطحة") },
+                ]}
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <InputField label={t("tools.bagWeight.width", "العرض (سم)")} value={widthCm} onChange={setWidthCm} suffix={t("common.cm", "سم")} />
+                <InputField label={t("tools.bagWeight.length", "الطول (سم)")} value={lengthCm} onChange={setLengthCm} suffix={t("common.cm", "سم")} />
+              </div>
+              <InputField label={t("tools.bagWeight.thickness", "السماكة (ميكرون)")} value={thicknessMicron} onChange={setThicknessMicron} suffix="μm" />
+              <div className="grid grid-cols-2 gap-3">
+                <InputField label={t("tools.bagWeight.layers", "عدد الطبقات")} value={layers} onChange={setLayers} step={1} />
+                <InputField label={t("tools.bagWeight.density", "الكثافة")} value={density} onChange={setDensity} step={0.01} suffix="g/cm³" />
+              </div>
+              {bagType === "side-gusset" && (
+                <InputField label={t("tools.bagWeight.gusset", "الدخلات الجانبية (سم)")} value={sideGussetCm} onChange={setSideGussetCm} suffix={t("common.cm", "سم")} hint={t("tools.bagWeight.perSide", "لكل جانب")} />
+              )}
+            </div>
+            <div className="hidden md:block w-32 flex-shrink-0">
+              <BagTypeSvg type={bagType} className="w-full h-auto transition-all duration-300" label={getBagTypeLabel(bagType) || ""} />
+            </div>
+          </div>
         </div>
-        <InputField label="السماكة (ميكرون)" value={thicknessMicron} onChange={setThicknessMicron} suffix="μm" />
-        <div className="grid grid-cols-2 gap-3">
-          <InputField label="عدد الطبقات" value={layers} onChange={setLayers} step={1} />
-          <InputField label="الكثافة" value={density} onChange={setDensity} step={0.01} suffix="g/cm³" />
+
+        <div className="space-y-4">
+          <div className="md:hidden flex justify-center mb-4">
+            <BagTypeSvg type={bagType} className="w-24 h-auto" label={getBagTypeLabel(bagType) || ""} />
+          </div>
+          <h3 className="font-semibold text-lg flex items-center gap-2">
+            <Scale className="h-5 w-5 text-primary" />
+            {t("tools.bagWeight.results", "النتائج")}
+          </h3>
+          <div className="grid gap-3">
+            <ResultCard label={t("tools.bagWeight.weightPerBag", "وزن الكيس الواحد")} value={`${fmtFixed(result.gramsPerBag, 3)} جم`} highlight />
+            <ResultCard label={t("tools.bagWeight.bagsPerKg", "عدد الأكياس في 1 كجم")} value={`${fmtFixed(result.bagsPerKg, 1)} كيس`} />
+            <ResultCard label={t("tools.bagWeight.area", "مساحة الكيس")} value={`${fmtFixed(result.areaM2, 4)} م²`} />
+          </div>
+          <Button onClick={handleSaveRecord} className="w-full">
+            <Scale className="h-4 w-4 ml-2" />
+            {t("tools.bagWeight.saveRecord", "حفظ السجل")}
+          </Button>
         </div>
-        {bagType === "side-gusset" && (
-          <InputField label="الدخلات الجانبية (سم)" value={sideGussetCm} onChange={setSideGussetCm} suffix="سم" hint="لكل جانب" />
-        )}
       </div>
-      <div className="space-y-4">
-        <h3 className="font-semibold text-lg flex items-center gap-2">
-          <Scale className="h-5 w-5 text-primary" />
-          النتائج
-        </h3>
-        <div className="grid gap-3">
-          <ResultCard label="وزن الكيس الواحد" value={`${fmtFixed(result.gramsPerBag, 3)} جم`} highlight />
-          <ResultCard label="وزن 1000 كيس" value={`${fmtFixed(result.kgPer1000, 3)} كجم`} />
+
+      {history.length > 0 && (
+        <Card className="print:hidden">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">{t("tools.bagWeight.history", "السجلات المحفوظة")} ({history.length})</CardTitle>
+              <div className="flex gap-2">
+                {selectedIds.size > 0 && (
+                  <Button variant="outline" size="sm" onClick={handlePrintSelected}>
+                    <Printer className="h-4 w-4 ml-1" />
+                    {t("tools.bagWeight.printSelected", "طباعة")} ({selectedIds.size})
+                  </Button>
+                )}
+                <Button variant="ghost" size="sm" onClick={clearHistory} className="text-destructive">
+                  {t("tools.bagWeight.clearHistory", "مسح الكل")}
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm cursor-pointer pb-2 border-b">
+                <input
+                  type="checkbox"
+                  className="rounded"
+                  checked={selectedIds.size === history.length && history.length > 0}
+                  onChange={toggleSelectAll}
+                />
+                <span className="font-medium">{t("tools.bagWeight.selectAll", "تحديد الكل")}</span>
+              </label>
+              {history.map((record) => (
+                <div
+                  key={record.id}
+                  className={`p-3 rounded-lg border transition-colors ${selectedIds.has(record.id) ? 'bg-primary/5 border-primary' : 'bg-slate-50 dark:bg-slate-800 border-transparent'}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      className="rounded mt-1"
+                      checked={selectedIds.has(record.id)}
+                      onChange={() => toggleSelect(record.id)}
+                    />
+                    <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">{t("tools.bagWeight.type", "النوع")}:</span>
+                        <span className="mr-1 font-medium">{getBagTypeLabel(record.bagType)}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">{t("tools.bagWeight.dimensions", "الأبعاد")}:</span>
+                        <span className="mr-1">{record.widthCm}×{record.lengthCm} سم</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">{t("tools.bagWeight.weight", "الوزن")}:</span>
+                        <span className="mr-1 font-bold text-primary">{fmtFixed(record.gramsPerBag, 3)} جم</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">{t("tools.bagWeight.bagsPerKg", "أكياس/كجم")}:</span>
+                        <span className="mr-1">{fmtFixed(record.bagsPerKg, 1)}</span>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm" className="text-destructive" onClick={() => deleteRecord(record.id)}>×</Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 mr-6">{record.createdAt}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Print Template */}
+      <div className="hidden print:block">
+        <div className="p-8">
+          <h1 className="text-2xl font-bold text-center mb-6">{t("tools.bagWeight.printTitle", "سجلات حاسبة وزن الأكياس")}</h1>
+          <div className="grid gap-4">
+            {selectedRecords.map((record) => (
+              <div key={record.id} className="border-2 border-gray-300 rounded-lg p-4">
+                <div className="flex justify-between items-start mb-3">
+                  <h2 className="text-lg font-bold">{getBagTypeLabel(record.bagType)}</h2>
+                  <span className="text-sm text-gray-500">{record.createdAt}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div><strong>{t("tools.bagWeight.dimensions", "الأبعاد")}:</strong> {record.widthCm} × {record.lengthCm} {t("common.cm", "سم")}</div>
+                  <div><strong>{t("tools.bagWeight.thickness", "السماكة")}:</strong> {record.thicknessMicron} {t("common.micron", "ميكرون")}</div>
+                  <div><strong>{t("tools.bagWeight.layers", "الطبقات")}:</strong> {record.layers}</div>
+                </div>
+                <Separator className="my-3" />
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="text-center p-2 bg-gray-100 rounded">
+                    <p className="text-xs text-gray-600">{t("tools.bagWeight.weightPerBag", "وزن الكيس")}</p>
+                    <p className="text-xl font-bold">{fmtFixed(record.gramsPerBag, 3)} {t("common.gram", "جم")}</p>
+                  </div>
+                  <div className="text-center p-2 bg-gray-100 rounded">
+                    <p className="text-xs text-gray-600">{t("tools.bagWeight.bagsPerKg", "أكياس / كجم")}</p>
+                    <p className="text-xl font-bold">{fmtFixed(record.bagsPerKg, 1)}</p>
+                  </div>
+                  <div className="text-center p-2 bg-gray-100 rounded">
+                    <p className="text-xs text-gray-600">{t("tools.bagWeight.area", "المساحة")}</p>
+                    <p className="text-xl font-bold">{fmtFixed(record.areaM2, 4)} {t("common.sqm", "م²")}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-        <p className="text-xs text-muted-foreground bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg">
-          💡 يمكن استخدام هذا الوزن في حاسبة التكلفة
-        </p>
       </div>
     </div>
   );
