@@ -46,7 +46,7 @@ function ChatPanel() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
-        toast({ title: "خطأ", description: "حجم الملف يجب أن يكون أقل من 10 ميجابايت", variant: "destructive" });
+        toast({ title: t("aiAgent.chat.error"), description: t("aiAgent.chat.fileSizeError"), variant: "destructive" });
         return;
       }
       setSelectedFile(file);
@@ -67,9 +67,9 @@ function ChatPanel() {
   };
 
   const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} بايت`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} كيلوبايت`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} ميجابايت`;
+    if (bytes < 1024) return `${bytes} ${t("aiAgent.fileUpload.bytes")}`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} ${t("aiAgent.fileUpload.kb")}`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} ${t("aiAgent.fileUpload.mb")}`;
   };
 
   const sendMessage = async () => {
@@ -92,12 +92,12 @@ function ChatPanel() {
         
         const uploadResult = await uploadResponse.json();
         if (uploadResult.error) {
-          toast({ title: "خطأ", description: uploadResult.error, variant: "destructive" });
+          toast({ title: t("aiAgent.chat.error"), description: uploadResult.error, variant: "destructive" });
           setIsUploading(false);
           return;
         }
         
-        fileContent = `\n\n[محتوى الملف "${uploadResult.filename}":\n${uploadResult.content}]`;
+        fileContent = `\n\n[${t("aiAgent.chat.fileContent")} "${uploadResult.filename}":\n${uploadResult.content}]`;
         fileInfo = {
           filename: uploadResult.filename,
           mimetype: uploadResult.mimetype,
@@ -105,7 +105,7 @@ function ChatPanel() {
         };
         clearFile();
       } catch (error) {
-        toast({ title: "خطأ", description: "فشل في رفع الملف", variant: "destructive" });
+        toast({ title: t("aiAgent.chat.error"), description: t("aiAgent.chat.uploadError"), variant: "destructive" });
         setIsUploading(false);
         return;
       }
@@ -115,7 +115,7 @@ function ChatPanel() {
     const fullContent = messageContent + fileContent;
     const userMessage: Message = { 
       role: "user", 
-      content: messageContent || `تم إرسال ملف: ${fileInfo?.filename}`,
+      content: messageContent || `${t("aiAgent.chat.sentFile")} ${fileInfo?.filename}`,
       fileInfo 
     };
     
@@ -159,14 +159,14 @@ function ChatPanel() {
                 });
               }
               if (data.error) {
-                toast({ title: "خطأ", description: data.error, variant: "destructive" });
+                toast({ title: t("aiAgent.chat.error"), description: data.error, variant: "destructive" });
               }
             } catch {}
           }
         }
       }
     } catch (error) {
-      toast({ title: "خطأ", description: "فشل في الاتصال بالخادم", variant: "destructive" });
+      toast({ title: t("aiAgent.chat.error"), description: t("errors.somethingWentWrong"), variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -185,13 +185,13 @@ function ChatPanel() {
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
             <Bot className="h-16 w-16 mb-4 opacity-50" />
-            <p className="text-lg font-medium">مرحباً! أنا وكيل الذكاء الاصطناعي</p>
-            <p className="text-sm mt-2">يمكنني مساعدتك في:</p>
+            <p className="text-lg font-medium">{t("aiAgent.chat.welcome")}</p>
+            <p className="text-sm mt-2">{t("aiAgent.chat.canHelpWith")}</p>
             <ul className="text-sm mt-2 space-y-1 text-center">
-              <li>• الاستعلام عن الطلبات وحالتها</li>
-              <li>• معرفة حالة الإنتاج وأوامر الإنتاج</li>
-              <li>• إنشاء عروض أسعار للعملاء</li>
-              <li>• تحليل الملفات والصور</li>
+              <li>• {t("aiAgent.chat.helpItems.orders")}</li>
+              <li>• {t("aiAgent.chat.helpItems.production")}</li>
+              <li>• {t("aiAgent.chat.helpItems.quotes")}</li>
+              <li>• {t("aiAgent.chat.helpItems.files")}</li>
             </ul>
           </div>
         ) : (
@@ -260,7 +260,7 @@ function ChatPanel() {
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="اكتب رسالتك هنا أو أرفق ملفاً..."
+          placeholder={t("aiAgent.chat.placeholder")}
           className="min-h-[60px] resize-none"
           disabled={isLoading}
         />
@@ -302,8 +302,8 @@ function QuotesHistory() {
     return (
       <div className="flex flex-col items-center justify-center h-[400px] text-muted-foreground">
         <FileText className="h-16 w-16 mb-4 opacity-50" />
-        <p>لا توجد عروض أسعار بعد</p>
-        <p className="text-sm mt-2">استخدم المحادثة لإنشاء عرض سعر جديد</p>
+        <p>{t("aiAgent.quotes.noQuotes")}</p>
+        <p className="text-sm mt-2">{t("aiAgent.chat.useConversation")}</p>
       </div>
     );
   }
@@ -317,33 +317,33 @@ function QuotesHistory() {
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">{quote.document_number}</CardTitle>
                 <Badge variant={quote.status === "draft" ? "secondary" : "default"}>
-                  {quote.status === "draft" ? "مسودة" : quote.status}
+                  {quote.status === "draft" ? t("aiAgent.quotes.draft") : quote.status}
                 </Badge>
               </div>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
-                  <span className="text-muted-foreground">العميل: </span>
+                  <span className="text-muted-foreground">{t("aiAgent.quotes.customer")}: </span>
                   <span className="font-medium">{quote.customer_name}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">التاريخ: </span>
+                  <span className="text-muted-foreground">{t("aiAgent.quotes.date")}: </span>
                   <span>{formatDate(quote.quote_date)}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">الرقم الضريبي: </span>
+                  <span className="text-muted-foreground">{t("aiAgent.quotes.taxNumber")}: </span>
                   <span className="font-mono">{quote.tax_number}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">الإجمالي: </span>
+                  <span className="text-muted-foreground">{t("aiAgent.quotes.total")}: </span>
                   <span className="font-bold text-primary">{formatCurrency(quote.total_with_tax)}</span>
                 </div>
               </div>
               <div className="flex gap-2 mt-4">
                 <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(quote.id)}>
                   <Download className="h-4 w-4 ml-1" />
-                  تحميل PDF
+                  {t("aiAgent.quotes.download")}
                 </Button>
               </div>
             </CardContent>
@@ -359,19 +359,19 @@ export default function AiAgentPage() {
 
   return (
     <PageLayout
-      title={t("aiAgent.title", "وكيل الذكاء الاصطناعي")}
-      description={t("aiAgent.description", "مساعد ذكي للاستعلام عن الطلبات والإنتاج وإنشاء عروض الأسعار")}
+      title={t("aiAgent.title")}
+      description={t("aiAgent.description")}
     >
       <div className="container mx-auto py-6 px-4">
         <Tabs defaultValue="chat" className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-6">
             <TabsTrigger value="chat" className="gap-2">
               <Bot className="h-4 w-4" />
-              المحادثة
+              {t("aiAgent.tabs.chat")}
             </TabsTrigger>
             <TabsTrigger value="history" className="gap-2">
               <History className="h-4 w-4" />
-              عروض الأسعار
+              {t("aiAgent.tabs.quotesHistory")}
             </TabsTrigger>
           </TabsList>
 
@@ -380,7 +380,7 @@ export default function AiAgentPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Bot className="h-5 w-5" />
-                  محادثة مع الوكيل الذكي
+                  {t("aiAgent.chat.chatWithAgent")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
@@ -394,7 +394,7 @@ export default function AiAgentPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="h-5 w-5" />
-                  سجل عروض الأسعار
+                  {t("aiAgent.quotes.recentQuotes")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">

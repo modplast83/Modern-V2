@@ -66,7 +66,7 @@ export default function AiAgentSettings() {
     product_name: "",
     product_description: "",
     unit_price: "",
-    unit: "كجم",
+    unit: "kg",
     min_quantity: "",
     category: ""
   });
@@ -91,7 +91,7 @@ export default function AiAgentSettings() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/ai-agent/settings"] });
       setEditingSetting(null);
-      toast({ title: "تم الحفظ", description: "تم تحديث الإعداد بنجاح" });
+      toast({ title: t("aiAgent.toasts.saved"), description: t("aiAgent.toasts.settingUpdated") });
     }
   });
 
@@ -103,7 +103,7 @@ export default function AiAgentSettings() {
       queryClient.invalidateQueries({ queryKey: ["/api/ai-agent/knowledge"] });
       setNewKnowledge({ title: "", content: "", category: "general" });
       setIsAddDialogOpen(false);
-      toast({ title: "تمت الإضافة", description: "تم إضافة المعرفة بنجاح" });
+      toast({ title: t("aiAgent.toasts.added"), description: t("aiAgent.toasts.knowledgeAdded") });
     }
   });
 
@@ -114,7 +114,7 @@ export default function AiAgentSettings() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/ai-agent/knowledge"] });
       setEditingKnowledge(null);
-      toast({ title: "تم التحديث", description: "تم تحديث المعرفة بنجاح" });
+      toast({ title: t("aiAgent.toasts.updated"), description: t("aiAgent.toasts.knowledgeUpdated") });
     }
   });
 
@@ -124,7 +124,7 @@ export default function AiAgentSettings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/ai-agent/knowledge"] });
-      toast({ title: "تم الحذف", description: "تم حذف المعرفة بنجاح" });
+      toast({ title: t("aiAgent.toasts.deleted"), description: t("aiAgent.toasts.knowledgeDeleted") });
     }
   });
 
@@ -134,9 +134,9 @@ export default function AiAgentSettings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/quote-templates"] });
-      setNewTemplate({ name: "", description: "", product_name: "", product_description: "", unit_price: "", unit: "كجم", min_quantity: "", category: "" });
+      setNewTemplate({ name: "", description: "", product_name: "", product_description: "", unit_price: "", unit: "kg", min_quantity: "", category: "" });
       setIsAddTemplateDialogOpen(false);
-      toast({ title: "تمت الإضافة", description: "تم إضافة نموذج عرض السعر بنجاح" });
+      toast({ title: t("aiAgent.toasts.added"), description: t("aiAgent.toasts.templateAdded") });
     }
   });
 
@@ -147,7 +147,7 @@ export default function AiAgentSettings() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/quote-templates"] });
       setEditingTemplate(null);
-      toast({ title: "تم التحديث", description: "تم تحديث النموذج بنجاح" });
+      toast({ title: t("aiAgent.toasts.updated"), description: t("aiAgent.toasts.templateUpdated") });
     }
   });
 
@@ -157,36 +157,36 @@ export default function AiAgentSettings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/quote-templates"] });
-      toast({ title: "تم الحذف", description: "تم حذف النموذج بنجاح" });
+      toast({ title: t("aiAgent.toasts.deleted"), description: t("aiAgent.toasts.templateDeleted") });
     }
   });
 
   const categoryLabels: Record<string, string> = {
-    general: "عام",
-    products: "المنتجات",
-    pricing: "التسعير",
-    policies: "السياسات",
-    customers: "العملاء"
+    general: t("aiAgent.categories.general"),
+    products: t("aiAgent.categories.products"),
+    pricing: t("aiAgent.categories.pricing"),
+    policies: t("aiAgent.categories.policies"),
+    customers: t("aiAgent.categories.customers")
   };
 
   const defaultSettings = [
-    { key: "agent_name", label: "اسم الوكيل", description: "اسم المساعد الذكي" },
-    { key: "company_name", label: "اسم الشركة", description: "اسم الشركة لتظهر في الردود" },
-    { key: "default_greeting", label: "رسالة الترحيب", description: "رسالة الترحيب الافتراضية" },
-    { key: "response_style", label: "أسلوب الرد", description: "رسمي/ودي/مختصر" }
+    { key: "agent_name", label: t("aiAgent.settings.agentName"), description: t("aiAgent.settings.agentNameDesc") },
+    { key: "company_name", label: t("aiAgent.settings.companyName"), description: t("aiAgent.settings.companyNameDesc") },
+    { key: "default_greeting", label: t("aiAgent.settings.defaultGreeting"), description: t("aiAgent.settings.defaultGreetingDesc") },
+    { key: "response_style", label: t("aiAgent.settings.responseStyle"), description: t("aiAgent.settings.responseStyleDesc") }
   ];
 
   return (
     <PageLayout
-      title="إعدادات الوكيل الذكي"
-      description="تخصيص سلوك ومعلومات الوكيل الذكي"
+      title={t("aiAgent.pageTitle")}
+      description={t("aiAgent.pageDescription")}
     >
       <div className="max-w-5xl mx-auto p-6 space-y-6">
         <div className="flex items-center gap-3 mb-6">
           <Sparkles className="h-8 w-8 text-primary" />
           <div>
-            <h1 className="text-2xl font-bold">إعدادات الوكيل الذكي</h1>
-            <p className="text-muted-foreground">خصص سلوك المساعد الذكي وأضف معلومات لقاعدة المعرفة</p>
+            <h1 className="text-2xl font-bold">{t("aiAgent.pageTitle")}</h1>
+            <p className="text-muted-foreground">{t("aiAgent.headerDescription")}</p>
           </div>
         </div>
 
@@ -194,23 +194,23 @@ export default function AiAgentSettings() {
           <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
-              الإعدادات
+              {t("aiAgent.tabs.settings")}
             </TabsTrigger>
             <TabsTrigger value="knowledge" className="flex items-center gap-2">
               <BookOpen className="h-4 w-4" />
-              قاعدة المعرفة
+              {t("aiAgent.tabs.knowledge")}
             </TabsTrigger>
             <TabsTrigger value="templates" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
-              نماذج الأسعار
+              {t("aiAgent.templates.title")}
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="settings">
             <Card>
               <CardHeader>
-                <CardTitle>الإعدادات الأساسية</CardTitle>
-                <CardDescription>تخصيص سلوك الوكيل الذكي والمعلومات الأساسية</CardDescription>
+                <CardTitle>{t("aiAgent.settings.basicSettings")}</CardTitle>
+                <CardDescription>{t("aiAgent.settings.basicSettingsDesc")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 {defaultSettings.map((setting) => {
@@ -244,11 +244,11 @@ export default function AiAgentSettings() {
                           <Input
                             value={editingSetting.value}
                             onChange={(e) => setEditingSetting({ ...editingSetting, value: e.target.value })}
-                            placeholder="أدخل القيمة"
+                            placeholder={t("aiAgent.settings.enterValue")}
                           />
                           <div className="flex gap-2 justify-end">
                             <Button variant="outline" size="sm" onClick={() => setEditingSetting(null)}>
-                              إلغاء
+                              {t("common.cancel")}
                             </Button>
                             <Button
                               size="sm"
@@ -256,13 +256,13 @@ export default function AiAgentSettings() {
                               disabled={updateSettingMutation.isPending}
                             >
                               <Save className="h-4 w-4 ml-2" />
-                              حفظ
+                              {t("common.save")}
                             </Button>
                           </div>
                         </div>
                       ) : (
                         <p className="text-sm bg-muted/50 p-2 rounded mt-2">
-                          {currentSetting?.value || "لم يتم تعيين قيمة"}
+                          {currentSetting?.value || t("aiAgent.settings.noValueSet")}
                         </p>
                       )}
                     </div>
@@ -270,13 +270,13 @@ export default function AiAgentSettings() {
                 })}
 
                 <div className="border rounded-lg p-4 bg-blue-50 dark:bg-blue-900/20">
-                  <Label className="text-base font-medium">التعليمات المخصصة</Label>
+                  <Label className="text-base font-medium">{t("aiAgent.settings.customInstructions")}</Label>
                   <p className="text-sm text-muted-foreground mb-3">
-                    أضف تعليمات إضافية للوكيل الذكي (مثل: طريقة الرد، المعلومات الهامة)
+                    {t("aiAgent.settings.customInstructionsDesc")}
                   </p>
                   <Textarea
                     className="min-h-[150px]"
-                    placeholder="مثال: أنت مساعد ذكي لشركة متخصصة في صناعة الأكياس البلاستيكية..."
+                    placeholder={t("aiAgent.settings.customInstructionsPlaceholder")}
                     value={customInstructions || settings.find(s => s.key === "custom_instructions")?.value || ""}
                     onChange={(e) => setCustomInstructions(e.target.value)}
                   />
@@ -286,13 +286,13 @@ export default function AiAgentSettings() {
                         updateSettingMutation.mutate({
                           key: "custom_instructions",
                           value: customInstructions || settings.find(s => s.key === "custom_instructions")?.value || "",
-                          description: "تعليمات مخصصة للوكيل"
+                          description: t("aiAgent.settings.customInstructionsLabel")
                         });
                       }}
                       disabled={updateSettingMutation.isPending}
                     >
                       <Save className="h-4 w-4 ml-2" />
-                      حفظ التعليمات
+                      {t("aiAgent.settings.saveInstructions")}
                     </Button>
                   </div>
                 </div>
@@ -304,31 +304,31 @@ export default function AiAgentSettings() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle>قاعدة المعرفة</CardTitle>
-                  <CardDescription>أضف معلومات يستخدمها الوكيل الذكي للرد على الاستفسارات</CardDescription>
+                  <CardTitle>{t("aiAgent.tabs.knowledge")}</CardTitle>
+                  <CardDescription>{t("aiAgent.knowledge.description")}</CardDescription>
                 </div>
                 <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                   <DialogTrigger asChild>
                     <Button>
                       <Plus className="h-4 w-4 ml-2" />
-                      إضافة معرفة
+                      {t("aiAgent.knowledge.addKnowledge")}
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-lg" dir="rtl">
                     <DialogHeader>
-                      <DialogTitle>إضافة معرفة جديدة</DialogTitle>
+                      <DialogTitle>{t("aiAgent.knowledge.addNewKnowledge")}</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 mt-4">
                       <div>
-                        <Label>العنوان</Label>
+                        <Label>{t("aiAgent.knowledge.knowledgeTitle")}</Label>
                         <Input
                           value={newKnowledge.title}
                           onChange={(e) => setNewKnowledge({ ...newKnowledge, title: e.target.value })}
-                          placeholder="مثال: سياسة الإرجاع"
+                          placeholder={t("aiAgent.knowledge.titlePlaceholder")}
                         />
                       </div>
                       <div>
-                        <Label>التصنيف</Label>
+                        <Label>{t("aiAgent.knowledge.category")}</Label>
                         <Select
                           value={newKnowledge.category}
                           onValueChange={(value) => setNewKnowledge({ ...newKnowledge, category: value })}
@@ -344,23 +344,23 @@ export default function AiAgentSettings() {
                         </Select>
                       </div>
                       <div>
-                        <Label>المحتوى</Label>
+                        <Label>{t("aiAgent.knowledge.content")}</Label>
                         <Textarea
                           className="min-h-[150px]"
                           value={newKnowledge.content}
                           onChange={(e) => setNewKnowledge({ ...newKnowledge, content: e.target.value })}
-                          placeholder="أدخل المعلومات التي سيستخدمها الوكيل..."
+                          placeholder={t("aiAgent.knowledge.contentPlaceholder")}
                         />
                       </div>
                       <div className="flex justify-end gap-2">
                         <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                          إلغاء
+                          {t("common.cancel")}
                         </Button>
                         <Button
                           onClick={() => addKnowledgeMutation.mutate(newKnowledge)}
                           disabled={addKnowledgeMutation.isPending || !newKnowledge.title || !newKnowledge.content}
                         >
-                          إضافة
+                          {t("aiAgent.knowledge.add")}
                         </Button>
                       </div>
                     </div>
@@ -369,12 +369,12 @@ export default function AiAgentSettings() {
               </CardHeader>
               <CardContent>
                 {loadingKnowledge ? (
-                  <div className="text-center py-8 text-muted-foreground">جاري التحميل...</div>
+                  <div className="text-center py-8 text-muted-foreground">{t("aiAgent.knowledge.loading")}</div>
                 ) : knowledge.length === 0 ? (
                   <div className="text-center py-12 border-2 border-dashed rounded-lg">
                     <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">لا توجد معلومات في قاعدة المعرفة بعد</p>
-                    <p className="text-sm text-muted-foreground">أضف معلومات ليستخدمها الوكيل الذكي</p>
+                    <p className="text-muted-foreground">{t("aiAgent.knowledge.noKnowledge")}</p>
+                    <p className="text-sm text-muted-foreground">{t("aiAgent.knowledge.noKnowledgeDesc")}</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -413,18 +413,18 @@ export default function AiAgentSettings() {
                                   checked={editingKnowledge.is_active}
                                   onCheckedChange={(checked) => setEditingKnowledge({ ...editingKnowledge, is_active: checked })}
                                 />
-                                <Label>مفعّل</Label>
+                                <Label>{t("aiAgent.knowledge.active")}</Label>
                               </div>
                               <div className="flex-1" />
                               <Button variant="outline" size="sm" onClick={() => setEditingKnowledge(null)}>
-                                إلغاء
+                                {t("common.cancel")}
                               </Button>
                               <Button
                                 size="sm"
                                 onClick={() => updateKnowledgeMutation.mutate(editingKnowledge)}
                                 disabled={updateKnowledgeMutation.isPending}
                               >
-                                حفظ
+                                {t("common.save")}
                               </Button>
                             </div>
                           </div>
@@ -450,7 +450,7 @@ export default function AiAgentSettings() {
                                   size="icon"
                                   className="text-destructive"
                                   onClick={() => {
-                                    if (confirm("هل أنت متأكد من حذف هذه المعرفة؟")) {
+                                    if (confirm(t("aiAgent.knowledge.confirmDelete"))) {
                                       deleteKnowledgeMutation.mutate(item.id);
                                     }
                                   }}
@@ -476,48 +476,48 @@ export default function AiAgentSettings() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle>نماذج عروض الأسعار</CardTitle>
-                  <CardDescription>نماذج جاهزة يستخدمها الوكيل الذكي لإنشاء عروض أسعار سريعة</CardDescription>
+                  <CardTitle>{t("aiAgent.templates.quoteTemplates")}</CardTitle>
+                  <CardDescription>{t("aiAgent.templates.description")}</CardDescription>
                 </div>
                 <Dialog open={isAddTemplateDialogOpen} onOpenChange={setIsAddTemplateDialogOpen}>
                   <DialogTrigger asChild>
                     <Button>
                       <Plus className="h-4 w-4 ml-2" />
-                      إضافة نموذج
+                      {t("aiAgent.templates.addTemplate")}
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-lg" dir="rtl">
                     <DialogHeader>
-                      <DialogTitle>إضافة نموذج عرض سعر</DialogTitle>
+                      <DialogTitle>{t("aiAgent.templates.addQuoteTemplate")}</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 mt-4 max-h-[60vh] overflow-y-auto">
                       <div>
-                        <Label>اسم النموذج</Label>
+                        <Label>{t("aiAgent.templates.templateName")}</Label>
                         <Input
                           value={newTemplate.name}
                           onChange={(e) => setNewTemplate({ ...newTemplate, name: e.target.value })}
-                          placeholder="مثال: أكياس تسوق بلاستيك"
+                          placeholder={t("aiAgent.templates.templateNamePlaceholder")}
                         />
                       </div>
                       <div>
-                        <Label>اسم المنتج</Label>
+                        <Label>{t("aiAgent.templates.productName")}</Label>
                         <Input
                           value={newTemplate.product_name}
                           onChange={(e) => setNewTemplate({ ...newTemplate, product_name: e.target.value })}
-                          placeholder="مثال: أكياس بلاستيك HDPE"
+                          placeholder={t("aiAgent.templates.productNamePlaceholder")}
                         />
                       </div>
                       <div>
-                        <Label>وصف المنتج</Label>
+                        <Label>{t("aiAgent.templates.productDescription")}</Label>
                         <Textarea
                           value={newTemplate.product_description}
                           onChange={(e) => setNewTemplate({ ...newTemplate, product_description: e.target.value })}
-                          placeholder="وصف تفصيلي للمنتج..."
+                          placeholder={t("aiAgent.templates.productDescPlaceholder")}
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label>سعر الوحدة (ريال)</Label>
+                          <Label>{t("aiAgent.templates.unitPrice")}</Label>
                           <Input
                             type="number"
                             value={newTemplate.unit_price}
@@ -526,7 +526,7 @@ export default function AiAgentSettings() {
                           />
                         </div>
                         <div>
-                          <Label>الوحدة</Label>
+                          <Label>{t("aiAgent.templates.unit")}</Label>
                           <Select
                             value={newTemplate.unit}
                             onValueChange={(value) => setNewTemplate({ ...newTemplate, unit: value })}
@@ -535,41 +535,41 @@ export default function AiAgentSettings() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="كجم">كجم</SelectItem>
-                              <SelectItem value="طن">طن</SelectItem>
-                              <SelectItem value="قطعة">قطعة</SelectItem>
-                              <SelectItem value="كرتون">كرتون</SelectItem>
-                              <SelectItem value="رول">رول</SelectItem>
+                              <SelectItem value="kg">{t("aiAgent.units.kg")}</SelectItem>
+                              <SelectItem value="ton">{t("aiAgent.units.ton")}</SelectItem>
+                              <SelectItem value="piece">{t("aiAgent.units.piece")}</SelectItem>
+                              <SelectItem value="carton">{t("aiAgent.units.carton")}</SelectItem>
+                              <SelectItem value="roll">{t("aiAgent.units.roll")}</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                       </div>
                       <div>
-                        <Label>الحد الأدنى للكمية</Label>
+                        <Label>{t("aiAgent.templates.minQuantity")}</Label>
                         <Input
                           type="number"
                           value={newTemplate.min_quantity}
                           onChange={(e) => setNewTemplate({ ...newTemplate, min_quantity: e.target.value })}
-                          placeholder="اختياري"
+                          placeholder={t("aiAgent.templates.optional")}
                         />
                       </div>
                       <div>
-                        <Label>التصنيف</Label>
+                        <Label>{t("aiAgent.knowledge.category")}</Label>
                         <Input
                           value={newTemplate.category}
                           onChange={(e) => setNewTemplate({ ...newTemplate, category: e.target.value })}
-                          placeholder="مثال: أكياس تسوق"
+                          placeholder={t("aiAgent.templates.categoryPlaceholder")}
                         />
                       </div>
                       <div className="flex justify-end gap-2">
                         <Button variant="outline" onClick={() => setIsAddTemplateDialogOpen(false)}>
-                          إلغاء
+                          {t("common.cancel")}
                         </Button>
                         <Button
                           onClick={() => addTemplateMutation.mutate(newTemplate)}
                           disabled={addTemplateMutation.isPending || !newTemplate.name || !newTemplate.product_name || !newTemplate.unit_price}
                         >
-                          إضافة
+                          {t("aiAgent.knowledge.add")}
                         </Button>
                       </div>
                     </div>
@@ -578,12 +578,12 @@ export default function AiAgentSettings() {
               </CardHeader>
               <CardContent>
                 {loadingTemplates ? (
-                  <div className="text-center py-8 text-muted-foreground">جاري التحميل...</div>
+                  <div className="text-center py-8 text-muted-foreground">{t("aiAgent.knowledge.loading")}</div>
                 ) : templates.length === 0 ? (
                   <div className="text-center py-12 border-2 border-dashed rounded-lg">
                     <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">لا توجد نماذج عروض أسعار بعد</p>
-                    <p className="text-sm text-muted-foreground">أضف نماذج لتسهيل إنشاء عروض الأسعار</p>
+                    <p className="text-muted-foreground">{t("aiAgent.templates.noTemplates")}</p>
+                    <p className="text-sm text-muted-foreground">{t("aiAgent.templates.noTemplatesDesc")}</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -597,19 +597,19 @@ export default function AiAgentSettings() {
                             <Input
                               value={editingTemplate.name}
                               onChange={(e) => setEditingTemplate({ ...editingTemplate, name: e.target.value })}
-                              placeholder="اسم النموذج"
+                              placeholder={t("aiAgent.templates.templateName")}
                             />
                             <Input
                               value={editingTemplate.product_name}
                               onChange={(e) => setEditingTemplate({ ...editingTemplate, product_name: e.target.value })}
-                              placeholder="اسم المنتج"
+                              placeholder={t("aiAgent.templates.productName")}
                             />
                             <div className="grid grid-cols-2 gap-4">
                               <Input
                                 type="number"
                                 value={editingTemplate.unit_price}
                                 onChange={(e) => setEditingTemplate({ ...editingTemplate, unit_price: e.target.value })}
-                                placeholder="السعر"
+                                placeholder={t("aiAgent.templates.price")}
                               />
                               <Select
                                 value={editingTemplate.unit}
@@ -619,11 +619,11 @@ export default function AiAgentSettings() {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="كجم">كجم</SelectItem>
-                                  <SelectItem value="طن">طن</SelectItem>
-                                  <SelectItem value="قطعة">قطعة</SelectItem>
-                                  <SelectItem value="كرتون">كرتون</SelectItem>
-                                  <SelectItem value="رول">رول</SelectItem>
+                                  <SelectItem value="kg">{t("aiAgent.units.kg")}</SelectItem>
+                                  <SelectItem value="ton">{t("aiAgent.units.ton")}</SelectItem>
+                                  <SelectItem value="piece">{t("aiAgent.units.piece")}</SelectItem>
+                                  <SelectItem value="carton">{t("aiAgent.units.carton")}</SelectItem>
+                                  <SelectItem value="roll">{t("aiAgent.units.roll")}</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
@@ -633,18 +633,18 @@ export default function AiAgentSettings() {
                                   checked={editingTemplate.is_active}
                                   onCheckedChange={(checked) => setEditingTemplate({ ...editingTemplate, is_active: checked })}
                                 />
-                                <Label>مفعّل</Label>
+                                <Label>{t("aiAgent.knowledge.active")}</Label>
                               </div>
                               <div className="flex-1" />
                               <Button variant="outline" size="sm" onClick={() => setEditingTemplate(null)}>
-                                إلغاء
+                                {t("common.cancel")}
                               </Button>
                               <Button
                                 size="sm"
                                 onClick={() => updateTemplateMutation.mutate(editingTemplate)}
                                 disabled={updateTemplateMutation.isPending}
                               >
-                                حفظ
+                                {t("common.save")}
                               </Button>
                             </div>
                           </div>
@@ -656,11 +656,11 @@ export default function AiAgentSettings() {
                                 <p className="text-sm text-muted-foreground">{template.product_name}</p>
                                 <div className="flex gap-2 mt-2">
                                   <span className="text-sm font-medium text-primary">
-                                    {Number(template.unit_price).toLocaleString("ar-SA")} ريال/{template.unit}
+                                    {Number(template.unit_price).toLocaleString("ar-SA")} {t("aiAgent.templates.currency")}/{template.unit}
                                   </span>
                                   {template.min_quantity && (
                                     <span className="text-xs text-muted-foreground">
-                                      (الحد الأدنى: {template.min_quantity} {template.unit})
+                                      ({t("aiAgent.templates.minQty")}: {template.min_quantity} {template.unit})
                                     </span>
                                   )}
                                 </div>
@@ -678,7 +678,7 @@ export default function AiAgentSettings() {
                                   size="icon"
                                   className="text-destructive"
                                   onClick={() => {
-                                    if (confirm("هل أنت متأكد من حذف هذا النموذج؟")) {
+                                    if (confirm(t("aiAgent.templates.confirmDelete"))) {
                                       deleteTemplateMutation.mutate(template.id);
                                     }
                                   }}
