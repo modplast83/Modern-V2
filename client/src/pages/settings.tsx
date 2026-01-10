@@ -283,7 +283,7 @@ export default function Settings() {
       setSelectedFile(null);
       toast({
         title: t('settings.database.importSuccess'),
-        description: `تم استيراد ${data.count || data.importedRecords} سجل من أصل ${data.totalRows || data.count} سجل`,
+        description: t('settings.database.importedRecordsDesc', { imported: data.count || data.importedRecords, total: data.totalRows || data.count }),
       });
     },
     onError: (error) => {
@@ -292,7 +292,7 @@ export default function Settings() {
         description:
           error instanceof Error
             ? error.message
-            : "حدث خطأ أثناء استيراد البيانات",
+            : t('settings.database.importErrorOccurred'),
         variant: "destructive",
       });
     },
@@ -404,7 +404,7 @@ export default function Settings() {
         headers = ["Column 1", "Column 2", "Column 3"]; // Placeholder
         data = [
           {
-            "Column 1": "سيتم تحليل ملف Excel على الخادم",
+            "Column 1": "Excel file will be parsed on server",
             "Column 2": "",
             "Column 3": "",
           },
@@ -433,7 +433,7 @@ export default function Settings() {
 
       toast({
         title: t('settings.database.fileParseSuccess'),
-        description: `تم العثور على ${data.length} سجل و ${headers.length} عمود`,
+        description: t('settings.database.foundRecordsAndColumns', { records: data.length, columns: headers.length }),
       });
     } catch (error) {
       toast({
@@ -559,7 +559,7 @@ export default function Settings() {
         } catch (error) {
           results.failed += batch.length;
           results.errors.push(
-            `خطأ في الدفعة ${Math.floor(i / options.batchSize) + 1}: ${error}`,
+            t('settings.database.batchError', { batchNumber: Math.floor(i / options.batchSize) + 1, error: String(error) }),
           );
 
           if (!options.continueOnError) {
@@ -592,18 +592,18 @@ export default function Settings() {
       setImportStep(3);
 
       toast({
-        title: "اكتمل الاستيراد",
-        description: `تم استيراد ${results.successful} سجل بنجاح، ${results.failed} فشل`,
+        title: t('settings.database.importCompleted'),
+        description: t('settings.database.importCompletedDesc', { successful: results.successful, failed: results.failed }),
       });
     },
     onError: (error) => {
       setImportProgress((prev) => ({ ...prev, processing: false }));
       toast({
-        title: "خطأ في الاستيراد",
+        title: t('settings.database.importErrorMsg'),
         description:
           error instanceof Error
             ? error.message
-            : "حدث خطأ أثناء استيراد البيانات",
+            : t('settings.database.importErrorOccurred'),
         variant: "destructive",
       });
     },
@@ -613,8 +613,8 @@ export default function Settings() {
   const handleStartImport = () => {
     if (!selectedFile || !selectedTable || fileData.length === 0) {
       toast({
-        title: "بيانات ناقصة",
-        description: "تأكد من اختيار الملف والجدول ووجود بيانات للاستيراد",
+        title: t('settings.database.missingData'),
+        description: t('settings.database.missingDataDesc'),
         variant: "destructive",
       });
       return;
@@ -640,8 +640,8 @@ export default function Settings() {
 
     if (validData.length === 0) {
       toast({
-        title: "لا توجد بيانات صالحة",
-        description: "تأكد من ربط الأعمدة بشكل صحيح",
+        title: t('settings.database.noValidData'),
+        description: t('settings.database.noValidDataDesc'),
         variant: "destructive",
       });
       return;
@@ -1064,7 +1064,7 @@ export default function Settings() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Bell className="w-5 h-5" />
-                    إعدادات التنبيهات
+                    {t('settings.alerts.title')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -1072,10 +1072,10 @@ export default function Settings() {
                     <div className="flex items-center justify-between">
                       <div>
                         <Label className="text-base">
-                          تنبيهات البريد الإلكتروني
+                          {t('settings.alerts.emailAlerts')}
                         </Label>
                         <p className="text-sm text-muted-foreground">
-                          تلقي تنبيهات عبر البريد الإلكتروني
+                          {t('settings.alerts.emailAlertsDesc')}
                         </p>
                       </div>
                       <Switch
@@ -1095,10 +1095,10 @@ export default function Settings() {
                     <div className="flex items-center justify-between">
                       <div>
                         <Label className="text-base">
-                          تنبيهات الرسائل النصية
+                          {t('settings.alerts.smsAlerts')}
                         </Label>
                         <p className="text-sm text-muted-foreground">
-                          تلقي تنبيهات عبر الرسائل النصية
+                          {t('settings.alerts.smsAlertsDesc')}
                         </p>
                       </div>
                       <Switch
@@ -1117,9 +1117,9 @@ export default function Settings() {
 
                     <div className="flex items-center justify-between">
                       <div>
-                        <Label className="text-base">التنبيهات الفورية</Label>
+                        <Label className="text-base">{t('settings.alerts.pushAlerts')}</Label>
                         <p className="text-sm text-muted-foreground">
-                          تنبيهات داخل النظام
+                          {t('settings.alerts.pushAlertsDesc')}
                         </p>
                       </div>
                       <Switch
@@ -1144,9 +1144,9 @@ export default function Settings() {
                           <VolumeX className="w-4 h-4" />
                         )}
                         <div>
-                          <Label className="text-base">الأصوات</Label>
+                          <Label className="text-base">{t('settings.alerts.sounds')}</Label>
                           <p className="text-sm text-muted-foreground">
-                            تشغيل أصوات التنبيهات
+                            {t('settings.alerts.soundsDesc')}
                           </p>
                         </div>
                       </div>
@@ -1168,12 +1168,12 @@ export default function Settings() {
                   <Separator />
 
                   <div className="space-y-4">
-                    <h4 className="text-sm font-medium">إعدادات لوحة التحكم</h4>
+                    <h4 className="text-sm font-medium">{t('settings.dashboardSettings.title')}</h4>
                     <div className="flex items-center justify-between">
                       <div>
-                        <Label className="text-base">التحديث التلقائي</Label>
+                        <Label className="text-base">{t('settings.dashboardSettings.autoRefresh')}</Label>
                         <p className="text-sm text-muted-foreground">
-                          تحديث البيانات تلقائياً
+                          {t('settings.dashboardSettings.autoRefreshDesc')}
                         </p>
                       </div>
                       <Switch
@@ -1193,7 +1193,7 @@ export default function Settings() {
                     {userSettings.dashboard.autoRefresh && (
                       <div className="space-y-2">
                         <Label htmlFor="refreshInterval">
-                          فترة التحديث (بالثواني)
+                          {t('settings.dashboardSettings.refreshInterval')}
                         </Label>
                         <Select
                           value={(
@@ -1213,10 +1213,10 @@ export default function Settings() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="15">15 ثانية</SelectItem>
-                            <SelectItem value="30">30 ثانية</SelectItem>
-                            <SelectItem value="60">دقيقة واحدة</SelectItem>
-                            <SelectItem value="300">5 دقائق</SelectItem>
+                            <SelectItem value="15">{t('settings.dashboardSettings.15seconds')}</SelectItem>
+                            <SelectItem value="30">{t('settings.dashboardSettings.30seconds')}</SelectItem>
+                            <SelectItem value="60">{t('settings.dashboardSettings.1minute')}</SelectItem>
+                            <SelectItem value="300">{t('settings.dashboardSettings.5minutes')}</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -1233,7 +1233,7 @@ export default function Settings() {
                       ) : (
                         <Save className="w-4 h-4 mr-2" />
                       )}
-                      حفظ التغييرات
+                      {t('settings.saveChanges')}
                     </Button>
                   </div>
                 </CardContent>
@@ -1245,13 +1245,13 @@ export default function Settings() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <SettingsIcon className="w-5 h-5" />
-                    إعدادات النظام العامة
+                    {t('settings.system.title')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="companyName">اسم الشركة</Label>
+                      <Label htmlFor="companyName">{t('settings.system.companyName')}</Label>
                       <Input
                         id="companyName"
                         value={systemSettings.companyName}
@@ -1264,7 +1264,7 @@ export default function Settings() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="country">البلد</Label>
+                      <Label htmlFor="country">{t('settings.system.country')}</Label>
                       <Input
                         id="country"
                         value={systemSettings.country}
@@ -1273,7 +1273,7 @@ export default function Settings() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="region">المنطقة</Label>
+                      <Label htmlFor="region">{t('settings.system.region')}</Label>
                       <Select
                         value={systemSettings.region ?? "الرياض"}
                         onValueChange={(value) =>
@@ -1287,43 +1287,43 @@ export default function Settings() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="الرياض">الرياض</SelectItem>
-                          <SelectItem value="جدة">جدة</SelectItem>
-                          <SelectItem value="الدمام">الدمام</SelectItem>
+                          <SelectItem value="الرياض">{t('settings.system.regions.riyadh')}</SelectItem>
+                          <SelectItem value="جدة">{t('settings.system.regions.jeddah')}</SelectItem>
+                          <SelectItem value="الدمام">{t('settings.system.regions.dammam')}</SelectItem>
                           <SelectItem value="مكة المكرمة">
-                            مكة المكرمة
+                            {t('settings.system.regions.makkah')}
                           </SelectItem>
                           <SelectItem value="المدينة المنورة">
-                            المدينة المنورة
+                            {t('settings.system.regions.madinah')}
                           </SelectItem>
-                          <SelectItem value="تبوك">تبوك</SelectItem>
-                          <SelectItem value="أبها">أبها</SelectItem>
-                          <SelectItem value="حائل">حائل</SelectItem>
-                          <SelectItem value="الطائف">الطائف</SelectItem>
-                          <SelectItem value="الخبر">الخبر</SelectItem>
+                          <SelectItem value="تبوك">{t('settings.system.regions.tabuk')}</SelectItem>
+                          <SelectItem value="أبها">{t('settings.system.regions.abha')}</SelectItem>
+                          <SelectItem value="حائل">{t('settings.system.regions.hail')}</SelectItem>
+                          <SelectItem value="الطائف">{t('settings.system.regions.taif')}</SelectItem>
+                          <SelectItem value="الخبر">{t('settings.system.regions.khobar')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="timezone">المنطقة الزمنية</Label>
+                      <Label htmlFor="timezone">{t('settings.system.timezone')}</Label>
                       <Input
                         id="timezone"
-                        value="الرياض (UTC+3)"
+                        value={t('settings.system.timezoneValue')}
                         readOnly
                         className="bg-muted"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="currency">العملة</Label>
+                      <Label htmlFor="currency">{t('settings.system.currency')}</Label>
                       <Input
                         id="currency"
-                        value="ريال سعودي (SAR)"
+                        value={t('settings.system.currencyValue')}
                         readOnly
                         className="bg-muted"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="language">لغة النظام</Label>
+                      <Label htmlFor="language">{t('settings.system.systemLanguage')}</Label>
                       <Select
                         value={systemSettings.language ?? "ar"}
                         onValueChange={(value) =>
@@ -1337,8 +1337,8 @@ export default function Settings() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="ar">العربية</SelectItem>
-                          <SelectItem value="en">English</SelectItem>
+                          <SelectItem value="ar">{t('settings.system.arabic')}</SelectItem>
+                          <SelectItem value="en">{t('settings.system.english')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -1347,10 +1347,10 @@ export default function Settings() {
                   <Separator />
 
                   <div className="space-y-4">
-                    <h4 className="text-sm font-medium">ساعات العمل</h4>
+                    <h4 className="text-sm font-medium">{t('settings.system.workingHours')}</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="workStart">بداية العمل</Label>
+                        <Label htmlFor="workStart">{t('settings.system.workStart')}</Label>
                         <Input
                           id="workStart"
                           type="time"
@@ -1367,7 +1367,7 @@ export default function Settings() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="workEnd">نهاية العمل</Label>
+                        <Label htmlFor="workEnd">{t('settings.system.workEnd')}</Label>
                         <Input
                           id="workEnd"
                           type="time"
@@ -1389,7 +1389,7 @@ export default function Settings() {
                   <Separator />
 
                   <div className="space-y-4">
-                    <h4 className="text-sm font-medium">الورديات</h4>
+                    <h4 className="text-sm font-medium">{t('settings.system.shifts')}</h4>
                     <div className="space-y-2">
                       {systemSettings.shifts.map((shift) => (
                         <div
@@ -1399,10 +1399,10 @@ export default function Settings() {
                           <div>
                             <span className="font-medium">{shift.name}</span>
                             <p className="text-sm text-muted-foreground">
-                              من {shift.start} إلى {shift.end}
+                              {t('settings.system.shiftFromTo', { start: shift.start, end: shift.end })}
                             </p>
                           </div>
-                          <Badge variant="outline">نشطة</Badge>
+                          <Badge variant="outline">{t('settings.system.active')}</Badge>
                         </div>
                       ))}
                     </div>
@@ -1418,7 +1418,7 @@ export default function Settings() {
                       ) : (
                         <Save className="w-4 h-4 mr-2" />
                       )}
-                      حفظ إعدادات النظام
+                      {t('settings.system.saveSystemSettings')}
                     </Button>
                   </div>
                 </CardContent>
@@ -1430,7 +1430,7 @@ export default function Settings() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Database className="w-5 h-5" />
-                    إدارة قاعدة البيانات
+                    {t('settings.database.title')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -1438,7 +1438,7 @@ export default function Settings() {
                   <div className="space-y-4">
                     <h4 className="text-sm font-medium flex items-center gap-2">
                       <Archive className="w-4 h-4" />
-                      النسخ الاحتياطية
+                      {t('settings.database.backups')}
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <Card className="p-4">
@@ -1446,11 +1446,11 @@ export default function Settings() {
                           <div className="flex items-center gap-2">
                             <Download className="w-4 h-4 text-blue-500" />
                             <Label className="text-sm font-medium">
-                              إنشاء نسخة احتياطية
+                              {t('settings.database.createBackup')}
                             </Label>
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            إنشاء نسخة احتياطية من قاعدة البيانات بالكامل
+                            {t('settings.database.createBackupDesc')}
                           </p>
                           <Button
                             className="w-full"
@@ -1463,7 +1463,7 @@ export default function Settings() {
                             ) : (
                               <Download className="w-4 h-4 mr-2" />
                             )}
-                            تصدير النسخة الاحتياطية
+                            {t('settings.database.exportBackup')}
                           </Button>
                         </div>
                       </Card>
@@ -1473,11 +1473,11 @@ export default function Settings() {
                           <div className="flex items-center gap-2">
                             <Upload className="w-4 h-4 text-green-500" />
                             <Label className="text-sm font-medium">
-                              استعادة النسخة الاحتياطية
+                              {t('settings.database.restoreBackup')}
                             </Label>
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            استعادة قاعدة البيانات من نسخة احتياطية
+                            {t('settings.database.restoreBackupDesc')}
                           </p>
                           <input
                             type="file"
@@ -1500,11 +1500,11 @@ export default function Settings() {
                             ) : (
                               <Upload className="w-4 h-4 mr-2" />
                             )}
-                            {selectedBackupFile ? selectedBackupFile.name : "اختيار ملف واستعادة"}
+                            {selectedBackupFile ? selectedBackupFile.name : t('settings.database.selectFileAndRestore')}
                           </Button>
                           {selectedBackupFile && !restoreBackupMutation.isPending && (
                             <p className="text-xs text-green-600">
-                              تم اختيار: {selectedBackupFile.name}
+                              {t('settings.database.fileSelected')} {selectedBackupFile.name}
                             </p>
                           )}
                         </div>
@@ -1519,7 +1519,7 @@ export default function Settings() {
                     <div className="flex items-center justify-between">
                       <h4 className="text-sm font-medium flex items-center gap-2">
                         <HardDrive className="w-4 h-4" />
-                        استيراد وتصدير الجداول المحسن
+                        {t('settings.database.importExport')}
                       </h4>
                       {importStep > 1 && (
                         <Button
@@ -1527,7 +1527,7 @@ export default function Settings() {
                           size="sm"
                           onClick={resetImport}
                         >
-                          إعادة تعيين
+                          {t('settings.database.reset')}
                         </Button>
                       )}
                     </div>
@@ -1538,79 +1538,79 @@ export default function Settings() {
                         <div className="flex items-center gap-2 mb-3">
                           <Download className="w-4 h-4 text-blue-500" />
                           <Label className="text-sm font-medium">
-                            تصدير البيانات
+                            {t('settings.database.exportData')}
                           </Label>
                         </div>
 
                         <div className="space-y-2">
-                          <Label>اختر الجدول للتصدير</Label>
+                          <Label>{t('settings.database.selectTableForExport')}</Label>
                           <Select
                             value={selectedTable}
                             onValueChange={handleTableChange}
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="اختر جدول للتصدير أو الاستيراد" />
+                              <SelectValue placeholder={t('settings.database.selectTablePlaceholder')} />
                             </SelectTrigger>
                             <SelectContent className="max-h-[400px] overflow-y-auto">
-                              <SelectItem value="customers">العملاء (Customers)</SelectItem>
-                              <SelectItem value="categories">الفئات (Categories)</SelectItem>
-                              <SelectItem value="sections">الأقسام (Sections)</SelectItem>
-                              <SelectItem value="items">الأصناف (Items)</SelectItem>
-                              <SelectItem value="customer_products">منتجات العملاء (Customer Products)</SelectItem>
-                              <SelectItem value="users">المستخدمين (Users)</SelectItem>
-                              <SelectItem value="roles">الأدوار (Roles)</SelectItem>
-                              <SelectItem value="machines">الماكينات (Machines)</SelectItem>
-                              <SelectItem value="locations">المواقع (Locations)</SelectItem>
-                              <SelectItem value="suppliers">الموردين (Suppliers)</SelectItem>
-                              <SelectItem value="orders">الطلبات (Orders)</SelectItem>
-                              <SelectItem value="production_orders">أوامر الإنتاج (Production Orders)</SelectItem>
-                              <SelectItem value="rolls">البكرات (Rolls)</SelectItem>
-                              <SelectItem value="cuts">القصات (Cuts)</SelectItem>
-                              <SelectItem value="inventory">المخزون (Inventory)</SelectItem>
-                              <SelectItem value="inventory_movements">حركات المخزون (Inventory Movements)</SelectItem>
-                              <SelectItem value="warehouse_receipts">إيصالات المستودع (Warehouse Receipts)</SelectItem>
-                              <SelectItem value="warehouse_transactions">معاملات المستودع (Warehouse Transactions)</SelectItem>
-                              <SelectItem value="maintenance_requests">طلبات الصيانة (Maintenance Requests)</SelectItem>
-                              <SelectItem value="maintenance_actions">إجراءات الصيانة (Maintenance Actions)</SelectItem>
-                              <SelectItem value="maintenance_reports">تقارير الصيانة (Maintenance Reports)</SelectItem>
-                              <SelectItem value="spare_parts">قطع الغيار (Spare Parts)</SelectItem>
-                              <SelectItem value="consumable_parts">الأجزاء الاستهلاكية (Consumable Parts)</SelectItem>
-                              <SelectItem value="consumable_parts_transactions">معاملات الأجزاء الاستهلاكية (Consumable Parts Transactions)</SelectItem>
-                              <SelectItem value="waste">الهدر (Waste)</SelectItem>
-                              <SelectItem value="quality_checks">فحوصات الجودة (Quality Checks)</SelectItem>
-                              <SelectItem value="machine_queues">طوابير الماكينات (Machine Queues)</SelectItem>
-                              <SelectItem value="production_settings">إعدادات الإنتاج (Production Settings)</SelectItem>
-                              <SelectItem value="operator_negligence_reports">تقارير إهمال المشغلين (Operator Negligence Reports)</SelectItem>
-                              <SelectItem value="violations">المخالفات (Violations)</SelectItem>
-                              <SelectItem value="user_requests">طلبات المستخدمين (User Requests)</SelectItem>
-                              <SelectItem value="attendance">الحضور (Attendance)</SelectItem>
-                              <SelectItem value="training_programs">برامج التدريب (Training Programs)</SelectItem>
-                              <SelectItem value="training_records">سجلات التدريب (Training Records)</SelectItem>
-                              <SelectItem value="training_materials">مواد التدريب (Training Materials)</SelectItem>
-                              <SelectItem value="training_enrollments">تسجيلات التدريب (Training Enrollments)</SelectItem>
-                              <SelectItem value="training_evaluations">تقييمات التدريب (Training Evaluations)</SelectItem>
-                              <SelectItem value="training_certificates">شهادات التدريب (Training Certificates)</SelectItem>
-                              <SelectItem value="performance_reviews">مراجعات الأداء (Performance Reviews)</SelectItem>
-                              <SelectItem value="performance_criteria">معايير الأداء (Performance Criteria)</SelectItem>
-                              <SelectItem value="performance_ratings">تقييمات الأداء (Performance Ratings)</SelectItem>
-                              <SelectItem value="leave_types">أنواع الإجازات (Leave Types)</SelectItem>
-                              <SelectItem value="leave_requests">طلبات الإجازات (Leave Requests)</SelectItem>
-                              <SelectItem value="leave_balances">أرصدة الإجازات (Leave Balances)</SelectItem>
-                              <SelectItem value="admin_decisions">قرارات الإدارة (Admin Decisions)</SelectItem>
-                              <SelectItem value="company_profile">ملف الشركة (Company Profile)</SelectItem>
-                              <SelectItem value="notifications">الإشعارات (Notifications)</SelectItem>
-                              <SelectItem value="notification_templates">قوالب الإشعارات (Notification Templates)</SelectItem>
-                              <SelectItem value="factory_locations">مواقع المصنع (Factory Locations)</SelectItem>
-                              <SelectItem value="system_alerts">تنبيهات النظام (System Alerts)</SelectItem>
-                              <SelectItem value="alert_rules">قواعد التنبيه (Alert Rules)</SelectItem>
-                              <SelectItem value="system_health_checks">فحوصات صحة النظام (System Health Checks)</SelectItem>
-                              <SelectItem value="system_performance_metrics">مقاييس أداء النظام (System Performance Metrics)</SelectItem>
-                              <SelectItem value="corrective_actions">الإجراءات التصحيحية (Corrective Actions)</SelectItem>
-                              <SelectItem value="system_analytics">تحليلات النظام (System Analytics)</SelectItem>
-                              <SelectItem value="quick_notes">الملاحظات السريعة (Quick Notes)</SelectItem>
-                              <SelectItem value="note_attachments">مرفقات الملاحظات (Note Attachments)</SelectItem>
-                              <SelectItem value="mixing_batches">دفعات الخلط (Mixing Batches)</SelectItem>
-                              <SelectItem value="batch_ingredients">مكونات الدفعات (Batch Ingredients)</SelectItem>
+                              <SelectItem value="customers">{t('settings.database.tables.customers')}</SelectItem>
+                              <SelectItem value="categories">{t('settings.database.tables.categories')}</SelectItem>
+                              <SelectItem value="sections">{t('settings.database.tables.sections')}</SelectItem>
+                              <SelectItem value="items">{t('settings.database.tables.items')}</SelectItem>
+                              <SelectItem value="customer_products">{t('settings.database.tables.customer_products')}</SelectItem>
+                              <SelectItem value="users">{t('settings.database.tables.users')}</SelectItem>
+                              <SelectItem value="roles">{t('settings.database.tables.roles')}</SelectItem>
+                              <SelectItem value="machines">{t('settings.database.tables.machines')}</SelectItem>
+                              <SelectItem value="locations">{t('settings.database.tables.locations')}</SelectItem>
+                              <SelectItem value="suppliers">{t('settings.database.tables.suppliers')}</SelectItem>
+                              <SelectItem value="orders">{t('settings.database.tables.orders')}</SelectItem>
+                              <SelectItem value="production_orders">{t('settings.database.tables.production_orders')}</SelectItem>
+                              <SelectItem value="rolls">{t('settings.database.tables.rolls')}</SelectItem>
+                              <SelectItem value="cuts">{t('settings.database.tables.cuts')}</SelectItem>
+                              <SelectItem value="inventory">{t('settings.database.tables.inventory')}</SelectItem>
+                              <SelectItem value="inventory_movements">{t('settings.database.tables.inventory_movements')}</SelectItem>
+                              <SelectItem value="warehouse_receipts">{t('settings.database.tables.warehouse_receipts')}</SelectItem>
+                              <SelectItem value="warehouse_transactions">{t('settings.database.tables.warehouse_transactions')}</SelectItem>
+                              <SelectItem value="maintenance_requests">{t('settings.database.tables.maintenance_requests')}</SelectItem>
+                              <SelectItem value="maintenance_actions">{t('settings.database.tables.maintenance_actions')}</SelectItem>
+                              <SelectItem value="maintenance_reports">{t('settings.database.tables.maintenance_reports')}</SelectItem>
+                              <SelectItem value="spare_parts">{t('settings.database.tables.spare_parts')}</SelectItem>
+                              <SelectItem value="consumable_parts">{t('settings.database.tables.consumable_parts')}</SelectItem>
+                              <SelectItem value="consumable_parts_transactions">{t('settings.database.tables.consumable_parts_transactions')}</SelectItem>
+                              <SelectItem value="waste">{t('settings.database.tables.waste')}</SelectItem>
+                              <SelectItem value="quality_checks">{t('settings.database.tables.quality_checks')}</SelectItem>
+                              <SelectItem value="machine_queues">{t('settings.database.tables.machine_queues')}</SelectItem>
+                              <SelectItem value="production_settings">{t('settings.database.tables.production_settings')}</SelectItem>
+                              <SelectItem value="operator_negligence_reports">{t('settings.database.tables.operator_negligence_reports')}</SelectItem>
+                              <SelectItem value="violations">{t('settings.database.tables.violations')}</SelectItem>
+                              <SelectItem value="user_requests">{t('settings.database.tables.user_requests')}</SelectItem>
+                              <SelectItem value="attendance">{t('settings.database.tables.attendance')}</SelectItem>
+                              <SelectItem value="training_programs">{t('settings.database.tables.training_programs')}</SelectItem>
+                              <SelectItem value="training_records">{t('settings.database.tables.training_records')}</SelectItem>
+                              <SelectItem value="training_materials">{t('settings.database.tables.training_materials')}</SelectItem>
+                              <SelectItem value="training_enrollments">{t('settings.database.tables.training_enrollments')}</SelectItem>
+                              <SelectItem value="training_evaluations">{t('settings.database.tables.training_evaluations')}</SelectItem>
+                              <SelectItem value="training_certificates">{t('settings.database.tables.training_certificates')}</SelectItem>
+                              <SelectItem value="performance_reviews">{t('settings.database.tables.performance_reviews')}</SelectItem>
+                              <SelectItem value="performance_criteria">{t('settings.database.tables.performance_criteria')}</SelectItem>
+                              <SelectItem value="performance_ratings">{t('settings.database.tables.performance_ratings')}</SelectItem>
+                              <SelectItem value="leave_types">{t('settings.database.tables.leave_types')}</SelectItem>
+                              <SelectItem value="leave_requests">{t('settings.database.tables.leave_requests')}</SelectItem>
+                              <SelectItem value="leave_balances">{t('settings.database.tables.leave_balances')}</SelectItem>
+                              <SelectItem value="admin_decisions">{t('settings.database.tables.admin_decisions')}</SelectItem>
+                              <SelectItem value="company_profile">{t('settings.database.tables.company_profile')}</SelectItem>
+                              <SelectItem value="notifications">{t('settings.database.tables.notifications')}</SelectItem>
+                              <SelectItem value="notification_templates">{t('settings.database.tables.notification_templates')}</SelectItem>
+                              <SelectItem value="factory_locations">{t('settings.database.tables.factory_locations')}</SelectItem>
+                              <SelectItem value="system_alerts">{t('settings.database.tables.system_alerts')}</SelectItem>
+                              <SelectItem value="alert_rules">{t('settings.database.tables.alert_rules')}</SelectItem>
+                              <SelectItem value="system_health_checks">{t('settings.database.tables.system_health_checks')}</SelectItem>
+                              <SelectItem value="system_performance_metrics">{t('settings.database.tables.system_performance_metrics')}</SelectItem>
+                              <SelectItem value="corrective_actions">{t('settings.database.tables.corrective_actions')}</SelectItem>
+                              <SelectItem value="system_analytics">{t('settings.database.tables.system_analytics')}</SelectItem>
+                              <SelectItem value="quick_notes">{t('settings.database.tables.quick_notes')}</SelectItem>
+                              <SelectItem value="note_attachments">{t('settings.database.tables.note_attachments')}</SelectItem>
+                              <SelectItem value="mixing_batches">{t('settings.database.tables.mixing_batches')}</SelectItem>
+                              <SelectItem value="batch_ingredients">{t('settings.database.tables.batch_ingredients')}</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -1632,7 +1632,7 @@ export default function Settings() {
                             }
                           >
                             <Download className="w-4 h-4" />
-                            تصدير CSV
+                            {t('settings.database.exportCsv')}
                           </Button>
                           <Button
                             variant="outline"
@@ -1650,7 +1650,7 @@ export default function Settings() {
                             }
                           >
                             <Download className="w-4 h-4" />
-                            تصدير JSON
+                            {t('settings.database.exportJson')}
                           </Button>
                           <Button
                             variant="outline"
@@ -1668,7 +1668,7 @@ export default function Settings() {
                             }
                           >
                             <Download className="w-4 h-4" />
-                            تصدير Excel
+                            {t('settings.database.exportExcel')}
                           </Button>
                         </div>
                       </div>
@@ -1680,10 +1680,10 @@ export default function Settings() {
                         <div className="flex items-center gap-2 mb-3">
                           <Upload className="w-4 h-4 text-green-500" />
                           <Label className="text-sm font-medium">
-                            استيراد البيانات المتقدم
+                            {t('settings.database.advancedImport')}
                           </Label>
                           <Badge variant="outline" className="text-xs">
-                            الخطوة {importStep} من 3
+                            {t('settings.database.step', { step: importStep })}
                           </Badge>
                         </div>
 
@@ -1705,10 +1705,9 @@ export default function Settings() {
                               {selectedFile ? (
                                 <div className="space-y-2">
                                   <p className="text-sm text-green-600 font-medium">
-                                    تم اختيار الملف: {selectedFile.name}
+                                    {t('settings.database.fileSelected')} {selectedFile.name}
                                   </p>
                                   <p className="text-xs text-gray-500">
-                                    الحجم:{" "}
                                     {(selectedFile.size / 1024).toFixed(1)} KB
                                   </p>
                                   <div className="flex gap-2 justify-center">
@@ -1721,27 +1720,27 @@ export default function Settings() {
                                       disabled={!selectedTable}
                                     >
                                       <Upload className="w-4 h-4 mr-2" />
-                                      تحليل البيانات
+                                      {t('settings.database.parseData')}
                                     </Button>
                                     <Button
                                       variant="outline"
                                       size="sm"
                                       onClick={() => setSelectedFile(null)}
                                     >
-                                      إلغاء
+                                      {t('settings.database.cancel')}
                                     </Button>
                                   </div>
                                 </div>
                               ) : (
                                 <>
                                   <p className="text-sm text-gray-600 mb-2">
-                                    اسحب وأفلت ملف البيانات هنا أو انقر للتصفح
+                                    {t('settings.database.dragDropFile')}
                                   </p>
                                   <p className="text-xs text-gray-500">
-                                    صيغ مدعومة: CSV, JSON, Excel (.xlsx)
+                                    {t('settings.database.supportedFormats')}
                                   </p>
                                   <p className="text-xs text-blue-600 mt-1">
-                                    يدعم حتى 5000+ سجل مع معالجة الدفعات
+                                    {t('settings.database.supportsRecords')}
                                   </p>
                                   <input
                                     type="file"
@@ -1762,7 +1761,7 @@ export default function Settings() {
                                         ?.click()
                                     }
                                   >
-                                    اختيار ملف
+                                    {t('settings.database.selectFile')}
                                   </Button>
                                 </>
                               )}
@@ -1771,7 +1770,7 @@ export default function Settings() {
                             {!selectedTable && (
                               <div className="text-center p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                                 <p className="text-sm text-yellow-700">
-                                  يرجى اختيار الجدول أولاً من قسم التصدير أعلاه
+                                  {t('settings.database.selectTableFirstNote')}
                                 </p>
                               </div>
                             )}
@@ -1783,17 +1782,17 @@ export default function Settings() {
                           <div className="space-y-4">
                             <div className="flex items-center justify-between">
                               <h5 className="text-sm font-medium">
-                                معاينة البيانات وربط الأعمدة
+                                {t('settings.database.dataPreview')}
                               </h5>
                               <Badge variant="secondary">
-                                {fileData.length} سجل
+                                {fileData.length} {t('settings.database.records')}
                               </Badge>
                             </div>
 
                             {/* Column Mapping */}
                             <div className="space-y-3">
                               <Label className="text-sm font-medium">
-                                ربط أعمدة الملف مع أعمدة الجدول
+                                {t('settings.database.mapColumns')}
                               </Label>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-48 overflow-y-auto p-3 border rounded-lg bg-gray-50">
                                 {getTableSchema(selectedTable).map(
@@ -1815,11 +1814,11 @@ export default function Settings() {
                                         }
                                       >
                                         <SelectTrigger className="h-8 text-xs">
-                                          <SelectValue placeholder="اختر عمود" />
+                                          <SelectValue placeholder={t('settings.database.selectColumn')} />
                                         </SelectTrigger>
                                         <SelectContent>
                                           <SelectItem value="none">
-                                            -- لا شيء --
+                                            {t('settings.database.none')}
                                           </SelectItem>
                                           {fileHeaders.map((header) => (
                                             <SelectItem
@@ -1840,11 +1839,11 @@ export default function Settings() {
                             {/* Import Options */}
                             <div className="space-y-3">
                               <Label className="text-sm font-medium">
-                                خيارات الاستيراد
+                                {t('settings.database.importOptions')}
                               </Label>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 border rounded-lg bg-gray-50">
                                 <div className="space-y-2">
-                                  <Label className="text-xs">حجم الدفعة</Label>
+                                  <Label className="text-xs">{t('settings.database.batchSize')}</Label>
                                   <Select
                                     value={importOptions.batchSize.toString()}
                                     onValueChange={(value) =>
@@ -1859,13 +1858,13 @@ export default function Settings() {
                                     </SelectTrigger>
                                     <SelectContent>
                                       <SelectItem value="500">
-                                        500 سجل
+                                        500 {t('settings.database.recordsLabel')}
                                       </SelectItem>
                                       <SelectItem value="1000">
-                                        1000 سجل
+                                        1000 {t('settings.database.recordsLabel')}
                                       </SelectItem>
                                       <SelectItem value="2000">
-                                        2000 سجل
+                                        2000 {t('settings.database.recordsLabel')}
                                       </SelectItem>
                                     </SelectContent>
                                   </Select>
@@ -1883,7 +1882,7 @@ export default function Settings() {
                                       }
                                     />
                                     <Label className="text-xs">
-                                      تحديث البيانات الموجودة
+                                      {t('settings.database.updateExisting')}
                                     </Label>
                                   </div>
                                   <div className="flex items-center gap-2">
@@ -1897,7 +1896,7 @@ export default function Settings() {
                                       }
                                     />
                                     <Label className="text-xs">
-                                      المتابعة عند حدوث خطأ
+                                      {t('settings.database.continueOnError')}
                                     </Label>
                                   </div>
                                 </div>
@@ -1907,7 +1906,7 @@ export default function Settings() {
                             {/* Data Preview */}
                             <div className="space-y-2">
                               <Label className="text-sm font-medium">
-                                معاينة البيانات (أول 5 سجلات)
+                                {t('settings.database.dataPreviewFirst5')}
                               </Label>
                               <div className="overflow-x-auto border rounded-lg">
                                 <table className="w-full text-xs">
@@ -1953,10 +1952,10 @@ export default function Settings() {
                                 variant="outline"
                                 onClick={() => setImportStep(1)}
                               >
-                                العودة
+                                {t('common.back')}
                               </Button>
                               <Button onClick={handleStartImport}>
-                                بدء الاستيراد
+                                {t('settings.database.startImport')}
                               </Button>
                             </div>
                           </div>
@@ -1967,7 +1966,7 @@ export default function Settings() {
                           <div className="space-y-4">
                             <div className="flex items-center justify-between">
                               <h5 className="text-sm font-medium">
-                                نتائج الاستيراد
+                                {t('settings.database.importStatus')}
                               </h5>
                               <Badge
                                 variant={
@@ -1977,15 +1976,15 @@ export default function Settings() {
                                 }
                               >
                                 {importProgress.processing
-                                  ? "جاري المعالجة..."
-                                  : "اكتمل"}
+                                  ? t('settings.database.processing')
+                                  : t('settings.database.completed')}
                               </Badge>
                             </div>
 
                             {importProgress.processing && (
                               <div className="space-y-2">
                                 <div className="flex justify-between text-sm">
-                                  <span>التقدم</span>
+                                  <span>{t('settings.database.progress')}</span>
                                   <span>
                                     {importProgress.current} /{" "}
                                     {importProgress.total}
@@ -2000,7 +1999,7 @@ export default function Settings() {
                                   ></div>
                                 </div>
                                 <div className="text-center text-sm text-gray-600">
-                                  {importProgress.percentage}% مكتمل
+                                  {t('settings.database.percentComplete', { percent: importProgress.percentage })}
                                 </div>
                               </div>
                             )}
@@ -2008,7 +2007,7 @@ export default function Settings() {
                             {importProgress.errors.length > 0 && (
                               <div className="space-y-2">
                                 <Label className="text-sm font-medium text-red-600">
-                                  الأخطاء
+                                  {t('settings.database.errors')}
                                 </Label>
                                 <div className="max-h-32 overflow-y-auto p-3 bg-red-50 border border-red-200 rounded-lg">
                                   {importProgress.errors.map((error, index) => (
@@ -2026,7 +2025,7 @@ export default function Settings() {
                             {importProgress.warnings.length > 0 && (
                               <div className="space-y-2">
                                 <Label className="text-sm font-medium text-yellow-600">
-                                  التحذيرات
+                                  {t('settings.database.warnings')}
                                 </Label>
                                 <div className="max-h-32 overflow-y-auto p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                                   {importProgress.warnings.map(
@@ -2045,7 +2044,7 @@ export default function Settings() {
 
                             <div className="flex gap-2 justify-end">
                               <Button variant="outline" onClick={resetImport}>
-                                استيراد جديد
+                                {t('settings.database.newImport')}
                               </Button>
                             </div>
                           </div>
@@ -2060,7 +2059,7 @@ export default function Settings() {
                   <div className="space-y-4">
                     <h4 className="text-sm font-medium flex items-center gap-2">
                       <HardDrive className="w-4 h-4" />
-                      إحصائيات قاعدة البيانات
+                      {t('settings.database.statistics')}
                     </h4>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -2070,7 +2069,7 @@ export default function Settings() {
                             {databaseStats.tableCount}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            عدد الجداول
+                            {t('settings.database.tableCount')}
                           </div>
                         </div>
                       </Card>
@@ -2080,7 +2079,7 @@ export default function Settings() {
                             {databaseStats.totalRecords.toLocaleString("ar-SA")}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            إجمالي السجلات
+                            {t('settings.database.totalRecords')}
                           </div>
                         </div>
                       </Card>
@@ -2090,7 +2089,7 @@ export default function Settings() {
                             {databaseStats.databaseSize}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            حجم قاعدة البيانات
+                            {t('settings.database.databaseSize')}
                           </div>
                         </div>
                       </Card>
@@ -2100,7 +2099,7 @@ export default function Settings() {
                             {databaseStats.lastBackup}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            آخر نسخة احتياطية
+                            {t('settings.database.lastBackup')}
                           </div>
                         </div>
                       </Card>
@@ -2113,7 +2112,7 @@ export default function Settings() {
                   <div className="space-y-4">
                     <h4 className="text-sm font-medium flex items-center gap-2">
                       <SettingsIcon className="w-4 h-4" />
-                      عمليات الصيانة
+                      {t('settings.database.maintenance')}
                     </h4>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -2129,7 +2128,7 @@ export default function Settings() {
                         ) : (
                           <RefreshCw className="w-4 h-4" />
                         )}
-                        تحسين الجداول
+                        {t('settings.database.optimizeTables')}
                       </Button>
                       <Button
                         variant="outline"
@@ -2143,7 +2142,7 @@ export default function Settings() {
                         ) : (
                           <Database className="w-4 h-4" />
                         )}
-                        فحص التكامل
+                        {t('settings.database.integrityCheck')}
                       </Button>
                       <Button
                         variant="destructive"
@@ -2157,7 +2156,7 @@ export default function Settings() {
                         ) : (
                           <Trash2 className="w-4 h-4" />
                         )}
-                        تنظيف البيانات القديمة
+                        {t('settings.database.cleanOldData')}
                       </Button>
                     </div>
                   </div>
@@ -2165,7 +2164,7 @@ export default function Settings() {
                   <div className="flex justify-end">
                     <Button>
                       <Save className="w-4 h-4 mr-2" />
-                      حفظ إعدادات قاعدة البيانات
+                      {t('settings.database.saveDatabaseSettings')}
                     </Button>
                   </div>
                 </CardContent>
@@ -2177,75 +2176,75 @@ export default function Settings() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Shield className="w-5 h-5" />
-                    الأمان والخصوصية
+                    {t('settings.security.title')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-4">
                     <div>
                       <h4 className="text-sm font-medium mb-2">
-                        تغيير كلمة المرور
+                        {t('settings.security.changePassword')}
                       </h4>
                       <div className="space-y-2">
                         <Label htmlFor="currentPassword">
-                          كلمة المرور الحالية
+                          {t('settings.security.currentPassword')}
                         </Label>
                         <Input
                           id="currentPassword"
                           type="password"
-                          placeholder="أدخل كلمة المرور الحالية"
+                          placeholder={t('settings.security.currentPasswordPlaceholder')}
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="newPassword">كلمة المرور الجديدة</Label>
+                        <Label htmlFor="newPassword">{t('settings.security.newPassword')}</Label>
                         <Input
                           id="newPassword"
                           type="password"
-                          placeholder="أدخل كلمة المرور الجديدة"
+                          placeholder={t('settings.security.newPasswordPlaceholder')}
                         />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="confirmPassword">
-                          تأكيد كلمة المرور
+                          {t('settings.security.confirmPassword')}
                         </Label>
                         <Input
                           id="confirmPassword"
                           type="password"
-                          placeholder="أعد إدخال كلمة المرور"
+                          placeholder={t('settings.security.confirmPasswordPlaceholder')}
                         />
                       </div>
-                      <Button className="mt-2">تحديث كلمة المرور</Button>
+                      <Button className="mt-2">{t('settings.security.updatePassword')}</Button>
                     </div>
                   </div>
 
                   <Separator />
 
                   <div className="space-y-4">
-                    <h4 className="text-sm font-medium">إعدادات الجلسة</h4>
+                    <h4 className="text-sm font-medium">{t('settings.security.sessionSettings')}</h4>
                     <div className="flex items-center justify-between">
                       <div>
                         <Label className="text-base">
-                          انتهاء صلاحية الجلسة التلقائي
+                          {t('settings.security.autoSessionExpiry')}
                         </Label>
                         <p className="text-sm text-muted-foreground">
-                          تسجيل الخروج التلقائي عند عدم النشاط
+                          {t('settings.security.autoSessionExpiryDesc')}
                         </p>
                       </div>
                       <Switch defaultChecked />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="sessionTimeout">
-                        مدة انتهاء الصلاحية
+                        {t('settings.security.expiryDuration')}
                       </Label>
                       <Select defaultValue="30">
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="15">15 دقيقة</SelectItem>
-                          <SelectItem value="30">30 دقيقة</SelectItem>
-                          <SelectItem value="60">ساعة واحدة</SelectItem>
-                          <SelectItem value="120">ساعتان</SelectItem>
+                          <SelectItem value="15">{t('settings.security.15minutes')}</SelectItem>
+                          <SelectItem value="30">{t('settings.security.30minutes')}</SelectItem>
+                          <SelectItem value="60">{t('settings.security.1hour')}</SelectItem>
+                          <SelectItem value="120">{t('settings.security.2hours')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -2271,25 +2270,25 @@ export default function Settings() {
         <AlertDialog open={showRestoreConfirm} onOpenChange={setShowRestoreConfirm}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>تأكيد استعادة النسخة الاحتياطية</AlertDialogTitle>
+              <AlertDialogTitle>{t('settings.restoreConfirm.title')}</AlertDialogTitle>
               <AlertDialogDescription className="space-y-2">
-                <p>هل أنت متأكد من استعادة هذه النسخة الاحتياطية؟</p>
+                <p>{t('settings.restoreConfirm.areYouSure')}</p>
                 <p className="font-semibold text-red-600">
-                  تحذير: سيتم استبدال جميع البيانات الحالية بالبيانات من النسخة الاحتياطية.
+                  {t('settings.restoreConfirm.warning')}
                 </p>
 
                 {pendingBackupData?.metadata && (
                   <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded text-sm">
-                    <p>الملف: {selectedBackupFile?.name}</p>
-                    <p>عدد الجداول: {pendingBackupData.metadata.totalTables}</p>
+                    <p>{t('settings.restoreConfirm.file')}: {selectedBackupFile?.name}</p>
+                    <p>{t('settings.restoreConfirm.tableCount')}: {pendingBackupData.metadata.totalTables}</p>
                     <p>
-                      التاريخ:{" "}
+                      {t('settings.restoreConfirm.date')}:{" "}
                       {new Date(pendingBackupData.metadata.timestamp).toLocaleString("ar-SA")}
                     </p>
                   </div>
                 )}
 
-                <p className="text-sm mt-2">هذا الإجراء لا يمكن التراجع عنه.</p>
+                <p className="text-sm mt-2">{t('settings.restoreConfirm.cannotUndo')}</p>
               </AlertDialogDescription>
             </AlertDialogHeader>
 
@@ -2301,7 +2300,7 @@ export default function Settings() {
                   setPendingBackupData(null);
                 }}
               >
-                إلغاء
+                {t('settings.restoreConfirm.cancel')}
               </AlertDialogCancel>
 
               <AlertDialogAction
@@ -2309,14 +2308,14 @@ export default function Settings() {
                 disabled={restoreBackupMutation.isPending}
                 className="bg-red-600 hover:bg-red-700"
               >
-                {restoreBackupMutation.isPending ? "جاري الاستعادة..." : "استعادة النسخة"}
+                {restoreBackupMutation.isPending ? t('settings.restoreConfirm.restoring') : t('settings.restoreConfirm.restore')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
     </PageLayout>
   );
-} // ← اغلاق Settings() هنا بشكل صحيح
+}
 
           
   
@@ -2325,6 +2324,7 @@ export default function Settings() {
     
       
 function LocationSettingsForm() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
@@ -2353,11 +2353,11 @@ function LocationSettingsForm() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/factory-locations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/system-settings"] });
-      toast({ title: "تم إضافة الموقع بنجاح" });
+      toast({ title: t('settings.location.locationAdded') });
       resetForm();
     },
     onError: () => {
-      toast({ title: "خطأ في إضافة الموقع", variant: "destructive" });
+      toast({ title: t('settings.location.addError'), variant: "destructive" });
     },
   });
 
@@ -2371,11 +2371,11 @@ function LocationSettingsForm() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/factory-locations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/system-settings"] });
-      toast({ title: "تم تحديث الموقع بنجاح" });
+      toast({ title: t('settings.location.locationUpdated') });
       resetForm();
     },
     onError: () => {
-      toast({ title: "خطأ في تحديث الموقع", variant: "destructive" });
+      toast({ title: t('settings.location.updateError'), variant: "destructive" });
     },
   });
 
@@ -2387,10 +2387,10 @@ function LocationSettingsForm() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/factory-locations"] });
-      toast({ title: "تم حذف الموقع بنجاح" });
+      toast({ title: t('settings.location.locationDeleted') });
     },
     onError: () => {
-      toast({ title: "خطأ في حذف الموقع", variant: "destructive" });
+      toast({ title: t('settings.location.deleteError'), variant: "destructive" });
     },
   });
 
@@ -2403,7 +2403,7 @@ function LocationSettingsForm() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/factory-locations"] });
-      toast({ title: "تم تحديث حالة الموقع" });
+      toast({ title: t('settings.location.statusUpdated') });
     },
   });
 
@@ -2431,7 +2431,7 @@ function LocationSettingsForm() {
 
   const handleSubmit = () => {
     if (!name || !nameAr) {
-      toast({ title: "يرجى ملء جميع الحقول المطلوبة", variant: "destructive" });
+      toast({ title: t('settings.location.fillRequiredFields'), variant: "destructive" });
       return;
     }
 
@@ -2453,7 +2453,7 @@ function LocationSettingsForm() {
   };
 
   if (isLoading) {
-    return <div>جاري التحميل...</div>;
+    return <div>{t('common.loading')}</div>;
   }
 
   return (
@@ -2461,10 +2461,10 @@ function LocationSettingsForm() {
       {/* List of locations */}
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold">مواقع المصانع</h3>
+          <h3 className="text-lg font-semibold">{t('settings.location.factoryLocations')}</h3>
           <Button onClick={() => setShowForm(!showForm)} data-testid="button-add-location">
             <Plus className="w-4 h-4 ml-2" />
-            {showForm ? "إلغاء" : "إضافة موقع جديد"}
+            {showForm ? t('common.cancel') : t('settings.location.addNewLocation')}
           </Button>
         </div>
 
@@ -2478,7 +2478,7 @@ function LocationSettingsForm() {
                       <div className="flex items-center gap-2 mb-2">
                         <h4 className="font-semibold">{location.name_ar}</h4>
                         <Badge variant={location.is_active ? "default" : "secondary"}>
-                          {location.is_active ? "نشط" : "غير نشط"}
+                          {location.is_active ? t('settings.location.active') : t('settings.location.inactive')}
                         </Badge>
                       </div>
                       <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
@@ -2486,10 +2486,10 @@ function LocationSettingsForm() {
                       </p>
                       <div className="text-sm space-y-1">
                         <p>
-                          <strong>الإحداثيات:</strong> {location.latitude}, {location.longitude}
+                          <strong>{t('settings.location.coordinates')}:</strong> {location.latitude}, {location.longitude}
                         </p>
                         <p>
-                          <strong>النطاق:</strong> {location.allowed_radius} متر
+                          <strong>{t('settings.location.radius')}:</strong> {location.allowed_radius} {t('settings.location.meters')}
                         </p>
                       </div>
                     </div>
@@ -2511,7 +2511,7 @@ function LocationSettingsForm() {
                         onClick={() => handleEdit(location)}
                         data-testid={`button-edit-${location.id}`}
                       >
-                        تعديل
+                        {t('common.edit')}
                       </Button>
                       <Button
                         variant="destructive"
@@ -2528,7 +2528,7 @@ function LocationSettingsForm() {
             ))}
           </div>
         ) : (
-          <p className="text-center text-gray-500 py-8">لا توجد مواقع مضافة بعد</p>
+          <p className="text-center text-gray-500 py-8">{t('settings.location.noLocations')}</p>
         )}
       </div>
 
@@ -2536,12 +2536,12 @@ function LocationSettingsForm() {
       {showForm && (
         <Card>
           <CardHeader>
-            <CardTitle>{editingLocation ? "تعديل الموقع" : "إضافة موقع جديد"}</CardTitle>
+            <CardTitle>{editingLocation ? t('settings.location.editLocation') : t('settings.location.addNewLocation')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="name-en">الاسم (English)</Label>
+                <Label htmlFor="name-en">{t('settings.location.nameEnglish')}</Label>
                 <Input
                   id="name-en"
                   value={name}
@@ -2551,30 +2551,30 @@ function LocationSettingsForm() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="name-ar">الاسم (عربي)</Label>
+                <Label htmlFor="name-ar">{t('settings.location.nameArabic')}</Label>
                 <Input
                   id="name-ar"
                   value={nameAr}
                   onChange={(e) => setNameAr(e.target.value)}
-                  placeholder="المصنع الرئيسي"
+                  placeholder={t('settings.location.nameArabicPlaceholder')}
                   data-testid="input-name-ar"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">الوصف (اختياري)</Label>
+              <Label htmlFor="description">{t('settings.location.descriptionOptional')}</Label>
               <Input
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="وصف الموقع..."
+                placeholder={t('settings.location.descriptionPlaceholder')}
                 data-testid="input-description"
               />
             </div>
 
             <div className="space-y-2">
-              <Label>اختر الموقع من الخريطة</Label>
+              <Label>{t('settings.location.selectFromMap')}</Label>
               <LocationMapPicker
                 latitude={latitude}
                 longitude={longitude}
@@ -2586,13 +2586,13 @@ function LocationSettingsForm() {
                 editable={true}
               />
               <p className="text-xs text-gray-500">
-                انقر على الخريطة لتحديد الموقع
+                {t('settings.location.clickMapToSelect')}
               </p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
-                <Label htmlFor="lat">دائرة العرض</Label>
+                <Label htmlFor="lat">{t('settings.location.latitude')}</Label>
                 <Input
                   id="lat"
                   type="number"
@@ -2603,7 +2603,7 @@ function LocationSettingsForm() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="lng">خط الطول</Label>
+                <Label htmlFor="lng">{t('settings.location.longitude')}</Label>
                 <Input
                   id="lng"
                   type="number"
@@ -2614,7 +2614,7 @@ function LocationSettingsForm() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="radius">النطاق (متر)</Label>
+                <Label htmlFor="radius">{t('settings.location.radiusMeters')}</Label>
                 <Input
                   id="radius"
                   type="number"
@@ -2633,14 +2633,14 @@ function LocationSettingsForm() {
                 data-testid="button-submit-location"
               >
                 <Save className="w-4 h-4 ml-2" />
-                {editingLocation ? "تحديث الموقع" : "إضافة الموقع"}
+                {editingLocation ? t('settings.location.updateLocation') : t('settings.location.addLocation')}
               </Button>
               <Button
                 variant="outline"
                 onClick={resetForm}
                 data-testid="button-cancel-form"
               >
-                إلغاء
+                {t('common.cancel')}
               </Button>
             </div>
           </CardContent>

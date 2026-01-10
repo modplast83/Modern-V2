@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -34,7 +35,24 @@ import {
   DialogTrigger,
 } from "./ui/dialog";
 
+const CATEGORY_TRANSLATION_MAP: Record<string, string> = {
+  'عام': 'general',
+  'الطلبات': 'orders',
+  'الإنتاج': 'production',
+  'الصيانة': 'maintenance',
+  'الجودة': 'quality',
+  'المخزون': 'inventory',
+  'المستخدمين': 'users',
+  'الموارد البشرية': 'hr',
+  'التقارير': 'reports',
+  'المراقبة': 'monitoring',
+  'التكامل': 'integration',
+  'الوكيل الذكي': 'aiAgent',
+  'النظام': 'system',
+};
+
 export default function RoleManagementTab() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -67,14 +85,14 @@ export default function RoleManagementTab() {
       queryClient.invalidateQueries({ queryKey: ["/api/roles"] });
       setNewRole({ name: "", name_ar: "", permissions: [] });
       toast({
-        title: "تم إنشاء الدور بنجاح",
-        description: "تم إضافة الدور الجديد إلى النظام",
+        title: t("roles.createSuccess"),
+        description: t("roles.createSuccessDescription"),
       });
     },
     onError: () => {
       toast({
-        title: "خطأ في إنشاء الدور",
-        description: "حدث خطأ أثناء إنشاء الدور",
+        title: t("roles.createError"),
+        description: t("roles.createErrorDescription"),
         variant: "destructive",
       });
     },
@@ -92,14 +110,14 @@ export default function RoleManagementTab() {
       queryClient.invalidateQueries({ queryKey: ["/api/roles"] });
       setEditingRole(null);
       toast({
-        title: "تم تحديث الدور بنجاح",
-        description: "تم حفظ التغييرات على الدور",
+        title: t("roles.updateSuccess"),
+        description: t("roles.updateSuccessDescription"),
       });
     },
     onError: () => {
       toast({
-        title: "خطأ في تحديث الدور",
-        description: "حدث خطأ أثناء تحديث الدور",
+        title: t("roles.updateError"),
+        description: t("roles.updateErrorDescription"),
         variant: "destructive",
       });
     },
@@ -115,14 +133,14 @@ export default function RoleManagementTab() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/roles"] });
       toast({
-        title: "تم حذف الدور بنجاح",
-        description: "تم إزالة الدور من النظام",
+        title: t("roles.deleteSuccess"),
+        description: t("roles.deleteSuccessDescription"),
       });
     },
     onError: () => {
       toast({
-        title: "خطأ في حذف الدور",
-        description: "حدث خطأ أثناء حذف الدور",
+        title: t("roles.deleteError"),
+        description: t("roles.deleteErrorDescription"),
         variant: "destructive",
       });
     },
@@ -131,14 +149,19 @@ export default function RoleManagementTab() {
   const handleCreateRole = () => {
     if (!newRole.name || !newRole.name_ar) {
       toast({
-        title: "بيانات ناقصة",
-        description: "يرجى إدخال اسم الدور باللغتين العربية والإنجليزية",
+        title: t("roles.missingData"),
+        description: t("roles.missingDataDescription"),
         variant: "destructive",
       });
       return;
     }
 
     createRoleMutation.mutate(newRole);
+  };
+
+  const getCategoryTranslation = (category: string) => {
+    const key = CATEGORY_TRANSLATION_MAP[category];
+    return key ? t(`roles.categories.${key}`) : category;
   };
 
   const handleUpdateRole = () => {
@@ -254,7 +277,7 @@ export default function RoleManagementTab() {
                     onClick={(e) => e.stopPropagation()}
                     data-testid={`checkbox-category-${category}`}
                   />
-                  <span className="font-medium">{category}</span>
+                  <span className="font-medium">{getCategoryTranslation(category)}</span>
                 </div>
                 <Badge variant={counts.selected > 0 ? "default" : "outline"} className="mr-auto">
                   {counts.selected} / {counts.total}
@@ -300,7 +323,7 @@ export default function RoleManagementTab() {
   );
 
   if (isLoading) {
-    return <div className="text-center py-8">جاري تحميل الأدوار...</div>;
+    return <div className="text-center py-8">{t("roles.loadingRoles")}</div>;
   }
 
   return (
@@ -309,7 +332,7 @@ export default function RoleManagementTab() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">إجمالي الأدوار</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("roles.totalRoles")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{roles.length}</div>
@@ -317,7 +340,7 @@ export default function RoleManagementTab() {
         </Card>
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">إجمالي الصلاحيات</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("roles.totalPermissions")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{PERMISSIONS.length}</div>
@@ -325,7 +348,7 @@ export default function RoleManagementTab() {
         </Card>
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">فئات الصلاحيات</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("roles.permissionCategories")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{PERMISSION_CATEGORIES.length}</div>
@@ -338,35 +361,35 @@ export default function RoleManagementTab() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Plus className="w-5 h-5" />
-            إضافة دور جديد
+            {t("roles.addRole")}
           </CardTitle>
           <CardDescription>
-            قم بإنشاء دور جديد وتحديد صلاحياته من القائمة المنظمة أدناه
+            {t("roles.addRoleDescription")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="roleName">اسم الدور (بالإنجليزية)</Label>
+              <Label htmlFor="roleName">{t("roles.roleNameEn")}</Label>
               <Input
                 id="roleName"
                 value={newRole.name}
                 onChange={(e) =>
                   setNewRole({ ...newRole, name: e.target.value })
                 }
-                placeholder="admin, manager, operator..."
+                placeholder={t("roles.roleNameEnPlaceholder")}
                 data-testid="input-role-name"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="roleNameAr">اسم الدور (بالعربية)</Label>
+              <Label htmlFor="roleNameAr">{t("roles.roleNameAr")}</Label>
               <Input
                 id="roleNameAr"
                 value={newRole.name_ar}
                 onChange={(e) =>
                   setNewRole({ ...newRole, name_ar: e.target.value })
                 }
-                placeholder="مدير، مشرف، مشغل..."
+                placeholder={t("roles.roleNameArPlaceholder")}
                 data-testid="input-role-name-ar"
               />
             </div>
@@ -374,7 +397,7 @@ export default function RoleManagementTab() {
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>الصلاحيات ({newRole.permissions.length} محددة)</Label>
+              <Label>{t("roles.permissions")} ({newRole.permissions.length} {t("roles.selectedPermissions")})</Label>
               <div className="flex gap-2">
                 <Button
                   type="button"
@@ -388,7 +411,7 @@ export default function RoleManagementTab() {
                   }
                   data-testid="button-select-all-new"
                 >
-                  تحديد الكل
+                  {t("roles.selectAll")}
                 </Button>
                 <Button
                   type="button"
@@ -402,7 +425,7 @@ export default function RoleManagementTab() {
                   }
                   data-testid="button-clear-all-new"
                 >
-                  إلغاء تحديد الكل
+                  {t("roles.clearAll")}
                 </Button>
               </div>
             </div>
@@ -419,12 +442,12 @@ export default function RoleManagementTab() {
               {createRoleMutation.isPending ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  جاري الإضافة...
+                  {t("roles.adding")}
                 </>
               ) : (
                 <>
                   <Plus className="w-4 h-4" />
-                  إضافة الدور
+                  {t("roles.addRoleButton")}
                 </>
               )}
             </Button>
@@ -437,21 +460,21 @@ export default function RoleManagementTab() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="w-5 h-5" />
-            الأدوار الموجودة
+            {t("roles.existingRoles")}
           </CardTitle>
           <CardDescription>
-            عرض وإدارة جميع الأدوار المعرفة في النظام
+            {t("roles.existingRolesDescription")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>الرقم</TableHead>
-                <TableHead>اسم الدور</TableHead>
-                <TableHead>الاسم بالعربية</TableHead>
-                <TableHead>الصلاحيات</TableHead>
-                <TableHead>الإجراءات</TableHead>
+                <TableHead>{t("roles.roleNumber")}</TableHead>
+                <TableHead>{t("roles.roleName")}</TableHead>
+                <TableHead>{t("roles.arabicName")}</TableHead>
+                <TableHead>{t("roles.permissions")}</TableHead>
+                <TableHead>{t("common.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -467,7 +490,7 @@ export default function RoleManagementTab() {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary">
-                        {role.permissions?.length || 0} صلاحية
+                        {role.permissions?.length || 0} {t("roles.permissionCount")}
                       </Badge>
                       <Dialog>
                         <DialogTrigger asChild>
@@ -478,14 +501,14 @@ export default function RoleManagementTab() {
                             className="h-8 px-2 text-xs"
                             data-testid={`button-view-permissions-${role.id}`}
                           >
-                            عرض التفاصيل
+                            {t("roles.viewDetails")}
                           </Button>
                         </DialogTrigger>
                         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
                           <DialogHeader>
-                            <DialogTitle>صلاحيات الدور: {role.name_ar}</DialogTitle>
+                            <DialogTitle>{t("roles.rolePermissions")}: {role.name_ar}</DialogTitle>
                             <DialogDescription>
-                              عرض جميع الصلاحيات المخصصة لهذا الدور ({role.permissions?.length || 0} صلاحية)
+                              {t("roles.rolePermissionsDescription")} ({role.permissions?.length || 0} {t("roles.permissionCount")})
                             </DialogDescription>
                           </DialogHeader>
                           <div className="space-y-4 mt-4">
@@ -497,7 +520,7 @@ export default function RoleManagementTab() {
                               return (
                                 <div key={category} className="space-y-2">
                                   <div className="flex items-center gap-2">
-                                    <h4 className="font-medium">{category}</h4>
+                                    <h4 className="font-medium">{getCategoryTranslation(category)}</h4>
                                     <Badge variant="outline">{categoryPerms.length}</Badge>
                                   </div>
                                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 pr-4">
@@ -526,13 +549,13 @@ export default function RoleManagementTab() {
                         data-testid={`button-edit-role-${role.id}`}
                       >
                         <Edit className="w-3 h-3" />
-                        تعديل
+                        {t("common.edit")}
                       </Button>
                       <Button
                         size="sm"
                         variant="destructive"
                         onClick={() => {
-                          if (confirm(`هل أنت متأكد من حذف الدور "${role.name_ar}"؟`)) {
+                          if (confirm(`${t("roles.confirmDelete")} "${role.name_ar}"?`)) {
                             deleteRoleMutation.mutate(role.id);
                           }
                         }}
@@ -541,7 +564,7 @@ export default function RoleManagementTab() {
                         data-testid={`button-delete-role-${role.id}`}
                       >
                         <Trash2 className="w-3 h-3" />
-                        حذف
+                        {t("common.delete")}
                       </Button>
                     </div>
                   </TableCell>
@@ -552,7 +575,7 @@ export default function RoleManagementTab() {
 
           {(roles as any[]).length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
-              لا توجد أدوار محددة في النظام
+              {t("roles.noRoles")}
             </div>
           )}
         </CardContent>
@@ -565,7 +588,7 @@ export default function RoleManagementTab() {
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Shield className="w-5 h-5" />
-                تعديل الدور: {editingRole.name_ar}
+                {t("roles.editRole")}: {editingRole.name_ar}
               </div>
               <Button
                 size="sm"
@@ -577,13 +600,13 @@ export default function RoleManagementTab() {
               </Button>
             </CardTitle>
             <CardDescription>
-              قم بتعديل بيانات الدور وصلاحياته
+              {t("roles.editRoleDescription")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="editRoleName">اسم الدور (بالإنجليزية)</Label>
+                <Label htmlFor="editRoleName">{t("roles.roleNameEn")}</Label>
                 <Input
                   id="editRoleName"
                   value={editingRole.name}
@@ -597,7 +620,7 @@ export default function RoleManagementTab() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="editRoleNameAr">اسم الدور (بالعربية)</Label>
+                <Label htmlFor="editRoleNameAr">{t("roles.roleNameAr")}</Label>
                 <Input
                   id="editRoleNameAr"
                   value={editingRole.name_ar}
@@ -614,7 +637,7 @@ export default function RoleManagementTab() {
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label>الصلاحيات ({editingRole.permissions?.length || 0} محددة)</Label>
+                <Label>{t("roles.permissions")} ({editingRole.permissions?.length || 0} {t("roles.selectedPermissions")})</Label>
                 <div className="flex gap-2">
                   <Button
                     type="button"
@@ -628,7 +651,7 @@ export default function RoleManagementTab() {
                     }
                     data-testid="button-select-all-edit"
                   >
-                    تحديد الكل
+                    {t("roles.selectAll")}
                   </Button>
                   <Button
                     type="button"
@@ -642,7 +665,7 @@ export default function RoleManagementTab() {
                     }
                     data-testid="button-clear-all-edit"
                   >
-                    إلغاء تحديد الكل
+                    {t("roles.clearAll")}
                   </Button>
                 </div>
               </div>
@@ -655,7 +678,7 @@ export default function RoleManagementTab() {
                 onClick={() => setEditingRole(null)}
                 data-testid="button-cancel-edit-bottom"
               >
-                إلغاء
+                {t("common.cancel")}
               </Button>
               <Button
                 onClick={handleUpdateRole}
@@ -666,12 +689,12 @@ export default function RoleManagementTab() {
                 {updateRoleMutation.isPending ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    جاري الحفظ...
+                    {t("roles.saving")}
                   </>
                 ) : (
                   <>
                     <Check className="w-4 h-4" />
-                    حفظ التغييرات
+                    {t("roles.saveChanges")}
                   </>
                 )}
               </Button>
