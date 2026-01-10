@@ -48,7 +48,7 @@ const tabDefs: TabDef[] = [
 export default function ToolsPage(): JSX.Element {
   const { t } = useTranslation();
   return (
-    <PageLayout title={t("tools.title", "الأدوات")} description={t("tools.description", "أدوات حسابية متخصصة لصناعة الأكياس البلاستيكية")}>
+    <PageLayout title={t("tools.title")} description={t("tools.description")}>
       <ToolsContent />
     </PageLayout>
   );
@@ -144,7 +144,7 @@ function ToolsContent(): JSX.Element {
           </div>
           <Button variant="outline" size="sm" className="mr-auto" onClick={() => window.print()}>
             <Printer className="h-4 w-4 ml-2" />
-            {t("common.print", "طباعة")}
+            {t("common.print")}
           </Button>
         </CardContent>
       </Card>
@@ -427,9 +427,9 @@ function BagWeightCalculator({ onBagWeight, onDims }: BagWeightCalculatorProps):
   const selectedRecords = history.filter(r => selectedIds.has(r.id));
   const getBagTypeLabel = (type: BagType) => {
     switch (type) {
-      case "flat": return t("tools.bagWeight.flat", "كيس مسطح");
-      case "side-gusset": return t("tools.bagWeight.sideGusset", "بدخلات جانبية");
-      case "table-cover": return t("tools.bagWeight.tableCover", "سفرة مسطحة");
+      case "flat": return t("tools.bagWeight.flat");
+      case "side-gusset": return t("tools.bagWeight.sideGusset");
+      case "table-cover": return t("tools.bagWeight.tableCover");
     }
   };
 
@@ -440,26 +440,26 @@ function BagWeightCalculator({ onBagWeight, onDims }: BagWeightCalculatorProps):
           <div className="flex items-start gap-4">
             <div className="flex-1 space-y-4">
               <SelectField
-                label={t("tools.bagWeight.type", "نوع الكيس")}
+                label={t("tools.bagWeight.type")}
                 value={bagType}
                 onChange={(v) => setBagType(v as BagType)}
                 options={[
-                  { value: "flat", label: t("tools.bagWeight.flat", "كيس مسطح (بدون دخلات)") },
-                  { value: "side-gusset", label: t("tools.bagWeight.sideGusset", "كيس بدخلات جانبية") },
-                  { value: "table-cover", label: t("tools.bagWeight.tableCover", "سفرة مسطحة") },
+                  { value: "flat", label: t("tools.bagWeight.flatFull") },
+                  { value: "side-gusset", label: t("tools.bagWeight.sideGusset") },
+                  { value: "table-cover", label: t("tools.bagWeight.tableCover") },
                 ]}
               />
               <div className="grid grid-cols-2 gap-3">
-                <InputField label={t("tools.bagWeight.width", "العرض (سم)")} value={widthCm} onChange={setWidthCm} suffix={t("common.cm", "سم")} />
-                <InputField label={t("tools.bagWeight.length", "الطول (سم)")} value={lengthCm} onChange={setLengthCm} suffix={t("common.cm", "سم")} />
+                <InputField label={t("tools.bagWeight.width")} value={widthCm} onChange={setWidthCm} suffix={t("tools.common.cm")} />
+                <InputField label={t("tools.bagWeight.length")} value={lengthCm} onChange={setLengthCm} suffix={t("tools.common.cm")} />
               </div>
-              <InputField label={t("tools.bagWeight.thickness", "السماكة (ميكرون)")} value={thicknessMicron} onChange={setThicknessMicron} suffix="μm" />
+              <InputField label={t("tools.bagWeight.thickness")} value={thicknessMicron} onChange={setThicknessMicron} suffix="μm" />
               <div className="grid grid-cols-2 gap-3">
-                <InputField label={t("tools.bagWeight.layers", "عدد الطبقات")} value={layers} onChange={setLayers} step={1} />
-                <InputField label={t("tools.bagWeight.density", "الكثافة")} value={density} onChange={setDensity} step={0.01} suffix="g/cm³" />
+                <InputField label={t("tools.bagWeight.layers")} value={layers} onChange={setLayers} step={1} />
+                <InputField label={t("tools.bagWeight.density")} value={density} onChange={setDensity} step={0.01} suffix="g/cm³" />
               </div>
               {bagType === "side-gusset" && (
-                <InputField label={t("tools.bagWeight.gusset", "الدخلات الجانبية (سم)")} value={sideGussetCm} onChange={setSideGussetCm} suffix={t("common.cm", "سم")} hint={t("tools.bagWeight.perSide", "لكل جانب")} />
+                <InputField label={t("tools.bagWeight.gusset")} value={sideGussetCm} onChange={setSideGussetCm} suffix={t("tools.common.cm")} hint={t("tools.bagWeight.perSide")} />
               )}
             </div>
             <div className="hidden md:block w-32 flex-shrink-0">
@@ -474,16 +474,16 @@ function BagWeightCalculator({ onBagWeight, onDims }: BagWeightCalculatorProps):
           </div>
           <h3 className="font-semibold text-lg flex items-center gap-2">
             <Scale className="h-5 w-5 text-primary" />
-            {t("tools.bagWeight.results", "النتائج")}
+            {t("tools.bagWeight.results")}
           </h3>
           <div className="grid gap-3">
-            <ResultCard label={t("tools.bagWeight.weightPerBag", "وزن الكيس الواحد")} value={`${fmtFixed(result.gramsPerBag, 3)} جم`} highlight />
-            <ResultCard label={t("tools.bagWeight.bagsPerKg", "عدد الأكياس في 1 كجم")} value={`${fmtFixed(result.bagsPerKg, 1)} كيس`} />
-            <ResultCard label={t("tools.bagWeight.area", "مساحة الكيس")} value={`${fmtFixed(result.areaM2, 4)} م²`} />
+            <ResultCard label={t("tools.bagWeight.weightPerBag")} value={`${fmtFixed(result.gramsPerBag, 3)} ${t("tools.common.gram")}`} highlight />
+            <ResultCard label={t("tools.bagWeight.bagsPerKg")} value={`${fmtFixed(result.bagsPerKg, 1)} ${t("tools.common.bag")}`} />
+            <ResultCard label={t("tools.bagWeight.area")} value={`${fmtFixed(result.areaM2, 4)} ${t("tools.common.sqm")}`} />
           </div>
           <Button onClick={handleSaveRecord} className="w-full">
             <Scale className="h-4 w-4 ml-2" />
-            {t("tools.bagWeight.saveRecord", "حفظ السجل")}
+            {t("tools.bagWeight.saveRecord")}
           </Button>
         </div>
       </div>
@@ -492,16 +492,16 @@ function BagWeightCalculator({ onBagWeight, onDims }: BagWeightCalculatorProps):
         <Card className="print:hidden">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base">{t("tools.bagWeight.history", "السجلات المحفوظة")} ({history.length})</CardTitle>
+              <CardTitle className="text-base">{t("tools.bagWeight.history")} ({history.length})</CardTitle>
               <div className="flex gap-2">
                 {selectedIds.size > 0 && (
                   <Button variant="outline" size="sm" onClick={handlePrintSelected}>
                     <Printer className="h-4 w-4 ml-1" />
-                    {t("tools.bagWeight.printSelected", "طباعة")} ({selectedIds.size})
+                    {t("tools.bagWeight.printSelected")} ({selectedIds.size})
                   </Button>
                 )}
                 <Button variant="ghost" size="sm" onClick={clearHistory} className="text-destructive">
-                  {t("tools.bagWeight.clearHistory", "مسح الكل")}
+                  {t("tools.bagWeight.clearHistory")}
                 </Button>
               </div>
             </div>
@@ -515,7 +515,7 @@ function BagWeightCalculator({ onBagWeight, onDims }: BagWeightCalculatorProps):
                   checked={selectedIds.size === history.length && history.length > 0}
                   onChange={toggleSelectAll}
                 />
-                <span className="font-medium">{t("tools.bagWeight.selectAll", "تحديد الكل")}</span>
+                <span className="font-medium">{t("tools.bagWeight.selectAll")}</span>
               </label>
               {history.map((record) => (
                 <div
@@ -531,19 +531,19 @@ function BagWeightCalculator({ onBagWeight, onDims }: BagWeightCalculatorProps):
                     />
                     <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
                       <div>
-                        <span className="text-muted-foreground">{t("tools.bagWeight.type", "النوع")}:</span>
+                        <span className="text-muted-foreground">{t("tools.bagWeight.type")}:</span>
                         <span className="mr-1 font-medium">{getBagTypeLabel(record.bagType)}</span>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">{t("tools.bagWeight.dimensions", "الأبعاد")}:</span>
-                        <span className="mr-1">{record.widthCm}×{record.lengthCm} سم</span>
+                        <span className="text-muted-foreground">{t("tools.bagWeight.dimensions")}:</span>
+                        <span className="mr-1">{record.widthCm}×{record.lengthCm} {t("tools.common.cm")}</span>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">{t("tools.bagWeight.weight", "الوزن")}:</span>
-                        <span className="mr-1 font-bold text-primary">{fmtFixed(record.gramsPerBag, 3)} جم</span>
+                        <span className="text-muted-foreground">{t("tools.bagWeight.weight")}:</span>
+                        <span className="mr-1 font-bold text-primary">{fmtFixed(record.gramsPerBag, 3)} {t("tools.common.gram")}</span>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">{t("tools.bagWeight.bagsPerKg", "أكياس/كجم")}:</span>
+                        <span className="text-muted-foreground">{t("tools.bagWeight.bagsPerKg")}:</span>
                         <span className="mr-1">{fmtFixed(record.bagsPerKg, 1)}</span>
                       </div>
                     </div>
@@ -560,7 +560,7 @@ function BagWeightCalculator({ onBagWeight, onDims }: BagWeightCalculatorProps):
       {/* Print Template */}
       <div className="hidden print:block">
         <div className="p-8">
-          <h1 className="text-2xl font-bold text-center mb-6">{t("tools.bagWeight.printTitle", "سجلات حاسبة وزن الأكياس")}</h1>
+          <h1 className="text-2xl font-bold text-center mb-6">{t("tools.bagWeight.printTitle")}</h1>
           <div className="grid gap-4">
             {selectedRecords.map((record) => (
               <div key={record.id} className="border-2 border-gray-300 rounded-lg p-4">
@@ -569,23 +569,23 @@ function BagWeightCalculator({ onBagWeight, onDims }: BagWeightCalculatorProps):
                   <span className="text-sm text-gray-500">{record.createdAt}</span>
                 </div>
                 <div className="grid grid-cols-3 gap-4 text-sm">
-                  <div><strong>{t("tools.bagWeight.dimensions", "الأبعاد")}:</strong> {record.widthCm} × {record.lengthCm} {t("common.cm", "سم")}</div>
-                  <div><strong>{t("tools.bagWeight.thickness", "السماكة")}:</strong> {record.thicknessMicron} {t("common.micron", "ميكرون")}</div>
-                  <div><strong>{t("tools.bagWeight.layers", "الطبقات")}:</strong> {record.layers}</div>
+                  <div><strong>{t("tools.bagWeight.dimensions")}:</strong> {record.widthCm} × {record.lengthCm} {t("tools.common.cm")}</div>
+                  <div><strong>{t("tools.bagWeight.thickness")}:</strong> {record.thicknessMicron} {t("tools.common.micron")}</div>
+                  <div><strong>{t("tools.bagWeight.layers")}:</strong> {record.layers}</div>
                 </div>
                 <Separator className="my-3" />
                 <div className="grid grid-cols-3 gap-4">
                   <div className="text-center p-2 bg-gray-100 rounded">
-                    <p className="text-xs text-gray-600">{t("tools.bagWeight.weightPerBag", "وزن الكيس")}</p>
-                    <p className="text-xl font-bold">{fmtFixed(record.gramsPerBag, 3)} {t("common.gram", "جم")}</p>
+                    <p className="text-xs text-gray-600">{t("tools.bagWeight.weightPerBag")}</p>
+                    <p className="text-xl font-bold">{fmtFixed(record.gramsPerBag, 3)} {t("tools.common.gram")}</p>
                   </div>
                   <div className="text-center p-2 bg-gray-100 rounded">
-                    <p className="text-xs text-gray-600">{t("tools.bagWeight.bagsPerKg", "أكياس / كجم")}</p>
+                    <p className="text-xs text-gray-600">{t("tools.bagWeight.bagsPerKg")}</p>
                     <p className="text-xl font-bold">{fmtFixed(record.bagsPerKg, 1)}</p>
                   </div>
                   <div className="text-center p-2 bg-gray-100 rounded">
-                    <p className="text-xs text-gray-600">{t("tools.bagWeight.area", "المساحة")}</p>
-                    <p className="text-xl font-bold">{fmtFixed(record.areaM2, 4)} {t("common.sqm", "م²")}</p>
+                    <p className="text-xs text-gray-600">{t("tools.bagWeight.area")}</p>
+                    <p className="text-xl font-bold">{fmtFixed(record.areaM2, 4)} {t("tools.common.sqm")}</p>
                   </div>
                 </div>
               </div>
@@ -600,6 +600,7 @@ function BagWeightCalculator({ onBagWeight, onDims }: BagWeightCalculatorProps):
 // ===================== 2) أدوات الألوان =====================
 
 function ColorTools(): JSX.Element {
+  const { t } = useTranslation();
   const [c, setC] = useState<number>(0);
   const [m, setM] = useState<number>(0);
   const [y, setY] = useState<number>(0);
@@ -612,7 +613,7 @@ function ColorTools(): JSX.Element {
       <div className="space-y-4">
         <h3 className="font-semibold flex items-center gap-2">
           <Palette className="h-5 w-5 text-primary" />
-          تحويل CMYK → RGB/HEX
+          {t("tools.colors.cmykToRgb")}
         </h3>
         <div className="grid grid-cols-2 gap-3">
           <InputField label="Cyan %" value={c} onChange={setC} step={1} suffix="%" />
@@ -631,7 +632,7 @@ function ColorTools(): JSX.Element {
       <div className="space-y-4">
         <h3 className="font-semibold flex items-center gap-2">
           <Palette className="h-5 w-5 text-primary" />
-          تحويل RGB → CMYK
+          {t("tools.colors.rgbToCmyk")}
         </h3>
         <RgbToCmykWidget />
       </div>
@@ -667,6 +668,7 @@ function RgbToCmykWidget(): JSX.Element {
 // ===================== 3) خلطات اللون =====================
 
 function ColorMixTools(): JSX.Element {
+  const { t } = useTranslation();
   const [hex, setHex] = useState<string>("#008DCB");
   const [cmyk, setCmyk] = useState<CMYK>(() => rgbToCmyk(0, 141, 203));
   const [totalInkPct, setTotalInkPct] = useState<number>(100);
@@ -722,21 +724,21 @@ function ColorMixTools(): JSX.Element {
   return (
     <div className="grid md:grid-cols-2 gap-6">
       <div className="space-y-4">
-        <TextField label="كود اللون HEX" value={hex} onChange={onHexChange} placeholder="#RRGGBB" />
+        <TextField label={t("tools.colorMix.hexCode")} value={hex} onChange={onHexChange} placeholder="#RRGGBB" />
         <div className="grid grid-cols-2 gap-3">
           <InputField label="C %" value={cmyk.c} onChange={(v) => setCmyk({ ...cmyk, c: v })} step={1} />
           <InputField label="M %" value={cmyk.m} onChange={(v) => setCmyk({ ...cmyk, m: v })} step={1} />
           <InputField label="Y %" value={cmyk.y} onChange={(v) => setCmyk({ ...cmyk, y: v })} step={1} />
           <InputField label="K %" value={cmyk.k} onChange={(v) => setCmyk({ ...cmyk, k: v })} step={1} />
         </div>
-        <InputField label="مجموع الخلطة %" value={totalInkPct} onChange={setTotalInkPct} step={1} suffix="%" />
+        <InputField label={t("tools.colorMix.mixTotal")} value={totalInkPct} onChange={setTotalInkPct} step={1} suffix="%" />
         
         <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl space-y-3">
           <div className="flex items-center gap-3">
             <div className="w-16 h-16 rounded-xl border-2" style={{ backgroundColor: hex }} />
             <div>
-              <p className="font-semibold">نسب الخلطة المقترحة</p>
-              <p className="text-sm text-muted-foreground">من إجمالي {totalInkPct}%</p>
+              <p className="font-semibold">{t("tools.colorMix.suggestedMix")}</p>
+              <p className="text-sm text-muted-foreground">{t("tools.colorMix.fromTotal")} {totalInkPct}%</p>
             </div>
           </div>
           <div className="grid grid-cols-4 gap-2">
@@ -749,7 +751,7 @@ function ColorMixTools(): JSX.Element {
       </div>
 
       <div className="space-y-4">
-        <h3 className="font-semibold">استخراج ألوان من صورة</h3>
+        <h3 className="font-semibold">{t("tools.colorMix.extractColors")}</h3>
         <div className="border-2 border-dashed rounded-xl p-6 text-center">
           <input
             type="file"
@@ -760,13 +762,13 @@ function ColorMixTools(): JSX.Element {
           />
           <label htmlFor="image-upload" className="cursor-pointer">
             <PaintBucket className="h-10 w-10 mx-auto mb-2 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">انقر لرفع صورة التصميم</p>
+            <p className="text-sm text-muted-foreground">{t("tools.colorMix.clickToUpload")}</p>
           </label>
         </div>
         <canvas ref={canvasRef} className="hidden" />
         {palette.length > 0 && (
           <div className="space-y-2">
-            <p className="text-sm font-medium">الألوان المستخرجة:</p>
+            <p className="text-sm font-medium">{t("tools.colorMix.extractedColors")}</p>
             <div className="grid grid-cols-6 gap-2">
               {palette.map((p) => (
                 <button
@@ -788,6 +790,7 @@ function ColorMixTools(): JSX.Element {
 // ===================== 4) استهلاك الحبر =====================
 
 function InkUsageCalculator({ sharedDims }: { sharedDims: { widthCm: number; lengthCm: number } | null }): JSX.Element {
+  const { t } = useTranslation();
   const [widthCm, setWidthCm] = useState<number>(sharedDims?.widthCm ?? 30);
   const [lengthCm, setLengthCm] = useState<number>(sharedDims?.lengthCm ?? 40);
   const [printSides, setPrintSides] = useState<string>("1");
@@ -815,33 +818,33 @@ function InkUsageCalculator({ sharedDims }: { sharedDims: { widthCm: number; len
     <div className="grid md:grid-cols-2 gap-6">
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          <InputField label="العرض (سم)" value={widthCm} onChange={setWidthCm} suffix="سم" />
-          <InputField label="الطول (سم)" value={lengthCm} onChange={setLengthCm} suffix="سم" />
+          <InputField label={t("tools.bagWeight.width")} value={widthCm} onChange={setWidthCm} suffix={t("tools.common.cm")} />
+          <InputField label={t("tools.bagWeight.length")} value={lengthCm} onChange={setLengthCm} suffix={t("tools.common.cm")} />
         </div>
         <SelectField
-          label="عدد الأوجه المطبوعة"
+          label={t("tools.inkUsage.printSides")}
           value={printSides}
           onChange={setPrintSides}
           options={[
-            { value: "1", label: "وجه واحد" },
-            { value: "2", label: "وجهان" },
+            { value: "1", label: t("tools.inkUsage.oneSide") },
+            { value: "2", label: t("tools.inkUsage.twoSides") },
           ]}
         />
         <div className="grid grid-cols-2 gap-3">
-          <InputField label="نسبة التغطية" value={coveragePct} onChange={setCoveragePct} step={1} suffix="%" />
-          <InputField label="بدل الحبر" value={inkLaydownGsm} onChange={setInkLaydownGsm} suffix="g/m²" />
+          <InputField label={t("tools.inkUsage.coverage")} value={coveragePct} onChange={setCoveragePct} step={1} suffix="%" />
+          <InputField label={t("tools.inkUsage.inkLaydown")} value={inkLaydownGsm} onChange={setInkLaydownGsm} suffix="g/m²" />
         </div>
-        <InputField label="الكمية" value={qty} onChange={setQty} step={500} suffix="حبة" />
+        <InputField label={t("tools.inkUsage.quantity")} value={qty} onChange={setQty} step={500} suffix={t("tools.common.piece")} />
       </div>
       <div className="space-y-4">
         <h3 className="font-semibold flex items-center gap-2">
           <Droplets className="h-5 w-5 text-primary" />
-          النتائج
+          {t("tools.inkUsage.results")}
         </h3>
         <div className="grid gap-3">
-          <ResultCard label="مساحة مطبوعة/حبة" value={`${fmtFixed(result.printed_m2_per_bag, 4)} م²`} />
-          <ResultCard label="المساحة الكلية" value={`${fmtFixed(result.total_printed_m2, 2)} م²`} />
-          <ResultCard label="كمية الحبر المطلوبة" value={`${fmtFixed(result.ink_kg, 2)} كجم`} highlight />
+          <ResultCard label={t("tools.inkUsage.printedAreaPerBag")} value={`${fmtFixed(result.printed_m2_per_bag, 4)} ${t("tools.common.sqm")}`} />
+          <ResultCard label={t("tools.inkUsage.totalArea")} value={`${fmtFixed(result.total_printed_m2, 2)} ${t("tools.common.sqm")}`} />
+          <ResultCard label={t("tools.inkUsage.inkRequired")} value={`${fmtFixed(result.ink_kg, 2)} ${t("tools.common.kg")}`} highlight />
         </div>
       </div>
     </div>
@@ -851,6 +854,7 @@ function InkUsageCalculator({ sharedDims }: { sharedDims: { widthCm: number; len
 // ===================== 5) تكلفة سريعة =====================
 
 function OrderCostCalculator({ sharedBagWeightG = 0 }: { sharedBagWeightG?: number }): JSX.Element {
+  const { t } = useTranslation();
   const [qty, setQty] = useState<number>(10000);
   const [bagWeightG, setBagWeightG] = useState<number>(sharedBagWeightG || 5);
   const [useShared, setUseShared] = useState<boolean>(Boolean(sharedBagWeightG));
@@ -893,50 +897,50 @@ function OrderCostCalculator({ sharedBagWeightG = 0 }: { sharedBagWeightG?: numb
             checked={useShared}
             onChange={(e) => setUseShared(e.target.checked)}
           />
-          استخدم وزن الكيس من حاسبة الوزن ({fmtFixed(sharedBagWeightG, 3)} جم)
+          {t("tools.orderCost.useBagWeight")} ({fmtFixed(sharedBagWeightG, 3)} {t("tools.common.gram")})
         </label>
-        {!useShared && <InputField label="وزن الكيس" value={bagWeightG} onChange={setBagWeightG} suffix="جم" />}
-        <InputField label="الكمية" value={qty} onChange={setQty} step={500} suffix="حبة" />
+        {!useShared && <InputField label={t("tools.orderCost.bagWeight")} value={bagWeightG} onChange={setBagWeightG} suffix={t("tools.common.gram")} />}
+        <InputField label={t("tools.orderCost.quantity")} value={qty} onChange={setQty} step={500} suffix={t("tools.common.piece")} />
         
         <Separator />
         
         <div className="grid grid-cols-2 gap-3">
-          <InputField label="سعر المادة" value={materialPricePerKg} onChange={setMaterialPricePerKg} suffix="ر.س/كجم" />
-          <InputField label="نسبة الهالك" value={wastePct} onChange={setWastePct} suffix="%" />
+          <InputField label={t("tools.orderCost.materialPrice")} value={materialPricePerKg} onChange={setMaterialPricePerKg} suffix={t("tools.common.sarPerKg")} />
+          <InputField label={t("tools.orderCost.wastePct")} value={wastePct} onChange={setWastePct} suffix="%" />
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <InputField label="تكلفة البثق" value={extrusionCostPerKg} onChange={setExtrusionCostPerKg} suffix="ر.س/كجم" />
-          <InputField label="تكلفة التقطيع" value={cuttingCostPer1000} onChange={setCuttingCostPer1000} suffix="ر.س/1000" />
+          <InputField label={t("tools.orderCost.extrusionCost")} value={extrusionCostPerKg} onChange={setExtrusionCostPerKg} suffix={t("tools.common.sarPerKg")} />
+          <InputField label={t("tools.orderCost.cuttingCost")} value={cuttingCostPer1000} onChange={setCuttingCostPer1000} suffix={t("tools.orderCostAdvanced.per1000")} />
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <InputField label="عدد الألوان" value={colors} onChange={setColors} step={1} />
-          <InputField label="تكلفة الطباعة" value={printCostPerColorPer1000} onChange={setPrintCostPerColorPer1000} suffix="ر.س/لون" />
+          <InputField label={t("tools.orderCost.colorsCount")} value={colors} onChange={setColors} step={1} />
+          <InputField label={t("tools.orderCost.printingCost")} value={printCostPerColorPer1000} onChange={setPrintCostPerColorPer1000} suffix={t("tools.common.sarPerColor")} />
         </div>
-        <InputField label="هامش الربح" value={marginPct} onChange={setMarginPct} suffix="%" />
+        <InputField label={t("tools.orderCost.profitMargin")} value={marginPct} onChange={setMarginPct} suffix="%" />
       </div>
       
       <div className="space-y-4">
         <h3 className="font-semibold flex items-center gap-2">
           <Calculator className="h-5 w-5 text-primary" />
-          النتائج
+          {t("tools.orderCost.results")}
         </h3>
         <div className="grid gap-2">
-          <ResultCard label="وزن المادة" value={`${fmtFixed(result.materialKg, 2)} كجم`} />
-          <ResultCard label="تكلفة المادة" value={fmtSar(result.materialCost)} />
-          <ResultCard label="تكلفة البثق" value={fmtSar(result.extrusionCost)} />
-          <ResultCard label="تكلفة التقطيع" value={fmtSar(result.cuttingCost)} />
-          {colors > 0 && <ResultCard label="تكلفة الطباعة" value={fmtSar(result.printingCost)} />}
+          <ResultCard label={t("tools.orderCost.materialWeight")} value={`${fmtFixed(result.materialKg, 2)} ${t("tools.common.kg")}`} />
+          <ResultCard label={t("tools.orderCost.materialCostResult")} value={`${fmtFixed(result.materialCost, 2)} ${t("tools.common.sar")}`} />
+          <ResultCard label={t("tools.orderCost.extrusionCostResult")} value={`${fmtFixed(result.extrusionCost, 2)} ${t("tools.common.sar")}`} />
+          <ResultCard label={t("tools.orderCost.cuttingCostResult")} value={`${fmtFixed(result.cuttingCost, 2)} ${t("tools.common.sar")}`} />
+          {colors > 0 && <ResultCard label={t("tools.orderCost.printingCostResult")} value={`${fmtFixed(result.printingCost, 2)} ${t("tools.common.sar")}`} />}
         </div>
         <Separator />
         <div className="grid gap-2">
-          <ResultCard label="الإجمالي قبل الربح" value={fmtSar(result.subtotal)} />
-          <ResultCard label="الربح" value={fmtSar(result.margin)} />
-          <ResultCard label="الإجمالي النهائي" value={fmtSar(result.total)} highlight />
+          <ResultCard label={t("tools.orderCost.subtotal")} value={`${fmtFixed(result.subtotal, 2)} ${t("tools.common.sar")}`} />
+          <ResultCard label={t("tools.orderCost.profit")} value={`${fmtFixed(result.margin, 2)} ${t("tools.common.sar")}`} />
+          <ResultCard label={t("tools.orderCost.total")} value={`${fmtFixed(result.total, 2)} ${t("tools.common.sar")}`} highlight />
         </div>
         <Separator />
         <div className="grid grid-cols-2 gap-2">
-          <ResultCard label="سعر الحبة" value={fmtSar(result.unitPrice)} />
-          <ResultCard label="سعر الكيلو" value={fmtSar(result.pricePerKg)} />
+          <ResultCard label={t("tools.orderCost.unitPrice")} value={`${fmtFixed(result.unitPrice, 2)} ${t("tools.common.sar")}`} />
+          <ResultCard label={t("tools.orderCost.pricePerKg")} value={`${fmtFixed(result.pricePerKg, 2)} ${t("tools.common.sar")}`} />
         </div>
       </div>
     </div>
@@ -949,6 +953,7 @@ interface BomItem { name: string; pct: number; pricePerKg: number; }
 interface OtherCost { name: string; type: "perKg" | "per1000" | "fixed"; value: number; }
 
 function OrderCostAdvanced({ sharedBagWeightG = 0 }: { sharedBagWeightG?: number }): JSX.Element {
+  const { t } = useTranslation();
   const [qty, setQty] = useState<number>(10000);
   const [bagWeightG, setBagWeightG] = useState<number>(sharedBagWeightG || 5);
   const [useShared, setUseShared] = useState<boolean>(Boolean(sharedBagWeightG));
@@ -958,9 +963,9 @@ function OrderCostAdvanced({ sharedBagWeightG = 0 }: { sharedBagWeightG?: number
     { name: "Additive", pct: 2, pricePerKg: 18.0 },
   ]);
   const [otherCosts, setOtherCosts] = useState<OtherCost[]>([
-    { name: "تكلفة الطاقة", type: "perKg", value: 0.4 },
-    { name: "التقطيع", type: "per1000", value: 6.0 },
-    { name: "إعداد", type: "fixed", value: 50 },
+    { name: "Energy Cost", type: "perKg", value: 0.4 },
+    { name: "Cutting", type: "per1000", value: 6.0 },
+    { name: "Setup", type: "fixed", value: 50 },
   ]);
   const [wastePct, setWastePct] = useState<number>(4);
   const [colors, setColors] = useState<number>(0);
@@ -1005,49 +1010,49 @@ function OrderCostAdvanced({ sharedBagWeightG = 0 }: { sharedBagWeightG?: number
         <div className="space-y-4">
           <label className="flex items-center gap-2 text-sm cursor-pointer">
             <input type="checkbox" className="rounded" checked={useShared} onChange={(e) => setUseShared(e.target.checked)} />
-            استخدم وزن الكيس من حاسبة الوزن
+            {t("tools.orderCost.useBagWeight")}
           </label>
-          {!useShared && <InputField label="وزن الكيس" value={bagWeightG} onChange={setBagWeightG} suffix="جم" />}
-          <InputField label="الكمية" value={qty} onChange={setQty} step={500} suffix="حبة" />
-          <InputField label="نسبة الهالك" value={wastePct} onChange={setWastePct} suffix="%" />
+          {!useShared && <InputField label={t("tools.orderCost.bagWeight")} value={bagWeightG} onChange={setBagWeightG} suffix={t("tools.common.gram")} />}
+          <InputField label={t("tools.orderCost.quantity")} value={qty} onChange={setQty} step={500} suffix={t("tools.common.piece")} />
+          <InputField label={t("tools.orderCost.wastePct")} value={wastePct} onChange={setWastePct} suffix="%" />
           
           <Separator />
           
-          <h4 className="font-semibold">مكونات الخلطة (BOM)</h4>
+          <h4 className="font-semibold">{t("tools.orderCostAdvanced.bomComponents")}</h4>
           <BomTable rows={bom} setRows={setBom} />
         </div>
         
         <div className="space-y-4">
-          <h4 className="font-semibold">تكاليف أخرى</h4>
+          <h4 className="font-semibold">{t("tools.orderCostAdvanced.otherCosts")}</h4>
           <OtherCostsTable rows={otherCosts} setRows={setOtherCosts} />
           
           <Separator />
           
           <div className="grid grid-cols-2 gap-3">
-            <InputField label="عدد الألوان" value={colors} onChange={setColors} step={1} />
-            <InputField label="تكلفة الطباعة" value={printCostPerColorPer1000} onChange={setPrintCostPerColorPer1000} suffix="ر.س/لون" />
+            <InputField label={t("tools.orderCost.colorsCount")} value={colors} onChange={setColors} step={1} />
+            <InputField label={t("tools.orderCost.printingCost")} value={printCostPerColorPer1000} onChange={setPrintCostPerColorPer1000} suffix={t("tools.common.sarPerColor")} />
           </div>
-          <InputField label="هامش الربح" value={marginPct} onChange={setMarginPct} suffix="%" />
+          <InputField label={t("tools.orderCost.profitMargin")} value={marginPct} onChange={setMarginPct} suffix="%" />
         </div>
       </div>
 
       <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
         <h4 className="font-semibold mb-4 flex items-center gap-2">
           <FileSpreadsheet className="h-5 w-5 text-primary" />
-          نتائج التكلفة
+          {t("tools.orderCostAdvanced.costResults")}
         </h4>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <ResultCard label="سعر الخلطة" value={`${fmtFixed(result.blendPrice, 2)} ر.س/كجم`} />
-          <ResultCard label="وزن المادة" value={`${fmtFixed(result.materialKg, 2)} كجم`} />
-          <ResultCard label="تكلفة المادة" value={fmtSar(result.materialCost)} />
-          <ResultCard label="تكاليف أخرى" value={fmtSar(result.otherCosts)} />
+          <ResultCard label={t("tools.orderCostAdvanced.blendPrice")} value={`${fmtFixed(result.blendPrice, 2)} ${t("tools.common.sarPerKg")}`} />
+          <ResultCard label={t("tools.orderCostAdvanced.materialWeight")} value={`${fmtFixed(result.materialKg, 2)} ${t("tools.common.kg")}`} />
+          <ResultCard label={t("tools.orderCostAdvanced.materialCost")} value={`${fmtFixed(result.materialCost, 2)} ${t("tools.common.sar")}`} />
+          <ResultCard label={t("tools.orderCostAdvanced.otherCostsResult")} value={`${fmtFixed(result.otherCosts, 2)} ${t("tools.common.sar")}`} />
         </div>
         <Separator className="my-4" />
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <ResultCard label="الإجمالي قبل الربح" value={fmtSar(result.subtotal)} />
-          <ResultCard label="الربح" value={fmtSar(result.margin)} />
-          <ResultCard label="الإجمالي النهائي" value={fmtSar(result.total)} highlight />
-          <ResultCard label="سعر الحبة" value={fmtSar(result.unitPrice)} />
+          <ResultCard label={t("tools.orderCost.subtotal")} value={`${fmtFixed(result.subtotal, 2)} ${t("tools.common.sar")}`} />
+          <ResultCard label={t("tools.orderCost.profit")} value={`${fmtFixed(result.margin, 2)} ${t("tools.common.sar")}`} />
+          <ResultCard label={t("tools.orderCost.total")} value={`${fmtFixed(result.total, 2)} ${t("tools.common.sar")}`} highlight />
+          <ResultCard label={t("tools.orderCost.unitPrice")} value={`${fmtFixed(result.unitPrice, 2)} ${t("tools.common.sar")}`} />
         </div>
       </div>
     </div>
@@ -1055,30 +1060,32 @@ function OrderCostAdvanced({ sharedBagWeightG = 0 }: { sharedBagWeightG?: number
 }
 
 function BomTable({ rows, setRows }: { rows: BomItem[]; setRows: (r: BomItem[]) => void }): JSX.Element {
+  const { t } = useTranslation();
   const updateRow = (idx: number, patch: Partial<BomItem>) => {
     setRows(rows.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
   };
-  const addRow = () => setRows([...rows, { name: "مكون جديد", pct: 0, pricePerKg: 0 }]);
+  const addRow = () => setRows([...rows, { name: t("tools.orderCostAdvanced.newComponent"), pct: 0, pricePerKg: 0 }]);
   const delRow = (idx: number) => setRows(rows.filter((_, i) => i !== idx));
 
   return (
     <div className="space-y-2">
       {rows.map((r, i) => (
         <div key={i} className="grid grid-cols-12 gap-2 items-center">
-          <Input className="col-span-5" value={r.name} onChange={(e) => updateRow(i, { name: e.target.value })} placeholder="الاسم" />
+          <Input className="col-span-5" value={r.name} onChange={(e) => updateRow(i, { name: e.target.value })} placeholder={t("tools.orderCostAdvanced.name")} />
           <Input type="number" className="col-span-2" value={r.pct} step={0.1} onChange={(e) => updateRow(i, { pct: Number(e.target.value) })} placeholder="%" />
-          <Input type="number" className="col-span-3" value={r.pricePerKg} step={0.1} onChange={(e) => updateRow(i, { pricePerKg: Number(e.target.value) })} placeholder="السعر" />
-          <Button variant="ghost" size="sm" className="col-span-2 text-destructive" onClick={() => delRow(i)}>حذف</Button>
+          <Input type="number" className="col-span-3" value={r.pricePerKg} step={0.1} onChange={(e) => updateRow(i, { pricePerKg: Number(e.target.value) })} placeholder={t("tools.orderCostAdvanced.price")} />
+          <Button variant="ghost" size="sm" className="col-span-2 text-destructive" onClick={() => delRow(i)}>{t("tools.orderCostAdvanced.delete")}</Button>
         </div>
       ))}
-      <Button variant="outline" size="sm" onClick={addRow}>+ إضافة مكون</Button>
+      <Button variant="outline" size="sm" onClick={addRow}>{t("tools.orderCostAdvanced.addComponent")}</Button>
     </div>
   );
 }
 
 function OtherCostsTable({ rows, setRows }: { rows: OtherCost[]; setRows: (r: OtherCost[]) => void }): JSX.Element {
+  const { t } = useTranslation();
   const updateRow = (idx: number, patch: Partial<OtherCost>) => setRows(rows.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
-  const addRow = () => setRows([...rows, { name: "تكلفة جديدة", type: "fixed", value: 0 }]);
+  const addRow = () => setRows([...rows, { name: t("tools.orderCostAdvanced.newCost"), type: "fixed", value: 0 }]);
   const delRow = (idx: number) => setRows(rows.filter((_, i) => i !== idx));
 
   return (
@@ -1091,16 +1098,16 @@ function OtherCostsTable({ rows, setRows }: { rows: OtherCost[]; setRows: (r: Ot
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="perKg">ر.س/كجم</SelectItem>
-              <SelectItem value="per1000">ر.س/1000</SelectItem>
-              <SelectItem value="fixed">مبلغ ثابت</SelectItem>
+              <SelectItem value="perKg">{t("tools.orderCostAdvanced.perKg")}</SelectItem>
+              <SelectItem value="per1000">{t("tools.orderCostAdvanced.per1000")}</SelectItem>
+              <SelectItem value="fixed">{t("tools.orderCostAdvanced.fixed")}</SelectItem>
             </SelectContent>
           </Select>
           <Input type="number" className="col-span-3" value={r.value} step={0.1} onChange={(e) => updateRow(i, { value: Number(e.target.value) })} />
-          <Button variant="ghost" size="sm" className="col-span-2 text-destructive" onClick={() => delRow(i)}>حذف</Button>
+          <Button variant="ghost" size="sm" className="col-span-2 text-destructive" onClick={() => delRow(i)}>{t("tools.orderCostAdvanced.delete")}</Button>
         </div>
       ))}
-      <Button variant="outline" size="sm" onClick={addRow}>+ إضافة تكلفة</Button>
+      <Button variant="outline" size="sm" onClick={addRow}>{t("tools.orderCostAdvanced.addCost")}</Button>
     </div>
   );
 }
@@ -1108,6 +1115,7 @@ function OtherCostsTable({ rows, setRows }: { rows: OtherCost[]; setRows: (r: Ot
 // ===================== 7) أدوات الرول =====================
 
 function RollTools(): JSX.Element {
+  const { t } = useTranslation();
   const [rollWeightKg, setRollWeightKg] = useState<number>(25);
   const [coreWeightKg, setCoreWeightKg] = useState<number>(0.4);
   const [rollWidthCm, setRollWidthCm] = useState<number>(60);
@@ -1139,32 +1147,32 @@ function RollTools(): JSX.Element {
       <div className="space-y-4">
         <h4 className="font-semibold flex items-center gap-2">
           <Package className="h-5 w-5 text-primary" />
-          من وزن الرول → الطول
+          {t("tools.roll.weightToLength")}
         </h4>
         <div className="grid grid-cols-2 gap-3">
-          <InputField label="وزن الرول" value={rollWeightKg} onChange={setRollWeightKg} suffix="كجم" />
-          <InputField label="وزن الكرتون" value={coreWeightKg} onChange={setCoreWeightKg} suffix="كجم" />
+          <InputField label={t("tools.roll.rollWeight")} value={rollWeightKg} onChange={setRollWeightKg} suffix={t("tools.common.kg")} />
+          <InputField label={t("tools.roll.coreWeight")} value={coreWeightKg} onChange={setCoreWeightKg} suffix={t("tools.common.kg")} />
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <InputField label="العرض" value={rollWidthCm} onChange={setRollWidthCm} suffix="سم" />
-          <InputField label="السماكة" value={rollThicknessMicron} onChange={setRollThicknessMicron} suffix="μm" />
+          <InputField label={t("tools.roll.width")} value={rollWidthCm} onChange={setRollWidthCm} suffix={t("tools.common.cm")} />
+          <InputField label={t("tools.roll.thickness")} value={rollThicknessMicron} onChange={setRollThicknessMicron} suffix="μm" />
         </div>
-        <InputField label="الكثافة" value={rollDensity} onChange={setRollDensity} suffix="g/cm³" />
-        <ResultCard label="الطول التقريبي" value={`${fmtFixed(lengthM, 1)} متر`} highlight />
+        <InputField label={t("tools.roll.density")} value={rollDensity} onChange={setRollDensity} suffix="g/cm³" />
+        <ResultCard label={t("tools.roll.estimatedLength")} value={`${fmtFixed(lengthM, 1)} ${t("tools.common.meter")}`} highlight />
       </div>
       
       <div className="space-y-4">
         <h4 className="font-semibold flex items-center gap-2">
           <Package className="h-5 w-5 text-primary" />
-          من الطول → وزن الرول
+          {t("tools.roll.lengthToWeight")}
         </h4>
-        <InputField label="الطول المطلوب" value={targetLengthM} onChange={setTargetLengthM} suffix="متر" />
+        <InputField label={t("tools.roll.targetLength")} value={targetLengthM} onChange={setTargetLengthM} suffix={t("tools.common.meter")} />
         <div className="grid grid-cols-2 gap-3">
-          <InputField label="العرض" value={tWidthCm} onChange={setTWidthCm} suffix="سم" />
-          <InputField label="السماكة" value={tThicknessMicron} onChange={setTThicknessMicron} suffix="μm" />
+          <InputField label={t("tools.roll.width")} value={tWidthCm} onChange={setTWidthCm} suffix={t("tools.common.cm")} />
+          <InputField label={t("tools.roll.thickness")} value={tThicknessMicron} onChange={setTThicknessMicron} suffix="μm" />
         </div>
-        <InputField label="الكثافة" value={tDensity} onChange={setTDensity} suffix="g/cm³" />
-        <ResultCard label="الوزن المطلوب" value={`${fmtFixed(neededWeightKg, 2)} كجم`} highlight />
+        <InputField label={t("tools.roll.density")} value={tDensity} onChange={setTDensity} suffix="g/cm³" />
+        <ResultCard label={t("tools.roll.requiredWeight")} value={`${fmtFixed(neededWeightKg, 2)} ${t("tools.common.kg")}`} highlight />
       </div>
     </div>
   );
@@ -1173,6 +1181,7 @@ function RollTools(): JSX.Element {
 // ===================== 8) تحويل السماكة =====================
 
 function ThicknessConverter(): JSX.Element {
+  const { t } = useTranslation();
   const [micron, setMicron] = useState<number>(20);
   const mm = useMemo(() => toNumber(micron) / 1000, [micron]);
   const gauge = useMemo(() => toNumber(micron) * 4, [micron]);
@@ -1190,36 +1199,36 @@ function ThicknessConverter(): JSX.Element {
       <div className="space-y-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
         <h4 className="font-semibold flex items-center gap-2">
           <Ruler className="h-5 w-5 text-primary" />
-          من ميكرون
+          {t("tools.thickness.fromMicron")}
         </h4>
-        <InputField label="ميكرون" value={micron} onChange={setMicron} suffix="μm" />
+        <InputField label={t("tools.thickness.micron")} value={micron} onChange={setMicron} suffix="μm" />
         <div className="grid gap-2">
-          <ResultCard label="مليمتر" value={fmtFixed(mm, 4)} />
-          <ResultCard label="قيج" value={fmtFixed(gauge, 1)} />
+          <ResultCard label={t("tools.thickness.mm")} value={fmtFixed(mm, 4)} />
+          <ResultCard label={t("tools.thickness.gauge")} value={fmtFixed(gauge, 1)} />
         </div>
       </div>
       
       <div className="space-y-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
         <h4 className="font-semibold flex items-center gap-2">
           <Ruler className="h-5 w-5 text-primary" />
-          من مليمتر
+          {t("tools.thickness.fromMm")}
         </h4>
-        <InputField label="مليمتر" value={mmIn} onChange={setMmIn} step={0.001} suffix="mm" />
+        <InputField label={t("tools.thickness.mm")} value={mmIn} onChange={setMmIn} step={0.001} suffix="mm" />
         <div className="grid gap-2">
-          <ResultCard label="ميكرون" value={fmtFixed(micronFromMm, 1)} />
-          <ResultCard label="قيج" value={fmtFixed(gaugeFromMm, 1)} />
+          <ResultCard label={t("tools.thickness.micron")} value={fmtFixed(micronFromMm, 1)} />
+          <ResultCard label={t("tools.thickness.gauge")} value={fmtFixed(gaugeFromMm, 1)} />
         </div>
       </div>
       
       <div className="space-y-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
         <h4 className="font-semibold flex items-center gap-2">
           <Ruler className="h-5 w-5 text-primary" />
-          من قيج
+          {t("tools.thickness.fromGauge")}
         </h4>
-        <InputField label="قيج" value={gaugeIn} onChange={setGaugeIn} step={1} />
+        <InputField label={t("tools.thickness.gauge")} value={gaugeIn} onChange={setGaugeIn} step={1} />
         <div className="grid gap-2">
-          <ResultCard label="ميكرون" value={fmtFixed(micronFromGauge, 1)} />
-          <ResultCard label="مليمتر" value={fmtFixed(mmFromGauge, 4)} />
+          <ResultCard label={t("tools.thickness.micron")} value={fmtFixed(micronFromGauge, 1)} />
+          <ResultCard label={t("tools.thickness.mm")} value={fmtFixed(mmFromGauge, 4)} />
         </div>
       </div>
     </div>
@@ -1229,6 +1238,7 @@ function ThicknessConverter(): JSX.Element {
 // ===================== 9) زمن التشغيل =====================
 
 function JobTimePlanner(): JSX.Element {
+  const { t } = useTranslation();
   const [qty, setQty] = useState<number>(10000);
   const [bagWeightG, setBagWeightG] = useState<number>(5);
   const [extrusionKgPerHr, setExtrusionKgPerHr] = useState<number>(35);
@@ -1258,51 +1268,51 @@ function JobTimePlanner(): JSX.Element {
     <div className="grid lg:grid-cols-2 gap-6">
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          <InputField label="الكمية" value={qty} onChange={setQty} step={500} suffix="حبة" />
-          <InputField label="وزن الحبة" value={bagWeightG} onChange={setBagWeightG} suffix="جم" />
+          <InputField label={t("tools.jobTime.quantity")} value={qty} onChange={setQty} step={500} suffix={t("tools.common.piece")} />
+          <InputField label={t("tools.jobTime.bagWeight")} value={bagWeightG} onChange={setBagWeightG} suffix={t("tools.common.gram")} />
         </div>
         
         <Separator />
-        <h4 className="font-semibold text-sm text-muted-foreground">سرعات الإنتاج</h4>
+        <h4 className="font-semibold text-sm text-muted-foreground">{t("tools.jobTime.productionSpeeds")}</h4>
         
         <div className="grid grid-cols-2 gap-3">
-          <InputField label="سرعة البثق" value={extrusionKgPerHr} onChange={setExtrusionKgPerHr} suffix="كجم/س" />
-          <InputField label="سرعة التقطيع" value={cutBagsPerMin} onChange={setCutBagsPerMin} suffix="حبة/د" />
+          <InputField label={t("tools.jobTime.extrusionSpeed")} value={extrusionKgPerHr} onChange={setExtrusionKgPerHr} suffix={t("tools.common.kgPerHour")} />
+          <InputField label={t("tools.jobTime.cuttingSpeed")} value={cutBagsPerMin} onChange={setCutBagsPerMin} suffix={t("tools.common.piecesPerMin")} />
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <InputField label="سرعة الطباعة" value={printMPerMin} onChange={setPrintMPerMin} suffix="م/د" />
-          <InputField label="طول الحبة" value={bagLengthCm} onChange={setBagLengthCm} suffix="سم" />
+          <InputField label={t("tools.jobTime.printingSpeed")} value={printMPerMin} onChange={setPrintMPerMin} suffix={t("tools.common.metersPerMin")} />
+          <InputField label={t("tools.jobTime.bagLength")} value={bagLengthCm} onChange={setBagLengthCm} suffix={t("tools.common.cm")} />
         </div>
         
         <Separator />
-        <h4 className="font-semibold text-sm text-muted-foreground">أوقات الإعداد</h4>
+        <h4 className="font-semibold text-sm text-muted-foreground">{t("tools.jobTime.setupTimes")}</h4>
         
         <div className="grid grid-cols-3 gap-3">
-          <InputField label="إعداد البثق" value={setupExtruderHr} onChange={setSetupExtruderHr} suffix="ساعة" />
-          <InputField label="إعداد التقطيع" value={setupCutterHr} onChange={setSetupCutterHr} suffix="ساعة" />
-          <InputField label="إعداد الطباعة" value={setupPrinterHr} onChange={setSetupPrinterHr} suffix="ساعة" />
+          <InputField label={t("tools.jobTime.extrusionSetup")} value={setupExtruderHr} onChange={setSetupExtruderHr} suffix={t("tools.common.hour")} />
+          <InputField label={t("tools.jobTime.cuttingSetup")} value={setupCutterHr} onChange={setSetupCutterHr} suffix={t("tools.common.hour")} />
+          <InputField label={t("tools.jobTime.printingSetup")} value={setupPrinterHr} onChange={setSetupPrinterHr} suffix={t("tools.common.hour")} />
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <InputField label="عدد الألوان" value={colors} onChange={setColors} step={1} />
-          <InputField label="زمن تغيير اللون" value={changeoverPerColorMin} onChange={setChangeoverPerColorMin} suffix="دقيقة" />
+          <InputField label={t("tools.jobTime.colorsCount")} value={colors} onChange={setColors} step={1} />
+          <InputField label={t("tools.jobTime.colorChangeTime")} value={changeoverPerColorMin} onChange={setChangeoverPerColorMin} suffix={t("tools.common.minute")} />
         </div>
       </div>
 
       <div className="space-y-4">
         <h3 className="font-semibold flex items-center gap-2">
           <Clock className="h-5 w-5 text-primary" />
-          تقدير الوقت
+          {t("tools.jobTime.timeEstimate")}
         </h3>
         <div className="grid gap-3">
-          <ResultCard label="وزن المادة" value={`${fmtFixed(result.totalKg, 2)} كجم`} />
-          <ResultCard label="ساعات البثق" value={`${fmtFixed(result.extrusionHours, 2)} ساعة`} />
-          <ResultCard label="ساعات الطباعة" value={`${fmtFixed(result.printHours, 2)} ساعة`} />
-          <ResultCard label="ساعات التقطيع" value={`${fmtFixed(result.cutHours, 2)} ساعة`} />
+          <ResultCard label={t("tools.jobTime.materialWeight")} value={`${fmtFixed(result.totalKg, 2)} ${t("tools.common.kg")}`} />
+          <ResultCard label={t("tools.jobTime.extrusionHours")} value={`${fmtFixed(result.extrusionHours, 2)} ${t("tools.common.hour")}`} />
+          <ResultCard label={t("tools.jobTime.printingHours")} value={`${fmtFixed(result.printHours, 2)} ${t("tools.common.hour")}`} />
+          <ResultCard label={t("tools.jobTime.cuttingHours")} value={`${fmtFixed(result.cutHours, 2)} ${t("tools.common.hour")}`} />
         </div>
         <Separator />
-        <ResultCard label="إجمالي ساعات التشغيل" value={`${fmtFixed(result.totalHours, 2)} ساعة`} highlight />
+        <ResultCard label={t("tools.jobTime.totalHours")} value={`${fmtFixed(result.totalHours, 2)} ${t("tools.common.hour")}`} highlight />
         <p className="text-xs text-muted-foreground bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
-          💡 الأوقات تقديرية وقد تختلف حسب ظروف الإنتاج الفعلية
+          {t("tools.jobTime.note")}
         </p>
       </div>
     </div>
@@ -1323,10 +1333,6 @@ function round(v: number, decimals: number): number {
 
 function fmtFixed(v: number, d: number): string {
   return toNumber(v).toFixed(d);
-}
-
-function fmtSar(v: number): string {
-  return `${fmtFixed(v, 2)} ر.س`;
 }
 
 interface CMYK { c: number; m: number; y: number; k: number; }

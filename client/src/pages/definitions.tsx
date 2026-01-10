@@ -499,14 +499,14 @@ export default function Definitions() {
     setEditingItem(null); // Ensure it's a new record
     setSelectedTab("customer-products");
     setIsDialogOpen(true);
-    toast({ title: "تم نسخ بيانات المنتج - يمكنك تعديلها والحفظ" });
+    toast({ title: t("definitions.messages.customerProductCopied") });
   };
 
   const handlePrintCustomerProduct = (product: any) => {
     // Create a detailed print view
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
-      toast({ title: "خطأ في فتح نافذة الطباعة", variant: "destructive" });
+      toast({ title: t("definitions.messages.printError"), variant: "destructive" });
       return;
     }
 
@@ -1100,22 +1100,22 @@ export default function Definitions() {
             onClick={() => onPageChange(currentPage - 1)}
             disabled={currentPage === 1}
           >
-            السابق
+            {t("definitions.previous")}
           </Button>
           <Button
             variant="outline"
             onClick={() => onPageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
           >
-            التالي
+            {t("definitions.next")}
           </Button>
         </div>
         <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
           <div>
             <p className="text-sm text-gray-700">
-              عرض <span className="font-medium">{startItem}</span> إلى{" "}
-              <span className="font-medium">{endItem}</span> من{" "}
-              <span className="font-medium">{totalItems}</span> نتيجة
+              {t("definitions.showing")} <span className="font-medium">{startItem}</span> {t("definitions.to")}{" "}
+              <span className="font-medium">{endItem}</span> {t("definitions.of")}{" "}
+              <span className="font-medium">{totalItems}</span> {t("definitions.results")}
             </p>
           </div>
           <div>
@@ -1194,11 +1194,11 @@ export default function Definitions() {
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
       resetForm();
       setIsDialogOpen(false);
-      toast({ title: "تم إنشاء العميل بنجاح" });
+      toast({ title: t("definitions.messages.customerCreated") });
     },
     onError: (error: any) => {
-      console.error("خطأ في إنشاء العميل:", error);
-      toast({ title: "خطأ في إنشاء العميل", variant: "destructive" });
+      console.error("Error creating customer:", error);
+      toast({ title: t("definitions.messages.customerCreateError"), variant: "destructive" });
     },
   });
 
@@ -1214,11 +1214,11 @@ export default function Definitions() {
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
       resetForm();
       setIsDialogOpen(false);
-      toast({ title: "تم تحديث العميل بنجاح" });
+      toast({ title: t("definitions.messages.customerUpdated") });
     },
     onError: (error: any) => {
-      console.error("خطأ في تحديث العميل:", error);
-      toast({ title: "خطأ في تحديث العميل", variant: "destructive" });
+      console.error("Error updating customer:", error);
+      toast({ title: t("definitions.messages.customerUpdateError"), variant: "destructive" });
     },
   });
 
@@ -1235,11 +1235,11 @@ export default function Definitions() {
       queryClient.invalidateQueries({ queryKey: ["/api/sections"] });
       resetForm();
       setIsDialogOpen(false);
-      toast({ title: "تم إنشاء القسم بنجاح" });
+      toast({ title: t("definitions.messages.sectionCreated") });
     },
     onError: (error: any) => {
-      console.error("خطأ في إنشاء القسم:", error);
-      toast({ title: "خطأ في إنشاء القسم", variant: "destructive" });
+      console.error("Error creating section:", error);
+      toast({ title: t("definitions.messages.sectionCreateError"), variant: "destructive" });
     },
   });
 
@@ -1255,11 +1255,11 @@ export default function Definitions() {
       queryClient.invalidateQueries({ queryKey: ["/api/sections"] });
       resetForm();
       setIsDialogOpen(false);
-      toast({ title: "تم تحديث القسم بنجاح" });
+      toast({ title: t("definitions.messages.sectionUpdated") });
     },
     onError: (error: any) => {
-      console.error("خطأ في تحديث القسم:", error);
-      toast({ title: "خطأ في تحديث القسم", variant: "destructive" });
+      console.error("Error updating section:", error);
+      toast({ title: t("definitions.messages.sectionUpdateError"), variant: "destructive" });
     },
   });
 
@@ -1276,11 +1276,11 @@ export default function Definitions() {
       queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
       resetForm();
       setIsDialogOpen(false);
-      toast({ title: "تم إنشاء الفئة بنجاح" });
+      toast({ title: t("definitions.messages.categoryCreated") });
     },
     onError: (error: any) => {
-      console.error("خطأ في إنشاء الفئة:", error);
-      toast({ title: "خطأ في إنشاء الفئة", variant: "destructive" });
+      console.error("Error creating category:", error);
+      toast({ title: t("definitions.messages.categoryCreateError"), variant: "destructive" });
     },
   });
 
@@ -1296,11 +1296,11 @@ export default function Definitions() {
       queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
       resetForm();
       setIsDialogOpen(false);
-      toast({ title: "تم تحديث الفئة بنجاح" });
+      toast({ title: t("definitions.messages.categoryUpdated") });
     },
     onError: (error: any) => {
-      console.error("خطأ في تحديث الفئة:", error);
-      toast({ title: "خطأ في تحديث الفئة", variant: "destructive" });
+      console.error("Error updating category:", error);
+      toast({ title: t("definitions.messages.categoryUpdateError"), variant: "destructive" });
     },
   });
 
@@ -1320,11 +1320,11 @@ export default function Definitions() {
       queryClient.invalidateQueries({ queryKey: ["/api/items"] });
       resetForm();
       setIsDialogOpen(false);
-      toast({ title: "تم إنشاء الصنف بنجاح" });
+      toast({ title: t("definitions.messages.itemCreated") });
     },
     onError: (error: any) => {
-      console.error("خطأ في إنشاء الصنف:", error);
-      toast({ title: "خطأ في إنشاء الصنف", variant: "destructive" });
+      console.error("Error creating item:", error);
+      toast({ title: t("definitions.messages.itemCreateError"), variant: "destructive" });
     },
   });
 
@@ -1343,11 +1343,11 @@ export default function Definitions() {
       queryClient.invalidateQueries({ queryKey: ["/api/items"] });
       resetForm();
       setIsDialogOpen(false);
-      toast({ title: "تم تحديث الصنف بنجاح" });
+      toast({ title: t("definitions.messages.itemUpdated") });
     },
     onError: (error: any) => {
-      console.error("خطأ في تحديث الصنف:", error);
-      toast({ title: "خطأ في تحديث الصنف", variant: "destructive" });
+      console.error("Error updating item:", error);
+      toast({ title: t("definitions.messages.itemUpdateError"), variant: "destructive" });
     },
   });
 
@@ -1367,11 +1367,11 @@ export default function Definitions() {
       queryClient.invalidateQueries({ queryKey: ["/api/customer-products"] });
       resetForm();
       setIsDialogOpen(false);
-      toast({ title: "تم إنشاء منتج العميل بنجاح" });
+      toast({ title: t("definitions.messages.customerProductCreated") });
     },
     onError: (error: any) => {
-      console.error("خطأ في إنشاء منتج العميل:", error);
-      toast({ title: "خطأ في إنشاء منتج العميل", variant: "destructive" });
+      console.error("Error creating customer product:", error);
+      toast({ title: t("definitions.messages.customerProductCreateError"), variant: "destructive" });
     },
   });
 
@@ -1390,11 +1390,11 @@ export default function Definitions() {
       queryClient.invalidateQueries({ queryKey: ["/api/customer-products"] });
       resetForm();
       setIsDialogOpen(false);
-      toast({ title: "تم تحديث منتج العميل بنجاح" });
+      toast({ title: t("definitions.messages.customerProductUpdated") });
     },
     onError: (error: any) => {
-      console.error("خطأ في تحديث منتج العميل:", error);
-      toast({ title: "خطأ في تحديث منتج العميل", variant: "destructive" });
+      console.error("Error updating customer product:", error);
+      toast({ title: t("definitions.messages.customerProductUpdateError"), variant: "destructive" });
     },
   });
 
@@ -1411,11 +1411,11 @@ export default function Definitions() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/customer-products"] });
-      toast({ title: "تم حذف منتج العميل بنجاح" });
+      toast({ title: t("definitions.messages.customerProductDeleted") });
     },
     onError: (error: any) => {
-      console.error("خطأ في حذف منتج العميل:", error);
-      toast({ title: "خطأ في حذف منتج العميل", variant: "destructive" });
+      console.error("Error deleting customer product:", error);
+      toast({ title: t("definitions.messages.customerProductDeleteError"), variant: "destructive" });
     },
   });
 
@@ -1432,11 +1432,11 @@ export default function Definitions() {
       queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
       resetForm();
       setIsDialogOpen(false);
-      toast({ title: "تم إنشاء الموقع بنجاح" });
+      toast({ title: t("definitions.messages.locationCreated") });
     },
     onError: (error: any) => {
-      console.error("خطأ في إنشاء الموقع:", error);
-      toast({ title: "خطأ في إنشاء الموقع", variant: "destructive" });
+      console.error("Error creating location:", error);
+      toast({ title: t("definitions.messages.locationCreateError"), variant: "destructive" });
     },
   });
 
@@ -1452,11 +1452,11 @@ export default function Definitions() {
       queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
       resetForm();
       setIsDialogOpen(false);
-      toast({ title: "تم تحديث الموقع بنجاح" });
+      toast({ title: t("definitions.messages.locationUpdated") });
     },
     onError: (error: any) => {
-      console.error("خطأ في تحديث الموقع:", error);
-      toast({ title: "خطأ في تحديث الموقع", variant: "destructive" });
+      console.error("Error updating location:", error);
+      toast({ title: t("definitions.messages.locationUpdateError"), variant: "destructive" });
     },
   });
 
@@ -1473,11 +1473,11 @@ export default function Definitions() {
       queryClient.invalidateQueries({ queryKey: ["/api/machines"] });
       resetForm();
       setIsDialogOpen(false);
-      toast({ title: "تم إنشاء الماكينة بنجاح" });
+      toast({ title: t("definitions.messages.machineCreated") });
     },
     onError: (error: any) => {
-      console.error("خطأ في إنشاء الماكينة:", error);
-      toast({ title: "خطأ في إنشاء الماكينة", variant: "destructive" });
+      console.error("Error creating machine:", error);
+      toast({ title: t("definitions.messages.machineCreateError"), variant: "destructive" });
     },
   });
 
@@ -1493,11 +1493,11 @@ export default function Definitions() {
       queryClient.invalidateQueries({ queryKey: ["/api/machines"] });
       resetForm();
       setIsDialogOpen(false);
-      toast({ title: "تم تحديث الماكينة بنجاح" });
+      toast({ title: t("definitions.messages.machineUpdated") });
     },
     onError: (error: any) => {
-      console.error("خطأ في تحديث الماكينة:", error);
-      toast({ title: "خطأ في تحديث الماكينة", variant: "destructive" });
+      console.error("Error updating machine:", error);
+      toast({ title: t("definitions.messages.machineUpdateError"), variant: "destructive" });
     },
   });
 
@@ -1514,11 +1514,11 @@ export default function Definitions() {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       resetForm();
       setIsDialogOpen(false);
-      toast({ title: "تم إنشاء المستخدم بنجاح" });
+      toast({ title: t("definitions.messages.userCreated") });
     },
     onError: (error: any) => {
-      console.error("خطأ في إنشاء المستخدم:", error);
-      toast({ title: "خطأ في إنشاء المستخدم", variant: "destructive" });
+      console.error("Error creating user:", error);
+      toast({ title: t("definitions.messages.userCreateError"), variant: "destructive" });
     },
   });
 
@@ -1534,11 +1534,11 @@ export default function Definitions() {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       resetForm();
       setIsDialogOpen(false);
-      toast({ title: "تم تحديث المستخدم بنجاح" });
+      toast({ title: t("definitions.messages.userUpdated") });
     },
     onError: (error: any) => {
-      console.error("خطأ في تحديث المستخدم:", error);
-      toast({ title: "خطأ في تحديث المستخدم", variant: "destructive" });
+      console.error("Error updating user:", error);
+      toast({ title: t("definitions.messages.userUpdateError"), variant: "destructive" });
     },
   });
 
@@ -1736,7 +1736,7 @@ export default function Definitions() {
                       <div className="flex items-center justify-between">
                         <CardTitle className="flex items-center gap-2">
                           <Building2 className="w-5 h-5" />
-                          إدارة العملاء
+                          {t("definitions.customers.title")}
                         </CardTitle>
                         <Button
                           onClick={() => {
@@ -1746,7 +1746,7 @@ export default function Definitions() {
                           }}
                         >
                           <Plus className="w-4 h-4 mr-2" />
-                          إضافة عميل
+                          {t("definitions.customers.addNew")}
                         </Button>
                       </div>
                     </CardHeader>
@@ -1755,7 +1755,7 @@ export default function Definitions() {
                         <div className="text-center py-8">
                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                           <p className="mt-2 text-sm text-muted-foreground">
-                            جاري التحميل...
+                            {t("common.loading")}
                           </p>
                         </div>
                       ) : (
@@ -1764,25 +1764,25 @@ export default function Definitions() {
                             <thead className="bg-gray-50">
                               <tr>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الرقم
+                                  {t("definitions.customers.code")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الاسم العربي
+                                  {t("definitions.customers.nameAr")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الاسم الإنجليزي
+                                  {t("definitions.customers.name")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  رقم درج
+                                  {t("definitions.customers.plateDrawerCode")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الهاتف
+                                  {t("definitions.customers.phone")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  المدينة
+                                  {t("definitions.customers.city")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  العمليات
+                                  {t("definitions.customers.actions")}
                                 </th>
                               </tr>
                             </thead>
@@ -1858,8 +1858,8 @@ export default function Definitions() {
                                       className="px-6 py-4 text-center text-gray-500"
                                     >
                                       {quickSearch || statusFilter !== "all"
-                                        ? "لا توجد نتائج مطابقة للفلاتر المحددة"
-                                        : "لا توجد بيانات متاحة"}
+                                        ? t("definitions.noFilterResults")
+                                        : t("common.noData")}
                                     </td>
                                   </tr>
                                 );
@@ -1899,7 +1899,7 @@ export default function Definitions() {
                       <div className="flex items-center justify-between">
                         <CardTitle className="flex items-center gap-2">
                           <Package className="w-5 h-5" />
-                          إدارة الفئات
+                          {t("definitions.categories.title")}
                         </CardTitle>
                         <Button
                           onClick={() => {
@@ -1909,7 +1909,7 @@ export default function Definitions() {
                           }}
                         >
                           <Plus className="w-4 h-4 mr-2" />
-                          إضافة فئة
+                          {t("definitions.categories.addNew")}
                         </Button>
                       </div>
                     </CardHeader>
@@ -1918,7 +1918,7 @@ export default function Definitions() {
                         <div className="text-center py-8">
                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                           <p className="mt-2 text-sm text-muted-foreground">
-                            جاري التحميل...
+                            {t("common.loading")}
                           </p>
                         </div>
                       ) : (
@@ -2003,8 +2003,8 @@ export default function Definitions() {
                                       className="px-6 py-4 text-center text-gray-500"
                                     >
                                       {quickSearch || statusFilter !== "all"
-                                        ? "لا توجد نتائج مطابقة للفلاتر المحددة"
-                                        : "لا توجد بيانات متاحة"}
+                                        ? t("definitions.noFilterResults")
+                                        : t("common.noData")}
                                     </td>
                                   </tr>
                                 );
@@ -2044,7 +2044,7 @@ export default function Definitions() {
                       <div className="flex items-center justify-between">
                         <CardTitle className="flex items-center gap-2">
                           <Cog className="w-5 h-5" />
-                          إدارة الأقسام
+                          {t("definitions.sections.title")}
                         </CardTitle>
                         <Button
                           onClick={() => {
@@ -2054,7 +2054,7 @@ export default function Definitions() {
                           }}
                         >
                           <Plus className="w-4 h-4 mr-2" />
-                          إضافة قسم
+                          {t("definitions.sections.addNew")}
                         </Button>
                       </div>
                     </CardHeader>
@@ -2063,7 +2063,7 @@ export default function Definitions() {
                         <div className="text-center py-8">
                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                           <p className="mt-2 text-sm text-muted-foreground">
-                            جاري التحميل...
+                            {t("common.loading")}
                           </p>
                         </div>
                       ) : (
@@ -2142,7 +2142,7 @@ export default function Definitions() {
                                       colSpan={5}
                                       className="px-6 py-8 text-center text-gray-500"
                                     >
-                                      لا توجد أقسام مطابقة للبحث
+                                      {t("definitions.noSearchResults")}
                                     </td>
                                   </tr>
                                 );
@@ -2182,7 +2182,7 @@ export default function Definitions() {
                       <div className="flex items-center justify-between">
                         <CardTitle className="flex items-center gap-2">
                           <Package className="w-5 h-5" />
-                          إدارة الأصناف
+                          {t("definitions.items.title")}
                         </CardTitle>
                         <Button
                           onClick={() => {
@@ -2192,7 +2192,7 @@ export default function Definitions() {
                           }}
                         >
                           <Plus className="w-4 h-4 mr-2" />
-                          إضافة صنف
+                          {t("definitions.items.addNew")}
                         </Button>
                       </div>
                     </CardHeader>
@@ -2201,7 +2201,7 @@ export default function Definitions() {
                         <div className="text-center py-8">
                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                           <p className="mt-2 text-sm text-muted-foreground">
-                            جاري التحميل...
+                            {t("common.loading")}
                           </p>
                         </div>
                       ) : (
@@ -2282,7 +2282,7 @@ export default function Definitions() {
                                       colSpan={5}
                                       className="px-6 py-8 text-center text-gray-500"
                                     >
-                                      لا توجد أصناف مطابقة للبحث
+                                      {t("definitions.noSearchResults")}
                                     </td>
                                   </tr>
                                 );
@@ -2322,7 +2322,7 @@ export default function Definitions() {
                       <div className="flex items-center justify-between">
                         <CardTitle className="flex items-center gap-2">
                           <Package className="w-5 h-5" />
-                          منتجات العملاء
+                          {t("definitions.customerProducts.title")}
                         </CardTitle>
                         <Button
                           onClick={() => {
@@ -2332,7 +2332,7 @@ export default function Definitions() {
                           }}
                         >
                           <Plus className="w-4 h-4 mr-2" />
-                          إضافة منتج
+                          {t("definitions.customerProducts.addNew")}
                         </Button>
                       </div>
                     </CardHeader>
@@ -2341,7 +2341,7 @@ export default function Definitions() {
                         <div className="text-center py-8">
                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                           <p className="mt-2 text-sm text-muted-foreground">
-                            جاري التحميل...
+                            {t("common.loading")}
                           </p>
                         </div>
                       ) : (
@@ -2630,7 +2630,7 @@ export default function Definitions() {
                                       colSpan={11}
                                       className="px-6 py-8 text-center text-gray-500"
                                     >
-                                      لا توجد منتجات مطابقة للبحث
+                                      {t("definitions.noSearchResults")}
                                     </td>
                                   </tr>
                                 );
@@ -2671,7 +2671,7 @@ export default function Definitions() {
                       <div className="flex items-center justify-between">
                         <CardTitle className="flex items-center gap-2">
                           <Settings className="w-5 h-5" />
-                          إدارة الماكينات
+                          {t("definitions.machines.title")}
                         </CardTitle>
                         <Button
                           onClick={() => {
@@ -2681,7 +2681,7 @@ export default function Definitions() {
                           }}
                         >
                           <Plus className="w-4 h-4 mr-2" />
-                          إضافة ماكينة
+                          {t("definitions.machines.addNew")}
                         </Button>
                       </div>
                     </CardHeader>
@@ -2690,7 +2690,7 @@ export default function Definitions() {
                         <div className="text-center py-8">
                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                           <p className="mt-2 text-sm text-muted-foreground">
-                            جاري التحميل...
+                            {t("common.loading")}
                           </p>
                         </div>
                       ) : (
@@ -2811,7 +2811,7 @@ export default function Definitions() {
                                       colSpan={9}
                                       className="px-6 py-8 text-center text-gray-500"
                                     >
-                                      لا توجد ماكينات مطابقة للبحث
+                                      {t("definitions.noSearchResults")}
                                     </td>
                                   </tr>
                                 );
@@ -2851,7 +2851,7 @@ export default function Definitions() {
                       <div className="flex items-center justify-between">
                         <CardTitle className="flex items-center gap-2">
                           <User className="w-5 h-5" />
-                          إدارة المستخدمين
+                          {t("definitions.users.title")}
                         </CardTitle>
                         <Button
                           onClick={() => {
@@ -2861,7 +2861,7 @@ export default function Definitions() {
                           }}
                         >
                           <Plus className="w-4 h-4 mr-2" />
-                          إضافة مستخدم
+                          {t("definitions.users.addNew")}
                         </Button>
                       </div>
                     </CardHeader>
@@ -2870,7 +2870,7 @@ export default function Definitions() {
                         <div className="text-center py-8">
                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                           <p className="mt-2 text-sm text-muted-foreground">
-                            جاري التحميل...
+                            {t("common.loading")}
                           </p>
                         </div>
                       ) : (
@@ -3016,7 +3016,7 @@ export default function Definitions() {
                                       colSpan={5}
                                       className="px-6 py-8 text-center text-gray-500"
                                     >
-                                      لا توجد مستخدمين مطابقة للبحث
+                                      {t("definitions.noSearchResults")}
                                     </td>
                                   </tr>
                                 );
@@ -3063,18 +3063,18 @@ export default function Definitions() {
                 >
                   <DialogHeader>
                     <DialogTitle>
-                      {editingItem ? "تحديث العميل" : "إضافة عميل جديد"}
+                      {editingItem ? t("definitions.customers.edit") : t("definitions.customers.addNew")}
                     </DialogTitle>
                     <DialogDescription id="customer-dialog-description">
                       {editingItem
-                        ? "تعديل بيانات العميل الحالي"
-                        : "إضافة عميل جديد إلى النظام"}
+                        ? t("definitions.customers.editDescription")
+                        : t("definitions.customers.addDescription")}
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="name_ar">الاسم بالعربية *</Label>
+                        <Label htmlFor="name_ar">{t("definitions.customers.nameAr")} *</Label>
                         <Input
                           id="name_ar"
                           value={customerForm.name_ar}
@@ -3089,7 +3089,7 @@ export default function Definitions() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="name">الاسم بالإنجليزية</Label>
+                        <Label htmlFor="name">{t("definitions.customers.name")}</Label>
                         <Input
                           id="name"
                           value={customerForm.name}
@@ -3106,7 +3106,7 @@ export default function Definitions() {
                     </div>
                     <div className="grid grid-cols-3 gap-4">
                       <div>
-                        <Label htmlFor="code">كود العميل</Label>
+                        <Label htmlFor="code">{t("definitions.customers.code")}</Label>
                         <Input
                           id="code"
                           value={customerForm.code}
@@ -3121,7 +3121,7 @@ export default function Definitions() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="plate_drawer_code">رقم درج</Label>
+                        <Label htmlFor="plate_drawer_code">{t("definitions.customers.plateDrawerCode")}</Label>
                         <div className="grid grid-cols-2 gap-2 mt-1">
                           <Select
                             value={drawerLetter || "none"}
@@ -3180,7 +3180,7 @@ export default function Definitions() {
                         </div>
                       </div>
                       <div>
-                        <Label htmlFor="phone">الهاتف</Label>
+                        <Label htmlFor="phone">{t("definitions.customers.phone")}</Label>
                         <Input
                           id="phone"
                           value={customerForm.phone}
@@ -3197,7 +3197,7 @@ export default function Definitions() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="city">المدينة</Label>
+                        <Label htmlFor="city">{t("definitions.customers.city")}</Label>
                         <Input
                           id="city"
                           value={customerForm.city}
@@ -3212,7 +3212,7 @@ export default function Definitions() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="tax_number">الرقم الضريبي</Label>
+                        <Label htmlFor="tax_number">{t("definitions.customers.taxNumber")}</Label>
                         <Input
                           id="tax_number"
                           value={customerForm.tax_number}
@@ -3228,7 +3228,7 @@ export default function Definitions() {
                       </div>
                     </div>
                     <div>
-                      <Label htmlFor="sales_rep_id">المندوب</Label>
+                      <Label htmlFor="sales_rep_id">{t("definitions.customers.salesRep")}</Label>
                       <Select
                         value={customerForm.sales_rep_id?.toString() || "none"}
                         onValueChange={(value) =>
@@ -3256,7 +3256,7 @@ export default function Definitions() {
                       </Select>
                     </div>
                     <div>
-                      <Label htmlFor="address">العنوان</Label>
+                      <Label htmlFor="address">{t("definitions.customers.address")}</Label>
                       <Input
                         id="address"
                         value={customerForm.address}
@@ -3276,7 +3276,7 @@ export default function Definitions() {
                       variant="outline"
                       onClick={() => setIsDialogOpen(false)}
                     >
-                      إلغاء
+                      {t("common.cancel")}
                     </Button>
                     <Button
                       onClick={() => {
@@ -3306,12 +3306,12 @@ export default function Definitions() {
                       updateCustomerMutation.isPending ? (
                         <>
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          {editingItem ? "جاري التحديث..." : "جاري الحفظ..."}
+                          {editingItem ? t("definitions.updating") : t("definitions.saving")}
                         </>
                       ) : editingItem ? (
-                        "تحديث"
+                        t("definitions.update")
                       ) : (
-                        "حفظ"
+                        t("common.save")
                       )}
                     </Button>
                   </DialogFooter>
@@ -3325,18 +3325,18 @@ export default function Definitions() {
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>
-                      {editingItem ? "تحديث القسم" : "إضافة قسم جديد"}
+                      {editingItem ? t("definitions.sections.edit") : t("definitions.sections.addNew")}
                     </DialogTitle>
                     <DialogDescription>
                       {editingItem
-                        ? "تعديل بيانات القسم الحالي"
-                        : "إضافة قسم جديد للمؤسسة"}
+                        ? t("definitions.sections.editDescription")
+                        : t("definitions.sections.addDescription")}
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="name_ar">الاسم بالعربية *</Label>
+                        <Label htmlFor="name_ar">{t("definitions.customers.nameAr")} *</Label>
                         <Input
                           id="name_ar"
                           value={sectionForm.name_ar}
@@ -3351,7 +3351,7 @@ export default function Definitions() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="name">الاسم بالإنجليزية</Label>
+                        <Label htmlFor="name">{t("definitions.customers.name")}</Label>
                         <Input
                           id="name"
                           value={sectionForm.name}
@@ -3367,7 +3367,7 @@ export default function Definitions() {
                       </div>
                     </div>
                     <div>
-                      <Label htmlFor="description">الوصف</Label>
+                      <Label htmlFor="description">{t("definitions.sections.description")}</Label>
                       <Input
                         id="description"
                         value={sectionForm.description}
@@ -3387,7 +3387,7 @@ export default function Definitions() {
                       variant="outline"
                       onClick={() => setIsDialogOpen(false)}
                     >
-                      إلغاء
+                      {t("common.cancel")}
                     </Button>
                     <Button
                       onClick={() => {
@@ -3409,12 +3409,12 @@ export default function Definitions() {
                       updateSectionMutation.isPending ? (
                         <>
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          {editingItem ? "جاري التحديث..." : "جاري الحفظ..."}
+                          {editingItem ? t("definitions.updating") : t("definitions.saving")}
                         </>
                       ) : editingItem ? (
-                        "تحديث"
+                        t("definitions.update")
                       ) : (
-                        "حفظ"
+                        t("common.save")
                       )}
                     </Button>
                   </DialogFooter>
@@ -3428,18 +3428,18 @@ export default function Definitions() {
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>
-                      {editingItem ? "تحديث الفئة" : "إضافة فئة جديدة"}
+                      {editingItem ? t("definitions.categories.edit") : t("definitions.categories.addNew")}
                     </DialogTitle>
                     <DialogDescription>
                       {editingItem
-                        ? "تعديل بيانات الفئة الحالية"
-                        : "إضافة فئة جديدة لتصنيف المنتجات"}
+                        ? t("definitions.categories.editDescription")
+                        : t("definitions.categories.addDescription")}
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="name_ar">الاسم بالعربية *</Label>
+                        <Label htmlFor="name_ar">{t("definitions.customers.nameAr")} *</Label>
                         <Input
                           id="name_ar"
                           value={categoryForm.name_ar}
@@ -3454,7 +3454,7 @@ export default function Definitions() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="name">الاسم بالإنجليزية</Label>
+                        <Label htmlFor="name">{t("definitions.customers.name")}</Label>
                         <Input
                           id="name"
                           value={categoryForm.name}
@@ -3472,7 +3472,7 @@ export default function Definitions() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="code">الكود</Label>
+                        <Label htmlFor="code">{t("definitions.categories.code")}</Label>
                         <Input
                           id="code"
                           value={categoryForm.code}
@@ -3487,7 +3487,7 @@ export default function Definitions() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="parent_id">الفئة الرئيسية</Label>
+                        <Label htmlFor="parent_id">{t("definitions.categories.parentCategory")}</Label>
                         <Select
                           value={categoryForm.parent_id}
                           onValueChange={(value) =>
@@ -3527,7 +3527,7 @@ export default function Definitions() {
                     </div>
 
                     <div>
-                      <Label htmlFor="description">الوصف</Label>
+                      <Label htmlFor="description">{t("definitions.sections.description")}</Label>
                       <Input
                         id="description"
                         value={categoryForm.description}
@@ -3543,7 +3543,7 @@ export default function Definitions() {
                     </div>
 
                     <div>
-                      <Label htmlFor="status">الحالة</Label>
+                      <Label htmlFor="status">{t("definitions.categories.status")}</Label>
                       <Select
                         value={categoryForm.status}
                         onValueChange={(value) =>
@@ -3554,8 +3554,8 @@ export default function Definitions() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="active">نشط</SelectItem>
-                          <SelectItem value="inactive">غير نشط</SelectItem>
+                          <SelectItem value="active">{t("definitions.active")}</SelectItem>
+                          <SelectItem value="inactive">{t("definitions.inactive")}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -3565,7 +3565,7 @@ export default function Definitions() {
                       variant="outline"
                       onClick={() => setIsDialogOpen(false)}
                     >
-                      إلغاء
+                      {t("common.cancel")}
                     </Button>
                     <Button
                       onClick={() => {
@@ -3587,12 +3587,12 @@ export default function Definitions() {
                       updateCategoryMutation.isPending ? (
                         <>
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          {editingItem ? "جاري التحديث..." : "جاري الحفظ..."}
+                          {editingItem ? t("definitions.updating") : t("definitions.saving")}
                         </>
                       ) : editingItem ? (
-                        "تحديث"
+                        t("definitions.update")
                       ) : (
-                        "حفظ"
+                        t("common.save")
                       )}
                     </Button>
                   </DialogFooter>
@@ -3606,18 +3606,18 @@ export default function Definitions() {
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>
-                      {editingItem ? "تحديث الصنف" : "إضافة صنف جديد"}
+                      {editingItem ? t("definitions.items.edit") : t("definitions.items.addNew")}
                     </DialogTitle>
                     <DialogDescription>
                       {editingItem
-                        ? "تعديل بيانات الصنف الحالي"
-                        : "إضافة صنف جديد إلى المخزون"}
+                        ? t("definitions.items.editDescription")
+                        : t("definitions.items.addDescription")}
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="name_ar">الاسم بالعربية *</Label>
+                        <Label htmlFor="name_ar">{t("definitions.customers.nameAr")} *</Label>
                         <Input
                           id="name_ar"
                           value={itemForm.name_ar}
@@ -3632,7 +3632,7 @@ export default function Definitions() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="name">الاسم بالإنجليزية</Label>
+                        <Label htmlFor="name">{t("definitions.customers.name")}</Label>
                         <Input
                           id="name"
                           value={itemForm.name}
@@ -3646,7 +3646,7 @@ export default function Definitions() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="code">كود الصنف</Label>
+                        <Label htmlFor="code">{t("definitions.items.code")}</Label>
                         <Input
                           id="code"
                           value={itemForm.code}
@@ -3658,7 +3658,7 @@ export default function Definitions() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="category_id">الفئة</Label>
+                        <Label htmlFor="category_id">{t("definitions.items.category")}</Label>
                         <Select
                           value={itemForm.category_id}
                           onValueChange={(value) =>
@@ -3697,7 +3697,7 @@ export default function Definitions() {
                       variant="outline"
                       onClick={() => setIsDialogOpen(false)}
                     >
-                      إلغاء
+                      {t("common.cancel")}
                     </Button>
                     <Button
                       onClick={() => {
@@ -3719,12 +3719,12 @@ export default function Definitions() {
                       updateItemMutation.isPending ? (
                         <>
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          {editingItem ? "جاري التحديث..." : "جاري الحفظ..."}
+                          {editingItem ? t("definitions.updating") : t("definitions.saving")}
                         </>
                       ) : editingItem ? (
-                        "تحديث"
+                        t("definitions.update")
                       ) : (
-                        "حفظ"
+                        t("common.save")
                       )}
                     </Button>
                   </DialogFooter>
@@ -3739,20 +3739,20 @@ export default function Definitions() {
                   <DialogHeader>
                     <DialogTitle className="text-lg sm:text-xl">
                       {editingItem
-                        ? "تحديث منتج العميل"
-                        : "إضافة منتج عميل جديد"}
+                        ? t("definitions.customerProducts.edit")
+                        : t("definitions.customerProducts.addNew")}
                     </DialogTitle>
                     <DialogDescription className="text-sm sm:text-base">
                       {editingItem
-                        ? "تعديل بيانات منتج العميل الحالي"
-                        : "إضافة منتج جديد لعميل محدد"}
+                        ? t("definitions.customerProducts.editDescription")
+                        : t("definitions.customerProducts.addDescription")}
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-6 py-4 px-2 sm:px-0">
                     {/* العميل والفئة والصنف */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       <div>
-                        <Label htmlFor="customer_id">العميل *</Label>
+                        <Label htmlFor="customer_id">{t("definitions.customerProducts.customer")} *</Label>
                         <div className="space-y-2 mt-1">
                           <div className="relative">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -3817,7 +3817,7 @@ export default function Definitions() {
                         </div>
                       </div>
                       <div>
-                        <Label htmlFor="category_id">الفئة</Label>
+                        <Label htmlFor="category_id">{t("definitions.items.category")}</Label>
                         <Select
                           value={customerProductForm.category_id}
                           onValueChange={(value) => {
@@ -3854,7 +3854,7 @@ export default function Definitions() {
                         </Select>
                       </div>
                       <div>
-                        <Label htmlFor="item_id">الصنف</Label>
+                        <Label htmlFor="item_id">{t("definitions.customerProducts.item")}</Label>
                         <Select
                           value={customerProductForm.item_id}
                           onValueChange={(value) =>
@@ -4447,7 +4447,7 @@ export default function Definitions() {
                       onClick={() => setIsDialogOpen(false)}
                       className="w-full sm:w-auto order-2 sm:order-1"
                     >
-                      إلغاء
+                      {t("common.cancel")}
                     </Button>
                     <Button
                       onClick={() => {
@@ -4503,12 +4503,12 @@ export default function Definitions() {
                       updateCustomerProductMutation.isPending ? (
                         <>
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          {editingItem ? "جاري التحديث..." : "جاري الحفظ..."}
+                          {editingItem ? t("definitions.updating") : t("definitions.saving")}
                         </>
                       ) : editingItem ? (
-                        "تحديث"
+                        t("definitions.update")
                       ) : (
-                        "حفظ"
+                        t("common.save")
                       )}
                     </Button>
                   </DialogFooter>
@@ -4522,18 +4522,18 @@ export default function Definitions() {
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>
-                      {editingItem ? "تحديث الماكينة" : "إضافة ماكينة جديدة"}
+                      {editingItem ? t("definitions.machines.edit") : t("definitions.machines.addNew")}
                     </DialogTitle>
                     <DialogDescription>
                       {editingItem
-                        ? "تحديث بيانات الماكينة المحددة"
-                        : "إضافة ماكينة جديدة إلى خط الإنتاج"}
+                        ? t("definitions.machines.editDescription")
+                        : t("definitions.machines.addDescription")}
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="name_ar">الاسم بالعربية *</Label>
+                        <Label htmlFor="name_ar">{t("definitions.customers.nameAr")} *</Label>
                         <Input
                           id="name_ar"
                           value={machineForm.name_ar}
@@ -4548,7 +4548,7 @@ export default function Definitions() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="name">الاسم بالإنجليزية</Label>
+                        <Label htmlFor="name">{t("definitions.customers.name")}</Label>
                         <Input
                           id="name"
                           value={machineForm.name}
@@ -4565,7 +4565,7 @@ export default function Definitions() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="type">النوع</Label>
+                        <Label htmlFor="type">{t("definitions.machines.type")}</Label>
                         <Select
                           value={machineForm.type}
                           onValueChange={(value) =>
@@ -4584,7 +4584,7 @@ export default function Definitions() {
                         </Select>
                       </div>
                       <div>
-                        <Label htmlFor="section_id">القسم</Label>
+                        <Label htmlFor="section_id">{t("definitions.machines.section")}</Label>
                         <Select
                           value={machineForm.section_id}
                           onValueChange={(value) =>
@@ -4624,7 +4624,7 @@ export default function Definitions() {
 
                     {/* حالة الماكينة */}
                     <div>
-                      <Label htmlFor="status">حالة الماكينة</Label>
+                      <Label htmlFor="status">{t("definitions.machines.status")}</Label>
                       <Select
                         value={machineForm.status}
                         onValueChange={(value) =>
@@ -4650,7 +4650,7 @@ export default function Definitions() {
                       <h3 className="text-sm font-medium mb-3">قدرة الإنتاج (كجم/ساعة)</h3>
                       <div className="grid grid-cols-3 gap-4">
                         <div>
-                          <Label htmlFor="capacity_small">حجم صغير</Label>
+                          <Label htmlFor="capacity_small">{t("definitions.machines.capacitySmall")}</Label>
                           <Input
                             id="capacity_small"
                             type="number"
@@ -4668,7 +4668,7 @@ export default function Definitions() {
                           />
                         </div>
                         <div>
-                          <Label htmlFor="capacity_medium">حجم وسط</Label>
+                          <Label htmlFor="capacity_medium">{t("definitions.machines.capacityMedium")}</Label>
                           <Input
                             id="capacity_medium"
                             type="number"
@@ -4686,7 +4686,7 @@ export default function Definitions() {
                           />
                         </div>
                         <div>
-                          <Label htmlFor="capacity_large">حجم كبير</Label>
+                          <Label htmlFor="capacity_large">{t("definitions.machines.capacityLarge")}</Label>
                           <Input
                             id="capacity_large"
                             type="number"
@@ -4711,7 +4711,7 @@ export default function Definitions() {
                       variant="outline"
                       onClick={() => setIsDialogOpen(false)}
                     >
-                      إلغاء
+                      {t("common.cancel")}
                     </Button>
                     <Button
                       onClick={() => {
@@ -4733,12 +4733,12 @@ export default function Definitions() {
                       updateMachineMutation.isPending ? (
                         <>
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          {editingItem ? "جاري التحديث..." : "جاري الحفظ..."}
+                          {editingItem ? t("definitions.updating") : t("definitions.saving")}
                         </>
                       ) : editingItem ? (
-                        "تحديث"
+                        t("definitions.update")
                       ) : (
-                        "حفظ"
+                        t("common.save")
                       )}
                     </Button>
                   </DialogFooter>
@@ -4752,12 +4752,12 @@ export default function Definitions() {
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>
-                      {editingItem ? "تحديث المستخدم" : "إضافة مستخدم جديد"}
+                      {editingItem ? t("definitions.users.edit") : t("definitions.users.addNew")}
                     </DialogTitle>
                     <DialogDescription>
                       {editingItem
-                        ? "تحديث بيانات المستخدم المحدد"
-                        : "إضافة مستخدم جديد إلى النظام"}
+                        ? t("definitions.users.editDescription")
+                        : t("definitions.users.addDescription")}
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
@@ -4780,7 +4780,7 @@ export default function Definitions() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="display_name">الاسم بالإنجليزية</Label>
+                        <Label htmlFor="display_name">{t("definitions.users.displayName")}</Label>
                         <Input
                           id="display_name"
                           value={userForm.display_name}
@@ -4797,7 +4797,7 @@ export default function Definitions() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="username">اسم المستخدم *</Label>
+                        <Label htmlFor="username">{t("definitions.users.username")} *</Label>
                         <Input
                           id="username"
                           value={userForm.username}
@@ -4848,7 +4848,7 @@ export default function Definitions() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="role_id">الدور</Label>
+                        <Label htmlFor="role_id">{t("definitions.users.role")}</Label>
                         <Select
                           value={userForm.role_id}
                           onValueChange={(value) =>
@@ -4881,7 +4881,7 @@ export default function Definitions() {
                         </Select>
                       </div>
                       <div>
-                        <Label htmlFor="section_id">القسم</Label>
+                        <Label htmlFor="section_id">{t("definitions.machines.section")}</Label>
                         <Select
                           value={userForm.section_id}
                           onValueChange={(value) =>
@@ -4915,7 +4915,7 @@ export default function Definitions() {
                         </Select>
                       </div>
                       <div>
-                        <Label htmlFor="status">الحالة</Label>
+                        <Label htmlFor="status">{t("definitions.categories.status")}</Label>
                         <Select
                           value={userForm.status}
                           onValueChange={(value) =>
@@ -4926,8 +4926,8 @@ export default function Definitions() {
                             <SelectValue placeholder="اختر الحالة" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="active">نشط</SelectItem>
-                            <SelectItem value="inactive">غير نشط</SelectItem>
+                            <SelectItem value="active">{t("definitions.active")}</SelectItem>
+                            <SelectItem value="inactive">{t("definitions.inactive")}</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -4938,7 +4938,7 @@ export default function Definitions() {
                       variant="outline"
                       onClick={() => setIsDialogOpen(false)}
                     >
-                      إلغاء
+                      {t("common.cancel")}
                     </Button>
                     <Button
                       onClick={() => {
@@ -4956,8 +4956,8 @@ export default function Definitions() {
                           // When creating, password is required
                           if (!userForm.password || userForm.password.trim() === "") {
                             toast({
-                              title: "خطأ",
-                              description: "كلمة المرور مطلوبة عند إنشاء مستخدم جديد",
+                              title: t("common.error"),
+                              description: t("definitions.users.messages.passwordRequired"),
                               variant: "destructive",
                             });
                             return;
@@ -4975,12 +4975,12 @@ export default function Definitions() {
                       updateUserMutation.isPending ? (
                         <>
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          {editingItem ? "جاري التحديث..." : "جاري الحفظ..."}
+                          {editingItem ? t("definitions.updating") : t("definitions.saving")}
                         </>
                       ) : editingItem ? (
-                        "تحديث"
+                        t("definitions.update")
                       ) : (
-                        "حفظ"
+                        t("common.save")
                       )}
                     </Button>
                   </DialogFooter>
