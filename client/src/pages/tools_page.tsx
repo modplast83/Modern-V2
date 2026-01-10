@@ -1,6 +1,19 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageLayout from "../components/layout/PageLayout";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { Separator } from "../components/ui/separator";
+import { 
+  Scale, Palette, Droplets, Calculator, FileSpreadsheet, 
+  Ruler, Clock, Printer, ChevronLeft, ChevronRight,
+  Package, PaintBucket
+} from "lucide-react";
 
 type TabId =
   | "bag-weight"
@@ -13,24 +26,29 @@ type TabId =
   | "thickness"
   | "job-time";
 
-interface TabDef { id: TabId; labelKey: string; }
+interface TabDef { 
+  id: TabId; 
+  labelKey: string; 
+  descriptionKey: string;
+  icon: typeof Scale;
+}
 
 const tabDefs: TabDef[] = [
-  { id: "bag-weight", labelKey: "tabs.bagWeight" },
-  { id: "colors", labelKey: "tabs.colors" },
-  { id: "color-mix", labelKey: "tabs.colorMix" },
-  { id: "ink-usage", labelKey: "tabs.inkUsage" },
-  { id: "order-cost", labelKey: "tabs.orderCost" },
-  { id: "order-cost-advanced", labelKey: "tabs.orderCostAdvanced" },
-  { id: "roll", labelKey: "tabs.roll" },
-  { id: "thickness", labelKey: "tabs.thickness" },
-  { id: "job-time", labelKey: "tabs.jobTime" },
+  { id: "bag-weight", labelKey: "tools.tabs.bagWeight", descriptionKey: "tools.tabs.bagWeightDesc", icon: Scale },
+  { id: "colors", labelKey: "tools.tabs.colors", descriptionKey: "tools.tabs.colorsDesc", icon: Palette },
+  { id: "color-mix", labelKey: "tools.tabs.colorMix", descriptionKey: "tools.tabs.colorMixDesc", icon: PaintBucket },
+  { id: "ink-usage", labelKey: "tools.tabs.inkUsage", descriptionKey: "tools.tabs.inkUsageDesc", icon: Droplets },
+  { id: "order-cost", labelKey: "tools.tabs.orderCost", descriptionKey: "tools.tabs.orderCostDesc", icon: Calculator },
+  { id: "order-cost-advanced", labelKey: "tools.tabs.orderCostAdvanced", descriptionKey: "tools.tabs.orderCostAdvancedDesc", icon: FileSpreadsheet },
+  { id: "roll", labelKey: "tools.tabs.roll", descriptionKey: "tools.tabs.rollDesc", icon: Package },
+  { id: "thickness", labelKey: "tools.tabs.thickness", descriptionKey: "tools.tabs.thicknessDesc", icon: Ruler },
+  { id: "job-time", labelKey: "tools.tabs.jobTime", descriptionKey: "tools.tabs.jobTimeDesc", icon: Clock },
 ];
 
 export default function ToolsPage(): JSX.Element {
   const { t } = useTranslation();
   return (
-    <PageLayout title={t("tools.title")} description={t("tools.description")}>
+    <PageLayout title={t("tools.title", "الأدوات")} description={t("tools.description", "أدوات حسابية متخصصة لصناعة الأكياس البلاستيكية")}>
       <ToolsContent />
     </PageLayout>
   );
@@ -43,105 +61,211 @@ function ToolsContent(): JSX.Element {
     const saved = (typeof window !== "undefined" && window.localStorage.getItem(STORAGE_KEY)) as TabId | null;
     return saved ?? "bag-weight";
   });
-
   const [sharedBagWeightG, setSharedBagWeightG] = useState<number>(0);
   const [sharedBagDims, setSharedBagDims] = useState<{ widthCm: number; lengthCm: number } | null>(null);
+  const tabsRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { try { window.localStorage.setItem(STORAGE_KEY, active); } catch {} }, [active]);
+  useEffect(() => { 
+    try { window.localStorage.setItem(STORAGE_KEY, active); } catch {} 
+  }, [active]);
+
+  const scrollTabs = (direction: 'left' | 'right') => {
+    if (tabsRef.current) {
+      const scrollAmount = 200;
+      tabsRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  const activeTab = tabDefs.find(tab => tab.id === active);
+  const ActiveIcon = activeTab?.icon || Scale;
 
   return (
-    <div className="p-0 md:p-0 lg:p-0 max-w-7xl">
-      <div className="overflow-x-auto">
-        <div className="inline-flex gap-2 bg-gray-100 rounded-xl p-1 mb-6" role="tablist" aria-label="tools-tabs">
-          {tabDefs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActive(tab.id)}
-              role="tab"
-              aria-selected={active === tab.id}
-              className={`px-3 py-2 rounded-lg text-sm md:text-base whitespace-nowrap transition ${
-                active === tab.id ? "bg-white shadow font-semibold" : "hover:bg-white/60"
-              }`}
-              title={t(`tools.${tab.labelKey}`)}
-            >
-              {t(`tools.${tab.labelKey}`)}
-            </button>
-          ))}
+    <div className="space-y-4 pb-24 md:pb-6">
+      {/* Mobile: Horizontal Scrollable Tabs */}
+      <div className="relative">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/80 dark:bg-slate-900/80 shadow-md rounded-full h-8 w-8 md:hidden"
+          onClick={() => scrollTabs('right')}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/80 dark:bg-slate-900/80 shadow-md rounded-full h-8 w-8 md:hidden"
+          onClick={() => scrollTabs('left')}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        
+        <div 
+          ref={tabsRef}
+          className="flex gap-2 overflow-x-auto scrollbar-hide px-8 md:px-0 pb-2 md:flex-wrap md:overflow-visible"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
+          {tabDefs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = active === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActive(tab.id)}
+                className={`
+                  flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium
+                  whitespace-nowrap transition-all duration-200 flex-shrink-0
+                  ${isActive 
+                    ? 'bg-primary text-primary-foreground shadow-lg scale-105' 
+                    : 'bg-white dark:bg-slate-800 text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+                  }
+                `}
+              >
+                <Icon className="h-4 w-4" />
+                <span>{t(tab.labelKey)}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      <div className="grid gap-6">
-        {active === "bag-weight" && (
-          <Card title={t("tools.bagWeight.title")}>
+      {/* Active Tool Header */}
+      <Card className="bg-gradient-to-br from-primary/5 to-primary/10 dark:from-primary/10 dark:to-primary/20 border-primary/20">
+        <CardContent className="p-4 flex items-center gap-4">
+          <div className="p-3 rounded-xl bg-primary text-primary-foreground">
+            <ActiveIcon className="h-6 w-6" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold">{activeTab ? t(activeTab.labelKey) : ""}</h2>
+            <p className="text-sm text-muted-foreground">{activeTab ? t(activeTab.descriptionKey) : ""}</p>
+          </div>
+          <Button variant="outline" size="sm" className="mr-auto" onClick={() => window.print()}>
+            <Printer className="h-4 w-4 ml-2" />
+            {t("common.print", "طباعة")}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Tool Content */}
+      <Card>
+        <CardContent className="p-4 md:p-6">
+          {active === "bag-weight" && (
             <BagWeightCalculator
               onBagWeight={(g) => setSharedBagWeightG(g)}
               onDims={(d) => setSharedBagDims(d)}
             />
-          </Card>
-        )}
-
-        {active === "colors" && (
-          <Card title={t("tools.colors.title")}>
-            <ColorTools />
-          </Card>
-        )}
-
-        {active === "color-mix" && (
-          <Card title={t("tools.colorMix.title")}>
-            <ColorMixTools />
-          </Card>
-        )}
-
-        {active === "ink-usage" && (
-          <Card title={t("tools.inkUsage.title")}>
-            <InkUsageCalculator sharedDims={sharedBagDims} />
-          </Card>
-        )}
-
-        {active === "order-cost" && (
-          <Card title={t("tools.orderCost.title")}>
-            <OrderCostCalculator sharedBagWeightG={sharedBagWeightG} />
-          </Card>
-        )}
-
-        {active === "order-cost-advanced" && (
-          <Card title={t("tools.orderCostAdvanced.title")}>
-            <OrderCostAdvanced sharedBagWeightG={sharedBagWeightG} />
-          </Card>
-        )}
-
-        {active === "roll" && (
-          <Card title={t("tools.roll.title")}>
-            <RollTools />
-          </Card>
-        )}
-
-        {active === "thickness" && (
-          <Card title={t("tools.thickness.title")}>
-            <ThicknessConverter />
-          </Card>
-        )}
-
-        {active === "job-time" && (
-          <Card title={t("tools.jobTime.title")}>
-            <JobTimePlanner />
-          </Card>
-        )}
-      </div>
+          )}
+          {active === "colors" && <ColorTools />}
+          {active === "color-mix" && <ColorMixTools />}
+          {active === "ink-usage" && <InkUsageCalculator sharedDims={sharedBagDims} />}
+          {active === "order-cost" && <OrderCostCalculator sharedBagWeightG={sharedBagWeightG} />}
+          {active === "order-cost-advanced" && <OrderCostAdvanced sharedBagWeightG={sharedBagWeightG} />}
+          {active === "roll" && <RollTools />}
+          {active === "thickness" && <ThicknessConverter />}
+          {active === "job-time" && <JobTimePlanner />}
+        </CardContent>
+      </Card>
     </div>
   );
 }
 
-function Card({ title, children }: { title: string; children: React.ReactNode }): JSX.Element {
-  const { t } = useTranslation();
+// ===================== Shared Components =====================
+
+interface InputFieldProps {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+  step?: number;
+  suffix?: string;
+  hint?: string;
+}
+
+function InputField({ label, value, onChange, step = 0.1, suffix, hint }: InputFieldProps): JSX.Element {
   return (
-    <section className="bg-white rounded-2xl shadow p-4 md:p-6 border border-gray-100" aria-label={title}>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold">{title}</h2>
-        <button className="text-xs px-2 py-1 rounded border hover:bg-gray-50" onClick={() => window.print()} title={t("tools.print")}>{t("tools.print")}</button>
+    <div className="space-y-1.5">
+      <Label className="text-sm font-medium">{label}</Label>
+      <div className="relative">
+        <Input
+          type="number"
+          value={Number.isFinite(value) ? value : 0}
+          step={step}
+          onChange={(e) => onChange(toNumber(e.target.value))}
+          className="pl-3 pr-12"
+        />
+        {suffix && (
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+            {suffix}
+          </span>
+        )}
       </div>
-      <div>{children}</div>
-    </section>
+      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
+interface TextFieldProps {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}
+
+function TextField({ label, value, onChange, placeholder }: TextFieldProps): JSX.Element {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-sm font-medium">{label}</Label>
+      <Input
+        type="text"
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
+  );
+}
+
+interface SelectFieldProps {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+  hint?: string;
+}
+
+function SelectField({ label, value, onChange, options, hint }: SelectFieldProps): JSX.Element {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-sm font-medium">{label}</Label>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((opt) => (
+            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
+interface ResultCardProps {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}
+
+function ResultCard({ label, value, highlight }: ResultCardProps): JSX.Element {
+  return (
+    <div className={`p-3 rounded-lg ${highlight ? 'bg-primary/10 border-2 border-primary' : 'bg-slate-50 dark:bg-slate-800'}`}>
+      <p className="text-xs text-muted-foreground mb-1">{label}</p>
+      <p className={`text-lg font-bold ${highlight ? 'text-primary' : ''}`}>{value}</p>
+    </div>
   );
 }
 
@@ -156,7 +280,6 @@ interface BagWeightCalculatorProps {
 
 function BagWeightCalculator({ onBagWeight, onDims }: BagWeightCalculatorProps): JSX.Element {
   const [bagType, setBagType] = useState<BagType>("flat");
-
   const [widthCm, setWidthCm] = useState<number>(30);
   const [lengthCm, setLengthCm] = useState<number>(40);
   const [thicknessMicron, setThicknessMicron] = useState<number>(18);
@@ -167,51 +290,61 @@ function BagWeightCalculator({ onBagWeight, onDims }: BagWeightCalculatorProps):
   useEffect(() => { onDims?.({ widthCm, lengthCm }); }, [widthCm, lengthCm, onDims]);
 
   const result = useMemo(() => {
-    const t_cm = toNumber(thicknessMicron) * 1e-4; // μm → cm
+    const t_cm = toNumber(thicknessMicron) * 1e-4;
     let effWidth = toNumber(widthCm);
     if (bagType === "side-gusset") effWidth = toNumber(widthCm) + 2 * toNumber(sideGussetCm);
     const gramsPerBag = Math.max(0, effWidth * toNumber(lengthCm) * toNumber(layers) * t_cm * toNumber(density));
-    const kgPer1000 = gramsPerBag; // جم/حبة == كجم/1000 حبة
+    const kgPer1000 = gramsPerBag;
     return { gramsPerBag, kgPer1000 } as const;
   }, [bagType, widthCm, lengthCm, thicknessMicron, layers, density, sideGussetCm]);
 
   useEffect(() => { onBagWeight?.(result.gramsPerBag || 0); }, [result.gramsPerBag, onBagWeight]);
 
   return (
-    <div className="grid md:grid-cols-2 gap-4">
-      <div className="grid gap-3">
-        <LabeledSelect
+    <div className="grid md:grid-cols-2 gap-6">
+      <div className="space-y-4">
+        <SelectField
           label="نوع الكيس"
           value={bagType}
           onChange={(v) => setBagType(v as BagType)}
           options={[
             { value: "flat", label: "كيس مسطح (بدون دخلات)" },
-            { value: "side-gusset", label: "كيس بدخلات جانبية (سايد فولد)" },
+            { value: "side-gusset", label: "كيس بدخلات جانبية" },
             { value: "table-cover", label: "سفرة مسطحة" },
           ]}
-          hint="اختر النوع لضبط الحسابات والمدخلات المناسبة"
         />
-        <LabeledNumber label="العرض (سم) — مفرود" value={widthCm} onChange={setWidthCm} step={0.1} />
-        <LabeledNumber label="الطول (سم)" value={lengthCm} onChange={setLengthCm} step={0.1} />
-        <LabeledNumber label="السماكة (ميكرون)" value={thicknessMicron} onChange={setThicknessMicron} step={0.1} />
         <div className="grid grid-cols-2 gap-3">
-          <LabeledNumber label="عدد الطبقات" value={layers} onChange={setLayers} step={1} />
-          <LabeledNumber label="الكثافة g/cm³" value={density} onChange={setDensity} step={0.01} />
+          <InputField label="العرض (سم)" value={widthCm} onChange={setWidthCm} suffix="سم" />
+          <InputField label="الطول (سم)" value={lengthCm} onChange={setLengthCm} suffix="سم" />
+        </div>
+        <InputField label="السماكة (ميكرون)" value={thicknessMicron} onChange={setThicknessMicron} suffix="μm" />
+        <div className="grid grid-cols-2 gap-3">
+          <InputField label="عدد الطبقات" value={layers} onChange={setLayers} step={1} />
+          <InputField label="الكثافة" value={density} onChange={setDensity} step={0.01} suffix="g/cm³" />
         </div>
         {bagType === "side-gusset" && (
-          <LabeledNumber label="دخلات جانبية (سم) — لكل جانب" value={sideGussetCm} onChange={setSideGussetCm} step={0.1} />
+          <InputField label="الدخلات الجانبية (سم)" value={sideGussetCm} onChange={setSideGussetCm} suffix="سم" hint="لكل جانب" />
         )}
-        <p className="text-xs text-gray-500">* العرض مفرود. في حالة الدخلات الجانبية يتم إضافة (2 × الدخلات) إلى العرض المؤثر.</p>
       </div>
-      <div className="grid gap-3 bg-gray-50 rounded-xl p-4">
-        <Metric label="وزن الكيس (جم)" value={fmtFixed(result.gramsPerBag, 3)} />
-        <Metric label="وزن 1000 كيس (كجم)" value={fmtFixed(result.kgPer1000, 3)} />
+      <div className="space-y-4">
+        <h3 className="font-semibold text-lg flex items-center gap-2">
+          <Scale className="h-5 w-5 text-primary" />
+          النتائج
+        </h3>
+        <div className="grid gap-3">
+          <ResultCard label="وزن الكيس الواحد" value={`${fmtFixed(result.gramsPerBag, 3)} جم`} highlight />
+          <ResultCard label="وزن 1000 كيس" value={`${fmtFixed(result.kgPer1000, 3)} كجم`} />
+        </div>
+        <p className="text-xs text-muted-foreground bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg">
+          💡 يمكن استخدام هذا الوزن في حاسبة التكلفة
+        </p>
       </div>
     </div>
   );
 }
 
-// ===================== 2) أدوات الألوان (قياسية) =====================
+// ===================== 2) أدوات الألوان =====================
+
 function ColorTools(): JSX.Element {
   const [c, setC] = useState<number>(0);
   const [m, setM] = useState<number>(0);
@@ -219,35 +352,33 @@ function ColorTools(): JSX.Element {
   const [k, setK] = useState<number>(0);
   const rgb = useMemo(() => cmykToRgb(c, m, y, k), [c, m, y, k]);
   const hex = useMemo(() => rgbToHex(rgb.r, rgb.g, rgb.b), [rgb]);
-  const [pantoneCode, setPantoneCode] = useState<string>("");
+
   return (
-    <div className="grid md:grid-cols-2 gap-4">
-      <div className="grid gap-3">
-        <h3 className="font-semibold">تحويل CMYK → RGB/HEX</h3>
+    <div className="grid md:grid-cols-2 gap-6">
+      <div className="space-y-4">
+        <h3 className="font-semibold flex items-center gap-2">
+          <Palette className="h-5 w-5 text-primary" />
+          تحويل CMYK → RGB/HEX
+        </h3>
         <div className="grid grid-cols-2 gap-3">
-          <LabeledNumber label="C %" value={c} onChange={setC} step={1} />
-          <LabeledNumber label="M %" value={m} onChange={setM} step={1} />
-          <LabeledNumber label="Y %" value={y} onChange={setY} step={1} />
-          <LabeledNumber label="K %" value={k} onChange={setK} step={1} />
+          <InputField label="Cyan %" value={c} onChange={setC} step={1} suffix="%" />
+          <InputField label="Magenta %" value={m} onChange={setM} step={1} suffix="%" />
+          <InputField label="Yellow %" value={y} onChange={setY} step={1} suffix="%" />
+          <InputField label="Key %" value={k} onChange={setK} step={1} suffix="%" />
         </div>
-        <div className="grid gap-2 bg-gray-50 rounded-xl p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-16 h-10 rounded border" style={{ backgroundColor: hex }} title="معاينة اللون" />
-            <div className="grid text-sm">
-              <span>RGB: {rgb.r}, {rgb.g}, {rgb.b}</span>
-              <span>HEX: {hex}</span>
-            </div>
+        <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
+          <div className="w-20 h-20 rounded-xl border-2 shadow-inner" style={{ backgroundColor: hex }} />
+          <div className="space-y-1">
+            <p className="text-sm"><span className="text-muted-foreground">RGB:</span> {rgb.r}, {rgb.g}, {rgb.b}</p>
+            <p className="text-sm"><span className="text-muted-foreground">HEX:</span> <Badge variant="outline">{hex}</Badge></p>
           </div>
-          <p className="text-xs text-gray-500">التحويل تقريبي وقد يختلف حسب الحبر والمادة وظروف الطباعة.</p>
-        </div>
-        <div className="grid gap-2 mt-3">
-          <h4 className="font-semibold">مرجع Pantone (اختياري)</h4>
-          <LabeledText label="كود Pantone (مثال: 186 C)" value={pantoneCode} onChange={setPantoneCode} placeholder="أدخل الكود للمرجعة الداخلية" />
-          <p className="text-xs text-gray-500">لا يمكن اشتقاق CMYK دقيق من Pantone بدون جدول مرجعي معتمد.</p>
         </div>
       </div>
-      <div className="grid gap-3">
-        <h3 className="font-semibold">تحويل RGB → CMYK</h3>
+      <div className="space-y-4">
+        <h3 className="font-semibold flex items-center gap-2">
+          <Palette className="h-5 w-5 text-primary" />
+          تحويل RGB → CMYK
+        </h3>
         <RgbToCmykWidget />
       </div>
     </div>
@@ -260,31 +391,31 @@ function RgbToCmykWidget(): JSX.Element {
   const [b, setB] = useState<number>(255);
   const cmyk = useMemo(() => rgbToCmyk(r, g, b), [r, g, b]);
   const hex = useMemo(() => rgbToHex(r, g, b), [r, g, b]);
+
   return (
-    <div className="grid gap-3">
+    <div className="space-y-4">
       <div className="grid grid-cols-3 gap-3">
-        <LabeledNumber label="R" value={r} onChange={setR} step={1} />
-        <LabeledNumber label="G" value={g} onChange={setG} step={1} />
-        <LabeledNumber label="B" value={b} onChange={setB} step={1} />
+        <InputField label="R" value={r} onChange={setR} step={1} />
+        <InputField label="G" value={g} onChange={setG} step={1} />
+        <InputField label="B" value={b} onChange={setB} step={1} />
       </div>
-      <div className="flex items-center gap-3">
-        <div className="w-16 h-10 rounded border" style={{ backgroundColor: hex }} />
-        <div className="grid text-sm">
-          <span>HEX: {hex}</span>
-          <span>CMYK: {cmyk.c}% / {cmyk.m}% / {cmyk.y}% / {cmyk.k}%</span>
+      <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
+        <div className="w-20 h-20 rounded-xl border-2 shadow-inner" style={{ backgroundColor: hex }} />
+        <div className="space-y-1">
+          <p className="text-sm"><span className="text-muted-foreground">HEX:</span> <Badge variant="outline">{hex}</Badge></p>
+          <p className="text-sm"><span className="text-muted-foreground">CMYK:</span> {cmyk.c}% / {cmyk.m}% / {cmyk.y}% / {cmyk.k}%</p>
         </div>
       </div>
     </div>
   );
 }
 
-// ===================== 3) خلطات اللون (من صورة/كود) =====================
+// ===================== 3) خلطات اللون =====================
+
 function ColorMixTools(): JSX.Element {
   const [hex, setHex] = useState<string>("#008DCB");
   const [cmyk, setCmyk] = useState<CMYK>(() => rgbToCmyk(0, 141, 203));
-  const [totalInkPct, setTotalInkPct] = useState<number>(100); // مجموع نسب الخلطة المطلوب (افتراضي 100)
-
-  // رفع صورة واستخراج ألوان مهيمنة
+  const [totalInkPct, setTotalInkPct] = useState<number>(100);
   const [palette, setPalette] = useState<string[]>([]);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -306,10 +437,9 @@ function ColorMixTools(): JSX.Element {
       ctx.drawImage(img, 0, 0, W, H);
       const data = ctx.getImageData(0, 0, W, H).data;
       const buckets: Record<string, number> = {};
-      // كوانتنزيشن بسيط: تجميع كل قناة على 8 مستويات (0..7)
-      for (let i = 0; i < data.length; i += 16) { // تخطي عينات لتسريع
+      for (let i = 0; i < data.length; i += 16) {
         const r = data[i], g = data[i + 1], b = data[i + 2];
-        const R = r >> 5, G = g >> 5, B = b >> 5; // 0..7
+        const R = r >> 5, G = g >> 5, B = b >> 5;
         const key = `${R}-${G}-${B}`;
         buckets[key] = (buckets[key] || 0) + 1;
       }
@@ -321,11 +451,9 @@ function ColorMixTools(): JSX.Element {
       setPalette(pal);
       if (pal[0]) onHexChange(pal[0]);
     };
-    img.onerror = () => { /* تجاهل */ };
     img.src = URL.createObjectURL(file);
   }
 
-  // اقتراح خلطة: توزيع نسبي حسب نسب CMYK
   const mix = useMemo(() => {
     const total = Math.max(1, cmyk.c + cmyk.m + cmyk.y + cmyk.k);
     const factor = totalInkPct / total;
@@ -338,67 +466,91 @@ function ColorMixTools(): JSX.Element {
   }, [cmyk, totalInkPct]);
 
   return (
-    <div className="grid md:grid-cols-2 gap-4">
-      <div className="grid gap-3">
-        <LabeledText label="HEX" value={hex} onChange={onHexChange} placeholder="#RRGGBB" />
+    <div className="grid md:grid-cols-2 gap-6">
+      <div className="space-y-4">
+        <TextField label="كود اللون HEX" value={hex} onChange={onHexChange} placeholder="#RRGGBB" />
         <div className="grid grid-cols-2 gap-3">
-          <LabeledNumber label="C %" value={cmyk.c} onChange={(v) => setCmyk({ ...cmyk, c: v })} step={1} />
-          <LabeledNumber label="M %" value={cmyk.m} onChange={(v) => setCmyk({ ...cmyk, m: v })} step={1} />
-          <LabeledNumber label="Y %" value={cmyk.y} onChange={(v) => setCmyk({ ...cmyk, y: v })} step={1} />
-          <LabeledNumber label="K %" value={cmyk.k} onChange={(v) => setCmyk({ ...cmyk, k: v })} step={1} />
+          <InputField label="C %" value={cmyk.c} onChange={(v) => setCmyk({ ...cmyk, c: v })} step={1} />
+          <InputField label="M %" value={cmyk.m} onChange={(v) => setCmyk({ ...cmyk, m: v })} step={1} />
+          <InputField label="Y %" value={cmyk.y} onChange={(v) => setCmyk({ ...cmyk, y: v })} step={1} />
+          <InputField label="K %" value={cmyk.k} onChange={(v) => setCmyk({ ...cmyk, k: v })} step={1} />
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <LabeledNumber label="مجموع الخلطة المطلوب %" value={totalInkPct} onChange={setTotalInkPct} step={1} />
-          <div className="flex items-end gap-2">
-            <div className="w-16 h-10 rounded border" style={{ backgroundColor: hex }} />
-            <span className="text-xs text-gray-600">معاينة</span>
+        <InputField label="مجموع الخلطة %" value={totalInkPct} onChange={setTotalInkPct} step={1} suffix="%" />
+        
+        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="w-16 h-16 rounded-xl border-2" style={{ backgroundColor: hex }} />
+            <div>
+              <p className="font-semibold">نسب الخلطة المقترحة</p>
+              <p className="text-sm text-muted-foreground">من إجمالي {totalInkPct}%</p>
+            </div>
           </div>
-        </div>
-        <div className="grid gap-2 bg-gray-50 rounded-xl p-4">
-          <h4 className="font-semibold">اقتراح خلطة (نِسَب من إجمالي {totalInkPct}%)</h4>
-          <div className="grid grid-cols-4 gap-3">
-            <Metric label="C" value={`${mix.C}%`} />
-            <Metric label="M" value={`${mix.M}%`} />
-            <Metric label="Y" value={`${mix.Y}%`} />
-            <Metric label="K" value={`${mix.K}%`} />
+          <div className="grid grid-cols-4 gap-2">
+            <ResultCard label="C" value={`${mix.C}%`} />
+            <ResultCard label="M" value={`${mix.M}%`} />
+            <ResultCard label="Y" value={`${mix.Y}%`} />
+            <ResultCard label="K" value={`${mix.K}%`} />
           </div>
-          <p className="text-[11px] text-gray-500">اقتراح أولي — يلزم اختبار عملي (Drawdown) على نفس المادة والآلة.</p>
         </div>
       </div>
 
-      <div className="grid gap-3">
-        <h4 className="font-semibold">استخراج ألوان من صورة تصميم</h4>
-        <input type="file" accept="image/*" onChange={(e) => e.target.files && handleImageUpload(e.target.files[0])} />
+      <div className="space-y-4">
+        <h3 className="font-semibold">استخراج ألوان من صورة</h3>
+        <div className="border-2 border-dashed rounded-xl p-6 text-center">
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => e.target.files && handleImageUpload(e.target.files[0])}
+            className="hidden"
+            id="image-upload"
+          />
+          <label htmlFor="image-upload" className="cursor-pointer">
+            <PaintBucket className="h-10 w-10 mx-auto mb-2 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">انقر لرفع صورة التصميم</p>
+          </label>
+        </div>
         <canvas ref={canvasRef} className="hidden" />
         {palette.length > 0 && (
-          <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
-            {palette.map((p) => (
-              <button key={p} className="h-10 rounded border" style={{ backgroundColor: p }} title={p} onClick={() => onHexChange(p)} />
-            ))}
+          <div className="space-y-2">
+            <p className="text-sm font-medium">الألوان المستخرجة:</p>
+            <div className="grid grid-cols-6 gap-2">
+              {palette.map((p) => (
+                <button
+                  key={p}
+                  className="aspect-square rounded-lg border-2 hover:scale-110 transition-transform"
+                  style={{ backgroundColor: p }}
+                  title={p}
+                  onClick={() => onHexChange(p)}
+                />
+              ))}
+            </div>
           </div>
         )}
-        <p className="text-xs text-gray-500">انقر على أي لون من اللوحة لتحديث الخلطة المقترحة.</p>
       </div>
     </div>
   );
 }
 
-// ===================== 4) تقدير استخدام الحبر =====================
+// ===================== 4) استهلاك الحبر =====================
+
 function InkUsageCalculator({ sharedDims }: { sharedDims: { widthCm: number; lengthCm: number } | null }): JSX.Element {
   const [widthCm, setWidthCm] = useState<number>(sharedDims?.widthCm ?? 30);
   const [lengthCm, setLengthCm] = useState<number>(sharedDims?.lengthCm ?? 40);
-  const [printSides, setPrintSides] = useState<1 | 2>(1);
-  const [coveragePct, setCoveragePct] = useState<number>(30); // نسبة التغطية على المساحة المطبوعة
-  const [inkLaydownGsm, setInkLaydownGsm] = useState<number>(1.2); // جرام/م² (حسب الأنيـلوكس/الحبر)
+  const [printSides, setPrintSides] = useState<string>("1");
+  const [coveragePct, setCoveragePct] = useState<number>(30);
+  const [inkLaydownGsm, setInkLaydownGsm] = useState<number>(1.2);
   const [qty, setQty] = useState<number>(10000);
 
-  useEffect(() => { if (sharedDims) { setWidthCm(sharedDims.widthCm); setLengthCm(sharedDims.lengthCm); } }, [sharedDims]);
+  useEffect(() => { 
+    if (sharedDims) { 
+      setWidthCm(sharedDims.widthCm); 
+      setLengthCm(sharedDims.lengthCm); 
+    } 
+  }, [sharedDims]);
 
   const result = useMemo(() => {
-    // مساحة الكيس (م²) لكل وجه
     const area_m2 = (toNumber(widthCm) / 100) * (toNumber(lengthCm) / 100);
-    // مساحة مطبوعة فعليًا = area * coverage * sides
-    const printed_m2_per_bag = area_m2 * (toNumber(coveragePct) / 100) * toNumber(printSides);
+    const printed_m2_per_bag = area_m2 * (toNumber(coveragePct) / 100) * Number(printSides);
     const total_printed_m2 = printed_m2_per_bag * toNumber(qty);
     const ink_grams = total_printed_m2 * toNumber(inkLaydownGsm);
     const ink_kg = ink_grams / 1000;
@@ -406,32 +558,45 @@ function InkUsageCalculator({ sharedDims }: { sharedDims: { widthCm: number; len
   }, [widthCm, lengthCm, printSides, coveragePct, inkLaydownGsm, qty]);
 
   return (
-    <div className="grid md:grid-cols-2 gap-4">
-      <div className="grid gap-3">
+    <div className="grid md:grid-cols-2 gap-6">
+      <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          <LabeledNumber label="العرض (سم)" value={widthCm} onChange={setWidthCm} step={0.1} />
-          <LabeledNumber label="الطول (سم)" value={lengthCm} onChange={setLengthCm} step={0.1} />
+          <InputField label="العرض (سم)" value={widthCm} onChange={setWidthCm} suffix="سم" />
+          <InputField label="الطول (سم)" value={lengthCm} onChange={setLengthCm} suffix="سم" />
         </div>
-        <LabeledSelect label="عدد الأوجه المطبوعة" value={String(printSides)} onChange={(v) => setPrintSides(Number(v) === 2 ? 2 : 1)} options={[{ value: "1", label: "وجه واحد" }, { value: "2", label: "وجهان" }]} />
+        <SelectField
+          label="عدد الأوجه المطبوعة"
+          value={printSides}
+          onChange={setPrintSides}
+          options={[
+            { value: "1", label: "وجه واحد" },
+            { value: "2", label: "وجهان" },
+          ]}
+        />
         <div className="grid grid-cols-2 gap-3">
-          <LabeledNumber label="نسبة التغطية %" value={coveragePct} onChange={setCoveragePct} step={1} />
-          <LabeledNumber label="بدل الحبر (g/m²)" value={inkLaydownGsm} onChange={setInkLaydownGsm} step={0.1} />
+          <InputField label="نسبة التغطية" value={coveragePct} onChange={setCoveragePct} step={1} suffix="%" />
+          <InputField label="بدل الحبر" value={inkLaydownGsm} onChange={setInkLaydownGsm} suffix="g/m²" />
         </div>
-        <LabeledNumber label="الكمية (حبة)" value={qty} onChange={setQty} step={500} />
-        <p className="text-[11px] text-gray-500">قيم g/m² تقريبية وتختلف حسب الأنيـلوكس، نوع الحبر، والسطح.</p>
+        <InputField label="الكمية" value={qty} onChange={setQty} step={500} suffix="حبة" />
       </div>
-      <div className="grid gap-3 bg-gray-50 rounded-xl p-4">
-        <Metric label="مساحة مطبوعة/حبة (م²)" value={fmtFixed(result.printed_m2_per_bag, 4)} />
-        <Metric label="المساحة المطبوعة الكلّية (م²)" value={fmtFixed(result.total_printed_m2, 2)} />
-        <Metric label="كمية الحبر (كجم)" value={fmtFixed(result.ink_kg, 2)} emphasis />
+      <div className="space-y-4">
+        <h3 className="font-semibold flex items-center gap-2">
+          <Droplets className="h-5 w-5 text-primary" />
+          النتائج
+        </h3>
+        <div className="grid gap-3">
+          <ResultCard label="مساحة مطبوعة/حبة" value={`${fmtFixed(result.printed_m2_per_bag, 4)} م²`} />
+          <ResultCard label="المساحة الكلية" value={`${fmtFixed(result.total_printed_m2, 2)} م²`} />
+          <ResultCard label="كمية الحبر المطلوبة" value={`${fmtFixed(result.ink_kg, 2)} كجم`} highlight />
+        </div>
       </div>
     </div>
   );
 }
 
-// ===================== 5) تكلفة طلبية — سريع (موجود أعلاه) =====================
-interface OrderCostCalculatorProps { sharedBagWeightG?: number; }
-function OrderCostCalculator({ sharedBagWeightG = 0 }: OrderCostCalculatorProps): JSX.Element {
+// ===================== 5) تكلفة سريعة =====================
+
+function OrderCostCalculator({ sharedBagWeightG = 0 }: { sharedBagWeightG?: number }): JSX.Element {
   const [qty, setQty] = useState<number>(10000);
   const [bagWeightG, setBagWeightG] = useState<number>(sharedBagWeightG || 5);
   const [useShared, setUseShared] = useState<boolean>(Boolean(sharedBagWeightG));
@@ -441,72 +606,91 @@ function OrderCostCalculator({ sharedBagWeightG = 0 }: OrderCostCalculatorProps)
   const [cuttingCostPer1000, setCuttingCostPer1000] = useState<number>(6.0);
   const [colors, setColors] = useState<number>(0);
   const [printCostPerColorPer1000, setPrintCostPerColorPer1000] = useState<number>(5.0);
-  const [plateCost, setPlateCost] = useState<number>(0);
-  const [overheadFixed, setOverheadFixed] = useState<number>(0);
   const [marginPct, setMarginPct] = useState<number>(10);
+
   useEffect(() => { if (useShared) setBagWeightG(sharedBagWeightG || 0); }, [sharedBagWeightG, useShared]);
+
   const result = useMemo(() => {
     const weightPerBagG = toNumber(bagWeightG);
-    const totalWeightKg = (toNumber(qty) * weightPerBagG) / 1_000_000; // g → kg
+    const totalWeightKg = (toNumber(qty) * weightPerBagG) / 1_000_000;
     const materialKg = totalWeightKg * (1 + toNumber(wastePct) / 100);
     const materialCost = materialKg * toNumber(materialPricePerKg);
     const extrusionCost = materialKg * toNumber(extrusionCostPerKg);
     const cuttingCost = (toNumber(qty) / 1000) * toNumber(cuttingCostPer1000);
     const printingCost = (toNumber(qty) / 1000) * toNumber(colors) * toNumber(printCostPerColorPer1000);
-    const subtotal = materialCost + extrusionCost + cuttingCost + printingCost + toNumber(plateCost) + toNumber(overheadFixed);
+    const subtotal = materialCost + extrusionCost + cuttingCost + printingCost;
     const margin = subtotal * (toNumber(marginPct) / 100);
     const total = subtotal + margin;
-    return { totalWeightKg, materialKg, materialCost, extrusionCost, cuttingCost, printingCost, subtotal, margin, total, unitPrice: total / Math.max(1, toNumber(qty)), pricePerKg: total / Math.max(0.000001, materialKg) } as const;
-  }, [qty, bagWeightG, wastePct, materialPricePerKg, extrusionCostPerKg, cuttingCostPer1000, colors, printCostPerColorPer1000, plateCost, overheadFixed, marginPct]);
+    return {
+      materialKg, materialCost, extrusionCost, cuttingCost, printingCost,
+      subtotal, margin, total,
+      unitPrice: total / Math.max(1, toNumber(qty)),
+      pricePerKg: total / Math.max(0.000001, materialKg)
+    } as const;
+  }, [qty, bagWeightG, wastePct, materialPricePerKg, extrusionCostPerKg, cuttingCostPer1000, colors, printCostPerColorPer1000, marginPct]);
+
   return (
-    <div className="grid lg:grid-cols-2 gap-4">
-      <div className="grid gap-3">
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" className="accent-black" checked={useShared} onChange={(e) => setUseShared(e.target.checked)} />
-          استخدم وزن الكيس من التبويب الأول ({fmtFixed(sharedBagWeightG, 3)} جم)
+    <div className="grid lg:grid-cols-2 gap-6">
+      <div className="space-y-4">
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <input
+            type="checkbox"
+            className="rounded"
+            checked={useShared}
+            onChange={(e) => setUseShared(e.target.checked)}
+          />
+          استخدم وزن الكيس من حاسبة الوزن ({fmtFixed(sharedBagWeightG, 3)} جم)
         </label>
-        {!useShared && (<LabeledNumber label="وزن الكيس (جم)" value={bagWeightG} onChange={setBagWeightG} step={0.01} />)}
-        <LabeledNumber label="الكمية (حبة)" value={qty} onChange={setQty} step={500} />
+        {!useShared && <InputField label="وزن الكيس" value={bagWeightG} onChange={setBagWeightG} suffix="جم" />}
+        <InputField label="الكمية" value={qty} onChange={setQty} step={500} suffix="حبة" />
+        
+        <Separator />
+        
         <div className="grid grid-cols-2 gap-3">
-          <LabeledNumber label="سعر المادة (ر.س/كجم)" value={materialPricePerKg} onChange={setMaterialPricePerKg} step={0.1} />
-          <LabeledNumber label="هالك %" value={wastePct} onChange={setWastePct} step={0.5} />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <LabeledNumber label="تكلفة الاكسترودر (ر.س/كجم)" value={extrusionCostPerKg} onChange={setExtrusionCostPerKg} step={0.1} />
-          <LabeledNumber label="تكلفة التقطيع (ر.س/1000)" value={cuttingCostPer1000} onChange={setCuttingCostPer1000} step={0.1} />
-        </div>
-        <div className="grid grid-cols-3 gap-3">
-          <LabeledNumber label="عدد الألوان" value={colors} onChange={setColors} step={1} />
-          <LabeledNumber label="طباعة (ر.س/لون/1000)" value={printCostPerColorPer1000} onChange={setPrintCostPerColorPer1000} step={0.1} />
-          <LabeledNumber label="تكلفة الكليشة/الربلات (ر.س)" value={plateCost} onChange={setPlateCost} step={1} />
+          <InputField label="سعر المادة" value={materialPricePerKg} onChange={setMaterialPricePerKg} suffix="ر.س/كجم" />
+          <InputField label="نسبة الهالك" value={wastePct} onChange={setWastePct} suffix="%" />
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <LabeledNumber label="مصروفات ثابتة (ر.س)" value={overheadFixed} onChange={setOverheadFixed} step={1} />
-          <LabeledNumber label="هامش الربح %" value={marginPct} onChange={setMarginPct} step={0.5} />
+          <InputField label="تكلفة البثق" value={extrusionCostPerKg} onChange={setExtrusionCostPerKg} suffix="ر.س/كجم" />
+          <InputField label="تكلفة التقطيع" value={cuttingCostPer1000} onChange={setCuttingCostPer1000} suffix="ر.س/1000" />
         </div>
+        <div className="grid grid-cols-2 gap-3">
+          <InputField label="عدد الألوان" value={colors} onChange={setColors} step={1} />
+          <InputField label="تكلفة الطباعة" value={printCostPerColorPer1000} onChange={setPrintCostPerColorPer1000} suffix="ر.س/لون" />
+        </div>
+        <InputField label="هامش الربح" value={marginPct} onChange={setMarginPct} suffix="%" />
       </div>
-      <div className="grid gap-3 bg-gray-50 rounded-xl p-4">
-        <h4 className="font-semibold">النتائج</h4>
-        <Metric label="الوزن الإجمالي (كجم)" value={fmtFixed(result.totalWeightKg, 3)} />
-        <Metric label="وزن المادة بعد الهالك (كجم)" value={fmtFixed(result.materialKg, 3)} />
-        <Divider />
-        <Metric label="تكلفة المادة" value={fmtSar(result.materialCost)} />
-        <Metric label="تكلفة الاكسترودر" value={fmtSar(result.extrusionCost)} />
-        <Metric label="تكلفة التقطيع" value={fmtSar(result.cuttingCost)} />
-        <Metric label="تكلفة الطباعة" value={fmtSar(result.printingCost)} />
-        <Divider />
-        <Metric label="الإجمالي قبل الربح" value={fmtSar(result.subtotal)} />
-        <Metric label="الربح" value={fmtSar(result.margin)} />
-        <Metric label="الإجمالي مع الربح" value={fmtSar(result.total)} emphasis />
-        <Divider />
-        <Metric label="سعر الحبة" value={fmtSar(result.unitPrice)} />
-        <Metric label="سعر للكيلو" value={fmtSar(result.pricePerKg)} />
+      
+      <div className="space-y-4">
+        <h3 className="font-semibold flex items-center gap-2">
+          <Calculator className="h-5 w-5 text-primary" />
+          النتائج
+        </h3>
+        <div className="grid gap-2">
+          <ResultCard label="وزن المادة" value={`${fmtFixed(result.materialKg, 2)} كجم`} />
+          <ResultCard label="تكلفة المادة" value={fmtSar(result.materialCost)} />
+          <ResultCard label="تكلفة البثق" value={fmtSar(result.extrusionCost)} />
+          <ResultCard label="تكلفة التقطيع" value={fmtSar(result.cuttingCost)} />
+          {colors > 0 && <ResultCard label="تكلفة الطباعة" value={fmtSar(result.printingCost)} />}
+        </div>
+        <Separator />
+        <div className="grid gap-2">
+          <ResultCard label="الإجمالي قبل الربح" value={fmtSar(result.subtotal)} />
+          <ResultCard label="الربح" value={fmtSar(result.margin)} />
+          <ResultCard label="الإجمالي النهائي" value={fmtSar(result.total)} highlight />
+        </div>
+        <Separator />
+        <div className="grid grid-cols-2 gap-2">
+          <ResultCard label="سعر الحبة" value={fmtSar(result.unitPrice)} />
+          <ResultCard label="سعر الكيلو" value={fmtSar(result.pricePerKg)} />
+        </div>
       </div>
     </div>
   );
 }
 
-// ===================== 6) تكلفة طلبية — متقدم (BOM) =====================
+// ===================== 6) تكلفة متقدمة =====================
+
 interface BomItem { name: string; pct: number; pricePerKg: number; }
 interface OtherCost { name: string; type: "perKg" | "per1000" | "fixed"; value: number; }
 
@@ -514,21 +698,16 @@ function OrderCostAdvanced({ sharedBagWeightG = 0 }: { sharedBagWeightG?: number
   const [qty, setQty] = useState<number>(10000);
   const [bagWeightG, setBagWeightG] = useState<number>(sharedBagWeightG || 5);
   const [useShared, setUseShared] = useState<boolean>(Boolean(sharedBagWeightG));
-
-  // مكونات الخلطة (BOM)
   const [bom, setBom] = useState<BomItem[]>([
     { name: "HDPE Base", pct: 90, pricePerKg: 7.0 },
     { name: "Masterbatch", pct: 8, pricePerKg: 12.0 },
     { name: "Additive", pct: 2, pricePerKg: 18.0 },
   ]);
-
-  // تكاليف أخرى متنوعة
   const [otherCosts, setOtherCosts] = useState<OtherCost[]>([
-    { name: "Extrusion Energy", type: "perKg", value: 0.4 },
-    { name: "Cutting", type: "per1000", value: 6.0 },
-    { name: "Setup", type: "fixed", value: 50 },
+    { name: "تكلفة الطاقة", type: "perKg", value: 0.4 },
+    { name: "التقطيع", type: "per1000", value: 6.0 },
+    { name: "إعداد", type: "fixed", value: 50 },
   ]);
-
   const [wastePct, setWastePct] = useState<number>(4);
   const [colors, setColors] = useState<number>(0);
   const [printCostPerColorPer1000, setPrintCostPerColorPer1000] = useState<number>(5.0);
@@ -545,236 +724,263 @@ function OrderCostAdvanced({ sharedBagWeightG = 0 }: { sharedBagWeightG?: number
 
   const result = useMemo(() => {
     const weightPerBagG = toNumber(bagWeightG);
-    const totalWeightKg = (toNumber(qty) * weightPerBagG) / 1_000_000; // g → kg
+    const totalWeightKg = (toNumber(qty) * weightPerBagG) / 1_000_000;
     const materialKg = totalWeightKg * (1 + toNumber(wastePct) / 100);
-
-    // تكلفة المادة من الخلطة
     const materialCost = materialKg * blend.pricePerKg;
-
-    // تكاليف أخرى
-    const others = otherCosts.reduce(
-      (acc, c) => {
-        if (c.type === "perKg") acc.sum += materialKg * toNumber(c.value);
-        else if (c.type === "per1000") acc.sum += (toNumber(qty) / 1000) * toNumber(c.value);
-        else acc.sum += toNumber(c.value);
-        return acc;
-      },
-      { sum: 0 }
-    ).sum;
-
-    // طباعة
+    const others = otherCosts.reduce((acc, c) => {
+      if (c.type === "perKg") acc.sum += materialKg * toNumber(c.value);
+      else if (c.type === "per1000") acc.sum += (toNumber(qty) / 1000) * toNumber(c.value);
+      else acc.sum += toNumber(c.value);
+      return acc;
+    }, { sum: 0 }).sum;
     const printingCost = (toNumber(qty) / 1000) * toNumber(colors) * toNumber(printCostPerColorPer1000);
-
     const subtotal = materialCost + others + printingCost;
     const margin = subtotal * (toNumber(marginPct) / 100);
     const total = subtotal + margin;
-
     return {
-      materialKg,
-      blendPrice: blend.pricePerKg,
-      materialCost,
-      otherCosts: others,
-      printingCost,
-      subtotal,
-      margin,
-      total,
+      materialKg, blendPrice: blend.pricePerKg, materialCost, otherCosts: others,
+      printingCost, subtotal, margin, total,
       unitPrice: total / Math.max(1, toNumber(qty)),
       pricePerKg: total / Math.max(0.000001, materialKg),
     } as const;
   }, [qty, bagWeightG, wastePct, blend.pricePerKg, otherCosts, colors, printCostPerColorPer1000, marginPct]);
 
   return (
-    <div className="grid gap-6">
-      <div className="grid lg:grid-cols-2 gap-4">
-        <div className="grid gap-3">
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" className="accent-black" checked={useShared} onChange={(e) => setUseShared(e.target.checked)} />
-            استخدم وزن الحقيبة من التبويب الأول ({fmtFixed(sharedBagWeightG, 3)} جم)
+    <div className="space-y-6">
+      <div className="grid lg:grid-cols-2 gap-6">
+        <div className="space-y-4">
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" className="rounded" checked={useShared} onChange={(e) => setUseShared(e.target.checked)} />
+            استخدم وزن الكيس من حاسبة الوزن
           </label>
-          {!useShared && <LabeledNumber label="وزن الحقيبة (جم)" value={bagWeightG} onChange={setBagWeightG} step={0.01} />}
-          <LabeledNumber label="الكمية (حبة)" value={qty} onChange={setQty} step={500} />
-          <LabeledNumber label="هالك %" value={wastePct} onChange={setWastePct} step={0.5} />
-          <Divider />
+          {!useShared && <InputField label="وزن الكيس" value={bagWeightG} onChange={setBagWeightG} suffix="جم" />}
+          <InputField label="الكمية" value={qty} onChange={setQty} step={500} suffix="حبة" />
+          <InputField label="نسبة الهالك" value={wastePct} onChange={setWastePct} suffix="%" />
+          
+          <Separator />
+          
           <h4 className="font-semibold">مكونات الخلطة (BOM)</h4>
           <BomTable rows={bom} setRows={setBom} />
-          <p className="text-[11px] text-gray-500">يجب أن يكون مجموع النِّسَب تقريبيًا 100%، وسيتم التطبيع تلقائيًا للحساب.</p>
         </div>
-        <div className="grid gap-3">
+        
+        <div className="space-y-4">
           <h4 className="font-semibold">تكاليف أخرى</h4>
           <OtherCostsTable rows={otherCosts} setRows={setOtherCosts} />
-          <div className="grid grid-cols-3 gap-3">
-            <LabeledNumber label="عدد الألوان" value={colors} onChange={setColors} step={1} />
-            <LabeledNumber label="طباعة (ر.س/لون/1000)" value={printCostPerColorPer1000} onChange={setPrintCostPerColorPer1000} step={0.1} />
-            <LabeledNumber label="هامش الربح %" value={marginPct} onChange={setMarginPct} step={0.5} />
+          
+          <Separator />
+          
+          <div className="grid grid-cols-2 gap-3">
+            <InputField label="عدد الألوان" value={colors} onChange={setColors} step={1} />
+            <InputField label="تكلفة الطباعة" value={printCostPerColorPer1000} onChange={setPrintCostPerColorPer1000} suffix="ر.س/لون" />
           </div>
+          <InputField label="هامش الربح" value={marginPct} onChange={setMarginPct} suffix="%" />
         </div>
       </div>
 
-      <div className="grid gap-3 bg-gray-50 rounded-xl p-4">
-        <h4 className="font-semibold">نتائج التكلفة</h4>
-        <Metric label="سعر الخلطة (ر.س/كجم)" value={fmtSar(result.blendPrice)} />
-        <Metric label="وزن المادة بعد الهالك (كجم)" value={fmtFixed(result.materialKg, 3)} />
-        <Divider />
-        <Metric label="تكلفة المادة" value={fmtSar(result.materialCost)} />
-        <Metric label="تكاليف أخرى" value={fmtSar(result.otherCosts)} />
-        <Metric label="تكلفة الطباعة" value={fmtSar(result.printingCost)} />
-        <Divider />
-        <Metric label="الإجمالي قبل الربح" value={fmtSar(result.subtotal)} />
-        <Metric label="الربح" value={fmtSar(result.margin)} />
-        <Metric label="الإجمالي مع الربح" value={fmtSar(result.total)} emphasis />
-        <Divider />
-        <Metric label="سعر الحبة" value={fmtSar(result.unitPrice)} />
-        <Metric label="سعر للكيلو" value={fmtSar(result.pricePerKg)} />
+      <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
+        <h4 className="font-semibold mb-4 flex items-center gap-2">
+          <FileSpreadsheet className="h-5 w-5 text-primary" />
+          نتائج التكلفة
+        </h4>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <ResultCard label="سعر الخلطة" value={`${fmtFixed(result.blendPrice, 2)} ر.س/كجم`} />
+          <ResultCard label="وزن المادة" value={`${fmtFixed(result.materialKg, 2)} كجم`} />
+          <ResultCard label="تكلفة المادة" value={fmtSar(result.materialCost)} />
+          <ResultCard label="تكاليف أخرى" value={fmtSar(result.otherCosts)} />
+        </div>
+        <Separator className="my-4" />
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <ResultCard label="الإجمالي قبل الربح" value={fmtSar(result.subtotal)} />
+          <ResultCard label="الربح" value={fmtSar(result.margin)} />
+          <ResultCard label="الإجمالي النهائي" value={fmtSar(result.total)} highlight />
+          <ResultCard label="سعر الحبة" value={fmtSar(result.unitPrice)} />
+        </div>
       </div>
     </div>
   );
 }
 
 function BomTable({ rows, setRows }: { rows: BomItem[]; setRows: (r: BomItem[]) => void }): JSX.Element {
-  function updateRow(idx: number, patch: Partial<BomItem>) {
+  const updateRow = (idx: number, patch: Partial<BomItem>) => {
     setRows(rows.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
-  }
-  function addRow() { setRows([...rows, { name: "New", pct: 0, pricePerKg: 0 }]); }
-  function delRow(idx: number) { setRows(rows.filter((_, i) => i !== idx)); }
+  };
+  const addRow = () => setRows([...rows, { name: "مكون جديد", pct: 0, pricePerKg: 0 }]);
+  const delRow = (idx: number) => setRows(rows.filter((_, i) => i !== idx));
+
   return (
-    <div className="grid gap-2">
+    <div className="space-y-2">
       {rows.map((r, i) => (
-        <div key={i} className="grid grid-cols-12 gap-2 items-end">
-          <input className="col-span-5 border rounded-lg px-3 py-2" value={r.name} onChange={(e) => updateRow(i, { name: e.target.value })} />
-          <input type="number" className="col-span-2 border rounded-lg px-3 py-2" value={r.pct} step={0.1} onChange={(e) => updateRow(i, { pct: Number(e.target.value) })} placeholder="%" />
-          <input type="number" className="col-span-3 border rounded-lg px-3 py-2" value={r.pricePerKg} step={0.1} onChange={(e) => updateRow(i, { pricePerKg: Number(e.target.value) })} placeholder="ر.س/كجم" />
-          <button className="col-span-2 text-xs px-2 py-2 rounded border hover:bg-gray-50" onClick={() => delRow(i)}>حذف</button>
+        <div key={i} className="grid grid-cols-12 gap-2 items-center">
+          <Input className="col-span-5" value={r.name} onChange={(e) => updateRow(i, { name: e.target.value })} placeholder="الاسم" />
+          <Input type="number" className="col-span-2" value={r.pct} step={0.1} onChange={(e) => updateRow(i, { pct: Number(e.target.value) })} placeholder="%" />
+          <Input type="number" className="col-span-3" value={r.pricePerKg} step={0.1} onChange={(e) => updateRow(i, { pricePerKg: Number(e.target.value) })} placeholder="السعر" />
+          <Button variant="ghost" size="sm" className="col-span-2 text-destructive" onClick={() => delRow(i)}>حذف</Button>
         </div>
       ))}
-      <button className="text-xs px-2 py-2 rounded border hover:bg-gray-50 w-fit" onClick={addRow}>+ إضافة مكوّن</button>
+      <Button variant="outline" size="sm" onClick={addRow}>+ إضافة مكون</Button>
     </div>
   );
 }
 
 function OtherCostsTable({ rows, setRows }: { rows: OtherCost[]; setRows: (r: OtherCost[]) => void }): JSX.Element {
-  function updateRow(idx: number, patch: Partial<OtherCost>) { setRows(rows.map((r, i) => (i === idx ? { ...r, ...patch } : r))); }
-  function addRow() { setRows([...rows, { name: "New Cost", type: "fixed", value: 0 }]); }
-  function delRow(idx: number) { setRows(rows.filter((_, i) => i !== idx)); }
+  const updateRow = (idx: number, patch: Partial<OtherCost>) => setRows(rows.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
+  const addRow = () => setRows([...rows, { name: "تكلفة جديدة", type: "fixed", value: 0 }]);
+  const delRow = (idx: number) => setRows(rows.filter((_, i) => i !== idx));
+
   return (
-    <div className="grid gap-2">
+    <div className="space-y-2">
       {rows.map((r, i) => (
-        <div key={i} className="grid grid-cols-12 gap-2 items-end">
-          <input className="col-span-5 border rounded-lg px-3 py-2" value={r.name} onChange={(e) => updateRow(i, { name: e.target.value })} />
-          <select className="col-span-3 border rounded-lg px-3 py-2 bg-white" value={r.type} onChange={(e) => updateRow(i, { type: e.target.value as OtherCost["type"] })}>
-            <option value="perKg">ر.س/كجم</option>
-            <option value="per1000">ر.س/1000 حبة</option>
-            <option value="fixed">مبلغ ثابت</option>
-          </select>
-          <input type="number" className="col-span-2 border rounded-lg px-3 py-2" value={r.value} step={0.1} onChange={(e) => updateRow(i, { value: Number(e.target.value) })} />
-          <button className="col-span-2 text-xs px-2 py-2 rounded border hover:bg-gray-50" onClick={() => delRow(i)}>حذف</button>
+        <div key={i} className="grid grid-cols-12 gap-2 items-center">
+          <Input className="col-span-4" value={r.name} onChange={(e) => updateRow(i, { name: e.target.value })} />
+          <Select value={r.type} onValueChange={(v) => updateRow(i, { type: v as OtherCost["type"] })}>
+            <SelectTrigger className="col-span-3">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="perKg">ر.س/كجم</SelectItem>
+              <SelectItem value="per1000">ر.س/1000</SelectItem>
+              <SelectItem value="fixed">مبلغ ثابت</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input type="number" className="col-span-3" value={r.value} step={0.1} onChange={(e) => updateRow(i, { value: Number(e.target.value) })} />
+          <Button variant="ghost" size="sm" className="col-span-2 text-destructive" onClick={() => delRow(i)}>حذف</Button>
         </div>
       ))}
-      <button className="text-xs px-2 py-2 rounded border hover:bg-gray-50 w-fit" onClick={addRow}>+ إضافة تكلفة</button>
+      <Button variant="outline" size="sm" onClick={addRow}>+ إضافة تكلفة</Button>
     </div>
   );
 }
 
-// ===================== 7) وزن/طول الرول (كما هو مع تحسينات طفيفة) =====================
+// ===================== 7) أدوات الرول =====================
+
 function RollTools(): JSX.Element {
   const [rollWeightKg, setRollWeightKg] = useState<number>(25);
   const [coreWeightKg, setCoreWeightKg] = useState<number>(0.4);
   const [rollWidthCm, setRollWidthCm] = useState<number>(60);
   const [rollThicknessMicron, setRollThicknessMicron] = useState<number>(18);
   const [rollDensity, setRollDensity] = useState<number>(0.95);
+
   const netRollWeightG = Math.max(0, toNumber(rollWeightKg) - toNumber(coreWeightKg)) * 1000;
   const thicknessCm = toNumber(rollThicknessMicron) * 1e-4;
+
   const lengthM = useMemo(() => {
-    const denom = toNumber(rollWidthCm) * thicknessCm * toNumber(rollDensity) * 100; // سم → متر
-    if (denom <= 0) return 0; return netRollWeightG / denom;
+    const denom = toNumber(rollWidthCm) * thicknessCm * toNumber(rollDensity) * 100;
+    if (denom <= 0) return 0;
+    return netRollWeightG / denom;
   }, [netRollWeightG, rollWidthCm, thicknessCm, rollDensity]);
+
   const [targetLengthM, setTargetLengthM] = useState<number>(1000);
   const [tWidthCm, setTWidthCm] = useState<number>(60);
   const [tThicknessMicron, setTThicknessMicron] = useState<number>(18);
   const [tDensity, setTDensity] = useState<number>(0.95);
   const tThicknessCm = toNumber(tThicknessMicron) * 1e-4;
+
   const neededWeightKg = useMemo(() => {
     const grams = toNumber(tWidthCm) * tThicknessCm * toNumber(targetLengthM) * 100 * toNumber(tDensity);
     return grams / 1000;
   }, [targetLengthM, tWidthCm, tThicknessCm, tDensity]);
+
   return (
     <div className="grid lg:grid-cols-2 gap-6">
-      <div className="grid gap-3">
-        <h4 className="font-semibold">من وزن الرول → الطول التقريبي</h4>
-        <LabeledNumber label="وزن الرول (كجم)" value={rollWeightKg} onChange={setRollWeightKg} step={0.1} />
-        <LabeledNumber label="وزن الكرتون/اللب (كجم)" value={coreWeightKg} onChange={setCoreWeightKg} step={0.01} />
+      <div className="space-y-4">
+        <h4 className="font-semibold flex items-center gap-2">
+          <Package className="h-5 w-5 text-primary" />
+          من وزن الرول → الطول
+        </h4>
         <div className="grid grid-cols-2 gap-3">
-          <LabeledNumber label="العرض (سم)" value={rollWidthCm} onChange={setRollWidthCm} step={0.1} />
-          <LabeledNumber label="السماكة (ميكرون)" value={rollThicknessMicron} onChange={setRollThicknessMicron} step={0.1} />
+          <InputField label="وزن الرول" value={rollWeightKg} onChange={setRollWeightKg} suffix="كجم" />
+          <InputField label="وزن الكرتون" value={coreWeightKg} onChange={setCoreWeightKg} suffix="كجم" />
         </div>
-        <LabeledNumber label="الكثافة g/cm³" value={rollDensity} onChange={setRollDensity} step={0.01} />
-        <Divider />
-        <Metric label="الطول التقريبي (متر)" value={fmtFixed(lengthM, 1)} emphasis />
+        <div className="grid grid-cols-2 gap-3">
+          <InputField label="العرض" value={rollWidthCm} onChange={setRollWidthCm} suffix="سم" />
+          <InputField label="السماكة" value={rollThicknessMicron} onChange={setRollThicknessMicron} suffix="μm" />
+        </div>
+        <InputField label="الكثافة" value={rollDensity} onChange={setRollDensity} suffix="g/cm³" />
+        <ResultCard label="الطول التقريبي" value={`${fmtFixed(lengthM, 1)} متر`} highlight />
       </div>
-      <div className="grid gap-3">
-        <h4 className="font-semibold">من الطول المطلوب → وزن الرول المطلوب</h4>
-        <LabeledNumber label="الطول المطلوب (متر)" value={targetLengthM} onChange={setTargetLengthM} step={1} />
+      
+      <div className="space-y-4">
+        <h4 className="font-semibold flex items-center gap-2">
+          <Package className="h-5 w-5 text-primary" />
+          من الطول → وزن الرول
+        </h4>
+        <InputField label="الطول المطلوب" value={targetLengthM} onChange={setTargetLengthM} suffix="متر" />
         <div className="grid grid-cols-2 gap-3">
-          <LabeledNumber label="العرض (سم)" value={tWidthCm} onChange={setTWidthCm} step={0.1} />
-          <LabeledNumber label="السماكة (ميكرون)" value={tThicknessMicron} onChange={setTThicknessMicron} step={0.1} />
+          <InputField label="العرض" value={tWidthCm} onChange={setTWidthCm} suffix="سم" />
+          <InputField label="السماكة" value={tThicknessMicron} onChange={setTThicknessMicron} suffix="μm" />
         </div>
-        <LabeledNumber label="الكثافة g/cm³" value={tDensity} onChange={setTDensity} step={0.01} />
-        <Divider />
-        <Metric label="الوزن التقريبي المطلوب (كجم)" value={fmtFixed(neededWeightKg, 2)} emphasis />
+        <InputField label="الكثافة" value={tDensity} onChange={setTDensity} suffix="g/cm³" />
+        <ResultCard label="الوزن المطلوب" value={`${fmtFixed(neededWeightKg, 2)} كجم`} highlight />
       </div>
     </div>
   );
 }
 
 // ===================== 8) تحويل السماكة =====================
+
 function ThicknessConverter(): JSX.Element {
   const [micron, setMicron] = useState<number>(20);
   const mm = useMemo(() => toNumber(micron) / 1000, [micron]);
   const gauge = useMemo(() => toNumber(micron) * 4, [micron]);
+
   const [mmIn, setMmIn] = useState<number>(0.02);
   const micronFromMm = useMemo(() => toNumber(mmIn) * 1000, [mmIn]);
   const gaugeFromMm = useMemo(() => micronFromMm * 4, [micronFromMm]);
+
   const [gaugeIn, setGaugeIn] = useState<number>(80);
   const micronFromGauge = useMemo(() => toNumber(gaugeIn) * 0.25, [gaugeIn]);
   const mmFromGauge = useMemo(() => micronFromGauge / 1000, [micronFromGauge]);
+
   return (
-    <div className="grid md:grid-cols-3 gap-4">
-      <div className="grid gap-2">
-        <h4 className="font-semibold">من ميكرون</h4>
-        <LabeledNumber label="ميكرون" value={micron} onChange={setMicron} step={0.1} />
-        <Metric label="مم" value={fmtFixed(mm, 3)} />
-        <Metric label="قيج (تقريبي)" value={fmtFixed(gauge, 1)} />
+    <div className="grid md:grid-cols-3 gap-6">
+      <div className="space-y-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
+        <h4 className="font-semibold flex items-center gap-2">
+          <Ruler className="h-5 w-5 text-primary" />
+          من ميكرون
+        </h4>
+        <InputField label="ميكرون" value={micron} onChange={setMicron} suffix="μm" />
+        <div className="grid gap-2">
+          <ResultCard label="مليمتر" value={fmtFixed(mm, 4)} />
+          <ResultCard label="قيج" value={fmtFixed(gauge, 1)} />
+        </div>
       </div>
-      <div className="grid gap-2">
-        <h4 className="font-semibold">من مم</h4>
-        <LabeledNumber label="مم" value={mmIn} onChange={setMmIn} step={0.001} />
-        <Metric label="ميكرون" value={fmtFixed(micronFromMm, 1)} />
-        <Metric label="قيج (تقريبي)" value={fmtFixed(gaugeFromMm, 1)} />
+      
+      <div className="space-y-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
+        <h4 className="font-semibold flex items-center gap-2">
+          <Ruler className="h-5 w-5 text-primary" />
+          من مليمتر
+        </h4>
+        <InputField label="مليمتر" value={mmIn} onChange={setMmIn} step={0.001} suffix="mm" />
+        <div className="grid gap-2">
+          <ResultCard label="ميكرون" value={fmtFixed(micronFromMm, 1)} />
+          <ResultCard label="قيج" value={fmtFixed(gaugeFromMm, 1)} />
+        </div>
       </div>
-      <div className="grid gap-2">
-        <h4 className="font-semibold">من قيج</h4>
-        <LabeledNumber label="قيج" value={gaugeIn} onChange={setGaugeIn} step={1} />
-        <Metric label="ميكرون" value={fmtFixed(micronFromGauge, 1)} />
-        <Metric label="مم" value={fmtFixed(mmFromGauge, 3)} />
+      
+      <div className="space-y-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
+        <h4 className="font-semibold flex items-center gap-2">
+          <Ruler className="h-5 w-5 text-primary" />
+          من قيج
+        </h4>
+        <InputField label="قيج" value={gaugeIn} onChange={setGaugeIn} step={1} />
+        <div className="grid gap-2">
+          <ResultCard label="ميكرون" value={fmtFixed(micronFromGauge, 1)} />
+          <ResultCard label="مليمتر" value={fmtFixed(mmFromGauge, 4)} />
+        </div>
       </div>
     </div>
   );
 }
 
-// ===================== 9) زمن وتشغيل العملية =====================
+// ===================== 9) زمن التشغيل =====================
+
 function JobTimePlanner(): JSX.Element {
-  // معطيات عامة
   const [qty, setQty] = useState<number>(10000);
   const [bagWeightG, setBagWeightG] = useState<number>(5);
-
-  // سرعات تقديرية
-  const [extrusionKgPerHr, setExtrusionKgPerHr] = useState<number>(35); // كجم/ساعة لكل خط
-  const [cutBagsPerMin, setCutBagsPerMin] = useState<number>(120); // حبة/دقيقة
-  const [printMPerMin, setPrintMPerMin] = useState<number>(60); // متر/دقيقة
-
-  // أطوال إضافية للتقدير
+  const [extrusionKgPerHr, setExtrusionKgPerHr] = useState<number>(35);
+  const [cutBagsPerMin, setCutBagsPerMin] = useState<number>(120);
+  const [printMPerMin, setPrintMPerMin] = useState<number>(60);
   const [bagLengthCm, setBagLengthCm] = useState<number>(40);
-
-  // إعدادات وتغييرات
   const [setupExtruderHr, setSetupExtruderHr] = useState<number>(0.5);
   const [setupCutterHr, setSetupCutterHr] = useState<number>(0.3);
   const [setupPrinterHr, setSetupPrinterHr] = useState<number>(0.7);
@@ -782,147 +988,127 @@ function JobTimePlanner(): JSX.Element {
   const [changeoverPerColorMin, setChangeoverPerColorMin] = useState<number>(8);
 
   const result = useMemo(() => {
-    const totalKg = (toNumber(qty) * toNumber(bagWeightG)) / 1000 / 1000; // كجم
-
-    // بثق
+    const totalKg = (toNumber(qty) * toNumber(bagWeightG)) / 1000 / 1000;
     const extrusionHours = totalKg / Math.max(1e-6, toNumber(extrusionKgPerHr)) + toNumber(setupExtruderHr);
-
-    // طباعة: تقريب الطول الكلي (متر)
     const totalMeters = (toNumber(qty) * (toNumber(bagLengthCm) / 100));
-    const printCore = totalMeters / Math.max(1e-6, toNumber(printMPerMin)) / 60; // ساعات
+    const printCore = totalMeters / Math.max(1e-6, toNumber(printMPerMin)) / 60;
     const printChangeovers = (toNumber(colors) > 0 ? (toNumber(colors) - 1) * (toNumber(changeoverPerColorMin) / 60) : 0);
     const printHours = printCore + printChangeovers + toNumber(setupPrinterHr);
-
-    // تقطيع
-    const cutCore = (toNumber(qty) / Math.max(1e-6, toNumber(cutBagsPerMin))) / 60; // ساعات
+    const cutCore = (toNumber(qty) / Math.max(1e-6, toNumber(cutBagsPerMin))) / 60;
     const cutHours = cutCore + toNumber(setupCutterHr);
-
     const totalHours = extrusionHours + printHours + cutHours;
-
     return { totalKg, extrusionHours, printHours, cutHours, totalHours } as const;
   }, [qty, bagWeightG, extrusionKgPerHr, cutBagsPerMin, printMPerMin, bagLengthCm, setupExtruderHr, setupCutterHr, setupPrinterHr, colors, changeoverPerColorMin]);
 
   return (
-    <div className="grid lg:grid-cols-2 gap-4">
-      <div className="grid gap-3">
-        <LabeledNumber label="الكمية (حبة)" value={qty} onChange={setQty} step={500} />
-        <LabeledNumber label="وزن الحبة (جم)" value={bagWeightG} onChange={setBagWeightG} step={0.01} />
-        <Divider />
-        <LabeledNumber label="سرعة البثق (كجم/ساعة)" value={extrusionKgPerHr} onChange={setExtrusionKgPerHr} step={1} />
-        <LabeledNumber label="سرعة التقطيع (حبة/دقيقة)" value={cutBagsPerMin} onChange={setCutBagsPerMin} step={1} />
-        <LabeledNumber label="سرعة الطباعة (م/دقيقة)" value={printMPerMin} onChange={setPrintMPerMin} step={1} />
-        <LabeledNumber label="طول الحبة (سم)" value={bagLengthCm} onChange={setBagLengthCm} step={0.1} />
-        <Divider />
-        <LabeledNumber label="إعداد البثق (ساعة)" value={setupExtruderHr} onChange={setSetupExtruderHr} step={0.1} />
-        <LabeledNumber label="إعداد التقطيع (ساعة)" value={setupCutterHr} onChange={setSetupCutterHr} step={0.1} />
-        <LabeledNumber label="إعداد الطباعة (ساعة)" value={setupPrinterHr} onChange={setSetupPrinterHr} step={0.1} />
+    <div className="grid lg:grid-cols-2 gap-6">
+      <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          <LabeledNumber label="عدد الألوان" value={colors} onChange={setColors} step={1} />
-          <LabeledNumber label="زمن تغيير/لون (دقيقة)" value={changeoverPerColorMin} onChange={setChangeoverPerColorMin} step={1} />
+          <InputField label="الكمية" value={qty} onChange={setQty} step={500} suffix="حبة" />
+          <InputField label="وزن الحبة" value={bagWeightG} onChange={setBagWeightG} suffix="جم" />
+        </div>
+        
+        <Separator />
+        <h4 className="font-semibold text-sm text-muted-foreground">سرعات الإنتاج</h4>
+        
+        <div className="grid grid-cols-2 gap-3">
+          <InputField label="سرعة البثق" value={extrusionKgPerHr} onChange={setExtrusionKgPerHr} suffix="كجم/س" />
+          <InputField label="سرعة التقطيع" value={cutBagsPerMin} onChange={setCutBagsPerMin} suffix="حبة/د" />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <InputField label="سرعة الطباعة" value={printMPerMin} onChange={setPrintMPerMin} suffix="م/د" />
+          <InputField label="طول الحبة" value={bagLengthCm} onChange={setBagLengthCm} suffix="سم" />
+        </div>
+        
+        <Separator />
+        <h4 className="font-semibold text-sm text-muted-foreground">أوقات الإعداد</h4>
+        
+        <div className="grid grid-cols-3 gap-3">
+          <InputField label="إعداد البثق" value={setupExtruderHr} onChange={setSetupExtruderHr} suffix="ساعة" />
+          <InputField label="إعداد التقطيع" value={setupCutterHr} onChange={setSetupCutterHr} suffix="ساعة" />
+          <InputField label="إعداد الطباعة" value={setupPrinterHr} onChange={setSetupPrinterHr} suffix="ساعة" />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <InputField label="عدد الألوان" value={colors} onChange={setColors} step={1} />
+          <InputField label="زمن تغيير اللون" value={changeoverPerColorMin} onChange={setChangeoverPerColorMin} suffix="دقيقة" />
         </div>
       </div>
 
-      <div className="grid gap-3 bg-gray-50 rounded-xl p-4">
-        <Metric label="إجمالي وزن المادة (كجم)" value={fmtFixed(result.totalKg, 3)} />
-        <Metric label="ساعات البثق" value={fmtFixed(result.extrusionHours, 2)} />
-        <Metric label="ساعات الطباعة" value={fmtFixed(result.printHours, 2)} />
-        <Metric label="ساعات التقطيع" value={fmtFixed(result.cutHours, 2)} />
-        <Divider />
-        <Metric label="إجمالي ساعات التشغيل" value={fmtFixed(result.totalHours, 2)} emphasis />
+      <div className="space-y-4">
+        <h3 className="font-semibold flex items-center gap-2">
+          <Clock className="h-5 w-5 text-primary" />
+          تقدير الوقت
+        </h3>
+        <div className="grid gap-3">
+          <ResultCard label="وزن المادة" value={`${fmtFixed(result.totalKg, 2)} كجم`} />
+          <ResultCard label="ساعات البثق" value={`${fmtFixed(result.extrusionHours, 2)} ساعة`} />
+          <ResultCard label="ساعات الطباعة" value={`${fmtFixed(result.printHours, 2)} ساعة`} />
+          <ResultCard label="ساعات التقطيع" value={`${fmtFixed(result.cutHours, 2)} ساعة`} />
+        </div>
+        <Separator />
+        <ResultCard label="إجمالي ساعات التشغيل" value={`${fmtFixed(result.totalHours, 2)} ساعة`} highlight />
+        <p className="text-xs text-muted-foreground bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+          💡 الأوقات تقديرية وقد تختلف حسب ظروف الإنتاج الفعلية
+        </p>
       </div>
     </div>
   );
 }
 
-// ===================== عناصر واجهة عامة =====================
-interface LabeledNumberProps { label: string; value: number; onChange: (v: number) => void; step?: number; title?: string; }
-function LabeledNumber({ label, value, onChange, step = 0.1, title }: LabeledNumberProps): JSX.Element {
-  return (
-    <label className="grid gap-1 text-sm" title={title}>
-      <span className="text-gray-700">{label}</span>
-      <input type="number" className="border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black/10" value={Number.isFinite(value) ? value : 0} step={step} onChange={(e) => onChange(toNumber(e.target.value))} />
-    </label>
-  );
+// ===================== Utility Functions =====================
+
+function toNumber(v: unknown): number {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
 }
 
-interface LabeledTextProps { label: string; value: string; onChange: (v: string) => void; placeholder?: string; }
-function LabeledText({ label, value, onChange, placeholder }: LabeledTextProps): JSX.Element {
-  return (
-    <label className="grid gap-1 text-sm">
-      <span className="text-gray-700">{label}</span>
-      <input type="text" className="border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black/10" value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
-    </label>
-  );
+function round(v: number, decimals: number): number {
+  const f = 10 ** decimals;
+  return Math.round(v * f) / f;
 }
 
-interface LabeledSelectProps { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; hint?: string; }
-function LabeledSelect({ label, value, onChange, options, hint }: LabeledSelectProps): JSX.Element {
-  return (
-    <label className="grid gap-1 text-sm">
-      <span className="text-gray-700">{label}</span>
-      <select className="border rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-black/10" value={value} onChange={(e) => onChange(e.target.value)}>
-        {options.map((opt) => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
-      </select>
-      {hint && <span className="text-[11px] text-gray-500">{hint}</span>}
-    </label>
-  );
+function fmtFixed(v: number, d: number): string {
+  return toNumber(v).toFixed(d);
 }
 
-function Divider(): JSX.Element { return <div className="h-px bg-gray-200 my-1" />; }
-
-function Metric({ label, value, hint, emphasis = false }: { label: string; value: string | number; hint?: string; emphasis?: boolean; }): JSX.Element {
-  return (
-    <div>
-      <div className="text-gray-600 text-xs">{label}</div>
-      <div className={`text-lg ${emphasis ? "font-bold" : "font-medium"}`}>{String(value)}</div>
-      {hint && <div className="text-[11px] text-gray-400">{hint}</div>}
-    </div>
-  );
+function fmtSar(v: number): string {
+  return `${fmtFixed(v, 2)} ر.س`;
 }
 
-// ===================== دوال الألوان =====================
-interface RGB { r: number; g: number; b: number }
-interface CMYK { c: number; m: number; y: number; k: number }
-function cmykToRgb(C: number, M: number, Y: number, K: number): RGB {
-  const c = clamp01(C / 100), m = clamp01(M / 100), y = clamp01(Y / 100), k = clamp01(K / 100);
-  const r = Math.round(255 * (1 - c) * (1 - k));
-  const g = Math.round(255 * (1 - m) * (1 - k));
-  const b = Math.round(255 * (1 - y) * (1 - k));
+interface CMYK { c: number; m: number; y: number; k: number; }
+
+function cmykToRgb(c: number, m: number, y: number, k: number): { r: number; g: number; b: number } {
+  const C = toNumber(c) / 100, M = toNumber(m) / 100, Y = toNumber(y) / 100, K = toNumber(k) / 100;
+  const r = Math.round(255 * (1 - C) * (1 - K));
+  const g = Math.round(255 * (1 - M) * (1 - K));
+  const b = Math.round(255 * (1 - Y) * (1 - K));
   return { r, g, b };
 }
-function rgbToCmyk(R: number, G: number, B: number): CMYK {
-  const r = clamp01(R / 255), g = clamp01(G / 255), b = clamp01(B / 255);
-  const k = 1 - Math.max(r, g, b);
-  const c = k === 0 ? 0 : (1 - r - k) / (1 - k);
-  const m = k === 0 ? 0 : (1 - g - k) / (1 - k);
-  const y = k === 0 ? 0 : (1 - b - k) / (1 - k);
-  return { c: Math.round(c * 100), m: Math.round(m * 100), y: Math.round(y * 100), k: Math.round(k * 100) };
+
+function rgbToCmyk(r: number, g: number, b: number): CMYK {
+  const R = toNumber(r) / 255, G = toNumber(g) / 255, B = toNumber(b) / 255;
+  const K = 1 - Math.max(R, G, B);
+  if (K === 1) return { c: 0, m: 0, y: 0, k: 100 };
+  const C = (1 - R - K) / (1 - K);
+  const M = (1 - G - K) / (1 - K);
+  const Y = (1 - B - K) / (1 - K);
+  return { c: Math.round(C * 100), m: Math.round(M * 100), y: Math.round(Y * 100), k: Math.round(K * 100) };
 }
+
 function rgbToHex(r: number, g: number, b: number): string {
-  const toHex = (n: number) => clamp255(Math.round(n)).toString(16).padStart(2, "0");
-  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
-}
-function hexToRgb(hex: string): RGB {
-  const h = normalizeHex(hex).slice(1);
-  const r = parseInt(h.slice(0, 2), 16);
-  const g = parseInt(h.slice(2, 4), 16);
-  const b = parseInt(h.slice(4, 6), 16);
-  return { r, g, b };
-}
-function normalizeHex(v: string): string {
-  let x = v.trim();
-  if (!x.startsWith("#")) x = `#${x}`;
-  if (x.length === 4) { // #RGB → #RRGGBB
-    x = `#${x[1]}${x[1]}${x[2]}${x[2]}${x[3]}${x[3]}`;
-  }
-  if (x.length !== 7) return "#000000";
-  return x.toUpperCase();
+  const toHex = (n: number) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, "0");
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
 }
 
-// ===================== دوال عامة =====================
-function clamp01(x: number): number { return Math.max(0, Math.min(1, x)); }
-function clamp255(x: number): number { return Math.max(0, Math.min(255, x)); }
-function toNumber(x: unknown): number { const n = typeof x === "number" ? x : Number(x); return Number.isFinite(n) ? n : 0; }
-function fmtSar(v: number): string { if (!Number.isFinite(v)) return "-"; return new Intl.NumberFormat("ar-SA", { style: "currency", currency: "SAR", maximumFractionDigits: 2 }).format(v); }
-function fmtFixed(v: number, d = 2): string { if (!Number.isFinite(v)) return "-"; return Number(v.toFixed(d)).toString(); }
-function round(v: number, d = 2): number { return Number(v.toFixed(d)); }
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const clean = hex.replace("#", "");
+  const bigint = parseInt(clean, 16);
+  return { r: (bigint >> 16) & 255, g: (bigint >> 8) & 255, b: bigint & 255 };
+}
+
+function normalizeHex(v: string): string {
+  let h = v.trim().toUpperCase();
+  if (!h.startsWith("#")) h = "#" + h;
+  if (h.length === 4) h = `#${h[1]}${h[1]}${h[2]}${h[2]}${h[3]}${h[3]}`;
+  return h.slice(0, 7);
+}
