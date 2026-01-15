@@ -2034,6 +2034,16 @@
       "error": "Error"
     }
   },
+  "clickableField": {
+    "updateSuccess": "Data updated successfully",
+    "clickToEdit": "Click to edit",
+    "customerDetails": "Customer Details",
+    "orderDetails": "Order Details",
+    "rollDetails": "Roll Details",
+    "userDetails": "User Details",
+    "productDetails": "Product Details",
+    "productionOrderDetails": "Production Order Details"
+  },
   "errors": {
     "pageNotFound": "Page Not Found",
     "404": "404",

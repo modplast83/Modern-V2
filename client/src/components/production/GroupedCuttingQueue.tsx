@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
+import { ClickableDataField } from "../ClickableDataField";
 import {
   Collapsible,
   CollapsibleContent,
@@ -243,13 +244,20 @@ export default function GroupedCuttingQueue({
                 <Package className="h-5 w-5 text-blue-600" />
                 <div>
                   <CardTitle className="text-lg">
-                    طلب رقم: {order.order_number}
+                    طلب رقم:{" "}
+                    <ClickableDataField
+                      entityType="order"
+                      entityId={order.id}
+                      displayValue={order.order_number}
+                    />
                   </CardTitle>
                   <p className="text-base font-bold text-blue-700">
                     العميل:{" "}
-                    {order.customer_name_ar ||
-                      order.customer_name ||
-                      "غير محدد"}
+                    <ClickableDataField
+                      entityType="customer"
+                      entityId={order.customer_id}
+                      displayValue={order.customer_name_ar || order.customer_name || "غير محدد"}
+                    />
                   </p>
                 </div>
               </div>

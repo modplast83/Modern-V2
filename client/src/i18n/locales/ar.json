@@ -2026,6 +2026,16 @@
       "error": "خطأ"
     }
   },
+  "clickableField": {
+    "updateSuccess": "تم تحديث البيانات بنجاح",
+    "clickToEdit": "اضغط للتعديل",
+    "customerDetails": "بيانات العميل",
+    "orderDetails": "بيانات الطلب",
+    "rollDetails": "بيانات الرول",
+    "userDetails": "بيانات المستخدم",
+    "productDetails": "بيانات المنتج",
+    "productionOrderDetails": "بيانات أمر الإنتاج"
+  },
   "errors": {
     "pageNotFound": "الصفحة غير موجودة",
     "404": "404",

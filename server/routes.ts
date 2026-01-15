@@ -1226,6 +1226,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin-only PUT route for editing production order fields
+  app.put("/api/production-orders/:id", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "معرف أمر الإنتاج غير صحيح" });
+      }
+      
+      // Allow updating specific fields for admin
+      const { production_order_number, notes, status } = req.body;
+      const updates: any = {};
+      
+      if (production_order_number !== undefined) updates.production_order_number = production_order_number;
+      if (notes !== undefined) updates.notes = notes;
+      if (status !== undefined) updates.status = status;
+      
+      const productionOrder = await storage.updateProductionOrder(id, updates);
+      if (!productionOrder) {
+        return res.status(404).json({ message: "أمر الإنتاج غير موجود" });
+      }
+      res.json(productionOrder);
+    } catch (error) {
+      console.error("Admin production order update error:", error);
+      res.status(400).json({ message: "خطأ في تحديث أمر الإنتاج" });
+    }
+  });
+
   app.post("/api/production-orders/batch", requireAuth, async (req, res) => {
     try {
       const { orders } = req.body;
@@ -1684,6 +1711,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin-only PUT route for editing roll fields (roll_number, etc.)
+  app.put("/api/rolls/:id", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "معرف الرول غير صحيح" });
+      }
+      
+      // Allow updating specific fields for admin
+      const { roll_number, roll_seq, weight_kg, waste_kg, notes } = req.body;
+      const updates: any = {};
+      
+      if (roll_number !== undefined) updates.roll_number = roll_number;
+      if (roll_seq !== undefined) updates.roll_seq = roll_seq;
+      if (weight_kg !== undefined) updates.weight_kg = weight_kg;
+      if (waste_kg !== undefined) updates.waste_kg = waste_kg;
+      if (notes !== undefined) updates.notes = notes;
+      
+      const roll = await storage.updateRoll(id, updates);
+      if (!roll) {
+        return res.status(404).json({ message: "الرول غير موجود" });
+      }
+      res.json(roll);
+    } catch (error) {
+      console.error("Admin roll update error:", error);
+      res.status(400).json({ message: "خطأ في تحديث الرول" });
+    }
+  });
+
   // ================ PRINTING OPERATOR API ROUTES ================
   
   // Get rolls ready for printing by section
@@ -1788,6 +1844,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(customers);
     } catch (error) {
       res.status(500).json({ message: "خطأ في جلب العملاء" });
+    }
+  });
+
+  // Get single customer by ID (admin only for edit feature)
+  app.get("/api/customers/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const customers = await storage.getCustomers();
+      const customer = customers.find((c: any) => String(c.id) === String(id));
+      if (!customer) {
+        return res.status(404).json({ success: false, message: "العميل غير موجود" });
+      }
+      res.json({ success: true, data: customer });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "خطأ في جلب بيانات العميل" });
+    }
+  });
+
+  // Get single order by ID
+  app.get("/api/orders/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const orders = await storage.getOrders();
+      const order = orders.find((o: any) => String(o.id) === String(id));
+      if (!order) {
+        return res.status(404).json({ success: false, message: "الطلب غير موجود" });
+      }
+      res.json({ success: true, data: order });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "خطأ في جلب بيانات الطلب" });
+    }
+  });
+
+  // Get single roll by ID
+  app.get("/api/rolls/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const rolls = await storage.getRolls();
+      const roll = rolls.find((r: any) => String(r.id) === String(id));
+      if (!roll) {
+        return res.status(404).json({ success: false, message: "الرول غير موجود" });
+      }
+      res.json({ success: true, data: roll });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "خطأ في جلب بيانات الرول" });
+    }
+  });
+
+  // Get single item/product by ID
+  app.get("/api/items/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const items = await storage.getItems();
+      const item = items.find((i: any) => String(i.id) === String(id));
+      if (!item) {
+        return res.status(404).json({ success: false, message: "المنتج غير موجود" });
+      }
+      res.json({ success: true, data: item });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "خطأ في جلب بيانات المنتج" });
+    }
+  });
+
+  // Get single production order by ID
+  app.get("/api/production-orders/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const productionOrders = await storage.getProductionOrders();
+      const productionOrder = productionOrders.find((po: any) => String(po.id) === String(id));
+      if (!productionOrder) {
+        return res.status(404).json({ success: false, message: "أمر الإنتاج غير موجود" });
+      }
+      res.json({ success: true, data: productionOrder });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "خطأ في جلب بيانات أمر الإنتاج" });
     }
   });
 
@@ -2304,7 +2435,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/customers/:id", async (req, res) => {
+  app.put("/api/customers/:id", requireAuth, requireAdmin, async (req, res) => {
     try {
       const id = req.params.id;
       const validatedData = insertCustomerSchema.parse(req.body);
@@ -3405,7 +3536,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/users/:id", async (req, res) => {
+  app.put("/api/users/:id", requireAuth, requireAdmin, async (req, res) => {
     try {
       // Enhanced parameter validation
       if (!req.params?.id) {
@@ -3682,7 +3813,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/items/:id", async (req, res) => {
+  app.put("/api/items/:id", requireAuth, requireAdmin, async (req, res) => {
     try {
       // Enhanced parameter validation
       if (!req.params?.id?.trim()) {
