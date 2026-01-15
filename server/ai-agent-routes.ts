@@ -598,16 +598,19 @@ async function executeFunction(name: string, args: Record<string, unknown>): Pro
           `📥 تحميل ملف PDF:\n${pdfUrl}\n\n` +
           `✅ هذا العرض صالح لمدة 15 يوم من تاريخ الإصدار.`;
         
-        // محاولة إرسال الرسالة عبر Twilio
+        // محاولة إرسال الرسالة عبر WhatsApp API (Meta أو Twilio)
         try {
           const { NotificationService } = await import("./services/notification-service");
           const { storage } = await import("./storage");
           const notificationService = new NotificationService(storage);
           
+          // استخدام القوالب المعتمدة إذا كانت Meta API مفعّلة
           const result = await notificationService.sendWhatsAppMessage(formattedPhone, quoteMessage, {
             title: `عرض سعر ${quote.document_number}`,
             context_type: "quote",
-            context_id: String(quoteId)
+            context_id: String(quoteId),
+            useTemplate: true,
+            templateName: "quote_notification"
           });
           
           if (result.success) {

@@ -34,8 +34,8 @@ export class NotificationService {
     this.storage = storage;
 
     // تحديد استخدام Meta API أو Twilio
-    // نستخدم Twilio افتراضياً لأن Meta Access Token غير صالح
-    this.useMetaAPI = false; // !!( process.env.META_ACCESS_TOKEN && process.env.META_PHONE_NUMBER_ID );
+    // نستخدم Meta API إذا كانت بيانات الاعتماد متوفرة
+    this.useMetaAPI = !!(process.env.META_ACCESS_TOKEN && process.env.META_PHONE_NUMBER_ID);
 
     // تهيئة Meta WhatsApp API
     this.metaWhatsApp = new MetaWhatsAppService(storage);
