@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { QrCode, Play, ChevronDown, ChevronRight, Plus, Printer } from "lucide-react";
-import { ClickableDataField } from "../ClickableDataField";
 import { Progress } from "../ui/progress";
 import { useToast } from "../../hooks/use-toast";
 import { formatWeight } from "../../lib/formatNumber";
@@ -314,12 +313,7 @@ export default function GroupedPrintingQueue({
                       )}
                       <div className="text-right">
                         <CardTitle className="text-lg">
-                          <ClickableDataField
-                            entityType="order"
-                            entityId={orderGroup.order_id}
-                            displayValue={orderGroup.order_number}
-                          />{" "}
-                          -{" "}
+                          {orderGroup.order_number} -{" "}
                           <span className="font-bold text-blue-700">
                             {orderGroup.customer_name_ar}
                           </span>

@@ -1,7 +1,6 @@
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
-import { ClickableDataField } from "../ClickableDataField";
 import {
   Table,
   TableBody,
@@ -301,20 +300,12 @@ export default function OrdersTable({
                 className="font-medium"
                 data-testid={`order-number-${order.id}`}
               >
-                <ClickableDataField
-                  entityType="order"
-                  entityId={order.id}
-                  displayValue={order.order_number}
-                />
+                {order.order_number}
               </TableCell>
               <TableCell data-testid={`customer-${order.id}`}>
                 <div className="text-right">
                   <div className="font-medium">
-                    <ClickableDataField
-                      entityType="customer"
-                      entityId={customer?.id}
-                      displayValue={customer?.name_ar || customer?.name || "-"}
-                    />
+                    {customer?.name_ar || customer?.name}
                   </div>
                   <div className="text-sm text-gray-500">{customer?.id}</div>
                 </div>
@@ -326,13 +317,7 @@ export default function OrdersTable({
               </TableCell>
               <TableCell data-testid={`created-by-${order.id}`}>
                 <div className="text-right">
-                  <div className="font-medium">
-                    <ClickableDataField
-                      entityType="user"
-                      entityId={user?.id}
-                      displayValue={user?.display_name_ar || user?.display_name || user?.username || '-'}
-                    />
-                  </div>
+                  <div className="font-medium">{user?.display_name_ar || user?.display_name || user?.username || '-'}</div>
                   <div className="text-sm text-gray-500">#{user?.id}</div>
                 </div>
               </TableCell>

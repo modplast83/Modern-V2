@@ -9,7 +9,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { useToast } from "../../hooks/use-toast";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
-import { ClickableDataField } from "../ClickableDataField";
 import {
   X,
   Package,
@@ -279,18 +278,10 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
           <div>
             <CardTitle className="text-2xl flex items-center gap-2">
               <Package className="h-6 w-6" />
-              <ClickableDataField
-                entityType="roll"
-                entityId={rollDetails.roll_id}
-                displayValue={rollDetails.roll_number}
-              />
+              {rollDetails.roll_number}
             </CardTitle>
             <CardDescription className="mt-1">
-              <ClickableDataField
-                entityType="customer"
-                entityId={rollDetails.customer_id}
-                displayValue={rollDetails.customer_name_ar || rollDetails.customer_name}
-              />
+              {rollDetails.customer_name_ar || rollDetails.customer_name}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
