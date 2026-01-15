@@ -43,3 +43,9 @@ integrations = ["javascript_log_in_with_replit:1.0.0", "javascript_database:1.0.
 
 [objectStorage]
 defaultBucketID = "replit-objstore-f051a8bd-4d25-4be5-96f2-cace19458c51"
+
+[userenv]
+
+[userenv.shared]
+META_PHONE_NUMBER_ID = "707125052493951"
+META_BUSINESS_ACCOUNT_ID = "1179138877371660"
