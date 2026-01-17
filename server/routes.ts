@@ -1185,9 +1185,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { customer_product_id, quantity_kg, overrun_percentage } = req.body;
 
       // Get customer product info for intelligent calculation
-      const customerProducts = await storage.getCustomerProducts();
-      const customerProduct = customerProducts.find(
-        (cp) => cp.id === parseInt(customer_product_id),
+      const customerProductsResult = await storage.getCustomerProducts();
+      const customerProduct = customerProductsResult.data.find(
+        (cp: any) => cp.id === parseInt(customer_product_id),
       );
 
       if (!customerProduct) {
@@ -1237,13 +1237,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const customerProducts = await storage.getCustomerProducts();
+      const customerProductsResult = await storage.getCustomerProducts();
       const processedOrders = [];
 
       for (const order of orders) {
         const { customer_product_id, quantity_kg, overrun_percentage } = order;
-        const customerProduct = customerProducts.find(
-          (cp) => cp.id === parseInt(customer_product_id),
+        const customerProduct = customerProductsResult.data.find(
+          (cp: any) => cp.id === parseInt(customer_product_id),
         );
 
         if (!customerProduct) {
@@ -1318,7 +1318,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // If customer_product_id or quantity_kg is being updated, recalculate overrun_percentage
         if (req.body.customer_product_id || req.body.quantity_kg) {
-          const customerProducts = await storage.getCustomerProducts();
+          const customerProductsResult = await storage.getCustomerProducts();
           
           // Get the existing production order to fill in missing fields
           const existingOrder = await storage.getProductionOrderById(id);
@@ -1329,8 +1329,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const customer_product_id = req.body.customer_product_id || existingOrder.customer_product_id;
           const quantity_kg = req.body.quantity_kg || existingOrder.quantity_kg;
           
-          const customerProduct = customerProducts.find(
-            (cp) => cp.id === parseInt(customer_product_id),
+          const customerProduct = customerProductsResult.data.find(
+            (cp: any) => cp.id === parseInt(customer_product_id),
           );
           
           if (customerProduct) {
@@ -1392,9 +1392,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Get specific customer product info for intelligent calculation (optimized with cache)
-        const customerProducts = await storage.getCustomerProducts();
-        const customerProduct = customerProducts.find(
-          (cp) => cp.id === parseInt(customer_product_id),
+        const customerProductsResult = await storage.getCustomerProducts();
+        const customerProduct = customerProductsResult.data.find(
+          (cp: any) => cp.id === parseInt(customer_product_id),
         );
 
         if (!customerProduct) {
@@ -2364,8 +2364,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Customer Products routes
   app.get("/api/customer-products", async (req, res) => {
     try {
-      const customerProducts = await storage.getCustomerProducts();
-      res.json(customerProducts);
+      const { customer_id, ids, page, limit } = req.query;
+      
+      const options: { customer_id?: string; ids?: number[]; page?: number; limit?: number } = {};
+      
+      if (customer_id && typeof customer_id === 'string') {
+        options.customer_id = customer_id;
+      }
+      
+      if (ids && typeof ids === 'string') {
+        options.ids = ids.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+      }
+      
+      if (page && typeof page === 'string') {
+        options.page = parseInt(page);
+      }
+      
+      if (limit && typeof limit === 'string') {
+        options.limit = parseInt(limit);
+      }
+      
+      const result = await storage.getCustomerProducts(options);
+      res.json(result);
     } catch (error) {
       console.error("Customer products fetch error:", error);
       res.status(500).json({ message: "خطأ في جلب منتجات العملاء" });
@@ -5315,13 +5335,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             } else if (tableName === "customer_products") {
               // Auto-increment numeric ID
               if (!processedRecord.id) {
-                const existingProducts = await storage.getCustomerProducts();
+                const existingProductsResult = await storage.getCustomerProducts();
                 const lastId =
-                  existingProducts.length > 0
+                  existingProductsResult.data.length > 0
                     ? Math.max(
-                        ...existingProducts
-                          .map((p) => p.id)
-                          .filter((id) => typeof id === "number"),
+                        ...existingProductsResult.data
+                          .map((p: any) => p.id)
+                          .filter((id: any) => typeof id === "number"),
                       )
                     : 0;
                 processedRecord.id = lastId + 1;

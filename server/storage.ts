@@ -491,7 +491,7 @@ export interface IStorage {
   getCustomers(): Promise<Customer[]>;
 
   // Customer Products (replacing the old Product table)
-  getCustomerProducts(): Promise<CustomerProduct[]>;
+  getCustomerProducts(options?: { customer_id?: string; ids?: number[]; page?: number; limit?: number }): Promise<{ data: CustomerProduct[]; total: number }>;
   createCustomerProduct(customerProduct: any): Promise<CustomerProduct>;
 
   // Customers
@@ -548,7 +548,7 @@ export interface IStorage {
   getItems(): Promise<Item[]>;
 
   // Customer Products
-  getCustomerProducts(): Promise<CustomerProduct[]>;
+  getCustomerProducts(options?: { customer_id?: string; ids?: number[]; page?: number; limit?: number }): Promise<{ data: CustomerProduct[]; total: number }>;
 
   // Locations
   getLocations(): Promise<Location[]>;
@@ -5767,8 +5767,32 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async getCustomerProducts(): Promise<CustomerProduct[]> {
-    return await db
+  private customerProductsCache: { data: CustomerProduct[]; total: number; expiry: number } | null = null;
+  private customerProductsCacheTimeout = 45000; // 45 seconds cache
+
+  async getCustomerProducts(options?: { customer_id?: string; ids?: number[]; page?: number; limit?: number }): Promise<{ data: CustomerProduct[]; total: number }> {
+    const { customer_id, ids, page, limit } = options || {};
+    
+    // If no filters and no pagination, use cache
+    const useCache = !customer_id && !ids && !page && !limit;
+    
+    if (useCache && this.customerProductsCache && Date.now() < this.customerProductsCache.expiry) {
+      return { data: this.customerProductsCache.data, total: this.customerProductsCache.total };
+    }
+
+    // Build conditions array
+    const conditions: any[] = [];
+    
+    if (customer_id) {
+      conditions.push(eq(customer_products.customer_id, customer_id));
+    }
+    
+    if (ids && ids.length > 0) {
+      conditions.push(inArray(customer_products.id, ids));
+    }
+
+    // Build base query
+    let query = db
       .select({
         id: customer_products.id,
         customer_id: customer_products.customer_id,
@@ -5799,16 +5823,53 @@ export class DatabaseStorage implements IStorage {
         customer_code: customers.code,
       })
       .from(customer_products)
-      .leftJoin(customers, eq(customer_products.customer_id, customers.id))
-      .orderBy(desc(customer_products.created_at))
-      .then((results) =>
-        results.map((row) => ({
-          ...row,
-          customer_name: row.customer_name || undefined,
-          customer_name_ar: row.customer_name_ar || undefined,
-          customer_code: row.customer_code || undefined,
-        })),
-      );
+      .leftJoin(customers, eq(customer_products.customer_id, customers.id));
+
+    // Apply conditions if any
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as typeof query;
+    }
+
+    // Get total count for pagination
+    const countQuery = db
+      .select({ count: sql<number>`count(*)` })
+      .from(customer_products);
+    
+    if (conditions.length > 0) {
+      (countQuery as any).where(and(...conditions));
+    }
+    
+    const [countResult] = await countQuery;
+    const total = Number(countResult?.count || 0);
+
+    // Apply ordering
+    query = query.orderBy(desc(customer_products.created_at)) as typeof query;
+
+    // Apply pagination if specified
+    if (limit) {
+      const offset = page ? (page - 1) * limit : 0;
+      query = query.limit(limit).offset(offset) as typeof query;
+    }
+
+    const results = await query;
+    
+    const data = results.map((row) => ({
+      ...row,
+      customer_name: row.customer_name || undefined,
+      customer_name_ar: row.customer_name_ar || undefined,
+      customer_code: row.customer_code || undefined,
+    })) as CustomerProduct[];
+
+    // Update cache if no filters
+    if (useCache) {
+      this.customerProductsCache = {
+        data,
+        total,
+        expiry: Date.now() + this.customerProductsCacheTimeout,
+      };
+    }
+
+    return { data, total };
   }
 
   async getLocations(): Promise<Location[]> {
