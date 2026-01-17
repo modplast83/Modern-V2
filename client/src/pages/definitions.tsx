@@ -847,11 +847,12 @@ export default function Definitions() {
     queryKey: ["/api/items"],
     staleTime: 0,
   });
-  const { data: customerProducts = [], isLoading: customerProductsLoading } =
-    useQuery({
+  const { data: customerProductsResponse, isLoading: customerProductsLoading } =
+    useQuery<{ data: any[]; total: number }>({
       queryKey: ["/api/customer-products"],
       staleTime: 0,
     });
+  const customerProducts = customerProductsResponse?.data || [];
   const { data: machines = [], isLoading: machinesLoading } = useQuery({
     queryKey: ["/api/machines"],
     staleTime: 0,

@@ -7,6 +7,12 @@ import multer, { FileFilterCallback } from "multer";
 import * as XLSX from "exceljs";
 import * as fs from "fs";
 import * as path from "path";
+import PDFDocument from "pdfkit";
+
+const PDF_DIR = "/tmp/quote-pdfs";
+if (!fs.existsSync(PDF_DIR)) {
+  fs.mkdirSync(PDF_DIR, { recursive: true });
+}
 
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -785,206 +791,114 @@ export function registerAiAgentRoutes(app: Express): void {
       const items = await db.select().from(quote_items).where(eq(quote_items.quote_id, id)).orderBy(quote_items.line_number);
 
       const formatCurrency = (amount: string | number) => {
-        return new Intl.NumberFormat("ar-SA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(amount));
+        return new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(amount));
       };
 
       const formatDate = (date: string | Date) => {
-        return new Date(date).toLocaleDateString("ar-SA");
+        return new Date(date).toLocaleDateString("en-GB");
       };
 
-      const html = `
-<!DOCTYPE html>
-<html dir="rtl" lang="ar">
-<head>
-  <meta charset="UTF-8">
-  <title>عرض سعر - ${quote.document_number}</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { 
-      font-family: 'Segoe UI', Tahoma, Arial, sans-serif; 
-      padding: 40px; 
-      background: white;
-      color: #333;
-      direction: rtl;
-    }
-    .header { 
-      display: flex; 
-      justify-content: space-between; 
-      align-items: center;
-      border-bottom: 3px solid #2563eb;
-      padding-bottom: 20px;
-      margin-bottom: 30px;
-    }
-    .logo-section { text-align: right; }
-    .logo-section h1 { color: #2563eb; font-size: 28px; margin-bottom: 5px; }
-    .logo-section p { color: #666; font-size: 14px; }
-    .doc-info { text-align: left; }
-    .doc-info .doc-number { font-size: 24px; font-weight: bold; color: #2563eb; }
-    .doc-info .doc-date { color: #666; margin-top: 5px; }
-    .customer-section {
-      background: #f8fafc;
-      padding: 20px;
-      border-radius: 8px;
-      margin-bottom: 30px;
-    }
-    .customer-section h3 { color: #2563eb; margin-bottom: 15px; font-size: 16px; }
-    .customer-info { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .customer-info div { font-size: 14px; }
-    .customer-info span { font-weight: bold; }
-    table { 
-      width: 100%; 
-      border-collapse: collapse; 
-      margin-bottom: 30px;
-    }
-    th { 
-      background: #2563eb; 
-      color: white; 
-      padding: 12px 15px; 
-      text-align: right;
-      font-weight: 600;
-    }
-    td { 
-      padding: 12px 15px; 
-      border-bottom: 1px solid #e2e8f0;
-    }
-    tr:nth-child(even) { background: #f8fafc; }
-    .totals {
-      display: flex;
-      justify-content: flex-start;
-      margin-bottom: 30px;
-    }
-    .totals-box {
-      background: #f8fafc;
-      padding: 20px;
-      border-radius: 8px;
-      min-width: 300px;
-    }
-    .totals-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 8px 0;
-      border-bottom: 1px solid #e2e8f0;
-    }
-    .totals-row:last-child {
-      border-bottom: none;
-      font-weight: bold;
-      font-size: 18px;
-      color: #2563eb;
-      padding-top: 15px;
-    }
-    .footer {
-      border-top: 1px solid #e2e8f0;
-      padding-top: 20px;
-      display: flex;
-      justify-content: space-between;
-    }
-    .footer-section { text-align: center; }
-    .footer-section p { color: #666; font-size: 12px; margin-bottom: 5px; }
-    .footer-section strong { font-size: 14px; }
-    .notes {
-      background: #fffbeb;
-      border: 1px solid #fcd34d;
-      border-radius: 8px;
-      padding: 15px;
-      margin-bottom: 20px;
-    }
-    .notes h4 { color: #b45309; margin-bottom: 10px; }
-    .notes p { color: #78350f; font-size: 14px; }
-    @media print {
-      body { padding: 20px; }
-      .no-print { display: none; }
-    }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <div class="logo-section">
-      <h1>🏭 مصنع الأكياس البلاستيكية</h1>
-      <p>الجودة والإتقان في كل منتج</p>
-    </div>
-    <div class="doc-info">
-      <div class="doc-number">${quote.document_number}</div>
-      <div class="doc-date">${formatDate(quote.quote_date)}</div>
-    </div>
-  </div>
+      const doc = new PDFDocument({ size: "A4", margin: 50 });
+      
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="quote_${quote.document_number}.pdf"`);
+      
+      doc.pipe(res);
 
-  <div class="customer-section">
-    <h3>بيانات العميل</h3>
-    <div class="customer-info">
-      <div>اسم العميل: <span>${quote.customer_name}</span></div>
-      <div>الرقم الضريبي: <span>${quote.tax_number}</span></div>
-    </div>
-  </div>
+      doc.fontSize(22).fillColor("#2563eb").text("Modern Plastic Bags Factory", { align: "center" });
+      doc.fontSize(12).fillColor("#666").text("Quality and Excellence in Every Product", { align: "center" });
+      doc.moveDown(0.5);
+      
+      doc.strokeColor("#2563eb").lineWidth(2).moveTo(50, doc.y).lineTo(545, doc.y).stroke();
+      doc.moveDown(1);
 
-  <table>
-    <thead>
-      <tr>
-        <th>م</th>
-        <th>اسم الصنف</th>
-        <th>الوحدة</th>
-        <th>الكمية</th>
-        <th>سعر الوحدة</th>
-        <th>الإجمالي</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${items.map(item => `
-        <tr>
-          <td>${item.line_number}</td>
-          <td>${item.item_name}</td>
-          <td>${item.unit}</td>
-          <td>${formatCurrency(item.quantity)}</td>
-          <td>${formatCurrency(item.unit_price)} ر.س</td>
-          <td>${formatCurrency(item.line_total)} ر.س</td>
-        </tr>
-      `).join("")}
-    </tbody>
-  </table>
+      doc.fontSize(18).fillColor("#2563eb").text("PRICE QUOTATION", { align: "center" });
+      doc.moveDown(0.5);
+      doc.fontSize(14).fillColor("#333").text(`Document: ${quote.document_number}`, { align: "center" });
+      doc.fontSize(11).fillColor("#666").text(`Date: ${formatDate(quote.quote_date)}`, { align: "center" });
+      doc.moveDown(1);
 
-  <div class="totals">
-    <div class="totals-box">
-      <div class="totals-row">
-        <span>الإجمالي قبل الضريبة:</span>
-        <span>${formatCurrency(quote.total_before_tax)} ر.س</span>
-      </div>
-      <div class="totals-row">
-        <span>ضريبة القيمة المضافة (15%):</span>
-        <span>${formatCurrency(quote.tax_amount)} ر.س</span>
-      </div>
-      <div class="totals-row">
-        <span>الإجمالي شامل الضريبة:</span>
-        <span>${formatCurrency(quote.total_with_tax)} ر.س</span>
-      </div>
-    </div>
-  </div>
+      doc.rect(50, doc.y, 495, 60).fillColor("#f8fafc").fill();
+      doc.fillColor("#333");
+      const customerY = doc.y + 15;
+      doc.fontSize(12).text("Customer Information", 60, customerY, { underline: true });
+      doc.fontSize(11).text(`Customer: ${quote.customer_name}`, 60, customerY + 20);
+      doc.text(`Tax Number: ${quote.tax_number}`, 300, customerY + 20);
+      doc.y = customerY + 50;
+      doc.moveDown(1);
 
-  ${quote.notes ? `
-    <div class="notes">
-      <h4>ملاحظات:</h4>
-      <p>${quote.notes}</p>
-    </div>
-  ` : ""}
+      const tableTop = doc.y;
+      const colWidths = [30, 150, 60, 70, 85, 100];
+      const headers = ["#", "Item Name", "Unit", "Qty", "Unit Price", "Total"];
+      
+      doc.rect(50, tableTop, 495, 25).fillColor("#2563eb").fill();
+      doc.fillColor("#fff").fontSize(10);
+      let xPos = 55;
+      headers.forEach((header, i) => {
+        doc.text(header, xPos, tableTop + 8, { width: colWidths[i], align: "center" });
+        xPos += colWidths[i];
+      });
 
-  <div class="footer">
-    <div class="footer-section">
-      <p>صلاحية العرض: 15 يوم من تاريخ الإصدار</p>
-    </div>
-    ${quote.created_by_name ? `
-      <div class="footer-section">
-        <p>مقدم العرض</p>
-        <strong>${quote.created_by_name}</strong>
-        ${quote.created_by_phone ? `<p>${quote.created_by_phone}</p>` : ""}
-      </div>
-    ` : ""}
-  </div>
+      let rowY = tableTop + 25;
+      items.forEach((item, index) => {
+        const isEven = index % 2 === 0;
+        if (isEven) {
+          doc.rect(50, rowY, 495, 22).fillColor("#f8fafc").fill();
+        }
+        
+        doc.fillColor("#333").fontSize(10);
+        xPos = 55;
+        const rowData = [
+          String(item.line_number),
+          item.item_name,
+          item.unit,
+          formatCurrency(item.quantity),
+          `${formatCurrency(item.unit_price)} SAR`,
+          `${formatCurrency(item.line_total)} SAR`
+        ];
+        rowData.forEach((text, i) => {
+          doc.text(text, xPos, rowY + 6, { width: colWidths[i], align: "center" });
+          xPos += colWidths[i];
+        });
+        rowY += 22;
+      });
 
-  <script>window.print();</script>
-</body>
-</html>
-      `;
+      doc.strokeColor("#e2e8f0").lineWidth(1).moveTo(50, rowY).lineTo(545, rowY).stroke();
+      doc.moveDown(2);
+      doc.y = rowY + 20;
 
-      res.setHeader("Content-Type", "text/html; charset=utf-8");
-      res.send(html);
+      doc.rect(50, doc.y, 250, 80).fillColor("#f8fafc").fill();
+      const totalsY = doc.y + 10;
+      doc.fillColor("#333").fontSize(11);
+      doc.text("Subtotal:", 60, totalsY);
+      doc.text(`${formatCurrency(quote.total_before_tax)} SAR`, 200, totalsY, { align: "right", width: 90 });
+      doc.text("VAT (15%):", 60, totalsY + 20);
+      doc.text(`${formatCurrency(quote.tax_amount)} SAR`, 200, totalsY + 20, { align: "right", width: 90 });
+      doc.strokeColor("#e2e8f0").moveTo(60, totalsY + 40).lineTo(290, totalsY + 40).stroke();
+      doc.fontSize(13).fillColor("#2563eb").text("Total:", 60, totalsY + 50);
+      doc.text(`${formatCurrency(quote.total_with_tax)} SAR`, 200, totalsY + 50, { align: "right", width: 90 });
+
+      doc.y = totalsY + 90;
+
+      if (quote.notes) {
+        doc.rect(50, doc.y, 495, 50).fillColor("#fffbeb").fill();
+        doc.strokeColor("#fcd34d").rect(50, doc.y, 495, 50).stroke();
+        doc.fillColor("#b45309").fontSize(10).text("Notes:", 60, doc.y + 10);
+        doc.fillColor("#78350f").text(quote.notes, 60, doc.y + 25, { width: 475 });
+        doc.moveDown(3);
+      }
+
+      doc.moveDown(2);
+      doc.strokeColor("#e2e8f0").lineWidth(1).moveTo(50, doc.y).lineTo(545, doc.y).stroke();
+      doc.moveDown(0.5);
+      doc.fillColor("#666").fontSize(9).text("This quotation is valid for 15 days from the issue date.", { align: "center" });
+      
+      if (quote.created_by_name) {
+        doc.moveDown(0.5);
+        doc.text(`Prepared by: ${quote.created_by_name}${quote.created_by_phone ? ` - ${quote.created_by_phone}` : ""}`, { align: "center" });
+      }
+
+      doc.end();
     } catch (error) {
       console.error("Error generating quote PDF:", error);
       res.status(500).json({ error: "فشل في إنشاء ملف PDF" });
