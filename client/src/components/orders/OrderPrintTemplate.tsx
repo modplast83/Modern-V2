@@ -223,15 +223,15 @@ export default function OrderPrintTemplate({
           <style>
             @page { size: A4 landscape; margin: 5mm; }
             * { box-sizing: border-box; }
-            body { margin: 0; padding: 20px; font-family: 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; font-weight: 700; background: white; }
-            table { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 12px; font-weight: 700; }
-            th { background: #e8f4fd; border: 2px solid #444; padding: 10px; font-weight: 900; text-align: center; font-size: 15px; }
-            td { border: 2px solid #444; padding: 8px; text-align: center; font-weight: 700; font-size: 14px; }
+            body { margin: 0; padding: 20px; font-family: 'Times New Roman', Times, serif; direction: rtl; font-weight: 700; background: white; }
+            table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 12px; font-weight: 700; font-family: 'Times New Roman', Times, serif; }
+            th { background: #e8f4fd; border: 2px solid #444; padding: 10px; font-weight: 700; text-align: center; font-size: 13px; font-family: 'Times New Roman', Times, serif; }
+            td { border: 2px solid #444; padding: 8px; text-align: center; font-weight: 700; font-size: 13px; font-family: 'Times New Roman', Times, serif; }
             img { max-width: 100%; }
             .header { display: flex; border-bottom: 3px solid #1a365d; padding-bottom: 12px; margin-bottom: 18px; }
             .header > div { flex: 1; }
-            h1 { font-size: 28px; color: #1a365d; margin: 0; font-weight: 900; }
-            .print-btn { position: fixed; top: 10px; left: 10px; padding: 12px 24px; background: #16a34a; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; }
+            h1 { font-size: 26px; color: #1a365d; margin: 0; font-weight: 700; font-family: 'Times New Roman', Times, serif; }
+            .print-btn { position: fixed; top: 10px; left: 10px; padding: 12px 24px; background: #16a34a; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; font-family: 'Times New Roman', Times, serif; }
             .print-btn:hover { background: #15803d; }
             @media print { .print-btn { display: none; } }
           </style>
@@ -261,13 +261,13 @@ export default function OrderPrintTemplate({
   }, [mode, canPrint, handleDirectPrint, handleDirectPdf, handleStandalone]);
 
   const styles = {
-    page: { width: "100%", fontFamily: "Segoe UI, Tahoma, Arial, sans-serif", direction: "rtl" as const, color: "#000", fontWeight: 700 as const, padding: "10px" },
+    page: { width: "100%", fontFamily: "'Times New Roman', Times, serif", direction: "rtl" as const, color: "#000", fontWeight: 700 as const, padding: "10px" },
     header: { display: "flex", borderBottom: "3px solid #1a365d", paddingBottom: "12px", marginBottom: "18px" },
-    h1: { fontSize: "28px", color: "#1a365d", margin: 0, fontWeight: 900 as const },
-    table: { width: "100%", borderCollapse: "collapse" as const, fontSize: "14px", marginBottom: "12px", fontWeight: 700 as const },
-    th: { background: "#e8f4fd", border: "2px solid #444", padding: "10px", color: "black", fontWeight: 900 as const, textAlign: "center" as const, fontSize: "15px" },
-    td: { border: "2px solid #444", padding: "8px", textAlign: "center" as const, fontWeight: 700 as const, fontSize: "14px" },
-    metaBox: { fontSize: "15px", textAlign: "left" as const, fontWeight: 700 as const },
+    h1: { fontSize: "26px", color: "#1a365d", margin: 0, fontWeight: 700 as const, fontFamily: "'Times New Roman', Times, serif" },
+    table: { width: "100%", borderCollapse: "collapse" as const, fontSize: "13px", marginBottom: "12px", fontWeight: 700 as const, fontFamily: "'Times New Roman', Times, serif" },
+    th: { background: "#e8f4fd", border: "2px solid #444", padding: "10px", color: "black", fontWeight: 700 as const, textAlign: "center" as const, fontSize: "13px", fontFamily: "'Times New Roman', Times, serif" },
+    td: { border: "2px solid #444", padding: "8px", textAlign: "center" as const, fontWeight: 700 as const, fontSize: "13px", fontFamily: "'Times New Roman', Times, serif" },
+    metaBox: { fontSize: "13px", textAlign: "left" as const, fontWeight: 700 as const, fontFamily: "'Times New Roman', Times, serif" },
     footer: { display: "flex", justifyContent: "space-between", marginTop: "20px", borderTop: "2px solid #ccc", paddingTop: "12px" }
   };
 
@@ -310,32 +310,27 @@ export default function OrderPrintTemplate({
             <tbody>
               <tr>
                 <td style={{ ...styles.td, background: "#f8f9fa", width: "8%" }}>
-                  <div>العميل</div>
-                  <div style={{ fontSize: "9px", color: "#666" }}>Customer</div>
+                  <div>العميل / Customer</div>
                 </td>
                 <td style={{ ...styles.td, width: "22%", textAlign: "right", fontWeight: 700 }}>
                   {customer?.name_ar || "-"}
                   <div style={{ fontSize: "13px", fontWeight: 700, color: "#333", marginTop: "2px" }}>{customer?.name || customer?.commercial_name || ""}</div>
-                  <div style={{ fontSize: "9px", fontWeight: 500, color: "#666" }}>{customer?.phone || ""}</div>
+                  <div style={{ fontSize: "11px", fontWeight: 500, color: "#666" }}>{customer?.phone || ""}</div>
                 </td>
                 <td style={{ ...styles.td, background: "#f8f9fa", width: "6%" }}>
-                  <div>الدرج</div>
-                  <div style={{ fontSize: "9px", color: "#666" }}>Drawer</div>
+                  <div>الدرج / Drawer</div>
                 </td>
-                <td style={{ ...styles.td, width: "6%", fontWeight: 800, fontSize: "16px" }}>{customer?.plate_drawer_code || "-"}</td>
+                <td style={{ ...styles.td, width: "6%", fontWeight: 700, fontSize: "14px" }}>{customer?.plate_drawer_code || "-"}</td>
                 <td style={{ ...styles.td, background: "#f8f9fa", width: "6%" }}>
-                  <div>المندوب</div>
-                  <div style={{ fontSize: "9px", color: "#666" }}>Sales Rep</div>
+                  <div>المندوب / Sales Rep</div>
                 </td>
                 <td style={{ ...styles.td, width: "13%" }}>{salesRep?.full_name || "-"}</td>
                 <td style={{ ...styles.td, background: "#f8f9fa", width: "6%" }}>
-                  <div>الحالة</div>
-                  <div style={{ fontSize: "9px", color: "#666" }}>Status</div>
+                  <div>الحالة / Status</div>
                 </td>
                 <td style={{ ...styles.td, width: "8%" }}>{order?.status || "-"}</td>
-                <td style={{ ...styles.td, background: "#1a365d", color: "white", width: "7%", fontWeight: 900 }}>
-                  <div>الإجمالي</div>
-                  <div style={{ fontSize: "9px", color: "#ddd" }}>Total</div>
+                <td style={{ ...styles.td, background: "#1a365d", color: "white", width: "7%", fontWeight: 700 }}>
+                  <div>الإجمالي / Total</div>
                 </td>
                 <td style={{ ...styles.td, background: "#e8f4fd", fontWeight: 900, fontSize: "18px" }}>
                   {formatNumber(totalWeight)} كجم
@@ -347,53 +342,18 @@ export default function OrderPrintTemplate({
           <table style={styles.table}>
             <thead>
               <tr>
-                <th style={{ ...styles.th, width: "3%" }}>
-                  <div>#</div>
-                </th>
-                <th style={{ ...styles.th, width: "14%", textAlign: "right" }}>
-                  <div>الصنف</div>
-                  <div style={{ fontSize: "9px", fontWeight: 600, color: "#555" }}>Product</div>
-                </th>
-                <th style={{ ...styles.th, width: "8%" }}>
-                  <div>المقاس (عرض)</div>
-                  <div style={{ fontSize: "9px", fontWeight: 600, color: "#555" }}>Width</div>
-                </th>
-                <th style={{ ...styles.th, width: "6%" }}>
-                  <div>الطول</div>
-                  <div style={{ fontSize: "9px", fontWeight: 600, color: "#555" }}>Length</div>
-                </th>
-                <th style={{ ...styles.th, width: "6%" }}>
-                  <div>السماكة</div>
-                  <div style={{ fontSize: "9px", fontWeight: 600, color: "#555" }}>Thickness</div>
-                </th>
-                <th style={{ ...styles.th, width: "8%" }}>
-                  <div>الخامة</div>
-                  <div style={{ fontSize: "9px", fontWeight: 600, color: "#555" }}>Material</div>
-                </th>
-                <th style={{ ...styles.th, width: "8%" }}>
-                  <div>اللون</div>
-                  <div style={{ fontSize: "9px", fontWeight: 600, color: "#555" }}>Color</div>
-                </th>
-                <th style={{ ...styles.th, width: "5%" }}>
-                  <div>الطباعة</div>
-                  <div style={{ fontSize: "9px", fontWeight: 600, color: "#555" }}>Print</div>
-                </th>
-                <th style={{ ...styles.th, width: "8%" }}>
-                  <div>السلندر</div>
-                  <div style={{ fontSize: "9px", fontWeight: 600, color: "#555" }}>Cylinder</div>
-                </th>
-                <th style={{ ...styles.th, width: "8%" }}>
-                  <div>اليد</div>
-                  <div style={{ fontSize: "9px", fontWeight: 600, color: "#555" }}>Handle</div>
-                </th>
-                <th style={{ ...styles.th, width: "8%" }}>
-                  <div>الكمية (كجم)</div>
-                  <div style={{ fontSize: "9px", fontWeight: 600, color: "#555" }}>Qty (kg)</div>
-                </th>
-                <th style={{ ...styles.th, width: "12%" }}>
-                  <div>ملاحظات</div>
-                  <div style={{ fontSize: "9px", fontWeight: 600, color: "#555" }}>Notes</div>
-                </th>
+                <th style={{ ...styles.th, width: "3%" }}>#</th>
+                <th style={{ ...styles.th, width: "14%", textAlign: "right" }}>الصنف / Product</th>
+                <th style={{ ...styles.th, width: "8%" }}>المقاس / Width</th>
+                <th style={{ ...styles.th, width: "6%" }}>الطول / Length</th>
+                <th style={{ ...styles.th, width: "6%" }}>السماكة / Thickness</th>
+                <th style={{ ...styles.th, width: "8%" }}>الخامة / Material</th>
+                <th style={{ ...styles.th, width: "8%" }}>اللون / Color</th>
+                <th style={{ ...styles.th, width: "5%" }}>الطباعة / Print</th>
+                <th style={{ ...styles.th, width: "8%" }}>السلندر / Cylinder</th>
+                <th style={{ ...styles.th, width: "8%" }}>اليد / Handle</th>
+                <th style={{ ...styles.th, width: "8%" }}>الكمية / Qty (kg)</th>
+                <th style={{ ...styles.th, width: "12%" }}>ملاحظات / Notes</th>
               </tr>
             </thead>
             <tbody>
@@ -433,22 +393,22 @@ export default function OrderPrintTemplate({
             </tbody>
           </table>
 
-          <div style={{ border: "2px solid #ccc", padding: "12px", marginBottom: "15px", borderRadius: "4px", minHeight: "50px" }}>
-            <strong style={{ fontSize: "14px", display: "block", marginBottom: "5px", fontWeight: 800 }}>ملاحظات عامة:</strong>
-            <span style={{ fontSize: "14px", fontWeight: 600 }}>{order?.notes || "لا توجد ملاحظات"}</span>
+          <div style={{ border: "2px solid #ccc", padding: "12px", marginBottom: "15px", borderRadius: "4px", minHeight: "50px", fontFamily: "'Times New Roman', Times, serif" }}>
+            <strong style={{ fontSize: "13px", display: "block", marginBottom: "5px", fontWeight: 700 }}>ملاحظات عامة / General Notes:</strong>
+            <span style={{ fontSize: "13px", fontWeight: 700 }}>{order?.notes || "لا توجد ملاحظات"}</span>
           </div>
 
           <div style={styles.footer}>
-            <div style={{ textAlign: "center", width: "30%" }}>
-              <div style={{ fontSize: "14px", marginBottom: "30px", fontWeight: 700 }}>مدير الإنتاج</div>
+            <div style={{ textAlign: "center", width: "30%", fontFamily: "'Times New Roman', Times, serif" }}>
+              <div style={{ fontSize: "13px", marginBottom: "30px", fontWeight: 700 }}>مدير الإنتاج / Production Manager</div>
               <div style={{ borderTop: "2px solid #000", width: "60%", margin: "0 auto" }}></div>
             </div>
-            <div style={{ textAlign: "center", width: "30%" }}>
-              <div style={{ fontSize: "14px", marginBottom: "30px", fontWeight: 700 }}>مسؤول الجودة</div>
+            <div style={{ textAlign: "center", width: "30%", fontFamily: "'Times New Roman', Times, serif" }}>
+              <div style={{ fontSize: "13px", marginBottom: "30px", fontWeight: 700 }}>مسؤول الجودة / Quality Manager</div>
               <div style={{ borderTop: "2px solid #000", width: "60%", margin: "0 auto" }}></div>
             </div>
-            <div style={{ textAlign: "center", width: "30%" }}>
-              <div style={{ fontSize: "14px", marginBottom: "30px", fontWeight: 700 }}>أمين المستودع</div>
+            <div style={{ textAlign: "center", width: "30%", fontFamily: "'Times New Roman', Times, serif" }}>
+              <div style={{ fontSize: "13px", marginBottom: "30px", fontWeight: 700 }}>أمين المستودع / Warehouse Keeper</div>
               <div style={{ borderTop: "2px solid #000", width: "60%", margin: "0 auto" }}></div>
             </div>
           </div>
