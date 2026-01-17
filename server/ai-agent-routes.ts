@@ -610,15 +610,10 @@ async function executeFunction(name: string, args: Record<string, unknown>): Pro
           const { storage } = await import("./storage");
           const notificationService = new NotificationService(storage);
           
-          // استخدام قالب qoutepdf المعتمد مع Meta API
-          // القالب يتوقع متغيرين: user_name و Link_id
-          const templateVariables = [quote.customer_name, pdfUrl];
-          
-          const result = await notificationService.metaWhatsApp.sendTemplateMessage(
+          // إرسال رسالة نصية مباشرة مع تفاصيل عرض السعر ورابط PDF
+          const result = await notificationService.metaWhatsApp.sendTextMessage(
             formattedPhone,
-            "qoutepdf",
-            "ar",
-            templateVariables,
+            quoteMessage,
             {
               title: `عرض سعر ${quote.document_number}`,
               context_type: "quote",

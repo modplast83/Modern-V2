@@ -85,7 +85,9 @@ export class MetaWhatsAppService {
         .replace(/[\+\s\-\(\)]/g, "")
         .replace("whatsapp:", "");
 
-      const messageData: WhatsAppTextMessage = {
+      const messageData = {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
         to: formattedPhone,
         type: "text",
         text: {
@@ -191,7 +193,9 @@ export class MetaWhatsAppService {
         .replace(/[\+\s\-\(\)]/g, "")
         .replace("whatsapp:", "");
 
-      const messageData: WhatsAppTemplateMessage = {
+      const messageData: any = {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
         to: formattedPhone,
         type: "template",
         template: {
