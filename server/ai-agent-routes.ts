@@ -72,19 +72,34 @@ async function uploadPdfToStorage(pdfBuffer: Buffer, documentNumber: string): Pr
   }
 }
 
-// دالة مساعدة لمعالجة النص العربي
+// دالة مساعدة لمعالجة النص العربي للعرض الصحيح في PDF
 function processArabicText(text: string): string {
   if (!text) return "";
+  
+  // التحقق مما إذا كان النص يحتوي على حروف عربية
+  const arabicRegex = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/;
+  if (!arabicRegex.test(text)) return text;
+  
   try {
-    const bidi = bidiFactory();
+    // الخطوة 1: إعادة تشكيل الحروف العربية (ربط الحروف)
     const reshaped = ArabicReshaper.convertArabic(text);
+    
+    // الخطوة 2: معالجة الاتجاه ثنائي الاتجاه
+    const bidi = bidiFactory();
     const reordered = bidi.getReorderedString(reshaped);
+    
     return reordered;
   } catch (e) {
     console.error("Arabic text processing error:", e);
-    const arabicRegex = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/;
-    if (!arabicRegex.test(text)) return text;
-    return text.split('').reverse().join('');
+    // Fallback: إعادة التشكيل فقط بدون bidi
+    try {
+      const reshaped = ArabicReshaper.convertArabic(text);
+      // عكس النص للعرض الصحيح في PDF (لأن PDF يعرض من اليسار لليمين)
+      return reshaped.split('').reverse().join('');
+    } catch (reshapeError) {
+      // آخر حل: عكس النص فقط
+      return text.split('').reverse().join('');
+    }
   }
 }
 

@@ -15,22 +15,30 @@ import { apiRequest } from "../lib/queryClient";
 import { Bot, Send, FileText, Loader2, Download, History, User, Paperclip, X, Image, FileSpreadsheet, File, Mic, MicOff, Square } from "lucide-react";
 import type { Quote } from "../../../shared/schema";
 
-// Function to render text with clickable links
+// Function to render text with clickable links (supports both raw URLs and Markdown links)
 function renderTextWithLinks(text: string) {
-  // Match URLs but exclude trailing punctuation like ) , . : ; ! ?
-  const urlRegex = /(https?:\/\/[^\s<>"{}|\\^`[\]]+?)(?=[)\],.:;!?\s]|$)/g;
-  const parts: { type: 'text' | 'link'; content: string }[] = [];
+  const parts: { type: 'text' | 'link'; content: string; label?: string }[] = [];
+  
+  // Combined regex for Markdown links [text](url) and raw URLs
+  const combinedRegex = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)|(https?:\/\/[^\s<>"{}|\\^`[\]]+?)(?=[)\],.:;!?\s]|$)/g;
   let lastIndex = 0;
   let match;
   
-  while ((match = urlRegex.exec(text)) !== null) {
-    // Add text before the URL
+  while ((match = combinedRegex.exec(text)) !== null) {
+    // Add text before the match
     if (match.index > lastIndex) {
       parts.push({ type: 'text', content: text.slice(lastIndex, match.index) });
     }
-    // Add the URL
-    parts.push({ type: 'link', content: match[1] });
-    lastIndex = match.index + match[1].length;
+    
+    if (match[1] && match[2]) {
+      // Markdown link: [label](url)
+      parts.push({ type: 'link', content: match[2], label: match[1] });
+      lastIndex = match.index + match[0].length;
+    } else if (match[3]) {
+      // Raw URL
+      parts.push({ type: 'link', content: match[3] });
+      lastIndex = match.index + match[3].length;
+    }
   }
   
   // Add remaining text
@@ -46,10 +54,10 @@ function renderTextWithLinks(text: string) {
           href={part.content}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-blue-500 hover:text-blue-600 underline break-all"
+          className="text-blue-500 hover:text-blue-600 underline break-all inline-flex items-center gap-1"
           onClick={(e) => e.stopPropagation()}
         >
-          {part.content}
+          {part.label || part.content}
         </a>
       );
     }
