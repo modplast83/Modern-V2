@@ -15,6 +15,32 @@ import { apiRequest } from "../lib/queryClient";
 import { Bot, Send, FileText, Loader2, Download, History, User, Paperclip, X, Image, FileSpreadsheet, File } from "lucide-react";
 import type { Quote } from "../../../shared/schema";
 
+// Function to render text with clickable links
+function renderTextWithLinks(text: string) {
+  const urlRegex = /(https?:\/\/[^\s<>"{}|\\^`[\]]+)/g;
+  const parts = text.split(urlRegex);
+  
+  return parts.map((part, index) => {
+    if (urlRegex.test(part)) {
+      // Reset the regex lastIndex
+      urlRegex.lastIndex = 0;
+      return (
+        <a 
+          key={index}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-500 hover:text-blue-600 underline break-all"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {part}
+        </a>
+      );
+    }
+    return <span key={index}>{part}</span>;
+  });
+}
+
 interface Message {
   role: "user" | "assistant";
   content: string;
@@ -210,7 +236,7 @@ function ChatPanel() {
                       <span className="text-xs opacity-70">({formatFileSize(msg.fileInfo.size)})</span>
                     </div>
                   )}
-                  <p className="whitespace-pre-wrap text-sm">{msg.content}</p>
+                  <div className="whitespace-pre-wrap text-sm">{renderTextWithLinks(msg.content)}</div>
                 </div>
               </div>
             ))}

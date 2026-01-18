@@ -564,7 +564,8 @@ async function executeFunction(name: string, args: Record<string, unknown>): Pro
           total_with_tax: quote.total_with_tax,
           pdf_url: relativePdfUrl,
           full_pdf_url: fullPdfUrl,
-          message: `تم إنشاء ملف PDF لعرض السعر ${quote.document_number}.\n\n📥 **رابط تحميل PDF:** ${fullPdfUrl}\n\nيمكنك النقر على الرابط لتحميل الملف.`
+          download_link: `[تحميل ملف PDF](${fullPdfUrl})`,
+          message: `تم إنشاء ملف PDF لعرض السعر ${quote.document_number}.\n\nرابط التحميل: ${fullPdfUrl}`
         });
       }
 
@@ -811,16 +812,52 @@ export function registerAiAgentRoutes(app: Express): void {
       const formatDate = (date: string | Date) => {
         return new Date(date).toLocaleDateString("en-GB");
       };
+      
+      // دالة لمعالجة النص العربي باستخدام مكتبة arabic-reshaper
+      const processArabicText = (text: string): string => {
+        if (!text) return "";
+        try {
+          const ArabicReshaper = require('arabic-reshaper');
+          const bidiFactory = require('bidi-js');
+          const bidi = bidiFactory();
+          
+          // تشكيل الحروف العربية
+          const reshaped = ArabicReshaper.convertArabic(text);
+          // تطبيق خوارزمية BiDi لترتيب النص بشكل صحيح
+          const reordered = bidi.getReorderedString(reshaped);
+          return reordered;
+        } catch (e) {
+          console.error("Arabic text processing error:", e);
+          // Fallback: simple reverse for RTL
+          const arabicRegex = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/;
+          if (!arabicRegex.test(text)) return text;
+          return text.split('').reverse().join('');
+        }
+      };
 
       // إنشاء PDF في الذاكرة أولاً
       const chunks: Buffer[] = [];
       const doc = new PDFDocument({ size: "A4", margin: 50, bufferPages: true });
+      
+      // تسجيل الخط العربي
+      const fontPath = require('path').join(__dirname, 'fonts', 'Amiri-Regular.ttf');
+      const fs = require('fs');
+      const hasArabicFont = fs.existsSync(fontPath);
+      if (hasArabicFont) {
+        doc.registerFont('Arabic', fontPath);
+      }
       
       doc.on('data', (chunk: Buffer) => chunks.push(chunk));
       
       // Header
       doc.fontSize(22).fillColor("#2563eb").text("Modern Plastic Bags Factory", { align: "center" });
       doc.fontSize(12).fillColor("#666").text("Quality and Excellence in Every Product", { align: "center" });
+      
+      // Arabic subtitle if font available
+      if (hasArabicFont) {
+        doc.font('Arabic').fontSize(14).fillColor("#666").text(processArabicText("مصنع الأكياس البلاستيكية الحديثة"), { align: "center" });
+        doc.font('Helvetica');
+      }
       doc.moveDown(0.5);
       
       doc.strokeColor("#2563eb").lineWidth(2).moveTo(50, doc.y).lineTo(545, doc.y).stroke();
@@ -828,6 +865,10 @@ export function registerAiAgentRoutes(app: Express): void {
 
       // Title
       doc.fontSize(18).fillColor("#2563eb").text("PRICE QUOTATION", { align: "center" });
+      if (hasArabicFont) {
+        doc.font('Arabic').fontSize(16).text(processArabicText("عرض سعر"), { align: "center" });
+        doc.font('Helvetica');
+      }
       doc.moveDown(0.5);
       doc.fontSize(14).fillColor("#333").text(`Document: ${quote.document_number}`, { align: "center" });
       doc.fontSize(11).fillColor("#666").text(`Date: ${formatDate(quote.quote_date)}`, { align: "center" });
@@ -835,13 +876,23 @@ export function registerAiAgentRoutes(app: Express): void {
 
       // Customer Info Box
       const customerBoxY = doc.y;
-      doc.rect(50, customerBoxY, 495, 60).fillColor("#f8fafc").fill();
+      doc.rect(50, customerBoxY, 495, 70).fillColor("#f8fafc").fill();
       doc.fillColor("#333");
-      const customerY = customerBoxY + 15;
+      const customerY = customerBoxY + 12;
       doc.fontSize(12).text("Customer Information", 60, customerY, { underline: true });
-      doc.fontSize(11).text(`Customer: ${quote.customer_name}`, 60, customerY + 20);
-      doc.text(`Tax Number: ${quote.tax_number}`, 300, customerY + 20);
-      doc.y = customerBoxY + 70;
+      
+      // Customer name - use Arabic font if available and name contains Arabic
+      const customerName = quote.customer_name || "";
+      const hasArabicName = /[\u0600-\u06FF]/.test(customerName);
+      if (hasArabicFont && hasArabicName) {
+        doc.font('Helvetica').fontSize(11).text("Customer: ", 60, customerY + 22, { continued: true });
+        doc.font('Arabic').text(processArabicText(customerName));
+        doc.font('Helvetica');
+      } else {
+        doc.fontSize(11).text(`Customer: ${customerName}`, 60, customerY + 22);
+      }
+      doc.text(`Tax Number: ${quote.tax_number || "N/A"}`, 60, customerY + 40);
+      doc.y = customerBoxY + 80;
       doc.moveDown(0.5);
 
       // Items Table
@@ -851,7 +902,7 @@ export function registerAiAgentRoutes(app: Express): void {
       
       // Table Header
       doc.rect(50, tableTop, 495, 25).fillColor("#2563eb").fill();
-      doc.fillColor("#fff").fontSize(10);
+      doc.font('Helvetica').fillColor("#fff").fontSize(10);
       let xPos = 55;
       headers.forEach((header, i) => {
         doc.text(header, xPos, tableTop + 8, { width: colWidths[i], align: "center" });
@@ -867,19 +918,36 @@ export function registerAiAgentRoutes(app: Express): void {
         }
         
         doc.fillColor("#333").fontSize(10);
-        xPos = 55;
-        const rowData = [
-          String(item.line_number),
-          item.item_name || "",
-          item.unit || "",
-          formatCurrency(item.quantity),
-          `${formatCurrency(item.unit_price)} SAR`,
-          `${formatCurrency(item.line_total)} SAR`
-        ];
-        rowData.forEach((text, i) => {
-          doc.text(text, xPos, rowY + 6, { width: colWidths[i], align: "center" });
-          xPos += colWidths[i];
-        });
+        
+        // Line number
+        doc.font('Helvetica').text(String(item.line_number), 55, rowY + 6, { width: 30, align: "center" });
+        
+        // Item name - check if Arabic
+        const itemName = item.item_name || "";
+        const hasArabicItem = /[\u0600-\u06FF]/.test(itemName);
+        if (hasArabicFont && hasArabicItem) {
+          doc.font('Arabic').text(processArabicText(itemName), 85, rowY + 4, { width: 150, align: "center" });
+          doc.font('Helvetica');
+        } else {
+          doc.text(itemName, 85, rowY + 6, { width: 150, align: "center" });
+        }
+        
+        // Unit - check if Arabic
+        const unitText = item.unit || "";
+        const hasArabicUnit = /[\u0600-\u06FF]/.test(unitText);
+        if (hasArabicFont && hasArabicUnit) {
+          doc.font('Arabic').text(processArabicText(unitText), 235, rowY + 4, { width: 60, align: "center" });
+          doc.font('Helvetica');
+        } else {
+          doc.text(unitText, 235, rowY + 6, { width: 60, align: "center" });
+        }
+        
+        // Numbers (always Helvetica)
+        doc.font('Helvetica');
+        doc.text(formatCurrency(item.quantity), 295, rowY + 6, { width: 70, align: "center" });
+        doc.text(`${formatCurrency(item.unit_price)} SAR`, 365, rowY + 6, { width: 85, align: "center" });
+        doc.text(`${formatCurrency(item.line_total)} SAR`, 450, rowY + 6, { width: 100, align: "center" });
+        
         rowY += 22;
       });
 
@@ -891,7 +959,7 @@ export function registerAiAgentRoutes(app: Express): void {
       const totalsBoxY = doc.y;
       doc.rect(50, totalsBoxY, 250, 80).fillColor("#f8fafc").fill();
       const totalsY = totalsBoxY + 10;
-      doc.fillColor("#333").fontSize(11);
+      doc.font('Helvetica').fillColor("#333").fontSize(11);
       doc.text("Subtotal:", 60, totalsY);
       doc.text(`${formatCurrency(quote.total_before_tax)} SAR`, 200, totalsY, { align: "right", width: 90 });
       doc.text("VAT (15%):", 60, totalsY + 20);
@@ -905,22 +973,43 @@ export function registerAiAgentRoutes(app: Express): void {
       // Notes (if any)
       if (quote.notes) {
         const notesY = doc.y;
-        doc.rect(50, notesY, 495, 50).fillColor("#fffbeb").fill();
-        doc.strokeColor("#fcd34d").rect(50, notesY, 495, 50).stroke();
-        doc.fillColor("#b45309").fontSize(10).text("Notes:", 60, notesY + 10);
-        doc.fillColor("#78350f").text(quote.notes, 60, notesY + 25, { width: 475 });
-        doc.y = notesY + 60;
+        doc.rect(50, notesY, 495, 60).fillColor("#fffbeb").fill();
+        doc.strokeColor("#fcd34d").rect(50, notesY, 495, 60).stroke();
+        doc.font('Helvetica').fillColor("#b45309").fontSize(10).text("Notes:", 60, notesY + 10);
+        
+        // Notes text - check if Arabic
+        const notesText = quote.notes || "";
+        const hasArabicNotes = /[\u0600-\u06FF]/.test(notesText);
+        if (hasArabicFont && hasArabicNotes) {
+          doc.font('Arabic').fillColor("#78350f").text(processArabicText(notesText), 60, notesY + 25, { width: 475, align: "right" });
+          doc.font('Helvetica');
+        } else {
+          doc.fillColor("#78350f").text(notesText, 60, notesY + 25, { width: 475 });
+        }
+        doc.y = notesY + 70;
       }
 
       // Footer
       doc.moveDown(2);
       doc.strokeColor("#e2e8f0").lineWidth(1).moveTo(50, doc.y).lineTo(545, doc.y).stroke();
       doc.moveDown(0.5);
-      doc.fillColor("#666").fontSize(9).text("This quotation is valid for 15 days from the issue date.", { align: "center" });
+      doc.font('Helvetica').fillColor("#666").fontSize(9).text("This quotation is valid for 15 days from the issue date.", { align: "center" });
+      if (hasArabicFont) {
+        doc.font('Arabic').text(processArabicText("هذا العرض صالح لمدة 15 يوم من تاريخ الإصدار"), { align: "center" });
+        doc.font('Helvetica');
+      }
       
       if (quote.created_by_name) {
         doc.moveDown(0.5);
-        doc.text(`Prepared by: ${quote.created_by_name}${quote.created_by_phone ? ` - ${quote.created_by_phone}` : ""}`, { align: "center" });
+        const preparedByName = quote.created_by_name || "";
+        const hasArabicPreparer = /[\u0600-\u06FF]/.test(preparedByName);
+        if (hasArabicFont && hasArabicPreparer) {
+          doc.font('Helvetica').text("Prepared by: ", { align: "center", continued: true });
+          doc.font('Arabic').text(processArabicText(preparedByName) + (quote.created_by_phone ? ` - ${quote.created_by_phone}` : ""));
+          doc.font('Helvetica');
+        } else {
+          doc.text(`Prepared by: ${preparedByName}${quote.created_by_phone ? ` - ${quote.created_by_phone}` : ""}`, { align: "center" });
+        }
       }
 
       // انتظار اكتمال PDF ثم إرساله
