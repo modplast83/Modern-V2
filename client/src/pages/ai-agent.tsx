@@ -17,27 +17,43 @@ import type { Quote } from "../../../shared/schema";
 
 // Function to render text with clickable links
 function renderTextWithLinks(text: string) {
-  const urlRegex = /(https?:\/\/[^\s<>"{}|\\^`[\]]+)/g;
-  const parts = text.split(urlRegex);
+  // Match URLs but exclude trailing punctuation like ) , . : ; ! ?
+  const urlRegex = /(https?:\/\/[^\s<>"{}|\\^`[\]]+?)(?=[)\],.:;!?\s]|$)/g;
+  const parts: { type: 'text' | 'link'; content: string }[] = [];
+  let lastIndex = 0;
+  let match;
+  
+  while ((match = urlRegex.exec(text)) !== null) {
+    // Add text before the URL
+    if (match.index > lastIndex) {
+      parts.push({ type: 'text', content: text.slice(lastIndex, match.index) });
+    }
+    // Add the URL
+    parts.push({ type: 'link', content: match[1] });
+    lastIndex = match.index + match[1].length;
+  }
+  
+  // Add remaining text
+  if (lastIndex < text.length) {
+    parts.push({ type: 'text', content: text.slice(lastIndex) });
+  }
   
   return parts.map((part, index) => {
-    if (urlRegex.test(part)) {
-      // Reset the regex lastIndex
-      urlRegex.lastIndex = 0;
+    if (part.type === 'link') {
       return (
         <a 
           key={index}
-          href={part}
+          href={part.content}
           target="_blank"
           rel="noopener noreferrer"
           className="text-blue-500 hover:text-blue-600 underline break-all"
           onClick={(e) => e.stopPropagation()}
         >
-          {part}
+          {part.content}
         </a>
       );
     }
-    return <span key={index}>{part}</span>;
+    return <span key={index}>{part.content}</span>;
   });
 }
 
