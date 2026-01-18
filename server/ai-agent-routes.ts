@@ -9,6 +9,7 @@ import * as fs from "fs";
 import * as path from "path";
 import PDFDocument from "pdfkit";
 import { objectStorageClient } from "./replit_integrations/object_storage";
+import { adobePdfService } from "./services/adobe-pdf-service";
 
 const PDF_DIR = "/tmp/quote-pdfs";
 if (!fs.existsSync(PDF_DIR)) {
@@ -784,9 +785,39 @@ async function executeFunction(name: string, args: Record<string, unknown>): Pro
           return JSON.stringify({ error: "عرض السعر غير موجود" });
         }
         
+        const quoteItems = await db.select().from(quote_items).where(eq(quote_items.quote_id, quoteId)).orderBy(quote_items.line_number);
+        
         try {
-          // إنشاء PDF ورفعه للتخزين السحابي
-          const pdfBuffer = await generateQuotePdfBuffer(quoteId);
+          let pdfBuffer: Buffer;
+          
+          // محاولة استخدام Adobe PDF Services أولاً
+          if (adobePdfService.isConfigured()) {
+            console.log("Using Adobe PDF Services for quote generation");
+            pdfBuffer = await adobePdfService.generateQuotePdf({
+              document_number: quote.document_number,
+              quote_date: String(quote.quote_date),
+              customer_name: quote.customer_name,
+              tax_number: quote.tax_number,
+              items: quoteItems.map(item => ({
+                line_number: item.line_number,
+                item_name: item.item_name,
+                unit: item.unit,
+                quantity: item.quantity,
+                unit_price: item.unit_price,
+                line_total: item.line_total,
+              })),
+              total_before_tax: quote.total_before_tax,
+              tax_amount: quote.tax_amount,
+              total_with_tax: quote.total_with_tax,
+              notes: quote.notes,
+              created_by_name: quote.created_by_name,
+              created_by_phone: quote.created_by_phone,
+            });
+          } else {
+            console.log("Using PDFKit for quote generation (Adobe not configured)");
+            pdfBuffer = await generateQuotePdfBuffer(quoteId);
+          }
+          
           const cloudPdfUrl = await uploadPdfToStorage(pdfBuffer, quote.document_number);
           
           return JSON.stringify({
