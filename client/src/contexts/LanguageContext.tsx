@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { useTranslation } from 'react-i18next';
+import i18n from '../i18n/config';
 
 type Language = 'ar' | 'en';
 type Direction = 'rtl' | 'ltr';
@@ -23,7 +23,6 @@ const getStoredLanguage = (): Language => {
 };
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const { i18n } = useTranslation();
   const [language, setLanguageState] = useState<Language>(getStoredLanguage);
 
   const direction: Direction = language === 'ar' ? 'rtl' : 'ltr';
@@ -47,7 +46,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     if (i18n.language !== language) {
       i18n.changeLanguage(language);
     }
-  }, []);
+  }, [language]);
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);

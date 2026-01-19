@@ -977,33 +977,9 @@ async function executeFunction(name: string, args: Record<string, unknown>): Pro
         try {
           let pdfBuffer: Buffer;
           
-          // محاولة استخدام Adobe PDF Services أولاً
-          if (adobePdfService.isConfigured()) {
-            console.log("Using Adobe PDF Services for quote generation");
-            pdfBuffer = await adobePdfService.generateQuotePdf({
-              document_number: quote.document_number,
-              quote_date: String(quote.quote_date),
-              customer_name: quote.customer_name,
-              tax_number: quote.tax_number,
-              items: quoteItems.map(item => ({
-                line_number: item.line_number,
-                item_name: item.item_name,
-                unit: item.unit,
-                quantity: item.quantity,
-                unit_price: item.unit_price,
-                line_total: item.line_total,
-              })),
-              total_before_tax: quote.total_before_tax,
-              tax_amount: quote.tax_amount,
-              total_with_tax: quote.total_with_tax,
-              notes: quote.notes,
-              created_by_name: quote.created_by_name,
-              created_by_phone: quote.created_by_phone,
-            });
-          } else {
-            console.log("Using PDFKit for quote generation (Adobe not configured)");
-            pdfBuffer = await generateQuotePdfBuffer(quoteId);
-          }
+          // استخدام PDFKit المحسن للنص العربي
+          console.log("Using enhanced PDFKit for quote generation with Arabic support");
+          pdfBuffer = await generateQuotePdfBuffer(quoteId);
           
           const cloudPdfUrl = await uploadPdfToStorage(pdfBuffer, quote.document_number);
           

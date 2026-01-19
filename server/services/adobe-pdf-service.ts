@@ -88,16 +88,32 @@ export class AdobePdfService {
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap');
     
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
-      font-family: 'Amiri', 'Arial', sans-serif; 
+      font-family: 'Cairo', 'Noto Naskh Arabic', 'Tahoma', 'Arial', sans-serif; 
       padding: 40px; 
       color: #333;
       direction: rtl;
+      text-align: right;
+      unicode-bidi: bidi-override;
       background: white;
+    }
+    
+    .ltr-text {
+      direction: ltr;
+      unicode-bidi: embed;
+      text-align: left;
+    }
+    
+    .rtl-text {
+      direction: rtl;
+      unicode-bidi: embed;
+      text-align: right;
     }
     
     .header { text-align: center; margin-bottom: 30px; }
