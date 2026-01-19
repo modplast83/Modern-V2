@@ -174,18 +174,13 @@ export default function OrderPrintTemplate({
   }, [sortedOrders]);
 
   const qrUrl = useMemo(() => {
-    const qrData = [
-      `رقم الطلب: ${order?.order_number || "-"}`,
-      `العميل: ${customer?.name_ar || customer?.name || "-"}`,
-      `التاريخ: ${orderDateStr}`,
-      `التسليم: ${deliveryDateStr}`,
-      `الإجمالي: ${totalWeight.toFixed(2)} كجم`,
-      `المندوب: ${salesRep?.full_name || "-"}`,
-    ].join("\n");
+    // رابط طباعة الطلب مباشرة
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    const printUrl = `${baseUrl}/orders?print=${order?.id}`;
     return `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
-      qrData
+      printUrl
     )}&color=000000`;
-  }, [order?.order_number, customer, orderDateStr, deliveryDateStr, totalWeight, salesRep]);
+  }, [order?.id]);
 
   const handleDirectPrint = useCallback(async () => {
     if (!canPrint) return;
@@ -430,7 +425,7 @@ export default function OrderPrintTemplate({
                 <th style={{ ...styles.th, width: "3%" }}>
                   <Label2Lines ar="#" en="#" />
                 </th>
-                <th style={{ ...styles.th, width: "14%", textAlign: "right" }}>
+                <th style={{ ...styles.th, width: "14%" }}>
                   <Label2Lines ar="الصنف" en="Product" />
                 </th>
                 <th style={{ ...styles.th, width: "8%" }}>
@@ -477,7 +472,7 @@ export default function OrderPrintTemplate({
                   <tr key={po.id}>
                     <td style={styles.td}>{idx + 1}</td>
 
-                    <td style={{ ...styles.td, textAlign: "right", fontWeight: 900 }}>
+                    <td style={{ ...styles.td, textAlign: "center", fontWeight: 900 }}>
                       {item?.name_ar || item?.name || "-"}
                       <div style={{ fontSize: "15px", color: "#555", fontWeight: 800 }}>{cp?.size_caption}</div>
                     </td>
