@@ -84,22 +84,15 @@ function processArabicText(text: string): string {
     // الخطوة 1: إعادة تشكيل الحروف العربية (ربط الحروف)
     const reshaped = ArabicReshaper.convertArabic(text);
     
-    // الخطوة 2: معالجة الاتجاه ثنائي الاتجاه
-    const bidi = bidiFactory();
-    const reordered = bidi.getReorderedString(reshaped);
+    // الخطوة 2: عكس ترتيب الأحرف للعرض الصحيح في PDF (من اليمين لليسار)
+    // نستخدم Array.from للتعامل مع الأحرف Unicode بشكل صحيح
+    const reversed = Array.from(reshaped).reverse().join('');
     
-    return reordered;
+    return reversed;
   } catch (e) {
     console.error("Arabic text processing error:", e);
-    // Fallback: إعادة التشكيل فقط بدون bidi
-    try {
-      const reshaped = ArabicReshaper.convertArabic(text);
-      // عكس النص للعرض الصحيح في PDF (لأن PDF يعرض من اليسار لليمين)
-      return reshaped.split('').reverse().join('');
-    } catch (reshapeError) {
-      // آخر حل: عكس النص فقط
-      return text.split('').reverse().join('');
-    }
+    // Fallback: عكس النص فقط
+    return Array.from(text).reverse().join('');
   }
 }
 
