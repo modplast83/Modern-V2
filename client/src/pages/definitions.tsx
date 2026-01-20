@@ -35,7 +35,7 @@ import {
   DialogFooter,
 } from "../components/ui/dialog";
 import { useToast } from "../hooks/use-toast";
-import { apiRequest, queryClient } from "../lib/queryClient";
+import { apiRequest } from "../lib/queryClient";
 import {
   Building2,
   Users,
@@ -219,6 +219,19 @@ export default function Definitions() {
     status: "active",
   });
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Master batch color form state
+  const [masterBatchColorForm, setMasterBatchColorForm] = useState({
+    id: "",
+    name: "",
+    name_ar: "",
+    color_hex: "#000000",
+    text_color: "#ffffff",
+    brand: "",
+    aliases: "",
+    is_active: true,
+    sort_order: 0,
+  });
 
   // Search term for customer selection in customer products form
   const [customerSearchTermInProducts, setCustomerSearchTermInProducts] = useState("");
@@ -1362,6 +1375,72 @@ export default function Definitions() {
     },
   });
 
+  // Master batch color mutations
+  const createMasterBatchColorMutation = useMutation({
+    mutationFn: (data: any) => {
+      return fetch("/api/master-batch-colors", {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: { "Content-Type": "application/json" },
+      }).then((res) => {
+        if (!res.ok) throw new Error("Failed to create color");
+        return res.json();
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/master-batch-colors"] });
+      resetForm();
+      setIsDialogOpen(false);
+      toast({ title: "تم إضافة اللون بنجاح" });
+    },
+    onError: (error: any) => {
+      console.error("Error creating master batch color:", error);
+      toast({ title: "خطأ في إضافة اللون", variant: "destructive" });
+    },
+  });
+
+  const updateMasterBatchColorMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => {
+      return fetch(`/api/master-batch-colors/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+        headers: { "Content-Type": "application/json" },
+      }).then((res) => {
+        if (!res.ok) throw new Error("Failed to update color");
+        return res.json();
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/master-batch-colors"] });
+      resetForm();
+      setIsDialogOpen(false);
+      toast({ title: "تم تحديث اللون بنجاح" });
+    },
+    onError: (error: any) => {
+      console.error("Error updating master batch color:", error);
+      toast({ title: "خطأ في تحديث اللون", variant: "destructive" });
+    },
+  });
+
+  const deleteMasterBatchColorMutation = useMutation({
+    mutationFn: (id: string) => {
+      return fetch(`/api/master-batch-colors/${id}`, {
+        method: "DELETE",
+      }).then((res) => {
+        if (!res.ok) throw new Error("Failed to delete color");
+        return res.json();
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/master-batch-colors"] });
+      toast({ title: "تم حذف اللون بنجاح" });
+    },
+    onError: (error: any) => {
+      console.error("Error deleting master batch color:", error);
+      toast({ title: "خطأ في حذف اللون", variant: "destructive" });
+    },
+  });
+
   // Event handlers
   const resetForm = () => {
     setDrawerLetter("");
@@ -1446,6 +1525,17 @@ export default function Definitions() {
       role_id: "none",
       section_id: "none",
       status: "active",
+    });
+    setMasterBatchColorForm({
+      id: "",
+      name: "",
+      name_ar: "",
+      color_hex: "#000000",
+      text_color: "#ffffff",
+      brand: "",
+      aliases: "",
+      is_active: true,
+      sort_order: 0,
     });
     setEditingItem(null);
   };
@@ -1546,6 +1636,14 @@ export default function Definitions() {
                              transition-all duration-200 rounded-md min-w-0 flex-1"
                   >
                     {t("definitions.tabs.users")}
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="master-batch-colors"
+                    className="data-[state=active]:bg-white data-[state=active]:text-blue-600 
+                             text-gray-600 hover:text-blue-600 px-2 py-2 text-xs font-medium
+                             transition-all duration-200 rounded-md min-w-0 flex-1"
+                  >
+                    ألوان الماستر
                   </TabsTrigger>
                 </TabsList>
 
@@ -2863,6 +2961,164 @@ export default function Definitions() {
                             }
                             return null;
                           })()}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                {/* Master Batch Colors Tab */}
+                <TabsContent value="master-batch-colors" className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-2">
+                          <Package className="w-5 h-5" />
+                          ألوان الماستر باتش
+                        </CardTitle>
+                        <Button
+                          onClick={() => {
+                            resetForm();
+                            setSelectedTab("master-batch-colors");
+                            setIsDialogOpen(true);
+                          }}
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          إضافة لون جديد
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {masterBatchColorsLoading ? (
+                        <div className="text-center py-8">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                          <p className="mt-2 text-sm text-muted-foreground">
+                            {t("common.loading")}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                                  الكود
+                                </th>
+                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                                  اللون
+                                </th>
+                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                                  الاسم بالعربية
+                                </th>
+                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                                  الاسم بالإنجليزية
+                                </th>
+                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                                  المورد
+                                </th>
+                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                                  الحالة
+                                </th>
+                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                                  الإجراءات
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {masterBatchColorsData.length > 0 ? (
+                                masterBatchColorsData
+                                  .filter((color: any) => {
+                                    if (!quickSearch) return true;
+                                    const searchLower = quickSearch.toLowerCase();
+                                    return (
+                                      (color.id || "").toLowerCase().includes(searchLower) ||
+                                      (color.name || "").toLowerCase().includes(searchLower) ||
+                                      (color.name_ar || "").toLowerCase().includes(searchLower) ||
+                                      (color.brand || "").toLowerCase().includes(searchLower)
+                                    );
+                                  })
+                                  .filter((color: any) => {
+                                    if (statusFilter === "all") return true;
+                                    return statusFilter === "active" ? color.is_active : !color.is_active;
+                                  })
+                                  .map((color: any) => (
+                                    <tr key={color.id} className="hover:bg-gray-50">
+                                      <td className="px-6 py-4 text-center text-sm font-medium text-gray-900">
+                                        {color.id}
+                                      </td>
+                                      <td className="px-6 py-4 text-center">
+                                        <div className="flex items-center justify-center">
+                                          <div
+                                            className="w-8 h-8 rounded-full border-2 shadow-sm"
+                                            style={{
+                                              backgroundColor: color.color_hex,
+                                              borderColor: color.color_hex === "#ffffff" ? "#e5e7eb" : color.color_hex,
+                                            }}
+                                          />
+                                        </div>
+                                      </td>
+                                      <td className="px-6 py-4 text-center text-sm text-gray-900">
+                                        {color.name_ar}
+                                      </td>
+                                      <td className="px-6 py-4 text-center text-sm text-gray-500">
+                                        {color.name}
+                                      </td>
+                                      <td className="px-6 py-4 text-center text-sm text-gray-500">
+                                        {color.brand || "-"}
+                                      </td>
+                                      <td className="px-6 py-4 text-center">
+                                        <Badge variant={color.is_active ? "default" : "secondary"}>
+                                          {color.is_active ? "نشط" : "غير نشط"}
+                                        </Badge>
+                                      </td>
+                                      <td className="px-6 py-4 text-center">
+                                        <div className="flex items-center justify-center gap-2">
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => {
+                                              setEditingItem(color);
+                                              setMasterBatchColorForm({
+                                                id: color.id,
+                                                name: color.name || "",
+                                                name_ar: color.name_ar || "",
+                                                color_hex: color.color_hex || "#000000",
+                                                text_color: color.text_color || "#ffffff",
+                                                brand: color.brand || "",
+                                                aliases: color.aliases || "",
+                                                is_active: color.is_active ?? true,
+                                                sort_order: color.sort_order || 0,
+                                              });
+                                              setIsDialogOpen(true);
+                                            }}
+                                          >
+                                            <Edit className="w-4 h-4" />
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="text-red-500 hover:text-red-700"
+                                            onClick={() => {
+                                              if (window.confirm(`هل أنت متأكد من حذف اللون "${color.name_ar}"؟`)) {
+                                                deleteMasterBatchColorMutation.mutate(color.id);
+                                              }
+                                            }}
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                          </Button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ))
+                              ) : (
+                                <tr>
+                                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                                    لا توجد ألوان مضافة
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
                         </div>
                       )}
                     </CardContent>
@@ -4796,6 +5052,264 @@ export default function Definitions() {
                         <>
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                           {editingItem ? t("definitions.updating") : t("definitions.saving")}
+                        </>
+                      ) : editingItem ? (
+                        t("definitions.update")
+                      ) : (
+                        t("common.save")
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
+
+            {/* Master Batch Colors Add/Edit Dialog */}
+            {selectedTab === "master-batch-colors" && (
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>
+                      {editingItem ? "تعديل لون الماستر باتش" : "إضافة لون جديد"}
+                    </DialogTitle>
+                    <DialogDescription>
+                      {editingItem
+                        ? "قم بتعديل بيانات اللون"
+                        : "أدخل بيانات اللون الجديد"}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="color_id">كود اللون *</Label>
+                        <Input
+                          id="color_id"
+                          value={masterBatchColorForm.id}
+                          onChange={(e) =>
+                            setMasterBatchColorForm({
+                              ...masterBatchColorForm,
+                              id: e.target.value,
+                            })
+                          }
+                          placeholder="مثال: White, Red, Blue"
+                          className="mt-1"
+                          disabled={!!editingItem}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="brand">المورد</Label>
+                        <Input
+                          id="brand"
+                          value={masterBatchColorForm.brand}
+                          onChange={(e) =>
+                            setMasterBatchColorForm({
+                              ...masterBatchColorForm,
+                              brand: e.target.value,
+                            })
+                          }
+                          placeholder="اسم المورد"
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="name_ar">الاسم بالعربية *</Label>
+                        <Input
+                          id="name_ar"
+                          value={masterBatchColorForm.name_ar}
+                          onChange={(e) =>
+                            setMasterBatchColorForm({
+                              ...masterBatchColorForm,
+                              name_ar: e.target.value,
+                            })
+                          }
+                          placeholder="الاسم بالعربية"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="name">الاسم بالإنجليزية *</Label>
+                        <Input
+                          id="name"
+                          value={masterBatchColorForm.name}
+                          onChange={(e) =>
+                            setMasterBatchColorForm({
+                              ...masterBatchColorForm,
+                              name: e.target.value,
+                            })
+                          }
+                          placeholder="English Name"
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="color_hex">لون العرض *</Label>
+                        <div className="flex items-center gap-2 mt-1">
+                          <input
+                            type="color"
+                            id="color_hex"
+                            value={masterBatchColorForm.color_hex}
+                            onChange={(e) =>
+                              setMasterBatchColorForm({
+                                ...masterBatchColorForm,
+                                color_hex: e.target.value,
+                              })
+                            }
+                            className="w-12 h-10 rounded border cursor-pointer"
+                          />
+                          <Input
+                            value={masterBatchColorForm.color_hex}
+                            onChange={(e) =>
+                              setMasterBatchColorForm({
+                                ...masterBatchColorForm,
+                                color_hex: e.target.value,
+                              })
+                            }
+                            placeholder="#000000"
+                            className="flex-1"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label htmlFor="text_color">لون النص</Label>
+                        <div className="flex items-center gap-2 mt-1">
+                          <input
+                            type="color"
+                            id="text_color"
+                            value={masterBatchColorForm.text_color}
+                            onChange={(e) =>
+                              setMasterBatchColorForm({
+                                ...masterBatchColorForm,
+                                text_color: e.target.value,
+                              })
+                            }
+                            className="w-12 h-10 rounded border cursor-pointer"
+                          />
+                          <Input
+                            value={masterBatchColorForm.text_color}
+                            onChange={(e) =>
+                              setMasterBatchColorForm({
+                                ...masterBatchColorForm,
+                                text_color: e.target.value,
+                              })
+                            }
+                            placeholder="#ffffff"
+                            className="flex-1"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="aliases">أكواد بديلة</Label>
+                        <Input
+                          id="aliases"
+                          value={masterBatchColorForm.aliases}
+                          onChange={(e) =>
+                            setMasterBatchColorForm({
+                              ...masterBatchColorForm,
+                              aliases: e.target.value,
+                            })
+                          }
+                          placeholder="أكواد مفصولة بفاصلة (مثال: PT-111111,OLD-WHITE)"
+                          className="mt-1"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          للتوافق مع الأكواد القديمة
+                        </p>
+                      </div>
+                      <div>
+                        <Label htmlFor="sort_order">ترتيب العرض</Label>
+                        <Input
+                          id="sort_order"
+                          type="number"
+                          value={masterBatchColorForm.sort_order}
+                          onChange={(e) =>
+                            setMasterBatchColorForm({
+                              ...masterBatchColorForm,
+                              sort_order: parseInt(e.target.value) || 0,
+                            })
+                          }
+                          placeholder="0"
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="is_active"
+                        checked={masterBatchColorForm.is_active}
+                        onChange={(e) =>
+                          setMasterBatchColorForm({
+                            ...masterBatchColorForm,
+                            is_active: e.target.checked,
+                          })
+                        }
+                        className="w-4 h-4"
+                      />
+                      <Label htmlFor="is_active">نشط</Label>
+                    </div>
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <p className="text-sm text-gray-600 mb-2">معاينة اللون:</p>
+                      <div className="flex items-center gap-4">
+                        <div
+                          className="w-16 h-16 rounded-lg border-2 flex items-center justify-center text-sm font-medium shadow-md"
+                          style={{
+                            backgroundColor: masterBatchColorForm.color_hex,
+                            color: masterBatchColorForm.text_color,
+                            borderColor: masterBatchColorForm.color_hex === "#ffffff" ? "#e5e7eb" : masterBatchColorForm.color_hex,
+                          }}
+                        >
+                          {masterBatchColorForm.name_ar?.substring(0, 4) || "لون"}
+                        </div>
+                        <div>
+                          <p className="font-medium">{masterBatchColorForm.name_ar || "الاسم بالعربية"}</p>
+                          <p className="text-sm text-gray-500">{masterBatchColorForm.name || "English Name"}</p>
+                          <p className="text-xs text-gray-400">{masterBatchColorForm.id || "الكود"}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsDialogOpen(false)}
+                    >
+                      {t("common.cancel")}
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        if (!masterBatchColorForm.id || !masterBatchColorForm.name || !masterBatchColorForm.name_ar) {
+                          toast({
+                            title: "خطأ",
+                            description: "يرجى ملء جميع الحقول المطلوبة",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                        if (editingItem) {
+                          updateMasterBatchColorMutation.mutate({
+                            id: editingItem.id,
+                            data: masterBatchColorForm,
+                          });
+                        } else {
+                          createMasterBatchColorMutation.mutate(masterBatchColorForm);
+                        }
+                      }}
+                      disabled={
+                        createMasterBatchColorMutation.isPending ||
+                        updateMasterBatchColorMutation.isPending
+                      }
+                    >
+                      {createMasterBatchColorMutation.isPending ||
+                      updateMasterBatchColorMutation.isPending ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          {editingItem ? "جاري التحديث..." : "جاري الحفظ..."}
                         </>
                       ) : editingItem ? (
                         t("definitions.update")
