@@ -3052,5 +3052,33 @@ export const insertQuoteTemplateSchema = createInsertSchema(quote_templates).omi
   updated_at: true,
 });
 
+// ===== ألوان الماستر باتش =====
+
+export const master_batch_colors = pgTable("master_batch_colors", {
+  id: varchar("id", { length: 20 }).primaryKey(), // كود اللون مثل PT-111111, 225, KT331
+  name: varchar("name", { length: 100 }).notNull(), // الاسم بالإنجليزية
+  name_ar: varchar("name_ar", { length: 100 }).notNull(), // الاسم بالعربية
+  color_hex: varchar("color_hex", { length: 20 }).notNull().default("#FFFFFF"), // كود اللون للعرض
+  text_color: varchar("text_color", { length: 20 }).notNull().default("#000000"), // لون النص للتباين
+  brand: varchar("brand", { length: 100 }), // المورد مثل AL-KHlaiwi, PolyTEC
+  aliases: text("aliases"), // أكواد بديلة مفصولة بفاصلة للتوافق مع البيانات القديمة
+  is_active: boolean("is_active").default(true).notNull(),
+  sort_order: integer("sort_order").default(0), // ترتيب العرض
+  created_at: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updated_at: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export type MasterBatchColor = typeof master_batch_colors.$inferSelect;
+export type InsertMasterBatchColor = typeof master_batch_colors.$inferInsert;
+
+export const insertMasterBatchColorSchema = createInsertSchema(master_batch_colors).omit({
+  created_at: true,
+  updated_at: true,
+}).extend({
+  id: z.string().min(1, "كود اللون مطلوب"),
+  name: z.string().min(1, "الاسم بالإنجليزية مطلوب"),
+  name_ar: z.string().min(1, "الاسم بالعربية مطلوب"),
+});
+
 // Chat models for OpenAI integration
 export * from "./models/chat";
