@@ -167,6 +167,11 @@ import {
   type InsertCorrectiveAction,
   type SystemAnalytics,
   type InsertSystemAnalytics,
+  
+  // ألوان الماستر باتش
+  master_batch_colors,
+  type MasterBatchColor,
+  type InsertMasterBatchColor,
 } from "@shared/schema";
 
 import { db, pool } from "./db";
@@ -1094,6 +1099,13 @@ export interface IStorage {
   completeMixingBatch(id: number): Promise<any>;
   getMixingBatchesByOperator(operatorId: number): Promise<any[]>;
   getMixingBatchesByProductionOrder(productionOrderId: number): Promise<any[]>;
+
+  // Master Batch Colors
+  getMasterBatchColors(): Promise<MasterBatchColor[]>;
+  getMasterBatchColorById(id: string): Promise<MasterBatchColor | undefined>;
+  createMasterBatchColor(color: InsertMasterBatchColor): Promise<MasterBatchColor>;
+  updateMasterBatchColor(id: string, updates: Partial<MasterBatchColor>): Promise<MasterBatchColor>;
+  deleteMasterBatchColor(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -13068,6 +13080,89 @@ export class DatabaseStorage implements IStorage {
       },
       "checkPrintingCompletion",
       "التحقق من اكتمال الطباعة",
+    );
+  }
+
+  // ===== Master Batch Colors =====
+  async getMasterBatchColors(): Promise<MasterBatchColor[]> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const colors = await db
+          .select()
+          .from(master_batch_colors)
+          .where(eq(master_batch_colors.is_active, true))
+          .orderBy(master_batch_colors.sort_order, master_batch_colors.name);
+        return colors;
+      },
+      "getMasterBatchColors",
+      "جلب ألوان الماستر باتش",
+    );
+  }
+
+  async getMasterBatchColorById(id: string): Promise<MasterBatchColor | undefined> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const [color] = await db
+          .select()
+          .from(master_batch_colors)
+          .where(eq(master_batch_colors.id, id));
+        return color || undefined;
+      },
+      "getMasterBatchColorById",
+      `جلب لون الماستر باتش ${id}`,
+    );
+  }
+
+  async createMasterBatchColor(color: InsertMasterBatchColor): Promise<MasterBatchColor> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const [newColor] = await db
+          .insert(master_batch_colors)
+          .values({
+            ...color,
+            created_at: new Date(),
+            updated_at: new Date(),
+          })
+          .returning();
+        return newColor;
+      },
+      "createMasterBatchColor",
+      "إنشاء لون ماستر باتش جديد",
+    );
+  }
+
+  async updateMasterBatchColor(id: string, updates: Partial<MasterBatchColor>): Promise<MasterBatchColor> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const [updatedColor] = await db
+          .update(master_batch_colors)
+          .set({
+            ...updates,
+            updated_at: new Date(),
+          })
+          .where(eq(master_batch_colors.id, id))
+          .returning();
+        
+        if (!updatedColor) {
+          throw new Error(`لون الماستر باتش غير موجود: ${id}`);
+        }
+        
+        return updatedColor;
+      },
+      "updateMasterBatchColor",
+      `تحديث لون الماستر باتش ${id}`,
+    );
+  }
+
+  async deleteMasterBatchColor(id: string): Promise<void> {
+    return withDatabaseErrorHandling(
+      async () => {
+        await db
+          .delete(master_batch_colors)
+          .where(eq(master_batch_colors.id, id));
+      },
+      "deleteMasterBatchColor",
+      `حذف لون الماستر باتش ${id}`,
     );
   }
 }

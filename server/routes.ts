@@ -2670,6 +2670,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== Master Batch Colors Routes =====
+  app.get("/api/master-batch-colors", async (req, res) => {
+    try {
+      const colors = await storage.getMasterBatchColors();
+      res.json(colors);
+    } catch (error) {
+      console.error("Error fetching master batch colors:", error);
+      res.status(500).json({ message: "خطأ في جلب ألوان الماستر باتش" });
+    }
+  });
+
+  app.get("/api/master-batch-colors/:id", async (req, res) => {
+    try {
+      const color = await storage.getMasterBatchColorById(req.params.id);
+      if (!color) {
+        return res.status(404).json({ message: "اللون غير موجود" });
+      }
+      res.json(color);
+    } catch (error) {
+      console.error("Error fetching master batch color:", error);
+      res.status(500).json({ message: "خطأ في جلب لون الماستر باتش" });
+    }
+  });
+
+  app.post("/api/master-batch-colors", async (req, res) => {
+    try {
+      const color = await storage.createMasterBatchColor(req.body);
+      res.status(201).json(color);
+    } catch (error) {
+      console.error("Error creating master batch color:", error);
+      res.status(500).json({ 
+        message: "خطأ في إنشاء لون الماستر باتش",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  app.put("/api/master-batch-colors/:id", async (req, res) => {
+    try {
+      const color = await storage.updateMasterBatchColor(req.params.id, req.body);
+      res.json(color);
+    } catch (error) {
+      console.error("Error updating master batch color:", error);
+      res.status(500).json({ 
+        message: "خطأ في تحديث لون الماستر باتش",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  app.delete("/api/master-batch-colors/:id", async (req, res) => {
+    try {
+      await storage.deleteMasterBatchColor(req.params.id);
+      res.json({ message: "تم حذف اللون بنجاح" });
+    } catch (error) {
+      console.error("Error deleting master batch color:", error);
+      res.status(500).json({ 
+        message: "خطأ في حذف لون الماستر باتش",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Training Records routes
   app.get("/api/training-records", async (req, res) => {
     try {
