@@ -4294,6 +4294,9 @@ export default function Definitions() {
                                       <span className="font-medium">
                                         {color.name_ar}
                                       </span>
+                                      <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                                        {color.id}
+                                      </span>
                                     </div>
                                   </SelectItem>
                                 ))}
