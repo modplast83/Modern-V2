@@ -2367,6 +2367,10 @@ export default function Definitions() {
                                           </td>
                                           <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
                                             {(() => {
+                                              if (!product.master_batch_id) return "-";
+                                              if (masterBatchColorsLoading || masterBatchColors.length === 0) {
+                                                return <span className="text-gray-500">{product.master_batch_id}</span>;
+                                              }
                                               const masterBatchColor =
                                                 masterBatchColors.find(
                                                   (mb) =>
@@ -2390,7 +2394,7 @@ export default function Definitions() {
                                                   </span>
                                                 </div>
                                               ) : (
-                                                product.master_batch_id || "-"
+                                                <span className="text-gray-500">{product.master_batch_id}</span>
                                               );
                                             })()}
                                           </td>
