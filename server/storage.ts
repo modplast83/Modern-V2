@@ -701,6 +701,7 @@ export interface IStorage {
 
   // HR System - Attendance Management
   getAttendance(): Promise<Attendance[]>;
+  getAttendanceById(id: number): Promise<Attendance | null>;
   getAttendanceByDate(date: string): Promise<any[]>;
   createAttendance(attendance: InsertAttendance): Promise<Attendance>;
   updateAttendance(
@@ -726,6 +727,27 @@ export interface IStorage {
     status: string;
     notes?: string;
   }[]): Promise<any[]>;
+  getAttendanceSummary(userId: number, startDate: Date, endDate: Date): Promise<{
+    totalDays: number;
+    presentDays: number;
+    absentDays: number;
+    lateDays: number;
+    totalWorkHours: number;
+    totalOvertimeHours: number;
+    totalLateMinutes: number;
+    averageWorkHours: number;
+  }>;
+  getAttendanceReport(startDate: Date, endDate: Date, filters?: {
+    sectionId?: number;
+    roleId?: number;
+  }): Promise<any[]>;
+  getDailyAttendanceStats(date: string): Promise<{
+    total: number;
+    present: number;
+    absent: number;
+    late: number;
+    onLeave: number;
+  }>;
 
   // Users list
   getUsers(): Promise<User[]>;
@@ -10329,6 +10351,164 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error("Error deleting attendance:", error);
       throw new Error("فشل في حذف سجل الحضور");
+    }
+  }
+
+  async getAttendanceById(id: number): Promise<Attendance | null> {
+    try {
+      const result = await pool.query("SELECT * FROM attendance WHERE id = $1", [id]);
+      return result.rows[0] || null;
+    } catch (error) {
+      console.error("Error getting attendance by id:", error);
+      throw new Error("فشل في جلب سجل الحضور");
+    }
+  }
+
+  async getAttendanceSummary(userId: number, startDate: Date, endDate: Date): Promise<{
+    totalDays: number;
+    presentDays: number;
+    absentDays: number;
+    lateDays: number;
+    totalWorkHours: number;
+    totalOvertimeHours: number;
+    totalLateMinutes: number;
+    averageWorkHours: number;
+  }> {
+    try {
+      const query = `
+        SELECT 
+          COUNT(DISTINCT date) as total_days,
+          COUNT(DISTINCT CASE WHEN status = 'حاضر' OR status = 'مغادر' THEN date END) as present_days,
+          COUNT(DISTINCT CASE WHEN status = 'غائب' THEN date END) as absent_days,
+          COUNT(DISTINCT CASE WHEN late_minutes > 0 THEN date END) as late_days,
+          COALESCE(SUM(work_hours), 0) as total_work_hours,
+          COALESCE(SUM(overtime_hours), 0) as total_overtime_hours,
+          COALESCE(SUM(late_minutes), 0) as total_late_minutes
+        FROM attendance
+        WHERE user_id = $1 
+          AND date >= $2 
+          AND date <= $3
+      `;
+      
+      const result = await pool.query(query, [userId, startDate, endDate]);
+      const row = result.rows[0];
+      
+      const presentDays = parseInt(row.present_days) || 0;
+      const totalWorkHours = parseFloat(row.total_work_hours) || 0;
+      
+      return {
+        totalDays: parseInt(row.total_days) || 0,
+        presentDays,
+        absentDays: parseInt(row.absent_days) || 0,
+        lateDays: parseInt(row.late_days) || 0,
+        totalWorkHours,
+        totalOvertimeHours: parseFloat(row.total_overtime_hours) || 0,
+        totalLateMinutes: parseInt(row.total_late_minutes) || 0,
+        averageWorkHours: presentDays > 0 ? totalWorkHours / presentDays : 0,
+      };
+    } catch (error) {
+      console.error("Error getting attendance summary:", error);
+      throw new Error("فشل في جلب ملخص الحضور");
+    }
+  }
+
+  async getAttendanceReport(startDate: Date, endDate: Date, filters?: {
+    sectionId?: number;
+    roleId?: number;
+  }): Promise<any[]> {
+    try {
+      let query = `
+        SELECT 
+          u.id as user_id,
+          u.username,
+          u.display_name,
+          u.display_name_ar,
+          r.name as role_name,
+          r.name_ar as role_name_ar,
+          COUNT(DISTINCT a.date) as total_days,
+          COUNT(DISTINCT CASE WHEN a.status = 'حاضر' OR a.status = 'مغادر' THEN a.date END) as present_days,
+          COUNT(DISTINCT CASE WHEN a.status = 'غائب' THEN a.date END) as absent_days,
+          COUNT(DISTINCT CASE WHEN a.status = 'إجازة' THEN a.date END) as leave_days,
+          COUNT(DISTINCT CASE WHEN a.late_minutes > 0 THEN a.date END) as late_days,
+          COALESCE(SUM(a.work_hours), 0) as total_work_hours,
+          COALESCE(SUM(a.overtime_hours), 0) as total_overtime_hours,
+          COALESCE(SUM(a.late_minutes), 0) as total_late_minutes,
+          COALESCE(SUM(a.early_leave_minutes), 0) as total_early_leave_minutes
+        FROM users u
+        LEFT JOIN roles r ON u.role_id = r.id
+        LEFT JOIN attendance a ON u.id = a.user_id AND a.date >= $1 AND a.date <= $2
+        WHERE u.status = 'active'
+      `;
+      
+      const params: any[] = [startDate, endDate];
+      let paramIndex = 3;
+      
+      if (filters?.sectionId) {
+        query += ` AND u.section_id = $${paramIndex}`;
+        params.push(filters.sectionId);
+        paramIndex++;
+      }
+      
+      if (filters?.roleId) {
+        query += ` AND u.role_id = $${paramIndex}`;
+        params.push(filters.roleId);
+        paramIndex++;
+      }
+      
+      query += `
+        GROUP BY u.id, u.username, u.display_name, u.display_name_ar, r.name, r.name_ar
+        ORDER BY u.display_name_ar, u.username
+      `;
+      
+      const result = await pool.query(query, params);
+      return result.rows;
+    } catch (error) {
+      console.error("Error getting attendance report:", error);
+      throw new Error("فشل في جلب تقرير الحضور");
+    }
+  }
+
+  async getDailyAttendanceStats(date: string): Promise<{
+    total: number;
+    present: number;
+    absent: number;
+    late: number;
+    onLeave: number;
+  }> {
+    try {
+      // Get total active employees
+      const totalResult = await pool.query(
+        "SELECT COUNT(*) as total FROM users WHERE status = 'active'"
+      );
+      const total = parseInt(totalResult.rows[0].total) || 0;
+      
+      // Get attendance stats for the date
+      const statsQuery = `
+        SELECT 
+          COUNT(DISTINCT CASE WHEN status = 'حاضر' OR status = 'مغادر' THEN user_id END) as present,
+          COUNT(DISTINCT CASE WHEN status = 'غائب' THEN user_id END) as absent,
+          COUNT(DISTINCT CASE WHEN late_minutes > 0 THEN user_id END) as late,
+          COUNT(DISTINCT CASE WHEN status = 'إجازة' THEN user_id END) as on_leave
+        FROM attendance
+        WHERE date = $1
+      `;
+      
+      const result = await pool.query(statsQuery, [date]);
+      const row = result.rows[0];
+      
+      const present = parseInt(row.present) || 0;
+      const onLeave = parseInt(row.on_leave) || 0;
+      
+      return {
+        total,
+        present,
+        absent: total - present - onLeave,
+        late: parseInt(row.late) || 0,
+        onLeave,
+      };
+    } catch (error) {
+      console.error("Error getting daily attendance stats:", error);
+      throw new Error("فشل في جلب إحصائيات الحضور اليومية");
     }
   }
 

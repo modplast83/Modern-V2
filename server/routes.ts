@@ -5969,6 +5969,161 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============ Attendance Reports and Statistics API ============
+
+  // Get attendance summary for a user (monthly/weekly)
+  app.get("/api/attendance/summary/:userId", requireAuth, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const { startDate, endDate, period = 'month' } = req.query;
+      
+      let start: Date, end: Date;
+      const now = new Date();
+      
+      if (startDate && endDate) {
+        start = new Date(startDate as string);
+        end = new Date(endDate as string);
+      } else if (period === 'week') {
+        start = new Date(now);
+        start.setDate(now.getDate() - now.getDay());
+        end = new Date(now);
+      } else {
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      }
+      
+      const summary = await storage.getAttendanceSummary(userId, start, end);
+      res.json({ data: summary, startDate: start, endDate: end });
+    } catch (error) {
+      console.error("Error fetching attendance summary:", error);
+      res.status(500).json({ message: "خطأ في جلب ملخص الحضور" });
+    }
+  });
+
+  // Get attendance report for all employees
+  app.get("/api/attendance/report", requireAuth, requirePermission("view_attendance_reports"), async (req, res) => {
+    try {
+      const { startDate, endDate, sectionId, roleId } = req.query;
+      
+      let start: Date, end: Date;
+      const now = new Date();
+      
+      if (startDate && endDate) {
+        start = new Date(startDate as string);
+        end = new Date(endDate as string);
+      } else {
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      }
+      
+      const report = await storage.getAttendanceReport(start, end, {
+        sectionId: sectionId ? parseInt(sectionId as string) : undefined,
+        roleId: roleId ? parseInt(roleId as string) : undefined,
+      });
+      
+      res.json({ data: report, startDate: start, endDate: end });
+    } catch (error) {
+      console.error("Error fetching attendance report:", error);
+      res.status(500).json({ message: "خطأ في جلب تقرير الحضور" });
+    }
+  });
+
+  // Calculate and update work hours for an attendance record
+  app.put("/api/attendance/:id/calculate-hours", requireAuth, requirePermission("manage_attendance"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const attendance = await storage.getAttendanceById(id);
+      
+      if (!attendance) {
+        return res.status(404).json({ message: "سجل الحضور غير موجود" });
+      }
+      
+      let workHours = 0;
+      let overtimeHours = 0;
+      const standardWorkHours = 8; // ساعات العمل الرسمية
+      
+      if (attendance.check_in_time && attendance.check_out_time) {
+        const checkIn = new Date(attendance.check_in_time);
+        const checkOut = new Date(attendance.check_out_time);
+        let totalMinutes = (checkOut.getTime() - checkIn.getTime()) / (1000 * 60);
+        
+        // Subtract lunch break if exists
+        if (attendance.lunch_start_time && attendance.lunch_end_time) {
+          const lunchStart = new Date(attendance.lunch_start_time);
+          const lunchEnd = new Date(attendance.lunch_end_time);
+          totalMinutes -= (lunchEnd.getTime() - lunchStart.getTime()) / (1000 * 60);
+        }
+        
+        // Subtract other break if exists
+        if (attendance.break_start_time && attendance.break_end_time) {
+          const breakStart = new Date(attendance.break_start_time);
+          const breakEnd = new Date(attendance.break_end_time);
+          totalMinutes -= (breakEnd.getTime() - breakStart.getTime()) / (1000 * 60);
+        }
+        
+        workHours = Math.max(0, totalMinutes / 60);
+        
+        // Calculate overtime
+        if (workHours > standardWorkHours) {
+          overtimeHours = workHours - standardWorkHours;
+          workHours = standardWorkHours;
+        }
+      }
+      
+      const updated = await storage.updateAttendance(id, {
+        work_hours: parseFloat(workHours.toFixed(2)),
+        overtime_hours: parseFloat(overtimeHours.toFixed(2)),
+      });
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error calculating work hours:", error);
+      res.status(500).json({ message: "خطأ في حساب ساعات العمل" });
+    }
+  });
+
+  // Get daily attendance statistics
+  app.get("/api/attendance/daily-stats", requireAuth, requirePermission("view_attendance"), async (req, res) => {
+    try {
+      const date = req.query.date as string || new Date().toISOString().split('T')[0];
+      const stats = await storage.getDailyAttendanceStats(date);
+      res.json({ data: stats, date });
+    } catch (error) {
+      console.error("Error fetching daily attendance stats:", error);
+      res.status(500).json({ message: "خطأ في جلب إحصائيات الحضور اليومية" });
+    }
+  });
+
+  // Record break time
+  app.post("/api/attendance/:id/break", requireAuth, requirePermission("manage_attendance"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { action } = req.body; // 'start' or 'end'
+      
+      const attendance = await storage.getAttendanceById(id);
+      if (!attendance) {
+        return res.status(404).json({ message: "سجل الحضور غير موجود" });
+      }
+      
+      const now = new Date();
+      const updateData: any = {};
+      
+      if (action === 'start') {
+        updateData.break_start_time = now;
+        updateData.status = 'استراحة';
+      } else if (action === 'end') {
+        updateData.break_end_time = now;
+        updateData.status = 'حاضر';
+      }
+      
+      const updated = await storage.updateAttendance(id, updateData);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error recording break:", error);
+      res.status(500).json({ message: "خطأ في تسجيل الاستراحة" });
+    }
+  });
+
   // ============ User Violations Management API ============
 
   app.get("/api/violations", async (req, res) => {

@@ -55,6 +55,10 @@ interface AttendanceEntry {
   lunch_end_time: string | null;
   notes: string;
   date: string;
+  work_hours?: number;
+  overtime_hours?: number;
+  late_minutes?: number;
+  shift_type?: string;
 }
 
 interface ModifiedEntry {
@@ -493,18 +497,24 @@ export default function AttendanceManagement() {
                         {t("hr.checkOutTime")}
                       </div>
                     </TableHead>
+                    <TableHead className="text-center min-w-[80px]">
+                      ساعات العمل
+                    </TableHead>
+                    <TableHead className="text-center min-w-[80px]">
+                      الإضافي
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                         {t("common.loading")}
                       </TableCell>
                     </TableRow>
                   ) : filteredData.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                         {t("common.noData")}
                       </TableCell>
                     </TableRow>
@@ -576,6 +586,20 @@ export default function AttendanceManagement() {
                               className="w-28 h-8 text-center mx-auto"
                               data-testid={`input-checkout-${entry.user_id}`}
                             />
+                          </TableCell>
+                          <TableCell className="text-center font-mono text-sm">
+                            {entry.work_hours ? (
+                              <span className="text-blue-600">{entry.work_hours.toFixed(1)} س</span>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center font-mono text-sm">
+                            {entry.overtime_hours && entry.overtime_hours > 0 ? (
+                              <span className="text-purple-600 font-semibold">{entry.overtime_hours.toFixed(1)} س</span>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
                           </TableCell>
                         </TableRow>
                       );

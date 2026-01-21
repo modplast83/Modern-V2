@@ -11,6 +11,7 @@ import {
   jsonb,
   text,
   decimal,
+  doublePrecision,
   check,
   index,
 } from "drizzle-orm/pg-core";
@@ -165,11 +166,21 @@ export const attendance = pgTable("attendance", {
   user_id: integer("user_id")
     .notNull()
     .references(() => users.id),
-  status: varchar("status", { length: 20 }).notNull().default("غائب"), // حاضر / غائب / استراحة غداء / مغادر
+  status: varchar("status", { length: 20 }).notNull().default("غائب"), // حاضر / غائب / استراحة غداء / مغادر / إجازة
   check_in_time: timestamp("check_in_time"),
   check_out_time: timestamp("check_out_time"),
   lunch_start_time: timestamp("lunch_start_time"),
   lunch_end_time: timestamp("lunch_end_time"),
+  break_start_time: timestamp("break_start_time"), // وقت بداية الاستراحة
+  break_end_time: timestamp("break_end_time"), // وقت نهاية الاستراحة
+  work_hours: doublePrecision("work_hours"), // ساعات العمل الفعلية (محسوبة تلقائياً)
+  overtime_hours: doublePrecision("overtime_hours"), // ساعات العمل الإضافي
+  shift_type: varchar("shift_type", { length: 20 }).default("صباحي"), // نوع الوردية: صباحي / مسائي / ليلي
+  late_minutes: integer("late_minutes").default(0), // دقائق التأخير
+  early_leave_minutes: integer("early_leave_minutes").default(0), // دقائق المغادرة المبكرة
+  location_accuracy: doublePrecision("location_accuracy"), // دقة الموقع GPS
+  distance_from_factory: doublePrecision("distance_from_factory"), // المسافة من المصنع بالأمتار
+  device_info: text("device_info"), // معلومات الجهاز
   notes: text("notes"),
   created_by: integer("created_by").references(() => users.id),
   updated_by: integer("updated_by").references(() => users.id),

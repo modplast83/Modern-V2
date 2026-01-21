@@ -47,6 +47,12 @@ export type PermissionKey =
   | 'view_ai_agent'
   | 'use_ai_agent'
   | 'manage_ai_agent'
+  | 'view_attendance'
+  | 'manage_attendance'
+  | 'view_attendance_reports'
+  | 'manage_leaves'
+  | 'view_training'
+  | 'manage_training'
   | 'admin'; // Super admin permission
 
 export interface Permission {
@@ -212,14 +218,56 @@ export const PERMISSIONS: Permission[] = [
     name: 'View HR', 
     name_ar: 'عرض الموارد البشرية', 
     category: 'الموارد البشرية',
-    description: 'View HR data and attendance'
+    description: 'View HR data and employee information'
   },
   { 
     id: 'manage_hr', 
     name: 'Manage HR', 
     name_ar: 'إدارة الموارد البشرية', 
     category: 'الموارد البشرية',
-    description: 'Manage HR, attendance, and training'
+    description: 'Full HR management including all HR functions'
+  },
+  { 
+    id: 'view_attendance', 
+    name: 'View Attendance', 
+    name_ar: 'عرض الحضور والانصراف', 
+    category: 'الموارد البشرية',
+    description: 'View employee attendance records'
+  },
+  { 
+    id: 'manage_attendance', 
+    name: 'Manage Attendance', 
+    name_ar: 'إدارة الحضور والانصراف', 
+    category: 'الموارد البشرية',
+    description: 'Record and modify attendance, overtime, and breaks'
+  },
+  { 
+    id: 'view_attendance_reports', 
+    name: 'View Attendance Reports', 
+    name_ar: 'عرض تقارير الحضور', 
+    category: 'الموارد البشرية',
+    description: 'View attendance statistics and reports'
+  },
+  { 
+    id: 'manage_leaves', 
+    name: 'Manage Leaves', 
+    name_ar: 'إدارة الإجازات', 
+    category: 'الموارد البشرية',
+    description: 'Approve and manage employee leave requests'
+  },
+  { 
+    id: 'view_training', 
+    name: 'View Training', 
+    name_ar: 'عرض التدريب', 
+    category: 'الموارد البشرية',
+    description: 'View training programs and schedules'
+  },
+  { 
+    id: 'manage_training', 
+    name: 'Manage Training', 
+    name_ar: 'إدارة التدريب', 
+    category: 'الموارد البشرية',
+    description: 'Create and manage training programs'
   },
   
   // Reports & Analytics
