@@ -1067,7 +1067,11 @@
       "salesRep": "Sales Representative",
       "selectSalesRep": "Select Sales Rep",
       "noSalesRep": "No Sales Rep",
-      "actions": "Actions"
+      "actions": "Actions",
+      "translateName": "Translate Name",
+      "enterNameFirst": "Please enter a name first to translate",
+      "translationSuccess": "Translation completed successfully",
+      "translationError": "An error occurred during translation"
     },
     "categories": {
       "title": "Categories",

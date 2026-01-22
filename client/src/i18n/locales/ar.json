@@ -1059,7 +1059,11 @@
       "salesRep": "مندوب المبيعات",
       "selectSalesRep": "اختر مندوب المبيعات",
       "noSalesRep": "بدون مندوب",
-      "actions": "الإجراءات"
+      "actions": "الإجراءات",
+      "translateName": "ترجمة الاسم",
+      "enterNameFirst": "يرجى إدخال الاسم أولاً للترجمة",
+      "translationSuccess": "تمت الترجمة بنجاح",
+      "translationError": "حدث خطأ أثناء الترجمة"
     },
     "categories": {
       "title": "الفئات",

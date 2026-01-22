@@ -55,6 +55,8 @@ import {
   ChevronRight,
   Eye,
   EyeOff,
+  Languages,
+  Loader2,
 } from "lucide-react";
 import { formatNumber } from "../lib/formatNumber";
 
@@ -131,6 +133,69 @@ export default function Definitions() {
   // Drawer code separate states
   const [drawerLetter, setDrawerLetter] = useState("");
   const [drawerNumber, setDrawerNumber] = useState("");
+
+  // Translation state
+  const [isTranslating, setIsTranslating] = useState(false);
+
+  // Auto-translate customer name function
+  const handleTranslateCustomerName = async () => {
+    const nameAr = customerForm.name_ar?.trim();
+    const nameEn = customerForm.name?.trim();
+
+    // Determine which field has content and translate to the other
+    let textToTranslate = "";
+    let targetLanguage = "";
+
+    if (nameAr && !nameEn) {
+      textToTranslate = nameAr;
+      targetLanguage = "en";
+    } else if (nameEn && !nameAr) {
+      textToTranslate = nameEn;
+      targetLanguage = "ar";
+    } else if (nameAr && nameEn) {
+      // Both have values - translate Arabic to English (priority)
+      textToTranslate = nameAr;
+      targetLanguage = "en";
+    } else {
+      toast({
+        title: t("common.error"),
+        description: t("definitions.customers.enterNameFirst"),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsTranslating(true);
+    try {
+      const response = await apiRequest("/api/translate-name", {
+        method: "POST",
+        body: JSON.stringify({ text: textToTranslate, targetLanguage }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.translatedText) {
+        if (targetLanguage === "en") {
+          setCustomerForm(prev => ({ ...prev, name: data.translatedText }));
+        } else {
+          setCustomerForm(prev => ({ ...prev, name_ar: data.translatedText }));
+        }
+        toast({
+          title: t("common.success"),
+          description: t("definitions.customers.translationSuccess"),
+        });
+      }
+    } catch (error) {
+      console.error("Translation error:", error);
+      toast({
+        title: t("common.error"),
+        description: t("definitions.customers.translationError"),
+        variant: "destructive",
+      });
+    } finally {
+      setIsTranslating(false);
+    }
+  };
 
   // Form states
   const [customerForm, setCustomerForm] = useState({
@@ -3183,6 +3248,23 @@ export default function Definitions() {
                           className="mt-1"
                         />
                       </div>
+                    </div>
+                    <div className="flex justify-center">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleTranslateCustomerName}
+                        disabled={isTranslating || (!customerForm.name_ar && !customerForm.name)}
+                        className="gap-2"
+                      >
+                        {isTranslating ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Languages className="h-4 w-4" />
+                        )}
+                        {t("definitions.customers.translateName")}
+                      </Button>
                     </div>
                     <div className="grid grid-cols-3 gap-4">
                       <div>

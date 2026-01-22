@@ -2275,6 +2275,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(404).end();
   });
 
+  // Translation API for customer names
+  app.post("/api/translate-name", requireAuth, async (req, res) => {
+    try {
+      const { text, targetLanguage } = req.body;
+      
+      if (!text || !targetLanguage) {
+        return res.status(400).json({ message: "النص واللغة المستهدفة مطلوبان" });
+      }
+      
+      // Check if OpenAI is available
+      const OpenAI = (await import("openai")).default;
+      const openai = new OpenAI();
+      
+      const prompt = targetLanguage === "en" 
+        ? `Translate the following Arabic name to English. Only provide the translation, nothing else: "${text}"`
+        : `Translate the following English name to Arabic. Only provide the translation, nothing else: "${text}"`;
+      
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { 
+            role: "system", 
+            content: "You are a professional translator specializing in translating names between Arabic and English. Provide only the translation without any explanation or additional text."
+          },
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.3,
+        max_tokens: 100,
+      });
+      
+      const translatedText = response.choices[0]?.message?.content?.trim() || "";
+      
+      res.json({ translatedText });
+    } catch (error) {
+      console.error("Translation error:", error);
+      res.status(500).json({ 
+        message: "خطأ في الترجمة",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Customers routes
   app.post("/api/customers", async (req, res) => {
     try {
