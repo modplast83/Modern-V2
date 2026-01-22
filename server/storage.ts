@@ -493,7 +493,8 @@ export interface IStorage {
   getMachineCapacityStats(): Promise<any[]>;
 
   // Customers
-  getCustomers(): Promise<Customer[]>;
+  getCustomers(options?: { search?: string; page?: number; limit?: number }): Promise<{ data: Customer[]; total: number; page: number; limit: number; totalPages: number }>;
+  getAllCustomers(): Promise<Customer[]>;
 
   // Customer Products (replacing the old Product table)
   getCustomerProducts(options?: { customer_id?: string; ids?: number[]; page?: number; limit?: number }): Promise<{ data: CustomerProduct[]; total: number }>;
@@ -4476,7 +4477,47 @@ export class DatabaseStorage implements IStorage {
     );
   }
 
-  async getCustomers(): Promise<Customer[]> {
+  async getCustomers(options?: { 
+    search?: string; 
+    page?: number; 
+    limit?: number;
+  }): Promise<{ data: Customer[]; total: number; page: number; limit: number; totalPages: number }> {
+    const page = options?.page || 1;
+    const limit = options?.limit || 50;
+    const offset = (page - 1) * limit;
+    
+    let query = db.select().from(customers);
+    let countQuery = db.select({ count: sql<number>`count(*)` }).from(customers);
+    
+    if (options?.search && options.search.trim()) {
+      const searchTerm = `%${options.search.trim()}%`;
+      const searchCondition = or(
+        sql`${customers.name} ILIKE ${searchTerm}`,
+        sql`${customers.name_ar} ILIKE ${searchTerm}`,
+        sql`${customers.code} ILIKE ${searchTerm}`
+      );
+      query = query.where(searchCondition) as any;
+      countQuery = countQuery.where(searchCondition) as any;
+    }
+    
+    const [totalResult] = await countQuery;
+    const total = Number(totalResult?.count || 0);
+    
+    const data = await query
+      .orderBy(customers.name)
+      .limit(limit)
+      .offset(offset);
+    
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit)
+    };
+  }
+  
+  async getAllCustomers(): Promise<Customer[]> {
     return await db.select().from(customers);
   }
 

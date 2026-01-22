@@ -1785,8 +1785,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Customers routes
   app.get("/api/customers", requireAuth, async (req, res) => {
     try {
-      const customers = await storage.getCustomers();
-      res.json(customers);
+      const { search, page, limit, all } = req.query;
+      
+      // If all=true, return all customers without pagination (for dropdowns)
+      if (all === 'true') {
+        const allCustomers = await storage.getAllCustomers();
+        return res.json(allCustomers);
+      }
+      
+      const options: { search?: string; page?: number; limit?: number } = {};
+      
+      if (search && typeof search === 'string') {
+        options.search = search;
+      }
+      if (page && typeof page === 'string') {
+        options.page = parseInt(page);
+      }
+      if (limit && typeof limit === 'string') {
+        options.limit = parseInt(limit);
+      }
+      
+      const result = await storage.getCustomers(options);
+      res.json(result);
     } catch (error) {
       res.status(500).json({ message: "خطأ في جلب العملاء" });
     }
@@ -5396,7 +5416,7 @@ Do not include quotes or explanations.`;
             if (tableName === "customers") {
               // Generate ID if not provided
               if (!processedRecord.id) {
-                const existingCustomers = await storage.getCustomers();
+                const existingCustomers = await storage.getAllCustomers();
                 const lastId =
                   existingCustomers.length > 0
                     ? Math.max(
