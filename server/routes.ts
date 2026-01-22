@@ -2291,15 +2291,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const prompt = targetLanguage === "en" 
         ? `Transliterate the following Arabic name to English letters. Only provide the transliteration without quotes or any additional text: ${text}`
         : `For the English name "${text}", provide:
-1. The Arabic transliteration (how it sounds in Arabic letters)
-2. The Arabic meaning translation if applicable
+1. First: The Arabic meaning translation (translate the meaning of the words to Arabic)
+2. Second: The Arabic transliteration in parentheses (how it sounds in Arabic letters)
 
-Format the response as: [transliteration] - [meaning] or just [transliteration] if no meaning translation applies.
+Example: "Price House" should become "بيت الأسعار (برايس هاوس)"
+Format: [meaning in Arabic] ([transliteration])
 Do not include quotes or explanations.`;
       
       const systemContent = targetLanguage === "en"
         ? "You are a professional transliterator. Convert Arabic names to English letters (transliteration). Never use quotes in your response. Just provide the transliterated name directly."
-        : "You are a professional Arabic translator. For names, provide both the Arabic transliteration (how it sounds) and meaning translation when applicable. Format: الاسم بالعربي - المعنى. Do not use quotes.";
+        : "You are a professional Arabic translator. Translate English names to Arabic by providing: 1) The meaning translation first, 2) Then the transliteration (how it sounds) in parentheses. Example: Price House = بيت الأسعار (برايس هاوس). Do not use quotes.";
       
       const response = await openai.chat.completions.create({
         model: "gpt-4o-mini",
