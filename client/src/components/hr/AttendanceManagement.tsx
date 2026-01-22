@@ -470,7 +470,92 @@ export default function AttendanceManagement() {
             </div>
           </div>
 
-          <div className="border rounded-lg overflow-hidden">
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-3">
+            {isLoading ? (
+              <div className="text-center py-8 text-gray-500">{t("common.loading")}</div>
+            ) : filteredData.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">{t("common.noData")}</div>
+            ) : (
+              filteredData.map((entry) => {
+                const modified = modifiedEntries.get(entry.user_id);
+                const currentStatus = modified?.status ?? entry.status;
+                const currentCheckIn = modified?.check_in_time ?? entry.check_in_time;
+                const currentCheckOut = modified?.check_out_time ?? entry.check_out_time;
+                const isSelected = modified?.selected ?? false;
+                const isModified = modified !== undefined;
+                
+                return (
+                  <div 
+                    key={entry.user_id}
+                    className={cn(
+                      "border rounded-lg p-4 shadow-sm",
+                      isModified && "bg-yellow-50 border-yellow-200",
+                      isSelected && "bg-blue-50 border-blue-200",
+                      !isModified && !isSelected && "bg-white"
+                    )}
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={(checked) => handleSelectRow(entry.user_id, !!checked)}
+                        />
+                        <div>
+                          <div className="font-bold">{entry.display_name_ar || entry.display_name || entry.username}</div>
+                          <div className="text-sm text-gray-500">{entry.role_name_ar || entry.role_name || "-"}</div>
+                        </div>
+                      </div>
+                      <Select
+                        value={currentStatus}
+                        onValueChange={(value) => handleStatusChange(entry.user_id, value)}
+                      >
+                        <SelectTrigger className={cn("w-24 h-8 text-xs", getStatusBadgeClass(currentStatus))}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="حاضر">{t("hr.present")}</SelectItem>
+                          <SelectItem value="غائب">{t("hr.absent")}</SelectItem>
+                          <SelectItem value="مغادر">{t("hr.attendance.left")}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-gray-500 flex items-center gap-1">
+                          <Clock className="h-3 w-3" /> {t("hr.checkInTime")}
+                        </label>
+                        <Input
+                          type="time"
+                          value={formatTimeForInput(currentCheckIn)}
+                          onChange={(e) => handleTimeChange(entry.user_id, "check_in_time", e.target.value)}
+                          className="h-10 text-center"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500 flex items-center gap-1">
+                          <LogOut className="h-3 w-3" /> {t("hr.checkOutTime")}
+                        </label>
+                        <Input
+                          type="time"
+                          value={formatTimeForInput(currentCheckOut)}
+                          onChange={(e) => handleTimeChange(entry.user_id, "check_out_time", e.target.value)}
+                          className="h-10 text-center"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-between mt-3 text-sm">
+                      <span>ساعات العمل: <span className="text-blue-600 font-semibold">{entry.work_hours?.toFixed(1) || "-"} س</span></span>
+                      <span>الإضافي: <span className="text-purple-600 font-semibold">{entry.overtime_hours && entry.overtime_hours > 0 ? `${entry.overtime_hours.toFixed(1)} س` : "-"}</span></span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden md:block border rounded-lg overflow-hidden">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>

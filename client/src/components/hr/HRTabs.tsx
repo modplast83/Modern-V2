@@ -19,41 +19,46 @@ export default function HRTabs() {
       </div>
 
       <Tabs defaultValue="attendance" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 bg-gray-100 dark:bg-gray-800">
+        <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 gap-1 bg-gray-100 dark:bg-gray-800 h-auto p-1">
           <TabsTrigger
             value="attendance"
-            className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700"
+            className="flex items-center justify-center gap-1 md:gap-2 text-xs md:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700"
           >
             <Clock className="w-4 h-4" />
-            إدارة الحضور
+            <span className="hidden sm:inline">إدارة الحضور</span>
+            <span className="sm:hidden">الحضور</span>
           </TabsTrigger>
           <TabsTrigger
             value="reports"
-            className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700"
+            className="flex items-center justify-center gap-1 md:gap-2 text-xs md:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700"
           >
             <FileText className="w-4 h-4" />
-            تقارير الحضور
+            <span className="hidden sm:inline">تقارير الحضور</span>
+            <span className="sm:hidden">التقارير</span>
           </TabsTrigger>
           <TabsTrigger
             value="training"
-            className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700"
+            className="flex items-center justify-center gap-1 md:gap-2 text-xs md:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700"
           >
             <GraduationCap className="w-4 h-4" />
-            التدريب الميداني
+            <span className="hidden sm:inline">التدريب الميداني</span>
+            <span className="sm:hidden">التدريب</span>
           </TabsTrigger>
           <TabsTrigger
             value="performance"
-            className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700"
+            className="flex items-center justify-center gap-1 md:gap-2 text-xs md:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700"
           >
             <Target className="w-4 h-4" />
-            تقييم الأداء
+            <span className="hidden sm:inline">تقييم الأداء</span>
+            <span className="sm:hidden">الأداء</span>
           </TabsTrigger>
           <TabsTrigger
             value="leaves"
-            className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700"
+            className="flex items-center justify-center gap-1 md:gap-2 text-xs md:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700"
           >
             <Calendar className="w-4 h-4" />
-            إدارة الطلبات
+            <span className="hidden sm:inline">إدارة الطلبات</span>
+            <span className="sm:hidden">الطلبات</span>
           </TabsTrigger>
         </TabsList>
 
