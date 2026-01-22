@@ -12,7 +12,7 @@ export default function Header() {
     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center space-x-4 space-x-reverse">
-          <div className="flex items-center justify-center w-10 h-10 rounded-lg overflow-hidden">
+          <div className="flex items-center justify-center w-20 h-20 rounded-lg overflow-hidden">
             <img
               src={FactoryLogoPath}
               alt="شعار مصنع الأكياس البلاستيكية"
