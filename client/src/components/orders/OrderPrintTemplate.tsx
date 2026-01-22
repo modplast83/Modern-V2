@@ -65,6 +65,17 @@ interface User {
   full_name?: string;
 }
 
+interface MasterBatchColor {
+  id: string;
+  name: string;
+  name_ar: string;
+  color_hex: string;
+  text_color: string;
+  brand?: string;
+  aliases?: string;
+  is_active: boolean;
+}
+
 interface OrderPrintTemplateProps {
   order: Order | null | undefined;
   customer: Customer | null | undefined;
@@ -74,21 +85,6 @@ interface OrderPrintTemplateProps {
   onClose: () => void;
   mode?: PrintMode;
 }
-
-const masterBatchColors: Array<{ id: string; name_ar: string; name_en?: string; hex: string }> = [
-  { id: "PT-111111", name_ar: "أبيض", name_en: "White", hex: "#FFFFFF" },
-  { id: "PT-000000", name_ar: "أسود", name_en: "Black", hex: "#000000" },
-  { id: "PT-CLEAR", name_ar: "شفاف", name_en: "Clear", hex: "#E0E0E0" },
-  { id: "PT-RED", name_ar: "أحمر", name_en: "Red", hex: "#EF4444" },
-  { id: "PT-BLUE", name_ar: "أزرق", name_en: "Blue", hex: "#3B82F6" },
-  { id: "PT-GREEN", name_ar: "أخضر", name_en: "Green", hex: "#22C55E" },
-  { id: "PT-YELLOW", name_ar: "أصفر", name_en: "Yellow", hex: "#EAB308" },
-];
-
-const getMasterBatchInfo = (id?: string) => {
-  if (!id) return { name_ar: "غير محدد", name_en: "-", hex: "#CCCCCC" };
-  return masterBatchColors.find((c) => c.id === id) ?? { name_ar: id, name_en: "", hex: "#CCCCCC" };
-};
 
 const formatNumber = (value: number | string | undefined) => {
   const num = Number(value);
@@ -130,6 +126,20 @@ export default function OrderPrintTemplate({
     queryKey: ["/api/users"],
     staleTime: Infinity,
   });
+
+  const { data: masterBatchColors = [] } = useQuery<MasterBatchColor[]>({
+    queryKey: ["/api/master-batch-colors"],
+    staleTime: Infinity,
+  });
+
+  const getMasterBatchInfo = useCallback((id?: string) => {
+    if (!id) return { name_ar: "غير محدد", name_en: "-", hex: "#CCCCCC" };
+    const found = masterBatchColors.find((c) => c.id === id || c.aliases?.split(',').map(a => a.trim()).includes(id));
+    if (found) {
+      return { name_ar: found.name_ar, name_en: found.name, hex: found.color_hex };
+    }
+    return { name_ar: id, name_en: "", hex: "#CCCCCC" };
+  }, [masterBatchColors]);
 
   const hasAutoTriggered = useRef(false);
   const printContainerRef = useRef<HTMLDivElement>(null);
