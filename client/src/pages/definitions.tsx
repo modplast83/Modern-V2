@@ -651,14 +651,32 @@ export default function Definitions() {
     sizeCaptionTimer.current = setTimeout(() => {
       const { width, right_facing, left_facing, cutting_length_cm } =
         customerProductForm;
-      if (width && right_facing && left_facing && cutting_length_cm) {
-        const w = parseFloat(width);
-        const rf = parseFloat(right_facing);
-        const lf = parseFloat(left_facing);
-        const cl = parseFloat(cutting_length_cm);
+      
+      const w = parseFloat(width) || 0;
+      const rf = parseFloat(right_facing) || 0;
+      const lf = parseFloat(left_facing) || 0;
+      const cl = parseFloat(cutting_length_cm) || 0;
 
-        if (w && rf && lf && cl) {
-          const sizeCaption = `${w}+${rf}+${lf}X${cl}`;
+      // يجب أن يكون العرض والطول موجودين على الأقل
+      if (w > 0 && cl > 0) {
+        // بناء المقاس مع تجاهل الجوانب الفارغة أو الصفرية
+        let sizeCaption = `${w}`;
+        if (rf > 0) sizeCaption += `+${rf}`;
+        if (lf > 0) sizeCaption += `+${lf}`;
+        sizeCaption += `X${cl}`;
+        
+        setCustomerProductForm((prev) => ({
+          ...prev,
+          size_caption: sizeCaption,
+        }));
+      } else if (w > 0 || cl > 0) {
+        // إذا كان أحدهما فقط موجود، نعرض ما هو متاح
+        let sizeCaption = w > 0 ? `${w}` : "";
+        if (rf > 0) sizeCaption += `+${rf}`;
+        if (lf > 0) sizeCaption += `+${lf}`;
+        if (cl > 0) sizeCaption += sizeCaption ? `X${cl}` : `${cl}`;
+        
+        if (sizeCaption) {
           setCustomerProductForm((prev) => ({
             ...prev,
             size_caption: sizeCaption,
