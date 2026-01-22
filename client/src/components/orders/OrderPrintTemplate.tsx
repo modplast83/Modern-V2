@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import "../../print.css";
-import factoryLogo from "../../../../attached_assets/FactoryLogoHPNGW.png";
+import factoryLogo from "../../../../attached_assets/MPBF11_1769101097739.png";
 
 type PrintMode = "html" | "pdf" | "standalone";
 

@@ -1,7 +1,7 @@
 import { useAuth } from "../../hooks/use-auth";
 import { NotificationBell } from "../notifications/NotificationBell";
 import { LanguageSwitcher } from "../ui/LanguageSwitcher";
-import FactoryLogoPath from "../../../../attached_assets/FactoryLogoHPNGW.png";
+import FactoryLogoPath from "../../../../attached_assets/MPBF11_1769101097739.png";
 import { useTranslation } from "react-i18next";
 
 export default function Header() {
