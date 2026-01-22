@@ -1341,6 +1341,27 @@ export default function Definitions() {
     },
   });
 
+  // Delete Customer Mutation
+  const deleteCustomerMutation = useMutation({
+    mutationFn: (id: number) => {
+      return fetch(`/api/customers/${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      }).then((res) => {
+        if (!res.ok) throw new Error("Failed to delete");
+        return res.json();
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      toast({ title: "تم حذف العميل بنجاح" });
+    },
+    onError: (error: any) => {
+      console.error("Error deleting customer:", error);
+      toast({ title: "فشل في حذف العميل - قد يكون مرتبطاً بطلبات", variant: "destructive" });
+    },
+  });
+
   // Location mutations
   const createLocationMutation = useMutation({
     mutationFn: (data: any) => {
@@ -1787,7 +1808,7 @@ export default function Definitions() {
                                   {t("definitions.customers.phone")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.customers.city")}
+                                  المندوب
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
                                   {t("definitions.customers.actions")}
@@ -1824,7 +1845,11 @@ export default function Definitions() {
                                         {customer.phone || "-"}
                                       </td>
                                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                        {customer.city || "-"}
+                                        {(() => {
+                                          if (!Array.isArray(salesReps)) return "-";
+                                          const rep = salesReps.find((r: any) => r.id === customer.sales_rep_id);
+                                          return rep ? (rep.name_ar || rep.name || "-") : "-";
+                                        })()}
                                       </td>
                                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-center">
                                         <div className="flex items-center justify-center gap-2">
@@ -1854,6 +1879,19 @@ export default function Definitions() {
                                             }}
                                           >
                                             <Edit className="w-4 h-4" />
+                                          </Button>
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                            disabled={deleteCustomerMutation.isPending}
+                                            onClick={() => {
+                                              if (confirm(`هل أنت متأكد من حذف العميل "${customer.name_ar || customer.name}"؟`)) {
+                                                deleteCustomerMutation.mutate(customer.id);
+                                              }
+                                            }}
+                                          >
+                                            <Trash2 className="w-4 h-4" />
                                           </Button>
                                         </div>
                                       </td>
