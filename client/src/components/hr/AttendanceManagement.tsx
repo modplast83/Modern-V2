@@ -472,6 +472,16 @@ export default function AttendanceManagement() {
 
           {/* Mobile Card View */}
           <div className="md:hidden space-y-3">
+            {/* Mobile Select All */}
+            {filteredData.length > 0 && (
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border">
+                <Checkbox
+                  checked={selectAll}
+                  onCheckedChange={handleSelectAll}
+                />
+                <span className="text-sm font-medium">{t("common.selectAll")} ({filteredData.length})</span>
+              </div>
+            )}
             {isLoading ? (
               <div className="text-center py-8 text-gray-500">{t("common.loading")}</div>
             ) : filteredData.length === 0 ? (
