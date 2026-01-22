@@ -2289,23 +2289,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const openai = new OpenAI();
       
       const prompt = targetLanguage === "en" 
-        ? `Translate the following Arabic name to English. Only provide the translation, nothing else: "${text}"`
-        : `Translate the following English name to Arabic. Only provide the translation, nothing else: "${text}"`;
+        ? `Transliterate the following Arabic name to English letters. Only provide the transliteration without quotes or any additional text: ${text}`
+        : `For the English name "${text}", provide:
+1. The Arabic transliteration (how it sounds in Arabic letters)
+2. The Arabic meaning translation if applicable
+
+Format the response as: [transliteration] - [meaning] or just [transliteration] if no meaning translation applies.
+Do not include quotes or explanations.`;
+      
+      const systemContent = targetLanguage === "en"
+        ? "You are a professional transliterator. Convert Arabic names to English letters (transliteration). Never use quotes in your response. Just provide the transliterated name directly."
+        : "You are a professional Arabic translator. For names, provide both the Arabic transliteration (how it sounds) and meaning translation when applicable. Format: الاسم بالعربي - المعنى. Do not use quotes.";
       
       const response = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
           { 
             role: "system", 
-            content: "You are a professional translator specializing in translating names between Arabic and English. Provide only the translation without any explanation or additional text."
+            content: systemContent
           },
           { role: "user", content: prompt }
         ],
         temperature: 0.3,
-        max_tokens: 100,
+        max_tokens: 150,
       });
       
-      const translatedText = response.choices[0]?.message?.content?.trim() || "";
+      let translatedText = response.choices[0]?.message?.content?.trim() || "";
+      // Remove any quotes that might still appear
+      translatedText = translatedText.replace(/^["']|["']$/g, "").trim();
       
       res.json({ translatedText });
     } catch (error) {
