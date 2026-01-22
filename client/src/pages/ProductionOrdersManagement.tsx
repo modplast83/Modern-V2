@@ -458,9 +458,9 @@ function PrintProductionOrderWrapper({ productionOrder, onClose }: { productionO
   });
 
   const { data: customersData } = useQuery({
-    queryKey: ["/api/customers"],
+    queryKey: ["/api/customers", { all: true }],
     queryFn: async () => {
-      const response = await fetch("/api/customers");
+      const response = await fetch("/api/customers?all=true");
       if (!response.ok) throw new Error("Failed to fetch customers");
       const result = await response.json();
       return result.data || result;

@@ -729,7 +729,12 @@ export default function Definitions() {
 
   // Data queries
   const { data: customers = [], isLoading: customersLoading } = useQuery({
-    queryKey: ["/api/customers"],
+    queryKey: ["/api/customers", { all: true }],
+    queryFn: async () => {
+      const response = await fetch("/api/customers?all=true");
+      if (!response.ok) throw new Error("Failed to fetch customers");
+      return response.json();
+    },
     staleTime: 0,
   });
   const { data: sections = [], isLoading: sectionsLoading } = useQuery({

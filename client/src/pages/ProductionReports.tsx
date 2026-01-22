@@ -98,7 +98,14 @@ export default function ProductionReports() {
     enabled: !!activeFilters.dateFrom && !!activeFilters.dateTo,
   });
 
-  const { data: customers } = useQuery<any>({ queryKey: ["/api/customers"] });
+  const { data: customers } = useQuery<any>({ 
+    queryKey: ["/api/customers", { all: true }],
+    queryFn: async () => {
+      const response = await fetch("/api/customers?all=true");
+      if (!response.ok) throw new Error("Failed to fetch customers");
+      return response.json();
+    },
+  });
   const { data: products } = useQuery<any>({ queryKey: ["/api/customer-products"] });
   const { data: machines } = useQuery<any>({ queryKey: ["/api/machines"] });
   const { data: users } = useQuery<any>({ queryKey: ["/api/users"] });

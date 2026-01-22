@@ -107,11 +107,11 @@ export default function Orders() {
     },
   });
 
-  // Fetch customers
+  // Fetch customers (all for dropdown)
   const { data: customers = [] } = useQuery({
-    queryKey: ["/api/customers"],
+    queryKey: ["/api/customers", { all: true }],
     queryFn: async () => {
-      const response = await fetch("/api/customers");
+      const response = await fetch("/api/customers?all=true");
       if (!response.ok) throw new Error("فشل في جلب العملاء");
       const result = await response.json();
       const data = result.data || result;
