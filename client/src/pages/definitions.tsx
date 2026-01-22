@@ -4121,11 +4121,11 @@ export default function Definitions() {
                         <div>
                           <Label htmlFor="punching">التخريم</Label>
                           <Select
-                            value={customerProductForm.punching}
+                            value={customerProductForm.punching || "none"}
                             onValueChange={(value) =>
                               setCustomerProductForm({
                                 ...customerProductForm,
-                                punching: value,
+                                punching: value === "none" ? "" : value,
                               })
                             }
                           >
@@ -4133,6 +4133,7 @@ export default function Definitions() {
                               <SelectValue placeholder="اختر نوع التخريم" />
                             </SelectTrigger>
                             <SelectContent>
+                              <SelectItem value="none">اختر نوع التخريم</SelectItem>
                               <SelectItem value="بدون">بدون</SelectItem>
                               <SelectItem value="علاقي">علاقي</SelectItem>
                               <SelectItem value="علاقي هوك">
@@ -4308,11 +4309,11 @@ export default function Definitions() {
                         <div>
                           <Label htmlFor="cutting_unit">وحدة القطع</Label>
                           <Select
-                            value={customerProductForm.cutting_unit}
+                            value={customerProductForm.cutting_unit || "none"}
                             onValueChange={(value) =>
                               setCustomerProductForm({
                                 ...customerProductForm,
-                                cutting_unit: value,
+                                cutting_unit: value === "none" ? "" : value,
                               })
                             }
                           >
@@ -4320,10 +4321,14 @@ export default function Definitions() {
                               <SelectValue placeholder="اختر الوحدة" />
                             </SelectTrigger>
                             <SelectContent>
+                              <SelectItem value="none">اختر الوحدة</SelectItem>
                               <SelectItem value="كيلو">كيلو</SelectItem>
                               <SelectItem value="رول">رول</SelectItem>
                               <SelectItem value="باكت">باكت</SelectItem>
                               <SelectItem value="كرتون">كرتون</SelectItem>
+                              <SelectItem value="قطعة">قطعة</SelectItem>
+                              <SelectItem value="كيس">كيس</SelectItem>
+                              <SelectItem value="غطاء">غطاء</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
