@@ -112,6 +112,7 @@ export default function OrdersForm({
     if (!code) return undefined;
     const normalizedCode = code.toUpperCase().trim();
     return masterBatchColors.find((c) => {
+      if (!c || !c.code) return false;
       if (c.code.toUpperCase() === normalizedCode) return true;
       if (c.aliases) {
         const aliasArr = c.aliases.split(",").map((a) => a.trim().toUpperCase());
