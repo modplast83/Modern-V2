@@ -1654,6 +1654,29 @@ export const adminDecisionsRelations = relations(
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   created_at: true,
+}).extend({
+  role_id: z.union([
+    z.number().int().positive(),
+    z.string().transform((val) => {
+      if (!val || val === "none" || val === "") return null;
+      const match = val.match(/ROLE0*(\d+)/);
+      if (match) {
+        return parseInt(match[1], 10);
+      }
+      const num = parseInt(val, 10);
+      return isNaN(num) ? null : num;
+    }),
+    z.null(),
+  ]).nullable().optional(),
+  section_id: z.union([
+    z.number().int().positive(),
+    z.string().transform((val) => {
+      if (!val || val === "none" || val === "") return null;
+      const num = parseInt(val, 10);
+      return isNaN(num) ? null : num;
+    }),
+    z.null(),
+  ]).nullable().optional(),
 });
 
 // Order schema (legacy - will be phased out)
