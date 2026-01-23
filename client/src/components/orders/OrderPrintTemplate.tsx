@@ -66,14 +66,15 @@ interface User {
 }
 
 interface MasterBatchColor {
-  id: string;
-  name: string;
+  id: number;
+  code: string;
   name_ar: string;
-  color_hex: string;
-  text_color: string;
+  name_en: string;
+  hex_color: string;
+  text_color?: string;
   brand?: string;
   aliases?: string;
-  is_active: boolean;
+  is_active?: boolean;
 }
 
 interface OrderPrintTemplateProps {
@@ -132,17 +133,26 @@ export default function OrderPrintTemplate({
     staleTime: Infinity,
   });
 
-  const getMasterBatchInfo = useCallback((id?: string) => {
-    if (!id) return { name_ar: "غير محدد", name_en: "-", hex: "#CCCCCC" };
-    const found = masterBatchColors.find((c) => c.id === id || c.aliases?.split(',').map(a => a.trim()).includes(id));
+  const getMasterBatchInfo = useCallback((code?: string) => {
+    if (!code) return { name_ar: "غير محدد", name_en: "-", hex: "#CCCCCC" };
+    const normalizedCode = code.toUpperCase().trim();
+    const found = masterBatchColors.find((c) => {
+      if (!c || !c.code) return false;
+      if (c.code.toUpperCase() === normalizedCode) return true;
+      if (c.aliases) {
+        const aliasArr = c.aliases.split(",").map((a) => a.trim().toUpperCase());
+        return aliasArr.includes(normalizedCode);
+      }
+      return false;
+    });
     if (found) {
-      let hex = found.color_hex;
+      let hex = found.hex_color;
       if (hex === "transparent" || !hex) {
         hex = "#E0E0E0";
       }
-      return { name_ar: found.name_ar, name_en: found.name, hex };
+      return { name_ar: found.name_ar, name_en: found.name_en || found.name_ar, hex };
     }
-    return { name_ar: id, name_en: "", hex: "#CCCCCC" };
+    return { name_ar: code, name_en: "", hex: "#CCCCCC" };
   }, [masterBatchColors]);
 
   const hasAutoTriggered = useRef(false);
