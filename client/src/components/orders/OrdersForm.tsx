@@ -51,7 +51,7 @@ const ColorBadge = ({ color, code, nameAr }: { color: string; code: string; name
         style={{ backgroundColor: displayColor }}
       />
       <span className={`text-purple-600 font-semibold text-xs`}>
-        {nameAr} ({code})
+        {nameAr}
       </span>
     </span>
   );
@@ -134,7 +134,7 @@ export default function OrdersForm({
   const getMasterBatchText = (masterBatchId: string): string => {
     if (!masterBatchId) return "غير محدد";
     const colorData = findColorByCode(masterBatchId);
-    return colorData ? `${colorData.name_ar} (${colorData.code})` : masterBatchId;
+    return colorData ? colorData.name_ar : masterBatchId;
   };
 
   const orderForm = useForm({

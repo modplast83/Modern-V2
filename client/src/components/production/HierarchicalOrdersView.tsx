@@ -28,7 +28,7 @@ const ColorBadge = ({ color, code, nameAr }: { color: string; code: string; name
         style={{ backgroundColor: displayColor }}
       />
       <span className="text-muted-foreground">
-        {nameAr} ({code})
+        {nameAr}
       </span>
     </span>
   );
