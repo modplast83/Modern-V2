@@ -164,7 +164,9 @@ export default function OrderPrintTemplate({
   }, [filteredOrders]);
 
   const salesRep = useMemo(() => {
-    return users?.find((u) => u.id === customer?.sales_rep_id);
+    if (!customer?.sales_rep_id || !users?.length) return undefined;
+    const repId = String(customer.sales_rep_id);
+    return users.find((u) => String(u.id) === repId);
   }, [users, customer?.sales_rep_id]);
 
   const canPrint = Boolean(order?.id) && sortedOrders.length > 0;
