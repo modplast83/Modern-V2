@@ -5576,6 +5576,16 @@ Do not include quotes or explanations.`;
                 processedRecord.role_id = 2; // Default user role
               }
 
+              // Set default password if not provided (required for user creation)
+              if (!processedRecord.password) {
+                processedRecord.password = "123456"; // Default password for imported users
+              }
+
+              // Ensure username is set (use id if not provided)
+              if (!processedRecord.username) {
+                processedRecord.username = String(processedRecord.id);
+              }
+
               // Validate using schema
               const validatedRecord = insertUserSchema.parse(processedRecord);
               await storage.createUser(validatedRecord);
