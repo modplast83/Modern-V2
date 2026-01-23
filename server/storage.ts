@@ -1,3 +1,4 @@
+import * as ExcelJS from "exceljs";
 import {
   users,
   orders,
@@ -8210,7 +8211,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   private async convertToExcelAsync(data: any[], tableName?: string): Promise<Buffer> {
-    const ExcelJS = require("exceljs");
     const workbook = new ExcelJS.Workbook();
 
     if (!data || data.length === 0) {
