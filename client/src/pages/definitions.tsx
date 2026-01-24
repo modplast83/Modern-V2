@@ -483,9 +483,51 @@ export default function Definitions() {
           font-size: 0.9em;
           color: #888;
         }
+        .design-container {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 20px;
+          justify-content: center;
+          margin-top: 15px;
+        }
+        .design-box {
+          border: 2px solid #007bff;
+          border-radius: 8px;
+          padding: 10px;
+          background-color: #fff;
+          text-align: center;
+          flex: 1;
+          min-width: 200px;
+          max-width: 45%;
+        }
+        .design-box h4 {
+          margin: 0 0 10px 0;
+          color: #007bff;
+          font-size: 1em;
+        }
+        .design-image-wrapper {
+          width: 100%;
+          height: 200px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background-color: #f5f5f5;
+          border-radius: 4px;
+          overflow: hidden;
+        }
+        .design-image-wrapper img {
+          max-width: 100%;
+          max-height: 100%;
+          object-fit: contain;
+        }
+        .no-design {
+          color: #999;
+          font-style: italic;
+        }
         @media print {
           body { margin: 10px; }
           .section { break-inside: avoid; }
+          .design-box { max-width: 48%; }
         }
       </style>
     </head>
@@ -591,15 +633,25 @@ export default function Definitions() {
       </div>
 
       <div class="section">
-        <h3>التصاميم والملاحظات</h3>
-        <div class="detail-row">
-          <span class="detail-label">تصميم الواجهة الأمامية:</span>
-          <span class="detail-value">${product.cliche_front_design || "-"}</span>
+        <h3>التصاميم</h3>
+        <div class="design-container">
+          <div class="design-box">
+            <h4>تصميم الواجهة الأمامية</h4>
+            <div class="design-image-wrapper">
+              ${product.cliche_front_design ? `<img src="${product.cliche_front_design}" alt="تصميم الواجهة الأمامية" />` : '<span class="no-design">لا يوجد تصميم</span>'}
+            </div>
+          </div>
+          <div class="design-box">
+            <h4>تصميم الواجهة الخلفية</h4>
+            <div class="design-image-wrapper">
+              ${product.cliche_back_design ? `<img src="${product.cliche_back_design}" alt="تصميم الواجهة الخلفية" />` : '<span class="no-design">لا يوجد تصميم</span>'}
+            </div>
+          </div>
         </div>
-        <div class="detail-row">
-          <span class="detail-label">تصميم الواجهة الخلفية:</span>
-          <span class="detail-value">${product.cliche_back_design || "-"}</span>
-        </div>
+      </div>
+
+      <div class="section">
+        <h3>الملاحظات والحالة</h3>
         <div class="detail-row">
           <span class="detail-label">ملاحظات:</span>
           <span class="detail-value">${product.notes || "-"}</span>
