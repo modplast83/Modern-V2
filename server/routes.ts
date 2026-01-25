@@ -39,7 +39,7 @@ import {
   locations,
   users,
 } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 
 import { z } from "zod";
@@ -8109,6 +8109,116 @@ Do not include quotes or explanations.`;
     } catch (error) {
       console.error("Error generating next voucher number:", error);
       res.status(500).json({ message: "خطأ في توليد رقم السند" });
+    }
+  });
+
+  // ============ Suppliers API Routes ============
+  app.get("/api/suppliers", async (req, res) => {
+    try {
+      const result = await db.execute(sql`SELECT * FROM suppliers WHERE is_active = true ORDER BY name_ar`);
+      res.json(result.rows || []);
+    } catch (error) {
+      console.error("Error fetching suppliers:", error);
+      res.json([]);
+    }
+  });
+
+  app.post("/api/suppliers", requireAuth, async (req, res) => {
+    try {
+      const { name, name_ar, phone, email, address, contact_person } = req.body;
+      const result = await db.execute(sql`
+        INSERT INTO suppliers (name, name_ar, phone, email, address, contact_person)
+        VALUES (${name}, ${name_ar}, ${phone || null}, ${email || null}, ${address || null}, ${contact_person || null})
+        RETURNING *
+      `);
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error creating supplier:", error);
+      res.status(500).json({ message: "خطأ في إنشاء المورد" });
+    }
+  });
+
+  app.put("/api/suppliers/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { name, name_ar, phone, email, address, contact_person } = req.body;
+      const result = await db.execute(sql`
+        UPDATE suppliers 
+        SET name = ${name}, name_ar = ${name_ar}, phone = ${phone || null}, 
+            email = ${email || null}, address = ${address || null}, contact_person = ${contact_person || null}
+        WHERE id = ${id}
+        RETURNING *
+      `);
+      res.json(result.rows[0]);
+    } catch (error) {
+      console.error("Error updating supplier:", error);
+      res.status(500).json({ message: "خطأ في تحديث المورد" });
+    }
+  });
+
+  app.delete("/api/suppliers/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await db.execute(sql`UPDATE suppliers SET is_active = false WHERE id = ${id}`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting supplier:", error);
+      res.status(500).json({ message: "خطأ في حذف المورد" });
+    }
+  });
+
+  // ============ Units API Routes ============
+  app.get("/api/units", async (req, res) => {
+    try {
+      const result = await db.execute(sql`SELECT * FROM units WHERE is_active = true ORDER BY name_ar`);
+      res.json(result.rows || []);
+    } catch (error) {
+      console.error("Error fetching units:", error);
+      res.json([]);
+    }
+  });
+
+  app.post("/api/units", requireAuth, async (req, res) => {
+    try {
+      const { name, name_ar, symbol, conversion_factor } = req.body;
+      const result = await db.execute(sql`
+        INSERT INTO units (name, name_ar, symbol, conversion_factor)
+        VALUES (${name}, ${name_ar}, ${symbol}, ${parseFloat(conversion_factor) || 1})
+        RETURNING *
+      `);
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error creating unit:", error);
+      res.status(500).json({ message: "خطأ في إنشاء الوحدة" });
+    }
+  });
+
+  app.put("/api/units/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { name, name_ar, symbol, conversion_factor } = req.body;
+      const result = await db.execute(sql`
+        UPDATE units 
+        SET name = ${name}, name_ar = ${name_ar}, symbol = ${symbol}, 
+            conversion_factor = ${parseFloat(conversion_factor) || 1}
+        WHERE id = ${id}
+        RETURNING *
+      `);
+      res.json(result.rows[0]);
+    } catch (error) {
+      console.error("Error updating unit:", error);
+      res.status(500).json({ message: "خطأ في تحديث الوحدة" });
+    }
+  });
+
+  app.delete("/api/units/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await db.execute(sql`UPDATE units SET is_active = false WHERE id = ${id}`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting unit:", error);
+      res.status(500).json({ message: "خطأ في حذف الوحدة" });
     }
   });
 

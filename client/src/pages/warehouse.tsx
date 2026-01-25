@@ -66,6 +66,7 @@ import {
 import { VouchersList } from "../components/warehouse/VouchersList";
 import { VoucherForm } from "../components/warehouse/VoucherForm";
 import { InventoryCountForm } from "../components/warehouse/InventoryCountForm";
+import { WarehouseDefinitions } from "../components/warehouse/WarehouseDefinitions";
 import PageLayout from "../components/layout/PageLayout";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -621,6 +622,10 @@ export default function Warehouse() {
             <FileText className="h-4 w-4 ml-1" />
             السندات
           </TabsTrigger>
+          <TabsTrigger value="definitions" className="shrink-0 bg-purple-50">
+            <Package className="h-4 w-4 ml-1" />
+            التعريفات
+          </TabsTrigger>
           <TabsTrigger value="production-hall" className="shrink-0">
             صالة الإنتاج
           </TabsTrigger>
@@ -710,6 +715,11 @@ export default function Warehouse() {
             open={isInventoryCountOpen}
             onOpenChange={setIsInventoryCountOpen}
           />
+        </TabsContent>
+
+        {/* Definitions Tab - التعريفات */}
+        <TabsContent value="definitions" className="space-y-4">
+          <WarehouseDefinitions />
         </TabsContent>
 
         {/* Production Hall Tab */}
