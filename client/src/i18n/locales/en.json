@@ -2585,7 +2585,47 @@
       "thickness": "Thickness Conversion",
       "thicknessDesc": "Convert between thickness units",
       "jobTime": "Job Time",
-      "jobTimeDesc": "Estimate production time"
+      "jobTimeDesc": "Estimate production time",
+      "barcode": "Barcode Generator",
+      "barcodeDesc": "Create and print barcodes in various types and sizes"
+    },
+    "barcode": {
+      "title": "Barcode Generator",
+      "value": "Barcode Value",
+      "valuePlaceholder": "Enter number or text",
+      "format": "Barcode Type",
+      "size": "Barcode Size",
+      "showText": "Show text below barcode",
+      "quantity": "Print Copies",
+      "print": "Print",
+      "copies": "copy",
+      "preview": "Preview",
+      "printTitle": "Print Barcode",
+      "printNow": "Print Now",
+      "invalidValue": "Invalid value for this barcode type",
+      "checkFormat": "Check the value and barcode type",
+      "tips": "Tips",
+      "tip1": "Code 128 supports any letters and numbers",
+      "tip2": "EAN-13 requires 12-13 digits only",
+      "tip3": "Choose the appropriate size for your label printer",
+      "sizes": {
+        "small": "Small (38×13 mm)",
+        "medium": "Medium (50×25 mm)",
+        "large": "Large (70×35 mm)",
+        "xlarge": "Extra Large (90×50 mm)"
+      },
+      "formats": {
+        "CODE128": "Code 128",
+        "CODE128Hint": "Most common - supports letters and numbers",
+        "EAN13": "EAN-13",
+        "EAN13Hint": "Product barcode (13 digits)",
+        "EAN8": "EAN-8",
+        "EAN8Hint": "Short barcode (8 digits)",
+        "CODE39": "Code 39",
+        "CODE39Hint": "Industrial - letters and numbers",
+        "ITF14": "ITF-14",
+        "ITF14Hint": "Shipping cartons (14 digits)"
+      }
     },
     "bagWeight": {
       "type": "Bag Type",
