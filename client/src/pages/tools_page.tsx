@@ -12,8 +12,9 @@ import { Separator } from "../components/ui/separator";
 import { 
   Scale, Palette, Droplets, Calculator, FileSpreadsheet, 
   Ruler, Clock, Printer, ChevronLeft, ChevronRight,
-  Package, PaintBucket
+  Package, PaintBucket, Barcode
 } from "lucide-react";
+import JsBarcode from "jsbarcode";
 
 type TabId =
   | "bag-weight"
@@ -24,7 +25,8 @@ type TabId =
   | "order-cost-advanced"
   | "roll"
   | "thickness"
-  | "job-time";
+  | "job-time"
+  | "barcode";
 
 interface TabDef { 
   id: TabId; 
@@ -43,6 +45,7 @@ const tabDefs: TabDef[] = [
   { id: "roll", labelKey: "tools.tabs.roll", descriptionKey: "tools.tabs.rollDesc", icon: Package },
   { id: "thickness", labelKey: "tools.tabs.thickness", descriptionKey: "tools.tabs.thicknessDesc", icon: Ruler },
   { id: "job-time", labelKey: "tools.tabs.jobTime", descriptionKey: "tools.tabs.jobTimeDesc", icon: Clock },
+  { id: "barcode", labelKey: "tools.tabs.barcode", descriptionKey: "tools.tabs.barcodeDesc", icon: Barcode },
 ];
 
 export default function ToolsPage(): JSX.Element {
@@ -166,6 +169,7 @@ function ToolsContent(): JSX.Element {
           {active === "roll" && <RollTools />}
           {active === "thickness" && <ThicknessConverter />}
           {active === "job-time" && <JobTimePlanner />}
+          {active === "barcode" && <BarcodeGenerator />}
         </CardContent>
       </Card>
     </div>
@@ -1314,6 +1318,219 @@ function JobTimePlanner(): JSX.Element {
         <p className="text-xs text-muted-foreground bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
           {t("tools.jobTime.note")}
         </p>
+      </div>
+    </div>
+  );
+}
+
+// ===================== Barcode Generator =====================
+
+type BarcodeFormat = "CODE128" | "EAN13" | "EAN8" | "CODE39" | "ITF14";
+type BarcodeSize = "small" | "medium" | "large" | "xlarge";
+
+interface BarcodeSizeConfig {
+  width: number;
+  height: number;
+  fontSize: number;
+  displayWidth: number;
+  displayHeight: number;
+  label: string;
+}
+
+const barcodeSizes: Record<BarcodeSize, BarcodeSizeConfig> = {
+  small: { width: 1, height: 30, fontSize: 10, displayWidth: 150, displayHeight: 50, label: "صغير (38×13 مم)" },
+  medium: { width: 1.5, height: 50, fontSize: 12, displayWidth: 200, displayHeight: 70, label: "متوسط (50×25 مم)" },
+  large: { width: 2, height: 80, fontSize: 14, displayWidth: 280, displayHeight: 100, label: "كبير (70×35 مم)" },
+  xlarge: { width: 2.5, height: 100, fontSize: 16, displayWidth: 350, displayHeight: 130, label: "كبير جداً (90×50 مم)" },
+};
+
+const barcodeFormats: { value: BarcodeFormat; label: string; hint: string }[] = [
+  { value: "CODE128", label: "Code 128", hint: "الأكثر شيوعاً - يدعم حروف وأرقام" },
+  { value: "EAN13", label: "EAN-13", hint: "باركود المنتجات (13 رقم)" },
+  { value: "EAN8", label: "EAN-8", hint: "باركود مختصر (8 أرقام)" },
+  { value: "CODE39", label: "Code 39", hint: "صناعي - حروف وأرقام" },
+  { value: "ITF14", label: "ITF-14", hint: "كراتين الشحن (14 رقم)" },
+];
+
+function BarcodeGenerator(): JSX.Element {
+  const { t } = useTranslation();
+  const [barcodeValue, setBarcodeValue] = useState<string>("1234567890");
+  const [format, setFormat] = useState<BarcodeFormat>("CODE128");
+  const [size, setSize] = useState<BarcodeSize>("medium");
+  const [showText, setShowText] = useState<boolean>(true);
+  const [quantity, setQuantity] = useState<number>(1);
+  const [error, setError] = useState<string>("");
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  useEffect(() => {
+    if (svgRef.current && barcodeValue) {
+      try {
+        const sizeConfig = barcodeSizes[size];
+        JsBarcode(svgRef.current, barcodeValue, {
+          format,
+          width: sizeConfig.width,
+          height: sizeConfig.height,
+          displayValue: showText,
+          fontSize: sizeConfig.fontSize,
+          margin: 10,
+          background: "#ffffff",
+          lineColor: "#000000",
+        });
+        setError("");
+      } catch (err: any) {
+        setError(t("tools.barcode.invalidValue") || "قيمة غير صالحة لهذا النوع من الباركود");
+      }
+    }
+  }, [barcodeValue, format, size, showText, t]);
+
+  const handlePrint = () => {
+    if (!svgRef.current || error) return;
+    
+    const svgData = new XMLSerializer().serializeToString(svgRef.current);
+    const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(svgBlob);
+    
+    const sizeConfig = barcodeSizes[size];
+    const barcodeItems = Array(quantity).fill(null).map((_, i) => 
+      `<div class="barcode-item" style="display:inline-block;margin:5px;padding:10px;border:1px dashed #ccc;">
+        <img src="${url}" width="${sizeConfig.displayWidth}" height="${sizeConfig.displayHeight}" />
+      </div>`
+    ).join("");
+
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html dir="rtl">
+        <head>
+          <title>${t("tools.barcode.printTitle") || "طباعة الباركود"}</title>
+          <style>
+            body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+            .barcode-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+            .barcode-item { page-break-inside: avoid; }
+            @media print { .no-print { display: none; } }
+          </style>
+        </head>
+        <body>
+          <div class="no-print" style="margin-bottom:20px;">
+            <button onclick="window.print()" style="padding:10px 30px;font-size:16px;cursor:pointer;">
+              ${t("tools.barcode.printNow") || "طباعة الآن"}
+            </button>
+          </div>
+          <div class="barcode-container">${barcodeItems}</div>
+        </body>
+        </html>
+      `);
+      printWindow.document.close();
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-2 mb-4">
+        <Barcode className="h-5 w-5 text-primary" />
+        <h2 className="text-lg font-semibold">{t("tools.barcode.title") || "مولد الباركود"}</h2>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>{t("tools.barcode.value") || "قيمة الباركود"}</Label>
+            <Input
+              value={barcodeValue}
+              onChange={(e) => setBarcodeValue(e.target.value)}
+              placeholder={t("tools.barcode.valuePlaceholder") || "أدخل الرقم أو النص"}
+              className="font-mono"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>{t("tools.barcode.format") || "نوع الباركود"}</Label>
+            <Select value={format} onValueChange={(v) => setFormat(v as BarcodeFormat)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {barcodeFormats.map((f) => (
+                  <SelectItem key={f.value} value={f.value}>
+                    <span className="font-medium">{f.label}</span>
+                    <span className="text-xs text-muted-foreground mr-2">({f.hint})</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>{t("tools.barcode.size") || "مقاس الباركود"}</Label>
+            <Select value={size} onValueChange={(v) => setSize(v as BarcodeSize)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.entries(barcodeSizes) as [BarcodeSize, BarcodeSizeConfig][]).map(([key, config]) => (
+                  <SelectItem key={key} value={key}>
+                    {config.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="showText"
+                checked={showText}
+                onChange={(e) => setShowText(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              <Label htmlFor="showText" className="cursor-pointer">
+                {t("tools.barcode.showText") || "إظهار النص"}
+              </Label>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>{t("tools.barcode.quantity") || "عدد النسخ للطباعة"}</Label>
+            <Input
+              type="number"
+              min={1}
+              max={100}
+              value={quantity}
+              onChange={(e) => setQuantity(Math.min(100, Math.max(1, parseInt(e.target.value) || 1)))}
+            />
+          </div>
+
+          <Button onClick={handlePrint} disabled={!!error || !barcodeValue} className="w-full">
+            <Printer className="h-4 w-4 ml-2" />
+            {t("tools.barcode.print") || "طباعة"} ({quantity} {t("tools.barcode.copies") || "نسخة"})
+          </Button>
+        </div>
+
+        <div className="space-y-4">
+          <Label>{t("tools.barcode.preview") || "معاينة"}</Label>
+          <div className="border rounded-lg p-6 bg-white flex items-center justify-center min-h-[200px]">
+            {error ? (
+              <div className="text-red-500 text-center">
+                <p>{error}</p>
+                <p className="text-xs mt-2">{t("tools.barcode.checkFormat") || "تأكد من القيمة ونوع الباركود"}</p>
+              </div>
+            ) : (
+              <svg ref={svgRef}></svg>
+            )}
+          </div>
+          
+          <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+            <h4 className="font-medium text-sm mb-2">{t("tools.barcode.tips") || "نصائح"}</h4>
+            <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
+              <li>{t("tools.barcode.tip1") || "Code 128 يدعم أي حروف وأرقام"}</li>
+              <li>{t("tools.barcode.tip2") || "EAN-13 يتطلب 12-13 رقم فقط"}</li>
+              <li>{t("tools.barcode.tip3") || "اختر المقاس المناسب لطابعة الملصقات"}</li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -881,7 +881,29 @@
       "orderCostAdvanced": "Order Cost (Advanced)",
       "roll": "Roll Weight/Length",
       "thickness": "Thickness Converter",
-      "jobTime": "Job Time Planner"
+      "jobTime": "Job Time Planner",
+      "barcode": "Barcode Generator",
+      "barcodeDesc": "Create and print barcodes in various formats and sizes"
+    },
+    "barcode": {
+      "title": "Barcode Generator",
+      "value": "Barcode Value",
+      "valuePlaceholder": "Enter number or text",
+      "format": "Barcode Format",
+      "size": "Barcode Size",
+      "showText": "Show text below barcode",
+      "quantity": "Print Quantity",
+      "print": "Print",
+      "copies": "copies",
+      "preview": "Preview",
+      "printTitle": "Print Barcodes",
+      "printNow": "Print Now",
+      "invalidValue": "Invalid value for this barcode type",
+      "checkFormat": "Check the value and barcode type",
+      "tips": "Tips",
+      "tip1": "Code 128 supports any letters and numbers",
+      "tip2": "EAN-13 requires exactly 12-13 digits",
+      "tip3": "Choose the size that matches your label printer"
     },
     "bagWeight": {
       "title": "Bag Weight Calculator",
