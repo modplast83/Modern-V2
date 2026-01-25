@@ -37,6 +37,11 @@ export default function ViewOrderDialog({
   items,
   onPrint,
 }: ViewOrderDialogProps) {
+  // Ensure arrays are valid
+  const safeProductionOrders = Array.isArray(productionOrders) ? productionOrders : [];
+  const safeCustomerProducts = Array.isArray(customerProducts) ? customerProducts : [];
+  const safeItems = Array.isArray(items) ? items : [];
+  
   if (!order) return null;
 
   const getStatusText = (status: string) => {
@@ -65,7 +70,7 @@ export default function ViewOrderDialog({
     return colorMap[status] || "bg-gray-100 text-gray-800";
   };
 
-  const orderProductionOrders = productionOrders.filter(
+  const orderProductionOrders = safeProductionOrders.filter(
     (po: any) => po.order_id === order.id
   );
 
@@ -174,10 +179,10 @@ export default function ViewOrderDialog({
             ) : (
               <div className="space-y-3">
                 {orderProductionOrders.map((po: any) => {
-                  const customerProduct = customerProducts.find(
+                  const customerProduct = safeCustomerProducts.find(
                     (cp: any) => cp.id === po.customer_product_id
                   );
-                  const item = items.find(
+                  const item = safeItems.find(
                     (i: any) => i.id === customerProduct?.item_id
                   );
 

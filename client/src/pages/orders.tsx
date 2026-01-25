@@ -872,10 +872,10 @@ export default function Orders() {
           setViewingOrder(null);
         }}
         order={viewingOrder}
-        customer={customers.find((c: any) => c.id === viewingOrder?.customer_id)}
-        productionOrders={productionOrders}
-        customerProducts={customerProducts}
-        items={items}
+        customer={safeCustomers.find((c: any) => c.id === viewingOrder?.customer_id)}
+        productionOrders={safeProductionOrders}
+        customerProducts={safeCustomerProducts}
+        items={Array.isArray(items) ? items : []}
         onPrint={handlePrintOrder}
       />
 
@@ -883,10 +883,10 @@ export default function Orders() {
       {printingOrder && (
         <OrderPrintTemplate
           order={printingOrder}
-          customer={customers.find((c: any) => c.id === printingOrder?.customer_id)}
-          productionOrders={productionOrders.filter((po: any) => po.order_id === printingOrder?.id)}
-          customerProducts={customerProducts}
-          items={items}
+          customer={safeCustomers.find((c: any) => c.id === printingOrder?.customer_id)}
+          productionOrders={safeProductionOrders.filter((po: any) => po.order_id === printingOrder?.id)}
+          customerProducts={safeCustomerProducts}
+          items={Array.isArray(items) ? items : []}
           onClose={() => setPrintingOrder(null)}
           mode={printMode}
         />

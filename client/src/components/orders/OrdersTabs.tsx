@@ -82,6 +82,13 @@ export default function OrdersTabs({
   currentUser,
   isAdmin = false,
 }: OrdersTabsProps) {
+  // Ensure arrays are valid
+  const safeOrders = Array.isArray(orders) ? orders : [];
+  const safeCustomers = Array.isArray(customers) ? customers : [];
+  const safeCustomerProducts = Array.isArray(customerProducts) ? customerProducts : [];
+  const safeCategories = Array.isArray(categories) ? categories : [];
+  const safeItems = Array.isArray(items) ? items : [];
+  
   // Bulk selection state
   const [selectedOrders, setSelectedOrders] = useState<number[]>([]);
 
@@ -328,11 +335,11 @@ export default function OrdersTabs({
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {filteredProductionOrders.map((po: any) => {
-                        const order = orders.find((o: any) => o.id === po.order_id);
-                        const customer = customers.find((c: any) => c.id === order?.customer_id);
-                        const customerProduct = customerProducts.find((cp: any) => cp.id === po.customer_product_id);
-                        const category = categories.find((cat: any) => cat.id === customerProduct?.category_id);
-                        const item = items.find((itm: any) => itm.id === customerProduct?.item_id);
+                        const order = safeOrders.find((o: any) => o.id === po.order_id);
+                        const customer = safeCustomers.find((c: any) => c.id === order?.customer_id);
+                        const customerProduct = safeCustomerProducts.find((cp: any) => cp.id === po.customer_product_id);
+                        const category = safeCategories.find((cat: any) => cat.id === customerProduct?.category_id);
+                        const item = safeItems.find((itm: any) => itm.id === customerProduct?.item_id);
                         
                         return (
                           <tr key={po.id} className="hover:bg-gray-50" data-testid={`row-production-order-${po.id}`}>
@@ -366,11 +373,11 @@ export default function OrdersTabs({
                 {/* Mobile Card View */}
                 <div className="md:hidden space-y-3">
                   {filteredProductionOrders.map((po: any) => {
-                    const order = orders.find((o: any) => o.id === po.order_id);
-                    const customer = customers.find((c: any) => c.id === order?.customer_id);
-                    const customerProduct = customerProducts.find((cp: any) => cp.id === po.customer_product_id);
-                    const category = categories.find((cat: any) => cat.id === customerProduct?.category_id);
-                    const item = items.find((itm: any) => itm.id === customerProduct?.item_id);
+                    const order = safeOrders.find((o: any) => o.id === po.order_id);
+                    const customer = safeCustomers.find((c: any) => c.id === order?.customer_id);
+                    const customerProduct = safeCustomerProducts.find((cp: any) => cp.id === po.customer_product_id);
+                    const category = safeCategories.find((cat: any) => cat.id === customerProduct?.category_id);
+                    const item = safeItems.find((itm: any) => itm.id === customerProduct?.item_id);
                     
                     return (
                       <div key={po.id} className="bg-white rounded-lg border p-4 space-y-3">

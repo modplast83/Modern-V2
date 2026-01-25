@@ -70,12 +70,18 @@ export default function OrdersTable({
   onOrderSelect,
   onSelectAll,
 }: OrdersTableProps) {
+  // Ensure arrays are valid
+  const safeOrders = Array.isArray(orders) ? orders : [];
+  const safeCustomers = Array.isArray(customers) ? customers : [];
+  const safeUsers = Array.isArray(users) ? users : [];
+  const safeProductionOrders = Array.isArray(productionOrders) ? productionOrders : [];
+  
   // Check if all orders are selected
   const allOrdersSelected =
-    orders.length > 0 &&
-    orders.every((order: any) => selectedOrders.includes(order.id));
+    safeOrders.length > 0 &&
+    safeOrders.every((order: any) => selectedOrders.includes(order.id));
   const someOrdersSelected =
-    selectedOrders.length > 0 && selectedOrders.length < orders.length;
+    selectedOrders.length > 0 && selectedOrders.length < safeOrders.length;
 
   const handleSelectAll = (checked: boolean) => {
     if (onSelectAll) {
@@ -213,17 +219,17 @@ export default function OrdersTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-        {orders.map((order: any) => {
-          const customer = customers.find(
+        {safeOrders.map((order: any) => {
+          const customer = safeCustomers.find(
             (c: any) => c.id === order.customer_id,
           );
-          const user = users.find(
+          const user = safeUsers.find(
             (u: any) => u.id === parseInt(order.created_by),
           );
           const { deliveryDate, daysRemaining } = calculateDeliveryInfo(order);
           
           // حساب نسب الإكمال من أوامر الإنتاج المرتبطة بهذا الطلب
-          const orderProductionOrders = productionOrders.filter(
+          const orderProductionOrders = safeProductionOrders.filter(
             (po: any) => po.order_id === order.id
           );
           
@@ -489,11 +495,11 @@ export default function OrdersTable({
 
       {/* Mobile Card View */}
       <div className="md:hidden space-y-3">
-        {orders.map((order: any) => {
-          const customer = customers.find((c: any) => c.id === order.customer_id);
-          const user = users.find((u: any) => u.id === parseInt(order.created_by));
+        {safeOrders.map((order: any) => {
+          const customer = safeCustomers.find((c: any) => c.id === order.customer_id);
+          const user = safeUsers.find((u: any) => u.id === parseInt(order.created_by));
           const { deliveryDate, daysRemaining } = calculateDeliveryInfo(order);
-          const orderProductionOrders = productionOrders.filter((po: any) => po.order_id === order.id);
+          const orderProductionOrders = safeProductionOrders.filter((po: any) => po.order_id === order.id);
           
           let avgFilmPercentage = 0;
           let avgPrintingPercentage = 0;
