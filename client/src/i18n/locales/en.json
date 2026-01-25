@@ -903,7 +903,25 @@
       "tips": "Tips",
       "tip1": "Code 128 supports any letters and numbers",
       "tip2": "EAN-13 requires exactly 12-13 digits",
-      "tip3": "Choose the size that matches your label printer"
+      "tip3": "Choose the size that matches your label printer",
+      "sizes": {
+        "small": "Small (38×13 mm)",
+        "medium": "Medium (50×25 mm)",
+        "large": "Large (70×35 mm)",
+        "xlarge": "Extra Large (90×50 mm)"
+      },
+      "formats": {
+        "CODE128": "Code 128",
+        "CODE128Hint": "Most common - supports letters and numbers",
+        "EAN13": "EAN-13",
+        "EAN13Hint": "Product barcode (13 digits)",
+        "EAN8": "EAN-8",
+        "EAN8Hint": "Short barcode (8 digits)",
+        "CODE39": "Code 39",
+        "CODE39Hint": "Industrial - letters and numbers",
+        "ITF14": "ITF-14",
+        "ITF14Hint": "Shipping cartons (14 digits)"
+      }
     },
     "bagWeight": {
       "title": "Bag Weight Calculator",

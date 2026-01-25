@@ -1328,29 +1328,22 @@ function JobTimePlanner(): JSX.Element {
 type BarcodeFormat = "CODE128" | "EAN13" | "EAN8" | "CODE39" | "ITF14";
 type BarcodeSize = "small" | "medium" | "large" | "xlarge";
 
-interface BarcodeSizeConfig {
+interface BarcodeSizeData {
   width: number;
   height: number;
   fontSize: number;
   displayWidth: number;
   displayHeight: number;
-  label: string;
 }
 
-const barcodeSizes: Record<BarcodeSize, BarcodeSizeConfig> = {
-  small: { width: 1, height: 30, fontSize: 10, displayWidth: 150, displayHeight: 50, label: "صغير (38×13 مم)" },
-  medium: { width: 1.5, height: 50, fontSize: 12, displayWidth: 200, displayHeight: 70, label: "متوسط (50×25 مم)" },
-  large: { width: 2, height: 80, fontSize: 14, displayWidth: 280, displayHeight: 100, label: "كبير (70×35 مم)" },
-  xlarge: { width: 2.5, height: 100, fontSize: 16, displayWidth: 350, displayHeight: 130, label: "كبير جداً (90×50 مم)" },
+const barcodeSizeData: Record<BarcodeSize, BarcodeSizeData> = {
+  small: { width: 1, height: 30, fontSize: 10, displayWidth: 150, displayHeight: 50 },
+  medium: { width: 1.5, height: 50, fontSize: 12, displayWidth: 200, displayHeight: 70 },
+  large: { width: 2, height: 80, fontSize: 14, displayWidth: 280, displayHeight: 100 },
+  xlarge: { width: 2.5, height: 100, fontSize: 16, displayWidth: 350, displayHeight: 130 },
 };
 
-const barcodeFormats: { value: BarcodeFormat; label: string; hint: string }[] = [
-  { value: "CODE128", label: "Code 128", hint: "الأكثر شيوعاً - يدعم حروف وأرقام" },
-  { value: "EAN13", label: "EAN-13", hint: "باركود المنتجات (13 رقم)" },
-  { value: "EAN8", label: "EAN-8", hint: "باركود مختصر (8 أرقام)" },
-  { value: "CODE39", label: "Code 39", hint: "صناعي - حروف وأرقام" },
-  { value: "ITF14", label: "ITF-14", hint: "كراتين الشحن (14 رقم)" },
-];
+const barcodeFormatValues: BarcodeFormat[] = ["CODE128", "EAN13", "EAN8", "CODE39", "ITF14"];
 
 function BarcodeGenerator(): JSX.Element {
   const { t } = useTranslation();
@@ -1365,7 +1358,7 @@ function BarcodeGenerator(): JSX.Element {
   useEffect(() => {
     if (svgRef.current && barcodeValue) {
       try {
-        const sizeConfig = barcodeSizes[size];
+        const sizeConfig = barcodeSizeData[size];
         JsBarcode(svgRef.current, barcodeValue, {
           format,
           width: sizeConfig.width,
@@ -1378,7 +1371,7 @@ function BarcodeGenerator(): JSX.Element {
         });
         setError("");
       } catch (err: any) {
-        setError(t("tools.barcode.invalidValue") || "قيمة غير صالحة لهذا النوع من الباركود");
+        setError(t("tools.barcode.invalidValue"));
       }
     }
   }, [barcodeValue, format, size, showText, t]);
@@ -1387,13 +1380,13 @@ function BarcodeGenerator(): JSX.Element {
     if (!svgRef.current || error) return;
     
     const svgData = new XMLSerializer().serializeToString(svgRef.current);
-    const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(svgBlob);
+    const base64Svg = btoa(unescape(encodeURIComponent(svgData)));
+    const dataUrl = `data:image/svg+xml;base64,${base64Svg}`;
     
-    const sizeConfig = barcodeSizes[size];
-    const barcodeItems = Array(quantity).fill(null).map((_, i) => 
+    const sizeConfig = barcodeSizeData[size];
+    const barcodeItems = Array(quantity).fill(null).map(() => 
       `<div class="barcode-item" style="display:inline-block;margin:5px;padding:10px;border:1px dashed #ccc;">
-        <img src="${url}" width="${sizeConfig.displayWidth}" height="${sizeConfig.displayHeight}" />
+        <img src="${dataUrl}" width="${sizeConfig.displayWidth}" height="${sizeConfig.displayHeight}" />
       </div>`
     ).join("");
 
@@ -1403,7 +1396,7 @@ function BarcodeGenerator(): JSX.Element {
         <!DOCTYPE html>
         <html dir="rtl">
         <head>
-          <title>${t("tools.barcode.printTitle") || "طباعة الباركود"}</title>
+          <title>${t("tools.barcode.printTitle")}</title>
           <style>
             body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
             .barcode-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
@@ -1414,7 +1407,7 @@ function BarcodeGenerator(): JSX.Element {
         <body>
           <div class="no-print" style="margin-bottom:20px;">
             <button onclick="window.print()" style="padding:10px 30px;font-size:16px;cursor:pointer;">
-              ${t("tools.barcode.printNow") || "طباعة الآن"}
+              ${t("tools.barcode.printNow")}
             </button>
           </div>
           <div class="barcode-container">${barcodeItems}</div>
@@ -1429,32 +1422,32 @@ function BarcodeGenerator(): JSX.Element {
     <div className="space-y-6">
       <div className="flex items-center gap-2 mb-4">
         <Barcode className="h-5 w-5 text-primary" />
-        <h2 className="text-lg font-semibold">{t("tools.barcode.title") || "مولد الباركود"}</h2>
+        <h2 className="text-lg font-semibold">{t("tools.barcode.title")}</h2>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>{t("tools.barcode.value") || "قيمة الباركود"}</Label>
+            <Label>{t("tools.barcode.value")}</Label>
             <Input
               value={barcodeValue}
               onChange={(e) => setBarcodeValue(e.target.value)}
-              placeholder={t("tools.barcode.valuePlaceholder") || "أدخل الرقم أو النص"}
+              placeholder={t("tools.barcode.valuePlaceholder")}
               className="font-mono"
             />
           </div>
 
           <div className="space-y-2">
-            <Label>{t("tools.barcode.format") || "نوع الباركود"}</Label>
+            <Label>{t("tools.barcode.format")}</Label>
             <Select value={format} onValueChange={(v) => setFormat(v as BarcodeFormat)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {barcodeFormats.map((f) => (
-                  <SelectItem key={f.value} value={f.value}>
-                    <span className="font-medium">{f.label}</span>
-                    <span className="text-xs text-muted-foreground mr-2">({f.hint})</span>
+                {barcodeFormatValues.map((f) => (
+                  <SelectItem key={f} value={f}>
+                    <span className="font-medium">{t(`tools.barcode.formats.${f}`)}</span>
+                    <span className="text-xs text-muted-foreground mr-2">({t(`tools.barcode.formats.${f}Hint`)})</span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -1462,15 +1455,15 @@ function BarcodeGenerator(): JSX.Element {
           </div>
 
           <div className="space-y-2">
-            <Label>{t("tools.barcode.size") || "مقاس الباركود"}</Label>
+            <Label>{t("tools.barcode.size")}</Label>
             <Select value={size} onValueChange={(v) => setSize(v as BarcodeSize)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {(Object.entries(barcodeSizes) as [BarcodeSize, BarcodeSizeConfig][]).map(([key, config]) => (
+                {(Object.keys(barcodeSizeData) as BarcodeSize[]).map((key) => (
                   <SelectItem key={key} value={key}>
-                    {config.label}
+                    {t(`tools.barcode.sizes.${key}`)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -1487,13 +1480,13 @@ function BarcodeGenerator(): JSX.Element {
                 className="h-4 w-4 rounded border-gray-300"
               />
               <Label htmlFor="showText" className="cursor-pointer">
-                {t("tools.barcode.showText") || "إظهار النص"}
+                {t("tools.barcode.showText")}
               </Label>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label>{t("tools.barcode.quantity") || "عدد النسخ للطباعة"}</Label>
+            <Label>{t("tools.barcode.quantity")}</Label>
             <Input
               type="number"
               min={1}
@@ -1505,17 +1498,17 @@ function BarcodeGenerator(): JSX.Element {
 
           <Button onClick={handlePrint} disabled={!!error || !barcodeValue} className="w-full">
             <Printer className="h-4 w-4 ml-2" />
-            {t("tools.barcode.print") || "طباعة"} ({quantity} {t("tools.barcode.copies") || "نسخة"})
+            {t("tools.barcode.print")} ({quantity} {t("tools.barcode.copies")})
           </Button>
         </div>
 
         <div className="space-y-4">
-          <Label>{t("tools.barcode.preview") || "معاينة"}</Label>
+          <Label>{t("tools.barcode.preview")}</Label>
           <div className="border rounded-lg p-6 bg-white flex items-center justify-center min-h-[200px]">
             {error ? (
               <div className="text-red-500 text-center">
                 <p>{error}</p>
-                <p className="text-xs mt-2">{t("tools.barcode.checkFormat") || "تأكد من القيمة ونوع الباركود"}</p>
+                <p className="text-xs mt-2">{t("tools.barcode.checkFormat")}</p>
               </div>
             ) : (
               <svg ref={svgRef}></svg>
@@ -1523,11 +1516,11 @@ function BarcodeGenerator(): JSX.Element {
           </div>
           
           <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
-            <h4 className="font-medium text-sm mb-2">{t("tools.barcode.tips") || "نصائح"}</h4>
+            <h4 className="font-medium text-sm mb-2">{t("tools.barcode.tips")}</h4>
             <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
-              <li>{t("tools.barcode.tip1") || "Code 128 يدعم أي حروف وأرقام"}</li>
-              <li>{t("tools.barcode.tip2") || "EAN-13 يتطلب 12-13 رقم فقط"}</li>
-              <li>{t("tools.barcode.tip3") || "اختر المقاس المناسب لطابعة الملصقات"}</li>
+              <li>{t("tools.barcode.tip1")}</li>
+              <li>{t("tools.barcode.tip2")}</li>
+              <li>{t("tools.barcode.tip3")}</li>
             </ul>
           </div>
         </div>
