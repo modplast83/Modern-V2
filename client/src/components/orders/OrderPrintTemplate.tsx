@@ -63,6 +63,9 @@ interface Item {
 interface User {
   id: string;
   full_name?: string;
+  display_name?: string;
+  display_name_ar?: string;
+  username?: string;
 }
 
 interface MasterBatchColor {
@@ -426,7 +429,7 @@ export default function OrderPrintTemplate({
                   <Label2Lines ar="المندوب" en="Sales Rep" />
                 </td>
 
-                <td style={{ ...styles.td, width: "13%", fontWeight: 900 }}>{salesRep?.full_name || "-"}</td>
+                <td style={{ ...styles.td, width: "13%", fontWeight: 900 }}>{salesRep?.display_name_ar || salesRep?.display_name || salesRep?.full_name || salesRep?.username || "-"}</td>
 
                 <td style={{ ...styles.td, background: "#f8f9fa", width: "6%" }}>
                   <Label2Lines ar="الحالة" en="Status" />
