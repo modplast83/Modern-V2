@@ -9,6 +9,7 @@ import {
   Legend,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { CustomTooltip } from "./ChartUtils";
 
 interface InteractiveBarChartProps {
   data: any[];
@@ -22,25 +23,6 @@ interface InteractiveBarChartProps {
   formatValue?: (value: any) => string;
   className?: string;
 }
-
-const CustomTooltip = ({ active, payload, label, formatValue }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div
-        className="bg-white p-3 border border-gray-300 rounded-lg shadow-lg"
-        dir="rtl"
-      >
-        <p className="font-medium text-gray-900">{`${label}`}</p>
-        {payload.map((entry: any, index: number) => (
-          <p key={index} className="text-sm" style={{ color: entry.color }}>
-            {`${entry.name}: ${formatValue ? formatValue(entry.value) : entry.value}`}
-          </p>
-        ))}
-      </div>
-    );
-  }
-  return null;
-};
 
 export function InteractiveBarChart({
   data,
