@@ -41,6 +41,13 @@ import {
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 import { useToast } from "../../hooks/use-toast";
 import { Plus, Edit, Trash2, Building2, Package, Scale, Boxes } from "lucide-react";
 
@@ -54,10 +61,10 @@ const supplierSchema = z.object({
 });
 
 const itemSchema = z.object({
+  category_id: z.string().min(1, "المجموعة الرئيسية مطلوبة"),
   code: z.string().min(1, "الكود مطلوب"),
   name: z.string().min(1, "الاسم الإنجليزي مطلوب"),
   name_ar: z.string().min(1, "الاسم العربي مطلوب"),
-  category: z.string().optional(),
   unit: z.string().default("كيلو"),
   min_stock: z.string().optional(),
   barcode: z.string().optional(),
@@ -324,10 +331,10 @@ function ItemsTab() {
   const form = useForm({
     resolver: zodResolver(itemSchema),
     defaultValues: {
+      category_id: "",
       code: "",
       name: "",
       name_ar: "",
-      category: "",
       unit: "كيلو",
       min_stock: "",
       barcode: "",
@@ -338,6 +345,16 @@ function ItemsTab() {
     queryKey: ["/api/items"],
     queryFn: async () => {
       const res = await fetch("/api/items");
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  // جلب المجموعات الرئيسية
+  const { data: categories = [] } = useQuery({
+    queryKey: ["/api/categories"],
+    queryFn: async () => {
+      const res = await fetch("/api/categories");
       if (!res.ok) return [];
       return res.json();
     },
@@ -381,10 +398,10 @@ function ItemsTab() {
   const handleEdit = (item: any) => {
     setEditingItem(item);
     form.reset({
+      category_id: item.category_id || "",
       code: item.code || "",
       name: item.name || "",
       name_ar: item.name_ar || "",
-      category: item.category || "",
       unit: item.unit || "كيلو",
       min_stock: item.min_stock?.toString() || "",
       barcode: item.barcode || "",
@@ -419,6 +436,31 @@ function ItemsTab() {
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
+                  {/* المجموعة الرئيسية أولاً */}
+                  <FormField
+                    control={form.control}
+                    name="category_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>المجموعة الرئيسية *</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="اختر المجموعة الرئيسية" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {categories.map((category: any) => (
+                              <SelectItem key={category.id} value={category.id}>
+                                {category.name_ar || category.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   <FormField
                     control={form.control}
                     name="code"
