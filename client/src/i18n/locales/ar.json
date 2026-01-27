@@ -533,18 +533,6 @@
     "products": "المنتجات",
     "salesRep": "مندوب المبيعات"
   },
-  "quality": {
-    "title": "مراقبة الجودة",
-    "inspection": "الفحص",
-    "inspectionDate": "تاريخ الفحص",
-    "inspector": "الفاحص",
-    "result": "النتيجة",
-    "passed": "ناجح",
-    "failed": "فاشل",
-    "defects": "العيوب",
-    "defectType": "نوع العيب",
-    "remarks": "ملاحظات"
-  },
   "maintenance": {
     "title": "الصيانة",
     "machineName": "اسم الماكينة",
@@ -2457,7 +2445,9 @@
   "quality": {
     "title": "مراقبة الجودة",
     "description": "إدارة فحوصات وتقارير الجودة",
+    "inspection": "الفحص",
     "inspections": "الفحوصات",
+    "inspectionDate": "تاريخ الفحص",
     "reports": "التقارير",
     "defects": "العيوب",
     "addInspection": "إضافة فحص",
@@ -2469,7 +2459,9 @@
     "date": "التاريخ",
     "result": "النتيجة",
     "pass": "ناجح",
+    "passed": "ناجح",
     "fail": "فاشل",
+    "failed": "فاشل",
     "conditional": "مشروط",
     "defectType": "نوع العيب",
     "severity": "الشدة",
@@ -2477,7 +2469,8 @@
     "major": "رئيسي",
     "minor": "ثانوي",
     "correctiveAction": "الإجراء التصحيحي",
-    "preventiveAction": "الإجراء الوقائي"
+    "preventiveAction": "الإجراء الوقائي",
+    "remarks": "ملاحظات"
   },
   "roles": {
     "title": "إدارة الأدوار",

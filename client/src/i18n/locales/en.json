@@ -541,18 +541,6 @@
     "products": "Products",
     "salesRep": "Sales Representative"
   },
-  "quality": {
-    "title": "Quality Control",
-    "inspection": "Inspection",
-    "inspectionDate": "Inspection Date",
-    "inspector": "Inspector",
-    "result": "Result",
-    "passed": "Passed",
-    "failed": "Failed",
-    "defects": "Defects",
-    "defectType": "Defect Type",
-    "remarks": "Remarks"
-  },
   "maintenance": {
     "title": "Maintenance",
     "machineName": "Machine Name",
@@ -2459,7 +2447,9 @@
   "quality": {
     "title": "Quality Control",
     "description": "Manage quality inspections and reports",
+    "inspection": "Inspection",
     "inspections": "Inspections",
+    "inspectionDate": "Inspection Date",
     "reports": "Reports",
     "defects": "Defects",
     "addInspection": "Add Inspection",
@@ -2471,7 +2461,9 @@
     "date": "Date",
     "result": "Result",
     "pass": "Pass",
+    "passed": "Passed",
     "fail": "Fail",
+    "failed": "Failed",
     "conditional": "Conditional",
     "defectType": "Defect Type",
     "severity": "Severity",
@@ -2479,7 +2471,8 @@
     "major": "Major",
     "minor": "Minor",
     "correctiveAction": "Corrective Action",
-    "preventiveAction": "Preventive Action"
+    "preventiveAction": "Preventive Action",
+    "remarks": "Remarks"
   },
   "roles": {
     "title": "Role Management",
