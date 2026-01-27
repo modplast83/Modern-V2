@@ -65,7 +65,6 @@ import {
   MapPin,
 } from "lucide-react";
 import RoleManagementTab from "../components/RoleManagementTab";
-import { canAccessSettingsTab } from "../utils/roleUtils";
 import NotificationCenter from "../components/notifications/NotificationCenter";
 import WhatsAppWebhooksTab from "../components/settings/WhatsAppWebhooksTab";
 import LocationMapPicker from "../components/LocationMapPicker";

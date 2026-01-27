@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Progress } from "../ui/progress";
 import { Input } from "../ui/input";
-import { ChevronDown, ChevronRight, Eye, Plus, Search, Printer } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Search, Printer } from "lucide-react";
 import { formatNumber, formatWeight } from "../../lib/formatNumber";
 import { printRollLabel } from "./RollLabelPrint";
 

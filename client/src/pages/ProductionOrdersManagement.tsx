@@ -8,7 +8,6 @@ import PageLayout from "../components/layout/PageLayout";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
-import { Input } from "../components/ui/input";
 import {
   Table,
   TableBody,

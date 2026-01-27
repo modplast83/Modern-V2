@@ -17,9 +17,8 @@ import { Badge } from "./ui/badge";
 import { Checkbox } from "./ui/checkbox";
 import { useToast } from "../hooks/use-toast";
 import { apiRequest } from "../lib/queryClient";
-import { type Role } from "../../../shared/schema";
-import { PERMISSIONS, PERMISSION_CATEGORIES, type Permission } from "../../../shared/permissions";
-import { Plus, Edit, Trash2, Shield, Check, X, ChevronDown, ChevronUp } from "lucide-react";
+import { PERMISSIONS, PERMISSION_CATEGORIES } from "../../../shared/permissions";
+import { Plus, Edit, Trash2, Shield, Check, X } from "lucide-react";
 import {
   Accordion,
   AccordionContent,

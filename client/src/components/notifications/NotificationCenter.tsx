@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
-import { Alert, AlertDescription } from "../ui/alert";
+import { Alert } from "../ui/alert";
 import { Switch } from "../ui/switch";
 import {
   Bell,

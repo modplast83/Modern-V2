@@ -35,7 +35,7 @@ import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { useToast } from "../../hooks/use-toast";
-import { Scan, Plus, Check, AlertTriangle, Trash2 } from "lucide-react";
+import { Scan, Check, AlertTriangle, Trash2 } from "lucide-react";
 
 interface InventoryCountFormProps {
   open: boolean;

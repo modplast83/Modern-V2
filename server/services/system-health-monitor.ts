@@ -1,7 +1,7 @@
 import { EventEmitter } from "events";
 import type { IStorage } from "../storage";
-import { db, pool } from "../db";
-import { eq, desc, and, sql, count, gte, lte } from "drizzle-orm";
+import { db } from "../db";
+import { eq, desc, and, sql, count } from "drizzle-orm";
 import type {
   SystemAlert,
   InsertSystemAlert,

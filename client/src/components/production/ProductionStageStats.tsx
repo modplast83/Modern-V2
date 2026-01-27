@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Package, Weight, Clock, CheckCircle2 } from "lucide-react";
+import { Package, Weight, CheckCircle2 } from "lucide-react";
 
 interface ProductionStageStatsProps {
   stage: "film" | "printing" | "cutting";

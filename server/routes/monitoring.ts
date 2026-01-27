@@ -11,7 +11,7 @@ import { MemoryMonitor } from '../middleware/memory-monitor';
 import { CodeHealthChecker } from '../services/code-health-checker';
 import { db } from '../db';
 import { system_performance_metrics } from '../../shared/schema';
-import { desc, sql, and, gte } from 'drizzle-orm';
+import { desc, gte } from 'drizzle-orm';
 
 const router = Router();
 

@@ -29,7 +29,7 @@ import {
   DialogTitle,
 } from "../components/ui/dialog";
 import { useToast } from "../hooks/use-toast";
-import { Beaker, Plus, Trash2, Eye } from "lucide-react";
+import { Plus, Trash2, Eye } from "lucide-react";
 import { Badge } from "../components/ui/badge";
 import { Skeleton } from "../components/ui/skeleton";
 import PageLayout from "../components/layout/PageLayout";

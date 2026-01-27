@@ -1,5 +1,5 @@
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
-import { Package, Clock, User } from "lucide-react";
+import { Package, Clock } from "lucide-react";
 
 interface OrdersStatsProps {
   orders: any[];

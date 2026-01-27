@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
-import { QrCode, Play, ChevronDown, ChevronRight, Plus, Printer } from "lucide-react";
+import { Play, ChevronDown, ChevronRight, Printer } from "lucide-react";
 import { Progress } from "../ui/progress";
 import { useToast } from "../../hooks/use-toast";
 import { formatWeight } from "../../lib/formatNumber";

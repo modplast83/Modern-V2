@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import OpenAI from "openai";
 import { db } from "./db";
 import { orders, production_orders, rolls, quotes, quote_items, customers, ai_agent_settings, ai_agent_knowledge, quote_templates } from "@shared/schema";
-import { eq, desc, sql, and, gte, lte, count, sum, like, or } from "drizzle-orm";
+import { eq, desc, and, gte, lte, count, sum, like, or } from "drizzle-orm";
 import multer, { FileFilterCallback } from "multer";
 import * as XLSX from "exceljs";
 import * as fs from "fs";
