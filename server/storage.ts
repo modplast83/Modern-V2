@@ -5977,17 +5977,22 @@ export class DatabaseStorage implements IStorage {
       query = query.where(and(...conditions)) as typeof query;
     }
 
-    // Get total count for pagination
-    const countQuery = db
+    // Get total count for pagination - include JOIN when search uses customer fields
+    const needsCustomerJoin = search && search.trim();
+    let countQueryBase: any = db
       .select({ count: sql<number>`count(*)` })
       .from(customer_products);
     
-    if (conditions.length > 0) {
-      (countQuery as any).where(and(...conditions));
+    if (needsCustomerJoin) {
+      countQueryBase = countQueryBase.leftJoin(customers, eq(customer_products.customer_id, customers.id));
     }
     
-    const [countResult] = await countQuery;
-    const total = Number(countResult?.count || 0);
+    if (conditions.length > 0) {
+      countQueryBase = countQueryBase.where(and(...conditions));
+    }
+    
+    const countResults = await countQueryBase;
+    const total = Number(countResults?.[0]?.count || 0);
 
     // Apply ordering
     query = query.orderBy(desc(customer_products.created_at)) as typeof query;

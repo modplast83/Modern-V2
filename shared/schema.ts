@@ -139,7 +139,10 @@ export const users = pgTable("users", {
   last_name: varchar("last_name", { length: 100 }),
   profile_image_url: varchar("profile_image_url", { length: 500 }),
   updated_at: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_users_role_id").on(table.role_id),
+  index("idx_users_status").on(table.status),
+]);
 
 // 📋 جدول طلبات المستخدمين
 export const user_requests = pgTable("user_requests", {
@@ -189,7 +192,11 @@ export const attendance = pgTable("attendance", {
     .default(sql`CURRENT_DATE`),
   created_at: timestamp("created_at").defaultNow(),
   updated_at: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_attendance_user_id").on(table.user_id),
+  index("idx_attendance_date").on(table.date),
+  index("idx_attendance_user_date").on(table.user_id, table.date),
+]);
 
 // 🧾 جدول العملاء
 export const customers = pgTable("customers", {
@@ -259,7 +266,11 @@ export const customer_products = pgTable("customer_products", {
   notes: text("notes"),
   status: varchar("status", { length: 20 }).default("active"),
   created_at: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_customer_products_customer_id").on(table.customer_id),
+  index("idx_customer_products_status").on(table.status),
+  index("idx_customer_products_created_at").on(table.created_at),
+]);
 
 // 🏭 جدول المكائن - Machine Management with Operational Constraints
 // INVARIANT E: Only machines with status = 'active' can be used for production
@@ -495,6 +506,11 @@ export const production_orders = pgTable(
       "cutting_completion_valid",
       sql`${table.cutting_completion_percentage} >= 0 AND ${table.cutting_completion_percentage} <= 100`,
     ),
+    // Performance indexes for production_orders table
+    idx_production_orders_order_id: index("idx_production_orders_order_id").on(table.order_id),
+    idx_production_orders_status: index("idx_production_orders_status").on(table.status),
+    idx_production_orders_created_at: index("idx_production_orders_created_at").on(table.created_at),
+    idx_production_orders_assigned_machine_id: index("idx_production_orders_assigned_machine_id").on(table.assigned_machine_id),
   }),
 );
 
@@ -598,6 +614,12 @@ export const rolls = pgTable(
     ),
     // INVARIANT E: Machine must be active for roll creation - enforced at application level
     machineActiveForCreation: check("machine_active_for_creation", sql`TRUE`), // Placeholder - enforced in application layer
+    // Performance indexes for rolls table
+    idx_rolls_production_order_id: index("idx_rolls_production_order_id").on(table.production_order_id),
+    idx_rolls_stage: index("idx_rolls_stage").on(table.stage),
+    idx_rolls_created_at: index("idx_rolls_created_at").on(table.created_at),
+    idx_rolls_film_machine_id: index("idx_rolls_film_machine_id").on(table.film_machine_id),
+    idx_rolls_created_by: index("idx_rolls_created_by").on(table.created_by),
   }),
 );
 
