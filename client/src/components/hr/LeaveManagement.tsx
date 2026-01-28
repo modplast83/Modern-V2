@@ -515,7 +515,7 @@ export default function LeaveManagement() {
               </div>
 
               <div>
-                <Label className="font-semibold">{t("hr.leaves.description")}:</Label>
+                <Label className="font-semibold">{t("hr.leaves.descriptionLabel")}:</Label>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                   {selectedRequest.description}
                 </p>

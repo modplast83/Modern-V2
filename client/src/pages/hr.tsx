@@ -6,7 +6,7 @@ export default function HR() {
   const { t } = useTranslation();
   
   return (
-    <PageLayout title={t('hr.title')} description={t('hr.attendance')}>
+    <PageLayout title={t('hr.title')} description={t('hr.description')}>
       <HRTabs />
     </PageLayout>
   );
