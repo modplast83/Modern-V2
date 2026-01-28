@@ -1339,13 +1339,13 @@ interface BarcodeSizeData {
 }
 
 const barcodeSizeData: Record<BarcodeSize, BarcodeSizeData> = {
-  small: { width: 1, height: 30, fontSize: 10, displayWidth: 150, displayHeight: 50, printWidthMm: 38, printHeightMm: 13 },
-  medium: { width: 1.5, height: 50, fontSize: 12, displayWidth: 200, displayHeight: 70, printWidthMm: 50, printHeightMm: 25 },
-  large: { width: 2, height: 80, fontSize: 14, displayWidth: 280, displayHeight: 100, printWidthMm: 70, printHeightMm: 35 },
-  xlarge: { width: 2.5, height: 100, fontSize: 16, displayWidth: 350, displayHeight: 130, printWidthMm: 90, printHeightMm: 50 },
-  label50x25: { width: 1.5, height: 45, fontSize: 11, displayWidth: 189, displayHeight: 94, printWidthMm: 50, printHeightMm: 25 },
-  label55x40: { width: 1.8, height: 70, fontSize: 12, displayWidth: 208, displayHeight: 151, printWidthMm: 55, printHeightMm: 40 },
-  label100x150: { width: 3, height: 200, fontSize: 18, displayWidth: 378, displayHeight: 567, printWidthMm: 100, printHeightMm: 150 },
+  small: { width: 2, height: 30, fontSize: 10, displayWidth: 150, displayHeight: 50, printWidthMm: 38, printHeightMm: 13 },
+  medium: { width: 2.5, height: 50, fontSize: 12, displayWidth: 200, displayHeight: 70, printWidthMm: 50, printHeightMm: 25 },
+  large: { width: 3, height: 80, fontSize: 14, displayWidth: 280, displayHeight: 100, printWidthMm: 70, printHeightMm: 35 },
+  xlarge: { width: 4, height: 100, fontSize: 16, displayWidth: 350, displayHeight: 130, printWidthMm: 90, printHeightMm: 50 },
+  label50x25: { width: 2.5, height: 45, fontSize: 11, displayWidth: 189, displayHeight: 94, printWidthMm: 50, printHeightMm: 25 },
+  label55x40: { width: 3, height: 70, fontSize: 12, displayWidth: 208, displayHeight: 151, printWidthMm: 55, printHeightMm: 40 },
+  label100x150: { width: 4, height: 200, fontSize: 18, displayWidth: 378, displayHeight: 567, printWidthMm: 100, printHeightMm: 150 },
 };
 
 const barcodeFormatValues: BarcodeFormat[] = ["CODE128", "EAN13", "EAN8", "CODE39", "ITF14"];
