@@ -106,6 +106,7 @@ export default function FilmMaterialMixingTab() {
     if (!code) return '';
     const normalizedCode = code.toUpperCase().trim();
     const colorData = masterBatchColors.find((c) => {
+      if (!c.code) return false;
       if (c.code.toUpperCase() === normalizedCode) return true;
       if (c.aliases) {
         const aliasArr = c.aliases.split(",").map((a) => a.trim().toUpperCase());
