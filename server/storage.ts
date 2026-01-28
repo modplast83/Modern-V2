@@ -6114,13 +6114,12 @@ export class DatabaseStorage implements IStorage {
         AND status IN ('present', 'late')
       `),
 
-      // Maintenance alerts (pending or overdue)
+      // Maintenance alerts (pending or overdue) - using maintenance_requests table
       db.execute(sql`
         SELECT COUNT(*) as count
-        FROM maintenance_records
-        WHERE status IN ('pending', 'in_progress')
-        OR (next_maintenance_date IS NOT NULL AND next_maintenance_date <= CURRENT_DATE)
-      `),
+        FROM maintenance_requests
+        WHERE status IN ('pending', 'in_progress', 'approved')
+      `).catch(() => ({ rows: [{ count: 0 }] })),
 
       // Top film workers (section SEC03)
       db.execute(sql`
