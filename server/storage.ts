@@ -6119,34 +6119,34 @@ export class DatabaseStorage implements IStorage {
         WHERE status IN ('pending', 'in_progress', 'approved')
       `).catch(() => ({ rows: [{ count: 0 }] })),
 
-      // Top film workers (section SEC03) - using created_by or employee_id
+      // Top film workers (section 3) - using created_by or employee_id
       db.execute(sql`
         SELECT u.id, u.full_name, u.display_name_ar, COALESCE(SUM(r.weight_kg), 0) as total_production
         FROM users u
         LEFT JOIN rolls r ON (u.id = r.created_by OR u.id = r.employee_id) AND r.created_at >= ${startOfMonth}
-        WHERE u.section_id::text = 'SEC03' OR u.section_id = 3
+        WHERE u.section_id = '3'
         GROUP BY u.id, u.full_name, u.display_name_ar
         ORDER BY total_production DESC
         LIMIT 3
       `),
 
-      // Top printing workers (section SEC04) - using printed_by
+      // Top printing workers (section 4) - using printed_by
       db.execute(sql`
         SELECT u.id, u.full_name, u.display_name_ar, COALESCE(SUM(r.weight_kg), 0) as total_production
         FROM users u
         LEFT JOIN rolls r ON u.id = r.printed_by AND r.printed_at IS NOT NULL AND r.printed_at >= ${startOfMonth}
-        WHERE u.section_id::text = 'SEC04' OR u.section_id = 4
+        WHERE u.section_id = '4'
         GROUP BY u.id, u.full_name, u.display_name_ar
         ORDER BY total_production DESC
         LIMIT 3
       `),
 
-      // Top cutting workers (section SEC05) - using performed_by and cut_weight_kg
+      // Top cutting workers (section 5) - using performed_by and cut_weight_kg
       db.execute(sql`
         SELECT u.id, u.full_name, u.display_name_ar, COALESCE(SUM(c.cut_weight_kg), 0) as total_production
         FROM users u
         LEFT JOIN cuts c ON u.id = c.performed_by AND c.created_at >= ${startOfMonth}
-        WHERE u.section_id::text = 'SEC05' OR u.section_id = 5
+        WHERE u.section_id = '5'
         GROUP BY u.id, u.full_name, u.display_name_ar
         ORDER BY total_production DESC
         LIMIT 3
