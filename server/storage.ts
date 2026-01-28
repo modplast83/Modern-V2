@@ -1641,12 +1641,9 @@ export class DatabaseStorage implements IStorage {
         );
 
         const validStatuses = [
-          "pending",
           "waiting",
           "in_production",
-          "for_production",
           "paused",
-          "on_hold",
           "completed",
           "cancelled",
         ];
@@ -1678,17 +1675,19 @@ export class DatabaseStorage implements IStorage {
             }
 
             // Map order status to production order status
-            let productionStatus = status;
-            if (status === "in_production" || status === "for_production") {
-              productionStatus = "in_production";
-            } else if (status === "waiting" || status === "pending") {
+            let productionStatus: string;
+            if (status === "in_production") {
+              productionStatus = "active";
+            } else if (status === "waiting") {
               productionStatus = "pending";
-            } else if (status === "paused" || status === "on_hold") {
-              productionStatus = "paused";
+            } else if (status === "paused") {
+              productionStatus = "pending"; // Production orders don't have paused, use pending
             } else if (status === "completed") {
               productionStatus = "completed";
             } else if (status === "cancelled") {
               productionStatus = "cancelled";
+            } else {
+              productionStatus = "pending";
             }
 
             // Update all production orders for this order to match the order status
@@ -1977,8 +1976,7 @@ export class DatabaseStorage implements IStorage {
           or(
             eq(orders.status, "in_production"),
             eq(orders.status, "waiting"),
-            eq(orders.status, "pending"),
-            eq(orders.status, "for_production"),
+            eq(orders.status, "paused"),
           ),
         )
         .orderBy(desc(orders.created_at))
@@ -6155,7 +6153,7 @@ export class DatabaseStorage implements IStorage {
 
     // Get total employees for attendance percentage
     const totalEmployeesResult = await db.execute(sql`
-      SELECT COUNT(*) as count FROM users WHERE is_active = true
+      SELECT COUNT(*) as count FROM users WHERE status = 'active' OR status IS NULL
     `);
 
     const result = {

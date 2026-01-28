@@ -254,12 +254,9 @@ export const commonSchemas = {
   updateOrderStatus: z.object({
     status: z.enum(
       [
-        "pending",
         "waiting",
         "in_production",
-        "for_production",
         "paused",
-        "on_hold",
         "completed",
         "cancelled",
       ],
