@@ -81,6 +81,36 @@ const parseOptionalQueryParam = (
   }
 };
 
+// Helper function to check if an order is paused and block production
+const checkOrderNotPaused = async (productionOrderId: number): Promise<{ isPaused: boolean; orderStatus?: string; message?: string }> => {
+  try {
+    const productionOrder = await storage.getProductionOrderById(productionOrderId);
+    if (!productionOrder) {
+      return { isPaused: false };
+    }
+    
+    const order = await storage.getOrderById(productionOrder.order_id);
+    if (!order) {
+      return { isPaused: false };
+    }
+    
+    if (order.status === "paused" || order.status === "on_hold") {
+      return { 
+        isPaused: true, 
+        orderStatus: order.status,
+        message: order.status === "paused" 
+          ? "الطلب في حالة إيقاف مؤقت - لا يمكن إضافة إنتاج جديد"
+          : "الطلب معلق - لا يمكن إضافة إنتاج جديد"
+      };
+    }
+    
+    return { isPaused: false };
+  } catch (error) {
+    console.error("Error checking order status:", error);
+    return { isPaused: false };
+  }
+};
+
 const insertCustomerSchema = createInsertSchema(customers)
   .omit({ id: true, created_at: true })
   .extend({
