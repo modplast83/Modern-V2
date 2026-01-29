@@ -5795,9 +5795,15 @@ Do not include quotes or explanations.`;
   });
 
   // تصدير قالب حضور الموظف للشهر كامل
-  app.get("/api/attendance/template/:userId", async (req, res) => {
+  app.get("/api/attendance/template/:userId", requireAuth, async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
+      
+      // Validate userId parameter
+      if (isNaN(userId) || userId <= 0) {
+        return res.status(400).json({ message: "رقم الموظف غير صحيح" });
+      }
+      
       const month = (req.query.month as string) || new Date().toISOString().slice(0, 7);
       
       // Get user info
@@ -5873,7 +5879,7 @@ Do not include quotes or explanations.`;
   });
 
   // استيراد بيانات الحضور من ملف Excel
-  app.post("/api/attendance/import", upload.single("file"), async (req, res) => {
+  app.post("/api/attendance/import", requireAuth, upload.single("file"), async (req, res) => {
     try {
       const userId = parseInt(req.body.userId);
       
@@ -5881,8 +5887,14 @@ Do not include quotes or explanations.`;
         return res.status(400).json({ message: "يجب رفع ملف" });
       }
       
-      if (!userId || isNaN(userId)) {
+      if (!userId || isNaN(userId) || userId <= 0) {
         return res.status(400).json({ message: "رقم الموظف غير صحيح" });
+      }
+      
+      // Verify user exists
+      const targetUser = await storage.getUserById(userId);
+      if (!targetUser) {
+        return res.status(404).json({ message: "الموظف غير موجود" });
       }
       
       // Parse Excel file
@@ -5897,23 +5909,32 @@ Do not include quotes or explanations.`;
       
       // Process and validate each row
       const entries = [];
-      const errors = [];
+      const errors: string[] = [];
+      let rowNum = 1;
       
       for (const row of data) {
+        rowNum++;
         const dateStr = row["التاريخ"];
         const status = row["الحالة"];
         const checkIn = row["وقت الحضور"];
         const checkOut = row["وقت الانصراف"];
         const notes = row["ملاحظات"];
+        const fileUserId = row["رقم الموظف"];
         
         // Skip rows without status
-        if (!status || status.trim() === "") {
+        if (!status || String(status).trim() === "") {
+          continue;
+        }
+        
+        // Validate that the user ID in the file matches the target user
+        if (fileUserId && parseInt(fileUserId) !== userId) {
+          errors.push(`سطر ${rowNum}: رقم الموظف في الملف (${fileUserId}) لا يطابق الموظف المحدد (${userId})`);
           continue;
         }
         
         // Validate date format
-        if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-          errors.push(`تاريخ غير صحيح: ${dateStr}`);
+        if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr))) {
+          errors.push(`سطر ${rowNum}: تاريخ غير صحيح: ${dateStr}`);
           continue;
         }
         
@@ -5926,28 +5947,54 @@ Do not include quotes or explanations.`;
           "اجازة": "إجازة",
         };
         
-        const mappedStatus = statusMap[status.trim()];
+        const mappedStatus = statusMap[String(status).trim()];
         if (!mappedStatus) {
-          errors.push(`حالة غير صحيحة في ${dateStr}: ${status}`);
+          errors.push(`سطر ${rowNum}: حالة غير صحيحة: ${status} (المسموح: حاضر، غائب، مغادر، إجازة)`);
           continue;
         }
         
-        // Format times
+        // Format and validate times
         let formattedCheckIn = null;
         let formattedCheckOut = null;
+        let hasTimeError = false;
         
-        if (checkIn && checkIn.trim() !== "") {
+        if (checkIn && String(checkIn).trim() !== "") {
           const timeMatch = String(checkIn).match(/^(\d{1,2}):(\d{2})$/);
           if (timeMatch) {
-            formattedCheckIn = `${dateStr}T${timeMatch[1].padStart(2, "0")}:${timeMatch[2]}:00`;
+            const hours = parseInt(timeMatch[1]);
+            const minutes = parseInt(timeMatch[2]);
+            if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
+              formattedCheckIn = `${dateStr}T${timeMatch[1].padStart(2, "0")}:${timeMatch[2]}:00`;
+            } else {
+              errors.push(`سطر ${rowNum}: وقت حضور غير صالح: ${checkIn} (الساعة 0-23، الدقائق 0-59)`);
+              hasTimeError = true;
+            }
+          } else {
+            errors.push(`سطر ${rowNum}: صيغة وقت الحضور غير صحيحة: ${checkIn} (المتوقع: HH:MM مثال 08:00)`);
+            hasTimeError = true;
           }
         }
         
-        if (checkOut && checkOut.trim() !== "") {
+        if (checkOut && String(checkOut).trim() !== "") {
           const timeMatch = String(checkOut).match(/^(\d{1,2}):(\d{2})$/);
           if (timeMatch) {
-            formattedCheckOut = `${dateStr}T${timeMatch[1].padStart(2, "0")}:${timeMatch[2]}:00`;
+            const hours = parseInt(timeMatch[1]);
+            const minutes = parseInt(timeMatch[2]);
+            if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
+              formattedCheckOut = `${dateStr}T${timeMatch[1].padStart(2, "0")}:${timeMatch[2]}:00`;
+            } else {
+              errors.push(`سطر ${rowNum}: وقت انصراف غير صالح: ${checkOut} (الساعة 0-23، الدقائق 0-59)`);
+              hasTimeError = true;
+            }
+          } else {
+            errors.push(`سطر ${rowNum}: صيغة وقت الانصراف غير صحيحة: ${checkOut} (المتوقع: HH:MM مثال 17:00)`);
+            hasTimeError = true;
           }
+        }
+        
+        // Skip rows with time validation errors
+        if (hasTimeError) {
+          continue;
         }
         
         entries.push({
