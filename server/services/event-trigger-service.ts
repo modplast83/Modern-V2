@@ -274,6 +274,18 @@ export class EventTriggerService {
       }
     }
 
+    // Add direct phone numbers from recipient_phone_numbers field
+    if (setting.recipient_phone_numbers && Array.isArray(setting.recipient_phone_numbers)) {
+      for (const phone of setting.recipient_phone_numbers) {
+        if (phone && !recipients.find(r => r.phone === phone)) {
+          recipients.push({
+            phone: phone,
+            name: "رقم مباشر", // "Direct Number" in Arabic
+          });
+        }
+      }
+    }
+
     return recipients;
   }
 

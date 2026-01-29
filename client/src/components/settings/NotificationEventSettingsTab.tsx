@@ -81,6 +81,7 @@ interface NotificationEventSetting {
   recipient_type: string | null;
   recipient_user_ids: number[] | null;
   recipient_role_ids: number[] | null;
+  recipient_phone_numbers: string[] | null;
   notify_customer: boolean | null;
   condition_enabled: boolean | null;
   condition_field: string | null;
@@ -249,6 +250,7 @@ export default function NotificationEventSettingsTab() {
         delay_minutes: selectedEvent.delay_minutes,
         recipient_user_ids: selectedEvent.recipient_user_ids,
         recipient_role_ids: selectedEvent.recipient_role_ids,
+        recipient_phone_numbers: selectedEvent.recipient_phone_numbers,
         notify_customer: selectedEvent.notify_customer,
         condition_enabled: selectedEvent.condition_enabled,
         condition_field: selectedEvent.condition_field,
@@ -630,6 +632,71 @@ export default function NotificationEventSettingsTab() {
                           </Badge>
                         );
                       })}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm">أرقام هواتف إضافية</Label>
+                    <p className="text-xs text-muted-foreground">
+                      أضف أرقام هواتف مباشرة للإرسال إليها (بالصيغة الدولية مثل: +966xxxxxxxxx)
+                    </p>
+                    <div className="flex gap-2">
+                      <Input
+                        id="new-phone-input"
+                        placeholder="+966xxxxxxxxx"
+                        dir="ltr"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const input = e.target as HTMLInputElement;
+                            const phone = input.value.trim();
+                            if (phone && /^\+?[0-9]{10,15}$/.test(phone.replace(/\s/g, ''))) {
+                              const currentPhones = selectedEvent.recipient_phone_numbers || [];
+                              if (!currentPhones.includes(phone)) {
+                                setSelectedEvent({ 
+                                  ...selectedEvent, 
+                                  recipient_phone_numbers: [...currentPhones, phone] 
+                                });
+                              }
+                              input.value = '';
+                            }
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          const input = document.getElementById('new-phone-input') as HTMLInputElement;
+                          const phone = input?.value.trim();
+                          if (phone && /^\+?[0-9]{10,15}$/.test(phone.replace(/\s/g, ''))) {
+                            const currentPhones = selectedEvent.recipient_phone_numbers || [];
+                            if (!currentPhones.includes(phone)) {
+                              setSelectedEvent({ 
+                                ...selectedEvent, 
+                                recipient_phone_numbers: [...currentPhones, phone] 
+                              });
+                            }
+                            input.value = '';
+                          }
+                        }}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {(selectedEvent.recipient_phone_numbers || []).map((phone, index) => (
+                        <Badge key={index} variant="secondary" className="gap-1 font-mono" dir="ltr">
+                          {phone}
+                          <XCircle 
+                            className="h-3 w-3 cursor-pointer" 
+                            onClick={() => {
+                              const newPhones = (selectedEvent.recipient_phone_numbers || []).filter((_, i) => i !== index);
+                              setSelectedEvent({ ...selectedEvent, recipient_phone_numbers: newPhones });
+                            }}
+                          />
+                        </Badge>
+                      ))}
                     </div>
                   </div>
                 </div>
