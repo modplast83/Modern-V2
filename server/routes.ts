@@ -43,8 +43,9 @@ import {
   customer_products,
   locations,
   users,
+  attendance,
 } from "@shared/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and, gte, lte } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 
 import { z } from "zod";
@@ -5831,6 +5832,8 @@ Do not include quotes or explanations.`;
           "الحالة": "حاضر",
           "وقت الحضور": "09:00",
           "وقت الانصراف": "16:00",
+          "ساعات العمل": 7,
+          "ساعات إضافية": 0,
           "ملاحظات": ""
         });
       }
@@ -5847,6 +5850,8 @@ Do not include quotes or explanations.`;
         { wch: 10 },  // الحالة
         { wch: 12 },  // وقت الحضور
         { wch: 12 },  // وقت الانصراف
+        { wch: 12 },  // ساعات العمل
+        { wch: 12 },  // ساعات إضافية
         { wch: 25 },  // ملاحظات
       ];
       
@@ -5857,14 +5862,16 @@ Do not include quotes or explanations.`;
       const instructionsData = [
         { "التعليمات": "تعليمات ملء قالب الحضور" },
         { "التعليمات": "-----------------------------" },
-        { "التعليمات": "القالب يحتوي افتراضياً على: حاضر، 09:00 حضور، 16:00 انصراف" },
+        { "التعليمات": "القالب يحتوي افتراضياً على: حاضر، 09:00 حضور، 16:00 انصراف، 7 ساعات عمل" },
         { "التعليمات": "عدّل فقط الأيام التي تختلف عن الحالة الافتراضية" },
         { "التعليمات": "-----------------------------" },
         { "التعليمات": "1. الحالة: أدخل أحد القيم التالية: حاضر، غائب، مغادر، إجازة" },
         { "التعليمات": "2. وقت الحضور: أدخل الوقت بصيغة HH:MM (مثال: 08:00)" },
         { "التعليمات": "3. وقت الانصراف: أدخل الوقت بصيغة HH:MM (مثال: 17:00)" },
-        { "التعليمات": "4. لا تغير رقم الموظف أو التاريخ" },
-        { "التعليمات": "5. بعد الانتهاء، ارفع الملف من زر الاستيراد" },
+        { "التعليمات": "4. ساعات العمل: عدد ساعات العمل الفعلية (رقم)" },
+        { "التعليمات": "5. ساعات إضافية: عدد ساعات العمل الإضافي (رقم)" },
+        { "التعليمات": "6. لا تغير رقم الموظف أو التاريخ" },
+        { "التعليمات": "7. بعد الانتهاء، ارفع الملف من زر الاستيراد" },
       ];
       const wsInstructions = XLSX.utils.json_to_sheet(instructionsData);
       wsInstructions["!cols"] = [{ wch: 60 }];
@@ -6000,12 +6007,35 @@ Do not include quotes or explanations.`;
           continue;
         }
         
+        // Parse work hours and overtime
+        const workHours = row["ساعات العمل"];
+        const overtimeHours = row["ساعات إضافية"];
+        
+        let parsedWorkHours = null;
+        let parsedOvertimeHours = null;
+        
+        if (workHours !== undefined && workHours !== "" && workHours !== null) {
+          const num = parseFloat(String(workHours));
+          if (!isNaN(num) && num >= 0) {
+            parsedWorkHours = num;
+          }
+        }
+        
+        if (overtimeHours !== undefined && overtimeHours !== "" && overtimeHours !== null) {
+          const num = parseFloat(String(overtimeHours));
+          if (!isNaN(num) && num >= 0) {
+            parsedOvertimeHours = num;
+          }
+        }
+        
         entries.push({
           user_id: userId,
           date: dateStr,
           status: mappedStatus,
           check_in_time: formattedCheckIn,
           check_out_time: formattedCheckOut,
+          work_hours: parsedWorkHours,
+          overtime_hours: parsedOvertimeHours,
           notes: notes || "",
         });
       }
@@ -6029,6 +6059,228 @@ Do not include quotes or explanations.`;
     } catch (error) {
       console.error("Error importing attendance:", error);
       res.status(500).json({ message: "خطأ في استيراد بيانات الحضور" });
+    }
+  });
+
+  // تقرير حضور موظف احترافي مع بيانات المصنع
+  app.get("/api/attendance/report/:userId", requireAuth, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const startDate = req.query.startDate as string;
+      const endDate = req.query.endDate as string;
+      
+      if (isNaN(userId) || userId <= 0) {
+        return res.status(400).json({ message: "رقم الموظف غير صحيح" });
+      }
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "يجب تحديد تاريخ البداية والنهاية" });
+      }
+      
+      // Get user info
+      const user = await storage.getUserById(userId);
+      if (!user) {
+        return res.status(404).json({ message: "الموظف غير موجود" });
+      }
+      
+      // Get attendance records for the period
+      const attendanceRecords = await db
+        .select()
+        .from(attendance)
+        .where(
+          and(
+            eq(attendance.user_id, userId),
+            gte(attendance.date, startDate),
+            lte(attendance.date, endDate)
+          )
+        )
+        .orderBy(attendance.date);
+      
+      // Calculate summary statistics
+      let totalWorkHours = 0;
+      let totalOvertimeHours = 0;
+      let presentDays = 0;
+      let absentDays = 0;
+      let leaveDays = 0;
+      let earlyLeaveDays = 0;
+      
+      for (const record of attendanceRecords) {
+        if (record.work_hours) totalWorkHours += Number(record.work_hours);
+        if (record.overtime_hours) totalOvertimeHours += Number(record.overtime_hours);
+        
+        switch (record.status) {
+          case "حاضر":
+            presentDays++;
+            break;
+          case "غائب":
+            absentDays++;
+            break;
+          case "إجازة":
+            leaveDays++;
+            break;
+          case "مغادر":
+            earlyLeaveDays++;
+            break;
+        }
+      }
+      
+      // Factory info (can be customized from settings)
+      const factoryInfo = {
+        name: "مصنع الأكياس البلاستيكية",
+        address: "المنطقة الصناعية",
+        phone: "+966 XX XXX XXXX",
+        email: "info@factory.com",
+        logo: null
+      };
+      
+      res.json({
+        success: true,
+        report: {
+          factoryInfo,
+          employee: {
+            id: user.id,
+            name: user.display_name_ar || user.display_name || user.username,
+            employeeNumber: `EMP-${user.id}`,
+            department: "غير محدد",
+            position: "غير محدد"
+          },
+          period: {
+            startDate,
+            endDate,
+            totalDays: attendanceRecords.length
+          },
+          summary: {
+            totalWorkHours: Math.round(totalWorkHours * 10) / 10,
+            totalOvertimeHours: Math.round(totalOvertimeHours * 10) / 10,
+            presentDays,
+            absentDays,
+            leaveDays,
+            earlyLeaveDays,
+            attendanceRate: attendanceRecords.length > 0 
+              ? Math.round((presentDays / attendanceRecords.length) * 100) 
+              : 0
+          },
+          records: attendanceRecords.map(r => ({
+            date: r.date,
+            dayName: new Date(r.date).toLocaleDateString("ar-SA", { weekday: "long" }),
+            status: r.status,
+            checkIn: r.check_in_time ? new Date(r.check_in_time).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }) : null,
+            checkOut: r.check_out_time ? new Date(r.check_out_time).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }) : null,
+            workHours: r.work_hours,
+            overtimeHours: r.overtime_hours,
+            notes: r.notes
+          })),
+          generatedAt: new Date().toISOString()
+        }
+      });
+    } catch (error) {
+      console.error("Error generating attendance report:", error);
+      res.status(500).json({ message: "خطأ في إنشاء تقرير الحضور" });
+    }
+  });
+
+  // تصدير تقرير حضور موظف كملف Excel احترافي
+  app.get("/api/attendance/report/:userId/export", requireAuth, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const startDate = req.query.startDate as string;
+      const endDate = req.query.endDate as string;
+      
+      if (isNaN(userId) || userId <= 0) {
+        return res.status(400).json({ message: "رقم الموظف غير صحيح" });
+      }
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "يجب تحديد تاريخ البداية والنهاية" });
+      }
+      
+      // Get user info
+      const user = await storage.getUserById(userId);
+      if (!user) {
+        return res.status(404).json({ message: "الموظف غير موجود" });
+      }
+      
+      // Get attendance records
+      const attendanceRecords = await db
+        .select()
+        .from(attendance)
+        .where(
+          and(
+            eq(attendance.user_id, userId),
+            gte(attendance.date, startDate),
+            lte(attendance.date, endDate)
+          )
+        )
+        .orderBy(attendance.date);
+      
+      // Calculate summary
+      let totalWorkHours = 0;
+      let totalOvertimeHours = 0;
+      let presentDays = 0;
+      let absentDays = 0;
+      let leaveDays = 0;
+      
+      for (const record of attendanceRecords) {
+        if (record.work_hours) totalWorkHours += Number(record.work_hours);
+        if (record.overtime_hours) totalOvertimeHours += Number(record.overtime_hours);
+        if (record.status === "حاضر") presentDays++;
+        if (record.status === "غائب") absentDays++;
+        if (record.status === "إجازة") leaveDays++;
+      }
+      
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+      
+      // Header sheet with factory and employee info
+      const headerData = [
+        { "": "مصنع الأكياس البلاستيكية" },
+        { "": "تقرير حضور موظف" },
+        { "": "-----------------------------" },
+        { "": `اسم الموظف: ${user.display_name_ar || user.display_name || user.username}` },
+        { "": `رقم الموظف: EMP-${user.id}` },
+        { "": `الفترة: من ${startDate} إلى ${endDate}` },
+        { "": `تاريخ التقرير: ${new Date().toLocaleDateString("ar-SA")}` },
+        { "": "-----------------------------" },
+        { "": `إجمالي أيام الحضور: ${presentDays}` },
+        { "": `إجمالي أيام الغياب: ${absentDays}` },
+        { "": `إجمالي أيام الإجازة: ${leaveDays}` },
+        { "": `إجمالي ساعات العمل: ${totalWorkHours.toFixed(1)}` },
+        { "": `إجمالي الساعات الإضافية: ${totalOvertimeHours.toFixed(1)}` },
+        { "": `نسبة الحضور: ${attendanceRecords.length > 0 ? Math.round((presentDays / attendanceRecords.length) * 100) : 0}%` },
+      ];
+      
+      const wsHeader = XLSX.utils.json_to_sheet(headerData);
+      wsHeader["!cols"] = [{ wch: 50 }];
+      XLSX.utils.book_append_sheet(wb, wsHeader, "ملخص التقرير");
+      
+      // Attendance details sheet
+      const detailsData = attendanceRecords.map(r => ({
+        "التاريخ": r.date,
+        "اليوم": new Date(r.date).toLocaleDateString("ar-SA", { weekday: "long" }),
+        "الحالة": r.status,
+        "وقت الحضور": r.check_in_time ? new Date(r.check_in_time).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }) : "-",
+        "وقت الانصراف": r.check_out_time ? new Date(r.check_out_time).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }) : "-",
+        "ساعات العمل": r.work_hours || 0,
+        "ساعات إضافية": r.overtime_hours || 0,
+        "ملاحظات": r.notes || ""
+      }));
+      
+      const wsDetails = XLSX.utils.json_to_sheet(detailsData);
+      wsDetails["!cols"] = [
+        { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, 
+        { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 25 }
+      ];
+      XLSX.utils.book_append_sheet(wb, wsDetails, "تفاصيل الحضور");
+      
+      const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+      
+      const fileName = `attendance_report_${user.username}_${startDate}_${endDate}.xlsx`;
+      res.setHeader("Content-Disposition", `attachment; filename=${fileName}`);
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.send(buffer);
+    } catch (error) {
+      console.error("Error exporting attendance report:", error);
+      res.status(500).json({ message: "خطأ في تصدير تقرير الحضور" });
     }
   });
 

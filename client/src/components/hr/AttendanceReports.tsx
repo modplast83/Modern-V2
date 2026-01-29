@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "../ui/card";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Separator } from "../ui/separator";
+import { useToast } from "../../hooks/use-toast";
 import {
   Select,
   SelectContent,
@@ -34,6 +37,10 @@ import {
   CheckCircle,
   XCircle,
   Timer,
+  Eye,
+  Printer,
+  Building2,
+  User,
 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from "date-fns";
 import { ar } from "date-fns/locale";
@@ -56,12 +63,25 @@ interface AttendanceReportData {
   total_early_leave_minutes: number;
 }
 
+interface EmployeeReportData {
+  factoryInfo: { name: string; address: string; phone: string; email: string };
+  employee: { id: number; name: string; employeeNumber: string; department: string; position: string };
+  period: { startDate: string; endDate: string; totalDays: number };
+  summary: { totalWorkHours: number; totalOvertimeHours: number; presentDays: number; absentDays: number; leaveDays: number; earlyLeaveDays: number; attendanceRate: number };
+  records: { date: string; dayName: string; status: string; checkIn: string | null; checkOut: string | null; workHours: number | null; overtimeHours: number | null; notes: string | null }[];
+  generatedAt: string;
+}
+
 export default function AttendanceReports() {
   const { t } = useTranslation();
+  const { toast } = useToast();
+  const printRef = useRef<HTMLDivElement>(null);
   const [startDate, setStartDate] = useState<Date>(startOfMonth(new Date()));
   const [endDate, setEndDate] = useState<Date>(endOfMonth(new Date()));
   const [selectedPeriod, setSelectedPeriod] = useState<string>("month");
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedEmployee, setSelectedEmployee] = useState<AttendanceReportData | null>(null);
+  const [showReportDialog, setShowReportDialog] = useState(false);
 
   const handlePeriodChange = (period: string) => {
     setSelectedPeriod(period);
@@ -123,6 +143,79 @@ export default function AttendanceReports() {
     if (h === 0) return `${m} د`;
     return `${h} س ${m} د`;
   };
+
+  const { data: employeeReportData, isLoading: isLoadingEmployeeReport } = useQuery<{ success: boolean; report: EmployeeReportData }>({
+    queryKey: ["/api/attendance/report", selectedEmployee?.user_id, { startDate: format(startDate, "yyyy-MM-dd"), endDate: format(endDate, "yyyy-MM-dd") }],
+    enabled: showReportDialog && !!selectedEmployee,
+  });
+
+  const handleViewReport = (employee: AttendanceReportData) => {
+    setSelectedEmployee(employee);
+    setShowReportDialog(true);
+  };
+
+  const handleExportEmployeeReport = async () => {
+    if (!selectedEmployee) return;
+    try {
+      const response = await fetch(
+        `/api/attendance/report/${selectedEmployee.user_id}/export?startDate=${format(startDate, "yyyy-MM-dd")}&endDate=${format(endDate, "yyyy-MM-dd")}`
+      );
+      if (!response.ok) throw new Error("خطأ في التصدير");
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `attendance_report_${selectedEmployee.user_id}_${format(startDate, "yyyy-MM-dd")}_${format(endDate, "yyyy-MM-dd")}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast({ title: "تم تصدير التقرير بنجاح" });
+    } catch (err) {
+      toast({ title: "خطأ في تصدير التقرير", variant: "destructive" });
+    }
+  };
+
+  const handlePrintReport = () => {
+    if (printRef.current) {
+      const printContents = printRef.current.innerHTML;
+      const printWindow = window.open("", "_blank");
+      if (printWindow) {
+        printWindow.document.write(`
+          <html dir="rtl">
+            <head>
+              <title>تقرير حضور موظف</title>
+              <style>
+                body { font-family: Arial, sans-serif; padding: 20px; direction: rtl; }
+                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: right; }
+                th { background-color: #f5f5f5; }
+                .header { text-align: center; margin-bottom: 20px; }
+                .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 20px 0; }
+                .summary-item { text-align: center; padding: 10px; background: #f9f9f9; border-radius: 8px; }
+                @media print { body { -webkit-print-color-adjust: exact; } }
+              </style>
+            </head>
+            <body>${printContents}</body>
+          </html>
+        `);
+        printWindow.document.close();
+        printWindow.print();
+      }
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "حاضر": return <Badge className="bg-green-100 text-green-800">حاضر</Badge>;
+      case "غائب": return <Badge className="bg-red-100 text-red-800">غائب</Badge>;
+      case "إجازة": return <Badge className="bg-blue-100 text-blue-800">إجازة</Badge>;
+      case "مغادر": return <Badge className="bg-yellow-100 text-yellow-800">مغادر</Badge>;
+      default: return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const report = employeeReportData?.report;
 
   return (
     <div className="space-y-4">
@@ -290,18 +383,21 @@ export default function AttendanceReports() {
                         <span>دقائق التأخير</span>
                       </div>
                     </TableHead>
+                    <TableHead className="text-center min-w-[100px]">
+                      <span>إجراءات</span>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8">
+                      <TableCell colSpan={9} className="text-center py-8">
                         جاري التحميل...
                       </TableCell>
                     </TableRow>
                   ) : filteredData.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={9} className="text-center py-8 text-gray-500">
                         لا توجد بيانات للفترة المحددة
                       </TableCell>
                     </TableRow>
@@ -350,6 +446,18 @@ export default function AttendanceReports() {
                               {formatMinutes(lateMinutes)}
                             </span>
                           </TableCell>
+                          <TableCell className="text-center">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewReport(employee)}
+                              className="h-7 px-2"
+                              title="عرض تقرير مفصل"
+                            >
+                              <Eye className="h-3 w-3 ml-1" />
+                              تقرير
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       );
                     })
@@ -375,6 +483,142 @@ export default function AttendanceReports() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              تقرير حضور موظف مفصل
+            </DialogTitle>
+          </DialogHeader>
+          
+          {isLoadingEmployeeReport ? (
+            <div className="text-center py-8">جاري تحميل التقرير...</div>
+          ) : report ? (
+            <div className="space-y-4">
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={handlePrintReport}>
+                  <Printer className="h-4 w-4 ml-2" />
+                  طباعة
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleExportEmployeeReport}>
+                  <Download className="h-4 w-4 ml-2" />
+                  تصدير Excel
+                </Button>
+              </div>
+
+              <div ref={printRef}>
+                <div className="border rounded-lg p-6 bg-white">
+                  <div className="header text-center mb-6">
+                    <div className="flex items-center justify-center gap-3 mb-2">
+                      <Building2 className="h-8 w-8 text-primary" />
+                      <h1 className="text-2xl font-bold">{report.factoryInfo.name}</h1>
+                    </div>
+                    <p className="text-gray-600">{report.factoryInfo.address}</p>
+                    <p className="text-gray-500 text-sm">{report.factoryInfo.phone} | {report.factoryInfo.email}</p>
+                  </div>
+
+                  <Separator className="my-4" />
+                  <h2 className="text-xl font-semibold text-center mb-4">تقرير حضور موظف</h2>
+
+                  <div className="grid grid-cols-2 gap-6 mb-6">
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <User className="h-5 w-5 text-primary" />
+                        <span className="font-semibold">بيانات الموظف</span>
+                      </div>
+                      <div className="space-y-1 text-sm">
+                        <p><strong>الاسم:</strong> {report.employee.name}</p>
+                        <p><strong>رقم الموظف:</strong> {report.employee.employeeNumber}</p>
+                        <p><strong>القسم:</strong> {report.employee.department}</p>
+                        <p><strong>المنصب:</strong> {report.employee.position}</p>
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <CalendarIcon className="h-5 w-5 text-primary" />
+                        <span className="font-semibold">الفترة الزمنية</span>
+                      </div>
+                      <div className="space-y-1 text-sm">
+                        <p><strong>من:</strong> {report.period.startDate}</p>
+                        <p><strong>إلى:</strong> {report.period.endDate}</p>
+                        <p><strong>إجمالي الأيام:</strong> {report.period.totalDays}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="summary grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div className="summary-item p-3 bg-green-50 rounded-lg text-center">
+                      <p className="text-2xl font-bold text-green-600">{report.summary.presentDays}</p>
+                      <p className="text-sm text-gray-600">أيام الحضور</p>
+                    </div>
+                    <div className="summary-item p-3 bg-red-50 rounded-lg text-center">
+                      <p className="text-2xl font-bold text-red-600">{report.summary.absentDays}</p>
+                      <p className="text-sm text-gray-600">أيام الغياب</p>
+                    </div>
+                    <div className="summary-item p-3 bg-blue-50 rounded-lg text-center">
+                      <p className="text-2xl font-bold text-blue-600">{report.summary.leaveDays}</p>
+                      <p className="text-sm text-gray-600">أيام الإجازة</p>
+                    </div>
+                    <div className="summary-item p-3 bg-purple-50 rounded-lg text-center">
+                      <p className="text-2xl font-bold text-purple-600">{report.summary.attendanceRate}%</p>
+                      <p className="text-sm text-gray-600">نسبة الحضور</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="p-3 bg-gray-100 rounded-lg text-center">
+                      <p className="text-xl font-bold">{report.summary.totalWorkHours}</p>
+                      <p className="text-sm text-gray-600">إجمالي ساعات العمل</p>
+                    </div>
+                    <div className="p-3 bg-orange-50 rounded-lg text-center">
+                      <p className="text-xl font-bold text-orange-600">{report.summary.totalOvertimeHours}</p>
+                      <p className="text-sm text-gray-600">ساعات إضافية</p>
+                    </div>
+                  </div>
+
+                  <h3 className="font-semibold mb-3">تفاصيل الحضور</h3>
+                  <div className="border rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-gray-100">
+                          <TableHead className="text-right">التاريخ</TableHead>
+                          <TableHead className="text-right">اليوم</TableHead>
+                          <TableHead className="text-center">الحالة</TableHead>
+                          <TableHead className="text-center">الحضور</TableHead>
+                          <TableHead className="text-center">الانصراف</TableHead>
+                          <TableHead className="text-center">ساعات العمل</TableHead>
+                          <TableHead className="text-center">إضافي</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {report.records.map((record, idx) => (
+                          <TableRow key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                            <TableCell className="font-mono">{record.date}</TableCell>
+                            <TableCell>{record.dayName}</TableCell>
+                            <TableCell className="text-center">{getStatusBadge(record.status)}</TableCell>
+                            <TableCell className="text-center font-mono">{record.checkIn || "-"}</TableCell>
+                            <TableCell className="text-center font-mono">{record.checkOut || "-"}</TableCell>
+                            <TableCell className="text-center">{record.workHours ?? "-"}</TableCell>
+                            <TableCell className="text-center">{record.overtimeHours ?? "-"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  <div className="mt-4 text-center text-xs text-gray-400">
+                    <p>تم إنشاء التقرير بتاريخ: {new Date(report.generatedAt).toLocaleString("ar-SA")}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">لا توجد بيانات للعرض</div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
