@@ -1642,10 +1642,15 @@ export class DatabaseStorage implements IStorage {
 
         const validStatuses = [
           "waiting",
+          "for_production",
           "in_production",
           "paused",
+          "on_hold",
+          "pending",
+          "in_progress",
           "completed",
           "cancelled",
+          "delivered",
         ];
         if (!validStatuses.includes(status)) {
           throw new Error(`حالة الطلب غير صحيحة: ${status}`);
