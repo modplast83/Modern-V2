@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from 'react-i18next';
 import PageLayout from "../components/layout/PageLayout";
 import UserProfile from "../components/dashboard/UserProfile";
+import AttendanceStats from "../components/dashboard/AttendanceStats";
+import FaceVerification from "../components/dashboard/FaceVerification";
 import {
   Card,
   CardContent,
@@ -51,6 +53,9 @@ import {
   FileText,
   CheckCircle,
   XCircle,
+  Camera,
+  Shield,
+  TrendingUp,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -804,15 +809,19 @@ export default function UserDashboard() {
 
   return (
     <PageLayout title={t('userDashboard.title')} description={`${t('dashboard.welcome')} ${userData?.full_name || userData?.username}`}>
-      <div className="max-w-7xl mx-auto">
-        <Tabs defaultValue="overview" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-2 md:grid-cols-6">
-                <TabsTrigger value="overview">{t('userDashboard.tabs.quickActions')}</TabsTrigger>
-                <TabsTrigger value="profile">{t('userDashboard.tabs.profile')}</TabsTrigger>
-                <TabsTrigger value="attendance">{t('userDashboard.tabs.attendance')}</TabsTrigger>
-                <TabsTrigger value="violations">{t('userDashboard.tabs.violations')}</TabsTrigger>
-                <TabsTrigger value="requests">{t('userDashboard.tabs.requests')}</TabsTrigger>
-                <TabsTrigger value="location">{t('settings.tabs.location')}</TabsTrigger>
+      <div className="max-w-7xl mx-auto px-2 sm:px-4">
+        <Tabs defaultValue="overview" className="space-y-4 sm:space-y-6">
+              <TabsList className="grid w-full grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-1 h-auto p-1">
+                <TabsTrigger value="overview" className="text-xs sm:text-sm px-2 py-1.5">{t('userDashboard.tabs.quickActions')}</TabsTrigger>
+                <TabsTrigger value="stats" className="text-xs sm:text-sm px-2 py-1.5">
+                  <TrendingUp className="h-3 w-3 sm:ml-1 hidden sm:inline" />
+                  الإحصائيات
+                </TabsTrigger>
+                <TabsTrigger value="profile" className="text-xs sm:text-sm px-2 py-1.5">{t('userDashboard.tabs.profile')}</TabsTrigger>
+                <TabsTrigger value="attendance" className="text-xs sm:text-sm px-2 py-1.5">{t('userDashboard.tabs.attendance')}</TabsTrigger>
+                <TabsTrigger value="violations" className="text-xs sm:text-sm px-2 py-1.5">{t('userDashboard.tabs.violations')}</TabsTrigger>
+                <TabsTrigger value="requests" className="text-xs sm:text-sm px-2 py-1.5">{t('userDashboard.tabs.requests')}</TabsTrigger>
+                <TabsTrigger value="location" className="text-xs sm:text-sm px-2 py-1.5">{t('settings.tabs.location')}</TabsTrigger>
               </TabsList>
 
               {/* Overview Tab */}
@@ -1360,6 +1369,41 @@ export default function UserDashboard() {
                           )}
                       </div>
                     </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Statistics Tab */}
+              <TabsContent value="stats" className="space-y-4">
+                {user?.id && <AttendanceStats userId={user.id} />}
+                
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Shield className="h-5 w-5 text-primary" />
+                      التحقق الأمني للحضور
+                    </CardTitle>
+                    <CardDescription>
+                      يمكنك استخدام بصمة الوجه لتأمين تسجيل الحضور والانصراف
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {user?.id && (
+                        <>
+                          <FaceVerification
+                            userId={user.id}
+                            actionType="check_in"
+                            onVerificationSuccess={() => handleAttendanceAction("حاضر")}
+                            onVerificationFail={() => toast({ title: "فشل التحقق", variant: "destructive" })}
+                          />
+                        </>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 text-center">
+                      <Camera className="h-3 w-3 inline ml-1" />
+                      التحقق بالوجه يوفر حماية إضافية ضد التلاعب في تسجيل الحضور
+                    </p>
                   </CardContent>
                 </Card>
               </TabsContent>

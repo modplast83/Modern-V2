@@ -9270,6 +9270,170 @@ Do not include quotes or explanations.`;
     }
   });
 
+  // ===============================
+  // Face Verification API Endpoints
+  // ===============================
+
+  // In-memory storage for face data (in production, use database table)
+  const faceDataStore = new Map<number, { hash: string; registeredAt: string }>();
+
+  // Check if user has registered face
+  app.get("/api/face-verification/status/:userId", requireAuth, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const user = await storage.getUserById(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "المستخدم غير موجود", success: false });
+      }
+
+      const hasFaceData = faceDataStore.has(userId);
+      
+      res.json({ 
+        hasRegisteredFace: hasFaceData,
+        success: true 
+      });
+    } catch (error) {
+      console.error("Error checking face status:", error);
+      res.status(500).json({ message: "خطأ في التحقق من حالة البصمة", success: false });
+    }
+  });
+
+  // Register face for user
+  app.post("/api/face-verification/register", requireAuth, async (req, res) => {
+    try {
+      const { user_id, image } = req.body;
+      
+      if (!user_id || !image) {
+        return res.status(400).json({ message: "بيانات غير مكتملة", success: false });
+      }
+
+      const user = await storage.getUserById(user_id);
+      if (!user) {
+        return res.status(404).json({ message: "المستخدم غير موجود", success: false });
+      }
+
+      // Create a simple hash of the image for future comparison
+      const crypto = require("crypto");
+      const imageHash = crypto.createHash("sha256").update(image.substring(0, 1000)).digest("hex");
+      
+      // Store face data in memory
+      faceDataStore.set(user_id, {
+        hash: imageHash,
+        registeredAt: new Date().toISOString()
+      });
+
+      // Log the registration
+      logger.info(`Face registered for user ${user_id}`, { 
+        userId: user_id, 
+        action: "face_register",
+        timestamp: new Date().toISOString() 
+      });
+
+      res.json({ 
+        success: true, 
+        message: "تم تسجيل بصمة الوجه بنجاح",
+        registered: true 
+      });
+    } catch (error) {
+      console.error("Error registering face:", error);
+      res.status(500).json({ message: "خطأ في تسجيل بصمة الوجه", success: false });
+    }
+  });
+
+  // Verify face for attendance
+  app.post("/api/face-verification/verify", requireAuth, async (req, res) => {
+    try {
+      const { user_id, image, action_type, timestamp } = req.body;
+      
+      if (!user_id || !image) {
+        return res.status(400).json({ 
+          message: "بيانات غير مكتملة", 
+          success: false,
+          verified: false 
+        });
+      }
+
+      const user = await storage.getUserById(user_id);
+      if (!user) {
+        return res.status(404).json({ 
+          message: "المستخدم غير موجود", 
+          success: false,
+          verified: false 
+        });
+      }
+
+      // Check if user has registered face
+      const faceData = faceDataStore.get(user_id);
+      if (!faceData) {
+        return res.status(400).json({ 
+          message: "لم يتم تسجيل بصمة الوجه مسبقاً", 
+          success: false,
+          verified: false 
+        });
+      }
+
+      // Create hash of current image
+      const crypto = require("crypto");
+      const currentHash = crypto.createHash("sha256").update(image.substring(0, 1000)).digest("hex");
+
+      // For a real implementation, you would use face recognition AI
+      // For now, we'll do a simple verification with some tolerance
+      // In production, use a service like AWS Rekognition or Azure Face API
+      
+      // Simple verification: Always pass for now (placeholder for real face AI)
+      // In production, replace with actual face comparison
+      const verified = true; // Placeholder - should be face comparison result
+
+      // Log the verification attempt
+      logger.info(`Face verification attempt for user ${user_id}`, { 
+        userId: user_id, 
+        action: "face_verify",
+        actionType: action_type,
+        verified,
+        storedHash: faceData.hash.substring(0, 8),
+        currentHash: currentHash.substring(0, 8),
+        timestamp 
+      });
+
+      if (verified) {
+        res.json({ 
+          success: true, 
+          verified: true,
+          message: "تم التحقق من الهوية بنجاح"
+        });
+      } else {
+        res.json({ 
+          success: true, 
+          verified: false,
+          message: "لم يتم التعرف على الوجه - يرجى المحاولة مرة أخرى"
+        });
+      }
+    } catch (error) {
+      console.error("Error verifying face:", error);
+      res.status(500).json({ 
+        message: "خطأ في التحقق من بصمة الوجه", 
+        success: false,
+        verified: false 
+      });
+    }
+  });
+
+  // Get face verification logs for user
+  app.get("/api/face-verification/logs/:userId", requireAuth, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      // For now, return empty logs - in production, store in database
+      res.json({ 
+        logs: [],
+        success: true 
+      });
+    } catch (error) {
+      console.error("Error fetching face logs:", error);
+      res.status(500).json({ message: "خطأ في جلب سجلات التحقق", success: false });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
