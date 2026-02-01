@@ -107,7 +107,7 @@ export default function MonthlyAttendanceEditor() {
   const [modifiedRecords, setModifiedRecords] = useState<Map<string, ModifiedRecord>>(new Map());
   const [hasChanges, setHasChanges] = useState(false);
 
-  const { data: usersData, isLoading: usersLoading } = useQuery<{ data: any[] }>({
+  const { data: usersData, isLoading: usersLoading } = useQuery<any[] | { data: any[] }>({
     queryKey: ["/api/users"],
   });
 
@@ -425,7 +425,7 @@ export default function MonthlyAttendanceEditor() {
     );
   };
 
-  const employees = usersData?.data || [];
+  const employees = Array.isArray(usersData) ? usersData : (usersData?.data || []);
   const records = attendanceData?.data?.records || [];
   const employee = attendanceData?.data?.employee;
   const summary = attendanceData?.data?.summary;
