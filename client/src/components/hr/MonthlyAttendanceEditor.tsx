@@ -249,85 +249,90 @@ export default function MonthlyAttendanceEditor() {
         <title>تقرير الحضور الشهري - ${escapeHtml(employee.name)}</title>
         <style>
           * { box-sizing: border-box; margin: 0; padding: 0; }
+          @page { 
+            size: A4 portrait; 
+            margin: 8mm; 
+          }
           body { 
             font-family: 'Segoe UI', Tahoma, Arial, sans-serif; 
-            padding: 20px; 
+            padding: 5px; 
             direction: rtl;
-            font-size: 12px;
-            line-height: 1.5;
+            font-size: 9px;
+            line-height: 1.2;
           }
           .header { 
             text-align: center; 
-            border-bottom: 3px solid #2563eb; 
-            padding-bottom: 15px; 
-            margin-bottom: 20px;
+            border-bottom: 2px solid #2563eb; 
+            padding-bottom: 5px; 
+            margin-bottom: 8px;
           }
-          .header h1 { color: #1e40af; font-size: 24px; margin-bottom: 5px; }
-          .header p { color: #6b7280; }
+          .header h1 { color: #1e40af; font-size: 16px; margin-bottom: 2px; }
+          .header p { color: #6b7280; font-size: 11px; }
           .employee-info {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 15px;
-            margin-bottom: 20px;
-            padding: 15px;
+            gap: 5px;
+            margin-bottom: 8px;
+            padding: 6px;
             background: #f8fafc;
-            border-radius: 8px;
+            border-radius: 4px;
             border: 1px solid #e2e8f0;
           }
           .employee-info div { text-align: center; }
-          .employee-info strong { display: block; color: #374151; font-size: 11px; }
-          .employee-info span { font-size: 14px; font-weight: 600; color: #1f2937; }
+          .employee-info strong { display: block; color: #374151; font-size: 8px; }
+          .employee-info span { font-size: 10px; font-weight: 600; color: #1f2937; }
           table { 
             width: 100%; 
             border-collapse: collapse; 
-            margin-top: 10px;
-            font-size: 11px;
+            margin-top: 5px;
+            font-size: 8px;
           }
           th, td { 
             border: 1px solid #d1d5db; 
-            padding: 8px 6px; 
+            padding: 2px 3px; 
             text-align: center; 
           }
           th { 
             background: #2563eb; 
             color: white; 
             font-weight: 600;
+            font-size: 8px;
           }
           tr:nth-child(even) { background: #f9fafb; }
-          tr:hover { background: #f3f4f6; }
           .status-present { color: #16a34a; font-weight: 600; }
           .status-absent { color: #dc2626; font-weight: 600; }
           .status-other { color: #ca8a04; font-weight: 600; }
           .summary {
             display: grid;
             grid-template-columns: repeat(6, 1fr);
-            gap: 10px;
-            margin-top: 20px;
-            padding: 15px;
+            gap: 5px;
+            margin-top: 8px;
+            padding: 6px;
             background: #f0f9ff;
-            border-radius: 8px;
+            border-radius: 4px;
             border: 1px solid #bae6fd;
           }
           .summary-item { 
             text-align: center; 
-            padding: 10px;
+            padding: 4px;
             background: white;
-            border-radius: 6px;
+            border-radius: 4px;
           }
-          .summary-item strong { display: block; font-size: 18px; color: #1e40af; }
-          .summary-item span { font-size: 10px; color: #6b7280; }
+          .summary-item strong { display: block; font-size: 12px; color: #1e40af; }
+          .summary-item span { font-size: 7px; color: #6b7280; }
           .footer {
-            margin-top: 30px;
-            padding-top: 15px;
+            margin-top: 10px;
+            padding-top: 5px;
             border-top: 1px solid #e5e7eb;
             display: flex;
             justify-content: space-between;
-            font-size: 10px;
+            font-size: 7px;
             color: #9ca3af;
           }
           @media print {
-            body { padding: 10px; }
+            body { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .no-print { display: none; }
+            table { page-break-inside: avoid; }
           }
         </style>
       </head>
