@@ -33,34 +33,14 @@ const DialogContent = React.forwardRef<
     hideCloseButton?: boolean;
   }
 >(({ className, children, hideCloseButton = false, ...props }, ref) => {
-  // Recursively check for DialogDescription in children tree
-  const hasDescendantDescription = (element: React.ReactNode): boolean => {
-    if (!React.isValidElement(element)) return false;
-
-    if (
-      element.type === DialogDescription ||
-      element.type === DialogPrimitive.Description
-    ) {
-      return true;
-    }
-
-    if (element.props?.children) {
-      const children = React.Children.toArray(element.props.children);
-      return children.some(hasDescendantDescription);
-    }
-
-    return false;
-  };
-
-  const hasDescription = React.Children.toArray(children).some(
-    hasDescendantDescription,
-  );
+  const descriptionId = React.useId();
 
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
         ref={ref}
+        aria-describedby={descriptionId}
         className={cn(
           "fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4",
           "border bg-background p-6 shadow-lg sm:rounded-lg",
@@ -73,6 +53,7 @@ const DialogContent = React.forwardRef<
         )}
         {...props}
       >
+        <span id={descriptionId} className="sr-only">نافذة حوار</span>
         {children}
         {!hideCloseButton && (
           <DialogPrimitive.Close
@@ -82,11 +63,6 @@ const DialogContent = React.forwardRef<
             <X className="h-4 w-4" />
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>
-        )}
-
-        {/* Provide fallback DialogDescription only when none exists */}
-        {!hasDescription && (
-          <DialogDescription className="sr-only">نافذة حوار</DialogDescription>
         )}
       </DialogPrimitive.Content>
     </DialogPortal>
