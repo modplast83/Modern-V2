@@ -733,6 +733,7 @@ export interface IStorage {
   // HR System - Attendance Management
   getAttendance(): Promise<Attendance[]>;
   getAttendanceById(id: number): Promise<Attendance | null>;
+  getAttendanceByUserAndDateRange(userId: number, startDate: string, endDate: string): Promise<any[]>;
   getAttendanceByDate(date: string): Promise<any[]>;
   createAttendance(attendance: InsertAttendance): Promise<Attendance>;
   updateAttendance(
@@ -10564,6 +10565,23 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error("Error getting attendance by id:", error);
       throw new Error("فشل في جلب سجل الحضور");
+    }
+  }
+
+  async getAttendanceByUserAndDateRange(userId: number, startDate: string, endDate: string): Promise<any[]> {
+    try {
+      const result = await pool.query(
+        `SELECT * FROM attendance 
+         WHERE user_id = $1 
+         AND date >= $2::date 
+         AND date <= $3::date 
+         ORDER BY date ASC`,
+        [userId, startDate, endDate]
+      );
+      return result.rows;
+    } catch (error) {
+      console.error("Error getting attendance by user and date range:", error);
+      throw new Error("فشل في جلب سجلات الحضور للموظف");
     }
   }
 

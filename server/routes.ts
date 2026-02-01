@@ -6711,6 +6711,170 @@ Do not include quotes or explanations.`;
     }
   });
 
+  // Monthly attendance editor - Get employee monthly attendance data
+  app.get("/api/attendance/monthly-editor/:userId", requireAuth, requirePermission("manage_attendance"), async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const startDate = req.query.startDate as string;
+      const endDate = req.query.endDate as string;
+
+      if (!userId || !startDate || !endDate) {
+        return res.status(400).json({ message: "معرف الموظف وتاريخ البداية والنهاية مطلوبون" });
+      }
+
+      // Get employee info
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "الموظف غير موجود" });
+      }
+
+      // Get user's role and section
+      const allRoles = await storage.getRoles();
+      const allSections = await storage.getSections();
+      const role = user.role_id ? allRoles.find(r => r.id === user.role_id) : null;
+      const section = user.section_id ? allSections.find(s => s.id === String(user.section_id)) : null;
+
+      // Generate all dates in the range
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const dates: string[] = [];
+      const dayNames = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+      
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        dates.push(d.toISOString().split('T')[0]);
+      }
+
+      // Get existing attendance records for this user in the date range
+      const attendanceRecords = await storage.getAttendanceByUserAndDateRange(userId, startDate, endDate);
+      
+      // Create a map of date -> attendance record
+      const recordMap = new Map<string, any>();
+      for (const record of attendanceRecords) {
+        const dateStr = new Date(record.date).toISOString().split('T')[0];
+        recordMap.set(dateStr, record);
+      }
+
+      // Build the records array with all dates
+      const records = dates.map(dateStr => {
+        const record = recordMap.get(dateStr);
+        const dayOfWeek = new Date(dateStr).getDay();
+        
+        return {
+          date: dateStr,
+          dayName: dayNames[dayOfWeek],
+          status: record?.status || null,
+          check_in_time: record?.check_in_time ? new Date(record.check_in_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }) : null,
+          check_out_time: record?.check_out_time ? new Date(record.check_out_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }) : null,
+          work_hours: record?.work_hours || null,
+          overtime_hours: record?.overtime_hours || null,
+          notes: record?.notes || null,
+          attendance_id: record?.id || null,
+        };
+      });
+
+      // Calculate summary
+      const summary = {
+        presentDays: records.filter(r => r.status === 'حاضر' || r.status === 'متأخر').length,
+        absentDays: records.filter(r => r.status === 'غائب').length,
+        leaveDays: records.filter(r => r.status === 'إجازة').length,
+        lateDays: records.filter(r => r.status === 'متأخر').length,
+        totalWorkHours: records.reduce((sum, r) => sum + (r.work_hours || 0), 0),
+        totalOvertimeHours: records.reduce((sum, r) => sum + (r.overtime_hours || 0), 0),
+      };
+
+      res.json({
+        success: true,
+        data: {
+          employee: {
+            id: user.id,
+            name: user.display_name_ar || user.display_name || user.username,
+            employeeNumber: user.username,
+            department: section?.name_ar || section?.name || "-",
+            position: role?.name_ar || role?.name || "-",
+          },
+          records,
+          summary,
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching monthly attendance data:", error);
+      res.status(500).json({ message: "خطأ في جلب بيانات الحضور الشهري" });
+    }
+  });
+
+  // Monthly attendance editor - Save modified records
+  app.post("/api/attendance/monthly-editor/save", requireAuth, requirePermission("manage_attendance"), async (req, res) => {
+    try {
+      const { userId, records } = req.body;
+
+      if (!userId || !records || !Array.isArray(records)) {
+        return res.status(400).json({ message: "بيانات غير صحيحة" });
+      }
+
+      let savedCount = 0;
+
+      for (const record of records) {
+        const { date, status, check_in_time, check_out_time, notes } = record;
+        
+        // Check if record exists for this user and date
+        const existingRecords = await storage.getAttendanceByUserAndDateRange(userId, date, date);
+        const existing = existingRecords[0];
+
+        // Parse times
+        let checkInTime = null;
+        let checkOutTime = null;
+        
+        if (check_in_time) {
+          const [hours, minutes] = check_in_time.split(':').map(Number);
+          checkInTime = new Date(date);
+          checkInTime.setHours(hours, minutes, 0, 0);
+        }
+        
+        if (check_out_time) {
+          const [hours, minutes] = check_out_time.split(':').map(Number);
+          checkOutTime = new Date(date);
+          checkOutTime.setHours(hours, minutes, 0, 0);
+        }
+
+        // Calculate work hours
+        let workHours = null;
+        if (checkInTime && checkOutTime) {
+          workHours = (checkOutTime.getTime() - checkInTime.getTime()) / (1000 * 60 * 60);
+          if (workHours < 0) workHours = 0;
+        }
+
+        const attendanceData = {
+          user_id: userId,
+          date: new Date(date),
+          status: status || 'غائب',
+          check_in_time: checkInTime,
+          check_out_time: checkOutTime,
+          work_hours: workHours,
+          notes: notes || null,
+        };
+
+        if (existing) {
+          // Update existing record
+          await storage.updateAttendance(existing.id, attendanceData);
+        } else {
+          // Create new record
+          await storage.createAttendance(attendanceData);
+        }
+        
+        savedCount++;
+      }
+
+      res.json({ 
+        success: true, 
+        message: `تم حفظ ${savedCount} سجل بنجاح`,
+        savedCount 
+      });
+    } catch (error) {
+      console.error("Error saving monthly attendance data:", error);
+      res.status(500).json({ message: "خطأ في حفظ بيانات الحضور" });
+    }
+  });
+
   // Record break time
   app.post("/api/attendance/:id/break", requireAuth, requirePermission("manage_attendance"), async (req, res) => {
     try {
