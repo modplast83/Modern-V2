@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from 'react-i18next';
 import { apiRequest } from "../lib/queryClient";
 import { useAuth } from "../hooks/use-auth";
 import { useToast } from "../hooks/use-toast";
-import PageLayout from "../components/layout/PageLayout";
-import { Card } from "../components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
+import { Input } from "../components/ui/input";
+import { Progress } from "../components/ui/progress";
 import {
   Table,
   TableBody,
@@ -23,13 +24,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import { Loader2, Play, Settings, BarChart3, Printer } from "lucide-react";
+import { 
+  Loader2, 
+  Play, 
+  Settings, 
+  Printer,
+  Search,
+  Package,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  Factory,
+  TrendingUp,
+  Filter,
+  RefreshCw,
+  Eye,
+  Calendar
+} from "lucide-react";
 import ProductionOrderActivationModal from "../components/production/ProductionOrderActivationModal";
 import ProductionOrderStatsCard from "../components/production/ProductionOrderStatsCard";
-import ProductionOrderFilters from "../components/production/ProductionOrderFilters";
 import ProductionOrderPrintTemplate from "../components/production/ProductionOrderPrintTemplate";
 import { toastMessages } from "../lib/toastMessages";
-import { IconWithTooltip } from "../components/ui/icon-with-tooltip";
+import { format } from "date-fns";
+import { ar } from "date-fns/locale";
 
 export default function ProductionOrdersManagement() {
   const { t } = useTranslation();
@@ -40,15 +57,11 @@ export default function ProductionOrdersManagement() {
   const [isActivationModalOpen, setIsActivationModalOpen] = useState(false);
   const [showStats, setShowStats] = useState<number | null>(null);
   const [printingProductionOrder, setPrintingProductionOrder] = useState<any>(null);
-  const [filters, setFilters] = useState({
-    status: "all",
-    customerId: "",
-    searchTerm: "",
-    dateFrom: "",
-    dateTo: "",
-  });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [showFilters, setShowFilters] = useState(false);
 
-  const { data: ordersData, isLoading: ordersLoading } = useQuery({
+  const { data: ordersData, isLoading: ordersLoading, refetch } = useQuery({
     queryKey: ["/api/production-orders/management"],
     queryFn: async () => {
       const response = await fetch("/api/production-orders/management");
@@ -101,43 +114,12 @@ export default function ProductionOrdersManagement() {
     },
     onError: (error: any) => {
       toast({
-        title: "❌ " + t('production.queues.error'),
+        title: "خطأ",
         description: error.message || toastMessages.productionOrders.errors.activation,
         variant: "destructive",
       });
     },
   });
-
-  const assignMutation = useMutation({
-    mutationFn: async ({ id, machineId, operatorId }: any) => {
-      const response = await apiRequest(`/api/production-orders/${id}/assign`, {
-        method: "PATCH",
-        body: JSON.stringify({ machineId, operatorId }),
-      });
-      return response;
-    },
-    onSuccess: (data, variables) => {
-      const orderNumber = selectedOrder?.production_order_number || `#${variables.id}`;
-      const message = toastMessages.productionOrders.assigned(orderNumber);
-      toast({
-        title: message.title,
-        description: message.description,
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/production-orders/management"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/production-queues"] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "❌ " + t('production.queues.error'),
-        description: error.message || toastMessages.productionOrders.errors.assignment,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handlePrintProductionOrder = (order: any) => {
-    setPrintingProductionOrder(order);
-  };
 
   const handleActivate = (order: any) => {
     setSelectedOrder(order);
@@ -154,271 +136,323 @@ export default function ProductionOrdersManagement() {
     }
   };
 
-  const filteredOrders = ordersData?.data?.filter((order: any) => {
-    if (filters.status !== "all" && order.status !== filters.status) {
-      return false;
-    }
+  const filteredOrders = useMemo(() => {
+    const orders = ordersData?.data || [];
+    return orders.filter((order: any) => {
+      if (statusFilter !== "all" && order.status !== statusFilter) {
+        return false;
+      }
 
-    if (filters.customerId && order.customer_id !== filters.customerId) {
-      return false;
-    }
+      if (searchTerm) {
+        const searchLower = searchTerm.toLowerCase();
+        const matchesSearch =
+          order.production_order_number?.toLowerCase().includes(searchLower) ||
+          order.order_number?.toLowerCase().includes(searchLower) ||
+          order.customer_name?.toLowerCase().includes(searchLower) ||
+          order.customer_name_ar?.toLowerCase().includes(searchLower) ||
+          order.size_caption?.toLowerCase().includes(searchLower);
+        
+        if (!matchesSearch) return false;
+      }
 
-    if (filters.searchTerm) {
-      const searchLower = filters.searchTerm.toLowerCase();
-      const matchesSearch =
-        order.production_order_number?.toLowerCase().includes(searchLower) ||
-        order.order_number?.toLowerCase().includes(searchLower) ||
-        order.customer_name?.toLowerCase().includes(searchLower) ||
-        order.customer_name_ar?.toLowerCase().includes(searchLower) ||
-        order.size_caption?.toLowerCase().includes(searchLower);
-      
-      if (!matchesSearch) return false;
-    }
+      return true;
+    });
+  }, [ordersData, statusFilter, searchTerm]);
 
-    if (filters.dateFrom) {
-      const orderDate = new Date(order.created_at);
-      const fromDate = new Date(filters.dateFrom);
-      if (orderDate < fromDate) return false;
-    }
+  const stats = useMemo(() => {
+    const orders = ordersData?.data || [];
+    const pending = orders.filter((o: any) => o.status === "pending").length;
+    const active = orders.filter((o: any) => o.status === "active" || o.status === "in_production").length;
+    const completed = orders.filter((o: any) => o.status === "completed").length;
+    const cancelled = orders.filter((o: any) => o.status === "cancelled").length;
+    const total = orders.length;
+    
+    const totalQuantity = orders.reduce((sum: number, o: any) => sum + parseFloat(o.quantity_kg || 0), 0);
+    const completedQuantity = orders
+      .filter((o: any) => o.status === "completed")
+      .reduce((sum: number, o: any) => sum + parseFloat(o.final_quantity_kg || o.quantity_kg || 0), 0);
 
-    if (filters.dateTo) {
-      const orderDate = new Date(order.created_at);
-      const toDate = new Date(filters.dateTo);
-      toDate.setHours(23, 59, 59, 999);
-      if (orderDate > toDate) return false;
-    }
+    return { pending, active, completed, cancelled, total, totalQuantity, completedQuantity };
+  }, [ordersData]);
 
-    return true;
-  }) || [];
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "pending":
-        return (
-          <Badge className="bg-yellow-100 text-yellow-800">
-            ⏳ {t('production.statuses.waiting')}
-          </Badge>
-        );
-      case "active":
-        return (
-          <Badge className="bg-green-100 text-green-800">
-            ▶️ {t('production.statuses.active')}
-          </Badge>
-        );
-      case "in_production":
-        return (
-          <Badge className="bg-blue-100 text-blue-800">
-            🔄 {t('production.statuses.in_production')}
-          </Badge>
-        );
-      case "completed":
-        return (
-          <Badge className="bg-gray-100 text-gray-800">
-            ✅ {t('production.statuses.completed')}
-          </Badge>
-        );
-      case "cancelled":
-        return (
-          <Badge className="bg-red-100 text-red-800">
-            ❌ {t('production.statuses.cancelled')}
-          </Badge>
-        );
-      default:
-        return <Badge>{status}</Badge>;
-    }
+  const getStatusConfig = (status: string) => {
+    const configs: Record<string, { icon: any; color: string; bg: string; label: string }> = {
+      pending: { icon: Clock, color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950", label: "قيد الانتظار" },
+      active: { icon: Play, color: "text-green-600", bg: "bg-green-50 dark:bg-green-950", label: "نشط" },
+      in_production: { icon: Factory, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950", label: "قيد الإنتاج" },
+      completed: { icon: CheckCircle2, color: "text-gray-600", bg: "bg-gray-50 dark:bg-gray-800", label: "مكتمل" },
+      cancelled: { icon: XCircle, color: "text-red-600", bg: "bg-red-50 dark:bg-red-950", label: "ملغي" },
+    };
+    return configs[status] || configs.pending;
   };
 
-  const getAssignmentBadges = (order: any) => {
-    const badges = [];
-    if (order.assigned_machine_id) {
-      badges.push(
-        <Badge key="machine" variant="secondary" className="mr-1">
-          🏭 {order.machine_name_ar || order.machine_name || order.assigned_machine_id}
-        </Badge>
-      );
-    }
-    if (order.assigned_operator_id) {
-      badges.push(
-        <Badge key="operator" variant="secondary">
-          👷 {order.operator_name_ar || order.operator_name || `${t('production.ordersManagement.operator')} #${order.assigned_operator_id}`}
-        </Badge>
-      );
-    }
-    return badges;
-  };
-
-  const totalStats = {
-    total: filteredOrders.length,
-    pending: filteredOrders.filter((o: any) => o.status === "pending").length,
-    active: filteredOrders.filter((o: any) => o.status === "active").length,
-    completed: filteredOrders.filter((o: any) => o.status === "completed").length,
+  const getProgressPercentage = (order: any) => {
+    const quantity = parseFloat(order.quantity_kg || 0);
+    const produced = parseFloat(order.produced_kg || 0);
+    if (quantity === 0) return 0;
+    return Math.min(100, Math.round((produced / quantity) * 100));
   };
 
   if (ordersLoading) {
     return (
-      <PageLayout title={t('production.ordersManagement.title')} description={t('production.ordersManagement.description')}>
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+          <p className="text-muted-foreground">جاري تحميل أوامر الإنتاج...</p>
         </div>
-      </PageLayout>
+      </div>
     );
   }
 
   return (
-    <PageLayout title={t('production.ordersManagement.title')} description={t('production.ordersManagement.description')}>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <Card className="p-4" data-testid="card-total-orders">
-          <div className="text-sm text-gray-600">{t('production.ordersManagement.totalOrders')}</div>
-          <div className="text-2xl font-bold" data-testid="stat-total-orders">{totalStats.total}</div>
+    <div className="space-y-6">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="border-r-4 border-r-amber-500">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">قيد الانتظار</p>
+                <p className="text-3xl font-bold text-amber-600">{stats.pending}</p>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-amber-100 dark:bg-amber-950 flex items-center justify-center">
+                <Clock className="h-6 w-6 text-amber-600" />
+              </div>
+            </div>
+          </CardContent>
         </Card>
-        <Card className="p-4" data-testid="card-pending-orders">
-          <div className="text-sm text-gray-600">{t('production.ordersManagement.pendingOrders')}</div>
-          <div className="text-2xl font-bold text-yellow-600" data-testid="stat-pending-orders">{totalStats.pending}</div>
+
+        <Card className="border-r-4 border-r-green-500">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">قيد التنفيذ</p>
+                <p className="text-3xl font-bold text-green-600">{stats.active}</p>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-950 flex items-center justify-center">
+                <Factory className="h-6 w-6 text-green-600" />
+              </div>
+            </div>
+          </CardContent>
         </Card>
-        <Card className="p-4" data-testid="card-active-orders">
-          <div className="text-sm text-gray-600">{t('production.ordersManagement.activeOrders')}</div>
-          <div className="text-2xl font-bold text-green-600" data-testid="stat-active-orders">{totalStats.active}</div>
+
+        <Card className="border-r-4 border-r-blue-500">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">مكتملة</p>
+                <p className="text-3xl font-bold text-blue-600">{stats.completed}</p>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-950 flex items-center justify-center">
+                <CheckCircle2 className="h-6 w-6 text-blue-600" />
+              </div>
+            </div>
+          </CardContent>
         </Card>
-        <Card className="p-4" data-testid="card-completed-orders">
-          <div className="text-sm text-gray-600">{t('production.ordersManagement.completedOrders')}</div>
-          <div className="text-2xl font-bold text-gray-600" data-testid="stat-completed-orders">{totalStats.completed}</div>
+
+        <Card className="border-r-4 border-r-purple-500">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">إجمالي الكمية</p>
+                <p className="text-2xl font-bold text-purple-600">{stats.totalQuantity.toLocaleString()} كجم</p>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-950 flex items-center justify-center">
+                <TrendingUp className="h-6 w-6 text-purple-600" />
+              </div>
+            </div>
+          </CardContent>
         </Card>
       </div>
 
-      <ProductionOrderFilters
-        filters={filters}
-        onFiltersChange={setFilters}
-        customers={Array.from(new Map(filteredOrders.map((o: any) => [o.customer_id, { id: o.customer_id, name_ar: o.customer_name_ar, name: o.customer_name }])).values())}
-      />
+      {/* Search and Filters */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="بحث برقم الأمر أو العميل..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pr-10"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full md:w-48">
+                <SelectValue placeholder="الحالة" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">جميع الحالات</SelectItem>
+                <SelectItem value="pending">قيد الانتظار</SelectItem>
+                <SelectItem value="active">نشط</SelectItem>
+                <SelectItem value="in_production">قيد الإنتاج</SelectItem>
+                <SelectItem value="completed">مكتمل</SelectItem>
+                <SelectItem value="cancelled">ملغي</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="icon" onClick={() => refetch()}>
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
-      <Card data-testid="card-production-orders-table">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead data-testid="header-order-number">{t('production.ordersManagement.orderNumber')}</TableHead>
-                <TableHead data-testid="header-production-order">{t('production.ordersManagement.productionOrderNumber')}</TableHead>
-                <TableHead data-testid="header-customer">{t('production.ordersManagement.customer')}</TableHead>
-                <TableHead data-testid="header-product">{t('production.ordersManagement.product')}</TableHead>
-                <TableHead className="text-center" data-testid="header-quantity">{t('production.ordersManagement.quantityKg')}</TableHead>
-                <TableHead className="text-center" data-testid="header-status">{t('production.ordersManagement.status')}</TableHead>
-                <TableHead data-testid="header-assignment">{t('production.ordersManagement.assignment')}</TableHead>
-                <TableHead className="text-center" data-testid="header-actions">{t('production.ordersManagement.actions')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredOrders.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center text-gray-500 py-8" data-testid="text-no-orders">
-                    {t('production.ordersManagement.noProductionOrders')}
-                  </TableCell>
+      {/* Orders Table */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              أوامر الإنتاج
+              <Badge variant="secondary">{filteredOrders.length}</Badge>
+            </CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="font-semibold">رقم أمر الإنتاج</TableHead>
+                  <TableHead className="font-semibold">رقم الطلب</TableHead>
+                  <TableHead className="font-semibold">العميل</TableHead>
+                  <TableHead className="font-semibold">المنتج</TableHead>
+                  <TableHead className="font-semibold text-center">الكمية</TableHead>
+                  <TableHead className="font-semibold text-center">التقدم</TableHead>
+                  <TableHead className="font-semibold text-center">الحالة</TableHead>
+                  <TableHead className="font-semibold">التعيين</TableHead>
+                  <TableHead className="font-semibold text-center">الإجراءات</TableHead>
                 </TableRow>
-              ) : (
-                filteredOrders.map((order: any) => (
-                  <TableRow key={order.id} data-testid={`row-order-${order.id}`}>
-                    <TableCell className="font-medium" data-testid={`cell-order-number-${order.id}`}>
-                      {order.order_number}
-                    </TableCell>
-                    <TableCell className="font-medium" data-testid={`cell-production-order-${order.id}`}>
-                      {order.production_order_number}
-                    </TableCell>
-                    <TableCell data-testid={`cell-customer-${order.id}`}>
-                      {order.customer_name_ar || order.customer_name}
-                    </TableCell>
-                    <TableCell data-testid={`cell-product-${order.id}`}>
-                      <div className="text-sm">
-                        {order.size_caption}
-                        {order.is_printed && (
-                          <Badge variant="outline" className="mr-1 text-xs" data-testid={`badge-printed-${order.id}`}>
-                            🎨 {t('production.ordersManagement.printed')}
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center" data-testid={`cell-quantity-${order.id}`}>
-                      <div>
-                        <div className="font-medium">{order.quantity_kg}</div>
-                        <div className="text-xs text-gray-500">
-                          {t('production.ordersManagement.finalQuantity')}: {order.final_quantity_kg}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center" data-testid={`cell-status-${order.id}`}>
-                      {getStatusBadge(order.status)}
-                    </TableCell>
-                    <TableCell data-testid={`cell-assignment-${order.id}`}>
-                      <div className="flex flex-wrap gap-1">
-                        {getAssignmentBadges(order)}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2 justify-center">
-                        {order.status === "pending" && (
-                          <Button
-                            size="sm"
-                            onClick={() => handleActivate(order)}
-                            data-testid={`button-activate-${order.id}`}
-                          >
-                            <Play className="h-4 w-4 ml-1" />
-                            {t('production.ordersManagement.activate')}
-                          </Button>
-                        )}
-                        {order.status === "active" && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedOrder(order);
-                              setIsActivationModalOpen(true);
-                            }}
-                            data-testid={`button-reassign-${order.id}`}
-                          >
-                            <Settings className="h-4 w-4 ml-1" />
-                            {t('production.ordersManagement.assign')}
-                          </Button>
-                        )}
-                        <IconWithTooltip
-                          icon={
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setShowStats(showStats === order.id ? null : order.id)}
-                              data-testid={`button-stats-${order.id}`}
-                            >
-                              <BarChart3 className="h-4 w-4" />
-                            </Button>
-                          }
-                          tooltip={t('production.ordersManagement.viewStats')}
-                        />
-                        <IconWithTooltip
-                          icon={
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handlePrintProductionOrder(order)}
-                              data-testid={`button-print-${order.id}`}
-                            >
-                              <Printer className="h-4 w-4" />
-                            </Button>
-                          }
-                          tooltip={t('production.ordersManagement.printOrder')}
-                        />
+              </TableHeader>
+              <TableBody>
+                {filteredOrders.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center py-12">
+                      <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                        <Package className="h-12 w-12 opacity-50" />
+                        <p>لا توجد أوامر إنتاج</p>
                       </div>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                ) : (
+                  filteredOrders.map((order: any) => {
+                    const statusConfig = getStatusConfig(order.status);
+                    const StatusIcon = statusConfig.icon;
+                    const progress = getProgressPercentage(order);
+                    
+                    return (
+                      <TableRow key={order.id} className="hover:bg-muted/50 transition-colors">
+                        <TableCell className="font-mono font-medium">
+                          {order.production_order_number}
+                        </TableCell>
+                        <TableCell className="font-mono text-muted-foreground">
+                          {order.order_number}
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium">{order.customer_name_ar || order.customer_name}</div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="text-sm">{order.size_caption}</div>
+                            {order.is_printed && (
+                              <Badge variant="outline" className="text-xs">
+                                مطبوع
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="space-y-1">
+                            <div className="font-semibold">{order.quantity_kg} كجم</div>
+                            <div className="text-xs text-muted-foreground">
+                              النهائي: {order.final_quantity_kg} كجم
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="w-24 mx-auto space-y-1">
+                            <Progress value={progress} className="h-2" />
+                            <div className="text-xs text-muted-foreground">{progress}%</div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge className={`${statusConfig.bg} ${statusConfig.color} border-0`}>
+                            <StatusIcon className="h-3 w-3 ml-1" />
+                            {statusConfig.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {order.assigned_machine_id && (
+                              <Badge variant="secondary" className="text-xs">
+                                <Factory className="h-3 w-3 ml-1" />
+                                {order.machine_name_ar || order.machine_name}
+                              </Badge>
+                            )}
+                            {order.assigned_operator_id && (
+                              <Badge variant="secondary" className="text-xs">
+                                👷 {order.operator_name_ar || order.operator_name}
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1 justify-center">
+                            {order.status === "pending" && (
+                              <Button
+                                size="sm"
+                                onClick={() => handleActivate(order)}
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                <Play className="h-4 w-4 ml-1" />
+                                تفعيل
+                              </Button>
+                            )}
+                            {(order.status === "active" || order.status === "in_production") && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleActivate(order)}
+                              >
+                                <Settings className="h-4 w-4 ml-1" />
+                                تعديل
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setShowStats(showStats === order.id ? null : order.id)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setPrintingProductionOrder(order)}
+                            >
+                              <Printer className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
       </Card>
 
+      {/* Stats Panel */}
       {showStats && (
-        <div className="mt-4">
+        <div className="animate-in slide-in-from-top-2 duration-200">
           <ProductionOrderStatsCard productionOrderId={showStats} />
         </div>
       )}
 
+      {/* Activation Modal */}
       <ProductionOrderActivationModal
         isOpen={isActivationModalOpen}
         onClose={() => {
@@ -431,16 +465,17 @@ export default function ProductionOrdersManagement() {
         operators={users.filter((u: any) => 
           u.role_id && ["operator", "production_worker"].includes(u.role_id)
         )}
-        isUpdating={selectedOrder?.status === "active"}
+        isUpdating={selectedOrder?.status === "active" || selectedOrder?.status === "in_production"}
       />
 
+      {/* Print Template */}
       {printingProductionOrder && (
         <PrintProductionOrderWrapper
           productionOrder={printingProductionOrder}
           onClose={() => setPrintingProductionOrder(null)}
         />
       )}
-    </PageLayout>
+    </div>
   );
 }
 
