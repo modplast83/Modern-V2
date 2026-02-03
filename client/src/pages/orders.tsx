@@ -12,13 +12,10 @@ import { OrdersStats, OrdersTabs, OrderPrintTemplate, RollsTab } from "../compon
 import ViewOrderDialog from "../components/orders/ViewOrderDialog";
 import { Skeleton } from "../components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { Search, ClipboardCheck, Link2, BarChart3, Package } from "lucide-react";
+import { ClipboardCheck, Package } from "lucide-react";
 
 // استيراد كسول للصفحات
-const RollSearch = lazy(() => import("./RollSearch"));
 const ProductionOrdersManagement = lazy(() => import("./ProductionOrdersManagement"));
-const ProductionQueues = lazy(() => import("./ProductionQueues"));
-const ProductionReports = lazy(() => import("./ProductionReports"));
 
 export default function Orders() {
   const { t } = useTranslation();
@@ -748,7 +745,7 @@ export default function Orders() {
 
       {/* التبويبات الرئيسية */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6" dir="rtl">
-        <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
           <TabsTrigger value="orders" data-testid="tab-orders">
             {t('navigation.orders')}
           </TabsTrigger>
@@ -759,18 +756,6 @@ export default function Orders() {
           <TabsTrigger value="rolls" data-testid="tab-rolls">
             <Package className="h-4 w-4 ml-2" />
             <span>{t('navigation.rolls')}</span>
-          </TabsTrigger>
-          <TabsTrigger value="production-queues" data-testid="tab-production-queues">
-            <Link2 className="h-4 w-4 ml-2" />
-            <span>{t('navigation.productionOrders')}</span>
-          </TabsTrigger>
-          <TabsTrigger value="roll-search" data-testid="tab-roll-search">
-            <Search className="h-4 w-4 ml-2" />
-            <span>{t('navigation.rollTracking')}</span>
-          </TabsTrigger>
-          <TabsTrigger value="production-reports" data-testid="tab-production-reports">
-            <BarChart3 className="h-4 w-4 ml-2" />
-            <span>{t('navigation.productionReports')}</span>
           </TabsTrigger>
         </TabsList>
 
@@ -835,32 +820,6 @@ export default function Orders() {
           />
         </TabsContent>
 
-        {/* محتوى طوابير الإنتاج */}
-        <TabsContent value="production-queues">
-          <Suspense fallback={<LoadingFallback />}>
-            <div className="embedded-page-wrapper">
-              <ProductionQueues />
-            </div>
-          </Suspense>
-        </TabsContent>
-
-        {/* محتوى البحث عن الرولات */}
-        <TabsContent value="roll-search">
-          <Suspense fallback={<LoadingFallback />}>
-            <div className="embedded-page-wrapper">
-              <RollSearch />
-            </div>
-          </Suspense>
-        </TabsContent>
-
-        {/* محتوى تقارير الإنتاج */}
-        <TabsContent value="production-reports">
-          <Suspense fallback={<LoadingFallback />}>
-            <div className="embedded-page-wrapper">
-              <ProductionReports />
-            </div>
-          </Suspense>
-        </TabsContent>
       </Tabs>
 
       {/* View Order Dialog */}
