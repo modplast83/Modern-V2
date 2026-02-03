@@ -42,11 +42,13 @@ window.addEventListener("unhandledrejection", (event) => {
 });
 
 // Render app with providers
+console.log("[Main] Starting app render...");
 const container = document.getElementById("root");
 if (!container) {
   throw new Error("Root element with id 'root' not found");
 }
 
+console.log("[Main] Container found, rendering...");
 createRoot(container).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>

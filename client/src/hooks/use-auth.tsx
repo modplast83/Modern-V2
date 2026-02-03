@@ -30,14 +30,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Check for current user session via API - secure server-side validation only
     const checkAuth = async () => {
+      console.log("[Auth] Starting auth check...");
       try {
         // Security improvement: Only validate against server, no localStorage usage
         const response = await fetch("/api/me", {
           credentials: "include", // Include cookies for session validation
         });
 
+        console.log("[Auth] Response status:", response.status);
+
         if (response.ok) {
           const data = await response.json();
+          console.log("[Auth] Response data:", data);
           if (data.success && data.user) {
             setUser(data.user);
           } else {
@@ -46,14 +50,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } else {
           // No active session on server or authentication failed
+          console.log("[Auth] Not authenticated");
           setUser(null);
         }
       } catch (error) {
-        console.warn("Error checking auth session:", error);
+        console.warn("[Auth] Error checking auth session:", error);
         // Security improvement: Don't preserve auth state on network errors
         // This ensures users must re-authenticate if server is unreachable
         setUser(null);
       }
+      console.log("[Auth] Setting isLoading to false");
       setIsLoading(false);
     };
 
