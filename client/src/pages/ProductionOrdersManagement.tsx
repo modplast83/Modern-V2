@@ -1,9 +1,7 @@
-import { useState, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useMemo, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from 'react-i18next';
-import { apiRequest } from "../lib/queryClient";
 import { useAuth } from "../hooks/use-auth";
-import { useToast } from "../hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
@@ -26,8 +24,6 @@ import {
 } from "../components/ui/select";
 import { 
   Loader2, 
-  Play, 
-  Settings, 
   Printer,
   Search,
   Package,
@@ -39,22 +35,16 @@ import {
   Filter,
   RefreshCw,
   Eye,
-  Calendar
+  Calendar,
+  Play
 } from "lucide-react";
-import ProductionOrderActivationModal from "../components/production/ProductionOrderActivationModal";
 import ProductionOrderStatsCard from "../components/production/ProductionOrderStatsCard";
-import ProductionOrderPrintTemplate from "../components/production/ProductionOrderPrintTemplate";
-import { toastMessages } from "../lib/toastMessages";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
 
 export default function ProductionOrdersManagement() {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [selectedOrder, setSelectedOrder] = useState<any>(null);
-  const [isActivationModalOpen, setIsActivationModalOpen] = useState(false);
   const [showStats, setShowStats] = useState<number | null>(null);
   const [printingProductionOrder, setPrintingProductionOrder] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -72,69 +62,6 @@ export default function ProductionOrdersManagement() {
       return response.json();
     },
   });
-
-  const { data: machines = [] } = useQuery({
-    queryKey: ["/api/machines"],
-    queryFn: async () => {
-      const response = await fetch("/api/machines");
-      if (!response.ok) throw new Error("Failed to fetch machines");
-      return response.json();
-    },
-  });
-
-  const { data: users = [] } = useQuery({
-    queryKey: ["/api/users"],
-    queryFn: async () => {
-      const response = await fetch("/api/users");
-      if (!response.ok) throw new Error("Failed to fetch users");
-      const result = await response.json();
-      return result.data || result;
-    },
-  });
-
-  const activateMutation = useMutation({
-    mutationFn: async ({ id, machineId, operatorId }: any) => {
-      const response = await apiRequest(`/api/production-orders/${id}/activate`, {
-        method: "PATCH",
-        body: JSON.stringify({ machineId, operatorId }),
-      });
-      return response;
-    },
-    onSuccess: (data, variables) => {
-      const orderNumber = selectedOrder?.production_order_number || `#${variables.id}`;
-      const message = toastMessages.productionOrders.activated(orderNumber);
-      toast({
-        title: message.title,
-        description: message.description,
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/production-orders/management"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/production-queues"] });
-      setIsActivationModalOpen(false);
-      setSelectedOrder(null);
-    },
-    onError: (error: any) => {
-      toast({
-        title: "خطأ",
-        description: error.message || toastMessages.productionOrders.errors.activation,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleActivate = (order: any) => {
-    setSelectedOrder(order);
-    setIsActivationModalOpen(true);
-  };
-
-  const handleActivationConfirm = (machineId?: string, operatorId?: number) => {
-    if (selectedOrder) {
-      activateMutation.mutate({
-        id: selectedOrder.id,
-        machineId,
-        operatorId,
-      });
-    }
-  };
 
   const filteredOrders = useMemo(() => {
     const orders = ordersData?.data || [];
@@ -399,30 +326,11 @@ export default function ProductionOrdersManagement() {
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1 justify-center">
-                            {order.status === "pending" && (
-                              <Button
-                                size="sm"
-                                onClick={() => handleActivate(order)}
-                                className="bg-green-600 hover:bg-green-700"
-                              >
-                                <Play className="h-4 w-4 ml-1" />
-                                تفعيل
-                              </Button>
-                            )}
-                            {(order.status === "active" || order.status === "in_production") && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleActivate(order)}
-                              >
-                                <Settings className="h-4 w-4 ml-1" />
-                                تعديل
-                              </Button>
-                            )}
                             <Button
                               size="sm"
                               variant="ghost"
                               onClick={() => setShowStats(showStats === order.id ? null : order.id)}
+                              title="عرض التفاصيل"
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
@@ -430,6 +338,7 @@ export default function ProductionOrdersManagement() {
                               size="sm"
                               variant="ghost"
                               onClick={() => setPrintingProductionOrder(order)}
+                              title="طباعة"
                             >
                               <Printer className="h-4 w-4" />
                             </Button>
@@ -452,22 +361,6 @@ export default function ProductionOrdersManagement() {
         </div>
       )}
 
-      {/* Activation Modal */}
-      <ProductionOrderActivationModal
-        isOpen={isActivationModalOpen}
-        onClose={() => {
-          setIsActivationModalOpen(false);
-          setSelectedOrder(null);
-        }}
-        onConfirm={handleActivationConfirm}
-        order={selectedOrder}
-        machines={machines}
-        operators={users.filter((u: any) => 
-          u.role_id && ["operator", "production_worker"].includes(u.role_id)
-        )}
-        isUpdating={selectedOrder?.status === "active" || selectedOrder?.status === "in_production"}
-      />
-
       {/* Print Template */}
       {printingProductionOrder && (
         <PrintProductionOrderWrapper
@@ -480,99 +373,297 @@ export default function ProductionOrdersManagement() {
 }
 
 function PrintProductionOrderWrapper({ productionOrder, onClose }: { productionOrder: any, onClose: () => void }) {
-  const { data: ordersData } = useQuery({
-    queryKey: ["/api/orders", productionOrder.order_id],
+  const { data: rollsData, isLoading: rollsLoading } = useQuery({
+    queryKey: ["/api/rolls/search"],
     queryFn: async () => {
-      const response = await fetch(`/api/orders`);
-      if (!response.ok) throw new Error("Failed to fetch orders");
-      const result = await response.json();
-      const data = result.data || result;
-      return Array.isArray(data) ? data : [];
-    },
-  });
-
-  const { data: customersData } = useQuery({
-    queryKey: ["/api/customers", { all: true }],
-    queryFn: async () => {
-      const response = await fetch("/api/customers?all=true");
-      if (!response.ok) throw new Error("Failed to fetch customers");
-      const result = await response.json();
-      return result.data || result;
-    },
-  });
-
-  const { data: customerProductsData } = useQuery({
-    queryKey: ["/api/customer-products"],
-    queryFn: async () => {
-      const response = await fetch("/api/customer-products");
-      if (!response.ok) throw new Error("Failed to fetch customer products");
-      const result = await response.json();
-      return result.data || result;
-    },
-  });
-
-  const { data: itemsData } = useQuery({
-    queryKey: ["/api/items"],
-    queryFn: async () => {
-      const response = await fetch("/api/items");
-      if (!response.ok) throw new Error("Failed to fetch items");
-      const result = await response.json();
-      return result.data || result;
-    },
-  });
-
-  const { data: machinesData } = useQuery({
-    queryKey: ["/api/machines"],
-    queryFn: async () => {
-      const response = await fetch("/api/machines");
-      if (!response.ok) throw new Error("Failed to fetch machines");
+      const response = await fetch("/api/rolls/search?q=");
+      if (!response.ok) throw new Error("Failed to fetch rolls");
       return response.json();
     },
   });
 
-  const { data: usersData } = useQuery({
-    queryKey: ["/api/users"],
-    queryFn: async () => {
-      const response = await fetch("/api/users");
-      if (!response.ok) throw new Error("Failed to fetch users");
-      const result = await response.json();
-      return result.data || result;
-    },
-  });
+  useEffect(() => {
+    if (rollsLoading || !rollsData) return;
+    
+    const rolls = rollsData.filter((r: any) => r.production_order_id === productionOrder.id);
+    
+    const getStageLabel = (stage: string) => {
+      const labels: Record<string, string> = {
+        film: "فيلم",
+        printing: "طباعة",
+        cutting: "تقطيع",
+        done: "منتهي",
+        archived: "مؤرشف"
+      };
+      return labels[stage] || stage;
+    };
 
-  const { data: rollsData } = useQuery({
-    queryKey: ["/api/rolls", productionOrder.id],
-    queryFn: async () => {
-      const response = await fetch("/api/rolls");
-      if (!response.ok) throw new Error("Failed to fetch rolls");
-      const result = await response.json();
-      const data = result.data || result;
-      return Array.isArray(data) ? data.filter((r: any) => r.production_order_id === productionOrder.id) : [];
-    },
-  });
+    const getStatusLabel = (status: string) => {
+      const labels: Record<string, string> = {
+        pending: "قيد الانتظار",
+        active: "نشط",
+        in_production: "قيد الإنتاج",
+        completed: "مكتمل",
+        cancelled: "ملغي"
+      };
+      return labels[status] || status;
+    };
 
-  if (!ordersData || !customersData || !customerProductsData || !itemsData || !machinesData || !usersData || !rollsData) {
-    return null;
+    const getStatusColor = (status: string) => {
+      const colors: Record<string, string> = {
+        pending: "#f59e0b",
+        active: "#22c55e",
+        in_production: "#3b82f6",
+        completed: "#6b7280",
+        cancelled: "#ef4444"
+      };
+      return colors[status] || "#6b7280";
+    };
+
+    const filmRolls = rolls.filter((r: any) => r.stage === "film");
+    const printingRolls = rolls.filter((r: any) => r.stage === "printing");
+    const cuttingRolls = rolls.filter((r: any) => r.stage === "cutting");
+    const doneRolls = rolls.filter((r: any) => r.stage === "done" || r.stage === "archived");
+
+    const totalWeight = rolls.reduce((sum: number, r: any) => sum + parseFloat(r.weight_kg || 0), 0);
+    const targetWeight = parseFloat(productionOrder.quantity_kg || 0);
+    const progress = targetWeight > 0 ? Math.min(100, (totalWeight / targetWeight) * 100) : 0;
+
+    const uniqueOperators = new Set<string>();
+    rolls.forEach((r: any) => {
+      if (r.created_by_name) uniqueOperators.add(r.created_by_name);
+      if (r.printed_by_name) uniqueOperators.add(r.printed_by_name);
+      if (r.cut_by_name) uniqueOperators.add(r.cut_by_name);
+    });
+
+    const uniqueMachines = new Set<string>();
+    rolls.forEach((r: any) => {
+      if (r.film_machine_name) uniqueMachines.add(`فيلم: ${r.film_machine_name}`);
+      if (r.printing_machine_name) uniqueMachines.add(`طباعة: ${r.printing_machine_name}`);
+      if (r.cutting_machine_name) uniqueMachines.add(`تقطيع: ${r.cutting_machine_name}`);
+    });
+
+    const printWindow = window.open("", "_blank", "width=900,height=700");
+    if (!printWindow) {
+      alert("يرجى السماح بالنوافذ المنبثقة");
+      onClose();
+      return;
+    }
+
+    const printHTML = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="UTF-8">
+        <title>أمر إنتاج - ${productionOrder.production_order_number}</title>
+        <style>
+          @page { size: A4; margin: 10mm; }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; background: #f5f5f5; padding: 20px; }
+          .print-container { max-width: 210mm; margin: 0 auto; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+          .header { background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%); color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+          .header-right h1 { font-size: 24px; margin-bottom: 5px; }
+          .header-right p { font-size: 12px; opacity: 0.8; }
+          .order-number { background: white; color: #1e3a5f; padding: 10px 20px; border-radius: 8px; font-size: 18px; font-weight: bold; }
+          .status-badge { display: inline-block; padding: 6px 16px; border-radius: 20px; font-size: 14px; font-weight: bold; color: white; }
+          .content { padding: 20px; }
+          .info-section { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
+          .info-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; }
+          .info-box.highlight { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-color: #f59e0b; }
+          .info-label { font-size: 11px; color: #64748b; margin-bottom: 5px; font-weight: 600; }
+          .info-value { font-size: 16px; font-weight: bold; color: #1e293b; }
+          .section-title { font-size: 16px; font-weight: bold; color: #1e3a5f; padding: 10px 15px; background: #f1f5f9; border-right: 4px solid #1e3a5f; margin: 20px 0 15px; border-radius: 0 8px 8px 0; }
+          .workflow-container { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 20px; }
+          .workflow-stage { flex: 1; text-align: center; padding: 15px; border-radius: 10px; position: relative; }
+          .workflow-stage.film { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border: 2px solid #3b82f6; }
+          .workflow-stage.printing { background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%); border: 2px solid #a855f7; }
+          .workflow-stage.cutting { background: linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%); border: 2px solid #f97316; }
+          .workflow-stage.done { background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); border: 2px solid #22c55e; }
+          .stage-icon { font-size: 28px; margin-bottom: 8px; }
+          .stage-name { font-size: 14px; font-weight: bold; color: #1e293b; margin-bottom: 5px; }
+          .stage-count { font-size: 24px; font-weight: bold; }
+          .stage-weight { font-size: 12px; color: #64748b; margin-top: 5px; }
+          .progress-bar { height: 20px; background: #e5e7eb; border-radius: 10px; overflow: hidden; margin: 15px 0; position: relative; }
+          .progress-fill { height: 100%; background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%); border-radius: 10px; transition: width 0.3s; }
+          .progress-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 12px; font-weight: bold; color: #1e293b; }
+          .rolls-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+          .rolls-table th { background: #1e3a5f; color: white; padding: 10px 8px; text-align: right; }
+          .rolls-table td { padding: 8px; border-bottom: 1px solid #e5e7eb; }
+          .rolls-table tr:nth-child(even) { background: #f8fafc; }
+          .rolls-table tr:hover { background: #f1f5f9; }
+          .stage-film { color: #3b82f6; }
+          .stage-printing { color: #a855f7; }
+          .stage-cutting { color: #f97316; }
+          .stage-done { color: #22c55e; }
+          .team-section { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 20px; }
+          .team-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; }
+          .team-box h4 { font-size: 14px; color: #1e3a5f; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+          .team-list { font-size: 13px; color: #475569; line-height: 1.8; }
+          .footer { background: #f8fafc; padding: 15px 20px; text-align: center; font-size: 11px; color: #64748b; border-top: 1px solid #e5e7eb; }
+          .print-btn { position: fixed; top: 20px; left: 20px; padding: 12px 24px; background: #1e3a5f; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+          .print-btn:hover { background: #2d5a87; }
+          @media print {
+            .print-btn { display: none; }
+            body { background: white; padding: 0; }
+            .print-container { box-shadow: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <button class="print-btn" onclick="window.print()">🖨️ طباعة</button>
+        <div class="print-container">
+          <div class="header">
+            <div class="header-right">
+              <h1>أمر إنتاج</h1>
+              <p>مصنع أكياس البلاستيك الحديث</p>
+            </div>
+            <div class="order-number">${productionOrder.production_order_number}</div>
+            <div>
+              <div class="status-badge" style="background: ${getStatusColor(productionOrder.status)}">
+                ${getStatusLabel(productionOrder.status)}
+              </div>
+            </div>
+          </div>
+          
+          <div class="content">
+            <div class="info-section">
+              <div class="info-box">
+                <div class="info-label">رقم الطلب</div>
+                <div class="info-value">${productionOrder.order_number || '-'}</div>
+              </div>
+              <div class="info-box">
+                <div class="info-label">العميل</div>
+                <div class="info-value">${productionOrder.customer_name_ar || productionOrder.customer_name || '-'}</div>
+              </div>
+              <div class="info-box">
+                <div class="info-label">المنتج</div>
+                <div class="info-value">${productionOrder.item_name_ar || productionOrder.item_name || '-'}</div>
+              </div>
+              <div class="info-box">
+                <div class="info-label">المقاس</div>
+                <div class="info-value">${productionOrder.size_caption || '-'}</div>
+              </div>
+              <div class="info-box highlight">
+                <div class="info-label">الكمية المطلوبة</div>
+                <div class="info-value">${targetWeight.toFixed(2)} كجم</div>
+              </div>
+              <div class="info-box">
+                <div class="info-label">تاريخ الإنشاء</div>
+                <div class="info-value">${productionOrder.created_at ? new Date(productionOrder.created_at).toLocaleDateString('ar-SA') : '-'}</div>
+              </div>
+            </div>
+
+            <div class="section-title">📊 سير العمل والمراحل</div>
+            <div class="workflow-container">
+              <div class="workflow-stage film">
+                <div class="stage-icon">🎬</div>
+                <div class="stage-name">مرحلة الفيلم</div>
+                <div class="stage-count stage-film">${filmRolls.length} رول</div>
+                <div class="stage-weight">${filmRolls.reduce((s: number, r: any) => s + parseFloat(r.weight_kg || 0), 0).toFixed(2)} كجم</div>
+              </div>
+              <div class="workflow-stage printing">
+                <div class="stage-icon">🖨️</div>
+                <div class="stage-name">مرحلة الطباعة</div>
+                <div class="stage-count stage-printing">${printingRolls.length} رول</div>
+                <div class="stage-weight">${printingRolls.reduce((s: number, r: any) => s + parseFloat(r.weight_kg || 0), 0).toFixed(2)} كجم</div>
+              </div>
+              <div class="workflow-stage cutting">
+                <div class="stage-icon">✂️</div>
+                <div class="stage-name">مرحلة التقطيع</div>
+                <div class="stage-count stage-cutting">${cuttingRolls.length} رول</div>
+                <div class="stage-weight">${cuttingRolls.reduce((s: number, r: any) => s + parseFloat(r.weight_kg || 0), 0).toFixed(2)} كجم</div>
+              </div>
+              <div class="workflow-stage done">
+                <div class="stage-icon">✅</div>
+                <div class="stage-name">منتهي</div>
+                <div class="stage-count stage-done">${doneRolls.length} رول</div>
+                <div class="stage-weight">${doneRolls.reduce((s: number, r: any) => s + parseFloat(r.weight_kg || 0), 0).toFixed(2)} كجم</div>
+              </div>
+            </div>
+
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: ${progress}%"></div>
+              <div class="progress-text">${progress.toFixed(1)}% (${totalWeight.toFixed(2)} / ${targetWeight.toFixed(2)} كجم)</div>
+            </div>
+
+            ${rolls.length > 0 ? `
+              <div class="section-title">📦 قائمة الرولات (${rolls.length} رول)</div>
+              <table class="rolls-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>رقم الرول</th>
+                    <th>المرحلة</th>
+                    <th>الوزن</th>
+                    <th>فيلم بواسطة</th>
+                    <th>طباعة بواسطة</th>
+                    <th>تقطيع بواسطة</th>
+                    <th>تاريخ الإنتاج</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${rolls.map((roll: any, index: number) => `
+                    <tr>
+                      <td>${index + 1}</td>
+                      <td><strong>${roll.roll_number}</strong></td>
+                      <td class="stage-${roll.stage}"><strong>${getStageLabel(roll.stage)}</strong></td>
+                      <td>${parseFloat(roll.weight_kg || 0).toFixed(2)} كجم</td>
+                      <td>${roll.created_by_name || '-'}</td>
+                      <td>${roll.printed_by_name || '-'}</td>
+                      <td>${roll.cut_by_name || '-'}</td>
+                      <td>${roll.created_at ? new Date(roll.created_at).toLocaleDateString('ar-SA') : '-'}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            ` : '<p style="text-align:center;color:#64748b;padding:20px;">لا توجد رولات حتى الآن</p>'}
+
+            <div class="team-section">
+              <div class="team-box">
+                <h4>👷 العمال المشاركين</h4>
+                <div class="team-list">
+                  ${uniqueOperators.size > 0 ? Array.from(uniqueOperators).join(' • ') : 'لا يوجد عمال مسجلين'}
+                </div>
+              </div>
+              <div class="team-box">
+                <h4>🏭 المكائن المستخدمة</h4>
+                <div class="team-list">
+                  ${uniqueMachines.size > 0 ? Array.from(uniqueMachines).join(' • ') : 'لا توجد مكائن مسجلة'}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="footer">
+            تم الطباعة في: ${new Date().toLocaleString('ar-SA')} | نظام إدارة الإنتاج
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(printHTML);
+    printWindow.document.close();
+    
+    printWindow.onload = () => {
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
+    };
+    
+    onClose();
+  }, [rollsData, rollsLoading, productionOrder, onClose]);
+
+  if (rollsLoading) {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+          <p>جاري تحميل البيانات...</p>
+        </div>
+      </div>
+    );
   }
 
-  const order = ordersData.find((o: any) => o.id === productionOrder.order_id);
-  const customer = customersData.find((c: any) => c.id === order?.customer_id);
-  const customerProduct = customerProductsData.find((cp: any) => cp.id === productionOrder.customer_product_id);
-  const item = itemsData.find((i: any) => i.id === customerProduct?.item_id);
-  const machine = machinesData.find((m: any) => m.id === productionOrder.assigned_machine_id);
-  const operator = usersData.find((u: any) => u.id === productionOrder.assigned_operator_id);
-
-  return (
-    <ProductionOrderPrintTemplate
-      productionOrder={productionOrder}
-      order={order}
-      customer={customer}
-      customerProduct={customerProduct}
-      item={item}
-      machine={machine}
-      operator={operator}
-      rolls={rollsData}
-      onClose={onClose}
-    />
-  );
+  return null;
 }
