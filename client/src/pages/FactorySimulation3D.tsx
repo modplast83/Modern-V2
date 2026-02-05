@@ -43,13 +43,14 @@ interface Machine {
 }
 
 const equipmentTemplates: Omit<Machine, 'id' | 'position'>[] = [
+  { name: 'Film Machine', nameAr: 'ماكينة فيلم (اكسترودر)', type: 'film', color: '#2563eb', size: [3, 4, 5], hasPrintingLine: false },
+  { name: 'Printing Machine', nameAr: 'ماكينة طباعة', type: 'printing', color: '#059669', size: [6, 2, 2] },
+  { name: 'Cutting Machine', nameAr: 'ماكينة قطع', type: 'cutting', color: '#f59e0b', size: [5, 1.8, 2] },
   { name: 'Mixer', nameAr: 'خلاط', type: 'mixer', color: '#dc2626', size: [2.5, 3, 2.5] },
   { name: 'Air Compressor', nameAr: 'كمبريسور هواء', type: 'compressor', color: '#0d9488', size: [2, 1.5, 1.5] },
   { name: 'Transformer', nameAr: 'محول كهربائي', type: 'transformer', color: '#7c3aed', size: [1.5, 2, 1.5] },
   { name: 'Cylinder Rack', nameAr: 'سلم سلندرات', type: 'cylinder_rack', color: '#ea580c', size: [3, 2.5, 1] },
   { name: 'Pallet', nameAr: 'طبلية', type: 'pallet', color: '#854d0e', size: [1.2, 0.15, 1] },
-  { name: 'Film Machine', nameAr: 'ماكينة فيلم', type: 'film', color: '#2563eb', size: [3, 4, 5], hasPrintingLine: false },
-  { name: 'Printing Machine', nameAr: 'ماكينة طباعة', type: 'printing', color: '#059669', size: [4, 3, 3] },
 ];
 
 const initialMachines: Machine[] = [
@@ -65,7 +66,7 @@ const initialMachines: Machine[] = [
   { id: 'printing-c', name: 'Printing C', nameAr: 'ماكينة طباعة C', type: 'printing', color: '#059669', position: [-7, 0, 10], size: [4, 3, 3] },
 ];
 
-function ProductionHall() {
+function ProductionHall({ hideRoof = false }: { hideRoof?: boolean }) {
   const width = HALL_WIDTH;
   const length = HALL_LENGTH;
   const sideHeight = HALL_SIDE_HEIGHT;
@@ -110,7 +111,7 @@ function ProductionHall() {
         <meshStandardMaterial color="#64748b" />
       </mesh>
 
-      <RoofStructure width={width} length={length} sideHeight={sideHeight} centerHeight={centerHeight} />
+      {!hideRoof && <RoofStructure width={width} length={length} sideHeight={sideHeight} centerHeight={centerHeight} />}
 
       <mesh position={[0, sideHeight + 0.05, -length/2 + 2]}>
         <boxGeometry args={[gateWidth - 0.5, 0.1, 0.1]} />
@@ -162,33 +163,34 @@ function RoofStructure({ width, length, sideHeight, centerHeight }: { width: num
   );
 }
 
-function FilmMachine({ machine, isSelected, onSelect, onDrag, onDragStart, onDragEnd }: { 
-  machine: Machine; 
-  isSelected: boolean;
-  onSelect: () => void;
-  onDrag: (newPosition: [number, number, number]) => void;
-  onDragStart: () => void;
-  onDragEnd: () => void;
-}) {
-  const groupRef = useRef<THREE.Group>(null);
+function useDraggable(
+  machine: Machine,
+  isSelected: boolean,
+  onSelect: () => void,
+  onDrag: (newPosition: [number, number, number]) => void,
+  onDragStart: () => void,
+  onDragEnd: () => void
+) {
   const [isDragging, setIsDragging] = useState(false);
   const { camera, gl } = useThree();
 
-  const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
+  const handlePointerDown = useCallback((e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation();
     onSelect();
     setIsDragging(true);
     onDragStart();
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     gl.domElement.style.cursor = 'grabbing';
-  };
+  }, [onSelect, onDragStart, gl.domElement.style]);
 
-  const handlePointerUp = () => {
+  const handlePointerUp = useCallback((e: ThreeEvent<PointerEvent>) => {
     setIsDragging(false);
     onDragEnd();
+    (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
     gl.domElement.style.cursor = 'auto';
-  };
+  }, [onDragEnd, gl.domElement.style]);
 
-  const handlePointerMove = (e: ThreeEvent<PointerEvent>) => {
+  const handlePointerMove = useCallback((e: ThreeEvent<PointerEvent>) => {
     if (!isDragging || !isSelected) return;
     e.stopPropagation();
     
@@ -210,8 +212,26 @@ function FilmMachine({ machine, isSelected, onSelect, onDrag, onDragStart, onDra
       const clampedZ = Math.max(-maxZ, Math.min(maxZ, intersectPoint.z));
       onDrag([clampedX, 0, clampedZ]);
     }
-  };
+  }, [isDragging, isSelected, camera, gl.domElement, machine.size, onDrag]);
 
+  return { handlePointerDown, handlePointerUp, handlePointerMove, isDragging };
+}
+
+function FilmMachine({ machine, isSelected, onSelect, onDrag, onDragStart, onDragEnd }: { 
+  machine: Machine; 
+  isSelected: boolean;
+  onSelect: () => void;
+  onDrag: (newPosition: [number, number, number]) => void;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+}) {
+  const groupRef = useRef<THREE.Group>(null);
+  const { handlePointerDown, handlePointerUp, handlePointerMove } = useDraggable(
+    machine, isSelected, onSelect, onDrag, onDragStart, onDragEnd
+  );
+
+  const towerHeight = 5;
+  
   return (
     <group 
       ref={groupRef}
@@ -219,55 +239,75 @@ function FilmMachine({ machine, isSelected, onSelect, onDrag, onDragStart, onDra
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerMove={handlePointerMove}
-      onPointerLeave={handlePointerUp}
     >
-      <mesh position={[0, machine.size[1]/2, 0]} castShadow>
-        <boxGeometry args={machine.size} />
+      <mesh position={[0, 0.8, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
+        <cylinderGeometry args={[0.5, 0.6, 2.5, 16]} />
         <meshStandardMaterial 
           color={machine.color} 
           emissive={isSelected ? machine.color : '#000000'}
           emissiveIntensity={isSelected ? 0.3 : 0}
-          roughness={0.4}
-          metalness={0.6}
+          roughness={0.3}
+          metalness={0.7}
         />
       </mesh>
-
-      <mesh position={[0, machine.size[1] + 1.5, 0]} castShadow>
-        <cylinderGeometry args={[0.6, 0.8, 3, 8]} />
-        <meshStandardMaterial color="#64748b" metalness={0.7} roughness={0.3} />
+      
+      <mesh position={[1.5, 0.5, 0]} castShadow>
+        <boxGeometry args={[0.8, 1, 1.2]} />
+        <meshStandardMaterial color="#374151" metalness={0.6} roughness={0.4} />
       </mesh>
       
-      <mesh position={[0, machine.size[1] + 3, 0]} castShadow>
-        <sphereGeometry args={[0.8, 16, 16]} />
-        <meshStandardMaterial color={machine.color} metalness={0.5} roughness={0.4} />
+      <mesh position={[-1.8, 0.6, 0]} castShadow>
+        <boxGeometry args={[1, 1.2, 1.4]} />
+        <meshStandardMaterial color="#1f2937" metalness={0.5} roughness={0.5} />
       </mesh>
 
-      <mesh position={[machine.size[0]/2 - 0.2, machine.size[1]/2, 0]}>
-        <boxGeometry args={[0.3, 0.5, 0.3]} />
-        <meshStandardMaterial color="#1f2937" />
+      <mesh position={[0, towerHeight / 2 + 0.5, 0.8]} castShadow>
+        <boxGeometry args={[0.3, towerHeight, 0.3]} />
+        <meshStandardMaterial color="#64748b" metalness={0.8} roughness={0.2} />
+      </mesh>
+      <mesh position={[0, towerHeight / 2 + 0.5, -0.8]} castShadow>
+        <boxGeometry args={[0.3, towerHeight, 0.3]} />
+        <meshStandardMaterial color="#64748b" metalness={0.8} roughness={0.2} />
+      </mesh>
+      
+      <mesh position={[0, towerHeight + 0.5, 0]} castShadow>
+        <boxGeometry args={[1.5, 0.4, 2]} />
+        <meshStandardMaterial color="#475569" metalness={0.7} roughness={0.3} />
+      </mesh>
+      
+      <mesh position={[0, towerHeight + 1.2, 0]} castShadow>
+        <cylinderGeometry args={[0.4, 0.4, 1.2, 16]} />
+        <meshStandardMaterial color={machine.color} metalness={0.6} roughness={0.3} />
+      </mesh>
+      
+      <mesh position={[0, towerHeight + 2.2, 0]}>
+        <sphereGeometry args={[0.5, 16, 16]} />
+        <meshStandardMaterial color="#fbbf24" emissive="#fbbf24" emissiveIntensity={0.3} />
       </mesh>
 
       {machine.hasPrintingLine && (
-        <group position={[-3, 0, 0]}>
-          <mesh position={[0, 1.5, 0]} castShadow>
-            <boxGeometry args={[2, 3, 3]} />
+        <group position={[-3.5, 0, 0]}>
+          <mesh position={[0, 1, 0]} castShadow>
+            <boxGeometry args={[2, 2, 2.5]} />
             <meshStandardMaterial color="#059669" roughness={0.5} metalness={0.4} />
           </mesh>
-          <mesh position={[1.2, 1, 0]} rotation={[0, 0, Math.PI/2]}>
-            <cylinderGeometry args={[0.2, 0.2, 0.5, 16]} />
-            <meshStandardMaterial color="#374151" metalness={0.8} />
-          </mesh>
+          {[0.6, 0, -0.6].map((z, i) => (
+            <mesh key={i} position={[1.2, 1, z]} rotation={[0, 0, Math.PI/2]}>
+              <cylinderGeometry args={[0.15, 0.15, 0.4, 16]} />
+              <meshStandardMaterial color="#1f2937" metalness={0.8} />
+            </mesh>
+          ))}
         </group>
       )}
 
       {isSelected && (
-        <mesh position={[0, 0.1, 0]} rotation={[-Math.PI/2, 0, 0]}>
-          <ringGeometry args={[Math.max(...machine.size) * 0.7, Math.max(...machine.size) * 0.8, 32]} />
+        <mesh position={[0, 0.05, 0]} rotation={[-Math.PI/2, 0, 0]}>
+          <ringGeometry args={[3, 3.3, 32]} />
           <meshBasicMaterial color="#fbbf24" transparent opacity={0.8} />
         </mesh>
       )}
 
-      <Html position={[0, machine.size[1] + 4.5, 0]} center>
+      <Html position={[0, towerHeight + 3, 0]} center>
         <div className="bg-black/80 text-white px-2 py-1 rounded text-xs whitespace-nowrap font-bold">
           {machine.name}
         </div>
@@ -285,46 +325,9 @@ function PrintingMachine({ machine, isSelected, onSelect, onDrag, onDragStart, o
   onDragEnd: () => void;
 }) {
   const groupRef = useRef<THREE.Group>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const { camera, gl } = useThree();
-
-  const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
-    e.stopPropagation();
-    onSelect();
-    setIsDragging(true);
-    onDragStart();
-    gl.domElement.style.cursor = 'grabbing';
-  };
-
-  const handlePointerUp = () => {
-    setIsDragging(false);
-    onDragEnd();
-    gl.domElement.style.cursor = 'auto';
-  };
-
-  const handlePointerMove = (e: ThreeEvent<PointerEvent>) => {
-    if (!isDragging || !isSelected) return;
-    e.stopPropagation();
-    
-    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2(
-      (e.nativeEvent.clientX / gl.domElement.clientWidth) * 2 - 1,
-      -(e.nativeEvent.clientY / gl.domElement.clientHeight) * 2 + 1
-    );
-    raycaster.setFromCamera(mouse, camera);
-    
-    const intersectPoint = new THREE.Vector3();
-    raycaster.ray.intersectPlane(plane, intersectPoint);
-    
-    if (intersectPoint) {
-      const maxX = HALL_WIDTH / 2 - machine.size[0] / 2 - 1;
-      const maxZ = HALL_LENGTH / 2 - machine.size[2] / 2 - 1;
-      const clampedX = Math.max(-maxX, Math.min(maxX, intersectPoint.x));
-      const clampedZ = Math.max(-maxZ, Math.min(maxZ, intersectPoint.z));
-      onDrag([clampedX, 0, clampedZ]);
-    }
-  };
+  const { handlePointerDown, handlePointerUp, handlePointerMove } = useDraggable(
+    machine, isSelected, onSelect, onDrag, onDragStart, onDragEnd
+  );
 
   return (
     <group 
@@ -333,10 +336,9 @@ function PrintingMachine({ machine, isSelected, onSelect, onDrag, onDragStart, o
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerMove={handlePointerMove}
-      onPointerLeave={handlePointerUp}
     >
-      <mesh position={[0, machine.size[1]/2, 0]} castShadow>
-        <boxGeometry args={machine.size} />
+      <mesh position={[0, 1, 0]} castShadow>
+        <boxGeometry args={[machine.size[0], machine.size[1], machine.size[2]]} />
         <meshStandardMaterial 
           color={machine.color} 
           emissive={isSelected ? machine.color : '#000000'}
@@ -346,21 +348,102 @@ function PrintingMachine({ machine, isSelected, onSelect, onDrag, onDragStart, o
         />
       </mesh>
 
-      {[-0.8, 0, 0.8].map((offset, i) => (
-        <mesh key={i} position={[-machine.size[0]/2 - 0.3, machine.size[1]/2, offset]} rotation={[0, 0, Math.PI/2]}>
-          <cylinderGeometry args={[0.3, 0.3, 0.5, 16]} />
-          <meshStandardMaterial color="#374151" metalness={0.8} />
+      {[-1.5, -0.5, 0.5, 1.5].map((offset, i) => (
+        <mesh key={i} position={[offset, 1.8, machine.size[2]/2 + 0.2]} rotation={[Math.PI/2, 0, 0]}>
+          <cylinderGeometry args={[0.25, 0.25, 0.4, 16]} />
+          <meshStandardMaterial color="#1f2937" metalness={0.8} />
         </mesh>
       ))}
 
-      <mesh position={[machine.size[0]/2, machine.size[1] - 0.2, 0]}>
-        <boxGeometry args={[0.4, 0.4, 1.5]} />
-        <meshStandardMaterial color="#1e40af" emissive="#1e40af" emissiveIntensity={0.2} />
+      <mesh position={[-machine.size[0]/2 - 0.6, 1, 0]}>
+        <boxGeometry args={[1, 1.5, 1.8]} />
+        <meshStandardMaterial color="#1f2937" metalness={0.6} />
+      </mesh>
+      
+      <mesh position={[machine.size[0]/2 + 0.6, 1, 0]}>
+        <boxGeometry args={[1, 1.5, 1.8]} />
+        <meshStandardMaterial color="#1f2937" metalness={0.6} />
+      </mesh>
+
+      <mesh position={[0, machine.size[1] + 0.3, 0]}>
+        <boxGeometry args={[0.8, 0.3, 0.8]} />
+        <meshStandardMaterial color="#3b82f6" emissive="#3b82f6" emissiveIntensity={0.2} />
       </mesh>
 
       {isSelected && (
-        <mesh position={[0, 0.1, 0]} rotation={[-Math.PI/2, 0, 0]}>
-          <ringGeometry args={[Math.max(...machine.size) * 0.6, Math.max(...machine.size) * 0.7, 32]} />
+        <mesh position={[0, 0.05, 0]} rotation={[-Math.PI/2, 0, 0]}>
+          <ringGeometry args={[Math.max(machine.size[0], machine.size[2]) * 0.6, Math.max(machine.size[0], machine.size[2]) * 0.7, 32]} />
+          <meshBasicMaterial color="#fbbf24" transparent opacity={0.8} />
+        </mesh>
+      )}
+
+      <Html position={[0, machine.size[1] + 1.5, 0]} center>
+        <div className="bg-black/80 text-white px-2 py-1 rounded text-xs whitespace-nowrap font-bold">
+          {machine.name}
+        </div>
+      </Html>
+    </group>
+  );
+}
+
+function CuttingMachine({ machine, isSelected, onSelect, onDrag, onDragStart, onDragEnd }: { 
+  machine: Machine; 
+  isSelected: boolean;
+  onSelect: () => void;
+  onDrag: (newPosition: [number, number, number]) => void;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+}) {
+  const groupRef = useRef<THREE.Group>(null);
+  const { handlePointerDown, handlePointerUp, handlePointerMove } = useDraggable(
+    machine, isSelected, onSelect, onDrag, onDragStart, onDragEnd
+  );
+
+  return (
+    <group 
+      ref={groupRef}
+      position={machine.position}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerMove={handlePointerMove}
+    >
+      <mesh position={[0, 0.9, 0]} castShadow>
+        <boxGeometry args={[machine.size[0], machine.size[1], machine.size[2]]} />
+        <meshStandardMaterial 
+          color={machine.color} 
+          emissive={isSelected ? machine.color : '#000000'}
+          emissiveIntensity={isSelected ? 0.3 : 0}
+          roughness={0.4}
+          metalness={0.5}
+        />
+      </mesh>
+
+      <mesh position={[-machine.size[0]/2 + 0.5, 1.5, 0]} rotation={[Math.PI/2, 0, 0]}>
+        <cylinderGeometry args={[0.4, 0.4, machine.size[2] - 0.4, 16]} />
+        <meshStandardMaterial color="#64748b" metalness={0.7} />
+      </mesh>
+      <mesh position={[machine.size[0]/2 - 0.5, 1.5, 0]} rotation={[Math.PI/2, 0, 0]}>
+        <cylinderGeometry args={[0.4, 0.4, machine.size[2] - 0.4, 16]} />
+        <meshStandardMaterial color="#64748b" metalness={0.7} />
+      </mesh>
+
+      <mesh position={[0, machine.size[1] + 0.3, 0]}>
+        <boxGeometry args={[machine.size[0] * 0.8, 0.1, 0.1]} />
+        <meshStandardMaterial color="#dc2626" emissive="#dc2626" emissiveIntensity={0.3} />
+      </mesh>
+
+      <mesh position={[-machine.size[0]/2 - 0.4, 0.8, 0]}>
+        <boxGeometry args={[0.6, 1.6, 1.2]} />
+        <meshStandardMaterial color="#1f2937" metalness={0.6} />
+      </mesh>
+      <mesh position={[machine.size[0]/2 + 0.4, 0.8, 0]}>
+        <boxGeometry args={[0.6, 1.6, 1.2]} />
+        <meshStandardMaterial color="#1f2937" metalness={0.6} />
+      </mesh>
+
+      {isSelected && (
+        <mesh position={[0, 0.05, 0]} rotation={[-Math.PI/2, 0, 0]}>
+          <ringGeometry args={[Math.max(machine.size[0], machine.size[2]) * 0.5, Math.max(machine.size[0], machine.size[2]) * 0.6, 32]} />
           <meshBasicMaterial color="#fbbf24" transparent opacity={0.8} />
         </mesh>
       )}
@@ -383,46 +466,9 @@ function MixerMachine({ machine, isSelected, onSelect, onDrag, onDragStart, onDr
   onDragEnd: () => void;
 }) {
   const groupRef = useRef<THREE.Group>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const { camera, gl } = useThree();
-
-  const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
-    e.stopPropagation();
-    onSelect();
-    setIsDragging(true);
-    onDragStart();
-    gl.domElement.style.cursor = 'grabbing';
-  };
-
-  const handlePointerUp = () => {
-    setIsDragging(false);
-    onDragEnd();
-    gl.domElement.style.cursor = 'auto';
-  };
-
-  const handlePointerMove = (e: ThreeEvent<PointerEvent>) => {
-    if (!isDragging || !isSelected) return;
-    e.stopPropagation();
-    
-    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2(
-      (e.nativeEvent.clientX / gl.domElement.clientWidth) * 2 - 1,
-      -(e.nativeEvent.clientY / gl.domElement.clientHeight) * 2 + 1
-    );
-    raycaster.setFromCamera(mouse, camera);
-    
-    const intersectPoint = new THREE.Vector3();
-    raycaster.ray.intersectPlane(plane, intersectPoint);
-    
-    if (intersectPoint) {
-      const maxX = HALL_WIDTH / 2 - machine.size[0] / 2 - 1;
-      const maxZ = HALL_LENGTH / 2 - machine.size[2] / 2 - 1;
-      const clampedX = Math.max(-maxX, Math.min(maxX, intersectPoint.x));
-      const clampedZ = Math.max(-maxZ, Math.min(maxZ, intersectPoint.z));
-      onDrag([clampedX, 0, clampedZ]);
-    }
-  };
+  const { handlePointerDown, handlePointerUp, handlePointerMove } = useDraggable(
+    machine, isSelected, onSelect, onDrag, onDragStart, onDragEnd
+  );
 
   return (
     <group 
@@ -431,7 +477,6 @@ function MixerMachine({ machine, isSelected, onSelect, onDrag, onDragStart, onDr
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerMove={handlePointerMove}
-      onPointerLeave={handlePointerUp}
     >
       <mesh position={[0, machine.size[1]/2 + 0.5, 0]} castShadow>
         <cylinderGeometry args={[machine.size[0]/2, machine.size[0]/2 * 0.8, machine.size[1], 16]} />
@@ -479,46 +524,9 @@ function GenericEquipment({ machine, isSelected, onSelect, onDrag, onDragStart, 
   onDragEnd: () => void;
 }) {
   const groupRef = useRef<THREE.Group>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const { camera, gl } = useThree();
-
-  const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
-    e.stopPropagation();
-    onSelect();
-    setIsDragging(true);
-    onDragStart();
-    gl.domElement.style.cursor = 'grabbing';
-  };
-
-  const handlePointerUp = () => {
-    setIsDragging(false);
-    onDragEnd();
-    gl.domElement.style.cursor = 'auto';
-  };
-
-  const handlePointerMove = (e: ThreeEvent<PointerEvent>) => {
-    if (!isDragging) return;
-    e.stopPropagation();
-    
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2(
-      (e.nativeEvent.offsetX / gl.domElement.clientWidth) * 2 - 1,
-      -(e.nativeEvent.offsetY / gl.domElement.clientHeight) * 2 + 1
-    );
-    raycaster.setFromCamera(mouse, camera);
-    
-    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-    const intersectPoint = new THREE.Vector3();
-    raycaster.ray.intersectPlane(plane, intersectPoint);
-    
-    if (intersectPoint) {
-      const maxX = HALL_WIDTH / 2 - machine.size[0] / 2 - 1;
-      const maxZ = HALL_LENGTH / 2 - machine.size[2] / 2 - 1;
-      const clampedX = Math.max(-maxX, Math.min(maxX, intersectPoint.x));
-      const clampedZ = Math.max(-maxZ, Math.min(maxZ, intersectPoint.z));
-      onDrag([clampedX, 0, clampedZ]);
-    }
-  };
+  const { handlePointerDown, handlePointerUp, handlePointerMove } = useDraggable(
+    machine, isSelected, onSelect, onDrag, onDragStart, onDragEnd
+  );
 
   const getEquipmentMesh = () => {
     switch (machine.type) {
@@ -621,13 +629,14 @@ function GenericEquipment({ machine, isSelected, onSelect, onDrag, onDragStart, 
   );
 }
 
-function Scene({ machines, selectedMachine, onSelectMachine, onDragMachine, onDragStart, onDragEnd }: {
+function Scene({ machines, selectedMachine, onSelectMachine, onDragMachine, onDragStart, onDragEnd, hideRoof }: {
   machines: Machine[];
   selectedMachine: string | null;
   onSelectMachine: (id: string | null) => void;
   onDragMachine: (id: string, position: [number, number, number]) => void;
   onDragStart: () => void;
   onDragEnd: () => void;
+  hideRoof: boolean;
 }) {
   return (
     <>
@@ -647,7 +656,7 @@ function Scene({ machines, selectedMachine, onSelectMachine, onDragMachine, onDr
       <pointLight position={[-5, 8, -10]} intensity={0.5} color="#fef3c7" />
       <pointLight position={[5, 8, 10]} intensity={0.5} color="#fef3c7" />
 
-      <ProductionHall />
+      <ProductionHall hideRoof={hideRoof} />
 
       {machines.map((machine) => {
         const isSelected = selectedMachine === machine.id;
@@ -665,6 +674,8 @@ function Scene({ machines, selectedMachine, onSelectMachine, onDragMachine, onDr
             return <FilmMachine key={machine.id} {...commonProps} />;
           case 'printing':
             return <PrintingMachine key={machine.id} {...commonProps} />;
+          case 'cutting':
+            return <CuttingMachine key={machine.id} {...commonProps} />;
           case 'mixer':
             return <MixerMachine key={machine.id} {...commonProps} />;
           default:
@@ -697,6 +708,7 @@ export default function FactorySimulation3D() {
   const [showEquipmentPalette, setShowEquipmentPalette] = useState(false);
   const [viewMode, setViewMode] = useState<'3d' | 'top'>('3d');
   const [isDraggingMachine, setIsDraggingMachine] = useState(false);
+  const [hideRoof, setHideRoof] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('factoryLayout');
@@ -803,6 +815,14 @@ export default function FactorySimulation3D() {
               <Layers className="h-4 w-4 ml-2" />
               من الأعلى
             </Button>
+            <Button 
+              variant={hideRoof ? 'default' : 'secondary'} 
+              size="sm" 
+              onClick={() => setHideRoof(!hideRoof)}
+            >
+              <Home className="h-4 w-4 ml-2" />
+              {hideRoof ? 'إظهار السقف' : 'إخفاء السقف'}
+            </Button>
           </div>
         </div>
 
@@ -822,6 +842,7 @@ export default function FactorySimulation3D() {
                   onDragMachine={handleDragMachine}
                   onDragStart={handleDragStart}
                   onDragEnd={handleDragEnd}
+                  hideRoof={hideRoof}
                 />
                 <CameraControls isDragging={isDraggingMachine} />
                 <Environment preset="warehouse" />
