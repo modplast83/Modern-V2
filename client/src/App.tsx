@@ -41,6 +41,7 @@ import ProductionReports from "./pages/ProductionReports";
 import SystemMonitoring from "./pages/system-monitoring";
 import AiAgent from "./pages/ai-agent";
 import AiAgentSettings from "./pages/ai-agent-settings";
+import FactorySimulation3D from "./pages/FactorySimulation3D";
 
 function AppRoutes() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -264,6 +265,12 @@ function AppRoutes() {
       <Route path="/ai-agent-settings">
         <ProtectedRoute path="/ai-agent-settings">
           <AiAgentSettings />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/factory-simulation">
+        <ProtectedRoute path="/factory-simulation">
+          <FactorySimulation3D />
         </ProtectedRoute>
       </Route>
 
