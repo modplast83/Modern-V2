@@ -34,10 +34,12 @@ interface Machine {
   id: string;
   name: string;
   nameAr: string;
+  customName?: string;
   type: 'film' | 'printing' | 'mixer' | 'cutting' | 'compressor' | 'transformer' | 'cylinder_rack' | 'pallet';
   color: string;
   position: [number, number, number];
   size: [number, number, number];
+  scale?: number;
   rotation?: number;
   hasPrintingLine?: boolean;
 }
@@ -232,10 +234,16 @@ function FilmMachine({ machine, isSelected, onSelect, onDrag, onDragStart, onDra
 
   const towerHeight = 5;
   
+  const rotationY = ((machine.rotation || 0) * Math.PI) / 180;
+  const scale = machine.scale || 1;
+  const displayName = machine.customName || machine.nameAr;
+  
   return (
     <group 
       ref={groupRef}
       position={machine.position}
+      rotation={[0, rotationY, 0]}
+      scale={[scale, scale, scale]}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerMove={handlePointerMove}
@@ -309,7 +317,7 @@ function FilmMachine({ machine, isSelected, onSelect, onDrag, onDragStart, onDra
 
       <Html position={[0, towerHeight + 3, 0]} center>
         <div className="bg-black/80 text-white px-2 py-1 rounded text-xs whitespace-nowrap font-bold">
-          {machine.name}
+          {displayName}
         </div>
       </Html>
     </group>
@@ -329,10 +337,16 @@ function PrintingMachine({ machine, isSelected, onSelect, onDrag, onDragStart, o
     machine, isSelected, onSelect, onDrag, onDragStart, onDragEnd
   );
 
+  const rotationY = ((machine.rotation || 0) * Math.PI) / 180;
+  const scale = machine.scale || 1;
+  const displayName = machine.customName || machine.nameAr;
+
   return (
     <group 
       ref={groupRef}
       position={machine.position}
+      rotation={[0, rotationY, 0]}
+      scale={[scale, scale, scale]}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerMove={handlePointerMove}
@@ -379,7 +393,7 @@ function PrintingMachine({ machine, isSelected, onSelect, onDrag, onDragStart, o
 
       <Html position={[0, machine.size[1] + 1.5, 0]} center>
         <div className="bg-black/80 text-white px-2 py-1 rounded text-xs whitespace-nowrap font-bold">
-          {machine.name}
+          {displayName}
         </div>
       </Html>
     </group>
@@ -399,10 +413,16 @@ function CuttingMachine({ machine, isSelected, onSelect, onDrag, onDragStart, on
     machine, isSelected, onSelect, onDrag, onDragStart, onDragEnd
   );
 
+  const rotationY = ((machine.rotation || 0) * Math.PI) / 180;
+  const scale = machine.scale || 1;
+  const displayName = machine.customName || machine.nameAr;
+
   return (
     <group 
       ref={groupRef}
       position={machine.position}
+      rotation={[0, rotationY, 0]}
+      scale={[scale, scale, scale]}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerMove={handlePointerMove}
@@ -450,7 +470,7 @@ function CuttingMachine({ machine, isSelected, onSelect, onDrag, onDragStart, on
 
       <Html position={[0, machine.size[1] + 1, 0]} center>
         <div className="bg-black/80 text-white px-2 py-1 rounded text-xs whitespace-nowrap font-bold">
-          {machine.name}
+          {displayName}
         </div>
       </Html>
     </group>
@@ -470,10 +490,16 @@ function MixerMachine({ machine, isSelected, onSelect, onDrag, onDragStart, onDr
     machine, isSelected, onSelect, onDrag, onDragStart, onDragEnd
   );
 
+  const rotationY = ((machine.rotation || 0) * Math.PI) / 180;
+  const scale = machine.scale || 1;
+  const displayName = machine.customName || machine.nameAr;
+
   return (
     <group 
       ref={groupRef}
       position={machine.position}
+      rotation={[0, rotationY, 0]}
+      scale={[scale, scale, scale]}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerMove={handlePointerMove}
@@ -508,7 +534,7 @@ function MixerMachine({ machine, isSelected, onSelect, onDrag, onDragStart, onDr
 
       <Html position={[0, machine.size[1] + 2, 0]} center>
         <div className="bg-black/80 text-white px-2 py-1 rounded text-xs whitespace-nowrap font-bold">
-          {machine.name}
+          {displayName}
         </div>
       </Html>
     </group>
@@ -527,6 +553,10 @@ function GenericEquipment({ machine, isSelected, onSelect, onDrag, onDragStart, 
   const { handlePointerDown, handlePointerUp, handlePointerMove } = useDraggable(
     machine, isSelected, onSelect, onDrag, onDragStart, onDragEnd
   );
+
+  const rotationY = ((machine.rotation || 0) * Math.PI) / 180;
+  const scale = machine.scale || 1;
+  const displayName = machine.customName || machine.nameAr;
 
   const getEquipmentMesh = () => {
     switch (machine.type) {
@@ -606,6 +636,8 @@ function GenericEquipment({ machine, isSelected, onSelect, onDrag, onDragStart, 
     <group 
       ref={groupRef}
       position={machine.position}
+      rotation={[0, rotationY, 0]}
+      scale={[scale, scale, scale]}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerMove={handlePointerMove}
@@ -622,7 +654,7 @@ function GenericEquipment({ machine, isSelected, onSelect, onDrag, onDragStart, 
 
       <Html position={[0, machine.size[1] + 0.5, 0]} center>
         <div className="bg-black/80 text-white px-2 py-1 rounded text-xs whitespace-nowrap font-bold">
-          {machine.nameAr}
+          {displayName}
         </div>
       </Html>
     </group>
@@ -741,6 +773,14 @@ export default function FactorySimulation3D() {
   const handleDragEnd = useCallback(() => {
     setIsDraggingMachine(false);
   }, []);
+
+  const updateMachine = useCallback((id: string, updates: Partial<Machine>) => {
+    setMachines(prev => prev.map(m => 
+      m.id === id ? { ...m, ...updates } : m
+    ));
+  }, []);
+
+  const getSelectedMachine = () => machines.find(m => m.id === selectedMachine);
 
   const deleteMachine = () => {
     if (selectedMachine) {
@@ -881,8 +921,8 @@ export default function FactorySimulation3D() {
                             style={{ backgroundColor: machine.color }}
                           />
                           <div className="flex-1">
-                            <div className="font-medium text-sm">{machine.nameAr}</div>
-                            <div className="text-xs text-gray-500">{machine.name}</div>
+                            <div className="font-medium text-sm">{machine.customName || machine.nameAr}</div>
+                            <div className="text-xs text-gray-500">{machine.customName ? machine.nameAr : machine.name}</div>
                           </div>
                           <Badge variant="outline" className="text-xs">
                             {machine.type === 'film' ? 'فيلم' : 
@@ -906,8 +946,8 @@ export default function FactorySimulation3D() {
 
                 {selectedMachineData && (
                   <div className="mt-6 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-bold">الماكينة المحددة</h4>
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-bold">خصائص المعدة</h4>
                       <Button 
                         size="sm" 
                         variant="destructive"
@@ -917,11 +957,78 @@ export default function FactorySimulation3D() {
                         حذف
                       </Button>
                     </div>
-                    <div className="text-sm space-y-1">
-                      <p><strong>الاسم:</strong> {selectedMachineData.nameAr}</p>
-                      <p><strong>النوع:</strong> {selectedMachineData.type}</p>
-                      <p><strong>الموقع X:</strong> {selectedMachineData.position[0].toFixed(1)}م</p>
-                      <p><strong>الموقع Z:</strong> {selectedMachineData.position[2].toFixed(1)}م</p>
+                    
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-xs font-medium text-gray-600 dark:text-gray-400">الاسم المخصص</label>
+                        <input
+                          type="text"
+                          className="w-full mt-1 px-2 py-1.5 text-sm border rounded bg-white dark:bg-gray-800 dark:border-gray-600"
+                          placeholder={selectedMachineData.nameAr}
+                          value={selectedMachineData.customName || ''}
+                          onChange={(e) => updateMachine(selectedMachineData.id, { customName: e.target.value })}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-medium text-gray-600 dark:text-gray-400">اللون</label>
+                        <div className="flex items-center gap-2 mt-1">
+                          <input
+                            type="color"
+                            className="w-8 h-8 rounded cursor-pointer border-0"
+                            value={selectedMachineData.color}
+                            onChange={(e) => updateMachine(selectedMachineData.id, { color: e.target.value })}
+                          />
+                          <span className="text-xs text-gray-500">{selectedMachineData.color}</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                          الدوران: {selectedMachineData.rotation || 0}°
+                        </label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="360"
+                          step="15"
+                          className="w-full mt-1"
+                          value={selectedMachineData.rotation || 0}
+                          onChange={(e) => updateMachine(selectedMachineData.id, { rotation: Number(e.target.value) })}
+                        />
+                        <div className="flex justify-between text-xs text-gray-500">
+                          <span>0°</span>
+                          <span>180°</span>
+                          <span>360°</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                          الحجم: {((selectedMachineData.scale || 1) * 100).toFixed(0)}%
+                        </label>
+                        <input
+                          type="range"
+                          min="0.5"
+                          max="2"
+                          step="0.1"
+                          className="w-full mt-1"
+                          value={selectedMachineData.scale || 1}
+                          onChange={(e) => updateMachine(selectedMachineData.id, { scale: Number(e.target.value) })}
+                        />
+                        <div className="flex justify-between text-xs text-gray-500">
+                          <span>50%</span>
+                          <span>100%</span>
+                          <span>200%</span>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-gray-200 dark:border-gray-600">
+                        <div className="text-xs text-gray-500 space-y-1">
+                          <p><strong>النوع:</strong> {selectedMachineData.nameAr}</p>
+                          <p><strong>الموقع:</strong> X: {selectedMachineData.position[0].toFixed(1)}م, Z: {selectedMachineData.position[2].toFixed(1)}م</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
