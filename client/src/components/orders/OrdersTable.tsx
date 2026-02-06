@@ -214,8 +214,7 @@ export default function OrdersTable({
               <TableHead className="text-right">المنشئ</TableHead>
               <TableHead className="text-right">التسليم</TableHead>
               <TableHead className="text-right">نسبة الإكمال</TableHead>
-              <TableHead className="text-center">الحالة</TableHead>
-              <TableHead className="text-center w-10 md:w-14">الإجراءات</TableHead>
+              <TableHead className="text-center">الإجراءات</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -366,10 +365,11 @@ export default function OrdersTable({
                   <div className="text-gray-400 text-center">-</div>
                 )}
               </TableCell>
-              <TableCell className="text-center">
-                {getStatusBadge(order.status || "pending")}
-              </TableCell>
               <TableCell>
+                <div className="flex flex-col items-center gap-1">
+                <div className="mb-1">
+                  {getStatusBadge(order.status || "pending")}
+                </div>
                 <div className="flex items-center justify-center gap-1">
                   <Button
                     variant="ghost"
@@ -492,12 +492,13 @@ export default function OrdersTable({
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
+                </div>
               </TableCell>
             </TableRow>
             {order.notes && (
               <TableRow className={`border-b ${selectedOrders.includes(order.id) ? "bg-blue-50" : "bg-gray-50/50"}`}>
                 <TableCell
-                  colSpan={onOrderSelect && onSelectAll ? 9 : 8}
+                  colSpan={onOrderSelect && onSelectAll ? 8 : 7}
                   className="py-1.5 px-4 text-right"
                   data-testid={`notes-${order.id}`}
                 >
