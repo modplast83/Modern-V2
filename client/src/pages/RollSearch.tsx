@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useTranslation } from 'react-i18next';
@@ -14,6 +14,14 @@ import { ScrollArea } from "../components/ui/scroll-area";
 import { Skeleton } from "../components/ui/skeleton";
 import { Calendar } from "../components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../components/ui/table";
 import { cn } from "../lib/utils";
 import { useToast } from "../hooks/use-toast";
 import {
@@ -31,6 +39,9 @@ import {
   QrCode,
   RefreshCw,
   Download,
+  ChevronDown,
+  ChevronLeft,
+  User,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
@@ -96,6 +107,26 @@ export default function RollSearch() {
   const [filters, setFilters] = useState<SearchFilters>({});
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const [barcodeInput, setBarcodeInput] = useState("");
+  const [collapsedOrders, setCollapsedOrders] = useState<Set<string>>(new Set());
+  const [collapsedPOs, setCollapsedPOs] = useState<Set<string>>(new Set());
+
+  const toggleOrder = (orderNumber: string) => {
+    setCollapsedOrders(prev => {
+      const next = new Set(prev);
+      if (next.has(orderNumber)) next.delete(orderNumber);
+      else next.add(orderNumber);
+      return next;
+    });
+  };
+
+  const togglePO = (poNumber: string) => {
+    setCollapsedPOs(prev => {
+      const next = new Set(prev);
+      if (next.has(poNumber)) next.delete(poNumber);
+      else next.add(poNumber);
+      return next;
+    });
+  };
 
   useEffect(() => {
     const history = localStorage.getItem("rollSearchHistory");
@@ -152,6 +183,51 @@ export default function RollSearch() {
     queryKey: ["/api/rolls/search", buildQueryParams()],
     enabled: debouncedQuery.length > 0 || Object.keys(filters).length > 0,
   });
+
+  const groupedData = useMemo(() => {
+    if (!searchResults.length) return [];
+
+    const orderMap = new Map<string, {
+      order_number: string;
+      order_id: number;
+      customer_name: string;
+      productionOrders: Map<string, {
+        production_order_number: string;
+        production_order_id: number;
+        item_name: string;
+        size_caption: string;
+        rolls: RollSearchResult[];
+      }>;
+    }>();
+
+    searchResults.forEach((roll) => {
+      if (!orderMap.has(roll.order_number)) {
+        orderMap.set(roll.order_number, {
+          order_number: roll.order_number,
+          order_id: roll.order_id,
+          customer_name: roll.customer_name_ar || roll.customer_name,
+          productionOrders: new Map(),
+        });
+      }
+      const order = orderMap.get(roll.order_number)!;
+
+      if (!order.productionOrders.has(roll.production_order_number)) {
+        order.productionOrders.set(roll.production_order_number, {
+          production_order_number: roll.production_order_number,
+          production_order_id: roll.production_order_id,
+          item_name: roll.item_name_ar || roll.item_name || "-",
+          size_caption: roll.size_caption || "-",
+          rolls: [],
+        });
+      }
+      order.productionOrders.get(roll.production_order_number)!.rolls.push(roll);
+    });
+
+    return Array.from(orderMap.values()).map(order => ({
+      ...order,
+      productionOrders: Array.from(order.productionOrders.values()),
+    }));
+  }, [searchResults]);
 
   const searchByBarcodeMutation = useMutation({
     mutationFn: async (barcode: string) => {
@@ -495,66 +571,134 @@ export default function RollSearch() {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <h3 className="font-semibold">
-                        {t('system.search.searchResults')} ({searchResults.length})
+                        {t('system.search.searchResults')} ({searchResults.length} رول)
                       </h3>
                       <Button variant="outline" size="sm" onClick={exportToExcel} data-testid="button-export">
                         <Download className="h-4 w-4 ml-2" />
                         {t('system.search.exportExcel')}
                       </Button>
                     </div>
-                    <ScrollArea className="h-[600px] pr-4">
-                      <div className="space-y-3">
-                        {searchResults.map((roll: RollSearchResult) => (
-                          <Card
-                            key={roll.roll_id}
-                            className={cn(
-                              "p-4 cursor-pointer hover:shadow-md transition-shadow",
-                              selectedRollId === roll.roll_id && "ring-2 ring-primary"
-                            )}
-                            onClick={() => setSelectedRollId(roll.roll_id)}
-                            data-testid={`card-roll-${roll.roll_id}`}
-                          >
-                            <div className="space-y-3">
-                              <div className="flex items-start justify-between">
-                                <div className="flex items-center gap-3">
-                                  <div className="p-2 bg-primary/10 rounded">
-                                    <Package className="h-5 w-5 text-primary" />
-                                  </div>
-                                  <div>
-                                    <h4 className="font-bold text-lg">{roll.roll_number}</h4>
-                                    <p className="text-sm text-muted-foreground">
-                                      {roll.customer_name_ar || roll.customer_name}
-                                    </p>
-                                  </div>
-                                </div>
-                                <Badge variant={getStageColor(roll.stage) as any}>
-                                  {getStageIcon(roll.stage)}
-                                  {getStageLabel(roll.stage)}
-                                </Badge>
+                    <ScrollArea className="h-[600px]">
+                      <div className="space-y-4">
+                        {groupedData.map((order) => (
+                          <div key={order.order_number} className="border rounded-lg overflow-hidden">
+                            <div
+                              className="flex items-center justify-between px-4 py-3 bg-slate-100 dark:bg-slate-800 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                              onClick={() => toggleOrder(order.order_number)}
+                            >
+                              <div className="flex items-center gap-3">
+                                {collapsedOrders.has(order.order_number) ? (
+                                  <ChevronLeft className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                )}
+                                <Package className="h-5 w-5 text-primary" />
+                                <span className="font-bold text-base">{order.order_number}</span>
+                                <span className="text-muted-foreground">-</span>
+                                <span className="font-medium">{order.customer_name}</span>
                               </div>
-
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                                <div>
-                                  <p className="text-muted-foreground">{t('system.search.productionOrder')}</p>
-                                  <p className="font-medium">{roll.production_order_number}</p>
-                                </div>
-                                <div>
-                                  <p className="text-muted-foreground">{t('system.search.orderNumber')}</p>
-                                  <p className="font-medium">{roll.order_number}</p>
-                                </div>
-                                <div>
-                                  <p className="text-muted-foreground">{t('system.search.weight')}</p>
-                                  <p className="font-medium">{roll.weight_kg} {t('common.kg')}</p>
-                                </div>
-                                <div>
-                                  <p className="text-muted-foreground">{t('system.search.createdAt')}</p>
-                                  <p className="font-medium">
-                                    {format(new Date(roll.created_at), "yyyy-MM-dd", { locale: ar })}
-                                  </p>
-                                </div>
-                              </div>
+                              <Badge variant="secondary">
+                                {order.productionOrders.reduce((sum, po) => sum + po.rolls.length, 0)} رول
+                              </Badge>
                             </div>
-                          </Card>
+
+                            {!collapsedOrders.has(order.order_number) && (
+                              <div className="divide-y">
+                                {order.productionOrders.map((po) => (
+                                  <div key={po.production_order_number}>
+                                    <div
+                                      className="flex items-center justify-between px-6 py-2 bg-blue-50/50 dark:bg-blue-900/20 cursor-pointer hover:bg-blue-100/50 dark:hover:bg-blue-900/30 transition-colors"
+                                      onClick={() => togglePO(po.production_order_number)}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        {collapsedPOs.has(po.production_order_number) ? (
+                                          <ChevronLeft className="h-3.5 w-3.5 text-muted-foreground" />
+                                        ) : (
+                                          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                                        )}
+                                        <span className="font-semibold text-sm text-blue-700 dark:text-blue-400">{po.production_order_number}</span>
+                                        <span className="text-muted-foreground text-sm">|</span>
+                                        <span className="text-sm">{po.item_name}</span>
+                                        <span className="text-xs text-muted-foreground">({po.size_caption})</span>
+                                      </div>
+                                      <Badge variant="outline" className="text-xs">
+                                        {po.rolls.length} رول
+                                      </Badge>
+                                    </div>
+
+                                    {!collapsedPOs.has(po.production_order_number) && (
+                                      <Table>
+                                        <TableHeader>
+                                          <TableRow className="bg-gray-50/50 dark:bg-gray-800/50">
+                                            <TableHead className="text-right text-xs font-semibold">رقم الرول</TableHead>
+                                            <TableHead className="text-right text-xs font-semibold">المرحلة</TableHead>
+                                            <TableHead className="text-right text-xs font-semibold">المنتج</TableHead>
+                                            <TableHead className="text-right text-xs font-semibold">الوزن</TableHead>
+                                            <TableHead className="text-right text-xs font-semibold">فيلم بواسطة</TableHead>
+                                            <TableHead className="text-right text-xs font-semibold">طبع بواسطة</TableHead>
+                                            <TableHead className="text-right text-xs font-semibold">قطع بواسطة</TableHead>
+                                          </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                          {po.rolls.map((roll) => (
+                                            <TableRow
+                                              key={roll.roll_id}
+                                              className={cn(
+                                                "cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors",
+                                                selectedRollId === roll.roll_id && "bg-blue-100 dark:bg-blue-900/30"
+                                              )}
+                                              onClick={() => setSelectedRollId(roll.roll_id)}
+                                              data-testid={`row-roll-${roll.roll_id}`}
+                                            >
+                                              <TableCell className="font-medium text-sm">{roll.roll_number}</TableCell>
+                                              <TableCell>
+                                                <Badge variant={getStageColor(roll.stage) as any} className="text-xs">
+                                                  {getStageIcon(roll.stage)}
+                                                  <span className="mr-1">{getStageLabel(roll.stage)}</span>
+                                                </Badge>
+                                              </TableCell>
+                                              <TableCell className="text-sm">{roll.item_name_ar || roll.item_name || "-"}</TableCell>
+                                              <TableCell className="text-sm font-medium">{roll.weight_kg} كجم</TableCell>
+                                              <TableCell className="text-sm">
+                                                <div className="flex items-center gap-1 text-muted-foreground">
+                                                  {roll.created_by_name ? (
+                                                    <>
+                                                      <User className="h-3 w-3" />
+                                                      <span>{roll.created_by_name}</span>
+                                                    </>
+                                                  ) : "-"}
+                                                </div>
+                                              </TableCell>
+                                              <TableCell className="text-sm">
+                                                <div className="flex items-center gap-1 text-muted-foreground">
+                                                  {roll.printed_by_name ? (
+                                                    <>
+                                                      <User className="h-3 w-3" />
+                                                      <span>{roll.printed_by_name}</span>
+                                                    </>
+                                                  ) : "-"}
+                                                </div>
+                                              </TableCell>
+                                              <TableCell className="text-sm">
+                                                <div className="flex items-center gap-1 text-muted-foreground">
+                                                  {roll.cut_by_name ? (
+                                                    <>
+                                                      <User className="h-3 w-3" />
+                                                      <span>{roll.cut_by_name}</span>
+                                                    </>
+                                                  ) : "-"}
+                                                </div>
+                                              </TableCell>
+                                            </TableRow>
+                                          ))}
+                                        </TableBody>
+                                      </Table>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         ))}
                       </div>
                     </ScrollArea>
