@@ -1,3 +1,4 @@
+import React from "react";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
@@ -213,7 +214,6 @@ export default function OrdersTable({
               <TableHead className="text-right">المنشئ</TableHead>
               <TableHead className="text-right">التسليم</TableHead>
               <TableHead className="text-right">نسبة الإكمال</TableHead>
-              <TableHead className="text-right">ملاحظات</TableHead>
               <TableHead className="text-center">الحالة</TableHead>
               <TableHead className="text-center w-10 md:w-14">الإجراءات</TableHead>
             </TableRow>
@@ -286,8 +286,8 @@ export default function OrdersTable({
           }
 
           return (
+            <React.Fragment key={order.id}>
             <TableRow
-              key={order.id}
               data-testid={`order-row-${order.id}`}
               className={selectedOrders.includes(order.id) ? "bg-blue-50" : ""}
             >
@@ -365,9 +365,6 @@ export default function OrdersTable({
                 ) : (
                   <div className="text-gray-400 text-center">-</div>
                 )}
-              </TableCell>
-              <TableCell data-testid={`notes-${order.id}`}>
-                {order.notes || "-"}
               </TableCell>
               <TableCell className="text-center">
                 {getStatusBadge(order.status || "pending")}
@@ -497,6 +494,19 @@ export default function OrdersTable({
                 </div>
               </TableCell>
             </TableRow>
+            {order.notes && (
+              <TableRow className={`border-b ${selectedOrders.includes(order.id) ? "bg-blue-50" : "bg-gray-50/50"}`}>
+                <TableCell
+                  colSpan={onOrderSelect && onSelectAll ? 9 : 8}
+                  className="py-1.5 px-4 text-right"
+                  data-testid={`notes-${order.id}`}
+                >
+                  <span className="text-xs text-muted-foreground font-medium ml-2">ملاحظات:</span>
+                  <span className="text-sm text-gray-700">{order.notes}</span>
+                </TableCell>
+              </TableRow>
+            )}
+            </React.Fragment>
           );
         })}
         </TableBody>
