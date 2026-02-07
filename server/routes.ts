@@ -8051,6 +8051,26 @@ Do not include quotes or explanations.`;
     }
   });
 
+  // Get machine detail across all stages
+  app.get("/api/production/machine-detail/:machineId", requireAuth, async (req, res) => {
+    try {
+      const machineId = parseInt(req.params.machineId);
+      if (isNaN(machineId)) {
+        return res.status(400).json({ message: "معرف الماكينة غير صحيح" });
+      }
+      const dateFrom = req.query.dateFrom as string;
+      const dateTo = req.query.dateTo as string;
+      const detail = await storage.getMachineDetailAllStages(machineId, dateFrom, dateTo);
+      if (!detail) {
+        return res.status(404).json({ message: "الماكينة غير موجودة" });
+      }
+      res.json({ data: detail });
+    } catch (error: any) {
+      console.error("Error fetching machine detail:", error);
+      res.status(500).json({ message: "خطأ في جلب تفاصيل الماكينة", error: error.message });
+    }
+  });
+
   // Get rolls tracking by section
   app.get("/api/production/rolls-tracking/:section", requireAuth, async (req, res) => {
     try {

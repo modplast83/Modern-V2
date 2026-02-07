@@ -577,6 +577,7 @@ export interface IStorage {
   getProductionStatsBySection(section: string, dateFrom?: string, dateTo?: string): Promise<any>;
   getUsersPerformanceBySection(section: string, dateFrom?: string, dateTo?: string): Promise<any[]>;
   getMachinesProductionBySection(section: string, dateFrom?: string, dateTo?: string): Promise<any[]>;
+  getMachineDetailAllStages(machineId: number, dateFrom?: string, dateTo?: string): Promise<any>;
   getRollsBySection(section: string, search?: string): Promise<any[]>;
   getProductionOrdersBySection(section: string, search?: string): Promise<any[]>;
 
@@ -5525,7 +5526,7 @@ export class DatabaseStorage implements IStorage {
             last_production: sql<Date>`MAX(${dateCol})`,
           })
           .from(machines)
-          .leftJoin(rolls, and(
+          .innerJoin(rolls, and(
             eq(machines.id, machineCol),
             dateFilter,
             stageFilter,
@@ -5533,12 +5534,75 @@ export class DatabaseStorage implements IStorage {
           ))
           .where(sql`${machines.section_id} = ${sectionId}`)
           .groupBy(machines.id, machines.name, machines.name_ar)
+          .having(sql`COUNT(DISTINCT ${rolls.id}) > 0`)
           .orderBy(sql`SUM(${weightCol}) DESC`);
 
         return machinesProduction;
       },
       "getMachinesProductionBySection",
       `إنتاج مكائن قسم ${section}`,
+    );
+  }
+
+  async getMachineDetailAllStages(
+    machineId: number,
+    dateFrom?: string,
+    dateTo?: string,
+  ): Promise<any> {
+    return await withDatabaseErrorHandling(
+      async () => {
+        const machineIdStr = String(machineId);
+        const machineInfo = await db.select().from(machines).where(sql`${machines.id} = ${machineIdStr}`).limit(1);
+        if (!machineInfo.length) return null;
+
+        const stages = ['film', 'printing', 'cutting'] as const;
+        const stageResults: any = {};
+
+        for (const stage of stages) {
+          const machineCol = stage === 'cutting' ? rolls.cutting_machine_id
+            : stage === 'printing' ? rolls.printing_machine_id
+            : rolls.film_machine_id;
+
+          const dateCol = stage === 'cutting' ? rolls.cut_completed_at
+            : stage === 'printing' ? rolls.printed_at
+            : rolls.created_at;
+
+          const weightCol = stage === 'cutting'
+            ? sql`COALESCE(${rolls.cut_weight_total_kg}, 0)`
+            : sql`COALESCE(${rolls.weight_kg}, 0)`;
+
+          const dateFilter = dateFrom && dateTo
+            ? sql`DATE(${dateCol}) BETWEEN ${dateFrom} AND ${dateTo}`
+            : sql`DATE(${dateCol}) >= CURRENT_DATE - INTERVAL '30 days'`;
+
+          const stageData = await db
+            .select({
+              total_production_kg: sql<number>`COALESCE(SUM(${weightCol}), 0)`,
+              rolls_count: sql<number>`COUNT(DISTINCT ${rolls.id})`,
+              last_production: sql<Date>`MAX(${dateCol})`,
+            })
+            .from(rolls)
+            .where(and(
+              sql`${machineCol} = ${machineIdStr}`,
+              dateFilter,
+              sql`${dateCol} IS NOT NULL`
+            ));
+
+          stageResults[stage] = stageData[0] || { total_production_kg: 0, rolls_count: 0, last_production: null };
+        }
+
+        return {
+          machine: {
+            id: machineInfo[0].id,
+            name: machineInfo[0].name,
+            name_ar: machineInfo[0].name_ar,
+            section_id: machineInfo[0].section_id,
+          },
+          stages: stageResults,
+        };
+      },
+      "getMachineDetailAllStages",
+      `تفاصيل ماكينة ${machineId}`,
     );
   }
 

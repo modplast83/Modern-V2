@@ -39,6 +39,12 @@ import {
   Cell,
 } from "recharts";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "../components/ui/dialog";
+import {
   Film,
   Printer,
   Scissors,
@@ -55,6 +61,7 @@ import {
   AlertCircle,
   BarChart3,
   FileText,
+  Eye,
 } from "lucide-react";
 
 const COLORS = {
@@ -409,6 +416,8 @@ export default function ProductionMonitoring() {
                 color={COLORS.film}
                 formatNumber={formatNumber}
                 formatWeight={formatWeight}
+                dateFrom={dateFrom}
+                dateTo={dateTo}
               />
             </TabsContent>
 
@@ -430,6 +439,8 @@ export default function ProductionMonitoring() {
                 color={COLORS.printing}
                 formatNumber={formatNumber}
                 formatWeight={formatWeight}
+                dateFrom={dateFrom}
+                dateTo={dateTo}
               />
             </TabsContent>
 
@@ -451,12 +462,34 @@ export default function ProductionMonitoring() {
                 color={COLORS.cutting}
                 formatNumber={formatNumber}
                 formatWeight={formatWeight}
+                dateFrom={dateFrom}
+                dateTo={dateTo}
               />
             </TabsContent>
           </Tabs>
       </div>
     </PageLayout>
   );
+}
+
+interface MachineStageDetail {
+  total_production_kg: number;
+  rolls_count: number;
+  last_production: string | null;
+}
+
+interface MachineDetailData {
+  machine: {
+    id: string;
+    name: string;
+    name_ar: string;
+    section_id: string;
+  };
+  stages: {
+    film: MachineStageDetail;
+    printing: MachineStageDetail;
+    cutting: MachineStageDetail;
+  };
 }
 
 // Section Content Component
@@ -476,6 +509,8 @@ interface SectionContentProps {
   color: string;
   formatNumber: (num: number) => string;
   formatWeight: (kg: number) => string;
+  dateFrom: string;
+  dateTo: string;
 }
 
 function SectionContent({
@@ -494,8 +529,77 @@ function SectionContent({
   color,
   formatNumber,
   formatWeight,
+  dateFrom,
+  dateTo,
 }: SectionContentProps) {
   const { t } = useTranslation();
+  const [selectedMachineId, setSelectedMachineId] = useState<string | null>(null);
+  const [showMachineDetail, setShowMachineDetail] = useState(false);
+
+  const machineDetailQueryKey = selectedMachineId
+    ? `/api/production/machine-detail/${selectedMachineId}?dateFrom=${dateFrom || ''}&dateTo=${dateTo || ''}`
+    : '';
+
+  const { data: machineDetailData, isLoading: machineDetailLoading } = useQuery<{ data: MachineDetailData }>({
+    queryKey: [machineDetailQueryKey],
+    enabled: !!selectedMachineId && showMachineDetail,
+  });
+
+  const handleViewMachineDetail = (machineId: string) => {
+    setSelectedMachineId(machineId);
+    setShowMachineDetail(true);
+  };
+
+  const handlePrintMachineReport = (machine: MachineProduction) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    const stageLabel = section === 'film' ? 'الفيلم' : section === 'printing' ? 'الطباعة' : 'القص';
+    printWindow.document.write(`
+      <html dir="rtl">
+      <head>
+        <title>تقرير إنتاج ماكينة - ${machine.machine_name}</title>
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; padding: 40px; direction: rtl; }
+          h1 { color: #1f2937; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; }
+          h2 { color: #374151; margin-top: 20px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+          th, td { border: 1px solid #d1d5db; padding: 10px 12px; text-align: right; }
+          th { background-color: #f3f4f6; font-weight: 600; }
+          .info-row { display: flex; justify-content: space-between; margin: 8px 0; }
+          .label { color: #6b7280; }
+          .value { font-weight: 600; }
+          .footer { margin-top: 30px; text-align: center; color: #9ca3af; font-size: 12px; }
+          @media print { body { padding: 20px; } }
+        </style>
+      </head>
+      <body>
+        <h1>تقرير إنتاج الماكينة</h1>
+        <div class="info-row"><span class="label">اسم الماكينة:</span><span class="value">${machine.machine_name}</span></div>
+        <div class="info-row"><span class="label">القسم:</span><span class="value">${stageLabel}</span></div>
+        <div class="info-row"><span class="label">الفترة:</span><span class="value">${dateFrom || 'آخر 7 أيام'} - ${dateTo || 'اليوم'}</span></div>
+        <div class="info-row"><span class="label">تاريخ التقرير:</span><span class="value">${new Date().toLocaleString('ar-EG')}</span></div>
+        <h2>ملخص الإنتاج</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>البيان</th>
+              <th>القيمة</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>الإنتاج الكلي</td><td>${Number(machine.total_production_kg).toFixed(2)} كجم</td></tr>
+            <tr><td>عدد الرولات</td><td>${machine.rolls_produced}</td></tr>
+            <tr><td>نسبة التشغيل</td><td>${Number(machine.utilization_percent).toFixed(1)}%</td></tr>
+            <tr><td>آخر إنتاج</td><td>${machine.last_production ? new Date(machine.last_production).toLocaleString('ar-EG') : '-'}</td></tr>
+          </tbody>
+        </table>
+        <div class="footer">تم إنشاء التقرير تلقائياً من نظام إدارة الإنتاج</div>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  };
   // Filter rolls and orders by search
   const filteredRolls = rolls.filter(roll =>
     (roll.roll_number || '').toLowerCase().includes(searchRoll.toLowerCase()) ||
@@ -700,6 +804,7 @@ function SectionContent({
                   <TableHead className="text-right">عدد الرولات</TableHead>
                   <TableHead className="text-right">نسبة التشغيل</TableHead>
                   <TableHead className="text-right">آخر إنتاج</TableHead>
+                  <TableHead className="text-right">إجراءات</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -711,21 +816,123 @@ function SectionContent({
                       <TableCell>{formatNumber(machine.rolls_produced)}</TableCell>
                       <TableCell><Progress value={machine.utilization_percent} className="w-20" /><span className="text-sm ml-2">{formatNumber(machine.utilization_percent)}%</span></TableCell>
                       <TableCell className="text-sm text-gray-500">{machine.last_production ? new Date(machine.last_production).toLocaleString('ar-EG') : '-'}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePrintMachineReport(machine)}
+                            title="طباعة تقرير الإنتاج"
+                          >
+                            <Printer className="w-4 h-4 ml-1" />
+                            طباعة
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewMachineDetail(machine.machine_id)}
+                            title="عرض بيانات الماكينة لكل المراحل"
+                          >
+                            <Eye className="w-4 h-4 ml-1" />
+                            عرض
+                          </Button>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))
                 ) : (
-                  <TableRow><TableCell colSpan={5} className="text-center text-gray-500 py-8">لا توجد بيانات</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center text-gray-500 py-8">لا توجد بيانات</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
           </div>
           <div className="md:hidden space-y-2">
             {machines.map((machine) => (
-              <div key={machine.machine_id} className="bg-gray-50 p-3 rounded border text-sm"><div className="font-medium">{machine.machine_name}</div><div className="grid grid-cols-2 gap-2 mt-2"><span>الإنتاج: <strong>{formatWeight(machine.total_production_kg)}</strong></span><span>رولات: <strong>{formatNumber(machine.rolls_produced)}</strong></span></div><div className="mt-2">التشغيل: <Progress value={machine.utilization_percent} /><span className="text-xs">{formatNumber(machine.utilization_percent)}%</span></div></div>
+              <div key={machine.machine_id} className="bg-gray-50 p-3 rounded border text-sm">
+                <div className="font-medium">{machine.machine_name}</div>
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  <span>الإنتاج: <strong>{formatWeight(machine.total_production_kg)}</strong></span>
+                  <span>رولات: <strong>{formatNumber(machine.rolls_produced)}</strong></span>
+                </div>
+                <div className="mt-2">التشغيل: <Progress value={machine.utilization_percent} /><span className="text-xs">{formatNumber(machine.utilization_percent)}%</span></div>
+                <div className="flex items-center gap-2 mt-3">
+                  <Button variant="outline" size="sm" className="flex-1" onClick={() => handlePrintMachineReport(machine)}>
+                    <Printer className="w-3 h-3 ml-1" />
+                    طباعة التقرير
+                  </Button>
+                  <Button variant="outline" size="sm" className="flex-1" onClick={() => handleViewMachineDetail(machine.machine_id)}>
+                    <Eye className="w-3 h-3 ml-1" />
+                    عرض البيانات
+                  </Button>
+                </div>
+              </div>
             ))}
           </div>
         </CardContent>
       </Card>
+
+      {/* Machine Detail Dialog */}
+      <Dialog open={showMachineDetail} onOpenChange={setShowMachineDetail}>
+        <DialogContent className="max-w-2xl" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Activity className="w-5 h-5" />
+              بيانات الماكينة - جميع المراحل
+            </DialogTitle>
+          </DialogHeader>
+          {machineDetailLoading ? (
+            <div className="text-center py-8 text-gray-500">جاري تحميل البيانات...</div>
+          ) : machineDetailData?.data ? (
+            <div className="space-y-4">
+              <div className="bg-gray-50 p-4 rounded-lg border">
+                <h3 className="font-bold text-lg mb-1">
+                  {machineDetailData.data.machine?.name_ar || machineDetailData.data.machine?.name || '-'}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  القسم: {machineDetailData.data.machine?.section_id === 'SEC03' ? 'الفيلم' : machineDetailData.data.machine?.section_id === 'SEC04' ? 'الطباعة' : machineDetailData.data.machine?.section_id === 'SEC05' ? 'القص' : machineDetailData.data.machine?.section_id || '-'}
+                </p>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-right">المرحلة</TableHead>
+                    <TableHead className="text-right">الإنتاج (كجم)</TableHead>
+                    <TableHead className="text-right">عدد الرولات</TableHead>
+                    <TableHead className="text-right">آخر إنتاج</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {[
+                    { key: 'film', label: 'الفيلم (الإكستروجن)', icon: <Film className="w-4 h-4 inline ml-1" />, color: 'text-blue-600' },
+                    { key: 'printing', label: 'الطباعة', icon: <Printer className="w-4 h-4 inline ml-1" />, color: 'text-green-600' },
+                    { key: 'cutting', label: 'القص', icon: <Scissors className="w-4 h-4 inline ml-1" />, color: 'text-amber-600' },
+                  ].map((stage) => {
+                    const data = machineDetailData.data.stages?.[stage.key as keyof typeof machineDetailData.data.stages] || { total_production_kg: 0, rolls_count: 0, last_production: null };
+                    return (
+                      <TableRow key={stage.key}>
+                        <TableCell className={`font-medium ${stage.color}`}>
+                          {stage.icon}
+                          {stage.label}
+                        </TableCell>
+                        <TableCell>{formatWeight(data.total_production_kg)}</TableCell>
+                        <TableCell>{formatNumber(data.rolls_count)}</TableCell>
+                        <TableCell className="text-sm text-gray-500">
+                          {data.last_production ? new Date(data.last_production).toLocaleString('ar-EG') : '-'}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+              <div className="bg-blue-50 p-3 rounded border border-blue-200 text-sm text-blue-800">
+                الفترة: {dateFrom || 'آخر 30 يوم'} - {dateTo || 'اليوم'}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">لا توجد بيانات</div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Rolls Tracking - Mobile Responsive */}
       <Card>
