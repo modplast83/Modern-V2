@@ -3,6 +3,7 @@ import { Canvas, useThree, ThreeEvent } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, Environment, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import Header from '../components/layout/Header';
 import Sidebar from '../components/layout/Sidebar';
 import MobileShell from '../components/layout/MobileShell';
@@ -1080,6 +1081,7 @@ export default function FactorySimulation3D() {
   const [demoMode, setDemoMode] = useState(false);
   const [showMachineStats, setShowMachineStats] = useState(false);
   const [selectedMachineForStats, setSelectedMachineForStats] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   // Time-lapse state
   const [timelapseMode, setTimelapseMode] = useState(false);
@@ -1386,7 +1388,7 @@ export default function FactorySimulation3D() {
 
   const saveLayout = () => {
     localStorage.setItem('factoryLayout', JSON.stringify(machines));
-    alert('تم حفظ التخطيط بنجاح!');
+    alert(t('factory3d.layoutSaved'));
   };
 
   const selectedMachineData = machines.find(m => m.id === selectedMachine);
@@ -1403,8 +1405,8 @@ export default function FactorySimulation3D() {
           <div className="flex items-center gap-3">
             <Factory className="h-8 w-8" />
             <div>
-              <h1 className="text-2xl font-bold">محاكاة صالة الإنتاج 3D</h1>
-              <p className="text-blue-100 text-sm">اسحب المكائن لإعادة ترتيبها</p>
+              <h1 className="text-2xl font-bold">{t('factory3d.simulationTitle')}</h1>
+              <p className="text-blue-100 text-sm">{t('factory3d.description')}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -1438,17 +1440,17 @@ export default function FactorySimulation3D() {
               onClick={() => setHideRoof(!hideRoof)}
             >
               <Home className="h-4 w-4 ml-2" />
-              {hideRoof ? 'إظهار السقف' : 'إخفاء السقف'}
+              {hideRoof ? t('factory3d.showRoof') : t('factory3d.hideRoof')}
             </Button>
             {timelapseMode ? (
               <Button variant="destructive" size="sm" onClick={exitTimelapse}>
                 <X className="h-4 w-4 ml-2" />
-                خروج من التشغيل الزمني
+                {t('factory3d.exitTimelapse')}
               </Button>
             ) : (
               <Button variant="secondary" size="sm" onClick={() => setShowTimelapsePicker(true)}>
                 <History className="h-4 w-4 ml-2" />
-                تشغيل زمني
+                {t('factory3d.timelapse')}
               </Button>
             )}
           </div>
@@ -1517,9 +1519,9 @@ export default function FactorySimulation3D() {
                             <div className="text-xs text-gray-500">{machine.customName ? machine.nameAr : machine.name}</div>
                           </div>
                           <Badge variant="outline" className="text-xs">
-                            {machine.type === 'film' ? 'فيلم' : 
-                             machine.type === 'printing' ? 'طباعة' : 
-                             machine.type === 'mixer' ? 'خلاط' : 'قص'}
+                            {machine.type === 'film' ? t('factory3d.film') : 
+                             machine.type === 'printing' ? t('factory3d.printing') : 
+                             machine.type === 'mixer' ? t('factory3d.mixer') : t('factory3d.cutting')}
                           </Badge>
                         </div>
                       </CardContent>
@@ -1533,26 +1535,26 @@ export default function FactorySimulation3D() {
                   onClick={() => setShowEquipmentPalette(true)}
                 >
                   <Plus className="h-4 w-4 ml-2" />
-                  إضافة معدات
+                  {t('factory3d.addEquipment')}
                 </Button>
 
                 {selectedMachineData && (
                   <div className="mt-6 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-bold">خصائص المعدة</h4>
+                      <h4 className="font-bold">{t('factory3d.machineDetails')}</h4>
                       <Button 
                         size="sm" 
                         variant="destructive"
                         onClick={deleteMachine}
                       >
                         <Trash2 className="h-4 w-4 ml-1" />
-                        حذف
+                        {t('factory3d.deleteMachine')}
                       </Button>
                     </div>
                     
                     <div className="space-y-3">
                       <div>
-                        <label className="text-xs font-medium text-gray-600 dark:text-gray-400">الاسم المخصص</label>
+                        <label className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('factory3d.machineName')}</label>
                         <input
                           type="text"
                           className="w-full mt-1 px-2 py-1.5 text-sm border rounded bg-white dark:bg-gray-800 dark:border-gray-600"
@@ -1563,7 +1565,7 @@ export default function FactorySimulation3D() {
                       </div>
 
                       <div>
-                        <label className="text-xs font-medium text-gray-600 dark:text-gray-400">اللون</label>
+                        <label className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('factory3d.color')}</label>
                         <div className="flex items-center gap-2 mt-1">
                           <input
                             type="color"
@@ -1616,13 +1618,13 @@ export default function FactorySimulation3D() {
                       </div>
 
                       <div>
-                        <label className="text-xs font-medium text-gray-600 dark:text-gray-400">ربط بماكينة حقيقية</label>
+                        <label className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('factory3d.linkedMachine')}</label>
                         <select
                           className="w-full mt-1 px-2 py-1.5 text-sm border rounded bg-white dark:bg-gray-800 dark:border-gray-600"
                           value={selectedMachineData.linkedMachineId || ''}
                           onChange={(e) => updateMachine(selectedMachineData.id, { linkedMachineId: e.target.value || undefined })}
                         >
-                          <option value="">-- بدون ربط --</option>
+                          <option value="">{t('factory3d.selectMachine')}</option>
                           {realMachines.map((m: any) => (
                             <option key={m.id} value={m.id}>
                               {m.name_ar || m.name} ({m.id})
@@ -1642,16 +1644,16 @@ export default function FactorySimulation3D() {
                           }}
                         >
                           <Activity className="h-4 w-4 ml-2" />
-                          عرض بيانات الإنتاج
+                          {t('factory3d.viewStats')}
                         </Button>
                       )}
 
                       <div className="pt-2 border-t border-gray-200 dark:border-gray-600">
                         <div className="text-xs text-gray-500 space-y-1">
-                          <p><strong>النوع:</strong> {selectedMachineData.nameAr}</p>
-                          <p><strong>الموقع:</strong> X: {selectedMachineData.position[0].toFixed(1)}م, Z: {selectedMachineData.position[2].toFixed(1)}م</p>
+                          <p><strong>{t('factory3d.type')}:</strong> {selectedMachineData.nameAr}</p>
+                          <p><strong>{t('factory3d.position')}:</strong> X: {selectedMachineData.position[0].toFixed(1)}, Z: {selectedMachineData.position[2].toFixed(1)}</p>
                           {selectedMachineData.linkedMachineId && (
-                            <p className="text-green-600"><strong>مرتبطة:</strong> {selectedMachineData.linkedMachineId}</p>
+                            <p className="text-green-600"><strong>{t('factory3d.linked')}:</strong> {selectedMachineData.linkedMachineId}</p>
                           )}
                         </div>
                       </div>
@@ -1676,7 +1678,7 @@ export default function FactorySimulation3D() {
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50">
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-lg">إضافة معدات جديدة</h3>
+                  <h3 className="font-bold text-lg">{t('factory3d.equipmentPalette')}</h3>
                   <Button 
                     size="icon" 
                     variant="ghost"
@@ -1735,7 +1737,7 @@ export default function FactorySimulation3D() {
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <History className="h-4 w-4 text-purple-400" />
-                    <span className="text-purple-300 font-medium text-sm">وضع التشغيل الزمني</span>
+                    <span className="text-purple-300 font-medium text-sm">{t('factory3d.timelapse')}</span>
                   </div>
                   <div className="text-center">
                     <div className="text-lg font-bold">
@@ -1748,10 +1750,10 @@ export default function FactorySimulation3D() {
                   <div className="flex items-center gap-3 text-sm">
                     <Badge variant="secondary" className="flex items-center gap-1">
                       <Package className="h-3 w-3" />
-                      {timelapseRolls.size} رول
+                      {timelapseRolls.size} {t('factory3d.roll')}
                     </Badge>
                     <Badge variant="outline" className="text-white border-white/30">
-                      {currentEventIndex + 1} / {historyEvents.length} حدث
+                      {currentEventIndex + 1} / {historyEvents.length} {t('factory3d.events')}
                     </Badge>
                   </div>
                 </div>
@@ -1812,7 +1814,7 @@ export default function FactorySimulation3D() {
                 <div className="absolute top-4 right-4 w-56 bg-black/70 rounded-lg p-3 text-white">
                   <div className="flex items-center gap-2 mb-2">
                     <Activity className="h-3 w-3 text-purple-400" />
-                    <span className="text-xs font-medium text-purple-300">سجل الأحداث</span>
+                    <span className="text-xs font-medium text-purple-300">{t('factory3d.events')}</span>
                   </div>
                   <ScrollArea className="h-48">
                     <div className="space-y-1">
@@ -1833,15 +1835,15 @@ export default function FactorySimulation3D() {
               <div className="flex items-center gap-2">
                 <Badge variant="secondary" className="flex items-center gap-1 bg-blue-600/80 text-white">
                   <Activity className="h-3 w-3" />
-                  فيلم: {displayRolls.filter(r => r.stage === 'film').length}
+                  {t('factory3d.film')}: {displayRolls.filter(r => r.stage === 'film').length}
                 </Badge>
                 <Badge variant="secondary" className="flex items-center gap-1 bg-green-600/80 text-white">
                   <Printer className="h-3 w-3" />
-                  طباعة: {displayRolls.filter(r => r.stage === 'printing').length}
+                  {t('factory3d.printing')}: {displayRolls.filter(r => r.stage === 'printing').length}
                 </Badge>
                 <Badge variant="secondary" className="flex items-center gap-1 bg-orange-600/80 text-white">
                   <Scissors className="h-3 w-3" />
-                  قطع: {cuttingBundles.length} حزمة ({displayRolls.filter(r => r.stage === 'cutting').length} رول)
+                  {t('factory3d.cutting')}: {cuttingBundles.length} {t('factory3d.bundle')} ({displayRolls.filter(r => r.stage === 'cutting').length} {t('factory3d.roll')})
                 </Badge>
               </div>
               <div className="w-px h-5 bg-white/30" />
@@ -1852,7 +1854,7 @@ export default function FactorySimulation3D() {
                 onClick={() => setDemoMode(!demoMode)}
               >
                 <Eye className="h-3 w-3 ml-1" />
-                {demoMode ? 'وضع العرض' : 'عرض تجريبي'}
+                {demoMode ? t('factory3d.demoModeActive') : t('factory3d.demoMode')}
               </Button>
               <Button size="sm" variant="ghost" className="text-white hover:text-white/80 h-7" onClick={() => refetchRolls()}>
                 <RefreshCw className="h-3 w-3" />
@@ -1867,7 +1869,7 @@ export default function FactorySimulation3D() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Package className="h-5 w-5" />
-                تفاصيل الرول
+                {t('factory3d.rollDetails')}
               </DialogTitle>
             </DialogHeader>
             {selectedRoll && (
@@ -1885,23 +1887,23 @@ export default function FactorySimulation3D() {
                 
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded">
-                    <div className="text-gray-500">أمر الإنتاج</div>
+                    <div className="text-gray-500">{t('factory3d.productionOrder')}</div>
                     <div className="font-medium">{selectedRoll.production_order_number}</div>
                   </div>
                   <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded">
-                    <div className="text-gray-500">الوزن</div>
-                    <div className="font-medium">{parseFloat(selectedRoll.weight_kg).toFixed(2)} كجم</div>
+                    <div className="text-gray-500">{t('factory3d.weight')}</div>
+                    <div className="font-medium">{parseFloat(selectedRoll.weight_kg).toFixed(2)} {t('factory3d.kg')}</div>
                   </div>
                   <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded">
-                    <div className="text-gray-500">العميل</div>
+                    <div className="text-gray-500">{t('factory3d.customer')}</div>
                     <div className="font-medium">{selectedRoll.customer_name}</div>
                   </div>
                   <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded">
-                    <div className="text-gray-500">المرحلة</div>
+                    <div className="text-gray-500">{t('factory3d.stage')}</div>
                     <div className="font-medium flex items-center gap-1">
-                      {selectedRoll.stage === 'film' && <><Activity className="h-4 w-4 text-blue-500" /> فيلم</>}
-                      {selectedRoll.stage === 'printing' && <><Printer className="h-4 w-4 text-green-500" /> طباعة</>}
-                      {selectedRoll.stage === 'cutting' && <><Scissors className="h-4 w-4 text-orange-500" /> قطع</>}
+                      {selectedRoll.stage === 'film' && <><Activity className="h-4 w-4 text-blue-500" /> {t('factory3d.film')}</>}
+                      {selectedRoll.stage === 'printing' && <><Printer className="h-4 w-4 text-green-500" /> {t('factory3d.printing')}</>}
+                      {selectedRoll.stage === 'cutting' && <><Scissors className="h-4 w-4 text-orange-500" /> {t('factory3d.cutting')}</>}
                     </div>
                   </div>
                 </div>
@@ -1909,12 +1911,12 @@ export default function FactorySimulation3D() {
                 <div className="text-xs text-gray-500 space-y-1">
                   <div className="flex items-center gap-2">
                     <Clock className="h-3 w-3" />
-                    تم الإنشاء: {new Date(selectedRoll.created_at).toLocaleString('ar-SA')}
+                    {t('factory3d.created')}: {new Date(selectedRoll.created_at).toLocaleString('ar-SA')}
                   </div>
                   {selectedRoll.printed_at && (
                     <div className="flex items-center gap-2 text-green-600">
                       <Printer className="h-3 w-3" />
-                      تمت الطباعة: {new Date(selectedRoll.printed_at).toLocaleString('ar-SA')}
+                      {t('factory3d.printedAt')}: {new Date(selectedRoll.printed_at).toLocaleString('ar-SA')}
                     </div>
                   )}
                 </div>
@@ -1928,7 +1930,7 @@ export default function FactorySimulation3D() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Scissors className="h-5 w-5 text-orange-500" />
-                تفاصيل الحزمة - مرحلة القطع
+                {t('factory3d.bundleDetails')}
               </DialogTitle>
             </DialogHeader>
             {selectedBundle && (
@@ -1947,33 +1949,33 @@ export default function FactorySimulation3D() {
                 
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded">
-                    <div className="text-gray-500">عدد الرولات</div>
+                    <div className="text-gray-500">{t('factory3d.rollCount')}</div>
                     <div className="font-medium text-lg">{selectedBundle.roll_count}</div>
                   </div>
                   <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded">
-                    <div className="text-gray-500">الوزن الإجمالي</div>
-                    <div className="font-medium text-lg">{selectedBundle.total_weight_kg.toFixed(2)} كجم</div>
+                    <div className="text-gray-500">{t('factory3d.totalWeight')}</div>
+                    <div className="font-medium text-lg">{selectedBundle.total_weight_kg.toFixed(2)} {t('factory3d.kg')}</div>
                   </div>
                   <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded">
-                    <div className="text-gray-500">اللون</div>
+                    <div className="text-gray-500">{t('factory3d.color')}</div>
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 rounded-full" style={{ backgroundColor: selectedBundle.roll_color }} />
                       <span className="font-medium">{selectedBundle.color_name}</span>
                     </div>
                   </div>
                   <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded">
-                    <div className="text-gray-500">ماكينة القطع</div>
-                    <div className="font-medium">{selectedBundle.cutting_machine_id || 'غير محدد'}</div>
+                    <div className="text-gray-500">{t('factory3d.cuttingMachine')}</div>
+                    <div className="font-medium">{selectedBundle.cutting_machine_id || t('factory3d.unspecified')}</div>
                   </div>
                 </div>
 
                 <div className="border-t pt-3">
-                  <div className="text-sm text-gray-500 mb-2">الرولات في الحزمة:</div>
+                  <div className="text-sm text-gray-500 mb-2">{t('factory3d.rollsInBundle')}</div>
                   <div className="space-y-1 max-h-40 overflow-y-auto">
                     {selectedBundle.rolls.map(roll => (
                       <div key={roll.id} className="flex justify-between text-sm bg-gray-50 dark:bg-gray-700 p-2 rounded">
                         <span className="font-medium">{roll.roll_number}</span>
-                        <span className="text-gray-500">{parseFloat(roll.cut_weight_total_kg || roll.weight_kg).toFixed(2)} كجم</span>
+                        <span className="text-gray-500">{parseFloat(roll.cut_weight_total_kg || roll.weight_kg).toFixed(2)} {t('factory3d.kg')}</span>
                       </div>
                     ))}
                   </div>
@@ -1988,7 +1990,7 @@ export default function FactorySimulation3D() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Activity className="h-5 w-5" />
-                إحصائيات الماكينة
+                {t('factory3d.machineStats')}
               </DialogTitle>
             </DialogHeader>
             {machineStats && (
@@ -2003,20 +2005,20 @@ export default function FactorySimulation3D() {
                 <div className="grid grid-cols-3 gap-3 text-center">
                   <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded">
                     <div className="text-2xl font-bold text-blue-600">{machineStats.todayStats?.rolls_count || 0}</div>
-                    <div className="text-xs text-gray-500">رولات اليوم</div>
+                    <div className="text-xs text-gray-500">{t('factory3d.totalRolls')}</div>
                   </div>
                   <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded">
                     <div className="text-2xl font-bold text-green-600">{parseFloat(machineStats.todayStats?.total_weight_kg || '0').toFixed(1)}</div>
-                    <div className="text-xs text-gray-500">كجم اليوم</div>
+                    <div className="text-xs text-gray-500">{t('factory3d.kg')} {t('factory3d.todayProduction')}</div>
                   </div>
                   <div className="bg-orange-50 dark:bg-orange-900/20 p-3 rounded">
                     <div className="text-2xl font-bold text-orange-600">{machineStats.todayStats?.completed_rolls || 0}</div>
-                    <div className="text-xs text-gray-500">مكتمل</div>
+                    <div className="text-xs text-gray-500">{t('factory3d.completedRolls')}</div>
                   </div>
                 </div>
 
                 <div>
-                  <h5 className="font-medium mb-2">آخر الرولات</h5>
+                  <h5 className="font-medium mb-2">{t('factory3d.recentRolls')}</h5>
                   <ScrollArea className="h-48">
                     <div className="space-y-2">
                       {machineStats.recentRolls?.map((roll: any) => (
@@ -2030,7 +2032,7 @@ export default function FactorySimulation3D() {
                             <div className="text-xs text-gray-500">{roll.production_order_number}</div>
                           </div>
                           <Badge variant="outline" className="text-xs">
-                            {parseFloat(roll.weight_kg).toFixed(1)} كجم
+                            {parseFloat(roll.weight_kg).toFixed(1)} {t('factory3d.kg')}
                           </Badge>
                         </div>
                       ))}
@@ -2047,7 +2049,7 @@ export default function FactorySimulation3D() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <History className="h-5 w-5 text-purple-600" />
-                إعادة التشغيل الزمني
+                {t('factory3d.timelapse')}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
@@ -2093,7 +2095,7 @@ export default function FactorySimulation3D() {
                     setTimelapseEndDate(d.toISOString().split('T')[0]);
                   }}
                 >
-                  اليوم
+                  {t('factory3d.today')}
                 </Button>
                 <Button
                   variant="outline"
@@ -2120,13 +2122,13 @@ export default function FactorySimulation3D() {
                     setTimelapseEndDate(end.toISOString().split('T')[0]);
                   }}
                 >
-                  آخر 7 أيام
+                  {t('factory3d.thisWeek')}
                 </Button>
               </div>
 
               <Button className="w-full bg-purple-600 hover:bg-purple-700" onClick={startTimelapse}>
                 <Play className="h-4 w-4 ml-2" />
-                بدء التشغيل الزمني
+                {t('factory3d.loadHistory')}
               </Button>
             </div>
           </DialogContent>
