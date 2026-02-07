@@ -7691,7 +7691,7 @@ Do not include quotes or explanations.`;
     try {
       const authReq = req as AuthRequest;
       const rollId = parseInt(req.params.id);
-      const { net_weight } = req.body;
+      const { net_weight, cutting_machine_id } = req.body;
       
       if (!net_weight || net_weight <= 0) {
         return res.status(400).json({ 
@@ -7700,7 +7700,7 @@ Do not include quotes or explanations.`;
       }
 
       const operatorId = authReq.user?.id!;
-      const result = await storage.completeCutting(rollId, net_weight, operatorId);
+      const result = await storage.completeCutting(rollId, net_weight, operatorId, cutting_machine_id);
       
       res.json({
         ...result,

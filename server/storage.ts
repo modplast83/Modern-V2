@@ -952,7 +952,7 @@ export interface IStorage {
       averageWastePercentage: number;
     };
   }>;
-  completeCutting(rollId: number, netWeight: number, operatorId: number): Promise<{
+  completeCutting(rollId: number, netWeight: number, operatorId: number, cuttingMachineId?: string): Promise<{
     roll: Roll;
     production_order: ProductionOrder;
     waste_percentage: number;
@@ -9799,7 +9799,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async completeCutting(rollId: number, netWeight: number, operatorId: number): Promise<{
+  async completeCutting(rollId: number, netWeight: number, operatorId: number, cuttingMachineId?: string): Promise<{
     roll: Roll;
     production_order: ProductionOrder;
     waste_percentage: number;
@@ -9837,15 +9837,19 @@ export class DatabaseStorage implements IStorage {
         const wastePercentage = (wasteWeight / grossWeight) * 100;
 
         // تحديث الرول
-        const [updatedRoll] = await tx
-          .update(rolls)
-          .set({
+        const rollUpdateData: any = {
             stage: "done",
             cut_weight_total_kg: numberToDecimalString(netWeight),
             waste_kg: numberToDecimalString(wasteWeight),
             cut_completed_at: new Date(),
             cut_by: operatorId,
-          })
+        };
+        if (cuttingMachineId) {
+          rollUpdateData.cutting_machine_id = cuttingMachineId;
+        }
+        const [updatedRoll] = await tx
+          .update(rolls)
+          .set(rollUpdateData)
           .where(eq(rolls.id, rollId))
           .returning();
 

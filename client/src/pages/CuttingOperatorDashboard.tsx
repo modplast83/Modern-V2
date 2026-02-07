@@ -9,6 +9,7 @@ import { Badge } from "../components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { formatNumberAr } from "../../../shared/number-utils";
 import { apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "../hooks/use-toast";
@@ -18,7 +19,8 @@ import {
   CheckCircle2,
   Loader2,
   Info,
-  Weight
+  Weight,
+  AlertCircle
 } from "lucide-react";
 
 interface RollDetails {
@@ -46,6 +48,14 @@ interface ProductionOrderWithRolls {
   punching?: string;
 }
 
+interface Machine {
+  id: string;
+  name: string;
+  name_ar: string;
+  section_id: string;
+  status: string;
+}
+
 interface CuttingOperatorDashboardProps {
   hideLayout?: boolean;
 }
@@ -57,17 +67,26 @@ export default function CuttingOperatorDashboard({ hideLayout = false }: Cutting
   const [selectedRoll, setSelectedRoll] = useState<RollDetails | null>(null);
   const [netWeight, setNetWeight] = useState<string>("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedMachineId, setSelectedMachineId] = useState<string>("");
 
   const { data: productionOrders = [], isLoading } = useQuery<ProductionOrderWithRolls[]>({
     queryKey: ["/api/rolls/active-for-cutting"],
     refetchInterval: 30000,
   });
 
+  const { data: allMachines = [] } = useQuery<Machine[]>({
+    queryKey: ["/api/machines"],
+  });
+
+  const cuttingMachines = allMachines.filter(
+    (m) => m.section_id === "SEC05" && m.status === "active"
+  );
+
   const completeCuttingMutation = useMutation({
-    mutationFn: async ({ rollId, netWeight }: { rollId: number; netWeight: number }) => {
+    mutationFn: async ({ rollId, netWeight, machineId }: { rollId: number; netWeight: number; machineId: string }) => {
       return await apiRequest(`/api/rolls/${rollId}/complete-cutting`, {
         method: "POST",
-        body: JSON.stringify({ net_weight: netWeight }),
+        body: JSON.stringify({ net_weight: netWeight, cutting_machine_id: machineId }),
       });
     },
     onSuccess: () => {
@@ -91,6 +110,14 @@ export default function CuttingOperatorDashboard({ hideLayout = false }: Cutting
   });
 
   const handleOpenCuttingDialog = (roll: RollDetails) => {
+    if (!selectedMachineId) {
+      toast({
+        title: t('operators.common.error'),
+        description: "يرجى تحديد ماكينة التقطيع أولاً",
+        variant: "destructive",
+      });
+      return;
+    }
     setSelectedRoll(roll);
     setNetWeight(roll.weight_kg.toString());
     setIsDialogOpen(true);
@@ -122,7 +149,8 @@ export default function CuttingOperatorDashboard({ hideLayout = false }: Cutting
     
     completeCuttingMutation.mutate({ 
       rollId: selectedRoll.roll_id, 
-      netWeight: netWeightNum 
+      netWeight: netWeightNum,
+      machineId: selectedMachineId
     });
   };
 
@@ -153,8 +181,48 @@ export default function CuttingOperatorDashboard({ hideLayout = false }: Cutting
     );
   }
 
+  const selectedMachine = cuttingMachines.find(m => m.id === selectedMachineId);
+
   const mainContent = (
     <div className="space-y-6">
+      <Card className="border-2 border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Scissors className="h-5 w-5 text-green-600" />
+            تحديد ماكينة التقطيع
+          </CardTitle>
+          <CardDescription>اختر الماكينة التي ستعمل عليها قبل بدء التقطيع</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-3">
+            <Select value={selectedMachineId} onValueChange={setSelectedMachineId}>
+              <SelectTrigger className="w-full max-w-xs bg-white dark:bg-gray-900">
+                <SelectValue placeholder="اختر ماكينة التقطيع..." />
+              </SelectTrigger>
+              <SelectContent>
+                {cuttingMachines.map((machine) => (
+                  <SelectItem key={machine.id} value={machine.id}>
+                    {machine.name_ar || machine.name} ({machine.id})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedMachine && (
+              <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 whitespace-nowrap">
+                <CheckCircle2 className="h-3 w-3 ml-1" />
+                {selectedMachine.name_ar || selectedMachine.name}
+              </Badge>
+            )}
+          </div>
+          {!selectedMachineId && (
+            <div className="flex items-center gap-2 mt-3 text-amber-600 dark:text-amber-400 text-sm">
+              <AlertCircle className="h-4 w-4" />
+              <span>يجب تحديد الماكينة قبل البدء بالتقطيع</span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <Card data-testid="card-active-orders">
               <CardHeader className="pb-3">
@@ -295,9 +363,11 @@ export default function CuttingOperatorDashboard({ hideLayout = false }: Cutting
                               
                               <Button
                                 onClick={() => handleOpenCuttingDialog(roll)}
+                                disabled={!selectedMachineId}
                                 size="sm"
                                 className="bg-green-600 hover:bg-green-700"
                                 data-testid={`button-cut-${roll.roll_id}`}
+                                title={!selectedMachineId ? "يرجى تحديد ماكينة التقطيع أولاً" : ""}
                               >
                                 <Scissors className="h-4 w-4 ml-1" />
                                 <span className="hidden sm:inline">{t('operators.cutting.cut')}</span>
@@ -344,6 +414,15 @@ export default function CuttingOperatorDashboard({ hideLayout = false }: Cutting
                 </div>
               </div>
             </div>
+
+            {selectedMachine && (
+              <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
+                <div className="text-sm">
+                  <p className="text-gray-500 dark:text-gray-400">ماكينة التقطيع</p>
+                  <p className="font-medium">{selectedMachine.name_ar || selectedMachine.name} ({selectedMachine.id})</p>
+                </div>
+              </div>
+            )}
             
             <div className="space-y-2">
               <Label htmlFor="netWeight">{t('operators.cutting.netWeightKg')}</Label>
