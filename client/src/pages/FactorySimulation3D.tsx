@@ -67,17 +67,31 @@ interface ActiveRoll {
   roll_number: string;
   stage: 'film' | 'printing' | 'cutting';
   weight_kg: string;
+  cut_weight_total_kg?: string;
   film_machine_id: string;
   printing_machine_id: string | null;
   cutting_machine_id: string | null;
   printed_at: string | null;
   cut_completed_at: string | null;
   created_at: string;
+  production_order_id?: number;
   production_order_number: string;
   master_batch_id: string | null;
   roll_color: string;
   color_name: string;
   customer_name: string;
+}
+
+interface CuttingBundle {
+  production_order_id: number;
+  production_order_number: string;
+  customer_name: string;
+  roll_color: string;
+  color_name: string;
+  cutting_machine_id: string | null;
+  total_weight_kg: number;
+  roll_count: number;
+  rolls: ActiveRoll[];
 }
 
 interface MachineStats {
@@ -746,6 +760,8 @@ function Roll3D({ roll, position, onSelect }: {
   const radius = Math.min(0.3 + (weight / 100) * 0.3, 0.8);
   const height = Math.min(0.4 + (weight / 50) * 0.2, 1);
   const isPrinted = !!roll.printed_at;
+  const isFilm = roll.stage === 'film';
+  const isPrinting = roll.stage === 'printing';
 
   return (
     <group position={position} onClick={(e) => { e.stopPropagation(); onSelect(); }}>
@@ -753,29 +769,145 @@ function Roll3D({ roll, position, onSelect }: {
         <cylinderGeometry args={[radius, radius, height, 32]} />
         <meshStandardMaterial 
           color={roll.roll_color} 
-          roughness={0.3} 
-          metalness={0.2}
+          roughness={isFilm ? 0.6 : 0.3} 
+          metalness={isFilm ? 0.1 : 0.2}
+          transparent={isFilm}
+          opacity={isFilm ? 0.85 : 1}
         />
       </mesh>
       
+      <mesh castShadow rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[radius * 0.25, radius * 0.25, height + 0.02, 16]} />
+        <meshStandardMaterial color="#4b5563" metalness={0.8} roughness={0.2} />
+      </mesh>
+
       {isPrinted && (
+        <>
+          <mesh position={[0, 0, radius * 0.7]} rotation={[0, 0, 0]}>
+            <planeGeometry args={[radius * 1.2, radius * 0.8]} />
+            <meshStandardMaterial color="#ffffff" transparent opacity={0.9} side={2} />
+          </mesh>
+          <mesh position={[0, 0, radius * 0.71]} rotation={[0, 0, 0]}>
+            <planeGeometry args={[radius * 0.8, radius * 0.5]} />
+            <meshStandardMaterial color="#059669" emissive="#059669" emissiveIntensity={0.3} side={2} />
+          </mesh>
+          <mesh position={[0, radius + 0.15, 0]}>
+            <boxGeometry args={[0.15, 0.15, 0.15]} />
+            <meshStandardMaterial color="#22c55e" emissive="#22c55e" emissiveIntensity={0.5} />
+          </mesh>
+        </>
+      )}
+
+      {isFilm && !isPrinted && (
         <mesh position={[0, radius + 0.1, 0]}>
-          <boxGeometry args={[0.3, 0.05, 0.3]} />
-          <meshStandardMaterial color="#22c55e" emissive="#22c55e" emissiveIntensity={0.5} />
+          <sphereGeometry args={[0.08, 8, 8]} />
+          <meshStandardMaterial color="#3b82f6" emissive="#3b82f6" emissiveIntensity={0.6} />
         </mesh>
       )}
 
-      <Html position={[0, radius + 0.3, 0]} center>
-        <div className="bg-black/80 text-white px-1.5 py-0.5 rounded text-[10px] whitespace-nowrap cursor-pointer hover:bg-black/90">
+      <Html position={[0, radius + 0.35, 0]} center>
+        <div className="bg-black/80 text-white px-1.5 py-0.5 rounded text-[10px] whitespace-nowrap cursor-pointer hover:bg-black/90 flex items-center gap-1">
+          {isPrinted && <span className="text-green-400">🖨️</span>}
+          {isFilm && <span className="text-blue-400">🎬</span>}
           {roll.roll_number}
-          {isPrinted && <span className="mr-1 text-green-400">✓</span>}
         </div>
       </Html>
     </group>
   );
 }
 
-function Scene({ machines, selectedMachine, onSelectMachine, onDragMachine, onDragStart, onDragEnd, hideRoof, activeRolls, onSelectRoll }: {
+function Pallet3D({ bundle, position, onSelect }: {
+  bundle: CuttingBundle;
+  position: [number, number, number];
+  onSelect: () => void;
+}) {
+  const palletWidth = 1.4;
+  const palletDepth = 1.0;
+  const palletHeight = 0.12;
+  const plankThickness = 0.04;
+  
+  const bundleRows = Math.min(Math.ceil(bundle.roll_count / 3), 4);
+  const bundleHeight = 0.25;
+  const totalStackHeight = bundleRows * bundleHeight;
+
+  return (
+    <group position={position} onClick={(e) => { e.stopPropagation(); onSelect(); }}>
+      <group>
+        {[-0.5, 0, 0.5].map((offset, i) => (
+          <mesh key={`slat-${i}`} position={[offset * palletWidth * 0.6, plankThickness / 2, 0]} castShadow>
+            <boxGeometry args={[palletWidth * 0.28, plankThickness, palletDepth]} />
+            <meshStandardMaterial color="#8B6914" roughness={0.9} />
+          </mesh>
+        ))}
+        <mesh position={[0, plankThickness + 0.03, -palletDepth * 0.35]} castShadow>
+          <boxGeometry args={[palletWidth, plankThickness, palletDepth * 0.15]} />
+          <meshStandardMaterial color="#A0782C" roughness={0.85} />
+        </mesh>
+        <mesh position={[0, plankThickness + 0.03, 0]} castShadow>
+          <boxGeometry args={[palletWidth, plankThickness, palletDepth * 0.15]} />
+          <meshStandardMaterial color="#A0782C" roughness={0.85} />
+        </mesh>
+        <mesh position={[0, plankThickness + 0.03, palletDepth * 0.35]} castShadow>
+          <boxGeometry args={[palletWidth, plankThickness, palletDepth * 0.15]} />
+          <meshStandardMaterial color="#A0782C" roughness={0.85} />
+        </mesh>
+      </group>
+
+      {Array.from({ length: bundleRows }).map((_, row) => {
+        const bundlesInRow = Math.min(bundle.roll_count - row * 3, 3);
+        return Array.from({ length: bundlesInRow }).map((_, col) => {
+          const xOffset = (col - (bundlesInRow - 1) / 2) * 0.42;
+          const yPos = palletHeight + 0.06 + row * bundleHeight + bundleHeight / 2;
+          return (
+            <group key={`bundle-${row}-${col}`} position={[xOffset, yPos, 0]}>
+              <mesh castShadow>
+                <boxGeometry args={[0.38, bundleHeight * 0.85, palletDepth * 0.7]} />
+                <meshStandardMaterial 
+                  color={bundle.roll_color} 
+                  roughness={0.5} 
+                  metalness={0.1}
+                />
+              </mesh>
+              <mesh position={[0, 0, palletDepth * 0.351]}>
+                <planeGeometry args={[0.36, bundleHeight * 0.7]} />
+                <meshStandardMaterial color="#ffffff" transparent opacity={0.3} side={2} />
+              </mesh>
+            </group>
+          );
+        });
+      })}
+
+      <mesh position={[0, palletHeight + totalStackHeight + 0.08, 0]} castShadow>
+        <boxGeometry args={[palletWidth * 0.95, 0.02, palletDepth * 0.9]} />
+        <meshStandardMaterial color="#d4d4d4" transparent opacity={0.5} />
+      </mesh>
+
+      {[-0.35, 0.35].map((zOff, i) => (
+        <mesh key={`strap-${i}`} position={[0, palletHeight + totalStackHeight / 2 + 0.06, zOff]}>
+          <boxGeometry args={[palletWidth * 1.02, totalStackHeight + 0.12, 0.03]} />
+          <meshStandardMaterial color="#2563eb" transparent opacity={0.6} />
+        </mesh>
+      ))}
+
+      <Html position={[0, palletHeight + totalStackHeight + 0.4, 0]} center>
+        <div className="bg-gradient-to-b from-green-700 to-green-900 text-white px-2 py-1.5 rounded-lg text-[10px] whitespace-nowrap cursor-pointer shadow-lg border border-green-500/50" dir="rtl">
+          <div className="font-bold text-[11px] flex items-center gap-1">
+            <span>📦</span>
+            <span>{bundle.production_order_number}</span>
+          </div>
+          <div className="text-green-200 text-[9px]">{bundle.customer_name}</div>
+          <div className="flex items-center justify-between gap-2 mt-0.5 text-[9px]">
+            <span className="bg-green-600/50 px-1 rounded">{bundle.roll_count} بندل</span>
+            <span className="font-bold">{bundle.total_weight_kg.toFixed(1)} كجم</span>
+          </div>
+          <div className="text-center text-[8px] text-yellow-300 mt-0.5">✅ جاهز للاستلام</div>
+        </div>
+      </Html>
+    </group>
+  );
+}
+
+function Scene({ machines, selectedMachine, onSelectMachine, onDragMachine, onDragStart, onDragEnd, hideRoof, activeRolls, cuttingBundles, onSelectRoll, onSelectBundle }: {
   machines: Machine[];
   selectedMachine: string | null;
   onSelectMachine: (id: string | null) => void;
@@ -784,18 +916,26 @@ function Scene({ machines, selectedMachine, onSelectMachine, onDragMachine, onDr
   onDragEnd: () => void;
   hideRoof: boolean;
   activeRolls: ActiveRoll[];
+  cuttingBundles: CuttingBundle[];
   onSelectRoll: (roll: ActiveRoll) => void;
+  onSelectBundle: (bundle: CuttingBundle) => void;
 }) {
-  const getRollPositionNearMachine = (roll: ActiveRoll, index: number): [number, number, number] => {
+  const filmPrintingRolls = useMemo(() => 
+    activeRolls.filter(r => r.stage === 'film' || r.stage === 'printing'),
+    [activeRolls]
+  );
+
+  const getRollPositionNearMachine = (roll: ActiveRoll, index: number, machineRollIndex: number): [number, number, number] => {
     const machineId = roll.stage === 'film' ? roll.film_machine_id 
-      : roll.stage === 'printing' ? roll.printing_machine_id 
-      : roll.cutting_machine_id;
+      : roll.printing_machine_id;
     
     const linkedMachine = machines.find(m => m.linkedMachineId === machineId);
     
     if (linkedMachine) {
-      const offsetX = (index % 5) * 0.8 - 1.6;
-      const offsetZ = Math.floor(index / 5) * 0.8 + 2;
+      const col = machineRollIndex % 4;
+      const row = Math.floor(machineRollIndex / 4);
+      const offsetX = col * 0.9 - 1.35;
+      const offsetZ = row * 0.9 + (roll.stage === 'film' ? 3.5 : -3.5);
       return [
         linkedMachine.position[0] + offsetX,
         0.3,
@@ -805,6 +945,34 @@ function Scene({ machines, selectedMachine, onSelectMachine, onDragMachine, onDr
     
     return [5 + (index % 10) * 1, 0.3, 20 + Math.floor(index / 10) * 1];
   };
+
+  const getBundlePositionNearMachine = (bundle: CuttingBundle, bundleIndex: number): [number, number, number] => {
+    const machineId = bundle.cutting_machine_id;
+    const linkedMachine = machines.find(m => m.linkedMachineId === machineId);
+    
+    if (linkedMachine) {
+      const col = bundleIndex % 3;
+      const row = Math.floor(bundleIndex / 3);
+      return [
+        linkedMachine.position[0] + col * 2 - 2,
+        0,
+        linkedMachine.position[2] + row * 1.8 + 3
+      ];
+    }
+    
+    return [-5 + bundleIndex * 2, 0, 22];
+  };
+
+  const rollsByMachine = useMemo(() => {
+    const map = new Map<string, number>();
+    return filmPrintingRolls.map((roll, index) => {
+      const machineId = roll.stage === 'film' ? roll.film_machine_id : (roll.printing_machine_id || '');
+      const currentIndex = map.get(machineId) || 0;
+      map.set(machineId, currentIndex + 1);
+      return { roll, index, machineRollIndex: currentIndex };
+    });
+  }, [filmPrintingRolls]);
+
   return (
     <>
       <ambientLight intensity={0.4} />
@@ -850,12 +1018,21 @@ function Scene({ machines, selectedMachine, onSelectMachine, onDragMachine, onDr
         }
       })}
 
-      {activeRolls.map((roll, index) => (
+      {rollsByMachine.map(({ roll, index, machineRollIndex }) => (
         <Roll3D 
           key={roll.id} 
           roll={roll} 
-          position={getRollPositionNearMachine(roll, index)}
+          position={getRollPositionNearMachine(roll, index, machineRollIndex)}
           onSelect={() => onSelectRoll(roll)}
+        />
+      ))}
+
+      {cuttingBundles.map((bundle, index) => (
+        <Pallet3D
+          key={`bundle-${bundle.production_order_id}-${bundle.cutting_machine_id}`}
+          bundle={bundle}
+          position={getBundlePositionNearMachine(bundle, index)}
+          onSelect={() => onSelectBundle(bundle)}
         />
       ))}
 
@@ -886,6 +1063,7 @@ export default function FactorySimulation3D() {
   const [isDraggingMachine, setIsDraggingMachine] = useState(false);
   const [hideRoof, setHideRoof] = useState(false);
   const [selectedRoll, setSelectedRoll] = useState<ActiveRoll | null>(null);
+  const [selectedBundle, setSelectedBundle] = useState<CuttingBundle | null>(null);
   const [showMachineStats, setShowMachineStats] = useState(false);
   const [selectedMachineForStats, setSelectedMachineForStats] = useState<string | null>(null);
 
@@ -1093,6 +1271,37 @@ export default function FactorySimulation3D() {
     return activeRolls;
   }, [timelapseMode, timelapseRolls, activeRolls]);
 
+  const cuttingBundles = useMemo<CuttingBundle[]>(() => {
+    const cuttingRolls = displayRolls.filter(r => r.stage === 'cutting');
+    const bundleMap = new Map<string, CuttingBundle>();
+    
+    for (const roll of cuttingRolls) {
+      const key = `${roll.production_order_id || roll.production_order_number}-${roll.cutting_machine_id || 'unassigned'}`;
+      const existing = bundleMap.get(key);
+      const cutWeight = parseFloat(roll.cut_weight_total_kg || roll.weight_kg) || 0;
+      
+      if (existing) {
+        existing.total_weight_kg += cutWeight;
+        existing.roll_count += 1;
+        existing.rolls.push(roll);
+      } else {
+        bundleMap.set(key, {
+          production_order_id: roll.production_order_id || 0,
+          production_order_number: roll.production_order_number,
+          customer_name: roll.customer_name,
+          roll_color: roll.roll_color,
+          color_name: roll.color_name,
+          cutting_machine_id: roll.cutting_machine_id,
+          total_weight_kg: cutWeight,
+          roll_count: 1,
+          rolls: [roll],
+        });
+      }
+    }
+    
+    return Array.from(bundleMap.values());
+  }, [displayRolls]);
+
   useEffect(() => {
     const saved = localStorage.getItem('factoryLayout');
     if (saved) {
@@ -1246,7 +1455,9 @@ export default function FactorySimulation3D() {
                   onDragEnd={handleDragEnd}
                   hideRoof={hideRoof}
                   activeRolls={displayRolls}
+                  cuttingBundles={cuttingBundles}
                   onSelectRoll={setSelectedRoll}
+                  onSelectBundle={setSelectedBundle}
                 />
                 <CameraControls isDragging={isDraggingMachine} />
                 <Environment preset="warehouse" />
@@ -1670,6 +1881,66 @@ export default function FactorySimulation3D() {
                       تمت الطباعة: {new Date(selectedRoll.printed_at).toLocaleString('ar-SA')}
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!selectedBundle} onOpenChange={() => setSelectedBundle(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Scissors className="h-5 w-5 text-orange-500" />
+                تفاصيل الحزمة - مرحلة القطع
+              </DialogTitle>
+            </DialogHeader>
+            {selectedBundle && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div 
+                    className="w-12 h-12 rounded-lg flex items-center justify-center bg-orange-100 dark:bg-orange-900"
+                  >
+                    <Package className="h-6 w-6 text-orange-600" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-lg">{selectedBundle.production_order_number}</div>
+                    <div className="text-sm text-gray-500">{selectedBundle.customer_name}</div>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded">
+                    <div className="text-gray-500">عدد الرولات</div>
+                    <div className="font-medium text-lg">{selectedBundle.roll_count}</div>
+                  </div>
+                  <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded">
+                    <div className="text-gray-500">الوزن الإجمالي</div>
+                    <div className="font-medium text-lg">{selectedBundle.total_weight_kg.toFixed(2)} كجم</div>
+                  </div>
+                  <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded">
+                    <div className="text-gray-500">اللون</div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full" style={{ backgroundColor: selectedBundle.roll_color }} />
+                      <span className="font-medium">{selectedBundle.color_name}</span>
+                    </div>
+                  </div>
+                  <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded">
+                    <div className="text-gray-500">ماكينة القطع</div>
+                    <div className="font-medium">{selectedBundle.cutting_machine_id || 'غير محدد'}</div>
+                  </div>
+                </div>
+
+                <div className="border-t pt-3">
+                  <div className="text-sm text-gray-500 mb-2">الرولات في الحزمة:</div>
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {selectedBundle.rolls.map(roll => (
+                      <div key={roll.id} className="flex justify-between text-sm bg-gray-50 dark:bg-gray-700 p-2 rounded">
+                        <span className="font-medium">{roll.roll_number}</span>
+                        <span className="text-gray-500">{parseFloat(roll.cut_weight_total_kg || roll.weight_kg).toFixed(2)} كجم</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
