@@ -145,6 +145,19 @@ const equipmentTemplates: Omit<Machine, 'id' | 'position'>[] = [
   { name: 'Pallet', nameAr: 'طبلية', type: 'pallet', color: '#854d0e', size: [1.2, 0.15, 1] },
 ];
 
+const demoRolls: ActiveRoll[] = [
+  { id: 9001, roll_number: 'R-DEMO-001', stage: 'film', weight_kg: '45.5', film_machine_id: 'MAC01', printing_machine_id: null, cutting_machine_id: null, printed_at: null, cut_completed_at: null, created_at: new Date().toISOString(), production_order_id: 101, production_order_number: 'PO-2026-001', master_batch_id: null, roll_color: '#3b82f6', color_name: 'أزرق', customer_name: 'شركة الأمل' },
+  { id: 9002, roll_number: 'R-DEMO-002', stage: 'film', weight_kg: '52.3', film_machine_id: 'MAC01', printing_machine_id: null, cutting_machine_id: null, printed_at: null, cut_completed_at: null, created_at: new Date().toISOString(), production_order_id: 101, production_order_number: 'PO-2026-001', master_batch_id: null, roll_color: '#3b82f6', color_name: 'أزرق', customer_name: 'شركة الأمل' },
+  { id: 9003, roll_number: 'R-DEMO-003', stage: 'film', weight_kg: '38.7', film_machine_id: 'MAC03', printing_machine_id: null, cutting_machine_id: null, printed_at: null, cut_completed_at: null, created_at: new Date().toISOString(), production_order_id: 102, production_order_number: 'PO-2026-002', master_batch_id: null, roll_color: '#ef4444', color_name: 'أحمر', customer_name: 'مؤسسة النور' },
+  { id: 9004, roll_number: 'R-DEMO-004', stage: 'film', weight_kg: '60.1', film_machine_id: 'MAC08', printing_machine_id: null, cutting_machine_id: null, printed_at: null, cut_completed_at: null, created_at: new Date().toISOString(), production_order_id: 103, production_order_number: 'PO-2026-003', master_batch_id: null, roll_color: '#22c55e', color_name: 'أخضر', customer_name: 'مصنع الرياض' },
+  { id: 9005, roll_number: 'R-DEMO-005', stage: 'printing', weight_kg: '48.2', film_machine_id: 'MAC01', printing_machine_id: 'MAC11', cutting_machine_id: null, printed_at: new Date().toISOString(), cut_completed_at: null, created_at: new Date(Date.now() - 3600000).toISOString(), production_order_id: 101, production_order_number: 'PO-2026-001', master_batch_id: null, roll_color: '#3b82f6', color_name: 'أزرق', customer_name: 'شركة الأمل' },
+  { id: 9006, roll_number: 'R-DEMO-006', stage: 'printing', weight_kg: '55.0', film_machine_id: 'MAC03', printing_machine_id: 'MAC12', cutting_machine_id: null, printed_at: new Date().toISOString(), cut_completed_at: null, created_at: new Date(Date.now() - 3600000).toISOString(), production_order_id: 102, production_order_number: 'PO-2026-002', master_batch_id: null, roll_color: '#ef4444', color_name: 'أحمر', customer_name: 'مؤسسة النور' },
+  { id: 9007, roll_number: 'R-DEMO-007', stage: 'printing', weight_kg: '42.8', film_machine_id: 'MAC08', printing_machine_id: 'MAC13', cutting_machine_id: null, printed_at: new Date().toISOString(), cut_completed_at: null, created_at: new Date(Date.now() - 7200000).toISOString(), production_order_id: 103, production_order_number: 'PO-2026-003', master_batch_id: null, roll_color: '#f59e0b', color_name: 'أصفر', customer_name: 'مصنع الرياض' },
+  { id: 9008, roll_number: 'R-DEMO-008', stage: 'cutting', weight_kg: '50.0', cut_weight_total_kg: '48.5', film_machine_id: 'MAC01', printing_machine_id: 'MAC11', cutting_machine_id: 'MAC17', printed_at: new Date(Date.now() - 7200000).toISOString(), cut_completed_at: null, created_at: new Date(Date.now() - 14400000).toISOString(), production_order_id: 101, production_order_number: 'PO-2026-001', master_batch_id: null, roll_color: '#3b82f6', color_name: 'أزرق', customer_name: 'شركة الأمل' },
+  { id: 9009, roll_number: 'R-DEMO-009', stage: 'cutting', weight_kg: '47.3', cut_weight_total_kg: '45.8', film_machine_id: 'MAC01', printing_machine_id: 'MAC11', cutting_machine_id: 'MAC17', printed_at: new Date(Date.now() - 7200000).toISOString(), cut_completed_at: null, created_at: new Date(Date.now() - 14400000).toISOString(), production_order_id: 101, production_order_number: 'PO-2026-001', master_batch_id: null, roll_color: '#3b82f6', color_name: 'أزرق', customer_name: 'شركة الأمل' },
+  { id: 9010, roll_number: 'R-DEMO-010', stage: 'cutting', weight_kg: '53.6', cut_weight_total_kg: '52.1', film_machine_id: 'MAC03', printing_machine_id: 'MAC12', cutting_machine_id: 'MAC18', printed_at: new Date(Date.now() - 7200000).toISOString(), cut_completed_at: null, created_at: new Date(Date.now() - 14400000).toISOString(), production_order_id: 102, production_order_number: 'PO-2026-002', master_batch_id: null, roll_color: '#ef4444', color_name: 'أحمر', customer_name: 'مؤسسة النور' },
+];
+
 const initialMachines: Machine[] = [
   { id: 'film-c', name: 'Film C', nameAr: 'ماكينة فيلم C', type: 'film', color: '#2563eb', position: [-7, 0, -18], size: [3, 4, 5], hasPrintingLine: true },
   { id: 'film-h', name: 'Film H', nameAr: 'ماكينة فيلم H', type: 'film', color: '#7c3aed', position: [7, 0, -18], size: [3, 4, 5], hasPrintingLine: true },
@@ -1064,6 +1077,7 @@ export default function FactorySimulation3D() {
   const [hideRoof, setHideRoof] = useState(false);
   const [selectedRoll, setSelectedRoll] = useState<ActiveRoll | null>(null);
   const [selectedBundle, setSelectedBundle] = useState<CuttingBundle | null>(null);
+  const [demoMode, setDemoMode] = useState(false);
   const [showMachineStats, setShowMachineStats] = useState(false);
   const [selectedMachineForStats, setSelectedMachineForStats] = useState<string | null>(null);
 
@@ -1268,8 +1282,11 @@ export default function FactorySimulation3D() {
     if (timelapseMode) {
       return Array.from(timelapseRolls.values());
     }
+    if (demoMode) {
+      return [...activeRolls, ...demoRolls];
+    }
     return activeRolls;
-  }, [timelapseMode, timelapseRolls, activeRolls]);
+  }, [timelapseMode, timelapseRolls, activeRolls, demoMode]);
 
   const cuttingBundles = useMemo<CuttingBundle[]>(() => {
     const cuttingRolls = displayRolls.filter(r => r.stage === 'cutting');
@@ -1812,14 +1829,33 @@ export default function FactorySimulation3D() {
               )}
             </>
           ) : (
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/60 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-4">
-              <span>صالة الإنتاج: {20}م × {50}م | الارتفاع: {6}م-{8}م | البوابة: {9}م</span>
-              <Badge variant="secondary" className="flex items-center gap-1">
-                <Package className="h-3 w-3" />
-                {activeRolls.length} رول نشط
-              </Badge>
-              <Button size="sm" variant="ghost" className="text-white hover:text-white/80" onClick={() => refetchRolls()}>
-                <RefreshCw className="h-4 w-4" />
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/70 backdrop-blur text-white px-4 py-2 rounded-lg text-sm flex items-center gap-3 flex-wrap justify-center">
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="flex items-center gap-1 bg-blue-600/80 text-white">
+                  <Activity className="h-3 w-3" />
+                  فيلم: {displayRolls.filter(r => r.stage === 'film').length}
+                </Badge>
+                <Badge variant="secondary" className="flex items-center gap-1 bg-green-600/80 text-white">
+                  <Printer className="h-3 w-3" />
+                  طباعة: {displayRolls.filter(r => r.stage === 'printing').length}
+                </Badge>
+                <Badge variant="secondary" className="flex items-center gap-1 bg-orange-600/80 text-white">
+                  <Scissors className="h-3 w-3" />
+                  قطع: {cuttingBundles.length} حزمة ({displayRolls.filter(r => r.stage === 'cutting').length} رول)
+                </Badge>
+              </div>
+              <div className="w-px h-5 bg-white/30" />
+              <Button 
+                size="sm" 
+                variant={demoMode ? "default" : "ghost"} 
+                className={`text-xs h-7 ${demoMode ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'text-white hover:text-white/80'}`}
+                onClick={() => setDemoMode(!demoMode)}
+              >
+                <Eye className="h-3 w-3 ml-1" />
+                {demoMode ? 'وضع العرض' : 'عرض تجريبي'}
+              </Button>
+              <Button size="sm" variant="ghost" className="text-white hover:text-white/80 h-7" onClick={() => refetchRolls()}>
+                <RefreshCw className="h-3 w-3" />
               </Button>
             </div>
           )}
