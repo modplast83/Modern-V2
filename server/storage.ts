@@ -5342,33 +5342,54 @@ export class DatabaseStorage implements IStorage {
   ): Promise<any> {
     return await withDatabaseErrorHandling(
       async () => {
-        const dateFilter =
-          dateFrom && dateTo
-            ? sql`DATE(${rolls.created_at}) BETWEEN ${dateFrom} AND ${dateTo}`
-            : sql`DATE(${rolls.created_at}) >= CURRENT_DATE - INTERVAL '7 days'`;
-
-        // Map section string to actual section ID
-        // film → SEC03, printing → SEC04, cutting → SEC05
         const sectionIdMap: { [key: string]: string } = {
           'film': 'SEC03',
           'printing': 'SEC04',
           'cutting': 'SEC05'
         };
         const sectionId = sectionIdMap[section] || section;
-        const sectionFilter = sql`${machines.section_id} = ${sectionId}`;
+
+        const dateCol = section === 'cutting' ? rolls.cut_completed_at
+          : section === 'printing' ? rolls.printed_at
+          : rolls.created_at;
+
+        const dateFilter = dateFrom && dateTo
+          ? sql`DATE(${dateCol}) BETWEEN ${dateFrom} AND ${dateTo}`
+          : sql`DATE(${dateCol}) >= CURRENT_DATE - INTERVAL '7 days'`;
+
+        const machineCol = section === 'cutting' ? rolls.cutting_machine_id
+          : section === 'printing' ? rolls.printing_machine_id
+          : rolls.film_machine_id;
+
+        const stageFilter = section === 'cutting'
+          ? sql`${rolls.stage} = 'done'`
+          : section === 'printing'
+          ? sql`${rolls.stage} IN ('printing', 'done')`
+          : sql`TRUE`;
+
+        const weightCol = section === 'cutting'
+          ? sql`COALESCE(${rolls.cut_weight_total_kg}, 0)`
+          : sql`COALESCE(${rolls.weight_kg}, 0)`;
 
         const stats = await db
           .select({
-            total_weight: sql<number>`COALESCE(SUM(${rolls.weight_kg}), 0)`,
+            total_weight: sql<number>`COALESCE(SUM(${weightCol}), 0)`,
             total_rolls: sql<number>`COUNT(DISTINCT ${rolls.id})`,
             completed_orders: sql<number>`COUNT(DISTINCT CASE WHEN ${production_orders.status} = 'completed' THEN ${production_orders.id} END)`,
-            active_orders: sql<number>`COUNT(DISTINCT CASE WHEN ${production_orders.status} IN ('active', 'pending') THEN ${production_orders.id} END)`,
-            efficiency: sql<number>`COALESCE(AVG(95 - (${rolls.waste_kg}::decimal / NULLIF(${rolls.weight_kg}, 0) * 100)), 0)`,
+            active_orders: sql<number>`COUNT(DISTINCT CASE WHEN ${production_orders.status} IN ('active', 'pending', 'in_production') THEN ${production_orders.id} END)`,
+            efficiency: sql<number>`CASE WHEN COUNT(DISTINCT ${rolls.id}) = 0 THEN 0 ELSE COALESCE(AVG(CASE WHEN ${rolls.waste_kg} IS NOT NULL AND ${rolls.weight_kg} > 0 THEN (1 - ${rolls.waste_kg}::decimal / ${rolls.weight_kg}::decimal) * 100 ELSE NULL END), 0) END`,
           })
           .from(rolls)
-          .leftJoin(machines, eq(rolls.film_machine_id, machines.id))
+          .innerJoin(machines, and(
+            eq(machineCol, machines.id),
+            sql`${machines.section_id} = ${sectionId}`
+          ))
           .leftJoin(production_orders, eq(rolls.production_order_id, production_orders.id))
-          .where(and(dateFilter, sectionFilter));
+          .where(and(
+            dateFilter,
+            stageFilter,
+            sql`${dateCol} IS NOT NULL`
+          ));
 
         return stats[0] || {
           total_weight: 0,
@@ -5390,13 +5411,6 @@ export class DatabaseStorage implements IStorage {
   ): Promise<any[]> {
     return await withDatabaseErrorHandling(
       async () => {
-        const dateFilter =
-          dateFrom && dateTo
-            ? sql`DATE(${rolls.created_at}) BETWEEN ${dateFrom} AND ${dateTo}`
-            : sql`DATE(${rolls.created_at}) >= CURRENT_DATE - INTERVAL '7 days'`;
-
-        // Map section string to actual section ID
-        // film → SEC03, printing → SEC04, cutting → SEC05
         const sectionIdMap: { [key: string]: string } = {
           'film': 'SEC03',
           'printing': 'SEC04',
@@ -5404,9 +5418,31 @@ export class DatabaseStorage implements IStorage {
         };
         const sectionId = sectionIdMap[section] || section;
 
-        // Get users who have production department role (role_id = 2 for production workers)
-        const roleFilter = sql`${users.role_id} = 2`;
-        const sectionFilter = sql`${machines.section_id} = ${sectionId}`;
+        const dateCol = section === 'cutting' ? rolls.cut_completed_at
+          : section === 'printing' ? rolls.printed_at
+          : rolls.created_at;
+
+        const dateFilter = dateFrom && dateTo
+          ? sql`DATE(${dateCol}) BETWEEN ${dateFrom} AND ${dateTo}`
+          : sql`DATE(${dateCol}) >= CURRENT_DATE - INTERVAL '7 days'`;
+
+        const operatorCol = section === 'cutting' ? rolls.cut_by
+          : section === 'printing' ? rolls.printed_by
+          : rolls.created_by;
+
+        const machineCol = section === 'cutting' ? rolls.cutting_machine_id
+          : section === 'printing' ? rolls.printing_machine_id
+          : rolls.film_machine_id;
+
+        const weightCol = section === 'cutting'
+          ? sql`COALESCE(${rolls.cut_weight_total_kg}, 0)`
+          : sql`COALESCE(${rolls.weight_kg}, 0)`;
+
+        const stageFilter = section === 'cutting'
+          ? sql`${rolls.stage} = 'done'`
+          : section === 'printing'
+          ? sql`${rolls.stage} IN ('printing', 'done')`
+          : sql`TRUE`;
 
         const usersPerformance = await db
           .select({
@@ -5414,20 +5450,26 @@ export class DatabaseStorage implements IStorage {
             username: users.username,
             display_name_ar: users.display_name_ar,
             section: sql<string>`${section}`,
-            total_production_kg: sql<number>`COALESCE(SUM(${rolls.weight_kg}), 0)`,
+            total_production_kg: sql<number>`COALESCE(SUM(${weightCol}), 0)`,
             rolls_count: sql<number>`COUNT(DISTINCT ${rolls.id})`,
-            efficiency_score: sql<number>`COALESCE(AVG(95 - (${rolls.waste_kg}::decimal / NULLIF(${rolls.weight_kg}, 0) * 100)), 0)`,
-            last_activity: sql<Date>`MAX(${rolls.created_at})`,
+            efficiency_score: sql<number>`CASE WHEN COUNT(DISTINCT ${rolls.id}) = 0 THEN 0 ELSE COALESCE(AVG(CASE WHEN ${rolls.waste_kg} IS NOT NULL AND ${rolls.weight_kg} > 0 THEN (1 - ${rolls.waste_kg}::decimal / ${rolls.weight_kg}::decimal) * 100 ELSE NULL END), 0) END`,
+            last_activity: sql<Date>`MAX(${dateCol})`,
           })
           .from(users)
-          .leftJoin(rolls, and(
-            eq(users.id, rolls.created_by),
-            dateFilter
+          .innerJoin(rolls, and(
+            eq(users.id, operatorCol),
+            dateFilter,
+            stageFilter,
+            sql`${dateCol} IS NOT NULL`,
+            sql`${machineCol} IS NOT NULL`
           ))
-          .leftJoin(machines, eq(rolls.film_machine_id, machines.id))
-          .where(and(roleFilter, sectionFilter))
+          .innerJoin(machines, and(
+            eq(machineCol, machines.id),
+            sql`${machines.section_id} = ${sectionId}`
+          ))
           .groupBy(users.id, users.username, users.display_name_ar)
-          .orderBy(sql`SUM(${rolls.weight_kg}) DESC`);
+          .having(sql`COUNT(DISTINCT ${rolls.id}) > 0`)
+          .orderBy(sql`SUM(${weightCol}) DESC`);
 
         return usersPerformance;
       },
@@ -5443,36 +5485,55 @@ export class DatabaseStorage implements IStorage {
   ): Promise<any[]> {
     return await withDatabaseErrorHandling(
       async () => {
-        const dateFilter =
-          dateFrom && dateTo
-            ? sql`DATE(${rolls.created_at}) BETWEEN ${dateFrom} AND ${dateTo}`
-            : sql`DATE(${rolls.created_at}) >= CURRENT_DATE - INTERVAL '7 days'`;
-
-        // Map section string to actual section ID
-        // film → SEC03, printing → SEC04, cutting → SEC05
         const sectionIdMap: { [key: string]: string } = {
           'film': 'SEC03',
           'printing': 'SEC04',
           'cutting': 'SEC05'
         };
         const sectionId = sectionIdMap[section] || section;
-        const sectionFilter = sql`${machines.section_id} = ${sectionId}`;
+
+        const dateCol = section === 'cutting' ? rolls.cut_completed_at
+          : section === 'printing' ? rolls.printed_at
+          : rolls.created_at;
+
+        const dateFilter = dateFrom && dateTo
+          ? sql`DATE(${dateCol}) BETWEEN ${dateFrom} AND ${dateTo}`
+          : sql`DATE(${dateCol}) >= CURRENT_DATE - INTERVAL '7 days'`;
+
+        const machineCol = section === 'cutting' ? rolls.cutting_machine_id
+          : section === 'printing' ? rolls.printing_machine_id
+          : rolls.film_machine_id;
+
+        const weightCol = section === 'cutting'
+          ? sql`COALESCE(${rolls.cut_weight_total_kg}, 0)`
+          : sql`COALESCE(${rolls.weight_kg}, 0)`;
+
+        const stageFilter = section === 'cutting'
+          ? sql`${rolls.stage} = 'done'`
+          : section === 'printing'
+          ? sql`${rolls.stage} IN ('printing', 'done')`
+          : sql`TRUE`;
 
         const machinesProduction = await db
           .select({
             machine_id: machines.id,
             machine_name: sql<string>`COALESCE(${machines.name_ar}, ${machines.name})`,
             section: sql<string>`${section}`,
-            total_production_kg: sql<number>`COALESCE(SUM(${rolls.weight_kg}), 0)`,
+            total_production_kg: sql<number>`COALESCE(SUM(${weightCol}), 0)`,
             rolls_produced: sql<number>`COUNT(DISTINCT ${rolls.id})`,
-            utilization_percent: sql<number>`COALESCE(COUNT(DISTINCT DATE(${rolls.created_at}))::decimal / 7 * 100, 0)`,
-            last_production: sql<Date>`MAX(${rolls.created_at})`,
+            utilization_percent: sql<number>`COALESCE(COUNT(DISTINCT DATE(${dateCol}))::decimal / 7 * 100, 0)`,
+            last_production: sql<Date>`MAX(${dateCol})`,
           })
           .from(machines)
-          .leftJoin(rolls, and(eq(machines.id, rolls.film_machine_id), dateFilter))
-          .where(sectionFilter)
+          .leftJoin(rolls, and(
+            eq(machines.id, machineCol),
+            dateFilter,
+            stageFilter,
+            sql`${dateCol} IS NOT NULL`
+          ))
+          .where(sql`${machines.section_id} = ${sectionId}`)
           .groupBy(machines.id, machines.name, machines.name_ar)
-          .orderBy(sql`SUM(${rolls.weight_kg}) DESC`);
+          .orderBy(sql`SUM(${weightCol}) DESC`);
 
         return machinesProduction;
       },
@@ -5484,16 +5545,31 @@ export class DatabaseStorage implements IStorage {
   async getRollsBySection(section: string, search?: string): Promise<any[]> {
     return await withDatabaseErrorHandling(
       async () => {
-        // Map section string to actual section ID
-        // film → SEC03, printing → SEC04, cutting → SEC05
         const sectionIdMap: { [key: string]: string } = {
           'film': 'SEC03',
           'printing': 'SEC04',
           'cutting': 'SEC05'
         };
         const sectionId = sectionIdMap[section] || section;
-        const sectionFilter = sql`${machines.section_id} = ${sectionId}`;
-        
+
+        const machineCol = section === 'cutting' ? rolls.cutting_machine_id
+          : section === 'printing' ? rolls.printing_machine_id
+          : rolls.film_machine_id;
+
+        const dateCol = section === 'cutting' ? rolls.cut_completed_at
+          : section === 'printing' ? rolls.printed_at
+          : rolls.created_at;
+
+        const stageFilter = section === 'cutting'
+          ? sql`${rolls.stage} = 'done'`
+          : section === 'printing'
+          ? sql`${rolls.stage} IN ('printing', 'done')`
+          : sql`TRUE`;
+
+        const weightCol = section === 'cutting'
+          ? rolls.cut_weight_total_kg
+          : rolls.weight_kg;
+
         let searchFilter = sql`TRUE`;
         if (search) {
           searchFilter = sql`(
@@ -5509,18 +5585,24 @@ export class DatabaseStorage implements IStorage {
             roll_number: rolls.roll_number,
             production_order_number: production_orders.production_order_number,
             customer_name: sql<string>`COALESCE(${customers.name_ar}, ${customers.name})`,
-            weight_kg: rolls.weight_kg,
+            weight_kg: weightCol,
             stage: rolls.stage,
             section: sql<string>`${section}`,
-            created_at: rolls.created_at,
+            created_at: dateCol,
           })
           .from(rolls)
-          .leftJoin(machines, eq(rolls.film_machine_id, machines.id))
+          .innerJoin(machines, and(
+            eq(machineCol, machines.id),
+            sql`${machines.section_id} = ${sectionId}`
+          ))
           .leftJoin(production_orders, eq(rolls.production_order_id, production_orders.id))
           .leftJoin(orders, eq(production_orders.order_id, orders.id))
           .leftJoin(customers, eq(orders.customer_id, customers.id))
-          .where(and(sectionFilter, searchFilter))
-          .orderBy(sql`${rolls.created_at} DESC`)
+          .where(and(
+            stageFilter,
+            searchFilter
+          ))
+          .orderBy(sql`${dateCol} DESC NULLS LAST`)
           .limit(100);
 
         return rollsData;
@@ -5533,19 +5615,29 @@ export class DatabaseStorage implements IStorage {
   async getProductionOrdersBySection(section: string, search?: string): Promise<any[]> {
     return await withDatabaseErrorHandling(
       async () => {
-        // Map section string to actual section ID
-        // film → SEC03, printing → SEC04, cutting → SEC05
-        const sectionIdMap: { [key: string]: string } = {
-          'film': 'SEC03',
-          'printing': 'SEC04',
-          'cutting': 'SEC05'
-        };
-        const sectionId = sectionIdMap[section] || section;
-        
-        const sectionFilter = sql`${production_orders.assigned_machine_id} IN (
-          SELECT ${machines.id} FROM ${machines} WHERE ${machines.section_id} = ${sectionId}
-        )`;
-        
+        const progressCol = section === 'cutting'
+          ? production_orders.cutting_completion_percentage
+          : section === 'printing'
+          ? production_orders.printing_completion_percentage
+          : production_orders.film_completion_percentage;
+
+        let sectionFilter;
+        if (section === 'film') {
+          sectionFilter = sql`${production_orders.assigned_machine_id} IN (
+            SELECT ${machines.id} FROM ${machines} WHERE ${machines.section_id} = 'SEC03'
+          )`;
+        } else if (section === 'printing') {
+          sectionFilter = sql`EXISTS (
+            SELECT 1 FROM ${rolls} r2 WHERE r2.production_order_id = ${production_orders.id}
+            AND r2.printing_machine_id IS NOT NULL
+          )`;
+        } else {
+          sectionFilter = sql`EXISTS (
+            SELECT 1 FROM ${rolls} r2 WHERE r2.production_order_id = ${production_orders.id}
+            AND r2.cutting_machine_id IS NOT NULL
+          )`;
+        }
+
         let searchFilter = sql`TRUE`;
         if (search) {
           searchFilter = sql`(
@@ -5563,13 +5655,7 @@ export class DatabaseStorage implements IStorage {
             customer_name: sql<string>`COALESCE(${customers.name_ar}, ${customers.name})`,
             section: sql<string>`${section}`,
             status: production_orders.status,
-            progress_percent: sql<number>`
-              CASE 
-                WHEN ${production_orders.status} = 'completed' THEN 100
-                WHEN ${production_orders.status} = 'active' THEN 50
-                ELSE 0
-              END
-            `,
+            progress_percent: sql<number>`COALESCE(${progressCol}, 0)`,
             created_at: production_orders.created_at,
           })
           .from(production_orders)
