@@ -110,7 +110,7 @@ export class PerformanceMonitor {
       for (const metric of metricsToSave) {
         if (metric.duration > this.slowThreshold / 2) { // حفظ العمليات البطيئة فقط
           await db.insert(system_performance_metrics).values({
-            metric_name: `${metric.method} ${metric.endpoint}`,
+            metric_name: `${metric.method} ${metric.endpoint}`.substring(0, 255),
             metric_category: 'application',
             value: metric.duration.toString(),
             unit: 'ms',

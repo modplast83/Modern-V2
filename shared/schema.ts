@@ -2808,7 +2808,7 @@ export const system_performance_metrics = pgTable(
   "system_performance_metrics",
   {
     id: serial("id").primaryKey(),
-    metric_name: varchar("metric_name", { length: 50 }).notNull(),
+    metric_name: varchar("metric_name", { length: 255 }).notNull(),
     metric_category: varchar("metric_category", { length: 30 }).notNull(), // system, database, application, business
     value: decimal("value", { precision: 15, scale: 4 }).notNull(),
     unit: varchar("unit", { length: 20 }), // ms, mb, percent, count, rate

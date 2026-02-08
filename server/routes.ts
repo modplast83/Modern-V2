@@ -992,7 +992,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create notification template
-  app.post("/api/notification-templates", async (req, res) => {
+  app.post("/api/notification-templates", requireAuth, async (req, res) => {
     try {
       const template = await storage.createNotificationTemplate(req.body);
       res.json(template);
@@ -2444,7 +2444,7 @@ Do not include quotes or explanations.`;
   });
 
   // Customers routes
-  app.post("/api/customers", async (req, res) => {
+  app.post("/api/customers", requireAuth, async (req, res) => {
     try {
       console.log("Received customer data:", req.body);
       const validatedData = insertCustomerSchema.parse(req.body);
@@ -2473,7 +2473,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.put("/api/customers/:id", async (req, res) => {
+  app.put("/api/customers/:id", requireAuth, async (req, res) => {
     try {
       const id = req.params.id;
       const validatedData = insertCustomerSchema.parse(req.body);
@@ -2624,7 +2624,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/locations", async (req, res) => {
+  app.post("/api/locations", requireAuth, async (req, res) => {
     try {
       const validatedData = insertLocationSchema.parse(req.body);
       const location = await storage.createLocationExtended(validatedData);
@@ -2635,7 +2635,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.put("/api/locations/:id", async (req, res) => {
+  app.put("/api/locations/:id", requireAuth, async (req, res) => {
     try {
       const id = req.params.id;
       const validatedData = insertLocationSchema.partial().parse(req.body);
@@ -2658,7 +2658,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/inventory-movements", async (req, res) => {
+  app.post("/api/inventory-movements", requireAuth, async (req, res) => {
     try {
       const validatedData = insertInventoryMovementSchema.parse(req.body);
       const movement = await storage.createInventoryMovement(validatedData);
@@ -2669,7 +2669,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.delete("/api/inventory-movements/:id", async (req, res) => {
+  app.delete("/api/inventory-movements/:id", requireAuth, async (req, res) => {
     try {
       // Enhanced parameter validation
       if (!req.params?.id) {
@@ -2748,7 +2748,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/categories", async (req, res) => {
+  app.post("/api/categories", requireAuth, async (req, res) => {
     try {
       console.log("Received category data:", req.body);
 
@@ -2804,7 +2804,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.put("/api/categories/:id", async (req, res) => {
+  app.put("/api/categories/:id", requireAuth, async (req, res) => {
     try {
       const id = req.params.id;
       console.log("Updating category:", id, req.body);
@@ -2829,7 +2829,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.delete("/api/categories/:id", async (req, res) => {
+  app.delete("/api/categories/:id", requireAuth, async (req, res) => {
     try {
       const id = req.params.id;
       await storage.deleteCategory(id);
@@ -2867,7 +2867,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/master-batch-colors", async (req, res) => {
+  app.post("/api/master-batch-colors", requireAuth, async (req, res) => {
     try {
       const parseResult = insertMasterBatchColorSchema.safeParse(req.body);
       if (!parseResult.success) {
@@ -2887,7 +2887,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.put("/api/master-batch-colors/:id", async (req, res) => {
+  app.put("/api/master-batch-colors/:id", requireAuth, async (req, res) => {
     try {
       const parseResult = insertMasterBatchColorSchema.partial().safeParse(req.body);
       if (!parseResult.success) {
@@ -2907,7 +2907,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.delete("/api/master-batch-colors/:id", async (req, res) => {
+  app.delete("/api/master-batch-colors/:id", requireAuth, async (req, res) => {
     try {
       await storage.deleteMasterBatchColor(req.params.id);
       res.json({ message: "تم حذف اللون بنجاح" });
@@ -2930,7 +2930,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/training-records", async (req, res) => {
+  app.post("/api/training-records", requireAuth, async (req, res) => {
     try {
       const trainingRecord = await storage.createTrainingRecord(req.body);
       res.json(trainingRecord);
@@ -2949,7 +2949,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/admin-decisions", async (req, res) => {
+  app.post("/api/admin-decisions", requireAuth, async (req, res) => {
     try {
       const adminDecision = await storage.createAdminDecision(req.body);
       res.json(adminDecision);
@@ -2968,7 +2968,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/warehouse-transactions", async (req, res) => {
+  app.post("/api/warehouse-transactions", requireAuth, async (req, res) => {
     try {
       const warehouseTransaction = await storage.createWarehouseTransaction(
         req.body,
@@ -2989,7 +2989,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/mixing-recipes", async (req, res) => {
+  app.post("/api/mixing-recipes", requireAuth, async (req, res) => {
     try {
       const mixingRecipe = await storage.createMixingRecipe(req.body);
       res.json(mixingRecipe);
@@ -3008,7 +3008,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/maintenance", async (req, res) => {
+  app.post("/api/maintenance", requireAuth, async (req, res) => {
     try {
       const validatedData = insertMaintenanceRequestSchema.parse(req.body);
       const request = await storage.createMaintenanceRequest(validatedData);
@@ -3038,7 +3038,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/maintenance-requests", async (req, res) => {
+  app.post("/api/maintenance-requests", requireAuth, async (req, res) => {
     try {
       console.log("Creating maintenance request with data:", req.body);
       
@@ -3095,7 +3095,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/maintenance-actions", async (req, res) => {
+  app.post("/api/maintenance-actions", requireAuth, async (req, res) => {
     try {
       console.log("Creating maintenance action with data:", req.body);
       const data = insertMaintenanceActionSchema.parse(req.body);
@@ -3112,7 +3112,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.put("/api/maintenance-actions/:id", async (req, res) => {
+  app.put("/api/maintenance-actions/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const action = await storage.updateMaintenanceAction(id, req.body);
@@ -3123,7 +3123,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.delete("/api/maintenance-actions/:id", async (req, res) => {
+  app.delete("/api/maintenance-actions/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       await storage.deleteMaintenanceAction(id);
@@ -3148,7 +3148,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/maintenance-reports", async (req, res) => {
+  app.post("/api/maintenance-reports", requireAuth, async (req, res) => {
     try {
       const data = insertMaintenanceReportSchema.parse(req.body);
       const report = await storage.createMaintenanceReport(data);
@@ -3159,7 +3159,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.put("/api/maintenance-reports/:id", async (req, res) => {
+  app.put("/api/maintenance-reports/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const report = await storage.updateMaintenanceReport(id, req.body);
@@ -3577,7 +3577,7 @@ Do not include quotes or explanations.`;
   });
 
   // Users routes
-  app.post("/api/users", async (req, res) => {
+  app.post("/api/users", requireAuth, async (req, res) => {
     try {
       console.log("Received user data:", req.body);
 
@@ -4586,7 +4586,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.delete("/api/customer-products/:id", async (req, res) => {
+  app.delete("/api/customer-products/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       await storage.deleteCustomerProduct(id);
@@ -4596,7 +4596,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.delete("/api/locations/:id", async (req, res) => {
+  app.delete("/api/locations/:id", requireAuth, async (req, res) => {
     try {
       const id = req.params.id;
       await storage.deleteLocation(id);
