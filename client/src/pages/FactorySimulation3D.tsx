@@ -66,17 +66,19 @@ function useDraggable(
   onDrag: (id: string, pos: [number, number, number]) => void
 ) {
   const [isDragging, setIsDragging] = useState(false);
-  const { camera, gl } = useThree();
+  const { camera, gl, controls } = useThree();
 
   const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
     if (!isSelected) return;
     e.stopPropagation();
     setIsDragging(true);
+    if (controls) (controls as any).enabled = false;
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   };
 
   const handlePointerUp = (e: ThreeEvent<PointerEvent>) => {
     setIsDragging(false);
+    if (controls) (controls as any).enabled = true;
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
   };
 
@@ -779,6 +781,7 @@ export default function FactorySimulation3D() {
                 fov={viewMode === '3d' ? 50 : 35}
               />
               <OrbitControls 
+                makeDefault
                 enableRotate={viewMode === '3d'}
                 enablePan={true}
                 maxPolarAngle={viewMode === 'top' ? 0 : Math.PI / 2.1}
