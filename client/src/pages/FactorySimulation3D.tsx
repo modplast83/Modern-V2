@@ -1,4 +1,4 @@
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useEffect, useCallback } from 'react';
 import { Canvas, useThree, ThreeEvent } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, Environment, Html, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
@@ -10,13 +10,26 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip';
+import { Slider } from '../components/ui/slider';
+import { Label } from '../components/ui/label';
 import { 
   Eye, Layers, Trash2, RotateCw, Factory, Box, Printer, Scissors, 
-  Blend, Package, Move, Maximize2
+  Blend, Package, Move, Maximize2, Building2, Palette,
+  ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Ruler
 } from 'lucide-react';
 
 const HALL_WIDTH = 20;
 const HALL_LENGTH = 50;
+const WALL_HEIGHT = 8;
+const GATE_WIDTH = 5;
+const GATE_HEIGHT = 5;
+const MOVE_STEP = 0.5;
+
+const COLOR_PRESETS = [
+  '#2563eb', '#7c3aed', '#059669', '#dc2626', '#d97706',
+  '#0891b2', '#4f46e5', '#be123c', '#15803d', '#92400e',
+  '#6366f1', '#ec4899', '#14b8a6', '#f97316', '#8b5cf6',
+];
 
 interface Machine {
   id: string;
@@ -27,6 +40,7 @@ interface Machine {
   size: [number, number, number];
   customName?: string;
   rotation?: number;
+  scale: [number, number, number];
 }
 
 interface ActiveRoll {
@@ -89,10 +103,10 @@ function useDraggable(
 function ProfessionalFilmMachine({ machine, isSelected }: { machine: Machine; isSelected: boolean }) {
   const towerHeight = 5.5;
   return (
-    <group rotation={[0, (machine.rotation || 0) * Math.PI / 180, 0]}>
+    <group rotation={[0, (machine.rotation || 0) * Math.PI / 180, 0]} scale={machine.scale}>
       <mesh castShadow position={[0, 0.4, 0]}>
         <boxGeometry args={[2.5, 0.8, 1.8]} />
-        <meshStandardMaterial color="#1e293b" metalness={0.7} roughness={0.3} />
+        <meshStandardMaterial color={machine.color} metalness={0.7} roughness={0.3} />
       </mesh>
       <mesh castShadow position={[1.2, 0.5, 0]} rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[0.35, 0.35, 2, 20]} />
@@ -128,10 +142,10 @@ function ProfessionalFilmMachine({ machine, isSelected }: { machine: Machine; is
 
 function ProfessionalPrintingMachine({ machine, isSelected }: { machine: Machine; isSelected: boolean }) {
   return (
-    <group rotation={[0, (machine.rotation || 0) * Math.PI / 180, 0]}>
+    <group rotation={[0, (machine.rotation || 0) * Math.PI / 180, 0]} scale={machine.scale}>
       <mesh castShadow position={[0, 0.6, 0]}>
         <boxGeometry args={[3.5, 1.2, 2]} />
-        <meshStandardMaterial color="#312e81" metalness={0.6} roughness={0.3} />
+        <meshStandardMaterial color={machine.color} metalness={0.6} roughness={0.3} />
       </mesh>
       {[-1.2, -0.4, 0.4, 1.2].map((x, i) => (
         <mesh key={i} castShadow position={[x, 1.6, 0]} rotation={[Math.PI / 2, 0, 0]}>
@@ -167,12 +181,12 @@ function ProfessionalPrintingMachine({ machine, isSelected }: { machine: Machine
 
 function ProfessionalCuttingMachine({ machine, isSelected }: { machine: Machine; isSelected: boolean }) {
   return (
-    <group rotation={[0, (machine.rotation || 0) * Math.PI / 180, 0]}>
+    <group rotation={[0, (machine.rotation || 0) * Math.PI / 180, 0]} scale={machine.scale}>
       <mesh castShadow position={[0, 0.5, 0]}>
         <boxGeometry args={[2.8, 1, 1.8]} />
-        <meshStandardMaterial color="#064e3b" metalness={0.6} roughness={0.3} />
+        <meshStandardMaterial color={machine.color} metalness={0.6} roughness={0.3} />
       </mesh>
-      <mesh castShadow position={[0, 1.5, 0]} rotation={[0, 0, 0]}>
+      <mesh castShadow position={[0, 1.5, 0]}>
         <cylinderGeometry args={[0.8, 0.8, 0.08, 32]} />
         <meshStandardMaterial color="#d4d4d8" metalness={0.9} roughness={0.1} />
       </mesh>
@@ -204,7 +218,7 @@ function ProfessionalCuttingMachine({ machine, isSelected }: { machine: Machine;
 
 function ProfessionalMixer({ machine, isSelected }: { machine: Machine; isSelected: boolean }) {
   return (
-    <group rotation={[0, (machine.rotation || 0) * Math.PI / 180, 0]}>
+    <group rotation={[0, (machine.rotation || 0) * Math.PI / 180, 0]} scale={machine.scale}>
       <mesh castShadow position={[0, 2, 0]}>
         <cylinderGeometry args={[1, 0.8, 2.5, 16]} />
         <meshStandardMaterial color={machine.color} metalness={0.6} roughness={0.3} />
@@ -235,11 +249,11 @@ function ProfessionalMixer({ machine, isSelected }: { machine: Machine; isSelect
 
 function WoodenPallet({ machine, isSelected }: { machine: Machine; isSelected: boolean }) {
   return (
-    <group rotation={[0, (machine.rotation || 0) * Math.PI / 180, 0]}>
+    <group rotation={[0, (machine.rotation || 0) * Math.PI / 180, 0]} scale={machine.scale}>
       {[-0.6, 0, 0.6].map((x, i) => (
         <mesh key={`top-${i}`} position={[x, 0.15, 0]} castShadow>
           <boxGeometry args={[0.2, 0.06, 1.5]} />
-          <meshStandardMaterial color="#a16207" roughness={0.8} />
+          <meshStandardMaterial color={machine.color} roughness={0.8} />
         </mesh>
       ))}
       {[-0.5, 0.5].map((z, i) => (
@@ -264,30 +278,89 @@ function WoodenPallet({ machine, isSelected }: { machine: Machine; isSelected: b
   );
 }
 
-function HallWalls() {
-  const wallHeight = 6;
-  const wallThickness = 0.15;
-  const wallColor = "#e2e8f0";
-  const wallOpacity = 0.15;
+function HallStructure({ showStructure }: { showStructure: boolean }) {
+  if (!showStructure) return null;
+  
+  const wallThickness = 0.2;
+  const wallColor = "#94a3b8";
+  const wallOpacity = 0.35;
+  const roofColor = "#64748b";
+  const roofOpacity = 0.2;
 
   return (
     <group>
-      <mesh position={[HALL_WIDTH / 2, wallHeight / 2, 0]}>
-        <boxGeometry args={[wallThickness, wallHeight, HALL_LENGTH]} />
-        <meshStandardMaterial color={wallColor} transparent opacity={wallOpacity} />
+      <mesh position={[HALL_WIDTH / 2, WALL_HEIGHT / 2, 0]}>
+        <boxGeometry args={[wallThickness, WALL_HEIGHT, HALL_LENGTH]} />
+        <meshStandardMaterial color={wallColor} transparent opacity={wallOpacity} side={THREE.DoubleSide} />
       </mesh>
-      <mesh position={[-HALL_WIDTH / 2, wallHeight / 2, 0]}>
-        <boxGeometry args={[wallThickness, wallHeight, HALL_LENGTH]} />
-        <meshStandardMaterial color={wallColor} transparent opacity={wallOpacity} />
+      <mesh position={[-HALL_WIDTH / 2, WALL_HEIGHT / 2, 0]}>
+        <boxGeometry args={[wallThickness, WALL_HEIGHT, HALL_LENGTH]} />
+        <meshStandardMaterial color={wallColor} transparent opacity={wallOpacity} side={THREE.DoubleSide} />
       </mesh>
-      <mesh position={[0, wallHeight / 2, HALL_LENGTH / 2]}>
-        <boxGeometry args={[HALL_WIDTH, wallHeight, wallThickness]} />
-        <meshStandardMaterial color={wallColor} transparent opacity={wallOpacity} />
+      <mesh position={[0, WALL_HEIGHT / 2, HALL_LENGTH / 2]}>
+        <boxGeometry args={[HALL_WIDTH, WALL_HEIGHT, wallThickness]} />
+        <meshStandardMaterial color={wallColor} transparent opacity={wallOpacity} side={THREE.DoubleSide} />
       </mesh>
-      <mesh position={[0, wallHeight / 2, -HALL_LENGTH / 2]}>
-        <boxGeometry args={[HALL_WIDTH, wallHeight, wallThickness]} />
-        <meshStandardMaterial color={wallColor} transparent opacity={wallOpacity} />
+
+      <mesh position={[-(HALL_WIDTH / 2 - (HALL_WIDTH - GATE_WIDTH) / 4), WALL_HEIGHT / 2, -HALL_LENGTH / 2]}>
+        <boxGeometry args={[(HALL_WIDTH - GATE_WIDTH) / 2, WALL_HEIGHT, wallThickness]} />
+        <meshStandardMaterial color={wallColor} transparent opacity={wallOpacity} side={THREE.DoubleSide} />
       </mesh>
+      <mesh position={[(HALL_WIDTH / 2 - (HALL_WIDTH - GATE_WIDTH) / 4), WALL_HEIGHT / 2, -HALL_LENGTH / 2]}>
+        <boxGeometry args={[(HALL_WIDTH - GATE_WIDTH) / 2, WALL_HEIGHT, wallThickness]} />
+        <meshStandardMaterial color={wallColor} transparent opacity={wallOpacity} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh position={[0, WALL_HEIGHT - (WALL_HEIGHT - GATE_HEIGHT) / 2, -HALL_LENGTH / 2]}>
+        <boxGeometry args={[GATE_WIDTH, WALL_HEIGHT - GATE_HEIGHT, wallThickness]} />
+        <meshStandardMaterial color={wallColor} transparent opacity={wallOpacity} side={THREE.DoubleSide} />
+      </mesh>
+
+      <mesh position={[-GATE_WIDTH / 2, GATE_HEIGHT / 2, -HALL_LENGTH / 2]}>
+        <boxGeometry args={[0.15, GATE_HEIGHT, 0.15]} />
+        <meshStandardMaterial color="#f59e0b" metalness={0.6} />
+      </mesh>
+      <mesh position={[GATE_WIDTH / 2, GATE_HEIGHT / 2, -HALL_LENGTH / 2]}>
+        <boxGeometry args={[0.15, GATE_HEIGHT, 0.15]} />
+        <meshStandardMaterial color="#f59e0b" metalness={0.6} />
+      </mesh>
+      <mesh position={[0, GATE_HEIGHT, -HALL_LENGTH / 2]}>
+        <boxGeometry args={[GATE_WIDTH + 0.3, 0.2, 0.2]} />
+        <meshStandardMaterial color="#f59e0b" metalness={0.6} />
+      </mesh>
+
+      <Html position={[0, GATE_HEIGHT + 0.8, -HALL_LENGTH / 2]} center>
+        <div className="bg-amber-500/90 text-black px-3 py-1 rounded text-[10px] font-bold shadow-lg pointer-events-none whitespace-nowrap">
+          البوابة الرئيسية
+        </div>
+      </Html>
+
+      <mesh position={[0, WALL_HEIGHT + 0.5, 0]} rotation={[0, 0, 0]}>
+        <boxGeometry args={[HALL_WIDTH + 1, 0.15, HALL_LENGTH + 1]} />
+        <meshStandardMaterial color={roofColor} transparent opacity={roofOpacity} side={THREE.DoubleSide} />
+      </mesh>
+      {[-HALL_WIDTH / 2 + 0.5, HALL_WIDTH / 2 - 0.5].map((x, i) => (
+        <mesh key={`beam-${i}`} position={[x, WALL_HEIGHT + 0.2, 0]}>
+          <boxGeometry args={[0.2, 0.4, HALL_LENGTH]} />
+          <meshStandardMaterial color="#475569" transparent opacity={0.4} />
+        </mesh>
+      ))}
+      {Array.from({ length: 6 }).map((_, i) => (
+        <mesh key={`cross-beam-${i}`} position={[0, WALL_HEIGHT + 0.2, -HALL_LENGTH / 2 + (i + 1) * (HALL_LENGTH / 7)]}>
+          <boxGeometry args={[HALL_WIDTH, 0.3, 0.15]} />
+          <meshStandardMaterial color="#475569" transparent opacity={0.3} />
+        </mesh>
+      ))}
+
+      {[-HALL_WIDTH / 2, HALL_WIDTH / 2].map((x) => (
+        [0, 1, 2, 3].map((i) => (
+          <group key={`pillar-${x}-${i}`}>
+            <mesh position={[x + (x > 0 ? -0.15 : 0.15), WALL_HEIGHT / 2, -HALL_LENGTH / 2 + (i + 1) * (HALL_LENGTH / 5)]}>
+              <boxGeometry args={[0.25, WALL_HEIGHT, 0.25]} />
+              <meshStandardMaterial color="#78716c" metalness={0.5} transparent opacity={0.5} />
+            </mesh>
+          </group>
+        ))
+      ))}
     </group>
   );
 }
@@ -321,7 +394,7 @@ function DraggableGroup({ machine, isSelected, onSelect, onDrag }: any) {
       {machine.type === 'cutting' && <ProfessionalCuttingMachine machine={machine} isSelected={isSelected} />}
       {machine.type === 'mixer' && <ProfessionalMixer machine={machine} isSelected={isSelected} />}
       {machine.type === 'pallet' && <WoodenPallet machine={machine} isSelected={isSelected} />}
-      <Html position={[0, machine.type === 'film' ? 6 : 3.5, 0]} center>
+      <Html position={[0, machine.type === 'film' ? 6 * machine.scale[1] : 3.5 * machine.scale[1], 0]} center>
         <div className="bg-black/85 text-white px-2.5 py-1 rounded-md text-[9px] font-bold border border-white/20 shadow-xl pointer-events-none whitespace-nowrap backdrop-blur-sm">
           {machine.customName || machine.nameAr}
         </div>
@@ -334,6 +407,9 @@ export default function FactorySimulation3D() {
   const [machines, setMachines] = useState<Machine[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'3d' | 'top'>('3d');
+  const [showStructure, setShowStructure] = useState(false);
+  const [showScalePanel, setShowScalePanel] = useState(false);
+  const [showColorPanel, setShowColorPanel] = useState(false);
 
   const { data: activeRolls = [] } = useQuery<ActiveRoll[]>({
     queryKey: ['/api/factory-3d/active-rolls'],
@@ -341,6 +417,60 @@ export default function FactorySimulation3D() {
   });
 
   const selectedMachine = machines.find(m => m.id === selectedId);
+
+  const moveMachine = useCallback((dx: number, dz: number) => {
+    if (!selectedId) return;
+    setMachines(prev => prev.map(m => {
+      if (m.id !== selectedId) return m;
+      const newX = Math.max(-HALL_WIDTH / 2 + 2, Math.min(HALL_WIDTH / 2 - 2, m.position[0] + dx));
+      const newZ = Math.max(-HALL_LENGTH / 2 + 2, Math.min(HALL_LENGTH / 2 - 2, m.position[2] + dz));
+      return { ...m, position: [newX, 0, newZ] as [number, number, number] };
+    }));
+  }, [selectedId]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!selectedId) return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      
+      switch (e.key) {
+        case 'ArrowUp':
+          e.preventDefault();
+          moveMachine(0, -MOVE_STEP);
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          moveMachine(0, MOVE_STEP);
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          moveMachine(-MOVE_STEP, 0);
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          moveMachine(MOVE_STEP, 0);
+          break;
+        case 'Delete':
+        case 'Backspace':
+          e.preventDefault();
+          setMachines(prev => prev.filter(m => m.id !== selectedId));
+          setSelectedId(null);
+          break;
+        case 'r':
+        case 'R':
+          e.preventDefault();
+          setMachines(prev => prev.map(m => m.id === selectedId ? { ...m, rotation: ((m.rotation || 0) + 45) % 360 } : m));
+          break;
+        case 'Escape':
+          e.preventDefault();
+          setSelectedId(null);
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedId, moveMachine]);
 
   const addMachine = (type: Machine['type']) => {
     const config = MACHINE_CONFIGS[type];
@@ -351,6 +481,7 @@ export default function FactorySimulation3D() {
       color: config.color,
       position: [Math.random() * 6 - 3, 0, Math.random() * 6 - 3],
       size: [2, 2, 2],
+      scale: [1, 1, 1],
     };
     setMachines([...machines, newMachine]);
     setSelectedId(newMachine.id);
@@ -373,6 +504,21 @@ export default function FactorySimulation3D() {
     setSelectedId(null);
   };
 
+  const updateScale = (axis: 0 | 1 | 2, value: number) => {
+    if (!selectedId) return;
+    setMachines(prev => prev.map(m => {
+      if (m.id !== selectedId) return m;
+      const newScale = [...m.scale] as [number, number, number];
+      newScale[axis] = value;
+      return { ...m, scale: newScale };
+    }));
+  };
+
+  const updateColor = (color: string) => {
+    if (!selectedId) return;
+    setMachines(prev => prev.map(m => m.id === selectedId ? { ...m, color } : m));
+  };
+
   return (
     <div className="h-screen flex flex-col bg-gray-950 overflow-hidden font-sans" dir="rtl">
       <Header />
@@ -380,7 +526,7 @@ export default function FactorySimulation3D() {
         <Sidebar />
         <main className="flex-1 relative bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 lg:mr-64">
           
-          <div className="absolute top-3 right-3 z-20 flex flex-col gap-2 w-56">
+          <div className="absolute top-3 right-3 z-20 flex flex-col gap-2 w-56 max-h-[calc(100vh-120px)] overflow-y-auto scrollbar-thin">
             <Card className="bg-slate-900/90 backdrop-blur-xl border-slate-700/50 text-white shadow-2xl">
               <CardContent className="p-3">
                 <div className="flex items-center gap-2 mb-3">
@@ -410,24 +556,118 @@ export default function FactorySimulation3D() {
                 <CardContent className="p-3">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: selectedMachine.color }} />
+                      <div className="w-2.5 h-2.5 rounded-full border border-white/20" style={{ backgroundColor: selectedMachine.color }} />
                       <span className="text-[11px] font-bold text-slate-200">{selectedMachine.nameAr}</span>
                     </div>
                     <Badge variant="outline" className="text-[8px] h-4 border-slate-600 text-slate-400">
                       {selectedMachine.rotation || 0}°
                     </Badge>
                   </div>
-                  <div className="flex gap-1.5">
+
+                  <div className="flex gap-1 mb-2">
                     <Button size="sm" variant="outline" onClick={rotateMachine} className="flex-1 text-[9px] h-7 bg-slate-800/60 border-slate-700/50 hover:bg-slate-700 text-slate-300">
                       <RotateCw size={10} className="ml-1" /> تدوير
                     </Button>
-                    <Button size="sm" variant="destructive" onClick={deleteMachine} className="flex-1 text-[9px] h-7">
-                      <Trash2 size={10} className="ml-1" /> حذف
+                    <Button size="sm" variant="outline" onClick={() => { setShowScalePanel(!showScalePanel); setShowColorPanel(false); }} className={`flex-1 text-[9px] h-7 border-slate-700/50 text-slate-300 ${showScalePanel ? 'bg-slate-700' : 'bg-slate-800/60 hover:bg-slate-700'}`}>
+                      <Ruler size={10} className="ml-1" /> تحجيم
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => { setShowColorPanel(!showColorPanel); setShowScalePanel(false); }} className={`flex-1 text-[9px] h-7 border-slate-700/50 text-slate-300 ${showColorPanel ? 'bg-slate-700' : 'bg-slate-800/60 hover:bg-slate-700'}`}>
+                      <Palette size={10} className="ml-1" /> لون
                     </Button>
                   </div>
-                  <div className="mt-2 flex items-center gap-1 text-[8px] text-slate-500">
+
+                  {showScalePanel && (
+                    <div className="mb-2 p-2 bg-slate-800/60 rounded-md border border-slate-700/30 space-y-2.5">
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <Label className="text-[9px] text-slate-400">العرض (X)</Label>
+                          <span className="text-[9px] text-slate-500">{selectedMachine.scale[0].toFixed(1)}x</span>
+                        </div>
+                        <Slider
+                          value={[selectedMachine.scale[0]]}
+                          min={0.3}
+                          max={3}
+                          step={0.1}
+                          onValueChange={([v]) => updateScale(0, v)}
+                          className="h-4"
+                        />
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <Label className="text-[9px] text-slate-400">الارتفاع (Y)</Label>
+                          <span className="text-[9px] text-slate-500">{selectedMachine.scale[1].toFixed(1)}x</span>
+                        </div>
+                        <Slider
+                          value={[selectedMachine.scale[1]]}
+                          min={0.3}
+                          max={3}
+                          step={0.1}
+                          onValueChange={([v]) => updateScale(1, v)}
+                          className="h-4"
+                        />
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <Label className="text-[9px] text-slate-400">الطول (Z)</Label>
+                          <span className="text-[9px] text-slate-500">{selectedMachine.scale[2].toFixed(1)}x</span>
+                        </div>
+                        <Slider
+                          value={[selectedMachine.scale[2]]}
+                          min={0.3}
+                          max={3}
+                          step={0.1}
+                          onValueChange={([v]) => updateScale(2, v)}
+                          className="h-4"
+                        />
+                      </div>
+                      <Button size="sm" variant="ghost" onClick={() => {
+                        if (!selectedId) return;
+                        setMachines(prev => prev.map(m => m.id === selectedId ? { ...m, scale: [1, 1, 1] as [number, number, number] } : m));
+                      }} className="w-full text-[8px] h-5 text-slate-500 hover:text-slate-300">
+                        إعادة للحجم الأصلي
+                      </Button>
+                    </div>
+                  )}
+
+                  {showColorPanel && (
+                    <div className="mb-2 p-2 bg-slate-800/60 rounded-md border border-slate-700/30">
+                      <div className="grid grid-cols-5 gap-1.5">
+                        {COLOR_PRESETS.map((color) => (
+                          <button
+                            key={color}
+                            onClick={() => updateColor(color)}
+                            className={`w-7 h-7 rounded-md border-2 transition-all hover:scale-110 ${selectedMachine.color === color ? 'border-white shadow-lg scale-110' : 'border-transparent hover:border-white/40'}`}
+                            style={{ backgroundColor: color }}
+                          />
+                        ))}
+                      </div>
+                      <div className="mt-2 flex items-center gap-2">
+                        <Label className="text-[9px] text-slate-400 shrink-0">مخصص:</Label>
+                        <input
+                          type="color"
+                          value={selectedMachine.color}
+                          onChange={(e) => updateColor(e.target.value)}
+                          className="w-full h-6 rounded cursor-pointer bg-transparent border-0"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <Button size="sm" variant="destructive" onClick={deleteMachine} className="w-full text-[9px] h-7 mb-1.5">
+                    <Trash2 size={10} className="ml-1" /> حذف المعدة
+                  </Button>
+
+                  <div className="flex items-center gap-1 text-[8px] text-slate-500">
                     <Move size={8} />
-                    <span>اضغط واسحب لتحريك الماكينة</span>
+                    <span>اسحب أو استخدم الأسهم للتحريك</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-[8px] text-slate-500 mt-0.5">
+                    <span className="bg-slate-700 px-1 rounded text-[7px]">R</span>
+                    <span>تدوير</span>
+                    <span className="mr-1 bg-slate-700 px-1 rounded text-[7px]">Del</span>
+                    <span>حذف</span>
+                    <span className="mr-1 bg-slate-700 px-1 rounded text-[7px]">Esc</span>
+                    <span>إلغاء</span>
                   </div>
                 </CardContent>
               </Card>
@@ -450,6 +690,21 @@ export default function FactorySimulation3D() {
 
           <div className="absolute bottom-4 left-4 z-20 flex flex-col gap-1.5">
             <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    size="icon" 
+                    variant="secondary" 
+                    onClick={() => setShowStructure(!showStructure)} 
+                    className={`w-9 h-9 backdrop-blur-xl border shadow-xl ${showStructure ? 'bg-amber-600/80 border-amber-500/50 hover:bg-amber-600' : 'bg-slate-900/90 border-slate-700/50 hover:bg-slate-800'}`}
+                  >
+                    <Building2 size={14} className={showStructure ? 'text-white' : 'text-slate-300'} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="text-xs">
+                  {showStructure ? "إخفاء السقف والجدران" : "إظهار السقف والجدران والبوابة"}
+                </TooltipContent>
+              </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button 
@@ -493,6 +748,29 @@ export default function FactorySimulation3D() {
             </div>
           </div>
 
+          {selectedId && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 lg:flex hidden">
+              <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-700/50 rounded-xl p-1.5 shadow-xl flex items-center gap-1">
+                <div className="grid grid-cols-3 gap-0.5">
+                  <div />
+                  <Button size="icon" variant="ghost" onClick={() => moveMachine(0, -MOVE_STEP)} className="w-7 h-7 text-slate-400 hover:text-white hover:bg-slate-700">
+                    <ArrowUp size={12} />
+                  </Button>
+                  <div />
+                  <Button size="icon" variant="ghost" onClick={() => moveMachine(-MOVE_STEP, 0)} className="w-7 h-7 text-slate-400 hover:text-white hover:bg-slate-700">
+                    <ArrowLeft size={12} />
+                  </Button>
+                  <Button size="icon" variant="ghost" onClick={() => moveMachine(0, MOVE_STEP)} className="w-7 h-7 text-slate-400 hover:text-white hover:bg-slate-700">
+                    <ArrowDown size={12} />
+                  </Button>
+                  <Button size="icon" variant="ghost" onClick={() => moveMachine(MOVE_STEP, 0)} className="w-7 h-7 text-slate-400 hover:text-white hover:bg-slate-700">
+                    <ArrowRight size={12} />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <Canvas shadows className="!bg-transparent">
             <Suspense fallback={null}>
               <PerspectiveCamera 
@@ -521,7 +799,7 @@ export default function FactorySimulation3D() {
                 
                 <gridHelper args={[HALL_LENGTH, 50, "#b0bec5", "#cfd8dc"]} position={[0, 0.005, 0]} />
                 
-                <HallWalls />
+                <HallStructure showStructure={showStructure} />
                 <FloorMarkings />
 
                 {machines.map((m) => (
