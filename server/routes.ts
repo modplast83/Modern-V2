@@ -44,6 +44,7 @@ import {
   locations,
   users,
   attendance,
+  factory_layouts,
 } from "@shared/schema";
 import { eq, sql, and, gte, lte } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -9771,6 +9772,52 @@ Do not include quotes or explanations.`;
     }
   });
 
+
+  // ============ Factory Layout Save/Load API Routes ============
+
+  app.get("/api/factory-3d/layout", requireAuth, async (req, res) => {
+    try {
+      const result = await db.select().from(factory_layouts).where(eq(factory_layouts.name, "default")).limit(1);
+      if (result.length > 0) {
+        res.json(result[0]);
+      } else {
+        res.json(null);
+      }
+    } catch (error) {
+      console.error("Error loading factory layout:", error);
+      res.status(500).json({ message: "خطأ في تحميل تخطيط المصنع" });
+    }
+  });
+
+  app.post("/api/factory-3d/layout", requireAuth, async (req, res) => {
+    try {
+      const { machines } = req.body;
+      if (!machines || !Array.isArray(machines)) {
+        return res.status(400).json({ message: "بيانات غير صالحة" });
+      }
+      const authReq = req as AuthRequest;
+      const userId = authReq.user?.id;
+
+      const existing = await db.select().from(factory_layouts).where(eq(factory_layouts.name, "default")).limit(1);
+
+      if (existing.length > 0) {
+        await db.update(factory_layouts)
+          .set({ layout_data: machines, updated_at: new Date(), updated_by: userId })
+          .where(eq(factory_layouts.id, existing[0].id));
+      } else {
+        await db.insert(factory_layouts).values({
+          name: "default",
+          layout_data: machines,
+          updated_by: userId,
+        });
+      }
+
+      res.json({ success: true, message: "تم حفظ التخطيط بنجاح" });
+    } catch (error) {
+      console.error("Error saving factory layout:", error);
+      res.status(500).json({ message: "خطأ في حفظ تخطيط المصنع" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

@@ -1,8 +1,10 @@
-import { useState, Suspense, useEffect, useCallback } from 'react';
+import { useState, Suspense, useEffect, useCallback, useRef } from 'react';
 import { Canvas, useThree, ThreeEvent } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, Environment, Html, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 
 import Header from '../components/layout/Header';
 import Sidebar from '../components/layout/Sidebar';
@@ -12,10 +14,11 @@ import { Badge } from '../components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip';
 import { Slider } from '../components/ui/slider';
 import { Label } from '../components/ui/label';
+import { Input } from '../components/ui/input';
 import { 
   Eye, Layers, Trash2, RotateCw, Factory, Box, Printer, Scissors, 
   Blend, Package, Move, Maximize2, Building2, Palette,
-  ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Ruler
+  ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Ruler, Save, Pencil, Check
 } from 'lucide-react';
 
 const HALL_WIDTH = 20;
@@ -412,23 +415,64 @@ export default function FactorySimulation3D() {
   const [showStructure, setShowStructure] = useState(false);
   const [showScalePanel, setShowScalePanel] = useState(false);
   const [showColorPanel, setShowColorPanel] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState('');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const { data: activeRolls = [] } = useQuery<ActiveRoll[]>({
     queryKey: ['/api/factory-3d/active-rolls'],
     refetchInterval: 5000,
   });
 
+  const { data: savedLayout, isLoading: layoutLoading } = useQuery<any>({
+    queryKey: ['/api/factory-3d/layout'],
+  });
+
+  useEffect(() => {
+    if (savedLayout?.layout_data && Array.isArray(savedLayout.layout_data)) {
+      setMachines(savedLayout.layout_data);
+      setHasUnsavedChanges(false);
+    }
+  }, [savedLayout]);
+
+  const saveLayoutMutation = useMutation({
+    mutationFn: async (data: Machine[]) => {
+      const res = await apiRequest('/api/factory-3d/layout', { method: 'POST', body: JSON.stringify({ machines: data }) });
+      return res.json();
+    },
+    onSuccess: () => {
+      setHasUnsavedChanges(false);
+      toast({ title: 'تم الحفظ', description: 'تم حفظ تخطيط المصنع بنجاح' });
+    },
+    onError: () => {
+      toast({ title: 'خطأ', description: 'فشل حفظ التخطيط', variant: 'destructive' });
+    },
+  });
+
   const selectedMachine = machines.find(m => m.id === selectedId);
+
+  useEffect(() => {
+    setEditingName(false);
+    setShowScalePanel(false);
+    setShowColorPanel(false);
+  }, [selectedId]);
+
+  const updateMachines = useCallback((updater: Machine[] | ((prev: Machine[]) => Machine[])) => {
+    setMachines(updater);
+    setHasUnsavedChanges(true);
+  }, []);
 
   const moveMachine = useCallback((dx: number, dz: number) => {
     if (!selectedId) return;
-    setMachines(prev => prev.map(m => {
+    updateMachines(prev => prev.map(m => {
       if (m.id !== selectedId) return m;
       const newX = Math.max(-HALL_WIDTH / 2 + 2, Math.min(HALL_WIDTH / 2 - 2, m.position[0] + dx));
       const newZ = Math.max(-HALL_LENGTH / 2 + 2, Math.min(HALL_LENGTH / 2 - 2, m.position[2] + dz));
       return { ...m, position: [newX, 0, newZ] as [number, number, number] };
     }));
-  }, [selectedId]);
+  }, [selectedId, updateMachines]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -455,13 +499,13 @@ export default function FactorySimulation3D() {
         case 'Delete':
         case 'Backspace':
           e.preventDefault();
-          setMachines(prev => prev.filter(m => m.id !== selectedId));
+          updateMachines(prev => prev.filter(m => m.id !== selectedId));
           setSelectedId(null);
           break;
         case 'r':
         case 'R':
           e.preventDefault();
-          setMachines(prev => prev.map(m => m.id === selectedId ? { ...m, rotation: ((m.rotation || 0) + 45) % 360 } : m));
+          updateMachines(prev => prev.map(m => m.id === selectedId ? { ...m, rotation: ((m.rotation || 0) + 45) % 360 } : m));
           break;
         case 'Escape':
           e.preventDefault();
@@ -472,7 +516,7 @@ export default function FactorySimulation3D() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedId, moveMachine]);
+  }, [selectedId, moveMachine, updateMachines]);
 
   const addMachine = (type: Machine['type']) => {
     const config = MACHINE_CONFIGS[type];
@@ -485,30 +529,43 @@ export default function FactorySimulation3D() {
       size: [2, 2, 2],
       scale: [1, 1, 1],
     };
-    setMachines([...machines, newMachine]);
+    updateMachines([...machines, newMachine]);
     setSelectedId(newMachine.id);
   };
 
   const handleDrag = (id: string, pos: [number, number, number]) => {
     const clampedX = Math.max(-HALL_WIDTH / 2 + 2, Math.min(HALL_WIDTH / 2 - 2, pos[0]));
     const clampedZ = Math.max(-HALL_LENGTH / 2 + 2, Math.min(HALL_LENGTH / 2 - 2, pos[2]));
-    setMachines(prev => prev.map(m => m.id === id ? { ...m, position: [clampedX, 0, clampedZ] } : m));
+    updateMachines(prev => prev.map(m => m.id === id ? { ...m, position: [clampedX, 0, clampedZ] } : m));
   };
 
   const rotateMachine = () => {
     if (!selectedId) return;
-    setMachines(prev => prev.map(m => m.id === selectedId ? { ...m, rotation: ((m.rotation || 0) + 45) % 360 } : m));
+    updateMachines(prev => prev.map(m => m.id === selectedId ? { ...m, rotation: ((m.rotation || 0) + 45) % 360 } : m));
   };
 
   const deleteMachine = () => {
     if (!selectedId) return;
-    setMachines(machines.filter(m => m.id !== selectedId));
+    updateMachines(machines.filter(m => m.id !== selectedId));
     setSelectedId(null);
+  };
+
+  const updateMachineName = () => {
+    if (!selectedId || !nameInput.trim()) return;
+    updateMachines(prev => prev.map(m => m.id === selectedId ? { ...m, customName: nameInput.trim() } : m));
+    setEditingName(false);
+  };
+
+  const startEditingName = () => {
+    if (!selectedMachine) return;
+    setNameInput(selectedMachine.customName || selectedMachine.nameAr);
+    setEditingName(true);
+    setTimeout(() => nameInputRef.current?.focus(), 50);
   };
 
   const updateScale = (axis: 0 | 1 | 2, value: number) => {
     if (!selectedId) return;
-    setMachines(prev => prev.map(m => {
+    updateMachines(prev => prev.map(m => {
       if (m.id !== selectedId) return m;
       const newScale = [...m.scale] as [number, number, number];
       newScale[axis] = value;
@@ -518,7 +575,7 @@ export default function FactorySimulation3D() {
 
   const updateColor = (color: string) => {
     if (!selectedId) return;
-    setMachines(prev => prev.map(m => m.id === selectedId ? { ...m, color } : m));
+    updateMachines(prev => prev.map(m => m.id === selectedId ? { ...m, color } : m));
   };
 
   return (
@@ -557,11 +614,31 @@ export default function FactorySimulation3D() {
               <Card className="bg-slate-900/90 backdrop-blur-xl border-slate-700/50 text-white shadow-2xl animate-in slide-in-from-top-2 duration-200">
                 <CardContent className="p-3">
                   <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-full border border-white/20" style={{ backgroundColor: selectedMachine.color }} />
-                      <span className="text-[11px] font-bold text-slate-200">{selectedMachine.nameAr}</span>
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <div className="w-2.5 h-2.5 rounded-full border border-white/20 shrink-0" style={{ backgroundColor: selectedMachine.color }} />
+                      {editingName ? (
+                        <div className="flex items-center gap-1 flex-1 min-w-0">
+                          <Input
+                            ref={nameInputRef}
+                            value={nameInput}
+                            onChange={(e) => setNameInput(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') updateMachineName(); if (e.key === 'Escape') setEditingName(false); }}
+                            className="h-5 text-[10px] bg-slate-800 border-slate-600 text-white px-1.5 py-0"
+                          />
+                          <Button size="icon" variant="ghost" onClick={updateMachineName} className="w-5 h-5 text-green-400 hover:text-green-300 shrink-0">
+                            <Check size={10} />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 flex-1 min-w-0">
+                          <span className="text-[11px] font-bold text-slate-200 truncate">{selectedMachine.customName || selectedMachine.nameAr}</span>
+                          <Button size="icon" variant="ghost" onClick={startEditingName} className="w-5 h-5 text-slate-500 hover:text-slate-300 shrink-0">
+                            <Pencil size={9} />
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                    <Badge variant="outline" className="text-[8px] h-4 border-slate-600 text-slate-400">
+                    <Badge variant="outline" className="text-[8px] h-4 border-slate-600 text-slate-400 shrink-0">
                       {selectedMachine.rotation || 0}°
                     </Badge>
                   </div>
@@ -624,7 +701,7 @@ export default function FactorySimulation3D() {
                       </div>
                       <Button size="sm" variant="ghost" onClick={() => {
                         if (!selectedId) return;
-                        setMachines(prev => prev.map(m => m.id === selectedId ? { ...m, scale: [1, 1, 1] as [number, number, number] } : m));
+                        updateMachines(prev => prev.map(m => m.id === selectedId ? { ...m, scale: [1, 1, 1] as [number, number, number] } : m));
                       }} className="w-full text-[8px] h-5 text-slate-500 hover:text-slate-300">
                         إعادة للحجم الأصلي
                       </Button>
@@ -677,6 +754,17 @@ export default function FactorySimulation3D() {
           </div>
 
           <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2">
+            {hasUnsavedChanges && (
+              <Button
+                size="sm"
+                onClick={() => saveLayoutMutation.mutate(machines)}
+                disabled={saveLayoutMutation.isPending}
+                className="h-8 px-4 text-[11px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-500/50 shadow-xl backdrop-blur-xl"
+              >
+                <Save size={13} className="ml-1.5" />
+                {saveLayoutMutation.isPending ? 'جاري الحفظ...' : 'حفظ التخطيط'}
+              </Button>
+            )}
             <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-700/50 rounded-lg px-3 py-2 flex items-center gap-3 shadow-xl">
               <div className="flex items-center gap-2 text-[10px] text-slate-400">
                 <Factory size={12} className="text-blue-400" />
