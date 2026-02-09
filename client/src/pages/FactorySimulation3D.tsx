@@ -3,8 +3,8 @@ import { Canvas, useThree, ThreeEvent } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, Environment, Html, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
-import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '../lib/queryClient';
+import { useToast } from '../hooks/use-toast';
 
 import Header from '../components/layout/Header';
 import Sidebar from '../components/layout/Sidebar';
