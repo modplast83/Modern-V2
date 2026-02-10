@@ -9226,89 +9226,72 @@ export class DatabaseStorage implements IStorage {
   // Get production orders ready for warehouse receipt (with cut quantities)
   async getProductionOrdersForReceipt(): Promise<any[]> {
     try {
-      // Get production orders that have cuts but haven't been fully received
-      const result = await db
-        .select({
-          order_id: production_orders.order_id,
-          order_number: orders.order_number,
-          production_order_id: production_orders.id,
-          production_order_number: production_orders.production_order_number,
-          customer_id: orders.customer_id,
-          customer_name: customers.name,
-          customer_name_ar: customers.name_ar,
-          quantity_required: production_orders.quantity_kg,
-          item_name: items.name,
-          item_name_ar: items.name_ar,
-          size_caption: customer_products.size_caption,
-          raw_material: customer_products.raw_material,
-          master_batch_id: customer_products.master_batch_id,
-          // Calculate total film production (sum of all roll weights for this production order)
-          total_film_weight: sql<string>`
-            COALESCE((
-              SELECT SUM(weight_kg)::decimal(12,3)
-              FROM rolls 
-              WHERE production_order_id = ${production_orders.id}
-            ), 0)
-          `,
-          // Calculate total cut weight (sum of cut weights from rolls table)
-          total_cut_weight: sql<string>`
-            COALESCE((
-              SELECT SUM(cut_weight_total_kg)::decimal(12,3)
-              FROM rolls 
-              WHERE production_order_id = ${production_orders.id}
-                AND cut_weight_total_kg > 0
-            ), 0)
-          `,
-          // Calculate total received weight (sum of all warehouse receipts for this production order)
-          total_received_weight: sql<string>`
-            COALESCE((
-              SELECT SUM(received_weight_kg)::decimal(12,3)
-              FROM warehouse_receipts
-              WHERE production_order_id = ${production_orders.id}
-            ), 0)
-          `,
-          // Calculate waste (film production - cut weight)
-          waste_weight: sql<string>`
-            COALESCE((
-              SELECT SUM(weight_kg)::decimal(12,3)
-              FROM rolls 
-              WHERE production_order_id = ${production_orders.id}
-            ), 0) - COALESCE((
-              SELECT SUM(cut_weight_total_kg)::decimal(12,3)
-              FROM rolls 
-              WHERE production_order_id = ${production_orders.id}
-                AND cut_weight_total_kg > 0
-            ), 0)
-          `,
-        })
-        .from(production_orders)
-        .leftJoin(orders, eq(production_orders.order_id, orders.id))
-        .leftJoin(customers, eq(orders.customer_id, customers.id))
-        .leftJoin(
-          customer_products,
-          eq(production_orders.customer_product_id, customer_products.id),
+      const result = await db.execute(sql`
+        SELECT 
+          po.order_id,
+          o.order_number,
+          po.id as production_order_id,
+          po.production_order_number,
+          o.customer_id,
+          c.name as customer_name,
+          c.name_ar as customer_name_ar,
+          po.quantity_kg as quantity_required,
+          i.name as item_name,
+          i.name_ar as item_name_ar,
+          cp.size_caption,
+          cp.is_printed,
+          COALESCE((
+            SELECT SUM(r.weight_kg)::decimal(12,3)
+            FROM rolls r WHERE r.production_order_id = po.id
+          ), 0) as total_film_weight,
+          COALESCE((
+            SELECT SUM(r.weight_kg)::decimal(12,3)
+            FROM rolls r WHERE r.production_order_id = po.id
+              AND r.printed_at IS NOT NULL
+          ), 0) as total_print_weight,
+          COALESCE((
+            SELECT SUM(r.cut_weight_total_kg)::decimal(12,3)
+            FROM rolls r WHERE r.production_order_id = po.id
+              AND r.cut_weight_total_kg > 0
+          ), 0) as total_cut_weight,
+          COALESCE((
+            SELECT SUM(wr.received_weight_kg)::decimal(12,3)
+            FROM warehouse_receipts wr WHERE wr.production_order_id = po.id
+          ), 0) as total_received_weight,
+          po.waste_quantity_kg as waste_weight,
+          (SELECT string_agg(DISTINCT COALESCE(u.full_name, u.username), ', ')
+           FROM rolls r JOIN users u ON r.created_by = u.id
+           WHERE r.production_order_id = po.id
+          ) as film_producers,
+          (SELECT string_agg(DISTINCT COALESCE(u.full_name, u.username), ', ')
+           FROM rolls r JOIN users u ON r.printed_by = u.id
+           WHERE r.production_order_id = po.id AND r.printed_by IS NOT NULL
+          ) as printers,
+          (SELECT string_agg(DISTINCT COALESCE(u.full_name, u.username), ', ')
+           FROM rolls r JOIN users u ON r.cut_by = u.id
+           WHERE r.production_order_id = po.id AND r.cut_by IS NOT NULL
+          ) as cutters,
+          po.status as production_status
+        FROM production_orders po
+        LEFT JOIN orders o ON po.order_id = o.id
+        LEFT JOIN customers c ON o.customer_id = c.id
+        LEFT JOIN customer_products cp ON po.customer_product_id = cp.id
+        LEFT JOIN items i ON cp.item_id = i.id
+        WHERE EXISTS (
+          SELECT 1 FROM rolls
+          WHERE production_order_id = po.id AND cut_weight_total_kg > 0
         )
-        .leftJoin(items, eq(customer_products.item_id, items.id))
-        .where(
-          // Only include production orders that have cuts but haven't been fully received
-          sql`EXISTS (
-            SELECT 1 FROM rolls
-            WHERE production_order_id = ${production_orders.id}
-              AND cut_weight_total_kg > 0
-          ) AND COALESCE((
-            SELECT SUM(cut_weight_total_kg)
-            FROM rolls
-            WHERE production_order_id = ${production_orders.id}
-              AND cut_weight_total_kg > 0
-          ), 0) > COALESCE((
-            SELECT SUM(received_weight_kg)
-            FROM warehouse_receipts
-            WHERE production_order_id = ${production_orders.id}
-          ), 0)`,
-        )
-        .orderBy(desc(orders.created_at));
+        AND COALESCE((
+          SELECT SUM(cut_weight_total_kg)
+          FROM rolls WHERE production_order_id = po.id AND cut_weight_total_kg > 0
+        ), 0) > COALESCE((
+          SELECT SUM(received_weight_kg)
+          FROM warehouse_receipts WHERE production_order_id = po.id
+        ), 0)
+        ORDER BY o.order_number, po.production_order_number
+      `);
 
-      return result;
+      return result.rows;
     } catch (error) {
       console.error("Error fetching production orders for receipt:", error);
       throw new Error("فشل في جلب أوامر الإنتاج القابلة للاستلام");

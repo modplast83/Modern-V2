@@ -1413,33 +1413,49 @@ function ProductionHallContent() {
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
   const [receiptWeight, setReceiptWeight] = useState("");
   const [receiptNotes, setReceiptNotes] = useState("");
+  const [selectedReceiptOrderId, setSelectedReceiptOrderId] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Fetch production orders ready for receipt - Optimized polling
   const { data: productionOrders = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/warehouse/production-hall"],
-    refetchInterval: 120000, // Reduced to 2 minutes instead of aggressive 30s polling
-    staleTime: 90000, // Cache for 1.5 minutes to reduce server load
+    refetchInterval: 120000,
+    staleTime: 90000,
   });
 
-  // Show each production order separately - no grouping
-  const individualOrders = React.useMemo(() => {
+  const processedOrders = useMemo(() => {
     return productionOrders.map((order: any) => ({
       ...order,
       quantity_required: parseFloat(order.quantity_required) || 0,
       total_film_weight: parseFloat(order.total_film_weight) || 0,
+      total_print_weight: parseFloat(order.total_print_weight) || 0,
       total_cut_weight: parseFloat(order.total_cut_weight) || 0,
       total_received_weight: parseFloat(order.total_received_weight) || 0,
       waste_weight: parseFloat(order.waste_weight) || 0,
-      remaining_to_receive: 
-        (parseFloat(order.total_cut_weight) || 0) - 
+      remaining_to_receive:
+        (parseFloat(order.total_cut_weight) || 0) -
         (parseFloat(order.total_received_weight) || 0),
     }));
   }, [productionOrders]);
 
-  // Receipt mutation
+  const groupedByOrder = useMemo(() => {
+    const groups: Record<string, { order_number: string; customer_name: string; customer_name_ar: string; items: any[] }> = {};
+    processedOrders.forEach((po: any) => {
+      const key = po.order_number || po.order_id;
+      if (!groups[key]) {
+        groups[key] = {
+          order_number: po.order_number,
+          customer_name: po.customer_name,
+          customer_name_ar: po.customer_name_ar,
+          items: [],
+        };
+      }
+      groups[key].items.push(po);
+    });
+    return Object.values(groups);
+  }, [processedOrders]);
+
   const receiptMutation = useMutation({
     mutationFn: async (data: any) => {
       const response = await fetch("/api/warehouse/receipts", {
@@ -1447,29 +1463,21 @@ function ProductionHallContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-
       if (!response.ok) throw new Error("فشل في حفظ الاستلام");
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["/api/warehouse/production-hall"],
-      });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouse/production-hall"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouse/receipts-detailed"] });
       setReceiptDialogOpen(false);
       setSelectedOrders(new Set());
       setReceiptWeight("");
       setReceiptNotes("");
-      toast({
-        title: "تم الاستلام بنجاح",
-        description: "تم تسجيل استلام المواد في المستودع",
-      });
+      setSelectedReceiptOrderId(null);
+      toast({ title: "تم الاستلام بنجاح", description: "تم تسجيل استلام المواد في المستودع" });
     },
     onError: () => {
-      toast({
-        title: "خطأ",
-        description: "فشل في تسجيل الاستلام",
-        variant: "destructive",
-      });
+      toast({ title: "خطأ", description: "فشل في تسجيل الاستلام", variant: "destructive" });
     },
   });
 
@@ -1483,83 +1491,62 @@ function ProductionHallContent() {
     setSelectedOrders(newSelection);
   };
 
+  const openReceiptForOrder = (productionOrderId: string) => {
+    setSelectedReceiptOrderId(productionOrderId);
+    setReceiptDialogOpen(true);
+  };
+
   const handleReceiptSubmit = () => {
-    if (selectedOrders.size === 0) {
-      toast({
-        title: "خطأ",
-        description: "يرجى اختيار أمر إنتاج واحد على الأقل",
-        variant: "destructive",
-      });
-      return;
-    }
-
     if (!receiptWeight || parseFloat(receiptWeight) <= 0) {
-      toast({
-        title: "خطأ",
-        description: "يرجى إدخال وزن الاستلام",
-        variant: "destructive",
-      });
+      toast({ title: "خطأ", description: "يرجى إدخال وزن الاستلام", variant: "destructive" });
       return;
     }
-
     if (!user?.id) {
-      toast({
-        title: "خطأ",
-        description: "يجب تسجيل الدخول لتسجيل الاستلام",
-        variant: "destructive",
-      });
+      toast({ title: "خطأ", description: "يجب تسجيل الدخول لتسجيل الاستلام", variant: "destructive" });
       return;
     }
 
-    const selectedOrdersList = Array.from(selectedOrders);
-    const totalWeight = parseFloat(receiptWeight);
-    const numOrders = selectedOrdersList.length;
-    
-    // Distribute weight equally among selected production orders
-    const baseWeight = Math.floor((totalWeight * 1000) / numOrders) / 1000;
-    const remainder = totalWeight - (baseWeight * numOrders);
+    const targetOrders = selectedReceiptOrderId
+      ? [selectedReceiptOrderId]
+      : Array.from(selectedOrders);
 
-    // Create receipts for each selected production order
-    selectedOrdersList.forEach((productionOrderId, index) => {
-      const order = individualOrders.find(
-        (o) => o.production_order_id.toString() === productionOrderId,
-      );
-      if (order) {
-        // Add remainder to last order to ensure exact total
-        const weight = index === numOrders - 1 
-          ? baseWeight + remainder 
-          : baseWeight;
-          
-        receiptMutation.mutate({
-          production_order_id: parseInt(productionOrderId),
-          received_weight_kg: weight,
-          received_by: user.id,
-          notes: receiptNotes,
-        });
-      }
+    if (targetOrders.length === 0) {
+      toast({ title: "خطأ", description: "يرجى اختيار أمر إنتاج واحد على الأقل", variant: "destructive" });
+      return;
+    }
+
+    const totalWeight = parseFloat(receiptWeight);
+    const numOrders = targetOrders.length;
+    const baseWeight = Math.floor((totalWeight * 1000) / numOrders) / 1000;
+    const remainder = totalWeight - baseWeight * numOrders;
+
+    targetOrders.forEach((productionOrderId, index) => {
+      const weight = index === numOrders - 1 ? baseWeight + remainder : baseWeight;
+      receiptMutation.mutate({
+        production_order_id: parseInt(productionOrderId),
+        received_weight_kg: weight,
+        received_by: user.id,
+        notes: receiptNotes,
+      });
     });
   };
+
+  const allPoIds = processedOrders.map((o: any) => o.production_order_id.toString());
 
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="flex items-center gap-2">
             <Factory className="h-5 w-5" />
             صالة الإنتاج - المواد الجاهزة للاستلام
           </CardTitle>
           <div className="flex space-x-2 space-x-reverse">
-            <Dialog
-              open={receiptDialogOpen}
-              onOpenChange={setReceiptDialogOpen}
-            >
+            <Dialog open={receiptDialogOpen} onOpenChange={(open) => { setReceiptDialogOpen(open); if (!open) setSelectedReceiptOrderId(null); }}>
               <DialogTrigger asChild>
-                <Button
-                  disabled={selectedOrders.size === 0}
-                  data-testid="button-receive-materials"
-                >
+                <Button disabled={selectedOrders.size === 0}>
                   <Truck className="h-4 w-4 mr-2" />
-                  استلام المواد ({selectedOrders.size})
+                  استلام المحدد ({selectedOrders.size})
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-md">
@@ -1567,50 +1554,42 @@ function ProductionHallContent() {
                   <DialogTitle>استلام مواد من صالة الإنتاج</DialogTitle>
                   <DialogDescription>
                     تسجيل استلام المواد المقطعة من صالة الإنتاج إلى المستودع
-                    الرئيسي
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
+                  {selectedReceiptOrderId && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg text-sm">
+                      <span className="font-medium">أمر الإنتاج: </span>
+                      {processedOrders.find((o: any) => o.production_order_id.toString() === selectedReceiptOrderId)?.production_order_number}
+                      <span className="mx-2">|</span>
+                      <span className="font-medium">المتبقي: </span>
+                      {processedOrders.find((o: any) => o.production_order_id.toString() === selectedReceiptOrderId)?.remaining_to_receive.toFixed(2)} كيلو
+                    </div>
+                  )}
                   <div>
-                    <label className="text-sm font-medium">
-                      الوزن المستلم (كيلو)
-                    </label>
+                    <label className="text-sm font-medium">الوزن المستلم (كيلو)</label>
                     <Input
                       type="number"
                       step="0.001"
                       value={receiptWeight}
                       onChange={(e) => setReceiptWeight(e.target.value)}
                       placeholder="أدخل الوزن المستلم"
-                      data-testid="input-receipt-weight"
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium">
-                      ملاحظات (اختيارية)
-                    </label>
+                    <label className="text-sm font-medium">ملاحظات (اختيارية)</label>
                     <textarea
                       value={receiptNotes}
                       onChange={(e) => setReceiptNotes(e.target.value)}
                       placeholder="أضف ملاحظات حول الاستلام"
                       className="w-full min-h-[60px] p-2 border rounded-md"
-                      data-testid="textarea-receipt-notes"
                     />
                   </div>
                   <div className="flex space-x-2 space-x-reverse">
-                    <Button
-                      onClick={handleReceiptSubmit}
-                      disabled={receiptMutation.isPending}
-                      data-testid="button-confirm-receipt"
-                    >
-                      {receiptMutation.isPending
-                        ? "جاري الحفظ..."
-                        : "تأكيد الاستلام"}
+                    <Button onClick={handleReceiptSubmit} disabled={receiptMutation.isPending}>
+                      {receiptMutation.isPending ? "جاري الحفظ..." : "تأكيد الاستلام"}
                     </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => setReceiptDialogOpen(false)}
-                      data-testid="button-cancel-receipt"
-                    >
+                    <Button variant="outline" onClick={() => { setReceiptDialogOpen(false); setSelectedReceiptOrderId(null); }}>
                       إلغاء
                     </Button>
                   </div>
@@ -1623,191 +1602,150 @@ function ProductionHallContent() {
       <CardContent>
         {isLoading ? (
           <div className="flex justify-center py-8">جاري التحميل...</div>
-        ) : individualOrders.length === 0 ? (
+        ) : processedOrders.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <Factory className="h-12 w-12 mx-auto mb-4 text-gray-300" />
             <p>لا توجد مواد جاهزة للاستلام حالياً</p>
             <p className="text-sm">ستظهر أوامر الإنتاج التي تم تقطيعها هنا</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-right py-3 px-4 font-medium">
-                    <input
-                      type="checkbox"
-                      checked={
-                        selectedOrders.size === individualOrders.length &&
-                        individualOrders.length > 0
-                      }
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedOrders(
-                            new Set(
-                              individualOrders.map((o: any) => o.production_order_id.toString()),
-                            ),
-                          );
-                        } else {
-                          setSelectedOrders(new Set());
-                        }
-                      }}
-                      data-testid="checkbox-select-all"
-                    />
-                  </th>
-                  <th className="text-right py-3 px-4 font-medium">
-                    رقم الطلب
-                  </th>
-                  <th className="text-right py-3 px-4 font-medium">
-                    رقم أمر الإنتاج
-                  </th>
-                  <th className="text-right py-3 px-4 font-medium">العميل</th>
-                  <th className="text-right py-3 px-4 font-medium">
-                    الصنف
-                  </th>
-                  <th className="text-right py-3 px-4 font-medium">
-                    الكمية المطلوبة
-                  </th>
-                  <th className="text-right py-3 px-4 font-medium">
-                    الفيلم المنتج
-                  </th>
-                  <th className="text-right py-3 px-4 font-medium">
-                    الكمية المقطعة
-                  </th>
-                  <th className="text-right py-3 px-4 font-medium">
-                    المستلم سابقاً
-                  </th>
-                  <th className="text-right py-3 px-4 font-medium">
-                    المتبقي للاستلام
-                  </th>
-                  <th className="text-right py-3 px-4 font-medium">الهدر</th>
-                  <th className="text-right py-3 px-4 font-medium">الحالة</th>
-                </tr>
-              </thead>
-              <tbody>
-                {individualOrders.map((order: any) => {
-                  const remainingWeight = order.remaining_to_receive;
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+              <input
+                type="checkbox"
+                checked={selectedOrders.size === allPoIds.length && allPoIds.length > 0}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setSelectedOrders(new Set(allPoIds));
+                  } else {
+                    setSelectedOrders(new Set());
+                  }
+                }}
+              />
+              <span className="text-sm text-gray-600">تحديد الكل ({allPoIds.length} أمر إنتاج)</span>
+            </div>
 
-                  return (
-                    <tr
-                      key={order.production_order_id}
-                      className={`border-b hover:bg-gray-50 ${selectedOrders.has(order.production_order_id.toString()) ? "bg-blue-50" : ""}`}
-                    >
-                      <td className="py-3 px-4">
-                        <input
-                          type="checkbox"
-                          checked={selectedOrders.has(
-                            order.production_order_id.toString(),
-                          )}
-                          onChange={() =>
-                            handleSelectOrder(order.production_order_id.toString())
-                          }
-                          data-testid={`checkbox-select-${order.production_order_id}`}
-                        />
-                      </td>
-                      <td
-                        className="py-3 px-4"
-                        data-testid={`text-order-number-${order.production_order_id}`}
-                      >
-                        <div className="font-medium">
-                          {order.order_number}
-                        </div>
-                      </td>
-                      <td
-                        className="py-3 px-4"
-                        data-testid={`text-production-order-${order.production_order_id}`}
-                      >
-                        <Badge variant="outline" className="text-blue-600">
-                          {order.production_order_number}
-                        </Badge>
-                      </td>
-                      <td
-                        className="py-3 px-4"
-                        data-testid={`text-customer-${order.production_order_id}`}
-                      >
-                        {order.customer_name_ar || order.customer_name}
-                      </td>
-                      <td
-                        className="py-3 px-4"
-                        data-testid={`text-item-${order.production_order_id}`}
-                      >
-                        <div>
-                          <div className="font-medium">{order.item_name_ar || order.item_name}</div>
-                          <div className="text-xs text-gray-500">{order.size_caption}</div>
-                        </div>
-                      </td>
-                      <td
-                        className="py-3 px-4"
-                        data-testid={`text-required-${order.production_order_id}`}
-                      >
-                        {order.quantity_required.toFixed(2)} كيلو
-                      </td>
-                      <td
-                        className="py-3 px-4"
-                        data-testid={`text-film-${order.production_order_id}`}
-                      >
-                        <span className="text-blue-600 font-medium">
-                          {order.total_film_weight.toFixed(2)} كيلو
-                        </span>
-                      </td>
-                      <td
-                        className="py-3 px-4"
-                        data-testid={`text-cut-${order.production_order_id}`}
-                      >
-                        <span className="text-green-600 font-medium">
-                          {order.total_cut_weight.toFixed(2)} كيلو
-                        </span>
-                      </td>
-                      <td
-                        className="py-3 px-4"
-                        data-testid={`text-received-${order.production_order_id}`}
-                      >
-                        <span className="text-orange-600 font-medium">
-                          {order.total_received_weight.toFixed(2)} كيلو
-                        </span>
-                      </td>
-                      <td
-                        className="py-3 px-4"
-                        data-testid={`text-remaining-${order.production_order_id}`}
-                      >
-                        <span className="text-purple-600 font-bold">
-                          {remainingWeight.toFixed(2)} كيلو
-                        </span>
-                      </td>
-                      <td
-                        className="py-3 px-4"
-                        data-testid={`text-waste-${order.production_order_id}`}
-                      >
-                        <span className="text-red-600">
-                          {order.waste_weight.toFixed(2)} كيلو
-                        </span>
-                      </td>
-                      <td
-                        className="py-3 px-4"
-                        data-testid={`status-${order.production_order_id}`}
-                      >
-                        {remainingWeight > 0 ? (
-                          <Badge
-                            variant="outline"
-                            className="text-orange-600 border-orange-600"
+            {groupedByOrder.map((group) => (
+              <div key={group.order_number} className="border rounded-lg overflow-hidden">
+                <div className="bg-gray-100 dark:bg-gray-800 px-4 py-3 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Hash className="h-4 w-4 text-gray-500" />
+                    <span className="font-bold text-sm">طلب: {group.order_number}</span>
+                    <span className="text-gray-500 text-sm">|</span>
+                    <User className="h-4 w-4 text-gray-500" />
+                    <span className="text-sm">{group.customer_name_ar || group.customer_name}</span>
+                    {group.customer_name_ar && group.customer_name && (
+                      <span className="text-xs text-gray-400">({group.customer_name})</span>
+                    )}
+                  </div>
+                  <Badge variant="outline">{group.items.length} أمر إنتاج</Badge>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-gray-50 dark:bg-gray-900">
+                        <th className="text-right py-2 px-3 font-medium w-10"></th>
+                        <th className="text-right py-2 px-3 font-medium">أمر الإنتاج</th>
+                        <th className="text-right py-2 px-3 font-medium">الصنف</th>
+                        <th className="text-right py-2 px-3 font-medium">الكمية المطلوبة</th>
+                        <th className="text-right py-2 px-3 font-medium">الفيلم المنتج</th>
+                        <th className="text-right py-2 px-3 font-medium">الطباعة</th>
+                        <th className="text-right py-2 px-3 font-medium">الكمية المقطعة</th>
+                        <th className="text-right py-2 px-3 font-medium">المستلم</th>
+                        <th className="text-right py-2 px-3 font-medium">المتبقي</th>
+                        <th className="text-right py-2 px-3 font-medium">الهدر</th>
+                        <th className="text-right py-2 px-3 font-medium">الحالة</th>
+                        <th className="text-right py-2 px-3 font-medium w-20">استلام</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {group.items.map((order: any) => {
+                        const remaining = order.remaining_to_receive;
+                        const isPrinted = order.is_printed;
+                        return (
+                          <tr
+                            key={order.production_order_id}
+                            className={`border-b hover:bg-gray-50 dark:hover:bg-gray-800 ${selectedOrders.has(order.production_order_id.toString()) ? "bg-blue-50 dark:bg-blue-900/20" : ""}`}
                           >
-                            جزئي
-                          </Badge>
-                        ) : (
-                          <Badge
-                            variant="outline"
-                            className="text-green-600 border-green-600"
-                          >
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            مكتمل
-                          </Badge>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                            <td className="py-2 px-3">
+                              <input
+                                type="checkbox"
+                                checked={selectedOrders.has(order.production_order_id.toString())}
+                                onChange={() => handleSelectOrder(order.production_order_id.toString())}
+                              />
+                            </td>
+                            <td className="py-2 px-3">
+                              <Badge variant="outline" className="text-blue-600">
+                                {order.production_order_number}
+                              </Badge>
+                            </td>
+                            <td className="py-2 px-3">
+                              <div className="font-medium">{order.item_name_ar || order.item_name}</div>
+                              {order.size_caption && <div className="text-xs text-gray-500">{order.size_caption}</div>}
+                            </td>
+                            <td className="py-2 px-3 font-medium">
+                              {order.quantity_required.toFixed(2)}
+                            </td>
+                            <td className="py-2 px-3">
+                              <div className="text-blue-600 font-medium">{order.total_film_weight.toFixed(2)}</div>
+                              {order.film_producers && <div className="text-xs text-gray-500">{order.film_producers}</div>}
+                            </td>
+                            <td className="py-2 px-3">
+                              {isPrinted ? (
+                                <div>
+                                  <div className="text-purple-600 font-medium">{order.total_print_weight.toFixed(2)}</div>
+                                  {order.printers && <div className="text-xs text-gray-500">{order.printers}</div>}
+                                </div>
+                              ) : (
+                                <span className="text-gray-400 font-bold text-lg">X</span>
+                              )}
+                            </td>
+                            <td className="py-2 px-3">
+                              <div className="text-green-600 font-medium">{order.total_cut_weight.toFixed(2)}</div>
+                              {order.cutters && <div className="text-xs text-gray-500">{order.cutters}</div>}
+                            </td>
+                            <td className="py-2 px-3">
+                              <span className="text-orange-600 font-medium">{order.total_received_weight.toFixed(2)}</span>
+                            </td>
+                            <td className="py-2 px-3">
+                              <span className="text-purple-600 font-bold">{remaining.toFixed(2)}</span>
+                            </td>
+                            <td className="py-2 px-3">
+                              <span className="text-red-600">{order.waste_weight.toFixed(2)}</span>
+                            </td>
+                            <td className="py-2 px-3">
+                              {remaining > 0 ? (
+                                <Badge variant="outline" className="text-orange-600 border-orange-600">
+                                  جزئي
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-green-600 border-green-600">
+                                  <CheckCircle className="h-3 w-3 ml-1" />
+                                  مكتمل
+                                </Badge>
+                              )}
+                            </td>
+                            <td className="py-2 px-3">
+                              {remaining > 0 && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-xs"
+                                  onClick={() => openReceiptForOrder(order.production_order_id.toString())}
+                                >
+                                  <ArrowDownToLine className="h-3 w-3 ml-1" />
+                                  استلام
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </CardContent>
