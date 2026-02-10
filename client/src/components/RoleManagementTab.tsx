@@ -257,32 +257,31 @@ export default function RoleManagementTab() {
 
         return (
           <AccordionItem key={category} value={category}>
-            <AccordionTrigger className="hover:no-underline">
-              <div className="flex items-center gap-3 w-full">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    checked={allSelected}
-                    ref={(el) => {
-                      if (el) {
-                        const checkbox = el.querySelector('input');
-                        if (checkbox) {
-                          (checkbox as HTMLInputElement).indeterminate = someSelected;
-                        }
-                      }
-                    }}
-                    onCheckedChange={(checked) => {
-                      handleCategoryToggle(category, isEditing);
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    data-testid={`checkbox-category-${category}`}
-                  />
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={allSelected}
+                ref={(el) => {
+                  if (el) {
+                    const checkbox = el.querySelector('input');
+                    if (checkbox) {
+                      (checkbox as HTMLInputElement).indeterminate = someSelected;
+                    }
+                  }
+                }}
+                onCheckedChange={(checked) => {
+                  handleCategoryToggle(category, isEditing);
+                }}
+                data-testid={`checkbox-category-${category}`}
+              />
+              <AccordionTrigger className="hover:no-underline flex-1">
+                <div className="flex items-center gap-3 w-full">
                   <span className="font-medium">{getCategoryTranslation(category)}</span>
+                  <Badge variant={counts.selected > 0 ? "default" : "outline"} className="mr-auto">
+                    {counts.selected} / {counts.total}
+                  </Badge>
                 </div>
-                <Badge variant={counts.selected > 0 ? "default" : "outline"} className="mr-auto">
-                  {counts.selected} / {counts.total}
-                </Badge>
-              </div>
-            </AccordionTrigger>
+              </AccordionTrigger>
+            </div>
             <AccordionContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-2 pr-6">
                 {categoryPermissions.map((permission) => (
