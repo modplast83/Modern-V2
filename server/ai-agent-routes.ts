@@ -73,26 +73,40 @@ async function uploadPdfToStorage(pdfBuffer: Buffer, documentNumber: string): Pr
 }
 
 // دالة مساعدة لمعالجة النص العربي للعرض الصحيح في PDF
+const bidi = bidiFactory();
+
 function processArabicText(text: string): string {
   if (!text) return "";
   
-  // التحقق مما إذا كان النص يحتوي على حروف عربية
   const arabicRegex = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/;
   if (!arabicRegex.test(text)) return text;
   
   try {
-    // الخطوة 1: إعادة تشكيل الحروف العربية (ربط الحروف)
     const reshaped = ArabicReshaper.convertArabic(text);
     
-    // الخطوة 2: عكس ترتيب الأحرف للعرض الصحيح في PDF (من اليمين لليسار)
-    // نستخدم Array.from للتعامل مع الأحرف Unicode بشكل صحيح
-    const reversed = Array.from(reshaped).reverse().join('');
+    const embeddingLevels = bidi.getEmbeddingLevels(reshaped, 'rtl');
+    const reorderSegments = bidi.getReorderSegments(reshaped, embeddingLevels);
     
-    return reversed;
+    const chars = Array.from(reshaped);
+    reorderSegments.forEach(([start, end]: [number, number]) => {
+      const segment = chars.slice(start, end + 1).reverse();
+      chars.splice(start, end - start + 1, ...segment);
+    });
+    
+    const mirrored = bidi.getMirroredCharactersMap(reshaped, embeddingLevels);
+    if (mirrored) {
+      Object.keys(mirrored).forEach((index: string) => {
+        const idx = parseInt(index);
+        if (idx < chars.length) {
+          chars[idx] = mirrored[idx];
+        }
+      });
+    }
+    
+    return chars.join('');
   } catch (e) {
     console.error("Arabic text processing error:", e);
-    // Fallback: عكس النص فقط
-    return Array.from(text).reverse().join('');
+    return text;
   }
 }
 
