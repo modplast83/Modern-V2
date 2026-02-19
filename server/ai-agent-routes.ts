@@ -1,152 +1,268 @@
 import type { Express, Request, Response } from "express";
 import OpenAI from "openai";
-import { db } from "./db";
-import { quotes, quote_items, customers, ai_agent_knowledge, ai_agent_settings } from "@shared/schema";
-import { eq, desc, like, or, and } from "drizzle-orm";
 import multer from "multer";
-import * as fs from "fs";
-import * as path from "path";
-import { fileURLToPath } from "url";
-import PDFDocument from "pdfkit";
+import { db } from "./db";
+import { ai_agent_settings, ai_agent_knowledge, quote_templates } from "@shared/schema";
+import { eq } from "drizzle-orm";
+import { requireAuth } from "./middleware/auth";
 
-// @ts-ignore
-import ArabicReshaper from "arabic-reshaper";
-// @ts-ignore
-import bidiFactory from "bidi-js";
-const bidi = bidiFactory();
+const openai = new OpenAI({
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+});
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-// --- 1. معالجة النصوص العربية ---
-function processArabicText(text: string): string {
-  if (!text) return "";
-  const arabicRegex = /[\u0600-\u06FF]/;
-  if (!arabicRegex.test(text)) return text;
-  try {
-    const reshaped = ArabicReshaper.convertArabic(text);
-    const embeddingLevels = bidi.getEmbeddingLevels(reshaped, 'rtl');
-    return bidi.getReorderedString(reshaped, embeddingLevels);
-  } catch (e) {
-    return text;
-  }
-}
-
-// --- 2. محرك البحث في قاعدة المعرفة ---
-async function searchKnowledgeBase(query: string) {
-  try {
-    const keywords = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-    const allData = await db.select().from(ai_agent_knowledge).where(eq(ai_agent_knowledge.is_active, true));
-
-    return allData.map(item => {
-      let score = 0;
-      const content = item.content.toLowerCase();
-      const title = item.title.toLowerCase();
-      keywords.forEach(k => {
-        if (title.includes(k)) score += 3;
-        if (content.includes(k)) score += 1;
-      });
-      return { ...item, score };
-    })
-    .filter(item => item.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 3);
-  } catch (error) {
-    return [];
-  }
-}
-
-// --- 3. تنفيذ دوال الوكيل الذكي ---
-async function executeFunction(name: string, args: any): Promise<string> {
-  try {
-    switch (name) {
-      case "search_knowledge_base":
-        const results = await searchKnowledgeBase(args.query);
-        return JSON.stringify(results.length > 0 ? results : { message: "لا توجد معلومات كافية" });
-
-      case "create_quote":
-        const last = await db.select().from(quotes).orderBy(desc(quotes.id)).limit(1);
-        const nextNum = (last[0] ? parseInt(last[0].document_number.split('-')[1]) : 0) + 1;
-        const docNum = `QT-${String(nextNum).padStart(6, '0')}`;
-        const [newQ] = await db.insert(quotes).values({
-          document_number: docNum,
-          customer_name: args.customer_name,
-          tax_number: args.tax_number,
-          total_with_tax: "0",
-          status: "draft"
-        }).returning();
-        return JSON.stringify({ success: true, quote_id: newQ.id, document_number: docNum });
-
-      case "get_customer_info":
-        const cust = await db.select().from(customers).where(or(like(customers.name, `%${args.search_term}%`), like(customers.name_ar, `%${args.search_term}%`)));
-        return JSON.stringify(cust);
-
-      default:
-        return JSON.stringify({ error: "Function not implemented" });
-    }
-  } catch (e: any) {
-    return JSON.stringify({ error: e.message });
-  }
-}
-
-// --- 4. تسجيل المسارات الرئيسية ---
 export function registerAiAgentRoutes(app: Express): void {
-  const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY });
-  const upload = multer({ dest: "/tmp/ai-uploads/" });
+  app.post("/api/ai-agent/chat", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { messages } = req.body;
+      if (!messages || !Array.isArray(messages)) {
+        return res.status(400).json({ error: "Messages array is required" });
+      }
 
-  app.post("/api/ai-agent/chat", async (req: Request, res: Response) => {
-    res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
-    const { messages } = req.body;
+      const settings = await db.select().from(ai_agent_settings);
+      const knowledge = await db.select().from(ai_agent_knowledge).where(eq(ai_agent_knowledge.is_active, true));
 
+      const systemPromptSetting = settings.find(s => s.key === "system_prompt");
+      let systemPrompt = systemPromptSetting?.value || "أنت مساعد ذكي لمصنع الأكياس البلاستيكية الحديثة. تساعد في الإجابة على الأسئلة المتعلقة بالإنتاج والطلبات والمخزون والجودة. أجب باللغة العربية.";
+
+      if (knowledge.length > 0) {
+        systemPrompt += "\n\nمعلومات إضافية متاحة:\n" + knowledge.map(k => `- ${k.title}: ${k.content}`).join("\n");
+      }
+
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+
+      const stream = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...messages.slice(-20),
+        ],
+        stream: true,
+        max_tokens: 2048,
+      });
+
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content || "";
+        if (content) {
+          res.write(`data: ${JSON.stringify({ content })}\n\n`);
+        }
+      }
+
+      res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+      res.end();
+    } catch (error: any) {
+      console.error("AI Agent chat error:", error);
+      if (res.headersSent) {
+        res.write(`data: ${JSON.stringify({ error: "حدث خطأ أثناء المعالجة" })}\n\n`);
+        res.end();
+      } else {
+        res.status(500).json({ error: "فشل في معالجة الرسالة" });
+      }
+    }
+  });
+
+  app.post("/api/ai-agent/upload", requireAuth, upload.single("file"), async (req: Request, res: Response) => {
+    try {
+      const file = (req as any).file;
+      if (!file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      let content = "";
+      const mimetype = file.mimetype;
+
+      if (mimetype.startsWith("text/") || mimetype === "application/json") {
+        content = file.buffer.toString("utf-8");
+      } else if (mimetype.includes("spreadsheet") || mimetype.includes("excel") || mimetype === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") {
+        try {
+          const XLSX = await import("xlsx");
+          const workbook = XLSX.read(file.buffer, { type: "buffer" });
+          const sheetNames = workbook.SheetNames;
+          content = sheetNames.map(name => {
+            const sheet = workbook.Sheets[name];
+            return `Sheet: ${name}\n${XLSX.utils.sheet_to_csv(sheet)}`;
+          }).join("\n\n");
+        } catch {
+          content = "[Could not parse spreadsheet file]";
+        }
+      } else {
+        content = `[Binary file: ${file.originalname}, size: ${file.size} bytes]`;
+      }
+
+      if (content.length > 50000) {
+        content = content.substring(0, 50000) + "\n...[truncated]";
+      }
+
+      res.json({
+        filename: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size,
+        content,
+      });
+    } catch (error: any) {
+      console.error("File upload error:", error);
+      res.status(500).json({ error: "فشل في رفع الملف" });
+    }
+  });
+
+  app.post("/api/ai-agent/transcribe", requireAuth, upload.single("audio"), async (req: Request, res: Response) => {
+    try {
+      const file = (req as any).file;
+      if (!file) {
+        return res.status(400).json({ error: "No audio file uploaded" });
+      }
+
+      const transcription = await openai.audio.transcriptions.create({
+        file: new File([file.buffer], file.originalname || "recording.webm", { type: file.mimetype }),
+        model: "whisper-1",
+        language: "ar",
+      });
+
+      res.json({ text: transcription.text });
+    } catch (error: any) {
+      console.error("Transcription error:", error);
+      res.status(500).json({ error: "فشل في تحويل الصوت إلى نص" });
+    }
+  });
+
+  app.get("/api/ai-agent/settings", requireAuth, async (_req: Request, res: Response) => {
     try {
       const settings = await db.select().from(ai_agent_settings);
-      const agentName = settings.find(s => s.key === "agent_name")?.value || "المساعد الذكي";
-
-      let response = await openai.chat.completions.create({
-        model: "gpt-4.1",
-        messages: [{ role: "system", content: `أنت ${agentName}. استخدم search_knowledge_base دائماً قبل الإجابة.` }, ...messages],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "search_knowledge_base",
-              description: "البحث في معلومات المصنع والمنتجات",
-              parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"] }
-            }
-          }
-          // يمكن إضافة create_quote هنا أيضاً
-        ] as any,
-      });
-
-      const message = response.choices[0].message;
-      if (message.tool_calls) {
-        // تنفيذ الأداة وإرسال الرد النهائي
-        const toolResult = await executeFunction(message.tool_calls[0].function.name, JSON.parse(message.tool_calls[0].function.arguments));
-        const finalResponse = await openai.chat.completions.create({
-          model: "gpt-4.1",
-          messages: [...messages, message, { role: "tool", tool_call_id: message.tool_calls[0].id, content: toolResult }]
-        });
-        res.write(`data: ${JSON.stringify({ content: finalResponse.choices[0].message.content, done: true })}\n\n`);
-      } else {
-        res.write(`data: ${JSON.stringify({ content: message.content, done: true })}\n\n`);
-      }
-    } catch (e) {
-      res.write(`data: ${JSON.stringify({ error: "خطأ في الاتصال" })}\n\n`);
+      res.json(settings);
+    } catch (error) {
+      console.error("Error fetching AI settings:", error);
+      res.status(500).json({ error: "فشل في جلب الإعدادات" });
     }
-    res.end();
   });
 
-  app.get("/api/quotes/:id/pdf", async (req: Request, res: Response) => {
+  app.put("/api/ai-agent/settings/:key", requireAuth, async (req: Request, res: Response) => {
     try {
-      const [quote] = await db.select().from(quotes).where(eq(quotes.id, parseInt(req.params.id)));
-      // هنا تستدعي دالة توليد الـ PDF التي أصلحناها سابقاً
-      res.contentType("application/pdf").send(Buffer.from("PDF Content")); 
-    } catch (e) {
-      res.status(500).send("PDF Error");
+      const { key } = req.params;
+      const { value, description } = req.body;
+
+      const existing = await db.select().from(ai_agent_settings).where(eq(ai_agent_settings.key, key));
+
+      if (existing.length > 0) {
+        const [updated] = await db.update(ai_agent_settings)
+          .set({ value, description, updated_at: new Date() })
+          .where(eq(ai_agent_settings.key, key))
+          .returning();
+        res.json(updated);
+      } else {
+        const [created] = await db.insert(ai_agent_settings)
+          .values({ key, value, description })
+          .returning();
+        res.json(created);
+      }
+    } catch (error) {
+      console.error("Error updating AI setting:", error);
+      res.status(500).json({ error: "فشل في تحديث الإعداد" });
     }
   });
 
-  app.post("/api/ai-agent/transcribe", upload.single("audio"), async (_req: Request, res: Response) => {
-    res.json({ success: true, text: "تم استلام الصوت" });
+  app.get("/api/ai-agent/knowledge", requireAuth, async (_req: Request, res: Response) => {
+    try {
+      const items = await db.select().from(ai_agent_knowledge);
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching knowledge:", error);
+      res.status(500).json({ error: "فشل في جلب قاعدة المعرفة" });
+    }
+  });
+
+  app.post("/api/ai-agent/knowledge", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { title, content, category } = req.body;
+      const [item] = await db.insert(ai_agent_knowledge)
+        .values({ title, content, category: category || "general" })
+        .returning();
+      res.json(item);
+    } catch (error) {
+      console.error("Error creating knowledge:", error);
+      res.status(500).json({ error: "فشل في إضافة المعرفة" });
+    }
+  });
+
+  app.put("/api/ai-agent/knowledge/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "معرف غير صحيح" });
+
+      const { title, content, category, is_active } = req.body;
+      const [updated] = await db.update(ai_agent_knowledge)
+        .set({ title, content, category, is_active, updated_at: new Date() })
+        .where(eq(ai_agent_knowledge.id, id))
+        .returning();
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating knowledge:", error);
+      res.status(500).json({ error: "فشل في تحديث المعرفة" });
+    }
+  });
+
+  app.delete("/api/ai-agent/knowledge/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "معرف غير صحيح" });
+
+      await db.delete(ai_agent_knowledge).where(eq(ai_agent_knowledge.id, id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting knowledge:", error);
+      res.status(500).json({ error: "فشل في حذف المعرفة" });
+    }
+  });
+
+  app.get("/api/quote-templates", requireAuth, async (_req: Request, res: Response) => {
+    try {
+      const templates = await db.select().from(quote_templates);
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching quote templates:", error);
+      res.status(500).json({ error: "فشل في جلب النماذج" });
+    }
+  });
+
+  app.post("/api/quote-templates", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const [template] = await db.insert(quote_templates).values(req.body).returning();
+      res.json(template);
+    } catch (error) {
+      console.error("Error creating quote template:", error);
+      res.status(500).json({ error: "فشل في إنشاء النموذج" });
+    }
+  });
+
+  app.put("/api/quote-templates/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "معرف غير صحيح" });
+
+      const [updated] = await db.update(quote_templates)
+        .set({ ...req.body, updated_at: new Date() })
+        .where(eq(quote_templates.id, id))
+        .returning();
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating quote template:", error);
+      res.status(500).json({ error: "فشل في تحديث النموذج" });
+    }
+  });
+
+  app.delete("/api/quote-templates/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "معرف غير صحيح" });
+
+      await db.delete(quote_templates).where(eq(quote_templates.id, id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting quote template:", error);
+      res.status(500).json({ error: "فشل في حذف النموذج" });
+    }
   });
 }
