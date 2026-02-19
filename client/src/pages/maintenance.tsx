@@ -1543,6 +1543,7 @@ function MaintenanceReportsTab({
             <DialogContent className="max-w-4xl">
               <DialogHeader>
                 <DialogTitle>إضافة بلاغ صيانة جديد</DialogTitle>
+                <DialogDescription className="sr-only">نموذج إضافة بلاغ صيانة جديد للمعدات</DialogDescription>
               </DialogHeader>
               <Form {...form}>
                 <form
@@ -1828,6 +1829,7 @@ function OperatorNegligenceTab({
             <DialogContent className="max-w-4xl">
               <DialogHeader>
                 <DialogTitle>إضافة بلاغ إهمال مشغل</DialogTitle>
+                <DialogDescription className="sr-only">نموذج إضافة بلاغ إهمال مشغل جديد</DialogDescription>
               </DialogHeader>
               <Form {...form}>
                 <form
@@ -2087,16 +2089,12 @@ function MaintenanceRequestDialog({
   return (
     <DialogContent
       className="sm:max-w-[600px]"
-      aria-describedby="maintenance-request-description"
     >
       <DialogHeader>
         <DialogTitle>طلب صيانة جديد</DialogTitle>
-        <p
-          id="maintenance-request-description"
-          className="text-sm text-gray-600"
-        >
+        <DialogDescription className="text-sm text-gray-600">
           أنشئ طلب صيانة جديد للمعدات التي تحتاج إلى إصلاح أو صيانة
-        </p>
+        </DialogDescription>
       </DialogHeader>
 
       <Form {...form}>
@@ -2365,16 +2363,12 @@ function SparePartsTab({
           </DialogTrigger>
           <DialogContent
             className="max-w-md"
-            aria-describedby="spare-part-dialog-description"
           >
             <DialogHeader>
               <DialogTitle>إضافة قطعة غيار جديدة</DialogTitle>
-              <div
-                id="spare-part-dialog-description"
-                className="text-sm text-gray-600"
-              >
+              <DialogDescription className="text-sm text-gray-600">
                 أضف قطعة غيار جديدة إلى المخزون
-              </div>
+              </DialogDescription>
             </DialogHeader>
             <SparePartForm
               onSubmit={createSparePartMutation.mutate}
@@ -2493,16 +2487,12 @@ function SparePartsTab({
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
         <DialogContent
           className="max-w-md"
-          aria-describedby="view-spare-part-dialog-description"
         >
           <DialogHeader>
             <DialogTitle>تفاصيل قطعة الغيار</DialogTitle>
-            <div
-              id="view-spare-part-dialog-description"
-              className="text-sm text-gray-600"
-            >
+            <DialogDescription className="text-sm text-gray-600">
               عرض تفاصيل قطعة الغيار المحددة
-            </div>
+            </DialogDescription>
           </DialogHeader>
           {selectedPart && (
             <div className="space-y-4">
@@ -2567,16 +2557,12 @@ function SparePartsTab({
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent
           className="max-w-md"
-          aria-describedby="edit-spare-part-dialog-description"
         >
           <DialogHeader>
             <DialogTitle>تعديل قطعة الغيار</DialogTitle>
-            <div
-              id="edit-spare-part-dialog-description"
-              className="text-sm text-gray-600"
-            >
+            <DialogDescription className="text-sm text-gray-600">
               تعديل بيانات قطعة الغيار
-            </div>
+            </DialogDescription>
           </DialogHeader>
           {selectedPart && (
             <SparePartEditForm
@@ -2594,16 +2580,12 @@ function SparePartsTab({
       <Dialog open={!!partToDelete} onOpenChange={() => setPartToDelete(null)}>
         <DialogContent
           className="max-w-md"
-          aria-describedby="delete-spare-part-dialog-description"
         >
           <DialogHeader>
             <DialogTitle>تأكيد الحذف</DialogTitle>
-            <div
-              id="delete-spare-part-dialog-description"
-              className="text-sm text-gray-600"
-            >
+            <DialogDescription className="text-sm text-gray-600">
               هل أنت متأكد من حذف قطعة الغيار؟
-            </div>
+            </DialogDescription>
           </DialogHeader>
           {partToDelete && (
             <div className="space-y-4">

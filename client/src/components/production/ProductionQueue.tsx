@@ -112,7 +112,7 @@ export default function ProductionQueue({
           queueType === "printing" ? t("production.queue.printingRegistered") : t("production.queue.cuttingRegistered"),
       });
       queryClient.invalidateQueries({
-        queryKey: [`/api/production/${queueType}-queue`],
+        queryKey: ["/api/production/" + queueType + "-queue"],
       });
       queryClient.invalidateQueries({ queryKey: ["/api/rolls"] });
       queryClient.invalidateQueries({ queryKey: ["/api/production/hierarchical-orders"] });

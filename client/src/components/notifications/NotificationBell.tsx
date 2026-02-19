@@ -18,9 +18,8 @@ type Notification = {
 export function NotificationBell() {
   const { user } = useAuth();
 
-  // Fetch user's notifications
   const { data: notifications = [] } = useQuery<Notification[]>({
-    queryKey: [`/api/notifications?user_id=${user?.id}`],
+    queryKey: ["/api/notifications", { user_id: user?.id }],
     enabled: !!user?.id,
   });
 

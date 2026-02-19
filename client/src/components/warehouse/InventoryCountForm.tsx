@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "../ui/dialog";
@@ -228,6 +229,7 @@ export function InventoryCountForm({ open, onOpenChange }: InventoryCountFormPro
           <DialogTitle>
             {countId ? "عملية الجرد" : "بدء عملية جرد جديدة"}
           </DialogTitle>
+          <DialogDescription className="sr-only">نموذج إنشاء وإدارة عملية جرد المخزون بالباركود</DialogDescription>
         </DialogHeader>
 
         {!countId ? (

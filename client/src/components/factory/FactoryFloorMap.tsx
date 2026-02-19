@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { CheckCircle, AlertTriangle, XCircle, Activity } from "lucide-react";
 
@@ -426,6 +426,7 @@ export default function FactoryFloorMap() {
                     <div className="text-sm text-muted-foreground">{selectedMachine.name}</div>
                   </div>
                 </DialogTitle>
+                <DialogDescription className="sr-only">عرض تفاصيل ومعلومات الماكينة</DialogDescription>
               </DialogHeader>
 
               <div className="space-y-4 mt-4">

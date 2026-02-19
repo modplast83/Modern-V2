@@ -24,6 +24,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "../ui/dialog";
@@ -586,6 +587,7 @@ export default function FilmMaterialMixingTab() {
         <DialogContent className="max-w-2xl" dir="rtl">
           <DialogHeader>
             <DialogTitle>تفاصيل الخلطة</DialogTitle>
+            <DialogDescription className="sr-only">عرض تفاصيل خلطة المواد الخام</DialogDescription>
           </DialogHeader>
           {selectedBatch && (
             <div className="space-y-4">

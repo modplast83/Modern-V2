@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -61,6 +62,7 @@ export default function ProductionOrderActivationModal({
           <DialogTitle>
             {isUpdating ? "تحديث تخصيص أمر الإنتاج" : "تفعيل أمر الإنتاج"}
           </DialogTitle>
+          <DialogDescription className="sr-only">تخصيص الماكينة والعامل لأمر الإنتاج</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">

@@ -43,8 +43,7 @@ export default function RollsTable({ stage }: RollsTableProps) {
   const queryClient = useQueryClient();
 
   const { data: rolls = [], isLoading } = useQuery<RollWithDetails[]>({
-    queryKey: ["/api/rolls", stage],
-    queryFn: () => fetch(`/api/rolls?stage=${stage}`).then((res) => res.json()),
+    queryKey: ["/api/rolls", { stage }],
   });
 
   const getStageLabel = (stageKey: string) => {

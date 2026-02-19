@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "../ui/dialog";
@@ -166,7 +167,7 @@ export function VoucherForm({ type, open, onOpenChange }: VoucherFormProps) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/warehouse/vouchers/${type}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouse/vouchers", type] });
       queryClient.invalidateQueries({ queryKey: ["/api/warehouse/vouchers/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
       toast({
@@ -211,6 +212,7 @@ export function VoucherForm({ type, open, onOpenChange }: VoucherFormProps) {
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{getTitleForType(type)}</DialogTitle>
+          <DialogDescription className="sr-only">نموذج إنشاء سند مستودع جديد</DialogDescription>
         </DialogHeader>
         
         <Form {...form}>

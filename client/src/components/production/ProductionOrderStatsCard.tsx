@@ -12,16 +12,8 @@ export default function ProductionOrderStatsCard({
   productionOrderId,
 }: ProductionOrderStatsCardProps) {
   // جلب إحصائيات أمر الإنتاج
-  const { data: stats, isLoading } = useQuery({
-    queryKey: [`/api/production-orders/${productionOrderId}/stats`],
-    queryFn: async () => {
-      const response = await fetch(`/api/production-orders/${productionOrderId}/stats`);
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "خطأ في جلب الإحصائيات");
-      }
-      return response.json();
-    },
+  const { data: stats, isLoading } = useQuery<{ data: any }>({
+    queryKey: ["/api/production-orders", productionOrderId, "stats"],
   });
 
   if (isLoading) {

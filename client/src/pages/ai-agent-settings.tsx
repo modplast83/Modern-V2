@@ -7,7 +7,7 @@ import { Input } from "../components/ui/input";
 import { Textarea } from "../components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Switch } from "../components/ui/switch";
 import { Label } from "../components/ui/label";
@@ -317,6 +317,7 @@ export default function AiAgentSettings() {
                   <DialogContent className="max-w-lg" dir="rtl">
                     <DialogHeader>
                       <DialogTitle>{t("aiAgent.knowledge.addNewKnowledge")}</DialogTitle>
+                      <DialogDescription className="sr-only">نموذج إضافة معرفة جديدة لقاعدة المعرفة</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 mt-4">
                       <div>
@@ -489,6 +490,7 @@ export default function AiAgentSettings() {
                   <DialogContent className="max-w-lg" dir="rtl">
                     <DialogHeader>
                       <DialogTitle>{t("aiAgent.templates.addQuoteTemplate")}</DialogTitle>
+                      <DialogDescription className="sr-only">نموذج إضافة قالب عرض أسعار جديد</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 mt-4 max-h-[60vh] overflow-y-auto">
                       <div>

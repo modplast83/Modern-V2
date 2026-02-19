@@ -216,7 +216,7 @@ export default function GroupedPrintingQueue({
         description: "تم تسجيل الطباعة وتحديد ماكينة الطباعة",
       });
       queryClient.invalidateQueries({
-        queryKey: [`/api/production/printing-queue`],
+        queryKey: ["/api/production/printing-queue"],
       });
       queryClient.invalidateQueries({ queryKey: ["/api/rolls"] });
       setProcessingId(null);

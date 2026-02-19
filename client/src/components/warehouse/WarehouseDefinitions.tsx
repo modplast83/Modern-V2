@@ -12,6 +12,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -183,6 +184,7 @@ function SuppliersTab() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>{editingItem ? "تعديل مورد" : "إضافة مورد جديد"}</DialogTitle>
+                <DialogDescription className="sr-only">نموذج إضافة أو تعديل بيانات المورد</DialogDescription>
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
@@ -433,6 +435,7 @@ function ItemsTab() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>{editingItem ? "تعديل صنف" : "إضافة صنف جديد"}</DialogTitle>
+                <DialogDescription className="sr-only">نموذج إضافة أو تعديل بيانات الصنف</DialogDescription>
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
@@ -711,6 +714,7 @@ function UnitsTab() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>{editingItem ? "تعديل وحدة" : "إضافة وحدة جديدة"}</DialogTitle>
+                <DialogDescription className="sr-only">نموذج إضافة أو تعديل وحدة القياس</DialogDescription>
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
@@ -909,6 +913,7 @@ function CategoriesTab() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>{editingItem ? "تعديل مجموعة" : "إضافة مجموعة جديدة"}</DialogTitle>
+                <DialogDescription className="sr-only">نموذج إضافة أو تعديل مجموعة الأصناف</DialogDescription>
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-4">

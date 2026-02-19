@@ -5,6 +5,7 @@ import { Button } from "../ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -199,6 +200,7 @@ export default function QuickNotes() {
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>إضافة ملاحظة جديدة</DialogTitle>
+              <DialogDescription className="sr-only">نموذج إضافة ملاحظة سريعة جديدة</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div>

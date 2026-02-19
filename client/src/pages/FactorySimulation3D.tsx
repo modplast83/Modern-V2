@@ -551,12 +551,12 @@ function MachineDetailPanel({ machine, onClose }: { machine: Machine; onClose: (
   const dbId = machine.dbId || machine.id;
   
   const { data: orders = [], isLoading } = useQuery<ProductionOrder[]>({
-    queryKey: [`/api/factory-3d/machine-orders/${dbId}`],
+    queryKey: ["/api/factory-3d/machine-orders", dbId],
     enabled: !!dbId,
   });
 
   const { data: stats } = useQuery<any>({
-    queryKey: [`/api/factory-3d/machine-stats/${dbId}`],
+    queryKey: ["/api/factory-3d/machine-stats", dbId],
     enabled: !!dbId,
   });
 

@@ -135,13 +135,12 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
 
   // Fetch roll details
   const { data: rollDetails, isLoading: isLoadingDetails } = useQuery<RollDetails>({
-    queryKey: [`/api/rolls/${rollId}/full-details`],
+    queryKey: ["/api/rolls", rollId, "full-details"],
     enabled: !!rollId,
   });
 
-  // Fetch roll history
   const { data: rollHistory = [], isLoading: isLoadingHistory } = useQuery<RollHistory[]>({
-    queryKey: [`/api/rolls/${rollId}/history`],
+    queryKey: ["/api/rolls", rollId, "history"],
     enabled: !!rollId,
   });
 

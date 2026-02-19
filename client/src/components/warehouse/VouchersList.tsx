@@ -24,13 +24,8 @@ interface VouchersListProps {
 }
 
 export function VouchersList({ type, title, onView }: VouchersListProps) {
-  const { data: vouchers = [], isLoading } = useQuery({
-    queryKey: [`/api/warehouse/vouchers/${type}`],
-    queryFn: async () => {
-      const response = await fetch(`/api/warehouse/vouchers/${type}`);
-      if (!response.ok) throw new Error("فشل في جلب السندات");
-      return response.json();
-    },
+  const { data: vouchers = [], isLoading } = useQuery<any[]>({
+    queryKey: ["/api/warehouse/vouchers", type],
   });
 
   const getVoucherTypeLabel = (voucherType: string) => {

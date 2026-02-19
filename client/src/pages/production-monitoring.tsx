@@ -41,6 +41,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "../components/ui/dialog";
@@ -190,13 +191,12 @@ export default function ProductionMonitoring() {
 
   // Fetch rolls tracking
   const { data: rollsData } = useQuery<{ data: Roll[] }>({
-    queryKey: [`/api/production/rolls-tracking/${activeTab}`, { search: searchRoll }],
+    queryKey: ["/api/production/rolls-tracking/" + activeTab, { search: searchRoll }],
     enabled: activeTab !== "",
   });
 
-  // Fetch production orders
   const { data: ordersData } = useQuery<{ data: ProductionOrder[] }>({
-    queryKey: [`/api/production/orders-tracking/${activeTab}`, { search: searchOrder }],
+    queryKey: ["/api/production/orders-tracking/" + activeTab, { search: searchOrder }],
     enabled: activeTab !== "",
   });
 
@@ -879,6 +879,7 @@ function SectionContent({
               <Activity className="w-5 h-5" />
               بيانات الماكينة - جميع المراحل
             </DialogTitle>
+            <DialogDescription className="sr-only">عرض بيانات الإنتاج التفصيلية للماكينة</DialogDescription>
           </DialogHeader>
           {machineDetailLoading ? (
             <div className="text-center py-8 text-gray-500">جاري تحميل البيانات...</div>

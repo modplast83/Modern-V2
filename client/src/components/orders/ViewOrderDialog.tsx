@@ -1,6 +1,7 @@
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "../ui/dialog";
@@ -89,6 +90,7 @@ export default function ViewOrderDialog({
               </Button>
             )}
           </div>
+          <DialogDescription className="sr-only">عرض تفاصيل الطلب وأوامر الإنتاج المرتبطة</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">

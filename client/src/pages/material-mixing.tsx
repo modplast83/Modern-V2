@@ -25,6 +25,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "../components/ui/dialog";
@@ -581,6 +582,7 @@ export default function MaterialMixing() {
         <DialogContent className="max-w-2xl" dir="rtl">
           <DialogHeader>
             <DialogTitle>{t("mixing.batchDetails")}</DialogTitle>
+            <DialogDescription className="sr-only">عرض تفاصيل خلطة المواد الخام</DialogDescription>
           </DialogHeader>
           {selectedBatch && (
             <div className="space-y-4">

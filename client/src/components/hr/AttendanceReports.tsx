@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "../ui
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Separator } from "../ui/separator";
 import { useToast } from "../../hooks/use-toast";
 import {
@@ -491,6 +491,7 @@ export default function AttendanceReports() {
               <FileText className="h-5 w-5" />
               تقرير حضور موظف مفصل
             </DialogTitle>
+            <DialogDescription className="sr-only">عرض تقرير الحضور والانصراف المفصل للموظف</DialogDescription>
           </DialogHeader>
           
           {isLoadingEmployeeReport ? (
