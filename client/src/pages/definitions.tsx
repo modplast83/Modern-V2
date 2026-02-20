@@ -244,7 +244,7 @@ export default function Definitions() {
     raw_material: "",
     master_batch_id: "",
     is_printed: false,
-    cutting_unit: "",
+    cutting_unit: "كيلو",
     punching: "",
     unit_weight_kg: "",
     unit_quantity: "",
@@ -312,25 +312,7 @@ export default function Definitions() {
     { value: '39"', label: '39"' },
   ];
 
-  // Automatic calculations
-  React.useEffect(() => {
-    // Auto-calculate cutting length based on printing cylinder
-    if (
-      customerProductForm.printing_cylinder &&
-      customerProductForm.printing_cylinder !== "بدون طباعة"
-    ) {
-      const cylinderNumber = parseInt(
-        customerProductForm.printing_cylinder.replace(/\D/g, ""),
-      );
-      if (cylinderNumber) {
-        const calculatedLength = Math.round(cylinderNumber * 2.54); // Convert inches to cm
-        setCustomerProductForm((prev) => ({
-          ...prev,
-          cutting_length_cm: calculatedLength.toString(),
-        }));
-      }
-    }
-  }, [customerProductForm.printing_cylinder]);
+  // Automatic calculations - cutting length from printing cylinder (gated by category, see effect after categories query)
 
   // Helper Functions
   const handleDeleteCustomerProduct = (product: any) => {
@@ -883,36 +865,71 @@ export default function Definitions() {
     }
   }, [editingItem, selectedTab, isDialogOpen]);
 
-  // Auto-calculations after data is loaded
+  // Auto-set punching, cutting_unit, and cutting_length based on category
   React.useEffect(() => {
-    // Auto-set cutting unit based on item category
     const { category_id } = customerProductForm;
-    if (
-      category_id &&
-      category_id !== "none" &&
-      Array.isArray(categories) &&
-      categories.length > 0
-    ) {
+    if (!category_id || category_id === "none") {
+      setCustomerProductForm((prev) => ({
+        ...prev,
+        punching: "بدون",
+        cutting_unit: "كيلو",
+        cutting_length_cm: "",
+      }));
+      return;
+    }
+
+    if (Array.isArray(categories) && categories.length > 0) {
       const category = (categories as any[]).find(
         (cat: any) => cat.id === category_id,
       );
       if (category) {
-        let cuttingUnit = "قطعة";
-        if (category.name_ar?.includes("أكياس")) {
-          cuttingUnit = "كيس";
-        } else if (category.name_ar?.includes("رولات")) {
-          cuttingUnit = "رول";
-        } else if (category.name_ar?.includes("أغطية")) {
-          cuttingUnit = "غطاء";
+        const nameAr = category.name_ar || "";
+        let punching = "بدون";
+
+        if (nameAr === "أكياس علاقي") {
+          punching = "علاقي";
+        } else if (nameAr === "أكياس بنانة") {
+          punching = "بنانة 8سم";
         }
+
+        const isSufra = nameAr === "سفرة بلاستيكية" || nameAr === "سفرة بلاستيكية مطوية";
 
         setCustomerProductForm((prev) => ({
           ...prev,
-          cutting_unit: cuttingUnit,
+          punching,
+          cutting_unit: "كيلو",
+          cutting_length_cm: isSufra ? prev.cutting_length_cm : "",
         }));
       }
     }
   }, [customerProductForm.category_id, categories]);
+
+  // Auto-calculate cutting length from printing cylinder (skip for sufra categories where it's manual)
+  React.useEffect(() => {
+    const selectedCat = Array.isArray(categories)
+      ? (categories as any[]).find((c: any) => c.id === customerProductForm.category_id)
+      : null;
+    const catNameAr = selectedCat?.name_ar || "";
+    const isSufra = catNameAr === "سفرة بلاستيكية" || catNameAr === "سفرة بلاستيكية مطوية";
+
+    if (isSufra) return;
+
+    if (
+      customerProductForm.printing_cylinder &&
+      customerProductForm.printing_cylinder !== "بدون طباعة"
+    ) {
+      const cylinderNumber = parseInt(
+        customerProductForm.printing_cylinder.replace(/\D/g, ""),
+      );
+      if (cylinderNumber) {
+        const calculatedLength = Math.round(cylinderNumber * 2.54);
+        setCustomerProductForm((prev) => ({
+          ...prev,
+          cutting_length_cm: calculatedLength.toString(),
+        }));
+      }
+    }
+  }, [customerProductForm.printing_cylinder, customerProductForm.category_id, categories]);
 
   // Filter helper function
   const filterData = (data: any[], searchFields: string[]) => {
@@ -1649,7 +1666,7 @@ export default function Definitions() {
       raw_material: "",
       master_batch_id: "",
       is_printed: false,
-      cutting_unit: "",
+      cutting_unit: "كيلو",
       punching: "",
       unit_weight_kg: "",
       unit_quantity: "",
@@ -4294,11 +4311,11 @@ export default function Definitions() {
                         <div>
                           <Label htmlFor="punching">التخريم</Label>
                           <Select
-                            value={customerProductForm.punching || "none"}
+                            value={customerProductForm.punching || "بدون"}
                             onValueChange={(value) =>
                               setCustomerProductForm({
                                 ...customerProductForm,
-                                punching: value === "none" ? "" : value,
+                                punching: value,
                               })
                             }
                           >
@@ -4306,13 +4323,32 @@ export default function Definitions() {
                               <SelectValue placeholder="اختر نوع التخريم" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="none">اختر نوع التخريم</SelectItem>
-                              <SelectItem value="بدون">بدون</SelectItem>
-                              <SelectItem value="علاقي">علاقي</SelectItem>
-                              <SelectItem value="علاقي هوك">
-                                علاقي هوك
-                              </SelectItem>
-                              <SelectItem value="بنانة">بنانة</SelectItem>
+                              {(() => {
+                                const selectedCategory = Array.isArray(categories)
+                                  ? (categories as any[]).find((c: any) => c.id === customerProductForm.category_id)
+                                  : null;
+                                const catName = selectedCategory?.name_ar || "";
+
+                                if (catName === "أكياس علاقي") {
+                                  return (
+                                    <>
+                                      <SelectItem value="علاقي">علاقي</SelectItem>
+                                      <SelectItem value="علاقي هوك">علاقي هوك</SelectItem>
+                                    </>
+                                  );
+                                } else if (catName === "أكياس بنانة") {
+                                  return (
+                                    <>
+                                      <SelectItem value="بنانة 8سم">بنانة 8سم</SelectItem>
+                                      <SelectItem value="بنانة 6سم">بنانة 6سم</SelectItem>
+                                    </>
+                                  );
+                                } else {
+                                  return (
+                                    <SelectItem value="بدون">بدون</SelectItem>
+                                  );
+                                }
+                              })()}
                             </SelectContent>
                           </Select>
                         </div>
@@ -4446,23 +4482,29 @@ export default function Definitions() {
                           <Label htmlFor="cutting_length_cm">
                             طول القطع (سم)
                           </Label>
-                          <Input
-                            id="cutting_length_cm"
-                            type="number"
-                            value={customerProductForm.cutting_length_cm}
-                            onChange={(e) =>
-                              setCustomerProductForm({
-                                ...customerProductForm,
-                                cutting_length_cm: e.target.value,
-                              })
-                            }
-                            placeholder="يحسب تلقائياً أو أدخل يدوياً"
-                            className="mt-1"
-                            disabled={
-                              customerProductForm.printing_cylinder !==
-                              "بدون طباعة"
-                            }
-                          />
+                          {(() => {
+                            const selectedCat = Array.isArray(categories)
+                              ? (categories as any[]).find((c: any) => c.id === customerProductForm.category_id)
+                              : null;
+                            const catNameAr = selectedCat?.name_ar || "";
+                            const isSufra = catNameAr === "سفرة بلاستيكية" || catNameAr === "سفرة بلاستيكية مطوية";
+                            return (
+                              <Input
+                                id="cutting_length_cm"
+                                type="number"
+                                value={customerProductForm.cutting_length_cm}
+                                onChange={(e) =>
+                                  setCustomerProductForm({
+                                    ...customerProductForm,
+                                    cutting_length_cm: e.target.value,
+                                  })
+                                }
+                                placeholder={isSufra ? "أدخل طول القطع بالسنتيمتر" : "يحسب تلقائياً"}
+                                className="mt-1"
+                                disabled={!isSufra}
+                              />
+                            );
+                          })()}
                         </div>
                         <div className="flex items-center gap-3 mt-6 p-3 bg-gray-50 rounded-md">
                           <input
