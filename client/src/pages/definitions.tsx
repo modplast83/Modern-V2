@@ -889,7 +889,7 @@ export default function Definitions() {
         if (nameAr === "أكياس علاقي") {
           punching = "علاقي";
         } else if (nameAr === "أكياس بنانة") {
-          punching = "بنانة 8سم";
+          punching = "بنانة";
         }
 
         const isSufra = nameAr === "سفرة بلاستيكية" || nameAr === "سفرة بلاستيكية مطوية";
@@ -4339,7 +4339,7 @@ export default function Definitions() {
                                 } else if (catName === "أكياس بنانة") {
                                   return (
                                     <>
-                                      <SelectItem value="بنانة 8سم">بنانة 8سم</SelectItem>
+                                      <SelectItem value="بنانة">بنانة</SelectItem>
                                       <SelectItem value="بنانة 6سم">بنانة 6سم</SelectItem>
                                     </>
                                   );
