@@ -10646,8 +10646,8 @@ export class DatabaseStorage implements IStorage {
       }
 
       const query = `
-        INSERT INTO attendance (user_id, status, check_in_time, check_out_time, lunch_start_time, lunch_end_time, notes, date)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        INSERT INTO attendance (user_id, status, check_in_time, check_out_time, lunch_start_time, lunch_end_time, notes, date, location_accuracy, distance_from_factory, device_info)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         RETURNING *
       `;
 
@@ -10660,6 +10660,9 @@ export class DatabaseStorage implements IStorage {
         recordData.lunch_end_time,
         recordData.notes,
         recordData.date,
+        attendanceData.location_accuracy ?? null,
+        attendanceData.distance_from_factory ?? null,
+        attendanceData.device_info ?? null,
       ];
 
       console.log("Executing query:", query, "with values:", values);
@@ -10677,7 +10680,10 @@ export class DatabaseStorage implements IStorage {
       const query = `
         UPDATE attendance 
         SET status = $1, check_in_time = $2, check_out_time = $3, 
-            lunch_start_time = $4, lunch_end_time = $5, notes = $6, updated_at = NOW()
+            lunch_start_time = $4, lunch_end_time = $5, notes = $6, updated_at = NOW(),
+            location_accuracy = COALESCE($8, location_accuracy),
+            distance_from_factory = COALESCE($9, distance_from_factory),
+            device_info = COALESCE($10, device_info)
         WHERE id = $7
         RETURNING *
       `;
@@ -10690,6 +10696,9 @@ export class DatabaseStorage implements IStorage {
         attendanceData.lunch_end_time || null,
         attendanceData.notes || "",
         id,
+        attendanceData.location_accuracy ?? null,
+        attendanceData.distance_from_factory ?? null,
+        attendanceData.device_info ?? null,
       ];
 
       const result = await pool.query(query, values);
