@@ -567,7 +567,7 @@ export async function generateQuotePdfWithAdobe(quoteId: number): Promise<Buffer
   const inputHtmlPath = path.join(tempDir, `quote_${quoteId}_${Date.now()}.html`);
   
   try {
-    fs.writeFileSync(inputHtmlPath, htmlContent, 'utf8');
+    fs.writeFileSync(inputHtmlPath, '\ufeff' + htmlContent, 'utf8');
     
     const credentials = new ServicePrincipalCredentials({
       clientId: ADOBE_CLIENT_ID,
