@@ -68,6 +68,7 @@ import RoleManagementTab from "../components/RoleManagementTab";
 import NotificationCenter from "../components/notifications/NotificationCenter";
 import WhatsAppWebhooksTab from "../components/settings/WhatsAppWebhooksTab";
 import NotificationEventSettingsTab from "../components/settings/NotificationEventSettingsTab";
+import SMSSettingsTab from "../components/settings/SMSSettingsTab";
 import LocationMapPicker from "../components/LocationMapPicker";
 import { Plus, Eye, EyeOff } from "lucide-react";
 import { canAccessSettingsTab } from "../utils/roleUtils";
@@ -1062,6 +1063,12 @@ export default function Settings() {
               <TabsTrigger value="notification-events" className="flex items-center gap-2">
                 <Bell className="w-4 h-4" />
                 أحداث الإشعارات
+              </TabsTrigger>
+              )}
+              {canAccessSettingsTab(user, 'sms') && (
+              <TabsTrigger value="sms" className="flex items-center gap-2">
+                <Smartphone className="w-4 h-4" />
+                {t('settings.tabs.sms', 'الرسائل النصية')}
               </TabsTrigger>
               )}
             </TabsList>
@@ -2291,6 +2298,10 @@ export default function Settings() {
 
             <TabsContent value="notification-events" className="space-y-6">
               <NotificationEventSettingsTab />
+            </TabsContent>
+
+            <TabsContent value="sms" className="space-y-6">
+              <SMSSettingsTab />
             </TabsContent>
                   </Tabs>
 

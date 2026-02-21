@@ -1653,7 +1653,8 @@
       "database": "Database",
       "location": "Factory Location",
       "notificationCenter": "Notifications",
-      "whatsappWebhooks": "WhatsApp Webhooks"
+      "whatsappWebhooks": "WhatsApp Webhooks",
+      "sms": "SMS Messages"
     },
     "roles": {
       "title": "Roles & Permissions Management",

@@ -1,6 +1,7 @@
 import twilio from "twilio";
 import type { IStorage } from "../storage";
 import { MetaWhatsAppService } from "./meta-whatsapp";
+import { TaqnyatSMSService } from "./taqnyat-sms";
 
 export interface NotificationData {
   title: string;
@@ -26,6 +27,7 @@ export interface WhatsAppTemplate {
 export class NotificationService {
   private twilioClient: twilio.Twilio;
   public metaWhatsApp: MetaWhatsAppService;
+  public taqnyatSMS: TaqnyatSMSService;
   private storage: IStorage;
   private twilioPhoneNumber: string;
   private useMetaAPI: boolean;
@@ -39,6 +41,9 @@ export class NotificationService {
 
     // تهيئة Meta WhatsApp API
     this.metaWhatsApp = new MetaWhatsAppService(storage);
+
+    // تهيئة خدمة تقنيات للرسائل النصية
+    this.taqnyatSMS = new TaqnyatSMSService(storage);
 
     // Initialize Twilio client
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
@@ -60,6 +65,20 @@ export class NotificationService {
     } else {
       console.log("📱 Using Twilio as WhatsApp gateway");
     }
+  }
+
+  async sendSMS(
+    phoneNumber: string,
+    message: string,
+    options?: {
+      title?: string;
+      priority?: string;
+      context_type?: string;
+      context_id?: string;
+      senderName?: string;
+    }
+  ): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    return this.taqnyatSMS.sendSMS(phoneNumber, message, options);
   }
 
   /**

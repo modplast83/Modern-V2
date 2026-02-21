@@ -280,6 +280,24 @@ export const commonSchemas = {
     template_name: z.string().max(100).optional(),
     use_template: z.boolean().optional(),
   }),
+
+  smsMessage: z.object({
+    phone_number: phoneNumberSchema.optional(),
+    message: z
+      .string()
+      .min(1, "الرسالة مطلوبة")
+      .max(918, "الرسالة النصية طويلة جداً - الحد الأقصى 918 حرف"),
+    recipients: z.array(phoneNumberSchema).optional(),
+    title: z.string().max(100, "العنوان طويل جداً").optional(),
+    priority: z.enum(["low", "normal", "high", "urgent"]).optional(),
+    context_type: z.string().max(50).optional(),
+    context_id: z.string().max(50).optional(),
+    scheduled: z.string().optional(),
+    sender_name: z.string().max(20).optional(),
+  }).refine(
+    (data) => data.phone_number || (data.recipients && data.recipients.length > 0),
+    { message: "يجب تحديد رقم هاتف واحد على الأقل أو قائمة مستلمين" }
+  ),
 };
 
 // Session validation middleware

@@ -132,6 +132,7 @@ const insertCustomerSchema = createInsertSchema(customers)
   });
 const insertLocationSchema = createInsertSchema(locations).omit({ id: true });
 import { NotificationService } from "./services/notification-service";
+import { TaqnyatSMSService } from "./services/taqnyat-sms";
 import {
   getNotificationManager,
   type SystemNotificationData,
@@ -163,6 +164,9 @@ import { registerAiAgentRoutes } from "./ai-agent-routes";
 
 // Initialize notification service
 const notificationService = new NotificationService(storage);
+
+// Initialize Taqnyat SMS service
+const taqnyatSMS = new TaqnyatSMSService(storage);
 
 // Initialize notification manager (singleton)
 let notificationManager: ReturnType<typeof getNotificationManager> | null =
@@ -598,6 +602,168 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       logger.error("Error sending test message", error);
       res.status(500).json({ message: "خطأ في إرسال رسالة الاختبار" });
+    }
+  });
+
+  // ==== TAQNYAT SMS API ROUTES ====
+
+  app.post(
+    "/api/sms/send",
+    requireAuth,
+    validateRequest({ body: commonSchemas.smsMessage }),
+    async (req, res) => {
+      try {
+        const {
+          phone_number,
+          message,
+          recipients,
+          title,
+          priority,
+          context_type,
+          context_id,
+          scheduled,
+          sender_name,
+        } = req.body;
+
+        const allRecipients = recipients && recipients.length > 0
+          ? recipients
+          : [phone_number];
+
+        const result = await taqnyatSMS.sendSMS(allRecipients, message, {
+          title,
+          priority,
+          context_type,
+          context_id,
+          scheduled,
+          senderName: sender_name,
+        });
+
+        if (result.success) {
+          res.json({
+            success: true,
+            data: {
+              messageId: result.messageId,
+              recipients: allRecipients,
+              message: message.substring(0, 100) + (message.length > 100 ? "..." : ""),
+              timestamp: new Date().toISOString(),
+            },
+            message: "تم إرسال الرسالة النصية بنجاح",
+          });
+        } else {
+          let statusCode = 500;
+          let errorMessage = "فشل في إرسال الرسالة النصية";
+
+          if (result.error?.includes("invalid credentials")) {
+            statusCode = 401;
+            errorMessage = "مفتاح API غير صحيح";
+          } else if (result.statusCode === 422) {
+            statusCode = 400;
+            errorMessage = "بيانات الرسالة غير صحيحة";
+          }
+
+          res.status(statusCode).json({
+            success: false,
+            message: errorMessage,
+            error: result.error,
+          });
+        }
+      } catch (error: any) {
+        logger.error("Error sending SMS", error);
+        res.status(500).json({
+          success: false,
+          message: "خطأ غير متوقع في إرسال الرسالة النصية",
+        });
+      }
+    }
+  );
+
+  app.post("/api/sms/test", requireAuth, async (req, res) => {
+    try {
+      const { phone_number } = req.body;
+      if (!phone_number) {
+        return res.status(400).json({ success: false, message: "رقم الهاتف مطلوب" });
+      }
+
+      const result = await taqnyatSMS.sendSMS(
+        phone_number,
+        "رسالة اختبار من نظام MPBF - تم إرسالها بنجاح عبر خدمة تقنيات ✅",
+        { title: "اختبار SMS" }
+      );
+
+      if (result.success) {
+        res.json({
+          success: true,
+          message: "تم إرسال رسالة الاختبار بنجاح",
+          messageId: result.messageId,
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: "فشل في إرسال رسالة الاختبار",
+          error: result.error,
+        });
+      }
+    } catch (error: any) {
+      logger.error("Error sending SMS test", error);
+      res.status(500).json({ success: false, message: "خطأ في إرسال رسالة الاختبار" });
+    }
+  });
+
+  app.get("/api/sms/balance", requireAuth, async (req, res) => {
+    try {
+      const result = await taqnyatSMS.getBalance();
+      if (result.success) {
+        res.json({
+          success: true,
+          balance: result.balance,
+          currency: result.currency,
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: result.error || "فشل في جلب الرصيد",
+        });
+      }
+    } catch (error: any) {
+      logger.error("Error fetching SMS balance", error);
+      res.status(500).json({ success: false, message: "خطأ في جلب رصيد الرسائل" });
+    }
+  });
+
+  app.get("/api/sms/senders", requireAuth, async (req, res) => {
+    try {
+      const result = await taqnyatSMS.getSenders();
+      if (result.success) {
+        res.json({
+          success: true,
+          senders: result.senders,
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: result.error || "فشل في جلب أسماء المرسلين",
+        });
+      }
+    } catch (error: any) {
+      logger.error("Error fetching SMS senders", error);
+      res.status(500).json({ success: false, message: "خطأ في جلب أسماء المرسلين" });
+    }
+  });
+
+  app.get("/api/sms/status", requireAuth, async (req, res) => {
+    try {
+      const isConfigured = taqnyatSMS.isConfigured();
+      const systemStatus = await taqnyatSMS.checkStatus();
+
+      res.json({
+        success: true,
+        configured: isConfigured,
+        systemStatus: systemStatus.status || "unknown",
+        provider: "taqnyat",
+      });
+    } catch (error: any) {
+      logger.error("Error checking SMS status", error);
+      res.status(500).json({ success: false, message: "خطأ في فحص حالة خدمة الرسائل" });
     }
   });
 

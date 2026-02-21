@@ -717,6 +717,7 @@ export const SETTINGS_TAB_PERMISSIONS: Record<string, PermissionKey[]> = {
   'notification-center': ['manage_settings', 'admin'],
   'whatsapp-webhooks': ['manage_whatsapp', 'admin'],
   'notification-events': ['manage_settings', 'admin'],
+  'sms': ['manage_settings', 'manage_whatsapp', 'admin'],
   'user': [],
 };
 

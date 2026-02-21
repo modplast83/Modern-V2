@@ -1651,7 +1651,8 @@
       "database": "قاعدة البيانات",
       "location": "موقع المصنع",
       "notificationCenter": "الإشعارات",
-      "whatsappWebhooks": "Webhooks واتساب"
+      "whatsappWebhooks": "Webhooks واتساب",
+      "sms": "الرسائل النصية"
     },
     "roles": {
       "title": "إدارة الأدوار والصلاحيات",
