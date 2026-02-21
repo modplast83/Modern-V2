@@ -34,6 +34,7 @@ interface SMSStatusResponse {
   configured: boolean;
   systemStatus: string;
   provider: string;
+  webhookUrl?: string;
 }
 
 interface SMSBalanceResponse {
@@ -265,6 +266,74 @@ export default function SMSSettingsTab() {
           </div>
         </CardContent>
       </Card>
+
+      {smsStatus?.webhookUrl && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <RefreshCw className="w-5 h-5" />
+              {isRTL ? "رابط الهوك (Webhook URL)" : "Webhook URL"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-3">
+              {isRTL
+                ? "انسخ هذا الرابط وأضفه في لوحة تحكم تقنيات لاستقبال تقارير تسليم الرسائل"
+                : "Copy this URL and add it to Taqnyat dashboard to receive SMS delivery reports"}
+            </p>
+            <div className="flex gap-2 items-center">
+              <Input
+                value={smsStatus.webhookUrl}
+                readOnly
+                dir="ltr"
+                className="font-mono text-sm"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  navigator.clipboard.writeText(smsStatus.webhookUrl!);
+                  toast({
+                    title: isRTL ? "تم النسخ" : "Copied",
+                    description: isRTL ? "تم نسخ رابط الهوك بنجاح" : "Webhook URL copied to clipboard",
+                  });
+                }}
+              >
+                {isRTL ? "نسخ" : "Copy"}
+              </Button>
+            </div>
+            <div className="mt-3 p-3 bg-muted rounded-lg">
+              <p className="text-xs text-muted-foreground">
+                {isRTL ? (
+                  <>
+                    <strong>خطوات الإعداد في منصة تقنيات:</strong>
+                    <br />
+                    1. سجل دخول إلى حسابك في <a href="https://portal.taqnyat.sa" target="_blank" rel="noopener noreferrer" className="text-primary underline">portal.taqnyat.sa</a>
+                    <br />
+                    2. اذهب إلى إعدادات التطبيق (Application)
+                    <br />
+                    3. الصق رابط الهوك في حقل Callback URL / Webhook URL
+                    <br />
+                    4. احفظ التغييرات
+                  </>
+                ) : (
+                  <>
+                    <strong>Setup steps in Taqnyat platform:</strong>
+                    <br />
+                    1. Login to your account at <a href="https://portal.taqnyat.sa" target="_blank" rel="noopener noreferrer" className="text-primary underline">portal.taqnyat.sa</a>
+                    <br />
+                    2. Go to Application settings
+                    <br />
+                    3. Paste the webhook URL in the Callback URL / Webhook URL field
+                    <br />
+                    4. Save changes
+                  </>
+                )}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

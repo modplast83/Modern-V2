@@ -755,16 +755,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isConfigured = taqnyatSMS.isConfigured();
       const systemStatus = await taqnyatSMS.checkStatus();
 
+      const protocol = req.headers["x-forwarded-proto"] || req.protocol;
+      const host = req.headers["x-forwarded-host"] || req.headers.host;
+      const webhookUrl = `${protocol}://${host}/api/notifications/webhook/taqnyat`;
+
       res.json({
         success: true,
         configured: isConfigured,
         systemStatus: systemStatus.status || "unknown",
         provider: "taqnyat",
+        webhookUrl,
       });
     } catch (error: any) {
       logger.error("Error checking SMS status", error);
       res.status(500).json({ success: false, message: "خطأ في فحص حالة خدمة الرسائل" });
     }
+  });
+
+  // Taqnyat SMS Webhook - Delivery Report Callback (public endpoint - called by Taqnyat servers)
+  app.post("/api/notifications/webhook/taqnyat", async (req, res) => {
+    try {
+      const { messageId, mobile, status, statusCode, errorCode, deliveredTime, sentTime } = req.body;
+
+      logger.info("Taqnyat SMS webhook received", {
+        messageId,
+        mobile,
+        status,
+        statusCode,
+      });
+
+      if (messageId) {
+        const statusMap: Record<string, string> = {
+          DELIVERED: "delivered",
+          SENT: "sent",
+          FAILED: "failed",
+          PENDING: "pending",
+          REJECTED: "failed",
+          EXPIRED: "failed",
+        };
+
+        const mappedStatus = statusMap[String(status).toUpperCase()] || "unknown";
+
+        try {
+          const updates: any = {
+            external_status: mappedStatus,
+          };
+          if (mappedStatus === "delivered") {
+            updates.status = "delivered";
+            updates.delivered_at = deliveredTime ? new Date(deliveredTime) : new Date();
+          } else if (mappedStatus === "failed") {
+            updates.status = "failed";
+            updates.error_message = errorCode ? `Error code: ${errorCode}` : "Delivery failed";
+          }
+
+          await storage.updateNotificationStatus(String(messageId), updates);
+          logger.info(`SMS delivery status updated: ${messageId} -> ${mappedStatus}`);
+        } catch (dbError) {
+          logger.error("Error updating SMS delivery status in database", dbError);
+        }
+      }
+
+      res.status(200).json({ success: true });
+    } catch (error: any) {
+      logger.error("Error processing Taqnyat webhook", error);
+      res.status(200).json({ success: true });
+    }
+  });
+
+  // Taqnyat webhook verification (GET - some providers verify with GET first)
+  app.get("/api/notifications/webhook/taqnyat", (req, res) => {
+    res.status(200).json({
+      status: "active",
+      service: "taqnyat-sms-webhook",
+      message: "Taqnyat SMS delivery report webhook is active",
+    });
   });
 
   // Get notifications

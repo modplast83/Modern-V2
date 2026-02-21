@@ -10,6 +10,10 @@ export interface TaqnyatSendResult {
   success: boolean;
   messageId?: string;
   statusCode?: number;
+  cost?: number;
+  totalCount?: number;
+  accepted?: string;
+  rejected?: string;
   error?: string;
 }
 
@@ -104,7 +108,7 @@ export class TaqnyatSMSService {
 
       const data = await response.json();
 
-      if (response.ok || data.statusCode === 200) {
+      if (response.ok || data.statusCode === 200 || data.statusCode === 201) {
         const notificationData = {
           title: options?.title || "رسالة نصية SMS",
           message: message,
@@ -113,7 +117,7 @@ export class TaqnyatSMSService {
           recipient_type: "user" as const,
           phone_number: formattedRecipients[0],
           status: "sent" as const,
-          twilio_sid: data.messageId || null,
+          twilio_sid: data.messageId ? String(data.messageId) : null,
           external_status: "sent",
           sent_at: new Date(),
           context_type: options?.context_type,
@@ -132,8 +136,12 @@ export class TaqnyatSMSService {
 
         return {
           success: true,
-          messageId: data.messageId || data.msgId,
+          messageId: String(data.messageId || data.msgId || ""),
           statusCode: data.statusCode,
+          cost: data.cost,
+          totalCount: data.totalCount,
+          accepted: data.accepted,
+          rejected: data.rejected,
         };
       } else {
         const errorMsg = data.message || `HTTP ${response.status}: ${response.statusText}`;
@@ -214,7 +222,7 @@ export class TaqnyatSMSService {
         throw new Error("خدمة تقنيات غير مُعدة");
       }
 
-      const response = await fetch(`${this.config.baseUrl}/v1/senders`, {
+      const response = await fetch(`${this.config.baseUrl}/v1/messages/senders`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${this.config.apiKey}`,
