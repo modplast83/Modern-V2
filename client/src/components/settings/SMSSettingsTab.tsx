@@ -250,11 +250,24 @@ export default function SMSSettingsTab() {
                   {sendersLoading ? (
                     <span className="text-sm">{isRTL ? "جاري التحميل..." : "Loading..."}</span>
                   ) : sendersData?.success && sendersData?.senders && sendersData.senders.length > 0 ? (
-                    sendersData.senders.map((sender: any, idx: number) => (
-                      <Badge key={idx} variant="secondary" className="text-xs">
-                        {typeof sender === "string" ? sender : sender.senderName || sender.name || JSON.stringify(sender)}
-                      </Badge>
-                    ))
+                    sendersData.senders.map((sender: any, idx: number) => {
+                      let label = "";
+                      if (typeof sender === "string") {
+                        label = sender;
+                      } else if (sender && typeof sender === "object") {
+                        label = typeof sender.senderName === "string" ? sender.senderName
+                          : typeof sender.name === "string" ? sender.name
+                          : typeof sender.destination === "string" ? sender.destination
+                          : JSON.stringify(sender);
+                      } else {
+                        label = String(sender);
+                      }
+                      return (
+                        <Badge key={idx} variant="secondary" className="text-xs">
+                          {label}
+                        </Badge>
+                      );
+                    })
                   ) : (
                     <span className="text-sm text-muted-foreground">
                       {isRTL ? "لا توجد أسماء مرسلين" : "No senders"}

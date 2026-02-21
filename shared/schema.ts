@@ -451,6 +451,7 @@ export const production_orders = pgTable(
     // NEW: علامات اكتمال المراحل
     film_completed: boolean("film_completed").default(false), // علامة اكتمال مرحلة الفيلم
     printing_completed: boolean("printing_completed").default(false), // علامة اكتمال الطباعة
+    cutting_completed: boolean("cutting_completed").default(false), // علامة اكتمال التقطيع
     is_final_roll_created: boolean("is_final_roll_created").default(false), // علامة إنشاء آخر رول
 
     status: varchar("status", { length: 30 }).notNull().default("pending"),
