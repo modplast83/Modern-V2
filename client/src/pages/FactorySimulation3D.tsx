@@ -450,35 +450,154 @@ function InlinePrinterMachine({ machine, isSelected }: { machine: Machine; isSel
 function ProfessionalPrintingMachine({ machine, isSelected }: { machine: Machine; isSelected: boolean }) {
   return (
     <group rotation={[0, (machine.rotation || 0) * Math.PI / 180, 0]} scale={machine.scale}>
-      <mesh castShadow position={[0, 0.6, 0]}>
-        <boxGeometry args={[3.5, 1.2, 2]} />
-        <meshStandardMaterial color={machine.color} metalness={0.6} roughness={0.3} />
+      {/* Main machine body / base frame */}
+      <mesh castShadow position={[0, 0.5, 0]}>
+        <boxGeometry args={[4, 1, 2.2]} />
+        <meshStandardMaterial color={machine.color} metalness={0.65} roughness={0.3} />
       </mesh>
-      {[-1.2, -0.4, 0.4, 1.2].map((x, i) => (
-        <mesh key={i} castShadow position={[x, 1.6, 0]} rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[0.3, 0.3, 1.6, 16]} />
-          <meshStandardMaterial color={['#ef4444', '#3b82f6', '#22c55e', '#eab308'][i]} metalness={0.4} roughness={0.4} />
+
+      {/* Left side frame */}
+      <mesh castShadow position={[0, 1.8, -1.05]}>
+        <boxGeometry args={[4.2, 2.8, 0.1]} />
+        <meshStandardMaterial color="#475569" metalness={0.6} roughness={0.3} />
+      </mesh>
+      {/* Right side frame */}
+      <mesh castShadow position={[0, 1.8, 1.05]}>
+        <boxGeometry args={[4.2, 2.8, 0.1]} />
+        <meshStandardMaterial color="#475569" metalness={0.6} roughness={0.3} />
+      </mesh>
+      {/* Top beam */}
+      <mesh castShadow position={[0, 3.2, 0]}>
+        <boxGeometry args={[4.2, 0.15, 2.2]} />
+        <meshStandardMaterial color="#334155" metalness={0.7} roughness={0.2} />
+      </mesh>
+
+      {/* Printing rollers - 4 color rollers */}
+      {[-1.0, -0.33, 0.33, 1.0].map((x, i) => (
+        <mesh key={`roller-${i}`} castShadow position={[x, 2.0, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.28, 0.28, 1.8, 20]} />
+          <meshStandardMaterial color={['#ef4444', '#3b82f6', '#22c55e', '#eab308'][i]} metalness={0.5} roughness={0.3} />
         </mesh>
       ))}
-      <mesh castShadow position={[0, 2.5, 0]}>
-        <boxGeometry args={[3.8, 0.3, 2.2]} />
-        <meshStandardMaterial color="#1e1b4b" metalness={0.5} />
+      {/* Pressure/impression rollers between color rollers */}
+      {[-0.67, 0, 0.67].map((x, i) => (
+        <mesh key={`press-${i}`} castShadow position={[x, 2.5, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.15, 0.15, 1.7, 12]} />
+          <meshStandardMaterial color="#94a3b8" metalness={0.9} roughness={0.1} />
+        </mesh>
+      ))}
+      {/* Guide rollers (top path) */}
+      {[-1.6, 1.6].map((x, i) => (
+        <mesh key={`guide-${i}`} castShadow position={[x, 2.8, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.1, 0.1, 1.6, 10]} />
+          <meshStandardMaterial color="#d4d4d8" metalness={0.85} roughness={0.1} />
+        </mesh>
+      ))}
+      {/* Film path - transparent sheet through rollers */}
+      <mesh position={[0, 2.4, 0]}>
+        <boxGeometry args={[3.6, 0.02, 1.5]} />
+        <meshStandardMaterial color="#c7d2fe" transparent opacity={0.2} side={THREE.DoubleSide} />
       </mesh>
-      <mesh castShadow position={[-1.8, 1.5, 0]}>
-        <boxGeometry args={[0.3, 2, 1.5]} />
-        <meshStandardMaterial color="#4338ca" metalness={0.3} />
+
+      {/* Ink trays under each color roller */}
+      {[-1.0, -0.33, 0.33, 1.0].map((x, i) => (
+        <mesh key={`tray-${i}`} castShadow position={[x, 1.35, 0]}>
+          <boxGeometry args={[0.5, 0.15, 1.4]} />
+          <meshStandardMaterial color="#1e293b" metalness={0.6} roughness={0.4} />
+        </mesh>
+      ))}
+
+      {/* INPUT ROLL - front (unprinted film roll) */}
+      <group position={[-2.4, 1.2, 0]}>
+        {/* Shaft support left */}
+        <mesh castShadow position={[0, 0.3, -0.85]}>
+          <boxGeometry args={[0.12, 0.8, 0.12]} />
+          <meshStandardMaterial color="#475569" metalness={0.6} />
+        </mesh>
+        {/* Shaft support right */}
+        <mesh castShadow position={[0, 0.3, 0.85]}>
+          <boxGeometry args={[0.12, 0.8, 0.12]} />
+          <meshStandardMaterial color="#475569" metalness={0.6} />
+        </mesh>
+        {/* Shaft */}
+        <mesh castShadow position={[0, 0.6, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.06, 0.06, 1.7, 8]} />
+          <meshStandardMaterial color="#94a3b8" metalness={0.9} roughness={0.1} />
+        </mesh>
+        {/* Roll core */}
+        <mesh castShadow position={[0, 0.6, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.12, 0.12, 1.3, 12]} />
+          <meshStandardMaterial color="#78716c" metalness={0.5} />
+        </mesh>
+        {/* Unprinted film roll */}
+        <mesh castShadow position={[0, 0.6, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.5, 0.5, 1.2, 24]} />
+          <meshStandardMaterial color="#e0e7ef" transparent opacity={0.55} roughness={0.4} />
+        </mesh>
+      </group>
+
+      {/* OUTPUT ROLL - back (printed film roll) */}
+      <group position={[2.4, 1.2, 0]}>
+        {/* Shaft support left */}
+        <mesh castShadow position={[0, 0.3, -0.85]}>
+          <boxGeometry args={[0.12, 0.8, 0.12]} />
+          <meshStandardMaterial color="#475569" metalness={0.6} />
+        </mesh>
+        {/* Shaft support right */}
+        <mesh castShadow position={[0, 0.3, 0.85]}>
+          <boxGeometry args={[0.12, 0.8, 0.12]} />
+          <meshStandardMaterial color="#475569" metalness={0.6} />
+        </mesh>
+        {/* Shaft */}
+        <mesh castShadow position={[0, 0.6, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.06, 0.06, 1.7, 8]} />
+          <meshStandardMaterial color="#94a3b8" metalness={0.9} roughness={0.1} />
+        </mesh>
+        {/* Roll core */}
+        <mesh castShadow position={[0, 0.6, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.12, 0.12, 1.3, 12]} />
+          <meshStandardMaterial color="#78716c" metalness={0.5} />
+        </mesh>
+        {/* Printed film roll - colored to show it's printed */}
+        <mesh castShadow position={[0, 0.6, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.45, 0.45, 1.2, 24]} />
+          <meshStandardMaterial color="#c7d2fe" transparent opacity={0.65} roughness={0.35} />
+        </mesh>
+        {/* Colored band on printed roll to indicate print */}
+        <mesh castShadow position={[0, 0.6, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.46, 0.46, 0.4, 24]} />
+          <meshStandardMaterial color="#6366f1" transparent opacity={0.3} roughness={0.4} />
+        </mesh>
+      </group>
+
+      {/* Motor housing at back */}
+      <mesh castShadow position={[0, 0.4, -1.25]}>
+        <boxGeometry args={[1.6, 0.6, 0.3]} />
+        <meshStandardMaterial color="#334155" metalness={0.8} roughness={0.2} />
       </mesh>
-      <mesh castShadow position={[1.8, 1.5, 0]}>
-        <boxGeometry args={[0.3, 2, 1.5]} />
-        <meshStandardMaterial color="#4338ca" metalness={0.3} />
+
+      {/* Control panel */}
+      <mesh castShadow position={[1.6, 2.0, -1.15]}>
+        <boxGeometry args={[0.7, 0.6, 0.1]} />
+        <meshStandardMaterial color="#1e293b" metalness={0.3} />
       </mesh>
-      <mesh castShadow position={[-2.2, 1.2, 0.6]}>
-        <boxGeometry args={[0.4, 0.6, 0.4]} />
-        <meshStandardMaterial color="#334155" emissive="#22c55e" emissiveIntensity={0.3} />
+      {/* Control panel screen */}
+      <mesh position={[1.6, 2.05, -1.19]}>
+        <boxGeometry args={[0.5, 0.3, 0.01]} />
+        <meshStandardMaterial color="#0f172a" emissive="#22c55e" emissiveIntensity={0.15} />
       </mesh>
+
+      {/* Machine legs */}
+      {[[-1.6, -0.95], [-1.6, 0.95], [1.6, -0.95], [1.6, 0.95]].map((pos, i) => (
+        <mesh key={`leg-${i}`} castShadow position={[pos[0], -0.02, pos[1]]}>
+          <boxGeometry args={[0.2, 0.04, 0.2]} />
+          <meshStandardMaterial color="#1e293b" metalness={0.5} />
+        </mesh>
+      ))}
+
       {isSelected && (
         <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[2.8, 3, 32]} />
+          <ringGeometry args={[3.5, 3.8, 32]} />
           <meshBasicMaterial color="#a78bfa" transparent opacity={0.8} />
         </mesh>
       )}
@@ -489,33 +608,161 @@ function ProfessionalPrintingMachine({ machine, isSelected }: { machine: Machine
 function ProfessionalCuttingMachine({ machine, isSelected }: { machine: Machine; isSelected: boolean }) {
   return (
     <group rotation={[0, (machine.rotation || 0) * Math.PI / 180, 0]} scale={machine.scale}>
+      {/* Main machine body / base frame */}
       <mesh castShadow position={[0, 0.5, 0]}>
-        <boxGeometry args={[2.8, 1, 1.8]} />
-        <meshStandardMaterial color={machine.color} metalness={0.6} roughness={0.3} />
+        <boxGeometry args={[3.5, 1, 2]} />
+        <meshStandardMaterial color={machine.color} metalness={0.65} roughness={0.3} />
       </mesh>
-      <mesh castShadow position={[0, 1.5, 0]}>
-        <cylinderGeometry args={[0.8, 0.8, 0.08, 32]} />
-        <meshStandardMaterial color="#d4d4d8" metalness={0.9} roughness={0.1} />
+
+      {/* Left side frame */}
+      <mesh castShadow position={[0, 1.8, -0.95]}>
+        <boxGeometry args={[3.8, 2.6, 0.1]} />
+        <meshStandardMaterial color="#475569" metalness={0.6} roughness={0.3} />
       </mesh>
-      <mesh castShadow position={[0, 1.5, 0]}>
-        <torusGeometry args={[0.6, 0.02, 8, 32]} />
-        <meshStandardMaterial color="#a1a1aa" metalness={0.9} />
+      {/* Right side frame */}
+      <mesh castShadow position={[0, 1.8, 0.95]}>
+        <boxGeometry args={[3.8, 2.6, 0.1]} />
+        <meshStandardMaterial color="#475569" metalness={0.6} roughness={0.3} />
       </mesh>
-      <mesh castShadow position={[-1.2, 1.2, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.35, 0.35, 1.4, 16]} />
-        <meshStandardMaterial color="#6b7280" metalness={0.7} />
+      {/* Top beam */}
+      <mesh castShadow position={[0, 3.1, 0]}>
+        <boxGeometry args={[3.8, 0.12, 2]} />
+        <meshStandardMaterial color="#334155" metalness={0.7} roughness={0.2} />
       </mesh>
-      <mesh castShadow position={[1.2, 1.2, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.35, 0.35, 1.4, 16]} />
-        <meshStandardMaterial color="#6b7280" metalness={0.7} />
+
+      {/* INPUT ROLL - printed film roll at one end */}
+      <group position={[-2.2, 1.3, 0]}>
+        {/* Shaft support left */}
+        <mesh castShadow position={[0, 0.3, -0.8]}>
+          <boxGeometry args={[0.12, 0.8, 0.12]} />
+          <meshStandardMaterial color="#475569" metalness={0.6} />
+        </mesh>
+        {/* Shaft support right */}
+        <mesh castShadow position={[0, 0.3, 0.8]}>
+          <boxGeometry args={[0.12, 0.8, 0.12]} />
+          <meshStandardMaterial color="#475569" metalness={0.6} />
+        </mesh>
+        {/* Shaft */}
+        <mesh castShadow position={[0, 0.6, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.06, 0.06, 1.6, 8]} />
+          <meshStandardMaterial color="#94a3b8" metalness={0.9} roughness={0.1} />
+        </mesh>
+        {/* Roll core */}
+        <mesh castShadow position={[0, 0.6, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.12, 0.12, 1.2, 12]} />
+          <meshStandardMaterial color="#78716c" metalness={0.5} />
+        </mesh>
+        {/* Film roll (input material) */}
+        <mesh castShadow position={[0, 0.6, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.5, 0.5, 1.1, 24]} />
+          <meshStandardMaterial color="#e0e7ef" transparent opacity={0.55} roughness={0.4} />
+        </mesh>
+      </group>
+
+      {/* Film path from roll through machine - transparent */}
+      <mesh position={[-0.5, 2.2, 0]}>
+        <boxGeometry args={[3.0, 0.02, 1.4]} />
+        <meshStandardMaterial color="#c7d2fe" transparent opacity={0.15} side={THREE.DoubleSide} />
       </mesh>
-      <mesh castShadow position={[0, 2.2, -0.6]}>
-        <boxGeometry args={[1.5, 0.8, 0.3]} />
-        <meshStandardMaterial color="#1f2937" emissive="#10b981" emissiveIntensity={0.2} />
+
+      {/* Guide rollers - feed path */}
+      {[-1.4, -0.7].map((x, i) => (
+        <mesh key={`feed-${i}`} castShadow position={[x, 1.8 + i * 0.4, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.12, 0.12, 1.6, 12]} />
+          <meshStandardMaterial color="#d4d4d8" metalness={0.85} roughness={0.1} />
+        </mesh>
+      ))}
+
+      {/* Cutting blade assembly */}
+      <group position={[0.3, 2.2, 0]}>
+        {/* Blade housing */}
+        <mesh castShadow position={[0, 0.2, 0]}>
+          <boxGeometry args={[0.3, 0.6, 1.8]} />
+          <meshStandardMaterial color="#dc2626" metalness={0.7} roughness={0.2} />
+        </mesh>
+        {/* Circular cutting blade */}
+        <mesh castShadow position={[0, 0, 0]}>
+          <cylinderGeometry args={[0.6, 0.6, 0.06, 32]} />
+          <meshStandardMaterial color="#e5e7eb" metalness={0.95} roughness={0.05} />
+        </mesh>
+        {/* Blade rim shine */}
+        <mesh position={[0, 0, 0]}>
+          <torusGeometry args={[0.5, 0.02, 8, 32]} />
+          <meshStandardMaterial color="#f8fafc" metalness={0.95} roughness={0.05} />
+        </mesh>
+        {/* Blade guard */}
+        <mesh castShadow position={[0, 0.55, 0]}>
+          <boxGeometry args={[0.15, 0.1, 1.9]} />
+          <meshStandardMaterial color="#991b1b" metalness={0.6} />
+        </mesh>
+      </group>
+
+      {/* Sealing bar (heat sealer) */}
+      <mesh castShadow position={[0.9, 1.6, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.08, 0.08, 1.6, 10]} />
+        <meshStandardMaterial color="#f59e0b" metalness={0.7} roughness={0.3} emissive="#f59e0b" emissiveIntensity={0.1} />
       </mesh>
+
+      {/* Counter / stacker area at output */}
+      <group position={[1.6, 0.8, 0]}>
+        {/* Stacker platform */}
+        <mesh castShadow position={[0, -0.2, 0]}>
+          <boxGeometry args={[0.8, 0.08, 1.6]} />
+          <meshStandardMaterial color="#64748b" metalness={0.6} />
+        </mesh>
+        {/* Stacked bags pile */}
+        <mesh castShadow position={[0, 0, 0]}>
+          <boxGeometry args={[0.6, 0.3, 1.2]} />
+          <meshStandardMaterial color="#f1f5f9" transparent opacity={0.7} roughness={0.5} />
+        </mesh>
+        {/* Bag counter guide */}
+        <mesh castShadow position={[0.3, 0.3, 0]}>
+          <boxGeometry args={[0.06, 0.6, 1.4]} />
+          <meshStandardMaterial color="#475569" metalness={0.5} />
+        </mesh>
+      </group>
+
+      {/* Conveyor belt rollers at output */}
+      {[1.1, 1.35, 1.6].map((x, i) => (
+        <mesh key={`conv-${i}`} castShadow position={[x, 1.1, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.06, 0.06, 1.5, 8]} />
+          <meshStandardMaterial color="#94a3b8" metalness={0.8} />
+        </mesh>
+      ))}
+
+      {/* Motor housing at back */}
+      <mesh castShadow position={[0, 0.4, -1.15]}>
+        <boxGeometry args={[1.4, 0.6, 0.3]} />
+        <meshStandardMaterial color="#334155" metalness={0.8} roughness={0.2} />
+      </mesh>
+
+      {/* Control panel */}
+      <mesh castShadow position={[-1.4, 2.2, -1.0]}>
+        <boxGeometry args={[0.7, 0.6, 0.1]} />
+        <meshStandardMaterial color="#1e293b" metalness={0.3} />
+      </mesh>
+      {/* Control screen */}
+      <mesh position={[-1.4, 2.25, -1.04]}>
+        <boxGeometry args={[0.5, 0.3, 0.01]} />
+        <meshStandardMaterial color="#0f172a" emissive="#10b981" emissiveIntensity={0.15} />
+      </mesh>
+      {/* Counter display */}
+      <mesh castShadow position={[1.5, 2.0, -1.0]}>
+        <boxGeometry args={[0.5, 0.35, 0.08]} />
+        <meshStandardMaterial color="#1e293b" emissive="#ef4444" emissiveIntensity={0.15} />
+      </mesh>
+
+      {/* Machine legs */}
+      {[[-1.4, -0.85], [-1.4, 0.85], [1.4, -0.85], [1.4, 0.85]].map((pos, i) => (
+        <mesh key={`leg-${i}`} castShadow position={[pos[0], -0.02, pos[1]]}>
+          <boxGeometry args={[0.2, 0.04, 0.2]} />
+          <meshStandardMaterial color="#1e293b" metalness={0.5} />
+        </mesh>
+      ))}
+
       {isSelected && (
         <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[2.2, 2.4, 32]} />
+          <ringGeometry args={[3.2, 3.5, 32]} />
           <meshBasicMaterial color="#34d399" transparent opacity={0.8} />
         </mesh>
       )}
