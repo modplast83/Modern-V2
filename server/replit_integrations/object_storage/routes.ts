@@ -1,5 +1,5 @@
 import type { Express } from "express";
-import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { ObjectStorageService, ObjectNotFoundError, objectStorageClient } from "./objectStorage";
 
 /**
  * Register object storage routes for file uploads.
@@ -72,7 +72,43 @@ export function registerObjectStorageRoutes(app: Express): void {
    */
   app.get("/objects/:objectPath(*)", async (req, res) => {
     try {
-      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
+      const reqPath = req.path;
+      const pathAfterObjects = reqPath.replace(/^\/objects\//, "");
+
+      // Try serving from public bucket paths directly
+      try {
+        const publicPaths = objectStorageService.getPublicObjectSearchPaths();
+        for (const searchPath of publicPaths) {
+          const normalized = searchPath.startsWith('/') ? searchPath : `/${searchPath}`;
+          const parts = normalized.split('/');
+          const bucketName = parts[1];
+          const bucketPrefix = parts.slice(2).join('/');
+
+          // Check if the requested path starts with the bucket prefix (e.g. "public/")
+          if (bucketPrefix && pathAfterObjects.startsWith(bucketPrefix + '/')) {
+            // Path already includes the prefix, use it directly
+            const bucket = objectStorageClient.bucket(bucketName);
+            const file = bucket.file(pathAfterObjects);
+            const [exists] = await file.exists();
+            if (exists) {
+              return await objectStorageService.downloadObject(file, res);
+            }
+          }
+          // Also try prepending the prefix for relative paths
+          const fullObjectName = bucketPrefix ? `${bucketPrefix}/${pathAfterObjects}` : pathAfterObjects;
+          const bucket = objectStorageClient.bucket(bucketName);
+          const file = bucket.file(fullObjectName);
+          const [exists] = await file.exists();
+          if (exists) {
+            return await objectStorageService.downloadObject(file, res);
+          }
+        }
+      } catch (_e) {
+        // Public search failed, try private
+      }
+
+      // Fall back to private entity file
+      const objectFile = await objectStorageService.getObjectEntityFile(reqPath);
       await objectStorageService.downloadObject(objectFile, res);
     } catch (error) {
       console.error("Error serving object:", error);
