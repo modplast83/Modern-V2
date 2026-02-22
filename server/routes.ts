@@ -1636,8 +1636,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return res.status(404).json({ message: "أمر الإنتاج غير موجود" });
           }
           
-          const customer_product_id = req.body.customer_product_id || existingOrder.customer_product_id;
-          const quantity_kg = req.body.quantity_kg || existingOrder.quantity_kg;
+          const customer_product_id = req.body.customer_product_id !== undefined ? req.body.customer_product_id : existingOrder.customer_product_id;
+          const quantity_kg = req.body.quantity_kg !== undefined ? req.body.quantity_kg : existingOrder.quantity_kg;
           
           const customerProduct = customerProductsResult.data.find(
             (cp: any) => cp.id === parseInt(customer_product_id),
@@ -1906,8 +1906,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: status as string,
         date_from: date_from as string,
         date_to: date_to as string,
-        page: parseInt(page as string),
-        limit: parseInt(limit as string),
+        page: Math.max(parseInt(page as string) || 1, 1),
+        limit: Math.min(Math.max(parseInt(limit as string) || 50, 1), 500),
       });
 
       res.json({
@@ -1928,8 +1928,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { stage, limit, offset } = req.query;
       const options = {
-        limit: limit ? parseInt(limit as string) : undefined,
-        offset: offset ? parseInt(offset as string) : undefined,
+        limit: limit ? Math.min(Math.max(parseInt(limit as string) || 50, 1), 500) : undefined,
+        offset: offset ? Math.max(parseInt(offset as string) || 0, 0) : undefined,
         stage: stage as string,
       };
 
@@ -2111,10 +2111,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         options.search = search;
       }
       if (page && typeof page === 'string') {
-        options.page = parseInt(page);
+        options.page = Math.max(parseInt(page) || 1, 1);
       }
       if (limit && typeof limit === 'string') {
-        options.limit = parseInt(limit);
+        options.limit = Math.min(Math.max(parseInt(limit) || 50, 1), 500);
       }
       
       const result = await storage.getCustomers(options);
@@ -2956,11 +2956,11 @@ Do not include quotes or explanations.`;
       }
       
       if (page && typeof page === 'string') {
-        options.page = parseInt(page);
+        options.page = Math.max(parseInt(page) || 1, 1);
       }
       
       if (limit && typeof limit === 'string') {
-        options.limit = parseInt(limit);
+        options.limit = Math.min(Math.max(parseInt(limit) || 50, 1), 500);
       }
       
       if (search && typeof search === 'string') {
@@ -4011,7 +4011,7 @@ Do not include quotes or explanations.`;
 
       const processedData = {
         username: req.body.username,
-        password: req.body.password || "defaultPassword",
+        password: req.body.password || require("crypto").randomBytes(12).toString("base64url"),
         display_name: req.body.display_name,
         display_name_ar: req.body.display_name_ar,
         role_id: roleId,
@@ -5773,9 +5773,12 @@ Do not include quotes or explanations.`;
                 processedRecord.role_id = 2; // Default user role
               }
 
-              // Set default password if not provided (required for user creation)
+              // Set random temporary password if not provided (required for user creation)
+              // Admin must reset password for imported users after import
               if (!processedRecord.password) {
-                processedRecord.password = "123456"; // Default password for imported users
+                const tempPassword = require("crypto").randomBytes(12).toString("base64url");
+                processedRecord.password = tempPassword;
+                logger.warn(`Imported user "${processedRecord.username}" created with temporary random password - admin must reset`);
               }
 
               // Ensure username is set (use id if not provided)
