@@ -13,10 +13,18 @@ import {
   Pause,
   Play,
   BarChart3,
-  ScrollText,
   Megaphone,
   BookOpen,
   Bell,
+  Table2,
+  ImageIcon,
+  Users,
+  Trophy,
+  UserCheck,
+  UserX,
+  LogIn,
+  LogOut,
+  Medal,
 } from "lucide-react";
 
 interface SlideData {
@@ -61,34 +69,39 @@ interface ProductionStats {
   completed_today: string;
 }
 
-const statusMap: Record<string, { label: string; color: string }> = {
-  pending: { label: "قيد الانتظار", color: "bg-yellow-500" },
-  in_progress: { label: "قيد التنفيذ", color: "bg-blue-500" },
-  completed: { label: "مكتمل", color: "bg-green-500" },
-  cancelled: { label: "ملغي", color: "bg-red-500" },
-  new: { label: "جديد", color: "bg-purple-500" },
-  film_production: { label: "إنتاج الفيلم", color: "bg-indigo-500" },
-  printing: { label: "طباعة", color: "bg-cyan-500" },
-  cutting: { label: "تقطيع", color: "bg-orange-500" },
-};
-
-function getStatusInfo(status: string) {
-  return statusMap[status] || { label: status, color: "bg-gray-500" };
+interface AttendanceData {
+  records: any[];
+  totalPresent: number;
+  totalAbsent: number;
+  total: number;
+  date: string;
 }
 
-function formatNumber(val: string | number | null | undefined) {
+interface TopProducersData {
+  period: string;
+  stage: string;
+  sections: Record<string, any[]>;
+}
+
+function useLocale() {
+  const { i18n } = useTranslation();
+  return i18n.language === "ar" ? "ar-SA" : "en-US";
+}
+
+function formatNumber(val: string | number | null | undefined, locale: string = "ar-SA") {
   const num = Number(val);
   if (isNaN(num)) return "0";
-  return num.toLocaleString("ar-SA", { maximumFractionDigits: 1 });
+  return num.toLocaleString(locale, { maximumFractionDigits: 1 });
 }
 
-function formatTime(dateStr: string) {
+function formatTime(dateStr: string, locale: string = "ar-SA") {
   if (!dateStr) return "";
   const d = new Date(dateStr);
-  return d.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
 }
 
 function CurrentDateTime() {
+  const locale = useLocale();
   const [now, setNow] = useState(new Date());
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
@@ -98,21 +111,23 @@ function CurrentDateTime() {
   return (
     <div className="flex items-center gap-4 text-white/90">
       <div className="text-2xl font-bold tabular-nums">
-        {now.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+        {now.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
       </div>
       <div className="text-lg opacity-80">
-        {now.toLocaleDateString("ar-SA", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+        {now.toLocaleDateString(locale, { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
       </div>
     </div>
   );
 }
 
 function ProductionStatsSlide({ stats }: { stats: ProductionStats | undefined }) {
+  const { t } = useTranslation();
+  const locale = useLocale();
   const items = [
-    { icon: Factory, label: "أوامر نشطة", value: stats?.active_orders || "0", color: "from-blue-600 to-blue-800" },
-    { icon: Package, label: "لفات اليوم", value: stats?.rolls_today || "0", color: "from-green-600 to-green-800" },
-    { icon: TrendingUp, label: "إنتاج اليوم (كجم)", value: formatNumber(stats?.production_kg_today), color: "from-purple-600 to-purple-800" },
-    { icon: BarChart3, label: "مكتمل اليوم", value: stats?.completed_today || "0", color: "from-orange-600 to-orange-800" },
+    { icon: Factory, label: t("display.stats.activeOrders"), value: stats?.active_orders || "0", color: "from-blue-600 to-blue-800" },
+    { icon: Package, label: t("display.stats.rollsToday"), value: stats?.rolls_today || "0", color: "from-green-600 to-green-800" },
+    { icon: TrendingUp, label: t("display.stats.productionToday"), value: formatNumber(stats?.production_kg_today, locale), color: "from-purple-600 to-purple-800" },
+    { icon: BarChart3, label: t("display.stats.completedToday"), value: stats?.completed_today || "0", color: "from-orange-600 to-orange-800" },
   ];
 
   return (
@@ -133,6 +148,21 @@ function ProductionStatsSlide({ stats }: { stats: ProductionStats | undefined })
 }
 
 function RecentProductionSlide({ orders }: { orders: ProductionOrder[] }) {
+  const { t, i18n } = useTranslation();
+  const locale = useLocale();
+  const isAr = i18n.language === "ar";
+
+  const getStatusInfo = (status: string) => {
+    const key = `display.status.${status}`;
+    const label = t(key);
+    const colorMap: Record<string, string> = {
+      pending: "bg-yellow-500", in_progress: "bg-blue-500", completed: "bg-green-500",
+      cancelled: "bg-red-500", new: "bg-purple-500", film_production: "bg-indigo-500",
+      printing: "bg-cyan-500", cutting: "bg-orange-500",
+    };
+    return { label: label !== key ? label : status, color: colorMap[status] || "bg-gray-500" };
+  };
+
   return (
     <div className="p-6">
       <div className="grid gap-3">
@@ -156,22 +186,22 @@ function RecentProductionSlide({ orders }: { orders: ProductionOrder[] }) {
                   </span>
                 </div>
                 <div className="text-white/70 text-base truncate">
-                  {order.customer_name_ar || order.customer_name} — {order.size_caption}
+                  {isAr ? (order.customer_name_ar || order.customer_name) : (order.customer_name || order.customer_name_ar)} — {order.size_caption}
                 </div>
               </div>
               <div className="flex-shrink-0 text-left w-40">
-                <div className="text-white/60 text-sm mb-1">التقدم</div>
+                <div className="text-white/60 text-sm mb-1">{t("display.progress")}</div>
                 <div className="w-full bg-white/20 rounded-full h-3 overflow-hidden">
                   <div
                     className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full transition-all duration-1000"
                     style={{ width: `${Math.min(progress, 100)}%` }}
                   />
                 </div>
-                <div className="text-white font-bold text-lg mt-1">{formatNumber(progress)}%</div>
+                <div className="text-white font-bold text-lg mt-1">{formatNumber(progress, locale)}%</div>
               </div>
               <div className="flex-shrink-0 text-left w-28">
-                <div className="text-white/60 text-sm">الكمية</div>
-                <div className="text-white font-bold text-lg">{formatNumber(order.quantity_kg)} كجم</div>
+                <div className="text-white/60 text-sm">{t("display.quantity")}</div>
+                <div className="text-white font-bold text-lg">{formatNumber(order.quantity_kg, locale)} {t("common.kg", "كجم")}</div>
               </div>
             </div>
           );
@@ -182,6 +212,20 @@ function RecentProductionSlide({ orders }: { orders: ProductionOrder[] }) {
 }
 
 function LatestRollsSlide({ rolls }: { rolls: RollData[] }) {
+  const { t, i18n } = useTranslation();
+  const locale = useLocale();
+  const isAr = i18n.language === "ar";
+
+  const getStatusInfo = (status: string) => {
+    const key = `display.status.${status}`;
+    const label = t(key);
+    const colorMap: Record<string, string> = {
+      pending: "bg-yellow-500", in_progress: "bg-blue-500", completed: "bg-green-500",
+      for_printing: "bg-cyan-500", for_cutting: "bg-orange-500", done: "bg-green-600",
+    };
+    return { label: label !== key ? label : status, color: colorMap[status] || "bg-gray-500" };
+  };
+
   return (
     <div className="p-6">
       <div className="grid grid-cols-2 gap-4">
@@ -201,16 +245,16 @@ function LatestRollsSlide({ rolls }: { rolls: RollData[] }) {
               </div>
               <div className="space-y-2 text-white/80 text-base">
                 <div className="flex justify-between">
-                  <span>الوزن:</span>
-                  <span className="font-bold text-white">{formatNumber(roll.weight_kg)} كجم</span>
+                  <span>{t("display.weight")}:</span>
+                  <span className="font-bold text-white">{formatNumber(roll.weight_kg, locale)} {t("common.kg", "كجم")}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>الماكينة:</span>
-                  <span>{roll.machine_name_ar || roll.machine_name}</span>
+                  <span>{t("display.machine")}:</span>
+                  <span>{isAr ? (roll.machine_name_ar || roll.machine_name) : (roll.machine_name || roll.machine_name_ar) || "—"}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>الوقت:</span>
-                  <span>{formatTime(roll.created_at)}</span>
+                  <span>{t("display.time")}:</span>
+                  <span>{formatTime(roll.created_at, locale)}</span>
                 </div>
               </div>
             </div>
@@ -274,8 +318,257 @@ function InstructionsSlide({ content }: { content: any }) {
   );
 }
 
-export default function DisplayScreen() {
+function CustomTableSlide({ content }: { content: any }) {
+  const columns: string[] = content?.columns || [];
+  const rows: string[][] = content?.rows || [];
+  const headerColor = content?.headerColor || "blue";
+
+  const headerGradients: Record<string, string> = {
+    blue: "from-blue-600 to-blue-800",
+    red: "from-red-600 to-red-800",
+    green: "from-green-600 to-green-800",
+    yellow: "from-yellow-600 to-yellow-800",
+    purple: "from-purple-600 to-purple-800",
+  };
+  const grad = headerGradients[headerColor] || headerGradients.blue;
+
+  return (
+    <div className="p-8">
+      {content?.tableName && (
+        <h3 className="text-3xl font-black text-white text-center mb-6" style={{ animation: "fadeScaleIn 0.5s ease-out" }}>
+          {content.tableName}
+        </h3>
+      )}
+      <div className="max-w-6xl mx-auto rounded-2xl overflow-hidden border border-white/20 shadow-2xl" style={{ animation: "fadeSlideUp 0.6s ease-out" }}>
+        <table className="w-full">
+          <thead>
+            <tr className={`bg-gradient-to-r ${grad}`}>
+              {columns.map((col, i) => (
+                <th key={i} className="px-6 py-5 text-white text-xl font-bold text-right border-l border-white/20 first:border-l-0">
+                  {col}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, ri) => (
+              <tr
+                key={ri}
+                className={`${ri % 2 === 0 ? "bg-white/5" : "bg-white/10"} border-t border-white/10`}
+                style={{ animation: `fadeSlideRight 0.4s ease-out ${ri * 0.08}s both` }}
+              >
+                {columns.map((_, ci) => (
+                  <td key={ci} className="px-6 py-4 text-white/90 text-lg border-l border-white/10 first:border-l-0">
+                    {row[ci] || ""}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function ImageSlide({ content }: { content: any }) {
+  const fit = content?.fit || "contain";
+  return (
+    <div className="h-full flex flex-col items-center justify-center p-6">
+      <div className="flex-1 w-full flex items-center justify-center rounded-2xl overflow-hidden" style={{ animation: "fadeScaleIn 0.6s ease-out" }}>
+        <img
+          src={content?.url}
+          alt={content?.caption || ""}
+          className="max-h-full max-w-full rounded-2xl shadow-2xl"
+          style={{ objectFit: fit }}
+        />
+      </div>
+      {content?.caption && (
+        <div className="mt-4 text-2xl text-white/80 text-center font-medium">{content.caption}</div>
+      )}
+    </div>
+  );
+}
+
+function AttendanceSlide({ data }: { data: AttendanceData | undefined }) {
   const { t } = useTranslation();
+  const locale = useLocale();
+
+  if (!data || data.records.length === 0) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center text-white/50">
+          <Users className="w-20 h-20 mx-auto mb-4 opacity-40" />
+          <p className="text-2xl">{t("display.attendance_slide.title")}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6">
+      <div className="grid grid-cols-2 gap-6 mb-6">
+        <div className="bg-gradient-to-br from-green-600 to-green-800 rounded-2xl p-6 flex items-center gap-4 shadow-xl" style={{ animation: "fadeSlideUp 0.5s ease-out" }}>
+          <UserCheck className="w-12 h-12 text-white/80" />
+          <div>
+            <div className="text-5xl font-black text-white">{data.totalPresent}</div>
+            <div className="text-lg text-white/80">{t("display.attendance_slide.totalPresent")}</div>
+          </div>
+        </div>
+        <div className="bg-gradient-to-br from-red-600 to-red-800 rounded-2xl p-6 flex items-center gap-4 shadow-xl" style={{ animation: "fadeSlideUp 0.5s ease-out 0.1s both" }}>
+          <UserX className="w-12 h-12 text-white/80" />
+          <div>
+            <div className="text-5xl font-black text-white">{data.totalAbsent}</div>
+            <div className="text-lg text-white/80">{t("display.attendance_slide.totalAbsent")}</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-2xl overflow-hidden border border-white/20 shadow-xl max-h-[55vh] overflow-y-auto">
+        <table className="w-full">
+          <thead className="sticky top-0">
+            <tr className="bg-gradient-to-r from-indigo-600 to-indigo-800">
+              <th className="px-5 py-4 text-white text-lg font-bold text-right">{t("display.attendance_slide.employee")}</th>
+              <th className="px-5 py-4 text-white text-lg font-bold text-center">{t("display.attendance_slide.status")}</th>
+              <th className="px-5 py-4 text-white text-lg font-bold text-center">{t("display.attendance_slide.checkIn")}</th>
+              <th className="px-5 py-4 text-white text-lg font-bold text-center">{t("display.attendance_slide.checkOut")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.records.slice(0, 15).map((record: any, i: number) => {
+              const isPresent = record.status === "حاضر" || record.status === "present";
+              return (
+                <tr
+                  key={record.id}
+                  className={`${i % 2 === 0 ? "bg-white/5" : "bg-white/10"} border-t border-white/10`}
+                  style={{ animation: `fadeSlideRight 0.3s ease-out ${i * 0.05}s both` }}
+                >
+                  <td className="px-5 py-3 text-white text-base font-medium">{record.full_name || record.username}</td>
+                  <td className="px-5 py-3 text-center">
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${isPresent ? "bg-green-500/30 text-green-300" : "bg-red-500/30 text-red-300"}`}>
+                      {record.status}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3 text-center text-white/80">
+                    {record.check_in_time ? (
+                      <span className="flex items-center justify-center gap-1">
+                        <LogIn className="w-4 h-4 text-green-400" />
+                        {formatTime(record.check_in_time, locale)}
+                      </span>
+                    ) : "—"}
+                  </td>
+                  <td className="px-5 py-3 text-center text-white/80">
+                    {record.check_out_time ? (
+                      <span className="flex items-center justify-center gap-1">
+                        <LogOut className="w-4 h-4 text-red-400" />
+                        {formatTime(record.check_out_time, locale)}
+                      </span>
+                    ) : "—"}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function TopProducersSlide({ data, content }: { data: TopProducersData | undefined; content: any }) {
+  const { t } = useTranslation();
+  const locale = useLocale();
+
+  const sectionLabels: Record<string, string> = {
+    film: t("display.top_producers_slide.film"),
+    printing: t("display.top_producers_slide.printing"),
+    cutting: t("display.top_producers_slide.cutting"),
+  };
+
+  const periodLabels: Record<string, string> = {
+    today: t("display.top_producers_slide.today"),
+    week: t("display.top_producers_slide.week"),
+    month: t("display.top_producers_slide.month"),
+    all: t("display.top_producers_slide.allTime"),
+  };
+
+  const sectionColors: Record<string, string> = {
+    film: "from-blue-600 to-blue-800",
+    printing: "from-cyan-600 to-cyan-800",
+    cutting: "from-orange-600 to-orange-800",
+  };
+
+  const medalColors = ["text-yellow-400", "text-gray-300", "text-amber-600"];
+
+  if (!data || Object.keys(data.sections || {}).length === 0) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center text-white/50">
+          <Trophy className="w-20 h-20 mx-auto mb-4 opacity-40" />
+          <p className="text-2xl">{t("display.top_producers_slide.title")}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const sections = Object.entries(data.sections);
+  const period = content?.period || data.period || "today";
+
+  return (
+    <div className="p-6">
+      <div className="text-center mb-4">
+        <span className="bg-white/10 px-4 py-2 rounded-full text-white/80 text-lg border border-white/20">
+          {periodLabels[period] || period}
+        </span>
+      </div>
+      <div className={`grid gap-6 ${sections.length === 1 ? "grid-cols-1 max-w-3xl mx-auto" : sections.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
+        {sections.map(([sectionKey, producers], si) => (
+          <div
+            key={sectionKey}
+            className="rounded-2xl overflow-hidden border border-white/20 shadow-xl"
+            style={{ animation: `fadeSlideUp 0.5s ease-out ${si * 0.15}s both` }}
+          >
+            <div className={`bg-gradient-to-r ${sectionColors[sectionKey] || "from-gray-600 to-gray-800"} px-5 py-4`}>
+              <h3 className="text-xl font-bold text-white text-center">{sectionLabels[sectionKey] || sectionKey}</h3>
+            </div>
+            <div className="bg-white/5">
+              {(producers as any[]).length === 0 ? (
+                <div className="p-6 text-center text-white/40 text-base">—</div>
+              ) : (
+                (producers as any[]).slice(0, 5).map((p: any, pi: number) => (
+                  <div
+                    key={pi}
+                    className={`flex items-center gap-4 px-5 py-3 ${pi % 2 === 0 ? "bg-white/5" : ""} border-t border-white/10 first:border-t-0`}
+                  >
+                    <div className="w-8 flex-shrink-0 text-center">
+                      {pi < 3 ? (
+                        <Medal className={`w-6 h-6 mx-auto ${medalColors[pi]}`} />
+                      ) : (
+                        <span className="text-white/50 font-bold">{pi + 1}</span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-white font-bold text-base truncate">{p.full_name || p.username || "—"}</div>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <div className="text-white font-bold text-lg">{formatNumber(p.total_weight_kg, locale)}</div>
+                      <div className="text-white/50 text-xs">{t("common.kg", "كجم")} • {p.roll_count} {t("display.top_producers_slide.rollCount")}</div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function DisplayScreen() {
+  const { t, i18n } = useTranslation();
+  const locale = useLocale();
+  const isRtl = i18n.language === "ar";
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -303,6 +596,29 @@ export default function DisplayScreen() {
     refetchInterval: 15000,
   });
 
+  const currentSlide = slides[currentSlideIndex];
+
+  const topProducersContent = currentSlide?.slide_type === "top_producers" ? currentSlide.content : null;
+  const topProducersPeriod = topProducersContent?.period || "today";
+  const topProducersStage = topProducersContent?.stage || "all";
+
+  const { data: attendanceData } = useQuery<AttendanceData>({
+    queryKey: ["/api/display/live/attendance"],
+    refetchInterval: 30000,
+    enabled: slides.some(s => s.slide_type === "attendance"),
+  });
+
+  const { data: topProducersData } = useQuery<TopProducersData>({
+    queryKey: ["/api/display/live/top-producers", topProducersPeriod, topProducersStage],
+    queryFn: async () => {
+      const res = await fetch(`/api/display/live/top-producers?period=${topProducersPeriod}&stage=${topProducersStage}`);
+      if (!res.ok) throw new Error("Failed to fetch top producers");
+      return res.json();
+    },
+    refetchInterval: 30000,
+    enabled: slides.some(s => s.slide_type === "top_producers"),
+  });
+
   const goToSlide = useCallback((index: number) => {
     setTransitionClass("opacity-0 scale-95");
     setTimeout(() => {
@@ -323,8 +639,8 @@ export default function DisplayScreen() {
 
   useEffect(() => {
     if (isPaused || slides.length === 0) return;
-    const currentSlide = slides[currentSlideIndex];
-    const duration = (currentSlide?.duration_seconds || 10) * 1000;
+    const cs = slides[currentSlideIndex];
+    const duration = (cs?.duration_seconds || 10) * 1000;
 
     timerRef.current = setTimeout(nextSlide, duration);
     return () => {
@@ -344,22 +660,20 @@ export default function DisplayScreen() {
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowRight" || e.key === "ArrowLeft") prevSlide();
-      if (e.key === "ArrowLeft" || e.key === "ArrowRight") nextSlide();
-      if (e.key === " ") { e.preventDefault(); setIsPaused(p => !p); }
-      if (e.key === "f" || e.key === "F") toggleFullscreen();
+      if (e.key === "ArrowRight") { isRtl ? prevSlide() : nextSlide(); }
+      else if (e.key === "ArrowLeft") { isRtl ? nextSlide() : prevSlide(); }
+      else if (e.key === " ") { e.preventDefault(); setIsPaused(p => !p); }
+      else if (e.key === "f" || e.key === "F") toggleFullscreen();
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [nextSlide, prevSlide, toggleFullscreen]);
+  }, [nextSlide, prevSlide, toggleFullscreen, isRtl]);
 
   useEffect(() => {
     const handleFsChange = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener("fullscreenchange", handleFsChange);
     return () => document.removeEventListener("fullscreenchange", handleFsChange);
   }, []);
-
-  const currentSlide = slides[currentSlideIndex];
 
   const renderSlideContent = () => {
     if (!currentSlide) return null;
@@ -371,11 +685,18 @@ export default function DisplayScreen() {
       case "latest_rolls":
         return <LatestRollsSlide rolls={latestRolls} />;
       case "announcement":
+      case "notification":
         return <AnnouncementSlide content={currentSlide.content} />;
       case "instructions":
         return <InstructionsSlide content={currentSlide.content} />;
-      case "notification":
-        return <AnnouncementSlide content={currentSlide.content} />;
+      case "custom_table":
+        return <CustomTableSlide content={currentSlide.content} />;
+      case "image":
+        return <ImageSlide content={currentSlide.content} />;
+      case "attendance":
+        return <AttendanceSlide data={attendanceData} />;
+      case "top_producers":
+        return <TopProducersSlide data={topProducersData} content={currentSlide.content} />;
       default:
         return <AnnouncementSlide content={currentSlide.content} />;
     }
@@ -388,6 +709,10 @@ export default function DisplayScreen() {
     announcement: Megaphone,
     instructions: BookOpen,
     notification: Bell,
+    custom_table: Table2,
+    image: ImageIcon,
+    attendance: Users,
+    top_producers: Trophy,
   };
   const SlideIcon = slideTypeIcons[currentSlide?.slide_type || ""] || Factory;
 
@@ -396,12 +721,12 @@ export default function DisplayScreen() {
       <div
         ref={containerRef}
         className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-gray-900 flex items-center justify-center"
-        dir="rtl"
+        dir={isRtl ? "rtl" : "ltr"}
       >
         <div className="text-center text-white/60">
           <Factory className="w-24 h-24 mx-auto mb-6 opacity-40" />
-          <h2 className="text-3xl font-bold mb-3">لا توجد شرائح عرض</h2>
-          <p className="text-xl">قم بإضافة شرائح من لوحة التحكم</p>
+          <h2 className="text-3xl font-bold mb-3">{t("display.noDisplaySlides")}</h2>
+          <p className="text-xl">{t("display.addFromControl")}</p>
         </div>
       </div>
     );
@@ -411,7 +736,7 @@ export default function DisplayScreen() {
     <div
       ref={containerRef}
       className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-gray-900 flex flex-col overflow-hidden select-none"
-      dir="rtl"
+      dir={isRtl ? "rtl" : "ltr"}
     >
       <style>{`
         @keyframes fadeSlideUp {
@@ -438,8 +763,8 @@ export default function DisplayScreen() {
             <Factory className="w-7 h-7 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-white">شاشة العرض</h1>
-            <div className="text-sm text-white/50">نظام إدارة المصنع</div>
+            <h1 className="text-2xl font-black text-white">{t("display.title")}</h1>
+            <div className="text-sm text-white/50">{t("display.factorySystem")}</div>
           </div>
         </div>
 
@@ -467,7 +792,7 @@ export default function DisplayScreen() {
           <h2 className="text-3xl font-bold text-white">{currentSlide?.title}</h2>
           {isPaused && (
             <span className="bg-yellow-500/30 text-yellow-300 text-sm px-3 py-1 rounded-full border border-yellow-500/30">
-              متوقف مؤقتاً
+              {t("display.paused")}
             </span>
           )}
         </div>

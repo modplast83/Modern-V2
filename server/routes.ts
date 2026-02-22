@@ -10038,6 +10038,103 @@ Do not include quotes or explanations.`;
     }
   });
 
+  app.get("/api/display/live/attendance", async (req, res) => {
+    try {
+      const dateParam = req.query.date as string || new Date().toISOString().split('T')[0];
+      const result = await db.execute(sql`
+        SELECT a.id, a.user_id, a.status, a.check_in_time, a.check_out_time,
+               a.work_hours, a.late_minutes, a.shift_type, a.date,
+               u.full_name, u.username
+        FROM attendance a
+        LEFT JOIN users u ON a.user_id = u.id
+        WHERE a.date = ${dateParam}
+        ORDER BY a.check_in_time ASC NULLS LAST
+      `);
+      const totalPresent = result.rows.filter((r: any) => r.status === 'حاضر' || r.status === 'present').length;
+      const totalAbsent = result.rows.filter((r: any) => r.status === 'غائب' || r.status === 'absent').length;
+      res.json({ records: result.rows, totalPresent, totalAbsent, total: result.rows.length, date: dateParam });
+    } catch (error) {
+      console.error("Error fetching attendance:", error);
+      res.status(500).json({ message: "خطأ في جلب بيانات الحضور" });
+    }
+  });
+
+  app.get("/api/display/live/top-producers", async (req, res) => {
+    try {
+      const period = (req.query.period as string) || "today";
+      const stage = (req.query.stage as string) || "all";
+
+      let dateFilter = sql``;
+      const now = new Date();
+      if (period === "today") {
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        dateFilter = sql`AND r.created_at >= ${today}`;
+      } else if (period === "week") {
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        dateFilter = sql`AND r.created_at >= ${weekAgo}`;
+      } else if (period === "month") {
+        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        dateFilter = sql`AND r.created_at >= ${monthAgo}`;
+      }
+
+      const sections = stage === "all" ? ["film", "printing", "cutting"] : [stage];
+      const results: Record<string, any[]> = {};
+
+      for (const sec of sections) {
+        let userCol = sql`r.created_by`;
+        if (sec === "printing") userCol = sql`r.printed_by`;
+        else if (sec === "cutting") userCol = sql`r.cut_by`;
+
+        const query = sql`
+          SELECT ${userCol} as user_id, u.full_name, u.username,
+                 COUNT(r.id) as roll_count,
+                 COALESCE(SUM(r.weight_kg), 0) as total_weight_kg
+          FROM rolls r
+          LEFT JOIN users u ON ${userCol} = u.id
+          WHERE ${userCol} IS NOT NULL ${dateFilter}
+          GROUP BY ${userCol}, u.full_name, u.username
+          ORDER BY total_weight_kg DESC
+          LIMIT 10
+        `;
+        const result = await db.execute(query);
+        results[sec] = result.rows;
+      }
+
+      res.json({ period, stage, sections: results });
+    } catch (error) {
+      console.error("Error fetching top producers:", error);
+      res.status(500).json({ message: "خطأ في جلب بيانات أفضل المنتجين" });
+    }
+  });
+
+  app.post("/api/display/upload-image", requireAuth, upload.single("image"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "لم يتم رفع صورة" });
+      }
+      const { ObjectStorageService } = await import("./replit_integrations/object_storage");
+      const storageService = new ObjectStorageService();
+      const ext = req.file.originalname.split('.').pop() || 'jpg';
+      const fileName = `display-slides/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const publicPaths = storageService.getPublicObjectSearchPaths();
+      const basePath = publicPaths[0];
+      const fullPath = `${basePath}/${fileName}`;
+
+      const { objectStorageClient } = await import("./replit_integrations/object_storage");
+      const bucketName = fullPath.split('/')[0];
+      const objectPath = fullPath.split('/').slice(1).join('/');
+      const bucket = objectStorageClient.bucket(bucketName);
+      const file = bucket.file(objectPath);
+      await file.save(req.file.buffer, { contentType: req.file.mimetype });
+
+      const publicUrl = `/objects/${objectPath}`;
+      res.json({ url: publicUrl, fileName });
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      res.status(500).json({ message: "خطأ في رفع الصورة" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
