@@ -8,6 +8,7 @@ import { useToast } from '../hooks/use-toast';
 
 import Header from '../components/layout/Header';
 import Sidebar from '../components/layout/Sidebar';
+import { useLanguage } from '../contexts/LanguageContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -1227,6 +1228,7 @@ function ProductionStaffPanel({ users }: { users: ProductionUser[] }) {
 }
 
 export default function FactorySimulation3D() {
+  const { isRTL } = useLanguage();
   const [machines, setMachines] = useState<Machine[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'3d' | 'top'>('3d');
@@ -1615,11 +1617,11 @@ export default function FactorySimulation3D() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gray-950 overflow-hidden font-sans" dir="rtl">
+    <div className="h-screen flex flex-col bg-gray-950 overflow-hidden font-sans">
       <Header />
       <div className="flex-1 flex relative">
         <Sidebar />
-        <main className="flex-1 relative bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 lg:mr-64">
+        <main className={`flex-1 relative bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 ${isRTL ? 'lg:mr-64' : 'lg:ml-64'}`}>
           
           <div className="absolute top-3 right-3 z-20 flex flex-col gap-2 w-56 max-h-[calc(100vh-120px)] overflow-y-auto scrollbar-thin">
             <Card className="bg-slate-900/90 backdrop-blur-xl border-slate-700/50 text-white shadow-2xl">

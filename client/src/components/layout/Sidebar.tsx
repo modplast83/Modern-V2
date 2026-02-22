@@ -7,15 +7,14 @@ import { useLanguage } from "../../contexts/LanguageContext";
 export default function Sidebar() {
   const [location] = useLocation();
   const { user } = useAuth();
-  const { language } = useLanguage();
+  const { language, isRTL } = useLanguage();
 
-  // Filter modules based on user permissions
   const accessibleModules = navigationItems.filter(module => {
     return canAccessRoute(user, module.path);
   });
 
   return (
-    <aside className="fixed right-0 top-16 bottom-0 bg-white shadow-sm border-l border-gray-200 w-64 hidden lg:block z-10 overflow-y-auto">
+    <aside className={`fixed top-16 bottom-0 bg-white shadow-sm w-64 hidden lg:block z-10 overflow-y-auto ${isRTL ? 'right-0 border-l border-gray-200' : 'left-0 border-r border-gray-200'}`}>
       <nav className="p-4">
         <div className="space-y-2">
           {accessibleModules.map((module) => {
@@ -28,7 +27,7 @@ export default function Sidebar() {
                   className={isActive ? "nav-item nav-item-active" : "nav-item"}
                 >
                   <div className="w-full">
-                    <div className="flex items-center space-x-3 space-x-reverse">
+                    <div className="flex items-center gap-3">
                       <Icon className="h-5 w-5" />
                       <span className="font-medium">{getLocalizedName(module, language)}</span>
                     </div>

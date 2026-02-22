@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 import MobileShell from "./MobileShell";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 interface PageLayoutProps {
   children: ReactNode;
@@ -10,12 +11,9 @@ interface PageLayoutProps {
   className?: string;
 }
 
-/**
- * PageLayout - Unified layout wrapper for all pages
- * Ensures consistent structure: Header + Sidebar + MobileShell + Content
- * Handles responsive padding and spacing for mobile/desktop
- */
 export default function PageLayout({ children, title, description, className = "" }: PageLayoutProps) {
+  const { isRTL } = useLanguage();
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Header />
@@ -24,7 +22,7 @@ export default function PageLayout({ children, title, description, className = "
         <Sidebar />
         <MobileShell />
 
-        <main className={`flex-1 lg:mr-64 p-4 pb-24 lg:pb-4 ${className}`}>
+        <main className={`flex-1 p-4 pb-24 lg:pb-4 ${isRTL ? 'lg:mr-64' : 'lg:ml-64'} ${className}`}>
           {(title || description) && (
             <div className="mb-6">
               {title && (

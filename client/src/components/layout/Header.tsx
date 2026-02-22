@@ -3,15 +3,17 @@ import { NotificationBell } from "../notifications/NotificationBell";
 import { LanguageSwitcher } from "../ui/LanguageSwitcher";
 import FactoryLogoPath from "../../../../attached_assets/MPBF11_1769101097739.png";
 import { useTranslation } from "react-i18next";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 export default function Header() {
   const { user, logout } = useAuth();
   const { t } = useTranslation();
+  const { isRTL } = useLanguage();
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
       <div className="flex items-center justify-between px-4 py-3">
-        <div className="flex items-center space-x-4 space-x-reverse">
+        <div className="flex items-center gap-4">
           <div className="flex items-center justify-center w-20 h-20 rounded-lg overflow-hidden">
             <img
               src={FactoryLogoPath}
@@ -27,12 +29,12 @@ export default function Header() {
           </div>
         </div>
 
-        <div className="flex items-center space-x-3 space-x-reverse">
+        <div className="flex items-center gap-3">
           <LanguageSwitcher variant="dropdown" size="sm" />
           <NotificationBell />
 
-          <div className="flex items-center space-x-3 space-x-reverse">
-            <div className="text-right hidden sm:block">
+          <div className="flex items-center gap-3">
+            <div className={`${isRTL ? 'text-right' : 'text-left'} hidden sm:block`}>
               <p className="text-sm font-medium text-gray-900">
                 {user?.display_name_ar || user?.display_name || user?.username}
               </p>
