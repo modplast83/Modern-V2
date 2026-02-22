@@ -10289,7 +10289,7 @@ Do not include quotes or explanations.`;
       if (!req.file) {
         return res.status(400).json({ message: "لم يتم رفع صورة" });
       }
-      const { ObjectStorageService } = await import("./replit_integrations/object_storage");
+      const { ObjectStorageService, objectStorageClient } = await import("./replit_integrations/object_storage");
       const storageService = new ObjectStorageService();
       const ext = req.file.originalname.split('.').pop() || 'jpg';
       const fileName = `display-slides/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
@@ -10297,9 +10297,10 @@ Do not include quotes or explanations.`;
       const basePath = publicPaths[0];
       const fullPath = `${basePath}/${fileName}`;
 
-      const { objectStorageClient } = await import("./replit_integrations/object_storage");
-      const bucketName = fullPath.split('/')[0];
-      const objectPath = fullPath.split('/').slice(1).join('/');
+      const normalizedPath = fullPath.startsWith('/') ? fullPath : `/${fullPath}`;
+      const pathParts = normalizedPath.split('/');
+      const bucketName = pathParts[1];
+      const objectPath = pathParts.slice(2).join('/');
       const bucket = objectStorageClient.bucket(bucketName);
       const file = bucket.file(objectPath);
       await file.save(req.file.buffer, { contentType: req.file.mimetype });
