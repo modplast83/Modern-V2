@@ -207,6 +207,11 @@ import {
   factory_snapshots,
   type FactorySnapshot,
   type InsertFactorySnapshot,
+
+  // Display Slides
+  display_slides,
+  type DisplaySlide,
+  type InsertDisplaySlide,
 } from "@shared/schema";
 
 import { db, pool } from "./db";
@@ -1224,6 +1229,14 @@ export interface IStorage {
   
   // Voucher Number Generation
   getNextVoucherNumber(type: "RMI" | "RMO" | "FGI" | "FGO" | "IC"): Promise<string>;
+
+  // Display Slides
+  getDisplaySlides(): Promise<DisplaySlide[]>;
+  getActiveDisplaySlides(): Promise<DisplaySlide[]>;
+  getDisplaySlideById(id: number): Promise<DisplaySlide | undefined>;
+  createDisplaySlide(slide: InsertDisplaySlide): Promise<DisplaySlide>;
+  updateDisplaySlide(id: number, slide: Partial<DisplaySlide>): Promise<DisplaySlide>;
+  deleteDisplaySlide(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -14429,6 +14442,74 @@ export class DatabaseStorage implements IStorage {
       },
       "deleteFactorySnapshot",
       `حذف لقطة المصنع ${id}`,
+    );
+  }
+
+  async getDisplaySlides(): Promise<DisplaySlide[]> {
+    return withDatabaseErrorHandling(
+      async () => {
+        return await db.select().from(display_slides).orderBy(display_slides.sort_order);
+      },
+      "getDisplaySlides",
+      "جلب شرائح العرض",
+    );
+  }
+
+  async getActiveDisplaySlides(): Promise<DisplaySlide[]> {
+    return withDatabaseErrorHandling(
+      async () => {
+        return await db.select().from(display_slides)
+          .where(eq(display_slides.is_active, true))
+          .orderBy(display_slides.sort_order);
+      },
+      "getActiveDisplaySlides",
+      "جلب شرائح العرض النشطة",
+    );
+  }
+
+  async getDisplaySlideById(id: number): Promise<DisplaySlide | undefined> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const [slide] = await db.select().from(display_slides).where(eq(display_slides.id, id));
+        return slide;
+      },
+      "getDisplaySlideById",
+      `جلب شريحة العرض ${id}`,
+    );
+  }
+
+  async createDisplaySlide(slide: InsertDisplaySlide): Promise<DisplaySlide> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const [created] = await db.insert(display_slides).values(slide).returning();
+        return created;
+      },
+      "createDisplaySlide",
+      "إنشاء شريحة عرض جديدة",
+    );
+  }
+
+  async updateDisplaySlide(id: number, slide: Partial<DisplaySlide>): Promise<DisplaySlide> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const [updated] = await db.update(display_slides)
+          .set({ ...slide, updated_at: new Date() })
+          .where(eq(display_slides.id, id))
+          .returning();
+        return updated;
+      },
+      "updateDisplaySlide",
+      `تحديث شريحة العرض ${id}`,
+    );
+  }
+
+  async deleteDisplaySlide(id: number): Promise<void> {
+    return withDatabaseErrorHandling(
+      async () => {
+        await db.delete(display_slides).where(eq(display_slides.id, id));
+      },
+      "deleteDisplaySlide",
+      `حذف شريحة العرض ${id}`,
     );
   }
 }

@@ -1,4 +1,4 @@
-import { LucideIcon, Home, LayoutDashboard, FileText, Activity, Monitor, ClipboardCheck, Wrench, Users, Warehouse, Database, BarChart3, Settings, Gauge, Bot, Box } from "lucide-react";
+import { LucideIcon, Home, LayoutDashboard, FileText, Activity, Monitor, ClipboardCheck, Wrench, Users, Warehouse, Database, BarChart3, Settings, Gauge, Bot, Box, Tv } from "lucide-react";
 
 export interface NavigationItem {
   name: string;
@@ -162,6 +162,15 @@ export const navigationItems: NavigationItem[] = [
     icon: Box,
     path: "/factory-simulation",
     priority: 6,
+    group: 'primary',
+  },
+  {
+    name: "شاشة العرض",
+    name_ar: "شاشة العرض",
+    name_en: "Display Control",
+    icon: Tv,
+    path: "/display-control",
+    priority: 7,
     group: 'primary',
   },
 ];

@@ -3591,3 +3591,20 @@ export const factory_snapshots = pgTable("factory_snapshots", {
 export const insertFactorySnapshotSchema = createInsertSchema(factory_snapshots).omit({ id: true, created_at: true });
 export type InsertFactorySnapshot = z.infer<typeof insertFactorySnapshotSchema>;
 export type FactorySnapshot = typeof factory_snapshots.$inferSelect;
+
+export const display_slides = pgTable("display_slides", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 200 }).notNull(),
+  slide_type: varchar("slide_type", { length: 50 }).notNull(),
+  content: jsonb("content"),
+  duration_seconds: integer("duration_seconds").default(10),
+  sort_order: integer("sort_order").default(0),
+  is_active: boolean("is_active").default(true),
+  created_by: integer("created_by"),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+export const insertDisplaySlideSchema = createInsertSchema(display_slides).omit({ id: true, created_at: true, updated_at: true });
+export type InsertDisplaySlide = z.infer<typeof insertDisplaySlideSchema>;
+export type DisplaySlide = typeof display_slides.$inferSelect;

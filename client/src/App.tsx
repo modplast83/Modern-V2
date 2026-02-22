@@ -42,6 +42,8 @@ import SystemMonitoring from "./pages/system-monitoring";
 import AiAgent from "./pages/ai-agent";
 import AiAgentSettings from "./pages/ai-agent-settings";
 import FactorySimulation3D from "./pages/FactorySimulation3D";
+import DisplayScreen from "./pages/DisplayScreen";
+import DisplayControlPanel from "./pages/DisplayControlPanel";
 
 function AppRoutes() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -271,6 +273,16 @@ function AppRoutes() {
       <Route path="/factory-simulation">
         <ProtectedRoute path="/factory-simulation">
           <FactorySimulation3D />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/display-screen">
+        <DisplayScreen />
+      </Route>
+
+      <Route path="/display-control">
+        <ProtectedRoute path="/display-control">
+          <DisplayControlPanel />
         </ProtectedRoute>
       </Route>
 

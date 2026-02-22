@@ -48,6 +48,7 @@ import {
   factory_snapshots,
   insertFactorySnapshotSchema,
   notifications as notificationsTable,
+  insertDisplaySlideSchema,
 } from "@shared/schema";
 import { eq, sql, and, gte, lte } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -9906,6 +9907,132 @@ Do not include quotes or explanations.`;
     } catch (error) {
       console.error("Error fetching production users for 3D:", error);
       res.status(500).json({ message: "خطأ في جلب بيانات الموظفين" });
+    }
+  });
+
+  // ============ Display Screen API Routes ============
+
+  app.get("/api/display/slides", requireAuth, async (req, res) => {
+    try {
+      const slides = await storage.getDisplaySlides();
+      res.json(slides);
+    } catch (error) {
+      console.error("Error fetching display slides:", error);
+      res.status(500).json({ message: "خطأ في جلب شرائح العرض" });
+    }
+  });
+
+  app.get("/api/display/slides/active", async (req, res) => {
+    try {
+      const slides = await storage.getActiveDisplaySlides();
+      res.json(slides);
+    } catch (error) {
+      console.error("Error fetching active display slides:", error);
+      res.status(500).json({ message: "خطأ في جلب شرائح العرض النشطة" });
+    }
+  });
+
+  app.post("/api/display/slides", requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const slide = await storage.createDisplaySlide({
+        ...req.body,
+        created_by: req.session.userId,
+      });
+      res.json(slide);
+    } catch (error) {
+      console.error("Error creating display slide:", error);
+      res.status(500).json({ message: "خطأ في إنشاء شريحة العرض" });
+    }
+  });
+
+  app.put("/api/display/slides/reorder", requireAuth, async (req, res) => {
+    try {
+      const { slideOrders } = req.body;
+      for (const item of slideOrders) {
+        await storage.updateDisplaySlide(item.id, { sort_order: item.sort_order });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error reordering display slides:", error);
+      res.status(500).json({ message: "خطأ في إعادة ترتيب الشرائح" });
+    }
+  });
+
+  app.put("/api/display/slides/:id", requireAuth, async (req, res) => {
+    try {
+      const slide = await storage.updateDisplaySlide(Number(req.params.id), req.body);
+      res.json(slide);
+    } catch (error) {
+      console.error("Error updating display slide:", error);
+      res.status(500).json({ message: "خطأ في تحديث شريحة العرض" });
+    }
+  });
+
+  app.delete("/api/display/slides/:id", requireAuth, async (req, res) => {
+    try {
+      await storage.deleteDisplaySlide(Number(req.params.id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting display slide:", error);
+      res.status(500).json({ message: "خطأ في حذف شريحة العرض" });
+    }
+  });
+
+  app.get("/api/display/live/recent-production", async (req, res) => {
+    try {
+      const result = await db.execute(sql`
+        SELECT po.id, po.production_order_number, po.status, po.quantity_kg, po.produced_quantity_kg,
+               po.film_completion_percentage, po.size_caption,
+               o.order_number, c.name as customer_name, c.name_ar as customer_name_ar
+        FROM production_orders po
+        LEFT JOIN orders o ON po.order_id = o.id
+        LEFT JOIN customers c ON o.customer_id = c.id
+        ORDER BY po.created_at DESC
+        LIMIT 10
+      `);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching recent production:", error);
+      res.status(500).json({ message: "خطأ في جلب بيانات الإنتاج" });
+    }
+  });
+
+  app.get("/api/display/live/latest-rolls", async (req, res) => {
+    try {
+      const result = await db.execute(sql`
+        SELECT r.id, r.roll_number, r.weight_kg, r.status, r.created_at,
+               m.name as machine_name, m.name_ar as machine_name_ar,
+               po.production_order_number, po.size_caption
+        FROM rolls r
+        LEFT JOIN machines m ON r.machine_id = m.id
+        LEFT JOIN production_orders po ON r.production_order_id = po.id
+        ORDER BY r.created_at DESC
+        LIMIT 8
+      `);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching latest rolls:", error);
+      res.status(500).json({ message: "خطأ في جلب بيانات اللفات" });
+    }
+  });
+
+  app.get("/api/display/live/production-stats", async (req, res) => {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const result = await db.execute(sql`
+        SELECT 
+          COUNT(DISTINCT po.id) FILTER (WHERE po.status = 'in_progress') as active_orders,
+          COUNT(r.id) FILTER (WHERE r.created_at >= ${today}) as rolls_today,
+          COALESCE(SUM(r.weight_kg) FILTER (WHERE r.created_at >= ${today}), 0) as production_kg_today,
+          COUNT(DISTINCT po.id) FILTER (WHERE po.status = 'completed' AND po.updated_at >= ${today}) as completed_today
+        FROM production_orders po
+        LEFT JOIN rolls r ON r.production_order_id = po.id
+      `);
+      res.json(result.rows?.[0] || {});
+    } catch (error) {
+      console.error("Error fetching production stats:", error);
+      res.status(500).json({ message: "خطأ في جلب إحصائيات الإنتاج" });
     }
   });
 
