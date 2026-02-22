@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
@@ -31,6 +32,7 @@ import { Badge } from "../ui/badge";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import type { TFunction } from 'i18next';
 import {
   Plus,
   Edit,
@@ -50,26 +52,25 @@ import {
   insertConsumablePartTransactionSchema,
 } from "../../../../shared/schema";
 
-// Extend shared schemas with UI-specific validation rules
-const consumablePartSchema = insertConsumablePartSchema.extend({
+const createConsumablePartSchema = (t: TFunction) => insertConsumablePartSchema.extend({
   current_quantity: z.coerce
     .number()
-    .min(0, "الكمية يجب أن تكون صفر أو أكثر")
+    .min(0, t('maintenance.consumable.validation.quantityMin'))
     .default(0),
   min_quantity: z.coerce.number().min(0).optional(),
   max_quantity: z.coerce.number().min(0).optional(),
 });
 
-const barcodeTransactionSchema = insertConsumablePartTransactionSchema
+const createBarcodeTransactionSchema = (t: TFunction) => insertConsumablePartTransactionSchema
   .extend({
-    barcode: z.string().min(1, "الباركود مطلوب"),
-    quantity: z.coerce.number().min(1, "الكمية يجب أن تكون أكبر من صفر"),
+    barcode: z.string().min(1, t('maintenance.consumable.validation.barcodeRequired')),
+    quantity: z.coerce.number().min(1, t('maintenance.consumable.validation.quantityPositive')),
     manual_entry: z.boolean().default(false),
   })
   .omit({ consumable_part_id: true, performed_by: true });
 
-type ConsumablePartFormData = z.infer<typeof consumablePartSchema>;
-type BarcodeTransactionFormData = z.infer<typeof barcodeTransactionSchema>;
+type ConsumablePartFormData = z.infer<ReturnType<typeof createConsumablePartSchema>>;
+type BarcodeTransactionFormData = z.infer<ReturnType<typeof createBarcodeTransactionSchema>>;
 
 interface ConsumablePartsTabProps {
   consumableParts?: any[];
@@ -80,6 +81,7 @@ export default function ConsumablePartsTab({
   consumableParts: propParts,
   isLoading: propLoading,
 }: ConsumablePartsTabProps) {
+  const { t } = useTranslation();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false);
@@ -89,7 +91,9 @@ export default function ConsumablePartsTab({
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
-  // Fetch consumable parts data
+  const consumablePartSchema = createConsumablePartSchema(t);
+  const barcodeTransactionSchema = createBarcodeTransactionSchema(t);
+
   const {
     data: consumableParts,
     isLoading,
@@ -99,7 +103,6 @@ export default function ConsumablePartsTab({
     enabled: !propParts,
   });
 
-  // Fetch transactions for activity tracking
   const { data: transactions, isError: transactionsError } = useQuery({
     queryKey: ["/api/consumable-parts-transactions"],
   });
@@ -107,7 +110,6 @@ export default function ConsumablePartsTab({
   const partsData = (propParts || consumableParts || []) as any[];
   const loading = propLoading || isLoading;
 
-  // Form hooks
   const addForm = useForm<ConsumablePartFormData>({
     resolver: zodResolver(consumablePartSchema),
     defaultValues: {
@@ -132,7 +134,6 @@ export default function ConsumablePartsTab({
     },
   });
 
-  // Mutations
   const createMutation = useMutation({
     mutationFn: (data: ConsumablePartFormData) =>
       apiRequest("/api/consumable-parts", {
@@ -141,13 +142,13 @@ export default function ConsumablePartsTab({
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/consumable-parts"] });
-      toast({ title: "تم إضافة قطعة الغيار الاستهلاكية بنجاح" });
+      toast({ title: t('maintenance.consumable.toast.addSuccess') });
       setIsAddDialogOpen(false);
       addForm.reset();
     },
     onError: () => {
       toast({
-        title: "فشل في إضافة قطعة الغيار الاستهلاكية",
+        title: t('maintenance.consumable.toast.addFailed'),
         variant: "destructive",
       });
     },
@@ -167,13 +168,13 @@ export default function ConsumablePartsTab({
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/consumable-parts"] });
-      toast({ title: "تم تحديث قطعة الغيار الاستهلاكية بنجاح" });
+      toast({ title: t('maintenance.consumable.toast.updateSuccess') });
       setIsEditDialogOpen(false);
       setEditingPart(null);
     },
     onError: () => {
       toast({
-        title: "فشل في تحديث قطعة الغيار الاستهلاكية",
+        title: t('maintenance.consumable.toast.updateFailed'),
         variant: "destructive",
       });
     },
@@ -186,11 +187,11 @@ export default function ConsumablePartsTab({
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/consumable-parts"] });
-      toast({ title: "تم حذف قطعة الغيار الاستهلاكية بنجاح" });
+      toast({ title: t('maintenance.consumable.toast.deleteSuccess') });
     },
     onError: () => {
       toast({
-        title: "فشل في حذف قطعة الغيار الاستهلاكية",
+        title: t('maintenance.consumable.toast.deleteFailed'),
         variant: "destructive",
       });
     },
@@ -198,15 +199,13 @@ export default function ConsumablePartsTab({
 
   const transactionMutation = useMutation({
     mutationFn: (data: BarcodeTransactionFormData) => {
-      // Ensure user is authenticated
       if (!user?.id) {
-        throw new Error("يجب تسجيل الدخول أولاً");
+        throw new Error(t('maintenance.consumable.loginRequired'));
       }
 
-      // Find the part by barcode first
       const part = partsData.find((p: any) => p.barcode === data.barcode);
       if (!part) {
-        throw new Error("لم يتم العثور على قطعة غيار بهذا الباركود");
+        throw new Error(t('maintenance.consumable.barcodeNotFound'));
       }
 
       return apiRequest("/api/consumable-parts-transactions/barcode", {
@@ -223,20 +222,19 @@ export default function ConsumablePartsTab({
       queryClient.invalidateQueries({
         queryKey: ["/api/consumable-parts-transactions"],
       });
-      toast({ title: "تم تسجيل الحركة بنجاح" });
+      toast({ title: t('maintenance.consumable.toast.transactionSuccess') });
       setIsTransactionDialogOpen(false);
       transactionForm.reset();
     },
     onError: (error: any) => {
       toast({
-        title: "فشل في تسجيل الحركة",
+        title: t('maintenance.consumable.toast.transactionFailed'),
         description: error.message,
         variant: "destructive",
       });
     },
   });
 
-  // Filter parts based on search term
   const filteredParts = partsData.filter((part: any) => {
     const searchLower = searchTerm.toLowerCase();
     return (
@@ -267,7 +265,7 @@ export default function ConsumablePartsTab({
   };
 
   const handleDelete = (id: number) => {
-    if (window.confirm("هل أنت متأكد من حذف هذه القطعة؟")) {
+    if (window.confirm(t('maintenance.consumable.confirmDelete'))) {
       deleteMutation.mutate(id);
     }
   };
@@ -291,13 +289,13 @@ export default function ConsumablePartsTab({
       case "active":
         return (
           <Badge variant="default" className="bg-green-100 text-green-800">
-            نشط
+            {t('maintenance.consumable.statusActive')}
           </Badge>
         );
       case "inactive":
-        return <Badge variant="secondary">غير نشط</Badge>;
+        return <Badge variant="secondary">{t('maintenance.consumable.statusInactive')}</Badge>;
       case "maintenance":
-        return <Badge variant="destructive">صيانة</Badge>;
+        return <Badge variant="destructive">{t('maintenance.consumable.statusMaintenance')}</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -305,7 +303,7 @@ export default function ConsumablePartsTab({
 
   const getQuantityStatus = (current: number, min?: number) => {
     if (min && current <= min) {
-      return <span className="text-red-600 font-semibold">منخفض</span>;
+      return <span className="text-red-600 font-semibold">{t('maintenance.consumable.quantityLow')}</span>;
     }
     return <span className="text-green-600">{current}</span>;
   };
@@ -314,12 +312,12 @@ export default function ConsumablePartsTab({
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>قطع الغيار الاستهلاكية</CardTitle>
+          <CardTitle>{t('maintenance.consumable.title')}</CardTitle>
           <div className="flex space-x-2 space-x-reverse">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="البحث في قطع الغيار..."
+                placeholder={t('maintenance.consumable.searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 w-64"
@@ -327,7 +325,6 @@ export default function ConsumablePartsTab({
               />
             </div>
 
-            {/* Barcode Transaction Dialog */}
             <Dialog
               open={isTransactionDialogOpen}
               onOpenChange={setIsTransactionDialogOpen}
@@ -339,14 +336,14 @@ export default function ConsumablePartsTab({
                   data-testid="button-barcode"
                 >
                   <QrCode className="h-4 w-4 mr-2" />
-                  حركة باركود
+                  {t('maintenance.consumable.barcodeTransaction')}
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>تسجيل حركة باركود</DialogTitle>
+                  <DialogTitle>{t('maintenance.consumable.registerBarcodeTransaction')}</DialogTitle>
                   <DialogDescription>
-                    قم بإدخال الباركود لتسجيل حركة دخول أو خروج قطعة غيار
+                    {t('maintenance.consumable.barcodeTransactionDescription')}
                   </DialogDescription>
                 </DialogHeader>
                 <Form {...transactionForm}>
@@ -359,11 +356,11 @@ export default function ConsumablePartsTab({
                       name="barcode"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>الباركود</FormLabel>
+                          <FormLabel>{t('maintenance.consumable.barcode')}</FormLabel>
                           <FormControl>
                             <Input
                               {...field}
-                              placeholder="امسح أو أدخل الباركود"
+                              placeholder={t('maintenance.consumable.scanOrEnterBarcode')}
                               data-testid="input-barcode"
                             />
                           </FormControl>
@@ -378,7 +375,7 @@ export default function ConsumablePartsTab({
                         name="transaction_type"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>نوع الحركة</FormLabel>
+                            <FormLabel>{t('maintenance.consumable.transactionType')}</FormLabel>
                             <Select
                               onValueChange={field.onChange}
                               value={field.value}
@@ -389,8 +386,8 @@ export default function ConsumablePartsTab({
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="in">دخول</SelectItem>
-                                <SelectItem value="out">خروج</SelectItem>
+                                <SelectItem value="in">{t('maintenance.consumable.transactionIn')}</SelectItem>
+                                <SelectItem value="out">{t('maintenance.consumable.transactionOut')}</SelectItem>
                               </SelectContent>
                             </Select>
                             <FormMessage />
@@ -403,7 +400,7 @@ export default function ConsumablePartsTab({
                         name="quantity"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>الكمية</FormLabel>
+                            <FormLabel>{t('maintenance.consumable.quantity')}</FormLabel>
                             <FormControl>
                               <Input
                                 {...field}
@@ -426,12 +423,12 @@ export default function ConsumablePartsTab({
                       name="transaction_reason"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>سبب الحركة</FormLabel>
+                          <FormLabel>{t('maintenance.consumable.transactionReason')}</FormLabel>
                           <FormControl>
                             <Input
                               {...field}
                               value={field.value ?? ""}
-                              placeholder="اختياري - سبب الحركة"
+                              placeholder={t('maintenance.consumable.optionalReason')}
                               data-testid="input-reason"
                             />
                           </FormControl>
@@ -445,12 +442,12 @@ export default function ConsumablePartsTab({
                       name="notes"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>ملاحظات</FormLabel>
+                          <FormLabel>{t('maintenance.consumable.notes')}</FormLabel>
                           <FormControl>
                             <Textarea
                               {...field}
                               value={field.value ?? ""}
-                              placeholder="ملاحظات إضافية"
+                              placeholder={t('maintenance.consumable.additionalNotes')}
                               data-testid="textarea-notes"
                             />
                           </FormControl>
@@ -466,7 +463,7 @@ export default function ConsumablePartsTab({
                         onClick={() => setIsTransactionDialogOpen(false)}
                         data-testid="button-cancel-transaction"
                       >
-                        إلغاء
+                        {t('common.cancel')}
                       </Button>
                       <Button
                         type="submit"
@@ -474,8 +471,8 @@ export default function ConsumablePartsTab({
                         data-testid="button-submit-transaction"
                       >
                         {transactionMutation.isPending
-                          ? "جاري التسجيل..."
-                          : "تسجيل الحركة"}
+                          ? t('maintenance.consumable.registering')
+                          : t('maintenance.consumable.registerTransaction')}
                       </Button>
                     </div>
                   </form>
@@ -483,7 +480,6 @@ export default function ConsumablePartsTab({
               </DialogContent>
             </Dialog>
 
-            {/* Add Consumable Part Dialog */}
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger asChild>
                 <Button
@@ -491,15 +487,14 @@ export default function ConsumablePartsTab({
                   data-testid="button-add"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  إضافة قطعة غيار
+                  {t('maintenance.consumable.addPart')}
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-2xl">
                 <DialogHeader>
-                  <DialogTitle>إضافة قطعة غيار استهلاكية جديدة</DialogTitle>
+                  <DialogTitle>{t('maintenance.consumable.addNewPartTitle')}</DialogTitle>
                   <DialogDescription>
-                    إضافة قطعة غيار استهلاكية جديدة إلى النظام مع تحديد
-                    المواصفات والكميات
+                    {t('maintenance.consumable.addNewPartDescription')}
                   </DialogDescription>
                 </DialogHeader>
                 <Form {...addForm}>
@@ -513,11 +508,11 @@ export default function ConsumablePartsTab({
                         name="code"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>الكود</FormLabel>
+                            <FormLabel>{t('maintenance.consumable.code')}</FormLabel>
                             <FormControl>
                               <Input
                                 {...field}
-                                placeholder="كود قطعة الغيار"
+                                placeholder={t('maintenance.consumable.partCodePlaceholder')}
                                 data-testid="input-code"
                               />
                             </FormControl>
@@ -531,11 +526,11 @@ export default function ConsumablePartsTab({
                         name="type"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>النوع</FormLabel>
+                            <FormLabel>{t('maintenance.consumable.type')}</FormLabel>
                             <FormControl>
                               <Input
                                 {...field}
-                                placeholder="نوع قطعة الغيار"
+                                placeholder={t('maintenance.consumable.partTypePlaceholder')}
                                 data-testid="input-type"
                               />
                             </FormControl>
@@ -551,12 +546,12 @@ export default function ConsumablePartsTab({
                         name="barcode"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>الباركود</FormLabel>
+                            <FormLabel>{t('maintenance.consumable.barcode')}</FormLabel>
                             <FormControl>
                               <Input
                                 {...field}
                                 value={field.value ?? ""}
-                                placeholder="الباركود (اختياري)"
+                                placeholder={t('maintenance.consumable.barcodeOptional')}
                                 data-testid="input-barcode-add"
                               />
                             </FormControl>
@@ -570,12 +565,12 @@ export default function ConsumablePartsTab({
                         name="location"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>الموقع</FormLabel>
+                            <FormLabel>{t('maintenance.consumable.location')}</FormLabel>
                             <FormControl>
                               <Input
                                 {...field}
                                 value={field.value ?? ""}
-                                placeholder="موقع التخزين"
+                                placeholder={t('maintenance.consumable.storageLocation')}
                                 data-testid="input-location"
                               />
                             </FormControl>
@@ -591,7 +586,7 @@ export default function ConsumablePartsTab({
                         name="current_quantity"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>الكمية الحالية</FormLabel>
+                            <FormLabel>{t('maintenance.consumable.currentQuantity')}</FormLabel>
                             <FormControl>
                               <Input
                                 {...field}
@@ -613,7 +608,7 @@ export default function ConsumablePartsTab({
                         name="min_quantity"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>الحد الأدنى</FormLabel>
+                            <FormLabel>{t('maintenance.consumable.minQuantity')}</FormLabel>
                             <FormControl>
                               <Input
                                 {...field}
@@ -639,7 +634,7 @@ export default function ConsumablePartsTab({
                         name="max_quantity"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>الحد الأقصى</FormLabel>
+                            <FormLabel>{t('maintenance.consumable.maxQuantity')}</FormLabel>
                             <FormControl>
                               <Input
                                 {...field}
@@ -667,7 +662,7 @@ export default function ConsumablePartsTab({
                         name="unit"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>الوحدة</FormLabel>
+                            <FormLabel>{t('maintenance.consumable.unit')}</FormLabel>
                             <Select
                               onValueChange={field.onChange}
                               value={field.value ?? undefined}
@@ -678,11 +673,11 @@ export default function ConsumablePartsTab({
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="قطعة">قطعة</SelectItem>
-                                <SelectItem value="كيلو">كيلو</SelectItem>
-                                <SelectItem value="متر">متر</SelectItem>
-                                <SelectItem value="ليتر">ليتر</SelectItem>
-                                <SelectItem value="علبة">علبة</SelectItem>
+                                <SelectItem value="قطعة">{t('maintenance.consumable.unitPiece')}</SelectItem>
+                                <SelectItem value="كيلو">{t('maintenance.consumable.unitKilo')}</SelectItem>
+                                <SelectItem value="متر">{t('maintenance.consumable.unitMeter')}</SelectItem>
+                                <SelectItem value="ليتر">{t('maintenance.consumable.unitLiter')}</SelectItem>
+                                <SelectItem value="علبة">{t('maintenance.consumable.unitBox')}</SelectItem>
                               </SelectContent>
                             </Select>
                             <FormMessage />
@@ -695,7 +690,7 @@ export default function ConsumablePartsTab({
                         name="status"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>الحالة</FormLabel>
+                            <FormLabel>{t('maintenance.consumable.status')}</FormLabel>
                             <Select
                               onValueChange={field.onChange}
                               value={field.value ?? undefined}
@@ -706,13 +701,9 @@ export default function ConsumablePartsTab({
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="active">نشط</SelectItem>
-                                <SelectItem value="inactive">
-                                  غير نشط
-                                </SelectItem>
-                                <SelectItem value="maintenance">
-                                  صيانة
-                                </SelectItem>
+                                <SelectItem value="active">{t('maintenance.consumable.statusActive')}</SelectItem>
+                                <SelectItem value="inactive">{t('maintenance.consumable.statusInactive')}</SelectItem>
+                                <SelectItem value="maintenance">{t('maintenance.consumable.statusMaintenance')}</SelectItem>
                               </SelectContent>
                             </Select>
                             <FormMessage />
@@ -726,12 +717,11 @@ export default function ConsumablePartsTab({
                       name="notes"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>ملاحظات</FormLabel>
+                          <FormLabel>{t('maintenance.consumable.notes')}</FormLabel>
                           <FormControl>
                             <Textarea
                               {...field}
                               value={field.value ?? ""}
-                              placeholder="ملاحظات إضافية"
                               data-testid="textarea-notes-add"
                             />
                           </FormControl>
@@ -747,14 +737,16 @@ export default function ConsumablePartsTab({
                         onClick={() => setIsAddDialogOpen(false)}
                         data-testid="button-cancel-add"
                       >
-                        إلغاء
+                        {t('common.cancel')}
                       </Button>
                       <Button
                         type="submit"
                         disabled={createMutation.isPending}
                         data-testid="button-submit-add"
                       >
-                        {createMutation.isPending ? "جاري الحفظ..." : "حفظ"}
+                        {createMutation.isPending
+                          ? t('maintenance.consumable.saving')
+                          : t('maintenance.consumable.addPart')}
                       </Button>
                     </div>
                   </form>
@@ -766,141 +758,115 @@ export default function ConsumablePartsTab({
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="text-center py-8" data-testid="loading-state">
-            جاري التحميل...
-          </div>
-        ) : partsError ? (
-          <div
-            className="text-center py-8 text-red-600"
-            data-testid="error-state"
-          >
-            <AlertTriangle className="h-12 w-12 mx-auto mb-4" />
-            <p>فشل في تحميل قطع الغيار الاستهلاكية</p>
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {t('common.loading')}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                    معرف القطعة
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                    {t('maintenance.consumable.code')}
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                    الكود
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                    {t('maintenance.consumable.type')}
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                    النوع
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                    {t('maintenance.consumable.barcode')}
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                    الكمية
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                    {t('maintenance.consumable.currentQuantity')}
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                    الحالة
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                    {t('maintenance.consumable.unit')}
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                    الباركود
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                    {t('maintenance.consumable.location')}
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                    العمليات
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                    {t('maintenance.consumable.status')}
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                    {t('common.actions')}
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredParts.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={7}
-                      className="px-6 py-8 text-center text-gray-500"
-                      data-testid="empty-state"
-                    >
-                      {searchTerm
-                        ? "لا توجد نتائج للبحث"
-                        : "لا توجد قطع غيار استهلاكية"}
-                    </td>
-                  </tr>
-                ) : (
+                {filteredParts.length > 0 ? (
                   filteredParts.map((part: any) => (
-                    <tr
-                      key={part.id}
-                      className="hover:bg-gray-50"
-                      data-testid={`row-part-${part.id}`}
-                    >
-                      <td
-                        className="px-6 py-4 text-sm font-medium text-gray-900"
-                        data-testid={`text-part-id-${part.id}`}
-                      >
-                        {part.part_id}
-                      </td>
-                      <td
-                        className="px-6 py-4 text-sm text-gray-900"
-                        data-testid={`text-code-${part.id}`}
-                      >
+                    <tr key={part.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-center">
                         {part.code}
                       </td>
-                      <td
-                        className="px-6 py-4 text-sm text-gray-900"
-                        data-testid={`text-type-${part.id}`}
-                      >
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
                         {part.type}
                       </td>
-                      <td
-                        className="px-6 py-4 text-sm"
-                        data-testid={`text-quantity-${part.id}`}
-                      >
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                        {part.barcode || "-"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
                         {getQuantityStatus(
                           part.current_quantity,
                           part.min_quantity,
-                        )}{" "}
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
                         {part.unit}
                       </td>
-                      <td
-                        className="px-6 py-4"
-                        data-testid={`badge-status-${part.id}`}
-                      >
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                        {part.location || "-"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
                         {getStatusBadge(part.status)}
                       </td>
-                      <td
-                        className="px-6 py-4 text-sm text-gray-500"
-                        data-testid={`text-barcode-${part.id}`}
-                      >
-                        {part.barcode || "-"}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex space-x-2 space-x-reverse">
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <div className="flex justify-center gap-1">
                           <Button
-                            variant="outline"
                             size="sm"
+                            variant="outline"
                             onClick={() => handleEdit(part)}
                             data-testid={`button-edit-${part.id}`}
                           >
-                            <Edit className="h-3 w-3" />
+                            <Edit className="h-4 w-4" />
                           </Button>
                           <Button
-                            variant="outline"
                             size="sm"
+                            variant="outline"
+                            className="text-red-600"
                             onClick={() => handleDelete(part.id)}
-                            className="text-red-600 hover:text-red-700"
                             data-testid={`button-delete-${part.id}`}
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </td>
                     </tr>
                   ))
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={8}
+                      className="px-6 py-4 text-center text-gray-500"
+                    >
+                      {t('maintenance.consumable.noPartsFound')}
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
           </div>
         )}
 
-        {/* Edit Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>تعديل قطعة الغيار الاستهلاكية</DialogTitle>
+              <DialogTitle>{t('maintenance.consumable.editPartTitle')}</DialogTitle>
               <DialogDescription>
-                تعديل بيانات وتفاصيل قطعة الغيار الاستهلاكية المحددة
+                {t('maintenance.consumable.editPartDescription')}
               </DialogDescription>
             </DialogHeader>
             <Form {...editForm}>
@@ -908,16 +874,18 @@ export default function ConsumablePartsTab({
                 onSubmit={editForm.handleSubmit(onEditSubmit)}
                 className="space-y-4"
               >
-                {/* Same form fields as add form but using editForm */}
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={editForm.control}
                     name="code"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>الكود</FormLabel>
+                        <FormLabel>{t('maintenance.consumable.code')}</FormLabel>
                         <FormControl>
-                          <Input {...field} data-testid="input-edit-code" />
+                          <Input
+                            {...field}
+                            data-testid="input-edit-code"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -929,9 +897,12 @@ export default function ConsumablePartsTab({
                     name="type"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>النوع</FormLabel>
+                        <FormLabel>{t('maintenance.consumable.type')}</FormLabel>
                         <FormControl>
-                          <Input {...field} data-testid="input-edit-type" />
+                          <Input
+                            {...field}
+                            data-testid="input-edit-type"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -945,7 +916,7 @@ export default function ConsumablePartsTab({
                     name="barcode"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>الباركود</FormLabel>
+                        <FormLabel>{t('maintenance.consumable.barcode')}</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
@@ -963,7 +934,7 @@ export default function ConsumablePartsTab({
                     name="location"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>الموقع</FormLabel>
+                        <FormLabel>{t('maintenance.consumable.location')}</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
@@ -983,7 +954,7 @@ export default function ConsumablePartsTab({
                     name="current_quantity"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>الكمية الحالية</FormLabel>
+                        <FormLabel>{t('maintenance.consumable.currentQuantity')}</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
@@ -1005,7 +976,7 @@ export default function ConsumablePartsTab({
                     name="min_quantity"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>الحد الأدنى</FormLabel>
+                        <FormLabel>{t('maintenance.consumable.minQuantity')}</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
@@ -1031,7 +1002,7 @@ export default function ConsumablePartsTab({
                     name="max_quantity"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>الحد الأقصى</FormLabel>
+                        <FormLabel>{t('maintenance.consumable.maxQuantity')}</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
@@ -1059,7 +1030,7 @@ export default function ConsumablePartsTab({
                     name="unit"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>الوحدة</FormLabel>
+                        <FormLabel>{t('maintenance.consumable.unit')}</FormLabel>
                         <Select
                           onValueChange={field.onChange}
                           value={field.value ?? undefined}
@@ -1070,11 +1041,11 @@ export default function ConsumablePartsTab({
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="قطعة">قطعة</SelectItem>
-                            <SelectItem value="كيلو">كيلو</SelectItem>
-                            <SelectItem value="متر">متر</SelectItem>
-                            <SelectItem value="ليتر">ليتر</SelectItem>
-                            <SelectItem value="علبة">علبة</SelectItem>
+                            <SelectItem value="قطعة">{t('maintenance.consumable.unitPiece')}</SelectItem>
+                            <SelectItem value="كيلو">{t('maintenance.consumable.unitKilo')}</SelectItem>
+                            <SelectItem value="متر">{t('maintenance.consumable.unitMeter')}</SelectItem>
+                            <SelectItem value="ليتر">{t('maintenance.consumable.unitLiter')}</SelectItem>
+                            <SelectItem value="علبة">{t('maintenance.consumable.unitBox')}</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -1087,7 +1058,7 @@ export default function ConsumablePartsTab({
                     name="status"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>الحالة</FormLabel>
+                        <FormLabel>{t('maintenance.consumable.status')}</FormLabel>
                         <Select
                           onValueChange={field.onChange}
                           value={field.value ?? undefined}
@@ -1098,9 +1069,9 @@ export default function ConsumablePartsTab({
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="active">نشط</SelectItem>
-                            <SelectItem value="inactive">غير نشط</SelectItem>
-                            <SelectItem value="maintenance">صيانة</SelectItem>
+                            <SelectItem value="active">{t('maintenance.consumable.statusActive')}</SelectItem>
+                            <SelectItem value="inactive">{t('maintenance.consumable.statusInactive')}</SelectItem>
+                            <SelectItem value="maintenance">{t('maintenance.consumable.statusMaintenance')}</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -1114,7 +1085,7 @@ export default function ConsumablePartsTab({
                   name="notes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>ملاحظات</FormLabel>
+                      <FormLabel>{t('maintenance.consumable.notes')}</FormLabel>
                       <FormControl>
                         <Textarea
                           {...field}
@@ -1134,7 +1105,7 @@ export default function ConsumablePartsTab({
                     onClick={() => setIsEditDialogOpen(false)}
                     data-testid="button-cancel-edit"
                   >
-                    إلغاء
+                    {t('common.cancel')}
                   </Button>
                   <Button
                     type="submit"
@@ -1142,8 +1113,8 @@ export default function ConsumablePartsTab({
                     data-testid="button-submit-edit"
                   >
                     {updateMutation.isPending
-                      ? "جاري الحفظ..."
-                      : "حفظ التغييرات"}
+                      ? t('maintenance.consumable.saving')
+                      : t('maintenance.consumable.saveChanges')}
                   </Button>
                 </div>
               </form>

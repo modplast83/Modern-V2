@@ -1,4 +1,5 @@
 import { useForm } from "react-hook-form";
+import { useTranslation } from 'react-i18next';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -38,72 +39,74 @@ interface VoucherFormProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const baseSchema = z.object({
-  item_id: z.string().min(1, "الصنف مطلوب"),
-  quantity: z.string().refine(val => parseFloat(val) > 0, "الكمية يجب أن تكون أكبر من صفر"),
-  unit: z.string().default("كيلو"),
-  barcode: z.string().optional(),
-  batch_number: z.string().optional(),
-  notes: z.string().optional(),
-  location_id: z.string().optional(),
-});
-
-const rawMaterialInSchema = baseSchema.extend({
-  voucher_type: z.enum(["purchase", "opening_balance", "return"]).default("purchase"),
-  supplier_id: z.string().optional(),
-  unit_price: z.string().optional(),
-  expiry_date: z.string().optional(),
-});
-
-const rawMaterialOutSchema = baseSchema.extend({
-  voucher_type: z.enum(["production_transfer", "return_to_supplier", "adjustment"]).default("production_transfer"),
-  to_destination: z.string().optional(),
-  issued_to: z.string().optional(),
-  production_order_id: z.string().optional(),
-});
-
-const finishedGoodsInSchema = baseSchema.extend({
-  voucher_type: z.enum(["production_receipt", "customer_return", "adjustment"]).default("production_receipt"),
-  customer_id: z.string().optional(),
-  production_order_id: z.string().optional(),
-  weight_kg: z.string().optional(),
-  pieces_count: z.string().optional(),
-  from_production_line: z.string().optional(),
-  delivered_by: z.string().optional(),
-});
-
-const finishedGoodsOutSchema = baseSchema.extend({
-  voucher_type: z.enum(["customer_delivery", "sample", "adjustment"]).default("customer_delivery"),
-  customer_id: z.string().min(1, "العميل مطلوب"),
-  driver_name: z.string().optional(),
-  driver_phone: z.string().optional(),
-  vehicle_number: z.string().optional(),
-  delivery_address: z.string().optional(),
-  weight_kg: z.string().optional(),
-  pieces_count: z.string().optional(),
-});
-
-const getSchemaForType = (type: VoucherType) => {
-  switch (type) {
-    case "raw-material-in": return rawMaterialInSchema;
-    case "raw-material-out": return rawMaterialOutSchema;
-    case "finished-goods-in": return finishedGoodsInSchema;
-    case "finished-goods-out": return finishedGoodsOutSchema;
-  }
-};
-
-const getTitleForType = (type: VoucherType) => {
-  switch (type) {
-    case "raw-material-in": return "سند إدخال مواد خام";
-    case "raw-material-out": return "سند إخراج مواد خام";
-    case "finished-goods-in": return "سند استلام مواد تامة";
-    case "finished-goods-out": return "سند إخراج مواد تامة";
-  }
-};
-
 export function VoucherForm({ type, open, onOpenChange }: VoucherFormProps) {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const baseSchema = z.object({
+    item_id: z.string().min(1, t('warehouse.validation.itemRequired')),
+    quantity: z.string().refine(val => parseFloat(val) > 0, t('warehouse.validation.quantityPositive')),
+    unit: z.string().default("كيلو"),
+    barcode: z.string().optional(),
+    batch_number: z.string().optional(),
+    notes: z.string().optional(),
+    location_id: z.string().optional(),
+  });
+
+  const rawMaterialInSchema = baseSchema.extend({
+    voucher_type: z.enum(["purchase", "opening_balance", "return"]).default("purchase"),
+    supplier_id: z.string().optional(),
+    unit_price: z.string().optional(),
+    expiry_date: z.string().optional(),
+  });
+
+  const rawMaterialOutSchema = baseSchema.extend({
+    voucher_type: z.enum(["production_transfer", "return_to_supplier", "adjustment"]).default("production_transfer"),
+    to_destination: z.string().optional(),
+    issued_to: z.string().optional(),
+    production_order_id: z.string().optional(),
+  });
+
+  const finishedGoodsInSchema = baseSchema.extend({
+    voucher_type: z.enum(["production_receipt", "customer_return", "adjustment"]).default("production_receipt"),
+    customer_id: z.string().optional(),
+    production_order_id: z.string().optional(),
+    weight_kg: z.string().optional(),
+    pieces_count: z.string().optional(),
+    from_production_line: z.string().optional(),
+    delivered_by: z.string().optional(),
+  });
+
+  const finishedGoodsOutSchema = baseSchema.extend({
+    voucher_type: z.enum(["customer_delivery", "sample", "adjustment"]).default("customer_delivery"),
+    customer_id: z.string().min(1, t('warehouse.validation.customerRequired')),
+    driver_name: z.string().optional(),
+    driver_phone: z.string().optional(),
+    vehicle_number: z.string().optional(),
+    delivery_address: z.string().optional(),
+    weight_kg: z.string().optional(),
+    pieces_count: z.string().optional(),
+  });
+
+  const getSchemaForType = (vType: VoucherType) => {
+    switch (vType) {
+      case "raw-material-in": return rawMaterialInSchema;
+      case "raw-material-out": return rawMaterialOutSchema;
+      case "finished-goods-in": return finishedGoodsInSchema;
+      case "finished-goods-out": return finishedGoodsOutSchema;
+    }
+  };
+
+  const getTitleForType = (vType: VoucherType) => {
+    switch (vType) {
+      case "raw-material-in": return t('warehouse.voucherForm.rawMaterialInTitle');
+      case "raw-material-out": return t('warehouse.voucherForm.rawMaterialOutTitle');
+      case "finished-goods-in": return t('warehouse.voucherForm.finishedGoodsInTitle');
+      case "finished-goods-out": return t('warehouse.voucherForm.finishedGoodsOutTitle');
+    }
+  };
+
   const schema = getSchemaForType(type);
   
   const form = useForm({
@@ -171,16 +174,16 @@ export function VoucherForm({ type, open, onOpenChange }: VoucherFormProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/warehouse/vouchers/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
       toast({
-        title: "تم الحفظ بنجاح",
-        description: "تم إنشاء السند بنجاح",
+        title: t('warehouse.toast.savedSuccess'),
+        description: t('warehouse.toast.voucherCreated'),
       });
       onOpenChange(false);
       form.reset();
     },
     onError: () => {
       toast({
-        title: "خطأ",
-        description: "فشل في إنشاء السند",
+        title: t('warehouse.toast.error'),
+        description: t('warehouse.toast.voucherCreateFailed'),
         variant: "destructive",
       });
     },
@@ -198,11 +201,11 @@ export function VoucherForm({ type, open, onOpenChange }: VoucherFormProps) {
         .then(data => {
           if (data?.data?.id) {
             form.setValue("item_id", data.data.id);
-            toast({ title: "تم العثور على الصنف", description: data.data.name_ar });
+            toast({ title: t('warehouse.toast.itemFound'), description: data.data.name_ar });
           }
         })
         .catch(() => {
-          toast({ title: "لم يتم العثور على الباركود", variant: "destructive" });
+          toast({ title: t('warehouse.toast.barcodeNotFound'), variant: "destructive" });
         });
     }
   };
@@ -212,7 +215,7 @@ export function VoucherForm({ type, open, onOpenChange }: VoucherFormProps) {
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{getTitleForType(type)}</DialogTitle>
-          <DialogDescription className="sr-only">نموذج إنشاء سند مستودع جديد</DialogDescription>
+          <DialogDescription className="sr-only">{t('warehouse.voucherForm.description')}</DialogDescription>
         </DialogHeader>
         
         <Form {...form}>
@@ -223,10 +226,10 @@ export function VoucherForm({ type, open, onOpenChange }: VoucherFormProps) {
                 name="barcode"
                 render={({ field }) => (
                   <FormItem className="flex-1">
-                    <FormLabel>الباركود</FormLabel>
+                    <FormLabel>{t('warehouse.labels.barcode')}</FormLabel>
                     <div className="flex gap-2">
                       <FormControl>
-                        <Input {...field} placeholder="امسح الباركود أو أدخله يدوياً" />
+                        <Input {...field} placeholder={t('warehouse.placeholders.scanBarcode')} />
                       </FormControl>
                       <Button type="button" variant="outline" onClick={handleBarcodeScan}>
                         <Scan className="h-4 w-4" />
@@ -243,11 +246,11 @@ export function VoucherForm({ type, open, onOpenChange }: VoucherFormProps) {
                 name="item_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>الصنف *</FormLabel>
+                    <FormLabel>{t('warehouse.labels.item')} *</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="اختر الصنف" />
+                          <SelectValue placeholder={t('warehouse.placeholders.selectItem')} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -268,11 +271,11 @@ export function VoucherForm({ type, open, onOpenChange }: VoucherFormProps) {
                 name="location_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>الموقع</FormLabel>
+                    <FormLabel>{t('warehouse.labels.location')}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="اختر الموقع" />
+                          <SelectValue placeholder={t('warehouse.placeholders.selectLocation')} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -295,7 +298,7 @@ export function VoucherForm({ type, open, onOpenChange }: VoucherFormProps) {
                 name="quantity"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>الكمية *</FormLabel>
+                    <FormLabel>{t('warehouse.labels.quantity')} *</FormLabel>
                     <FormControl>
                       <Input {...field} type="number" step="0.001" placeholder="0.000" />
                     </FormControl>
@@ -309,7 +312,7 @@ export function VoucherForm({ type, open, onOpenChange }: VoucherFormProps) {
                 name="unit"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>الوحدة</FormLabel>
+                    <FormLabel>{t('warehouse.labels.unit')}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
@@ -317,10 +320,10 @@ export function VoucherForm({ type, open, onOpenChange }: VoucherFormProps) {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="كيلو">كيلو</SelectItem>
-                        <SelectItem value="طن">طن</SelectItem>
-                        <SelectItem value="قطعة">قطعة</SelectItem>
-                        <SelectItem value="بندل">بندل</SelectItem>
+                        <SelectItem value="كيلو">{t('warehouse.units.kilo')}</SelectItem>
+                        <SelectItem value="طن">{t('warehouse.units.ton')}</SelectItem>
+                        <SelectItem value="قطعة">{t('warehouse.units.piece')}</SelectItem>
+                        <SelectItem value="بندل">{t('warehouse.units.bundle')}</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -333,9 +336,9 @@ export function VoucherForm({ type, open, onOpenChange }: VoucherFormProps) {
                 name="batch_number"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>رقم الدفعة</FormLabel>
+                    <FormLabel>{t('warehouse.labels.batchNumber')}</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="اختياري" />
+                      <Input {...field} placeholder={t('warehouse.placeholders.optional')} />
                     </FormControl>
                   </FormItem>
                 )}
@@ -348,11 +351,11 @@ export function VoucherForm({ type, open, onOpenChange }: VoucherFormProps) {
                 name="supplier_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>المورد</FormLabel>
+                    <FormLabel>{t('warehouse.labels.supplier')}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="اختر المورد" />
+                          <SelectValue placeholder={t('warehouse.placeholders.selectSupplier')} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -374,11 +377,11 @@ export function VoucherForm({ type, open, onOpenChange }: VoucherFormProps) {
                 name="customer_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>العميل {type === "finished-goods-out" && "*"}</FormLabel>
+                    <FormLabel>{t('warehouse.labels.customer')} {type === "finished-goods-out" && "*"}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="اختر العميل" />
+                          <SelectValue placeholder={t('warehouse.placeholders.selectCustomer')} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -402,7 +405,7 @@ export function VoucherForm({ type, open, onOpenChange }: VoucherFormProps) {
                   name="driver_name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>اسم السائق</FormLabel>
+                      <FormLabel>{t('warehouse.labels.driverName')}</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -414,7 +417,7 @@ export function VoucherForm({ type, open, onOpenChange }: VoucherFormProps) {
                   name="driver_phone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>رقم السائق</FormLabel>
+                      <FormLabel>{t('warehouse.labels.driverPhone')}</FormLabel>
                       <FormControl>
                         <Input {...field} type="tel" dir="ltr" />
                       </FormControl>
@@ -426,7 +429,7 @@ export function VoucherForm({ type, open, onOpenChange }: VoucherFormProps) {
                   name="vehicle_number"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>رقم السيارة</FormLabel>
+                      <FormLabel>{t('warehouse.labels.vehicleNumber')}</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -441,9 +444,9 @@ export function VoucherForm({ type, open, onOpenChange }: VoucherFormProps) {
               name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>ملاحظات</FormLabel>
+                  <FormLabel>{t('warehouse.labels.notes')}</FormLabel>
                   <FormControl>
-                    <Textarea {...field} placeholder="ملاحظات إضافية..." />
+                    <Textarea {...field} placeholder={t('warehouse.placeholders.additionalNotes')} />
                   </FormControl>
                 </FormItem>
               )}
@@ -451,10 +454,10 @@ export function VoucherForm({ type, open, onOpenChange }: VoucherFormProps) {
 
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                إلغاء
+                {t('warehouse.buttons.cancel')}
               </Button>
               <Button type="submit" disabled={mutation.isPending}>
-                {mutation.isPending ? "جاري الحفظ..." : "حفظ السند"}
+                {mutation.isPending ? t('warehouse.buttons.saving') : t('warehouse.buttons.saveVoucher')}
               </Button>
             </div>
           </form>

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
@@ -23,6 +24,7 @@ interface MachineStatusProps {
 }
 
 export default function MachineStatus({ onCreateRoll }: MachineStatusProps) {
+  const { t } = useTranslation();
   const { data: machines = [], isLoading } = useQuery({
     queryKey: ["/api/machines"],
   });
@@ -45,20 +47,19 @@ export default function MachineStatus({ onCreateRoll }: MachineStatusProps) {
   const getStatusText = (status: string) => {
     switch (status) {
       case "operational":
-        return "يعمل";
+        return t('dashboard.machines.operational');
       case "maintenance":
-        return "صيانة";
+        return t('dashboard.machines.maintenance');
       case "down":
-        return "متوقف";
+        return t('dashboard.machines.down');
       case "idle":
-        return "خامل";
+        return t('dashboard.machines.idle');
       default:
         return status;
     }
   };
 
   const getStatusIcon = (status: string) => {
-    // Return icon component and props separately for better component lifecycle management
     const iconProps = { className: "w-4 h-4" };
     
     switch (status) {
@@ -86,7 +87,7 @@ export default function MachineStatus({ onCreateRoll }: MachineStatusProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Settings className="w-5 h-5" />
-            حالة المكائن
+            {t('dashboard.machines.title')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -108,7 +109,6 @@ export default function MachineStatus({ onCreateRoll }: MachineStatusProps) {
     );
   }
 
-  // Calculate summary stats
   const machineList = Array.isArray(machines) ? machines : [];
   const operationalMachines = machineList.filter(
     (m: any) => m.status === "operational",
@@ -126,27 +126,26 @@ export default function MachineStatus({ onCreateRoll }: MachineStatusProps) {
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <Settings className="w-5 h-5" />
-            حالة المكائن
+            {t('dashboard.machines.title')}
           </CardTitle>
           <Button size="sm" onClick={onCreateRoll}>
             <Plus className="w-4 h-4 mr-1" />
-            رول جديد
+            {t('dashboard.machines.newRoll')}
           </Button>
         </div>
 
-        {/* Summary badges */}
         <div className="flex gap-2 mt-3">
           <Badge variant="default" className="bg-green-100 text-green-800">
-            {formatNumber(operationalMachines)} يعمل
+            {formatNumber(operationalMachines)} {t('dashboard.machines.operational')}
           </Badge>
           {maintenanceMachines > 0 && (
             <Badge variant="default" className="bg-yellow-100 text-yellow-800">
-              {formatNumber(maintenanceMachines)} صيانة
+              {formatNumber(maintenanceMachines)} {t('dashboard.machines.maintenance')}
             </Badge>
           )}
           {downMachines > 0 && (
             <Badge variant="destructive">
-              {formatNumber(downMachines)} متوقف
+              {formatNumber(downMachines)} {t('dashboard.machines.down')}
             </Badge>
           )}
         </div>
@@ -187,7 +186,7 @@ export default function MachineStatus({ onCreateRoll }: MachineStatusProps) {
                           {machine.section_id && (
                             <div className="flex items-center gap-1">
                               <Activity className="w-3 h-3" />
-                              <span>قسم: {machine.section_id}</span>
+                              <span>{t('dashboard.machines.section')}: {machine.section_id}</span>
                             </div>
                           )}
                         </div>
@@ -197,23 +196,21 @@ export default function MachineStatus({ onCreateRoll }: MachineStatusProps) {
                     {machine.production_rate && (
                       <div className="text-right">
                         <div className="text-sm font-medium text-gray-900">
-                          {machine.production_rate}/ساعة
+                          {machine.production_rate}/{t('dashboard.machines.perHour')}
                         </div>
                         <div className="text-xs text-gray-500">
-                          معدل الإنتاج
+                          {t('dashboard.machines.productionRate')}
                         </div>
                       </div>
                     )}
                   </div>
 
-                  {/* Machine metrics */}
                   {machine.status === "operational" && (
                     <div className="space-y-2">
-                      {/* Efficiency */}
                       <div className="flex items-center justify-between text-xs">
                         <div className="flex items-center gap-1">
                           <Gauge className="w-3 h-3 text-blue-500" />
-                          <span>الكفاءة</span>
+                          <span>{t('dashboard.machines.efficiency')}</span>
                         </div>
                         <span className="font-medium">
                           {formatPercentage(
@@ -230,7 +227,6 @@ export default function MachineStatus({ onCreateRoll }: MachineStatusProps) {
                         className="h-1"
                       />
 
-                      {/* Additional metrics row */}
                       <div className="grid grid-cols-3 gap-2 text-xs text-gray-600 mt-2">
                         <div className="flex items-center gap-1">
                           <Thermometer className="w-3 h-3" />
@@ -259,29 +255,27 @@ export default function MachineStatus({ onCreateRoll }: MachineStatusProps) {
                               machine.speed ||
                                 Math.floor(Math.random() * 500 + 1000),
                             )}{" "}
-                            م/د
+                            {t('dashboard.machines.mPerMin')}
                           </span>
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {/* Maintenance info */}
                   {machine.status === "maintenance" && (
                     <div className="text-xs text-gray-600 bg-yellow-50 p-2 rounded">
                       <div className="flex items-center gap-1">
                         <AlertTriangle className="w-3 h-3 text-yellow-600" />
-                        <span>صيانة مجدولة - متوقع الانتهاء خلال ساعتين</span>
+                        <span>{t('dashboard.machines.scheduledMaintenance')}</span>
                       </div>
                     </div>
                   )}
 
-                  {/* Down status info */}
                   {machine.status === "down" && (
                     <div className="text-xs text-gray-600 bg-red-50 p-2 rounded">
                       <div className="flex items-center gap-1">
                         <XCircle className="w-3 h-3 text-red-600" />
-                        <span>عطل - يتطلب تدخل فني</span>
+                        <span>{t('dashboard.machines.breakdownTechnical')}</span>
                       </div>
                     </div>
                   )}
@@ -291,9 +285,9 @@ export default function MachineStatus({ onCreateRoll }: MachineStatusProps) {
           ) : (
             <div className="p-8 text-center">
               <Settings className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-600 mb-2">لا توجد مكائن مسجلة</p>
+              <p className="text-gray-600 mb-2">{t('dashboard.machines.noMachines')}</p>
               <p className="text-sm text-gray-500">
-                أضف مكائن من صفحة التعريفات
+                {t('dashboard.machines.addFromDefinitions')}
               </p>
             </div>
           )}

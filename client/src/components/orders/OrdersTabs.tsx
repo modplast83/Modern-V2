@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { Button } from "../ui/button";
@@ -82,6 +83,7 @@ export default function OrdersTabs({
   currentUser,
   isAdmin = false,
 }: OrdersTabsProps) {
+  const { t } = useTranslation();
   // Ensure arrays are valid
   const safeOrders = Array.isArray(orders) ? orders : [];
   const safeCustomers = Array.isArray(customers) ? customers : [];
@@ -116,7 +118,7 @@ export default function OrdersTabs({
   const handleBulkDelete = async () => {
     if (!onBulkDelete || selectedOrders.length === 0 || !isAdmin) return;
 
-    const confirmMessage = `هل أنت متأكد من حذف ${selectedOrders.length} طلب؟ هذا الإجراء لا يمكن التراجع عنه.`;
+    const confirmMessage = t('orders.confirmBulkDelete', { count: selectedOrders.length });
     if (!confirm(confirmMessage)) return;
 
     try {
@@ -142,8 +144,8 @@ export default function OrdersTabs({
     <Tabs defaultValue="orders" className="space-y-4 w-full">
       <div className="overflow-x-auto">
         <TabsList className="w-full md:w-auto grid grid-cols-2 md:flex">
-          <TabsTrigger value="orders" className="text-xs md:text-sm">الطلبات</TabsTrigger>
-          <TabsTrigger value="production-orders" className="text-xs md:text-sm">أوامر الإنتاج</TabsTrigger>
+          <TabsTrigger value="orders" className="text-xs md:text-sm">{t('navigation.orders')}</TabsTrigger>
+          <TabsTrigger value="production-orders" className="text-xs md:text-sm">{t('orders.productionOrders')}</TabsTrigger>
         </TabsList>
       </div>
 
@@ -151,7 +153,7 @@ export default function OrdersTabs({
         <Card className="w-full">
           <CardHeader className="p-3 md:p-6">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-              <CardTitle className="text-lg md:text-2xl">إدارة الطلبات</CardTitle>
+              <CardTitle className="text-lg md:text-2xl">{t('orders.title')}</CardTitle>
               <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
                 <div className="w-full md:w-auto">
                   <OrdersSearch
@@ -168,8 +170,8 @@ export default function OrdersTabs({
                   <DialogTrigger asChild>
                     <Button onClick={onAddOrder} data-testid="button-add-order" className="text-xs md:text-sm">
                       <Plus className="h-4 w-4 ml-1" />
-                      <span className="hidden sm:inline">إضافة طلب</span>
-                      <span className="sm:hidden">إضافة</span>
+                      <span className="hidden sm:inline">{t('orders.newOrder')}</span>
+                      <span className="sm:hidden">{t('common.add')}</span>
                     </Button>
                   </DialogTrigger>
                 </Dialog>
@@ -183,7 +185,7 @@ export default function OrdersTabs({
                 <AlertDescription>
                   <div className="flex items-center justify-between">
                     <span className="font-medium">
-                      تم تحديد {selectedOrders.length} طلب
+                      {t('orders.selectedCount', { count: selectedOrders.length })}
                     </span>
                     <div className="flex items-center space-x-2 space-x-reverse">
                       <DropdownMenu>
@@ -195,7 +197,7 @@ export default function OrdersTabs({
                             data-testid="button-bulk-status-change"
                           >
                             <RefreshCw className="h-4 w-4 mr-1" />
-                            تغيير الحالة
+                            {t('orders.changeStatus')}
                             <ChevronDown className="h-3 w-3 mr-1" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -207,7 +209,7 @@ export default function OrdersTabs({
                           >
                             <div className="flex items-center w-full">
                               <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
-                              إلى الإنتاج
+                              {t('orders.toProduction')}
                             </div>
                           </DropdownMenuItem>
                           <DropdownMenuItem
@@ -215,7 +217,7 @@ export default function OrdersTabs({
                           >
                             <div className="flex items-center w-full">
                               <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
-                              إيقاف مؤقت
+                              {t('orders.statuses.on_hold')}
                             </div>
                           </DropdownMenuItem>
                           <DropdownMenuItem
@@ -223,7 +225,7 @@ export default function OrdersTabs({
                           >
                             <div className="flex items-center w-full">
                               <div className="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>
-                              في الانتظار
+                              {t('orders.statuses.pending')}
                             </div>
                           </DropdownMenuItem>
                           <DropdownMenuItem
@@ -231,7 +233,7 @@ export default function OrdersTabs({
                           >
                             <div className="flex items-center w-full">
                               <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-                              مكتمل
+                              {t('orders.statuses.completed')}
                             </div>
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -244,7 +246,7 @@ export default function OrdersTabs({
                           data-testid="button-bulk-delete"
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
-                          حذف المحدد ({selectedOrders.length})
+                          {t('orders.deleteSelected')} ({selectedOrders.length})
                         </Button>
                       )}
                       <Button
@@ -253,7 +255,7 @@ export default function OrdersTabs({
                         onClick={() => setSelectedOrders([])}
                         data-testid="button-clear-selection"
                       >
-                        إلغاء التحديد
+                        {t('orders.clearSelection')}
                       </Button>
                     </div>
                   </div>
@@ -296,7 +298,7 @@ export default function OrdersTabs({
         <Card className="w-full">
           <CardHeader className="p-3 md:p-6">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-              <CardTitle className="text-lg md:text-2xl">أوامر الإنتاج</CardTitle>
+              <CardTitle className="text-lg md:text-2xl">{t('orders.productionOrders')}</CardTitle>
               <div className="w-full md:w-auto">
                 <OrdersSearch
                   searchTerm={productionSearchTerm}
@@ -312,8 +314,8 @@ export default function OrdersTabs({
             {filteredProductionOrders.length === 0 ? (
               <div className="text-center py-8 text-gray-500 text-sm md:text-base">
                 {productionOrders.length === 0 
-                  ? "لا توجد أوامر إنتاج" 
-                  : "لا توجد نتائج مطابقة للبحث"}
+                  ? t('orders.noProductionOrders') 
+                  : t('orders.noMatchingResults')}
               </div>
             ) : (
               <>
@@ -322,15 +324,15 @@ export default function OrdersTabs({
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">رقم أمر الإنتاج</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">رقم الطلب</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">العميل</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الفئة</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">المنتج</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الكمية (كجم)</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">نسبة الزيادة</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الكمية النهائية (كجم)</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الحالة</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{t('orders.productionOrderNumber')}</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{t('orders.orderNumber')}</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{t('orders.customer')}</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{t('orders.category')}</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{t('orders.product')}</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{t('orders.quantityKg')}</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{t('orders.overrunPercentage')}</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{t('orders.finalQuantityKg')}</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{t('common.status')}</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -344,12 +346,12 @@ export default function OrdersTabs({
                         return (
                           <tr key={po.id} className="hover:bg-gray-50" data-testid={`row-production-order-${po.id}`}>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{po.production_order_number || po.id}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order?.order_number || "غير محدد"}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{customer?.name_ar || customer?.name || "غير محدد"}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" data-testid={`text-category-${po.id}`}>{category?.name_ar || category?.name || "غير محدد"}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order?.order_number || t('common.notSpecified')}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{customer?.name_ar || customer?.name || t('common.notSpecified')}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" data-testid={`text-category-${po.id}`}>{category?.name_ar || category?.name || t('common.notSpecified')}</td>
                             <td className="px-6 py-4 text-sm text-gray-900" data-testid={`text-product-${po.id}`}>
                               <div className="text-right">
-                                <div className="font-medium text-gray-900">{item?.name_ar || item?.name || "غير محدد"}</div>
+                                <div className="font-medium text-gray-900">{item?.name_ar || item?.name || t('common.notSpecified')}</div>
                                 {customerProduct?.size_caption && <div className="text-xs text-gray-500 mt-0.5">{customerProduct.size_caption}</div>}
                               </div>
                             </td>
@@ -360,7 +362,7 @@ export default function OrdersTabs({
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" data-testid={`text-final-quantity-${po.id}`}>{po.final_quantity_kg || po.quantity_kg || 0}</td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${po.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : po.status === 'in_progress' ? 'bg-blue-100 text-blue-800' : po.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                                {po.status === 'pending' ? 'معلق' : po.status === 'in_progress' ? 'قيد التنفيذ' : po.status === 'completed' ? 'مكتمل' : po.status}
+                                {po.status === 'pending' ? t('orders.statuses.pending') : po.status === 'in_progress' ? t('production.statuses.in_progress') : po.status === 'completed' ? t('orders.statuses.completed') : po.status}
                               </span>
                             </td>
                           </tr>
@@ -387,16 +389,16 @@ export default function OrdersTabs({
                             <div className="text-xs text-muted-foreground">#{order?.order_number}</div>
                           </div>
                           <span className={`text-xs font-semibold px-2 py-1 rounded ${po.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : po.status === 'in_progress' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
-                            {po.status === 'pending' ? 'معلق' : po.status === 'in_progress' ? 'قيد' : 'مكتمل'}
+                            {po.status === 'pending' ? t('orders.statuses.pending') : po.status === 'in_progress' ? t('production.statuses.in_progress') : t('orders.statuses.completed')}
                           </span>
                         </div>
                         <div className="text-sm font-medium">{customer?.name_ar || customer?.name}</div>
                         <div className="space-y-2 text-xs">
-                          <div className="flex justify-between"><span className="text-muted-foreground">المنتج:</span><span>{item?.name_ar || item?.name}</span></div>
-                          <div className="flex justify-between"><span className="text-muted-foreground">الفئة:</span><span>{category?.name_ar || category?.name}</span></div>
-                          <div className="flex justify-between"><span className="text-muted-foreground">الكمية (كجم):</span><span className="font-medium">{po.quantity_kg}</span></div>
-                          <div className="flex justify-between"><span className="text-muted-foreground">النهائية (كجم):</span><span className="font-medium">{po.final_quantity_kg || po.quantity_kg}</span></div>
-                          <div className="flex justify-between"><span className="text-muted-foreground">نسبة الزيادة:</span><span className="font-medium">{po.overrun_percentage ?? 0}%</span></div>
+                          <div className="flex justify-between"><span className="text-muted-foreground">{t('orders.product')}:</span><span>{item?.name_ar || item?.name}</span></div>
+                          <div className="flex justify-between"><span className="text-muted-foreground">{t('orders.category')}:</span><span>{category?.name_ar || category?.name}</span></div>
+                          <div className="flex justify-between"><span className="text-muted-foreground">{t('orders.quantityKg')}:</span><span className="font-medium">{po.quantity_kg}</span></div>
+                          <div className="flex justify-between"><span className="text-muted-foreground">{t('orders.finalQuantityKg')}:</span><span className="font-medium">{po.final_quantity_kg || po.quantity_kg}</span></div>
+                          <div className="flex justify-between"><span className="text-muted-foreground">{t('orders.overrunPercentage')}:</span><span className="font-medium">{po.overrun_percentage ?? 0}%</span></div>
                         </div>
                       </div>
                     );

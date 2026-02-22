@@ -317,7 +317,7 @@ export default function AiAgentSettings() {
                   <DialogContent className="max-w-lg" dir="rtl">
                     <DialogHeader>
                       <DialogTitle>{t("aiAgent.knowledge.addNewKnowledge")}</DialogTitle>
-                      <DialogDescription className="sr-only">نموذج إضافة معرفة جديدة لقاعدة المعرفة</DialogDescription>
+                      <DialogDescription className="sr-only">{t("aiAgent.knowledge.addKnowledgeDescription")}</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 mt-4">
                       <div>
@@ -490,7 +490,7 @@ export default function AiAgentSettings() {
                   <DialogContent className="max-w-lg" dir="rtl">
                     <DialogHeader>
                       <DialogTitle>{t("aiAgent.templates.addQuoteTemplate")}</DialogTitle>
-                      <DialogDescription className="sr-only">نموذج إضافة قالب عرض أسعار جديد</DialogDescription>
+                      <DialogDescription className="sr-only">{t("aiAgent.templates.addTemplateDescription")}</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 mt-4 max-h-[60vh] overflow-y-auto">
                       <div>

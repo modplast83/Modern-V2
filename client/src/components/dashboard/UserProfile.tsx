@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../hooks/use-auth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -35,17 +36,16 @@ import {
 } from "lucide-react";
 
 export default function UserProfile() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch user settings
   const { data: userSettingsData } = useQuery({
     queryKey: ["/api/settings/user", user?.id],
     enabled: !!user?.id,
   });
 
-  // User preferences state
   const [userSettings, setUserSettings] = useState({
     displayName: user?.display_name_ar || "",
     email: "",
@@ -65,7 +65,6 @@ export default function UserProfile() {
     },
   });
 
-  // Update userSettings when data is fetched
   useEffect(() => {
     if (userSettingsData && Array.isArray(userSettingsData)) {
       const settingsMap = userSettingsData.reduce((acc: any, setting: any) => {
@@ -95,7 +94,6 @@ export default function UserProfile() {
     }
   }, [userSettingsData, user]);
 
-  // Mutation for saving user settings
   const saveUserSettingsMutation = useMutation({
     mutationFn: async (settings: any) => {
       const flattenedSettings = {
@@ -123,14 +121,14 @@ export default function UserProfile() {
         queryKey: ["/api/settings/user", user?.id],
       });
       toast({
-        title: "تم حفظ الإعدادات بنجاح",
-        description: "تم حفظ تفضيلاتك الشخصية",
+        title: t('dashboard.profile.saveSuccess'),
+        description: t('dashboard.profile.saveSuccessDesc'),
       });
     },
     onError: () => {
       toast({
-        title: "خطأ في حفظ الإعدادات",
-        description: "حدث خطأ أثناء حفظ إعداداتك",
+        title: t('dashboard.profile.saveError'),
+        description: t('dashboard.profile.saveErrorDesc'),
         variant: "destructive",
       });
     },
@@ -146,21 +144,20 @@ export default function UserProfile() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <User className="w-5 h-5" />
-            الملف الشخصي
+            {t('dashboard.profile.title')}
           </CardTitle>
           <CardDescription>
-            قم بتحديث معلوماتك الشخصية وتفضيلاتك
+            {t('dashboard.profile.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Personal Information */}
           <div className="space-y-4">
-            <h4 className="text-sm font-medium">المعلومات الشخصية</h4>
+            <h4 className="text-sm font-medium">{t('dashboard.profile.personalInfo')}</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="displayName" className="flex items-center gap-2">
                   <User className="w-4 h-4" />
-                  الاسم المعروض
+                  {t('dashboard.profile.displayName')}
                 </Label>
                 <Input
                   id="displayName"
@@ -177,7 +174,7 @@ export default function UserProfile() {
               <div className="space-y-2">
                 <Label htmlFor="email" className="flex items-center gap-2">
                   <Mail className="w-4 h-4" />
-                  البريد الإلكتروني
+                  {t('dashboard.profile.email')}
                 </Label>
                 <Input
                   id="email"
@@ -195,7 +192,7 @@ export default function UserProfile() {
               <div className="space-y-2">
                 <Label htmlFor="phone" className="flex items-center gap-2">
                   <Phone className="w-4 h-4" />
-                  رقم الهاتف
+                  {t('dashboard.profile.phone')}
                 </Label>
                 <Input
                   id="phone"
@@ -213,7 +210,7 @@ export default function UserProfile() {
               <div className="space-y-2">
                 <Label htmlFor="language" className="flex items-center gap-2">
                   <Globe className="w-4 h-4" />
-                  اللغة المفضلة
+                  {t('dashboard.profile.preferredLanguage')}
                 </Label>
                 <Select
                   value={userSettings.language ?? "ar"}
@@ -228,7 +225,7 @@ export default function UserProfile() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ar">العربية</SelectItem>
+                    <SelectItem value="ar">{t('dashboard.profile.arabic')}</SelectItem>
                     <SelectItem value="en">English</SelectItem>
                   </SelectContent>
                 </Select>
@@ -238,9 +235,8 @@ export default function UserProfile() {
 
           <Separator />
 
-          {/* Appearance Settings */}
           <div className="space-y-4">
-            <h4 className="text-sm font-medium">المظهر</h4>
+            <h4 className="text-sm font-medium">{t('dashboard.profile.appearance')}</h4>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {userSettings.theme === "light" ? (
@@ -248,7 +244,7 @@ export default function UserProfile() {
                 ) : (
                   <Moon className="w-4 h-4" />
                 )}
-                <Label>الوضع الداكن</Label>
+                <Label>{t('dashboard.profile.darkMode')}</Label>
               </div>
               <Switch
                 checked={userSettings.theme === "dark"}
@@ -264,7 +260,7 @@ export default function UserProfile() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Monitor className="w-4 h-4" />
-                <Label>العرض المدمج</Label>
+                <Label>{t('dashboard.profile.compactView')}</Label>
               </div>
               <Switch
                 checked={userSettings.dashboard.compactView}
@@ -284,14 +280,13 @@ export default function UserProfile() {
 
           <Separator />
 
-          {/* Dashboard Settings */}
           <div className="space-y-4">
-            <h4 className="text-sm font-medium">إعدادات لوحة التحكم</h4>
+            <h4 className="text-sm font-medium">{t('dashboard.profile.dashboardSettings')}</h4>
             <div className="flex items-center justify-between">
               <div>
-                <Label className="text-base">التحديث التلقائي</Label>
+                <Label className="text-base">{t('dashboard.profile.autoRefresh')}</Label>
                 <p className="text-sm text-muted-foreground">
-                  تحديث البيانات تلقائياً
+                  {t('dashboard.profile.autoRefreshDesc')}
                 </p>
               </div>
               <Switch
@@ -312,7 +307,7 @@ export default function UserProfile() {
             {userSettings.dashboard.autoRefresh && (
               <div className="space-y-2">
                 <Label htmlFor="refreshInterval">
-                  فترة التحديث (بالثواني)
+                  {t('dashboard.profile.refreshInterval')}
                 </Label>
                 <Select
                   value={(
@@ -332,10 +327,10 @@ export default function UserProfile() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="15">15 ثانية</SelectItem>
-                    <SelectItem value="30">30 ثانية</SelectItem>
-                    <SelectItem value="60">دقيقة واحدة</SelectItem>
-                    <SelectItem value="300">5 دقائق</SelectItem>
+                    <SelectItem value="15">{t('dashboard.profile.seconds15')}</SelectItem>
+                    <SelectItem value="30">{t('dashboard.profile.seconds30')}</SelectItem>
+                    <SelectItem value="60">{t('dashboard.profile.minute1')}</SelectItem>
+                    <SelectItem value="300">{t('dashboard.profile.minutes5')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -353,7 +348,7 @@ export default function UserProfile() {
               ) : (
                 <Save className="w-4 h-4 mr-2" />
               )}
-              حفظ التغييرات
+              {t('dashboard.profile.saveChanges')}
             </Button>
           </div>
         </CardContent>

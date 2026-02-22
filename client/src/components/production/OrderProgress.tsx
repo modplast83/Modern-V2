@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
@@ -54,6 +55,7 @@ interface AvailableCut {
 }
 
 export default function OrderProgress() {
+  const { t } = useTranslation();
   const [selectedProductionOrderId, setSelectedProductionOrderId] = useState<
     number | null
   >(null);
@@ -104,15 +106,15 @@ export default function OrderProgress() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || "فشل في تسجيل الاستلام");
+        throw new Error(error.message || t('production.orderProgress.receiptFailed'));
       }
 
       return response.json();
     },
     onSuccess: () => {
       toast({
-        title: "تم الاستلام بنجاح",
-        description: "تم تسجيل استلام المستودع",
+        title: t('production.orderProgress.receiptSuccess'),
+        description: t('production.orderProgress.receiptRegistered'),
       });
       queryClient.invalidateQueries({ queryKey: ["/api/warehouse/receipts"] });
       queryClient.invalidateQueries({
@@ -127,7 +129,7 @@ export default function OrderProgress() {
     },
     onError: (error: Error) => {
       toast({
-        title: "خطأ",
+        title: t('common.error'),
         description: error.message,
         variant: "destructive",
       });
@@ -137,8 +139,8 @@ export default function OrderProgress() {
   const handleWarehouseReceipt = () => {
     if (!receiptData.production_order_id || !receiptData.received_weight_kg) {
       toast({
-        title: "خطأ",
-        description: "يرجى ملء جميع الحقول المطلوبة",
+        title: t('common.error'),
+        description: t('production.orderProgress.fillRequiredFields'),
         variant: "destructive",
       });
       return;
@@ -156,7 +158,7 @@ export default function OrderProgress() {
       {/* Job Order Selection */}
       <Card>
         <CardHeader>
-          <CardTitle>اختيار أمر الإنتاج</CardTitle>
+          <CardTitle>{t('production.orderProgress.selectProductionOrder')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Select
@@ -166,7 +168,7 @@ export default function OrderProgress() {
             }
           >
             <SelectTrigger data-testid="select-job-order">
-              <SelectValue placeholder="اختر أمر الإنتاج لمتابعة التقدم" />
+              <SelectValue placeholder={t('production.orderProgress.selectOrderPlaceholder')} />
             </SelectTrigger>
             <SelectContent>
               {productionOrders
@@ -174,7 +176,7 @@ export default function OrderProgress() {
                 .map((order: any) => (
                   <SelectItem key={order.id} value={order.id.toString()}>
                     {order.production_order_number} - {order.quantity_required}{" "}
-                    كجم
+                    {t('production.units.kg')}
                   </SelectItem>
                 ))}
             </SelectContent>
@@ -189,7 +191,7 @@ export default function OrderProgress() {
           <Card>
             <CardHeader>
               <CardTitle>
-                تقدم الطلب -{" "}
+                {t('production.orderProgress.orderProgress')} -{" "}
                 {progress.production_order?.production_order_number}
               </CardTitle>
             </CardHeader>
@@ -197,9 +199,9 @@ export default function OrderProgress() {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="text-center">
                   <Package className="h-8 w-8 mx-auto mb-2 text-blue-500" />
-                  <p className="text-sm text-gray-600">فيلم</p>
+                  <p className="text-sm text-gray-600">{t('production.stages.film')}</p>
                   <p className="font-bold text-lg">
-                    {progress.progress?.film_weight?.toFixed(2) || 0} كجم
+                    {progress.progress?.film_weight?.toFixed(2) || 0} {t('production.units.kg')}
                   </p>
                   <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                     <div
@@ -213,9 +215,9 @@ export default function OrderProgress() {
 
                 <div className="text-center">
                   <Play className="h-8 w-8 mx-auto mb-2 text-green-500" />
-                  <p className="text-sm text-gray-600">طباعة</p>
+                  <p className="text-sm text-gray-600">{t('production.stages.printing')}</p>
                   <p className="font-bold text-lg">
-                    {progress.progress?.printed_weight?.toFixed(2) || 0} كجم
+                    {progress.progress?.printed_weight?.toFixed(2) || 0} {t('production.units.kg')}
                   </p>
                   <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                     <div
@@ -229,9 +231,9 @@ export default function OrderProgress() {
 
                 <div className="text-center">
                   <Scissors className="h-8 w-8 mx-auto mb-2 text-orange-500" />
-                  <p className="text-sm text-gray-600">تقطيع</p>
+                  <p className="text-sm text-gray-600">{t('production.stages.cutting')}</p>
                   <p className="font-bold text-lg">
-                    {progress.progress?.cut_weight?.toFixed(2) || 0} كجم
+                    {progress.progress?.cut_weight?.toFixed(2) || 0} {t('production.units.kg')}
                   </p>
                   <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                     <div
@@ -245,9 +247,9 @@ export default function OrderProgress() {
 
                 <div className="text-center">
                   <Archive className="h-8 w-8 mx-auto mb-2 text-purple-500" />
-                  <p className="text-sm text-gray-600">مستودع</p>
+                  <p className="text-sm text-gray-600">{t('production.stages.warehouse')}</p>
                   <p className="font-bold text-lg">
-                    {progress.progress?.warehouse_weight?.toFixed(2) || 0} كجم
+                    {progress.progress?.warehouse_weight?.toFixed(2) || 0} {t('production.units.kg')}
                   </p>
                   <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                     <div
@@ -266,7 +268,7 @@ export default function OrderProgress() {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>الرولات</CardTitle>
+                <CardTitle>{t('production.orderProgress.rolls')}</CardTitle>
                 <Dialog
                   open={warehouseDialogOpen}
                   onOpenChange={setWarehouseDialogOpen}
@@ -281,19 +283,19 @@ export default function OrderProgress() {
                       }
                     >
                       <Plus className="h-4 w-4 mr-2" />
-                      استلام مستودع
+                      {t('production.orderProgress.warehouseReceipt')}
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-md">
                     <DialogHeader>
-                      <DialogTitle>تسجيل استلام المستودع</DialogTitle>
+                      <DialogTitle>{t('production.orderProgress.registerWarehouseReceipt')}</DialogTitle>
                       <DialogDescription>
-                        تسجيل استلام المواد في المستودع مع تحديد الوزن المستلم
+                        {t('production.orderProgress.registerReceiptDescription')}
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <Label>الوزن المستلم (كجم) *</Label>
+                        <Label>{t('production.orderProgress.receivedWeightLabel')}</Label>
                         <Input
                           type="number"
                           step="0.1"
@@ -317,7 +319,7 @@ export default function OrderProgress() {
                           onClick={() => setWarehouseDialogOpen(false)}
                           disabled={warehouseReceiptMutation.isPending}
                         >
-                          إلغاء
+                          {t('common.cancel')}
                         </Button>
                         <Button
                           onClick={handleWarehouseReceipt}
@@ -325,8 +327,8 @@ export default function OrderProgress() {
                           data-testid="button-confirm-receipt"
                         >
                           {warehouseReceiptMutation.isPending
-                            ? "جاري التسجيل..."
-                            : "تسجيل الاستلام"}
+                            ? t('production.orderProgress.registering')
+                            : t('production.orderProgress.registerReceipt')}
                         </Button>
                       </div>
                     </div>
@@ -351,7 +353,7 @@ export default function OrderProgress() {
                           {roll.roll_number}
                         </p>
                         <p className="text-sm text-gray-500">
-                          {roll.weight_kg?.toFixed(2)} كجم - {roll.machine_id}
+                          {roll.weight_kg?.toFixed(2)} {t('production.units.kg')} - {roll.machine_id}
                         </p>
                       </div>
                     </div>
@@ -367,15 +369,15 @@ export default function OrderProgress() {
                         }
                       >
                         {roll.stage === "film"
-                          ? "فيلم"
+                          ? t('production.stages.film')
                           : roll.stage === "printing"
-                            ? "مطبوع"
-                            : "مقطع"}
+                            ? t('production.stageLabels.printed')
+                            : t('production.stageLabels.cut')}
                       </Badge>
 
                       {roll.printed_at && (
                         <span className="text-xs text-gray-400">
-                          طُبع:{" "}
+                          {t('production.orderProgress.printedAt')}:{" "}
                           {new Date(roll.printed_at).toLocaleDateString("ar")}
                         </span>
                       )}
@@ -390,7 +392,7 @@ export default function OrderProgress() {
           {progress.warehouse_receipts?.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>إيصالات المستودع</CardTitle>
+                <CardTitle>{t('production.orderProgress.warehouseReceipts')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -400,9 +402,9 @@ export default function OrderProgress() {
                       className="flex items-center justify-between p-3 border rounded-lg"
                     >
                       <div>
-                        <p className="font-medium">استلام #{receipt.id}</p>
+                        <p className="font-medium">{t('production.orderProgress.receipt')} #{receipt.id}</p>
                         <p className="text-sm text-gray-500">
-                          {receipt.received_weight_kg?.toFixed(2)} كجم
+                          {receipt.received_weight_kg?.toFixed(2)} {t('production.units.kg')}
                         </p>
                       </div>
                       <div className="text-xs text-gray-400">
@@ -421,7 +423,7 @@ export default function OrderProgress() {
         <Card>
           <CardContent className="p-6 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-2 text-sm text-gray-500">جاري تحميل التقدم...</p>
+            <p className="mt-2 text-sm text-gray-500">{t('production.orderProgress.loadingProgress')}</p>
           </CardContent>
         </Card>
       )}

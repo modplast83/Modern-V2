@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +33,7 @@ export default function ViewOrderDialog({
   items,
   onPrint,
 }: ViewOrderDialogProps) {
+  const { t } = useTranslation();
   // Ensure arrays are valid
   const safeProductionOrders = Array.isArray(productionOrders) ? productionOrders : [];
   const safeCustomerProducts = Array.isArray(customerProducts) ? customerProducts : [];
@@ -41,13 +43,13 @@ export default function ViewOrderDialog({
 
   const getStatusText = (status: string) => {
     const statusMap: Record<string, string> = {
-      waiting: "قيد الانتظار",
-      for_production: "جاهز للإنتاج",
-      in_production: "قيد الإنتاج",
-      completed: "مكتمل",
-      cancelled: "ملغي",
-      on_hold: "معلق",
-      pending: "معلق",
+      waiting: t('orders.statuses.waiting'),
+      for_production: t('orders.statuses.for_production'),
+      in_production: t('orders.statuses.in_production'),
+      completed: t('orders.statuses.completed'),
+      cancelled: t('orders.statuses.cancelled'),
+      on_hold: t('orders.statuses.on_hold'),
+      pending: t('orders.statuses.pending'),
     };
     return statusMap[status] || status;
   };
@@ -75,7 +77,7 @@ export default function ViewOrderDialog({
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="text-xl">
-              تفاصيل الطلب {order.order_number}
+              {t('orders.orderDetails')} {order.order_number}
             </DialogTitle>
             {onPrint && (
               <Button
@@ -86,11 +88,11 @@ export default function ViewOrderDialog({
                 onClick={() => onPrint(order, "standalone")}
               >
                 <Printer className="h-4 w-4" />
-                طباعة
+                {t('common.print')}
               </Button>
             )}
           </div>
-          <DialogDescription className="sr-only">عرض تفاصيل الطلب وأوامر الإنتاج المرتبطة</DialogDescription>
+          <DialogDescription className="sr-only">{t('orders.viewOrderDetailsDesc')}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
@@ -98,15 +100,15 @@ export default function ViewOrderDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-3">
               <div>
-                <span className="text-sm font-medium text-gray-500">رقم الطلب</span>
+                <span className="text-sm font-medium text-gray-500">{t('orders.orderNumber')}</span>
                 <p className="text-base font-semibold">{order.order_number}</p>
               </div>
               <div>
-                <span className="text-sm font-medium text-gray-500">العميل</span>
-                <p className="text-base">{customer?.name_ar || customer?.name || "غير محدد"}</p>
+                <span className="text-sm font-medium text-gray-500">{t('orders.customer')}</span>
+                <p className="text-base">{customer?.name_ar || customer?.name || t('common.notSpecified')}</p>
               </div>
               <div>
-                <span className="text-sm font-medium text-gray-500">الحالة</span>
+                <span className="text-sm font-medium text-gray-500">{t('common.status')}</span>
                 <div className="mt-1">
                   <span className={`px-2 py-1 rounded text-xs font-semibold ${getStatusColor(order.status)}`}>
                     {getStatusText(order.status)}
@@ -117,23 +119,23 @@ export default function ViewOrderDialog({
 
             <div className="space-y-3">
               <div>
-                <span className="text-sm font-medium text-gray-500">تاريخ الإنشاء</span>
+                <span className="text-sm font-medium text-gray-500">{t('orders.createdDate')}</span>
                 <p className="text-base">
                   {order.created_at
                     ? format(new Date(order.created_at), "dd/MM/yyyy")
-                    : "غير محدد"}
+                    : t('common.notSpecified')}
                 </p>
               </div>
               <div>
-                <span className="text-sm font-medium text-gray-500">أيام التسليم</span>
-                <p className="text-base">{order.delivery_days || "غير محدد"} يوم</p>
+                <span className="text-sm font-medium text-gray-500">{t('orders.deliveryDays')}</span>
+                <p className="text-base">{order.delivery_days || t('common.notSpecified')} {t('orders.day')}</p>
               </div>
               <div>
-                <span className="text-sm font-medium text-gray-500">تاريخ التسليم المتوقع</span>
+                <span className="text-sm font-medium text-gray-500">{t('orders.expectedDeliveryDate')}</span>
                 <p className="text-base">
                   {order.delivery_date
                     ? format(new Date(order.delivery_date), "dd/MM/yyyy")
-                    : "غير محدد"}
+                    : t('common.notSpecified')}
                 </p>
               </div>
             </div>
@@ -142,17 +144,17 @@ export default function ViewOrderDialog({
           {/* Notes */}
           {order.notes && (
             <div>
-              <span className="text-sm font-medium text-gray-500">ملاحظات</span>
+              <span className="text-sm font-medium text-gray-500">{t('common.notes')}</span>
               <p className="text-base mt-1 bg-gray-50 p-3 rounded">{order.notes}</p>
             </div>
           )}
 
           {/* Production Orders */}
           <div>
-            <h3 className="text-base font-semibold mb-3">أوامر الإنتاج ({orderProductionOrders.length})</h3>
+            <h3 className="text-base font-semibold mb-3">{t('orders.productionOrders')} ({orderProductionOrders.length})</h3>
             {orderProductionOrders.length === 0 ? (
               <div className="text-center py-6 text-sm text-gray-500">
-                لا توجد أوامر إنتاج لهذا الطلب
+                {t('orders.noProductionOrders')}
               </div>
             ) : (
               <div className="space-y-3">
@@ -176,7 +178,7 @@ export default function ViewOrderDialog({
                             {po.production_order_number || `PO-${po.id}`}
                           </h4>
                           <p className="text-xs text-gray-600 mt-1">
-                            {item?.name_ar || item?.name || "منتج غير محدد"}
+                            {item?.name_ar || item?.name || t('orders.unspecifiedProduct')}
                             {customerProduct?.size_caption && ` - ${customerProduct.size_caption}`}
                           </p>
                         </div>
@@ -187,16 +189,16 @@ export default function ViewOrderDialog({
 
                       <div className="grid grid-cols-3 gap-3 mt-3 text-sm">
                         <div>
-                          <span className="text-gray-500">الكمية الأساسية:</span>
-                          <p className="font-medium">{po.quantity_kg} كجم</p>
+                          <span className="text-gray-500">{t('orders.baseQuantity')}:</span>
+                          <p className="font-medium">{po.quantity_kg} {t('common.kg')}</p>
                         </div>
                         <div>
-                          <span className="text-gray-500">نسبة الزيادة:</span>
+                          <span className="text-gray-500">{t('orders.overrunPercentage')}:</span>
                           <p className="font-medium">{po.overrun_percentage ?? 0}%</p>
                         </div>
                         <div>
-                          <span className="text-gray-500">الكمية النهائية:</span>
-                          <p className="font-medium text-blue-600">{po.final_quantity_kg || po.quantity_kg} كجم</p>
+                          <span className="text-gray-500">{t('orders.finalQuantity')}:</span>
+                          <p className="font-medium text-blue-600">{po.final_quantity_kg || po.quantity_kg} {t('common.kg')}</p>
                         </div>
                       </div>
                     </div>

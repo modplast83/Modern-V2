@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -57,9 +58,9 @@ const ColorBadge = ({ color, code, nameAr }: { color: string; code: string; name
   );
 };
 
-const orderFormSchema = z.object({
-  customer_id: z.string().min(1, "العميل مطلوب"),
-  delivery_days: z.coerce.number().int().positive().max(365, "عدد أيام التسليم يجب أن يكون بين 1 و 365"),
+const createOrderFormSchema = (t: (key: string) => string) => z.object({
+  customer_id: z.string().min(1, t('orders.validation.customerRequired')),
+  delivery_days: z.coerce.number().int().positive().max(365, t('orders.validation.deliveryDaysRange')),
   notes: z.string().optional(),
 });
 
@@ -92,6 +93,7 @@ export default function OrdersForm({
   items,
   editingOrder,
 }: OrdersFormProps) {
+  const { t } = useTranslation();
   const [customerSearchTerm, setCustomerSearchTerm] = useState("");
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
   const [productionOrdersInForm, setProductionOrdersInForm] = useState<ProdOrderInForm[]>([]);
@@ -132,11 +134,12 @@ export default function OrdersForm({
   };
 
   const getMasterBatchText = (masterBatchId: string): string => {
-    if (!masterBatchId) return "غير محدد";
+    if (!masterBatchId) return t('common.notSpecified');
     const colorData = findColorByCode(masterBatchId);
     return colorData ? colorData.name_ar : masterBatchId;
   };
 
+  const orderFormSchema = createOrderFormSchema(t);
   const orderForm = useForm({
     resolver: zodResolver(orderFormSchema),
     defaultValues: {
@@ -328,17 +331,17 @@ export default function OrdersForm({
 
     // تحقق سريع قبل الإرسال
     if (productionOrdersInForm.length === 0) {
-      alert("يجب إضافة أمر إنتاج واحد على الأقل");
+      alert(t('orders.validation.atLeastOneProductionOrder'));
       return;
     }
     for (let i = 0; i < productionOrdersInForm.length; i++) {
       const po = productionOrdersInForm[i];
       if (!po.customer_product_id) {
-        alert(`اختر منتج العميل لأمر #${i + 1}`);
+        alert(t('orders.validation.selectProductForOrder', { num: i + 1 }));
         return;
       }
       if (!(po.quantity_kg && po.quantity_kg > 0)) {
-        alert(`أدخل كمية أساسية (>0) لأمر #${i + 1}`);
+        alert(t('orders.validation.enterQuantityForOrder', { num: i + 1 }));
         return;
       }
     }
@@ -370,10 +373,10 @@ export default function OrdersForm({
       <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl">
-            {editingOrder ? "تعديل الطلب" : "إضافة طلب جديد"}
+            {editingOrder ? t('orders.editOrder') : t('orders.addNewOrder')}
           </DialogTitle>
           <DialogDescription className="text-sm">
-            {editingOrder ? "تعديل تفاصيل الطلب" : "إضافة طلب جديد مع أوامر الإنتاج والمواصفات المطلوبة"}
+            {editingOrder ? t('orders.editOrderDesc') : t('orders.addNewOrderDesc')}
           </DialogDescription>
         </DialogHeader>
         <Form {...orderForm}>
@@ -384,12 +387,12 @@ export default function OrdersForm({
               name="customer_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>العميل</FormLabel>
+                  <FormLabel>{t('orders.customer')}</FormLabel>
                   <div className="space-y-2">
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <Input
-                        placeholder="البحث بالاسم العربي أو الإنجليزي..."
+                        placeholder={t('orders.searchByName')}
                         value={customerSearchTerm}
                         onChange={(e) => setCustomerSearchTerm(e.target.value)}
                         className="pl-10"
@@ -408,7 +411,7 @@ export default function OrdersForm({
                     >
                       <FormControl>
                         <SelectTrigger data-testid="select-customer">
-                          <SelectValue placeholder="اختر العميل" />
+                          <SelectValue placeholder={t('orders.selectCustomer')} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -429,7 +432,7 @@ export default function OrdersForm({
             {/* Production Orders Section */}
             <div className="border-t pt-4">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-base font-semibold">أوامر الإنتاج</h3>
+                <h3 className="text-base font-semibold">{t('orders.productionOrders')}</h3>
                 <Button
                   type="button"
                   onClick={addProductionOrder}
@@ -438,13 +441,13 @@ export default function OrdersForm({
                   data-testid="button-add-production-order"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  إضافة أمر إنتاج
+                  {t('orders.addProductionOrder')}
                 </Button>
               </div>
 
               {productionOrdersInForm.length === 0 && (
                 <div className="text-center py-6 text-sm text-gray-500">
-                  يجب إضافة أمر إنتاج واحد على الأقل
+                  {t('orders.validation.atLeastOneProductionOrder')}
                 </div>
               )}
 
@@ -456,7 +459,7 @@ export default function OrdersForm({
                     data-testid={`production-order-${index}`}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-sm font-medium">أمر إنتاج #{index + 1}</h4>
+                      <h4 className="text-sm font-medium">{t('orders.productionOrderNum', { num: index + 1 })}</h4>
                       <Button
                         type="button"
                         onClick={() => removeProductionOrder(index)}
@@ -470,7 +473,7 @@ export default function OrdersForm({
 
                     <div className="grid grid-cols-3 gap-3">
                       <div className="col-span-2">
-                        <label className="text-sm font-medium text-gray-700">منتج العميل</label>
+                        <label className="text-sm font-medium text-gray-700">{t('orders.customerProduct')}</label>
                         <Select
                           onValueChange={(value) =>
                             updateProductionOrder(index, "customer_product_id", parseInt(value, 10))
@@ -478,7 +481,7 @@ export default function OrdersForm({
                           value={prodOrder.customer_product_id?.toString() || ""}
                         >
                           <SelectTrigger className="h-auto min-h-[50px] w-full" data-testid={`select-product-${index}`}>
-                            <SelectValue placeholder="اختر المنتج">
+                            <SelectValue placeholder={t('orders.selectProduct')}>
                               {prodOrder.customer_product_id &&
                                 (() => {
                                   const selectedProduct = filteredCustomerProducts.find(
@@ -487,15 +490,15 @@ export default function OrdersForm({
                                   if (selectedProduct) {
                                     const item = items.find((it: any) => it.id === selectedProduct.item_id);
                                     const parts = [
-                                      item?.name_ar || item?.name || "منتج غير محدد",
+                                      item?.name_ar || item?.name || t('orders.unspecifiedProduct'),
                                       selectedProduct.size_caption,
-                                      selectedProduct.cutting_length_cm ? `${selectedProduct.cutting_length_cm} سم` : null,
+                                      selectedProduct.cutting_length_cm ? `${selectedProduct.cutting_length_cm} ${t('common.cm')}` : null,
                                       selectedProduct.master_batch_id ? getMasterBatchText(selectedProduct.master_batch_id) : null,
                                       selectedProduct.raw_material,
                                     ].filter(Boolean);
                                     return <div className="text-right text-sm">{parts.join(" - ")}</div>;
                                   }
-                                  return "اختر المنتج";
+                                  return t('orders.selectProduct');
                                 })()}
                             </SelectValue>
                           </SelectTrigger>
@@ -508,9 +511,9 @@ export default function OrdersForm({
                                       const item = items.find((it: any) => it.id === product.item_id);
                                       return (
                                         <>
-                                          <div>{item?.name_ar || item?.name || "منتج غير محدد"}</div>
+                                          <div>{item?.name_ar || item?.name || t('orders.unspecifiedProduct')}</div>
                                           {product?.size_caption && <div>{product.size_caption}</div>}
-                                          {product.cutting_length_cm && <div>طول القطع: {product.cutting_length_cm} سم</div>}
+                                          {product.cutting_length_cm && <div>{t('orders.cuttingLength')}: {product.cutting_length_cm} {t('common.cm')}</div>}
                                         </>
                                       );
                                     })()}
@@ -519,21 +522,21 @@ export default function OrdersForm({
                                     <div className="space-y-2">
                                       {product.thickness && (
                                         <div className="flex items-center gap-2">
-                                          <span className="font-medium text-gray-700">السماكة:</span>
+                                          <span className="font-medium text-gray-700">{t('orders.thickness')}:</span>
                                           <span className="text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded">
-                                            {product.thickness} ميكرون
+                                            {product.thickness} {t('common.micron')}
                                           </span>
                                         </div>
                                       )}
                                       {product.master_batch_id && (
                                         <div className="flex items-center gap-2">
-                                          <span className="font-medium text-gray-700">الماستر باتش:</span>
+                                          <span className="font-medium text-gray-700">{t('orders.masterBatch')}:</span>
                                           {getMasterBatchDisplay(product.master_batch_id)}
                                         </div>
                                       )}
                                       {product.raw_material && (
                                         <div className="flex items-center gap-2">
-                                          <span className="font-medium text-gray-700">المادة الخام:</span>
+                                          <span className="font-medium text-gray-700">{t('orders.rawMaterial')}:</span>
                                           <span className="text-green-600 font-semibold bg-green-50 px-2 py-0.5 rounded">
                                             {product.raw_material}
                                           </span>
@@ -543,19 +546,19 @@ export default function OrdersForm({
                                     <div className="space-y-2">
                                       {product.width && (
                                         <div>
-                                          <span className="font-medium text-gray-700">العرض:</span>{" "}
-                                          <span className="text-orange-600 font-medium">{product.width} سم</span>
+                                          <span className="font-medium text-gray-700">{t('orders.width')}:</span>{" "}
+                                          <span className="text-orange-600 font-medium">{product.width} {t('common.cm')}</span>
                                         </div>
                                       )}
                                       {product.punching && (
                                         <div>
-                                          <span className="font-medium text-gray-700">التخريم:</span>{" "}
+                                          <span className="font-medium text-gray-700">{t('orders.punching')}:</span>{" "}
                                           <span className="text-teal-600 font-medium">{product.punching}</span>
                                         </div>
                                       )}
                                       {product.cutting_unit && (
                                         <div>
-                                          <span className="font-medium text-gray-700">وحدة القطع:</span>{" "}
+                                          <span className="font-medium text-gray-700">{t('orders.cuttingUnit')}:</span>{" "}
                                           <span className="text-indigo-600 font-medium">{product.cutting_unit}</span>
                                         </div>
                                       )}
@@ -563,7 +566,7 @@ export default function OrdersForm({
                                   </div>
                                   {product.notes && (
                                     <div className="mt-2 text-xs text-gray-500 bg-gray-50 rounded p-2">
-                                      <span className="font-medium">ملاحظات:</span> {product.notes}
+                                      <span className="font-medium">{t('common.notes')}:</span> {product.notes}
                                     </div>
                                   )}
                                 </div>
@@ -574,10 +577,10 @@ export default function OrdersForm({
                       </div>
 
                       <div>
-                        <label className="text-sm font-medium text-gray-700">الكمية الأساسية (كيلو)</label>
+                        <label className="text-sm font-medium text-gray-700">{t('orders.baseQuantityKg')}</label>
                         <Input
                           type="number"
-                          placeholder="الكمية"
+                          placeholder={t('orders.quantity')}
                           value={prodOrder.quantity_kg ?? ""}
                           onChange={(e) => {
                             const num = Number.parseFloat(e.target.value);
@@ -588,14 +591,14 @@ export default function OrdersForm({
                         />
                         {quantityPreviews[prodOrder.uid] && (
                           <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
-                            <div className="text-xs font-medium text-blue-800 mb-1">معاينة:</div>
+                            <div className="text-xs font-medium text-blue-800 mb-1">{t('orders.preview')}:</div>
                             <div className="text-xs space-y-1">
                               <div className="text-blue-700">
-                                <span className="font-medium">نسبة الزيادة:</span>{" "}
+                                <span className="font-medium">{t('orders.overrunPercentage')}:</span>{" "}
                                 {formatPercentage(quantityPreviews[prodOrder.uid].overrun_percentage)}
                               </div>
                               <div className="text-blue-700">
-                                <span className="font-medium">الكمية النهائية:</span>{" "}
+                                <span className="font-medium">{t('orders.finalQuantity')}:</span>{" "}
                                 {formatWeight(quantityPreviews[prodOrder.uid].final_quantity_kg)}
                               </div>
                             </div>
@@ -616,12 +619,12 @@ export default function OrdersForm({
                   name="delivery_days"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>أيام التسليم</FormLabel>
+                      <FormLabel>{t('orders.deliveryDays')}</FormLabel>
                       <FormControl>
                         <Input
                           type="number"
                           {...field}
-                          placeholder="عدد أيام التسليم"
+                          placeholder={t('orders.deliveryDaysPlaceholder')}
                           data-testid="input-delivery-days"
                         />
                       </FormControl>
@@ -635,11 +638,11 @@ export default function OrdersForm({
                   name="notes"
                   render={({ field }) => (
                     <FormItem className="col-span-2">
-                      <FormLabel>ملاحظات</FormLabel>
+                      <FormLabel>{t('common.notes')}</FormLabel>
                       <FormControl>
                         <Textarea
                           {...field}
-                          placeholder="ملاحظات إضافية..."
+                          placeholder={t('orders.additionalNotes')}
                           className="min-h-[40px] resize-none"
                           data-testid="textarea-notes"
                         />
@@ -660,10 +663,10 @@ export default function OrdersForm({
                 disabled={isSubmitting}
                 data-testid="button-cancel"
               >
-                إلغاء
+                {t('common.cancel')}
               </Button>
               <Button type="submit" disabled={isSubmitting} data-testid="button-submit">
-                {isSubmitting ? "جاري الحفظ..." : editingOrder ? "تحديث الطلب" : "حفظ الطلب"}
+                {isSubmitting ? t('common.saving') : editingOrder ? t('orders.updateOrder') : t('orders.saveOrder')}
               </Button>
             </div>
           </form>

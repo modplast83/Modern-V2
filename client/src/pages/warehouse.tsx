@@ -75,35 +75,35 @@ import { z } from "zod";
 import { useToast } from "../hooks/use-toast";
 import { useAuth } from "../hooks/use-auth";
 
-const inventoryFormSchema = z.object({
-  material_group_id: z.string().min(1, "مجموعة المواد مطلوبة"),
-  item_id: z.string().min(1, "الصنف مطلوب"),
-  location_id: z.string().transform((val) => parseInt(val)),
-  current_stock: z.string().transform((val) => parseFloat(val)),
-  unit: z.string().min(1, "الوحدة مطلوبة"),
-});
-
-const locationFormSchema = z.object({
-  name: z.string().min(1, "الاسم الإنجليزي مطلوب"),
-  name_ar: z.string().min(1, "الاسم العربي مطلوب"),
-  coordinates: z.string().optional(),
-  tolerance_range: z
-    .string()
-    .optional()
-    .transform((val) => (val ? parseInt(val) : undefined)),
-});
-
-const movementFormSchema = z.object({
-  inventory_id: z.string().transform((val) => parseInt(val)),
-  movement_type: z.string().min(1, "نوع الحركة مطلوب"),
-  quantity: z.string().transform((val) => parseFloat(val)),
-  reference_number: z.string().optional(),
-  reference_type: z.string().optional(),
-  notes: z.string().optional(),
-});
-
 export default function Warehouse() {
   const { t } = useTranslation();
+
+  const inventoryFormSchema = z.object({
+    material_group_id: z.string().min(1, t('warehouse.validation.materialGroupRequired')),
+    item_id: z.string().min(1, t('warehouse.validation.itemRequired')),
+    location_id: z.string().transform((val) => parseInt(val)),
+    current_stock: z.string().transform((val) => parseFloat(val)),
+    unit: z.string().min(1, t('warehouse.validation.unitRequired')),
+  });
+
+  const locationFormSchema = z.object({
+    name: z.string().min(1, t('warehouse.validation.nameEnRequired')),
+    name_ar: z.string().min(1, t('warehouse.validation.nameArRequired')),
+    coordinates: z.string().optional(),
+    tolerance_range: z
+      .string()
+      .optional()
+      .transform((val) => (val ? parseInt(val) : undefined)),
+  });
+
+  const movementFormSchema = z.object({
+    inventory_id: z.string().transform((val) => parseInt(val)),
+    movement_type: z.string().min(1, t('warehouse.validation.movementTypeRequired')),
+    quantity: z.string().transform((val) => parseFloat(val)),
+    reference_number: z.string().optional(),
+    reference_type: z.string().optional(),
+    notes: z.string().optional(),
+  });
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
@@ -209,16 +209,16 @@ export default function Warehouse() {
       setIsAddDialogOpen(false);
       setEditingItem(null);
       toast({
-        title: "تم الحفظ بنجاح",
+        title: t('warehouse.toast.savedSuccess'),
         description: editingItem
-          ? "تم تحديث صنف المخزون"
-          : "تم إضافة صنف المخزون",
+          ? t('warehouse.toast.inventoryUpdated')
+          : t('warehouse.toast.inventoryAdded'),
       });
     },
     onError: () => {
       toast({
-        title: "خطأ",
-        description: "فشل في حفظ البيانات",
+        title: t('warehouse.toast.error'),
+        description: t('warehouse.toast.saveFailed'),
         variant: "destructive",
       });
     },
@@ -237,14 +237,14 @@ export default function Warehouse() {
       queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
       queryClient.invalidateQueries({ queryKey: ["/api/inventory/stats"] });
       toast({
-        title: "تم الحذف بنجاح",
-        description: "تم حذف صنف المخزون",
+        title: t('warehouse.toast.deletedSuccess'),
+        description: t('warehouse.toast.inventoryDeleted'),
       });
     },
     onError: () => {
       toast({
-        title: "خطأ",
-        description: "فشل في حذف الصنف",
+        title: t('warehouse.toast.error'),
+        description: t('warehouse.toast.deleteFailed'),
         variant: "destructive",
       });
     },
@@ -272,14 +272,14 @@ export default function Warehouse() {
       setIsLocationDialogOpen(false);
       setEditingLocation(null);
       toast({
-        title: "تم الحفظ بنجاح",
-        description: editingLocation ? "تم تحديث الموقع" : "تم إضافة الموقع",
+        title: t('warehouse.toast.savedSuccess'),
+        description: editingLocation ? t('warehouse.toast.locationUpdated') : t('warehouse.toast.locationAdded'),
       });
     },
     onError: () => {
       toast({
-        title: "خطأ",
-        description: "فشل في حفظ البيانات",
+        title: t('warehouse.toast.error'),
+        description: t('warehouse.toast.saveFailed'),
         variant: "destructive",
       });
     },
@@ -296,14 +296,14 @@ export default function Warehouse() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
       toast({
-        title: "تم الحذف بنجاح",
-        description: "تم حذف الموقع",
+        title: t('warehouse.toast.deletedSuccess'),
+        description: t('warehouse.toast.locationDeleted'),
       });
     },
     onError: () => {
       toast({
-        title: "خطأ",
-        description: "فشل في حذف الموقع",
+        title: t('warehouse.toast.error'),
+        description: t('warehouse.toast.locationDeleteFailed'),
         variant: "destructive",
       });
     },
@@ -332,14 +332,14 @@ export default function Warehouse() {
       queryClient.invalidateQueries({ queryKey: ["/api/inventory/stats"] });
       setIsMovementDialogOpen(false);
       toast({
-        title: "تم الحفظ بنجاح",
-        description: "تم إضافة حركة المخزون",
+        title: t('warehouse.toast.savedSuccess'),
+        description: t('warehouse.toast.movementAdded'),
       });
     },
     onError: () => {
       toast({
-        title: "خطأ",
-        description: "فشل في حفظ البيانات",
+        title: t('warehouse.toast.error'),
+        description: t('warehouse.toast.saveFailed'),
         variant: "destructive",
       });
     },
@@ -356,14 +356,14 @@ export default function Warehouse() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/inventory-movements"] });
       toast({
-        title: "تم الحذف بنجاح",
-        description: "تم حذف الحركة",
+        title: t('warehouse.toast.deletedSuccess'),
+        description: t('warehouse.toast.movementDeleted'),
       });
     },
     onError: () => {
       toast({
-        title: "خطأ",
-        description: "فشل في حذف الحركة",
+        title: t('warehouse.toast.error'),
+        description: t('warehouse.toast.movementDeleteFailed'),
         variant: "destructive",
       });
     },
@@ -548,7 +548,7 @@ export default function Warehouse() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              إجمالي الأصناف
+              {t('warehouse.stats.totalItems')}
             </CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -556,14 +556,14 @@ export default function Warehouse() {
             <div className="text-2xl font-bold">
               {stats?.totalItems || 0}
             </div>
-            <p className="text-xs text-muted-foreground">صنف نشط</p>
+            <p className="text-xs text-muted-foreground">{t('warehouse.stats.activeItem')}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              أصناف منخفضة
+              {t('warehouse.stats.lowStockItems')}
             </CardTitle>
             <AlertTriangle className="h-4 w-4 text-destructive" />
           </CardHeader>
@@ -572,7 +572,7 @@ export default function Warehouse() {
               {stats?.lowStockItems || 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              تحتاج إعادة تموين
+              {t('warehouse.stats.needsRestock')}
             </p>
           </CardContent>
         </Card>
@@ -580,18 +580,18 @@ export default function Warehouse() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              قيمة المخزون
+              {t('warehouse.stats.inventoryValue')}
             </CardTitle>
             <TrendingUp className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {stats?.totalValue
-                ? `${Number(stats.totalValue).toLocaleString()} ر.س`
-                : "0 ر.س"}
+                ? `${Number(stats.totalValue).toLocaleString()} ${t('warehouse.currency')}`
+                : `0 ${t('warehouse.currency')}`}
             </div>
             <p className="text-xs text-muted-foreground">
-              القيمة الإجمالية
+              {t('warehouse.stats.totalValue')}
             </p>
           </CardContent>
         </Card>
@@ -599,7 +599,7 @@ export default function Warehouse() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              حركات اليوم
+              {t('warehouse.stats.todayMovements')}
             </CardTitle>
             <TrendingDown className="h-4 w-4 text-blue-600" />
           </CardHeader>
@@ -608,7 +608,7 @@ export default function Warehouse() {
               {stats?.movementsToday || 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              عملية دخول وخروج
+              {t('warehouse.stats.inOutOperations')}
             </p>
           </CardContent>
         </Card>
@@ -621,21 +621,21 @@ export default function Warehouse() {
         <TabsList className="flex flex-wrap w-full justify-start gap-1">
           <TabsTrigger value="vouchers" className="shrink-0 bg-blue-50">
             <FileText className="h-4 w-4 ml-1" />
-            السندات
+            {t('warehouse.tabs.vouchers')}
           </TabsTrigger>
           <TabsTrigger value="definitions" className="shrink-0 bg-purple-50">
             <Package className="h-4 w-4 ml-1" />
-            التعريفات
+            {t('warehouse.tabs.definitions')}
           </TabsTrigger>
           <TabsTrigger value="reports" className="shrink-0 bg-green-50">
             <FileText className="h-4 w-4 ml-1" />
-            التقارير
+            {t('warehouse.tabs.reports')}
           </TabsTrigger>
           <TabsTrigger value="production-hall" className="shrink-0">
-            صالة الإنتاج
+            {t('warehouse.tabs.productionHall')}
           </TabsTrigger>
           <TabsTrigger value="received-quantities" className="shrink-0">
-            الكميات المستلمة
+            {t('warehouse.tabs.receivedQuantities')}
           </TabsTrigger>
           {locations.map((location: any) => (
             <TabsTrigger
@@ -656,23 +656,23 @@ export default function Warehouse() {
           <div className="flex flex-wrap gap-2 mb-4">
             <Button onClick={() => openVoucherForm("raw-material-in")} className="bg-green-600 hover:bg-green-700">
               <ArrowDownToLine className="h-4 w-4 ml-2" />
-              إدخال مواد خام
+              {t('warehouse.vouchers.rawMaterialIn')}
             </Button>
             <Button onClick={() => openVoucherForm("raw-material-out")} className="bg-red-600 hover:bg-red-700">
               <ArrowUpFromLine className="h-4 w-4 ml-2" />
-              إخراج مواد خام
+              {t('warehouse.vouchers.rawMaterialOut')}
             </Button>
             <Button onClick={() => openVoucherForm("finished-goods-in")} className="bg-blue-600 hover:bg-blue-700">
               <Package className="h-4 w-4 ml-2" />
-              استلام مواد تامة
+              {t('warehouse.vouchers.finishedGoodsIn')}
             </Button>
             <Button onClick={() => openVoucherForm("finished-goods-out")} className="bg-orange-600 hover:bg-orange-700">
               <Package className="h-4 w-4 ml-2" />
-              إخراج مواد تامة
+              {t('warehouse.vouchers.finishedGoodsOut')}
             </Button>
             <Button onClick={() => setIsInventoryCountOpen(true)} variant="outline">
               <ClipboardCheck className="h-4 w-4 ml-2" />
-              جرد بالباركود
+              {t('warehouse.vouchers.barcodeCount')}
             </Button>
           </div>
           
@@ -680,33 +680,33 @@ export default function Warehouse() {
             <TabsList>
               <TabsTrigger value="raw-material-in">
                 <ArrowDownToLine className="h-4 w-4 ml-1" />
-                إدخال مواد خام
+                {t('warehouse.vouchers.rawMaterialIn')}
               </TabsTrigger>
               <TabsTrigger value="raw-material-out">
                 <ArrowUpFromLine className="h-4 w-4 ml-1" />
-                إخراج مواد خام
+                {t('warehouse.vouchers.rawMaterialOut')}
               </TabsTrigger>
               <TabsTrigger value="finished-goods-in">
                 <Package className="h-4 w-4 ml-1" />
-                استلام مواد تامة
+                {t('warehouse.vouchers.finishedGoodsIn')}
               </TabsTrigger>
               <TabsTrigger value="finished-goods-out">
                 <Package className="h-4 w-4 ml-1" />
-                إخراج مواد تامة
+                {t('warehouse.vouchers.finishedGoodsOut')}
               </TabsTrigger>
             </TabsList>
             
             <TabsContent value="raw-material-in">
-              <VouchersList type="raw-material-in" title="سندات إدخال مواد خام" />
+              <VouchersList type="raw-material-in" title={t('warehouse.vouchers.rawMaterialInTitle')} />
             </TabsContent>
             <TabsContent value="raw-material-out">
-              <VouchersList type="raw-material-out" title="سندات إخراج مواد خام" />
+              <VouchersList type="raw-material-out" title={t('warehouse.vouchers.rawMaterialOutTitle')} />
             </TabsContent>
             <TabsContent value="finished-goods-in">
-              <VouchersList type="finished-goods-in" title="سندات استلام مواد تامة" />
+              <VouchersList type="finished-goods-in" title={t('warehouse.vouchers.finishedGoodsInTitle')} />
             </TabsContent>
             <TabsContent value="finished-goods-out">
-              <VouchersList type="finished-goods-out" title="سندات إخراج مواد تامة" />
+              <VouchersList type="finished-goods-out" title={t('warehouse.vouchers.finishedGoodsOutTitle')} />
             </TabsContent>
           </Tabs>
           
@@ -753,7 +753,7 @@ export default function Warehouse() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>
-                    مخزون {location.name_ar || location.name}
+                    {t('warehouse.inventory.stockOf')} {location.name_ar || location.name}
                   </CardTitle>
                   <div className="flex space-x-2 space-x-reverse">
                     <div className="relative">
@@ -772,20 +772,20 @@ export default function Warehouse() {
                       <DialogTrigger asChild>
                         <Button onClick={handleAdd}>
                           <Plus className="h-4 w-4 mr-2" />
-                          إضافة صنف
+                          {t('warehouse.inventory.addItem')}
                         </Button>
                       </DialogTrigger>
                       <DialogContent className="max-w-md">
                         <DialogHeader>
                           <DialogTitle>
                             {editingItem
-                              ? "تعديل صنف المخزون"
-                              : "إضافة صنف جديد للمخزون"}
+                              ? t('warehouse.inventory.editInventoryItem')
+                              : t('warehouse.inventory.addNewInventoryItem')}
                           </DialogTitle>
                           <DialogDescription>
                             {editingItem
-                              ? "تعديل بيانات وكمية الصنف في المخزون"
-                              : "إضافة صنف جديد إلى مخزون هذا الموقع"}
+                              ? t('warehouse.inventory.editInventoryItemDesc')
+                              : t('warehouse.inventory.addNewInventoryItemDesc')}
                           </DialogDescription>
                         </DialogHeader>
                         <Form {...form}>
@@ -798,7 +798,7 @@ export default function Warehouse() {
                               name="material_group_id"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>مجموعة المواد</FormLabel>
+                                  <FormLabel>{t('warehouse.labels.materialGroup')}</FormLabel>
                                   <Select
                                     onValueChange={(value) => {
                                       field.onChange(value);
@@ -808,7 +808,7 @@ export default function Warehouse() {
                                   >
                                     <FormControl>
                                       <SelectTrigger>
-                                        <SelectValue placeholder="اختر مجموعة المواد" />
+                                        <SelectValue placeholder={t('warehouse.placeholders.selectMaterialGroup')} />
                                       </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
@@ -832,7 +832,7 @@ export default function Warehouse() {
                                   name="item_id"
                                   render={({ field }) => (
                                     <FormItem>
-                                      <FormLabel>الصنف</FormLabel>
+                                      <FormLabel>{t('warehouse.labels.item')}</FormLabel>
                                       <Select
                                         onValueChange={field.onChange}
                                         value={field.value ?? ""}
@@ -843,8 +843,8 @@ export default function Warehouse() {
                                             <SelectValue
                                               placeholder={
                                                 selectedMaterialGroupId
-                                                  ? "اختر الصنف"
-                                                  : "اختر مجموعة المواد أولاً"
+                                                  ? t('warehouse.placeholders.selectItem')
+                                                  : t('warehouse.placeholders.selectMaterialGroupFirst')
                                               }
                                             />
                                           </SelectTrigger>
@@ -878,14 +878,14 @@ export default function Warehouse() {
                                   name="location_id"
                                   render={({ field }) => (
                                     <FormItem>
-                                      <FormLabel>الموقع</FormLabel>
+                                      <FormLabel>{t('warehouse.labels.location')}</FormLabel>
                                       <Select
                                         onValueChange={field.onChange}
                                         value={field.value ?? ""}
                                       >
                                         <FormControl>
                                           <SelectTrigger>
-                                            <SelectValue placeholder="اختر الموقع" />
+                                            <SelectValue placeholder={t('warehouse.placeholders.selectLocation')} />
                                           </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
@@ -910,7 +910,7 @@ export default function Warehouse() {
                                     name="current_stock"
                                     render={({ field }) => (
                                       <FormItem>
-                                        <FormLabel>المخزون الحالي</FormLabel>
+                                        <FormLabel>{t('warehouse.labels.currentStock')}</FormLabel>
                                         <FormControl>
                                           <Input
                                             {...field}
@@ -928,7 +928,7 @@ export default function Warehouse() {
                                     name="unit"
                                     render={({ field }) => (
                                       <FormItem>
-                                        <FormLabel>الوحدة</FormLabel>
+                                        <FormLabel>{t('warehouse.labels.unit')}</FormLabel>
                                         <Select
                                           onValueChange={field.onChange}
                                           value={field.value ?? ""}
@@ -940,16 +940,16 @@ export default function Warehouse() {
                                           </FormControl>
                                           <SelectContent>
                                             <SelectItem value="كيلو">
-                                              كيلو
+                                              {t('warehouse.units.kilo')}
                                             </SelectItem>
                                             <SelectItem value="قطعة">
-                                              قطعة
+                                              {t('warehouse.units.piece')}
                                             </SelectItem>
                                             <SelectItem value="طن">
-                                              طن
+                                              {t('warehouse.units.ton')}
                                             </SelectItem>
                                             <SelectItem value="متر">
-                                              متر
+                                              {t('warehouse.units.meter')}
                                             </SelectItem>
                                           </SelectContent>
                                         </Select>
@@ -965,15 +965,15 @@ export default function Warehouse() {
                                     variant="outline"
                                     onClick={() => setIsAddDialogOpen(false)}
                                   >
-                                    إلغاء
+                                    {t('warehouse.buttons.cancel')}
                                   </Button>
                                   <Button
                                     type="submit"
                                     disabled={mutation.isPending}
                                   >
                                     {mutation.isPending
-                                      ? "جاري الحفظ..."
-                                      : "حفظ"}
+                                      ? t('warehouse.buttons.saving')
+                                      : t('warehouse.buttons.save')}
                                   </Button>
                                 </div>
                               </form>
@@ -985,23 +985,23 @@ export default function Warehouse() {
                   </CardHeader>
                   <CardContent>
                     {inventoryLoading ? (
-                      <div className="text-center py-8">جاري التحميل...</div>
+                      <div className="text-center py-8">{t('warehouse.loading')}</div>
                     ) : (
                       <div className="overflow-x-auto">
                         <table className="min-w-full divide-y divide-gray-200">
                           <thead className="bg-gray-50">
                             <tr>
                               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                                الصنف
+                                {t('warehouse.labels.item')}
                               </th>
                               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                                الفئة
+                                {t('warehouse.labels.category')}
                               </th>
                               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                                المخزون الحالي
+                                {t('warehouse.labels.currentStock')}
                               </th>
                               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                                العمليات
+                                {t('warehouse.labels.actions')}
                               </th>
                             </tr>
                           </thead>
@@ -1014,8 +1014,8 @@ export default function Warehouse() {
                                   className="px-6 py-8 text-center text-gray-500"
                                 >
                                   {searchTerm
-                                    ? "لا توجد نتائج للبحث"
-                                    : "لا توجد أصناف في هذا المخزون"}
+                                    ? t('warehouse.inventory.noSearchResults')
+                                    : t('warehouse.inventory.noItemsInStock')}
                                 </td>
                               </tr>
                             ) : (
@@ -1089,7 +1089,7 @@ export default function Warehouse() {
                 <CardHeader>
                   <div className="flex justify-between items-center">
                     <div>
-                      <CardTitle>حركات المخزون</CardTitle>
+                      <CardTitle>{t('warehouse.movements.title')}</CardTitle>
                       <p className="text-sm text-gray-600 mt-1"> </p>
                     </div>
                     <Dialog
@@ -1099,14 +1099,14 @@ export default function Warehouse() {
                       <DialogTrigger asChild>
                         <Button onClick={handleAddMovement}>
                           <Plus className="h-4 w-4 mr-2" />
-                          إضافة حركة
+                          {t('warehouse.movements.addMovement')}
                         </Button>
                       </DialogTrigger>
                       <DialogContent className="max-w-md">
                         <DialogHeader>
-                          <DialogTitle>إضافة حركة مخزون جديدة</DialogTitle>
+                          <DialogTitle>{t('warehouse.movements.addNewMovement')}</DialogTitle>
                           <DialogDescription>
-                            تسجيل حركة إدخال أو إخراج للمخزون
+                            {t('warehouse.movements.addNewMovementDesc')}
                           </DialogDescription>
                         </DialogHeader>
                         <Form {...movementForm}>
@@ -1121,14 +1121,14 @@ export default function Warehouse() {
                               name="inventory_id"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>صنف المخزون</FormLabel>
+                                  <FormLabel>{t('warehouse.labels.inventoryItem')}</FormLabel>
                                   <Select
                                     onValueChange={field.onChange}
                                     value={field.value ?? ""}
                                   >
                                     <FormControl>
                                       <SelectTrigger>
-                                        <SelectValue placeholder="اختر الصنف" />
+                                        <SelectValue placeholder={t('warehouse.placeholders.selectItem')} />
                                       </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
@@ -1153,24 +1153,24 @@ export default function Warehouse() {
                               name="movement_type"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>نوع الحركة</FormLabel>
+                                  <FormLabel>{t('warehouse.labels.movementType')}</FormLabel>
                                   <Select
                                     onValueChange={field.onChange}
                                     value={field.value ?? ""}
                                   >
                                     <FormControl>
                                       <SelectTrigger>
-                                        <SelectValue placeholder="اختر نوع الحركة" />
+                                        <SelectValue placeholder={t('warehouse.placeholders.selectMovementType')} />
                                       </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
-                                      <SelectItem value="in">دخول</SelectItem>
-                                      <SelectItem value="out">خروج</SelectItem>
+                                      <SelectItem value="in">{t('warehouse.movementTypes.in')}</SelectItem>
+                                      <SelectItem value="out">{t('warehouse.movementTypes.out')}</SelectItem>
                                       <SelectItem value="transfer">
-                                        نقل
+                                        {t('warehouse.movementTypes.transfer')}
                                       </SelectItem>
                                       <SelectItem value="adjustment">
-                                        تسوية
+                                        {t('warehouse.movementTypes.adjustment')}
                                       </SelectItem>
                                     </SelectContent>
                                   </Select>
@@ -1184,7 +1184,7 @@ export default function Warehouse() {
                               name="quantity"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>الكمية</FormLabel>
+                                  <FormLabel>{t('warehouse.labels.quantity')}</FormLabel>
                                   <FormControl>
                                     <Input
                                       {...field}
@@ -1203,7 +1203,7 @@ export default function Warehouse() {
                                 name="reference_number"
                                 render={({ field }) => (
                                   <FormItem>
-                                    <FormLabel>رقم المرجع</FormLabel>
+                                    <FormLabel>{t('warehouse.labels.referenceNumber')}</FormLabel>
                                     <FormControl>
                                       <Input {...field} placeholder="PO-001" />
                                     </FormControl>
@@ -1217,28 +1217,28 @@ export default function Warehouse() {
                                 name="reference_type"
                                 render={({ field }) => (
                                   <FormItem>
-                                    <FormLabel>نوع المرجع</FormLabel>
+                                    <FormLabel>{t('warehouse.labels.referenceType')}</FormLabel>
                                     <Select
                                       onValueChange={field.onChange}
                                       value={field.value ?? ""}
                                     >
                                       <FormControl>
                                         <SelectTrigger>
-                                          <SelectValue placeholder="اختر النوع" />
+                                          <SelectValue placeholder={t('warehouse.placeholders.selectType')} />
                                         </SelectTrigger>
                                       </FormControl>
                                       <SelectContent>
                                         <SelectItem value="purchase">
-                                          شراء
+                                          {t('warehouse.referenceTypes.purchase')}
                                         </SelectItem>
                                         <SelectItem value="sale">
-                                          بيع
+                                          {t('warehouse.referenceTypes.sale')}
                                         </SelectItem>
                                         <SelectItem value="production">
-                                          إنتاج
+                                          {t('warehouse.referenceTypes.production')}
                                         </SelectItem>
                                         <SelectItem value="adjustment">
-                                          تسوية
+                                          {t('warehouse.referenceTypes.adjustment')}
                                         </SelectItem>
                                       </SelectContent>
                                     </Select>
@@ -1253,11 +1253,11 @@ export default function Warehouse() {
                               name="notes"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>ملاحظات</FormLabel>
+                                  <FormLabel>{t('warehouse.labels.notes')}</FormLabel>
                                   <FormControl>
                                     <Input
                                       {...field}
-                                      placeholder="ملاحظات إضافية"
+                                      placeholder={t('warehouse.placeholders.additionalNotes')}
                                     />
                                   </FormControl>
                                   <FormMessage />
@@ -1271,15 +1271,15 @@ export default function Warehouse() {
                                 variant="outline"
                                 onClick={() => setIsMovementDialogOpen(false)}
                               >
-                                إلغاء
+                                {t('warehouse.buttons.cancel')}
                               </Button>
                               <Button
                                 type="submit"
                                 disabled={movementMutation.isPending}
                               >
                                 {movementMutation.isPending
-                                  ? "جاري الحفظ..."
-                                  : "حفظ"}
+                                  ? t('warehouse.buttons.saving')
+                                  : t('warehouse.buttons.save')}
                               </Button>
                             </div>
                           </form>
@@ -1290,32 +1290,32 @@ export default function Warehouse() {
                 </CardHeader>
                 <CardContent>
                   {movementsLoading ? (
-                    <div className="text-center py-8">جاري التحميل...</div>
+                    <div className="text-center py-8">{t('warehouse.loading')}</div>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                           <tr>
                             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                              الصنف
+                              {t('warehouse.labels.item')}
                             </th>
                             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                              نوع الحركة
+                              {t('warehouse.labels.movementType')}
                             </th>
                             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                              الكمية
+                              {t('warehouse.labels.quantity')}
                             </th>
                             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                              رقم المرجع
+                              {t('warehouse.labels.referenceNumber')}
                             </th>
                             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                              التاريخ
+                              {t('warehouse.labels.date')}
                             </th>
                             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                              المستخدم
+                              {t('warehouse.labels.user')}
                             </th>
                             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                              العمليات
+                              {t('warehouse.labels.actions')}
                             </th>
                           </tr>
                         </thead>
@@ -1326,7 +1326,7 @@ export default function Warehouse() {
                                 colSpan={7}
                                 className="px-6 py-8 text-center text-gray-500"
                               >
-                                لا توجد حركات مخزون مسجلة
+                                {t('warehouse.movements.noMovements')}
                               </td>
                             </tr>
                           ) : (
@@ -1356,12 +1356,12 @@ export default function Warehouse() {
                                     }
                                   >
                                     {movement.movement_type === "in"
-                                      ? "دخول"
+                                      ? t('warehouse.movementTypes.in')
                                       : movement.movement_type === "out"
-                                        ? "خروج"
+                                        ? t('warehouse.movementTypes.out')
                                         : movement.movement_type === "transfer"
-                                          ? "نقل"
-                                          : "تسوية"}
+                                          ? t('warehouse.movementTypes.transfer')
+                                          : t('warehouse.movementTypes.adjustment')}
                                   </Badge>
                                 </td>
                                 <td className="px-6 py-4 text-sm text-gray-900">
@@ -1409,6 +1409,7 @@ export default function Warehouse() {
 
 // Production Hall Component
 function ProductionHallContent() {
+  const { t } = useTranslation();
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
   const [receiptWeight, setReceiptWeight] = useState("");
@@ -1474,10 +1475,10 @@ function ProductionHallContent() {
       setReceiptWeight("");
       setReceiptNotes("");
       setSelectedReceiptOrderId(null);
-      toast({ title: "تم الاستلام بنجاح", description: "تم تسجيل استلام المواد في المستودع" });
+      toast({ title: t('warehouse.production.receiptSuccess'), description: t('warehouse.production.receiptSuccessDesc') });
     },
     onError: () => {
-      toast({ title: "خطأ", description: "فشل في تسجيل الاستلام", variant: "destructive" });
+      toast({ title: t('warehouse.toast.error'), description: t('warehouse.production.receiptFailed'), variant: "destructive" });
     },
   });
 
@@ -1498,11 +1499,11 @@ function ProductionHallContent() {
 
   const handleReceiptSubmit = () => {
     if (!receiptWeight || parseFloat(receiptWeight) <= 0) {
-      toast({ title: "خطأ", description: "يرجى إدخال وزن الاستلام", variant: "destructive" });
+      toast({ title: t('warehouse.toast.error'), description: t('warehouse.production.enterReceiptWeight'), variant: "destructive" });
       return;
     }
     if (!user?.id) {
-      toast({ title: "خطأ", description: "يجب تسجيل الدخول لتسجيل الاستلام", variant: "destructive" });
+      toast({ title: t('warehouse.toast.error'), description: t('warehouse.production.loginRequired'), variant: "destructive" });
       return;
     }
 
@@ -1511,7 +1512,7 @@ function ProductionHallContent() {
       : Array.from(selectedOrders);
 
     if (targetOrders.length === 0) {
-      toast({ title: "خطأ", description: "يرجى اختيار أمر إنتاج واحد على الأقل", variant: "destructive" });
+      toast({ title: t('warehouse.toast.error'), description: t('warehouse.production.selectAtLeastOneOrder'), variant: "destructive" });
       return;
     }
 
@@ -1539,58 +1540,58 @@ function ProductionHallContent() {
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="flex items-center gap-2">
             <Factory className="h-5 w-5" />
-            صالة الإنتاج - المواد الجاهزة للاستلام
+            {t('warehouse.production.title')}
           </CardTitle>
           <div className="flex space-x-2 space-x-reverse">
             <Dialog open={receiptDialogOpen} onOpenChange={(open) => { setReceiptDialogOpen(open); if (!open) setSelectedReceiptOrderId(null); }}>
               <DialogTrigger asChild>
                 <Button disabled={selectedOrders.size === 0}>
                   <Truck className="h-4 w-4 mr-2" />
-                  استلام المحدد ({selectedOrders.size})
+                  {t('warehouse.production.receiveSelected')} ({selectedOrders.size})
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-md">
                 <DialogHeader>
-                  <DialogTitle>استلام مواد من صالة الإنتاج</DialogTitle>
+                  <DialogTitle>{t('warehouse.production.receiveFromProductionHall')}</DialogTitle>
                   <DialogDescription>
-                    تسجيل استلام المواد المقطعة من صالة الإنتاج إلى المستودع
+                    {t('warehouse.production.receiveFromProductionHallDesc')}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   {selectedReceiptOrderId && (
                     <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg text-sm">
-                      <span className="font-medium">أمر الإنتاج: </span>
+                      <span className="font-medium">{t('warehouse.production.productionOrder')}: </span>
                       {processedOrders.find((o: any) => o.production_order_id.toString() === selectedReceiptOrderId)?.production_order_number}
                       <span className="mx-2">|</span>
-                      <span className="font-medium">المتبقي: </span>
-                      {processedOrders.find((o: any) => o.production_order_id.toString() === selectedReceiptOrderId)?.remaining_to_receive.toFixed(2)} كيلو
+                      <span className="font-medium">{t('warehouse.production.remaining')}: </span>
+                      {processedOrders.find((o: any) => o.production_order_id.toString() === selectedReceiptOrderId)?.remaining_to_receive.toFixed(2)} {t('warehouse.units.kilo')}
                     </div>
                   )}
                   <div>
-                    <label className="text-sm font-medium">الوزن المستلم (كيلو)</label>
+                    <label className="text-sm font-medium">{t('warehouse.production.receivedWeight')}</label>
                     <Input
                       type="number"
                       step="0.001"
                       value={receiptWeight}
                       onChange={(e) => setReceiptWeight(e.target.value)}
-                      placeholder="أدخل الوزن المستلم"
+                      placeholder={t('warehouse.production.enterReceivedWeight')}
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium">ملاحظات (اختيارية)</label>
+                    <label className="text-sm font-medium">{t('warehouse.production.notesOptional')}</label>
                     <textarea
                       value={receiptNotes}
                       onChange={(e) => setReceiptNotes(e.target.value)}
-                      placeholder="أضف ملاحظات حول الاستلام"
+                      placeholder={t('warehouse.production.addReceiptNotes')}
                       className="w-full min-h-[60px] p-2 border rounded-md"
                     />
                   </div>
                   <div className="flex space-x-2 space-x-reverse">
                     <Button onClick={handleReceiptSubmit} disabled={receiptMutation.isPending}>
-                      {receiptMutation.isPending ? "جاري الحفظ..." : "تأكيد الاستلام"}
+                      {receiptMutation.isPending ? t('warehouse.buttons.saving') : t('warehouse.production.confirmReceipt')}
                     </Button>
                     <Button variant="outline" onClick={() => { setReceiptDialogOpen(false); setSelectedReceiptOrderId(null); }}>
-                      إلغاء
+                      {t('warehouse.buttons.cancel')}
                     </Button>
                   </div>
                 </div>
@@ -1601,12 +1602,12 @@ function ProductionHallContent() {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="flex justify-center py-8">جاري التحميل...</div>
+          <div className="flex justify-center py-8">{t('warehouse.loading')}</div>
         ) : processedOrders.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <Factory className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-            <p>لا توجد مواد جاهزة للاستلام حالياً</p>
-            <p className="text-sm">ستظهر أوامر الإنتاج التي تم تقطيعها هنا</p>
+            <p>{t('warehouse.production.noMaterialsReady')}</p>
+            <p className="text-sm">{t('warehouse.production.cutOrdersWillAppear')}</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -1622,7 +1623,7 @@ function ProductionHallContent() {
                   }
                 }}
               />
-              <span className="text-sm text-gray-600">تحديد الكل ({allPoIds.length} أمر إنتاج)</span>
+              <span className="text-sm text-gray-600">{t('warehouse.production.selectAll')} ({allPoIds.length} {t('warehouse.production.productionOrders')})</span>
             </div>
 
             {groupedByOrder.map((group) => (
@@ -1630,7 +1631,7 @@ function ProductionHallContent() {
                 <div className="bg-gray-100 dark:bg-gray-800 px-4 py-3 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Hash className="h-4 w-4 text-gray-500" />
-                    <span className="font-bold text-sm">طلب: {group.order_number}</span>
+                    <span className="font-bold text-sm">{t('warehouse.production.order')}: {group.order_number}</span>
                     <span className="text-gray-500 text-sm">|</span>
                     <User className="h-4 w-4 text-gray-500" />
                     <span className="text-sm">{group.customer_name_ar || group.customer_name}</span>
@@ -1638,24 +1639,24 @@ function ProductionHallContent() {
                       <span className="text-xs text-gray-400">({group.customer_name})</span>
                     )}
                   </div>
-                  <Badge variant="outline">{group.items.length} أمر إنتاج</Badge>
+                  <Badge variant="outline">{group.items.length} {t('warehouse.production.productionOrders')}</Badge>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b bg-gray-50 dark:bg-gray-900">
                         <th className="text-right py-2 px-3 font-medium w-10"></th>
-                        <th className="text-right py-2 px-3 font-medium">أمر الإنتاج</th>
-                        <th className="text-right py-2 px-3 font-medium">الصنف</th>
-                        <th className="text-right py-2 px-3 font-medium">الكمية المطلوبة</th>
-                        <th className="text-right py-2 px-3 font-medium">الفيلم المنتج</th>
-                        <th className="text-right py-2 px-3 font-medium">الطباعة</th>
-                        <th className="text-right py-2 px-3 font-medium">الكمية المقطعة</th>
-                        <th className="text-right py-2 px-3 font-medium">المستلم</th>
-                        <th className="text-right py-2 px-3 font-medium">المتبقي</th>
-                        <th className="text-right py-2 px-3 font-medium">الهدر</th>
-                        <th className="text-right py-2 px-3 font-medium">الحالة</th>
-                        <th className="text-right py-2 px-3 font-medium w-20">استلام</th>
+                        <th className="text-right py-2 px-3 font-medium">{t('warehouse.production.productionOrder')}</th>
+                        <th className="text-right py-2 px-3 font-medium">{t('warehouse.labels.item')}</th>
+                        <th className="text-right py-2 px-3 font-medium">{t('warehouse.production.requiredQuantity')}</th>
+                        <th className="text-right py-2 px-3 font-medium">{t('warehouse.production.producedFilm')}</th>
+                        <th className="text-right py-2 px-3 font-medium">{t('warehouse.production.printing')}</th>
+                        <th className="text-right py-2 px-3 font-medium">{t('warehouse.production.cutQuantity')}</th>
+                        <th className="text-right py-2 px-3 font-medium">{t('warehouse.production.received')}</th>
+                        <th className="text-right py-2 px-3 font-medium">{t('warehouse.production.remaining')}</th>
+                        <th className="text-right py-2 px-3 font-medium">{t('warehouse.production.waste')}</th>
+                        <th className="text-right py-2 px-3 font-medium">{t('warehouse.production.status')}</th>
+                        <th className="text-right py-2 px-3 font-medium w-20">{t('warehouse.production.receive')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1716,12 +1717,12 @@ function ProductionHallContent() {
                             <td className="py-2 px-3">
                               {remaining > 0 ? (
                                 <Badge variant="outline" className="text-orange-600 border-orange-600">
-                                  جزئي
+                                  {t('warehouse.production.partial')}
                                 </Badge>
                               ) : (
                                 <Badge variant="outline" className="text-green-600 border-green-600">
                                   <CheckCircle className="h-3 w-3 ml-1" />
-                                  مكتمل
+                                  {t('warehouse.production.complete')}
                                 </Badge>
                               )}
                             </td>
@@ -1734,7 +1735,7 @@ function ProductionHallContent() {
                                   onClick={() => openReceiptForOrder(order.production_order_id.toString())}
                                 >
                                   <ArrowDownToLine className="h-3 w-3 ml-1" />
-                                  استلام
+                                  {t('warehouse.production.receive')}
                                 </Button>
                               )}
                             </td>
@@ -1755,6 +1756,7 @@ function ProductionHallContent() {
 
 // Received Quantities Component
 function ReceivedQuantitiesContent() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
@@ -1837,7 +1839,7 @@ function ReceivedQuantitiesContent() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
-            الكميات المستلمة
+            {t('warehouse.received.title')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -1846,7 +1848,7 @@ function ReceivedQuantitiesContent() {
             data-testid="loading-received-quantities"
           >
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            جاري التحميل...
+            {t('warehouse.loading')}
           </div>
         </CardContent>
       </Card>
@@ -1864,10 +1866,10 @@ function ReceivedQuantitiesContent() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Package className="h-5 w-5" />
-                الكميات المستلمة
+                {t('warehouse.received.title')}
               </CardTitle>
               <CardDescription>
-                عرض جميع الكميات المستلمة من صالة الإنتاج مجمعة بحسب رقم الطلب
+                {t('warehouse.received.description')}
               </CardDescription>
             </div>
           </div>
@@ -1879,7 +1881,7 @@ function ReceivedQuantitiesContent() {
               <div className="flex items-center gap-2">
                 <ShoppingCart className="h-4 w-4 text-blue-600" />
                 <span className="text-sm font-medium text-blue-600">
-                  إجمالي الطلبات
+                  {t('warehouse.received.totalOrders')}
                 </span>
               </div>
               <div className="text-2xl font-bold text-blue-700">
@@ -1890,18 +1892,18 @@ function ReceivedQuantitiesContent() {
               <div className="flex items-center gap-2">
                 <Scale className="h-4 w-4 text-green-600" />
                 <span className="text-sm font-medium text-green-600">
-                  إجمالي الوزن
+                  {t('warehouse.received.totalWeight')}
                 </span>
               </div>
               <div className="text-2xl font-bold text-green-700">
-                {stats.totalWeight.toFixed(2)} كيلو
+                {stats.totalWeight.toFixed(2)} {t('warehouse.units.kilo')}
               </div>
             </div>
             <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg">
               <div className="flex items-center gap-2">
                 <FileText className="h-4 w-4 text-orange-600" />
                 <span className="text-sm font-medium text-orange-600">
-                  إجمالي الإيصالات
+                  {t('warehouse.received.totalReceipts')}
                 </span>
               </div>
               <div className="text-2xl font-bold text-orange-700">
@@ -1912,14 +1914,14 @@ function ReceivedQuantitiesContent() {
               <div className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-purple-600" />
                 <span className="text-sm font-medium text-purple-600">
-                  متوسط الوزن/طلب
+                  {t('warehouse.received.avgWeightPerOrder')}
                 </span>
               </div>
               <div className="text-2xl font-bold text-purple-700">
                 {stats.totalOrders > 0
                   ? (stats.totalWeight / stats.totalOrders).toFixed(2)
                   : "0"}{" "}
-                كيلو
+                {t('warehouse.units.kilo')}
               </div>
             </div>
           </div>
@@ -1929,7 +1931,7 @@ function ReceivedQuantitiesContent() {
             <div className="relative flex-1">
               <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="البحث بالطلب أو العميل أو المنتج..."
+                placeholder={t('warehouse.received.searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pr-10"
@@ -1943,12 +1945,12 @@ function ReceivedQuantitiesContent() {
               }
             >
               <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="ترتيب حسب" />
+                <SelectValue placeholder={t('warehouse.received.sortBy')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="date">التاريخ (الأحدث أولاً)</SelectItem>
-                <SelectItem value="weight">الوزن (الأعلى أولاً)</SelectItem>
-                <SelectItem value="customer">اسم العميل (أ-ي)</SelectItem>
+                <SelectItem value="date">{t('warehouse.received.sortByDate')}</SelectItem>
+                <SelectItem value="weight">{t('warehouse.received.sortByWeight')}</SelectItem>
+                <SelectItem value="customer">{t('warehouse.received.sortByCustomer')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -1964,11 +1966,11 @@ function ReceivedQuantitiesContent() {
               data-testid="no-received-quantities"
             >
               <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p className="text-lg font-medium mb-2">لا توجد كميات مستلمة</p>
+              <p className="text-lg font-medium mb-2">{t('warehouse.received.noReceivedQuantities')}</p>
               <p className="text-sm">
                 {searchTerm
-                  ? "لا توجد نتائج مطابقة لبحثك"
-                  : "لا توجد كميات مستلمة حتى الآن"}
+                  ? t('warehouse.received.noMatchingResults')
+                  : t('warehouse.received.noReceivedYet')}
               </p>
             </div>
           </CardContent>
@@ -2005,13 +2007,13 @@ function ReceivedQuantitiesContent() {
                           variant="secondary"
                           className="bg-green-100 text-green-700"
                         >
-                          {order.receipts?.length || 0} إيصال
+                          {order.receipts?.length || 0} {t('warehouse.received.receipt')}
                         </Badge>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
-                          <p className="text-sm text-gray-500 mb-1">العميل</p>
+                          <p className="text-sm text-gray-500 mb-1">{t('warehouse.received.customer')}</p>
                           <p
                             className="font-medium"
                             data-testid={`customer-name-${order.order_number}`}
@@ -2021,7 +2023,7 @@ function ReceivedQuantitiesContent() {
                         </div>
 
                         <div>
-                          <p className="text-sm text-gray-500 mb-1">المنتج</p>
+                          <p className="text-sm text-gray-500 mb-1">{t('warehouse.received.product')}</p>
                           <p
                             className="font-medium"
                             data-testid={`item-name-${order.order_number}`}
@@ -2032,20 +2034,20 @@ function ReceivedQuantitiesContent() {
 
                         <div>
                           <p className="text-sm text-gray-500 mb-1">
-                            إجمالي الوزن
+                            {t('warehouse.received.totalWeight')}
                           </p>
                           <p
                             className="font-bold text-green-600 text-lg"
                             data-testid={`total-weight-${order.order_number}`}
                           >
                             {Number(order.total_received_weight).toFixed(2)}{" "}
-                            كيلو
+                            {t('warehouse.units.kilo')}
                           </p>
                         </div>
 
                         <div>
                           <p className="text-sm text-gray-500 mb-1">
-                            آخر استلام
+                            {t('warehouse.received.lastReceipt')}
                           </p>
                           <p className="text-sm">
                             {latestReceipt
@@ -2067,12 +2069,12 @@ function ReceivedQuantitiesContent() {
                           data-testid={`size-${order.order_number}`}
                         >
                           <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            مواصفات المنتج:
+                            {t('warehouse.received.productSpecs')}:
                           </p>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
                             {order.size_caption && (
                               <div>
-                                <span className="text-gray-500">المقاس:</span>
+                                <span className="text-gray-500">{t('warehouse.received.size')}:</span>
                                 <span className="mr-1 font-medium">
                                   {order.size_caption}
                                 </span>
@@ -2080,23 +2082,23 @@ function ReceivedQuantitiesContent() {
                             )}
                             {order.width && (
                               <div>
-                                <span className="text-gray-500">العرض:</span>
+                                <span className="text-gray-500">{t('warehouse.received.width')}:</span>
                                 <span className="mr-1 font-medium">
-                                  {order.width}م
+                                  {order.width}{t('warehouse.units.meter')}
                                 </span>
                               </div>
                             )}
                             {order.thickness && (
                               <div>
-                                <span className="text-gray-500">السماكة:</span>
+                                <span className="text-gray-500">{t('warehouse.received.thickness')}:</span>
                                 <span className="mr-1 font-medium">
-                                  {order.thickness}مم
+                                  {order.thickness}{t('warehouse.units.mm')}
                                 </span>
                               </div>
                             )}
                             {order.raw_material && (
                               <div>
-                                <span className="text-gray-500">المادة:</span>
+                                <span className="text-gray-500">{t('warehouse.received.material')}:</span>
                                 <span className="mr-1 font-medium">
                                   {order.raw_material}
                                 </span>
@@ -2117,12 +2119,12 @@ function ReceivedQuantitiesContent() {
                       {isExpanded ? (
                         <>
                           <ChevronUp className="h-4 w-4 mr-1" />
-                          إخفاء التفاصيل
+                          {t('warehouse.received.hideDetails')}
                         </>
                       ) : (
                         <>
                           <ChevronDown className="h-4 w-4 mr-1" />
-                          عرض التفاصيل
+                          {t('warehouse.received.showDetails')}
                         </>
                       )}
                     </Button>
@@ -2136,7 +2138,7 @@ function ReceivedQuantitiesContent() {
                     >
                       <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
                         <FileText className="h-4 w-4" />
-                        تفاصيل الإيصالات ({order.receipts.length})
+                        {t('warehouse.received.receiptDetails')} ({order.receipts.length})
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {order.receipts.map((receipt: any) => (
@@ -2146,7 +2148,7 @@ function ReceivedQuantitiesContent() {
                           >
                             <div className="flex items-center justify-between mb-3">
                               <Badge variant="outline" className="text-xs">
-                                إيصال #{receipt.receipt_id}
+                                {t('warehouse.received.receipt')} #{receipt.receipt_id}
                               </Badge>
                               <span className="text-xs text-gray-500">
                                 {new Date(
@@ -2158,18 +2160,18 @@ function ReceivedQuantitiesContent() {
                             <div className="space-y-2 text-sm">
                               <div className="flex items-center gap-2">
                                 <Scale className="h-3 w-3 text-green-600" />
-                                <span className="text-gray-600">الكمية:</span>
+                                <span className="text-gray-600">{t('warehouse.labels.quantity')}:</span>
                                 <span className="font-semibold text-green-600">
                                   {Number(receipt.received_weight_kg).toFixed(
                                     2,
                                   )}{" "}
-                                  كيلو
+                                  {t('warehouse.units.kilo')}
                                 </span>
                               </div>
 
                               <div className="flex items-center gap-2">
                                 <User className="h-3 w-3 text-blue-600" />
-                                <span className="text-gray-600">المستلم:</span>
+                                <span className="text-gray-600">{t('warehouse.received.receivedBy')}:</span>
                                 <span className="font-medium">
                                   {receipt.received_by_name}
                                 </span>
@@ -2179,7 +2181,7 @@ function ReceivedQuantitiesContent() {
                                 <div className="flex items-center gap-2">
                                   <Factory className="h-3 w-3 text-purple-600" />
                                   <span className="text-gray-600">
-                                    أمر الإنتاج:
+                                    {t('warehouse.production.productionOrder')}:
                                   </span>
                                   <span className="font-medium">
                                     {receipt.production_order_number}

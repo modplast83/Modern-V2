@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { useTranslation } from 'react-i18next';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -52,43 +53,21 @@ import {
 import { useToast } from "../../hooks/use-toast";
 import { Plus, Edit, Trash2, Building2, Package, Scale, Boxes } from "lucide-react";
 
-const supplierSchema = z.object({
-  name: z.string().min(1, "الاسم الإنجليزي مطلوب"),
-  name_ar: z.string().min(1, "الاسم العربي مطلوب"),
-  phone: z.string().optional(),
-  email: z.string().email().optional().or(z.literal("")),
-  address: z.string().optional(),
-  contact_person: z.string().optional(),
-});
-
-const itemSchema = z.object({
-  category_id: z.string().min(1, "المجموعة الرئيسية مطلوبة"),
-  code: z.string().min(1, "الكود مطلوب"),
-  name: z.string().min(1, "الاسم الإنجليزي مطلوب"),
-  name_ar: z.string().min(1, "الاسم العربي مطلوب"),
-  unit: z.string().default("كيلو"),
-  min_stock: z.string().optional(),
-  barcode: z.string().optional(),
-});
-
-const unitSchema = z.object({
-  name: z.string().min(1, "الاسم الإنجليزي مطلوب"),
-  name_ar: z.string().min(1, "الاسم العربي مطلوب"),
-  symbol: z.string().min(1, "الرمز مطلوب"),
-  conversion_factor: z.string().default("1"),
-});
-
-const categorySchema = z.object({
-  name: z.string().min(1, "الاسم الإنجليزي مطلوب"),
-  name_ar: z.string().min(1, "الاسم العربي مطلوب"),
-  type: z.enum(["raw_material", "finished_goods"]).default("raw_material"),
-});
-
 function SuppliersTab() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
+
+  const supplierSchema = z.object({
+    name: z.string().min(1, t('warehouse.validation.nameEnRequired')),
+    name_ar: z.string().min(1, t('warehouse.validation.nameArRequired')),
+    phone: z.string().optional(),
+    email: z.string().email().optional().or(z.literal("")),
+    address: z.string().optional(),
+    contact_person: z.string().optional(),
+  });
 
   const form = useForm({
     resolver: zodResolver(supplierSchema),
@@ -126,13 +105,13 @@ function SuppliersTab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/suppliers"] });
-      toast({ title: "تم الحفظ بنجاح" });
+      toast({ title: t('warehouse.toast.savedSuccess') });
       setIsOpen(false);
       setEditingItem(null);
       form.reset();
     },
     onError: () => {
-      toast({ title: "خطأ في الحفظ", variant: "destructive" });
+      toast({ title: t('warehouse.toast.saveError'), variant: "destructive" });
     },
   });
 
@@ -143,7 +122,7 @@ function SuppliersTab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/suppliers"] });
-      toast({ title: "تم الحذف بنجاح" });
+      toast({ title: t('warehouse.toast.deletedSuccess') });
     },
   });
 
@@ -172,19 +151,19 @@ function SuppliersTab() {
         <div className="flex justify-between items-center">
           <CardTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5" />
-            الموردين
+            {t('warehouse.definitions.suppliers')}
           </CardTitle>
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
               <Button onClick={handleAdd}>
                 <Plus className="h-4 w-4 ml-2" />
-                إضافة مورد
+                {t('warehouse.definitions.addSupplier')}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{editingItem ? "تعديل مورد" : "إضافة مورد جديد"}</DialogTitle>
-                <DialogDescription className="sr-only">نموذج إضافة أو تعديل بيانات المورد</DialogDescription>
+                <DialogTitle>{editingItem ? t('warehouse.definitions.editSupplier') : t('warehouse.definitions.addNewSupplier')}</DialogTitle>
+                <DialogDescription className="sr-only">{t('warehouse.definitions.supplierFormDesc')}</DialogDescription>
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
@@ -194,7 +173,7 @@ function SuppliersTab() {
                       name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>الاسم (إنجليزي)</FormLabel>
+                          <FormLabel>{t('warehouse.definitions.nameEn')}</FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
@@ -207,7 +186,7 @@ function SuppliersTab() {
                       name="name_ar"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>الاسم (عربي)</FormLabel>
+                          <FormLabel>{t('warehouse.definitions.nameAr')}</FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
@@ -222,7 +201,7 @@ function SuppliersTab() {
                       name="phone"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>الهاتف</FormLabel>
+                          <FormLabel>{t('warehouse.definitions.phone')}</FormLabel>
                           <FormControl>
                             <Input {...field} type="tel" dir="ltr" />
                           </FormControl>
@@ -234,7 +213,7 @@ function SuppliersTab() {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>البريد الإلكتروني</FormLabel>
+                          <FormLabel>{t('warehouse.definitions.email')}</FormLabel>
                           <FormControl>
                             <Input {...field} type="email" dir="ltr" />
                           </FormControl>
@@ -247,7 +226,7 @@ function SuppliersTab() {
                     name="contact_person"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>المسؤول</FormLabel>
+                        <FormLabel>{t('warehouse.definitions.contactPerson')}</FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
@@ -259,7 +238,7 @@ function SuppliersTab() {
                     name="address"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>العنوان</FormLabel>
+                        <FormLabel>{t('warehouse.definitions.address')}</FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
@@ -267,9 +246,9 @@ function SuppliersTab() {
                     )}
                   />
                   <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>إلغاء</Button>
+                    <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>{t('warehouse.buttons.cancel')}</Button>
                     <Button type="submit" disabled={mutation.isPending}>
-                      {mutation.isPending ? "جاري الحفظ..." : "حفظ"}
+                      {mutation.isPending ? t('warehouse.buttons.saving') : t('warehouse.buttons.save')}
                     </Button>
                   </div>
                 </form>
@@ -280,17 +259,17 @@ function SuppliersTab() {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="text-center py-4">جاري التحميل...</div>
+          <div className="text-center py-4">{t('warehouse.loading')}</div>
         ) : suppliers.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">لا يوجد موردين</div>
+          <div className="text-center py-8 text-gray-500">{t('warehouse.definitions.noSuppliers')}</div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-right">الاسم</TableHead>
-                <TableHead className="text-right">الهاتف</TableHead>
-                <TableHead className="text-right">المسؤول</TableHead>
-                <TableHead className="text-right">الإجراءات</TableHead>
+                <TableHead className="text-right">{t('warehouse.definitions.name')}</TableHead>
+                <TableHead className="text-right">{t('warehouse.definitions.phone')}</TableHead>
+                <TableHead className="text-right">{t('warehouse.definitions.contactPerson')}</TableHead>
+                <TableHead className="text-right">{t('warehouse.definitions.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -325,10 +304,21 @@ function SuppliersTab() {
 }
 
 function ItemsTab() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
+
+  const itemSchema = z.object({
+    category_id: z.string().min(1, t('warehouse.validation.mainCategoryRequired')),
+    code: z.string().min(1, t('warehouse.validation.codeRequired')),
+    name: z.string().min(1, t('warehouse.validation.nameEnRequired')),
+    name_ar: z.string().min(1, t('warehouse.validation.nameArRequired')),
+    unit: z.string().default("كيلو"),
+    min_stock: z.string().optional(),
+    barcode: z.string().optional(),
+  });
 
   const form = useForm({
     resolver: zodResolver(itemSchema),
@@ -352,7 +342,6 @@ function ItemsTab() {
     },
   });
 
-  // جلب المجموعات الرئيسية
   const { data: categories = [] } = useQuery({
     queryKey: ["/api/categories"],
     queryFn: async () => {
@@ -376,13 +365,13 @@ function ItemsTab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/items"] });
-      toast({ title: "تم الحفظ بنجاح" });
+      toast({ title: t('warehouse.toast.savedSuccess') });
       setIsOpen(false);
       setEditingItem(null);
       form.reset();
     },
     onError: () => {
-      toast({ title: "خطأ في الحفظ", variant: "destructive" });
+      toast({ title: t('warehouse.toast.saveError'), variant: "destructive" });
     },
   });
 
@@ -393,7 +382,7 @@ function ItemsTab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/items"] });
-      toast({ title: "تم الحذف بنجاح" });
+      toast({ title: t('warehouse.toast.deletedSuccess') });
     },
   });
 
@@ -423,33 +412,32 @@ function ItemsTab() {
         <div className="flex justify-between items-center">
           <CardTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
-            الأصناف
+            {t('warehouse.definitions.items')}
           </CardTitle>
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
               <Button onClick={handleAdd}>
                 <Plus className="h-4 w-4 ml-2" />
-                إضافة صنف
+                {t('warehouse.definitions.addItem')}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{editingItem ? "تعديل صنف" : "إضافة صنف جديد"}</DialogTitle>
-                <DialogDescription className="sr-only">نموذج إضافة أو تعديل بيانات الصنف</DialogDescription>
+                <DialogTitle>{editingItem ? t('warehouse.definitions.editItem') : t('warehouse.definitions.addNewItem')}</DialogTitle>
+                <DialogDescription className="sr-only">{t('warehouse.definitions.itemFormDesc')}</DialogDescription>
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
-                  {/* المجموعة الرئيسية أولاً */}
                   <FormField
                     control={form.control}
                     name="category_id"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>المجموعة الرئيسية *</FormLabel>
+                        <FormLabel>{t('warehouse.definitions.mainCategory')} *</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="اختر المجموعة الرئيسية" />
+                              <SelectValue placeholder={t('warehouse.definitions.selectMainCategory')} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -469,7 +457,7 @@ function ItemsTab() {
                     name="code"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>الكود</FormLabel>
+                        <FormLabel>{t('warehouse.definitions.code')}</FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
@@ -483,7 +471,7 @@ function ItemsTab() {
                       name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>الاسم (إنجليزي)</FormLabel>
+                          <FormLabel>{t('warehouse.definitions.nameEn')}</FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
@@ -496,7 +484,7 @@ function ItemsTab() {
                       name="name_ar"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>الاسم (عربي)</FormLabel>
+                          <FormLabel>{t('warehouse.definitions.nameAr')}</FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
@@ -511,7 +499,7 @@ function ItemsTab() {
                       name="unit"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>الوحدة</FormLabel>
+                          <FormLabel>{t('warehouse.labels.unit')}</FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
@@ -523,7 +511,7 @@ function ItemsTab() {
                       name="min_stock"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>الحد الأدنى</FormLabel>
+                          <FormLabel>{t('warehouse.definitions.minStock')}</FormLabel>
                           <FormControl>
                             <Input {...field} type="number" />
                           </FormControl>
@@ -536,7 +524,7 @@ function ItemsTab() {
                     name="barcode"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>الباركود</FormLabel>
+                        <FormLabel>{t('warehouse.labels.barcode')}</FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
@@ -544,9 +532,9 @@ function ItemsTab() {
                     )}
                   />
                   <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>إلغاء</Button>
+                    <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>{t('warehouse.buttons.cancel')}</Button>
                     <Button type="submit" disabled={mutation.isPending}>
-                      {mutation.isPending ? "جاري الحفظ..." : "حفظ"}
+                      {mutation.isPending ? t('warehouse.buttons.saving') : t('warehouse.buttons.save')}
                     </Button>
                   </div>
                 </form>
@@ -557,18 +545,18 @@ function ItemsTab() {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="text-center py-4">جاري التحميل...</div>
+          <div className="text-center py-4">{t('warehouse.loading')}</div>
         ) : items.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">لا يوجد أصناف</div>
+          <div className="text-center py-8 text-gray-500">{t('warehouse.definitions.noItems')}</div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-right">الكود</TableHead>
-                <TableHead className="text-right">الاسم</TableHead>
-                <TableHead className="text-right">الوحدة</TableHead>
-                <TableHead className="text-right">الباركود</TableHead>
-                <TableHead className="text-right">الإجراءات</TableHead>
+                <TableHead className="text-right">{t('warehouse.definitions.code')}</TableHead>
+                <TableHead className="text-right">{t('warehouse.definitions.name')}</TableHead>
+                <TableHead className="text-right">{t('warehouse.labels.unit')}</TableHead>
+                <TableHead className="text-right">{t('warehouse.labels.barcode')}</TableHead>
+                <TableHead className="text-right">{t('warehouse.definitions.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -600,7 +588,7 @@ function ItemsTab() {
         )}
         {items.length > 50 && (
           <p className="text-sm text-gray-500 mt-2 text-center">
-            يتم عرض أول 50 صنف من أصل {items.length}
+            {t('warehouse.definitions.showingFirst50', { total: items.length })}
           </p>
         )}
       </CardContent>
@@ -609,10 +597,18 @@ function ItemsTab() {
 }
 
 function UnitsTab() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
+
+  const unitSchema = z.object({
+    name: z.string().min(1, t('warehouse.validation.nameEnRequired')),
+    name_ar: z.string().min(1, t('warehouse.validation.nameArRequired')),
+    symbol: z.string().min(1, t('warehouse.validation.symbolRequired')),
+    conversion_factor: z.string().default("1"),
+  });
 
   const form = useForm({
     resolver: zodResolver(unitSchema),
@@ -647,13 +643,13 @@ function UnitsTab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/units"] });
-      toast({ title: "تم الحفظ بنجاح" });
+      toast({ title: t('warehouse.toast.savedSuccess') });
       setIsOpen(false);
       setEditingItem(null);
       form.reset();
     },
     onError: () => {
-      toast({ title: "خطأ في الحفظ", variant: "destructive" });
+      toast({ title: t('warehouse.toast.saveError'), variant: "destructive" });
     },
   });
 
@@ -664,7 +660,7 @@ function UnitsTab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/units"] });
-      toast({ title: "تم الحذف بنجاح" });
+      toast({ title: t('warehouse.toast.deletedSuccess') });
     },
   });
 
@@ -702,19 +698,19 @@ function UnitsTab() {
         <div className="flex justify-between items-center">
           <CardTitle className="flex items-center gap-2">
             <Scale className="h-5 w-5" />
-            الوحدات
+            {t('warehouse.definitions.units')}
           </CardTitle>
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
               <Button onClick={handleAdd}>
                 <Plus className="h-4 w-4 ml-2" />
-                إضافة وحدة
+                {t('warehouse.definitions.addUnit')}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{editingItem ? "تعديل وحدة" : "إضافة وحدة جديدة"}</DialogTitle>
-                <DialogDescription className="sr-only">نموذج إضافة أو تعديل وحدة القياس</DialogDescription>
+                <DialogTitle>{editingItem ? t('warehouse.definitions.editUnit') : t('warehouse.definitions.addNewUnit')}</DialogTitle>
+                <DialogDescription className="sr-only">{t('warehouse.definitions.unitFormDesc')}</DialogDescription>
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
@@ -724,7 +720,7 @@ function UnitsTab() {
                       name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>الاسم (إنجليزي)</FormLabel>
+                          <FormLabel>{t('warehouse.definitions.nameEn')}</FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
@@ -737,7 +733,7 @@ function UnitsTab() {
                       name="name_ar"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>الاسم (عربي)</FormLabel>
+                          <FormLabel>{t('warehouse.definitions.nameAr')}</FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
@@ -752,7 +748,7 @@ function UnitsTab() {
                       name="symbol"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>الرمز</FormLabel>
+                          <FormLabel>{t('warehouse.definitions.symbol')}</FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
@@ -765,7 +761,7 @@ function UnitsTab() {
                       name="conversion_factor"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>معامل التحويل</FormLabel>
+                          <FormLabel>{t('warehouse.definitions.conversionFactor')}</FormLabel>
                           <FormControl>
                             <Input {...field} type="number" step="0.001" />
                           </FormControl>
@@ -774,9 +770,9 @@ function UnitsTab() {
                     />
                   </div>
                   <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>إلغاء</Button>
+                    <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>{t('warehouse.buttons.cancel')}</Button>
                     <Button type="submit" disabled={mutation.isPending}>
-                      {mutation.isPending ? "جاري الحفظ..." : "حفظ"}
+                      {mutation.isPending ? t('warehouse.buttons.saving') : t('warehouse.buttons.save')}
                     </Button>
                   </div>
                 </form>
@@ -787,14 +783,14 @@ function UnitsTab() {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="text-center py-4">جاري التحميل...</div>
+          <div className="text-center py-4">{t('warehouse.loading')}</div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-right">الاسم</TableHead>
-                <TableHead className="text-right">الرمز</TableHead>
-                <TableHead className="text-right">الإجراءات</TableHead>
+                <TableHead className="text-right">{t('warehouse.definitions.name')}</TableHead>
+                <TableHead className="text-right">{t('warehouse.definitions.symbol')}</TableHead>
+                <TableHead className="text-right">{t('warehouse.definitions.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -832,10 +828,17 @@ function UnitsTab() {
 }
 
 function CategoriesTab() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
+
+  const categorySchema = z.object({
+    name: z.string().min(1, t('warehouse.validation.nameEnRequired')),
+    name_ar: z.string().min(1, t('warehouse.validation.nameArRequired')),
+    type: z.enum(["raw_material", "finished_goods"]).default("raw_material"),
+  });
 
   const form = useForm({
     resolver: zodResolver(categorySchema),
@@ -869,13 +872,13 @@ function CategoriesTab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/material-groups"] });
-      toast({ title: "تم الحفظ بنجاح" });
+      toast({ title: t('warehouse.toast.savedSuccess') });
       setIsOpen(false);
       setEditingItem(null);
       form.reset();
     },
     onError: () => {
-      toast({ title: "خطأ في الحفظ", variant: "destructive" });
+      toast({ title: t('warehouse.toast.saveError'), variant: "destructive" });
     },
   });
 
@@ -901,19 +904,19 @@ function CategoriesTab() {
         <div className="flex justify-between items-center">
           <CardTitle className="flex items-center gap-2">
             <Boxes className="h-5 w-5" />
-            مجموعات المواد
+            {t('warehouse.definitions.materialGroups')}
           </CardTitle>
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
               <Button onClick={handleAdd}>
                 <Plus className="h-4 w-4 ml-2" />
-                إضافة مجموعة
+                {t('warehouse.definitions.addGroup')}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{editingItem ? "تعديل مجموعة" : "إضافة مجموعة جديدة"}</DialogTitle>
-                <DialogDescription className="sr-only">نموذج إضافة أو تعديل مجموعة الأصناف</DialogDescription>
+                <DialogTitle>{editingItem ? t('warehouse.definitions.editGroup') : t('warehouse.definitions.addNewGroup')}</DialogTitle>
+                <DialogDescription className="sr-only">{t('warehouse.definitions.groupFormDesc')}</DialogDescription>
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
@@ -923,7 +926,7 @@ function CategoriesTab() {
                       name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>الاسم (إنجليزي)</FormLabel>
+                          <FormLabel>{t('warehouse.definitions.nameEn')}</FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
@@ -936,7 +939,7 @@ function CategoriesTab() {
                       name="name_ar"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>الاسم (عربي)</FormLabel>
+                          <FormLabel>{t('warehouse.definitions.nameAr')}</FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
@@ -946,9 +949,9 @@ function CategoriesTab() {
                     />
                   </div>
                   <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>إلغاء</Button>
+                    <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>{t('warehouse.buttons.cancel')}</Button>
                     <Button type="submit" disabled={mutation.isPending}>
-                      {mutation.isPending ? "جاري الحفظ..." : "حفظ"}
+                      {mutation.isPending ? t('warehouse.buttons.saving') : t('warehouse.buttons.save')}
                     </Button>
                   </div>
                 </form>
@@ -959,15 +962,15 @@ function CategoriesTab() {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="text-center py-4">جاري التحميل...</div>
+          <div className="text-center py-4">{t('warehouse.loading')}</div>
         ) : categories.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">لا يوجد مجموعات</div>
+          <div className="text-center py-8 text-gray-500">{t('warehouse.definitions.noGroups')}</div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-right">الاسم</TableHead>
-                <TableHead className="text-right">الإجراءات</TableHead>
+                <TableHead className="text-right">{t('warehouse.definitions.name')}</TableHead>
+                <TableHead className="text-right">{t('warehouse.definitions.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -990,25 +993,26 @@ function CategoriesTab() {
 }
 
 export function WarehouseDefinitions() {
+  const { t } = useTranslation();
   return (
     <div className="space-y-4">
       <Tabs defaultValue="suppliers" className="space-y-4">
         <TabsList className="grid grid-cols-4 w-full max-w-2xl">
           <TabsTrigger value="suppliers" className="flex items-center gap-1">
             <Building2 className="h-4 w-4" />
-            الموردين
+            {t('warehouse.definitions.suppliers')}
           </TabsTrigger>
           <TabsTrigger value="items" className="flex items-center gap-1">
             <Package className="h-4 w-4" />
-            الأصناف
+            {t('warehouse.definitions.items')}
           </TabsTrigger>
           <TabsTrigger value="units" className="flex items-center gap-1">
             <Scale className="h-4 w-4" />
-            الوحدات
+            {t('warehouse.definitions.units')}
           </TabsTrigger>
           <TabsTrigger value="categories" className="flex items-center gap-1">
             <Boxes className="h-4 w-4" />
-            المجموعات
+            {t('warehouse.definitions.groups')}
           </TabsTrigger>
         </TabsList>
 

@@ -57,14 +57,14 @@ export default function FaceVerification({
     } catch (err: any) {
       console.error("Camera error:", err);
       if (err.name === "NotAllowedError") {
-        setErrorMessage("يرجى السماح بالوصول إلى الكاميرا من إعدادات المتصفح");
+        setErrorMessage(t('dashboard.face.cameraPermission'));
       } else if (err.name === "NotFoundError") {
-        setErrorMessage("لم يتم العثور على كاميرا متصلة بالجهاز");
+        setErrorMessage(t('dashboard.face.noCamera'));
       } else {
-        setErrorMessage("حدث خطأ أثناء تشغيل الكاميرا");
+        setErrorMessage(t('dashboard.face.cameraError'));
       }
     }
-  }, []);
+  }, [t]);
 
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
@@ -108,7 +108,7 @@ export default function FaceVerification({
       
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || "فشل التحقق من الوجه");
+        throw new Error(error.message || t('dashboard.face.verifyFailed'));
       }
       
       return response.json();
@@ -116,14 +116,14 @@ export default function FaceVerification({
     onSuccess: (data) => {
       if (data.verified) {
         setVerificationStatus("success");
-        toast({ title: "تم التحقق بنجاح", description: "تم التعرف على وجهك بنجاح" });
+        toast({ title: t('dashboard.face.verifySuccess'), description: t('dashboard.face.verifySuccessDesc') });
         setTimeout(() => {
           handleClose();
           onVerificationSuccess();
         }, 1500);
       } else {
         setVerificationStatus("failed");
-        setErrorMessage(data.message || "لم يتم التعرف على الوجه");
+        setErrorMessage(data.message || t('dashboard.face.faceNotRecognized'));
       }
     },
     onError: (error: Error) => {
@@ -145,14 +145,14 @@ export default function FaceVerification({
       
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || "فشل تسجيل الوجه");
+        throw new Error(error.message || t('dashboard.face.registerFailed'));
       }
       
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/face-verification/status", userId] });
-      toast({ title: "تم التسجيل بنجاح", description: "تم حفظ بصمة وجهك بنجاح" });
+      toast({ title: t('dashboard.face.registerSuccess'), description: t('dashboard.face.registerSuccessDesc') });
       setVerificationStatus("success");
       setTimeout(() => {
         handleClose();
@@ -220,11 +220,11 @@ export default function FaceVerification({
     };
   }, [stopCamera]);
 
-  const actionLabels = {
-    check_in: "تسجيل الحضور",
-    check_out: "تسجيل الانصراف",
-    break_start: "بدء الاستراحة",
-    break_end: "إنهاء الاستراحة",
+  const actionLabels: Record<string, string> = {
+    check_in: t('dashboard.face.checkIn'),
+    check_out: t('dashboard.face.checkOut'),
+    break_start: t('dashboard.face.breakStart'),
+    break_end: t('dashboard.face.breakEnd'),
   };
 
   return (
@@ -236,7 +236,7 @@ export default function FaceVerification({
       >
         <Camera className="h-4 w-4" />
         <Shield className="h-4 w-4" />
-        التحقق بالوجه
+        {t('dashboard.face.title')}
       </Button>
 
       <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
@@ -244,12 +244,12 @@ export default function FaceVerification({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Camera className="h-5 w-5" />
-              التحقق من الهوية - {actionLabels[actionType]}
+              {t('dashboard.face.verifyIdentity')} - {actionLabels[actionType]}
             </DialogTitle>
             <DialogDescription>
               {hasRegisteredFace?.hasRegisteredFace 
-                ? "يرجى النظر إلى الكاميرا للتحقق من هويتك"
-                : "سيتم تسجيل بصمة وجهك لأول مرة"}
+                ? t('dashboard.face.lookAtCamera')
+                : t('dashboard.face.firstTimeRegistration')}
             </DialogDescription>
           </DialogHeader>
 
@@ -286,7 +286,7 @@ export default function FaceVerification({
                 <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                   <div className="flex flex-col items-center gap-2">
                     <RefreshCw className="h-8 w-8 text-white animate-spin" />
-                    <span className="text-white text-sm">جاري التحقق...</span>
+                    <span className="text-white text-sm">{t('dashboard.face.verifying')}</span>
                   </div>
                 </div>
               )}
@@ -295,7 +295,7 @@ export default function FaceVerification({
                 <div className="absolute inset-0 flex items-center justify-center bg-green-500/70">
                   <div className="flex flex-col items-center gap-2">
                     <CheckCircle className="h-12 w-12 text-white" />
-                    <span className="text-white font-semibold">تم التحقق بنجاح</span>
+                    <span className="text-white font-semibold">{t('dashboard.face.verified')}</span>
                   </div>
                 </div>
               )}
@@ -304,7 +304,7 @@ export default function FaceVerification({
                 <div className="absolute inset-0 flex items-center justify-center bg-red-500/70">
                   <div className="flex flex-col items-center gap-2">
                     <XCircle className="h-12 w-12 text-white" />
-                    <span className="text-white font-semibold">فشل التحقق</span>
+                    <span className="text-white font-semibold">{t('dashboard.face.failed')}</span>
                   </div>
                 </div>
               )}
@@ -317,9 +317,9 @@ export default function FaceVerification({
 
               <div className="absolute bottom-2 right-2">
                 {hasRegisteredFace?.hasRegisteredFace ? (
-                  <Badge className="bg-green-500">وجه مسجل</Badge>
+                  <Badge className="bg-green-500">{t('dashboard.face.registeredFace')}</Badge>
                 ) : (
-                  <Badge variant="secondary">تسجيل جديد</Badge>
+                  <Badge variant="secondary">{t('dashboard.face.newRegistration')}</Badge>
                 )}
               </div>
             </div>
@@ -328,7 +328,7 @@ export default function FaceVerification({
               {verificationStatus === "idle" && isCameraActive && (
                 <>
                   <User className="h-4 w-4 inline ml-1" />
-                  تأكد من وضوح وجهك في الكاميرا
+                  {t('dashboard.face.clearFace')}
                 </>
               )}
             </div>
@@ -338,19 +338,19 @@ export default function FaceVerification({
             {verificationStatus === "idle" && isCameraActive && (
               <Button onClick={startCountdownCapture} className="w-full">
                 <Camera className="h-4 w-4 ml-2" />
-                التقاط صورة
+                {t('dashboard.face.capture')}
               </Button>
             )}
             
             {verificationStatus === "failed" && (
               <Button onClick={handleRetry} variant="outline" className="w-full">
                 <RefreshCw className="h-4 w-4 ml-2" />
-                إعادة المحاولة
+                {t('dashboard.face.retry')}
               </Button>
             )}
             
             <Button onClick={handleClose} variant="ghost" className="w-full">
-              إلغاء
+              {t('dashboard.face.cancel')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -132,7 +132,7 @@ export default function Settings() {
     tableCount: 8,
     totalRecords: 1247,
     databaseSize: "45.2 MB",
-    lastBackup: "اليوم",
+    lastBackup: t('settings.system.today'),
   });
 
   // System settings state
@@ -1062,13 +1062,13 @@ export default function Settings() {
               {canAccessSettingsTab(user, 'notification-events') && (
               <TabsTrigger value="notification-events" className="flex items-center gap-2">
                 <Bell className="w-4 h-4" />
-                أحداث الإشعارات
+                {t('settings.tabs.notificationEvents')}
               </TabsTrigger>
               )}
               {canAccessSettingsTab(user, 'sms') && (
               <TabsTrigger value="sms" className="flex items-center gap-2">
                 <Smartphone className="w-4 h-4" />
-                {t('settings.tabs.sms', 'الرسائل النصية')}
+                {t('settings.tabs.sms')}
               </TabsTrigger>
               )}
             </TabsList>

@@ -62,10 +62,10 @@ const CuttingMachineIcon = ({ className }: { className?: string }) => (
 
 const SECTION_IDS: SectionId[] = ["SEC03", "SEC04", "SEC05"];
 
-const SECTION_POSITIONS: Record<SectionId, { x: number; y: number; width: number; height: number; label: string }> = {
-  SEC03: { x: 30, y: 80, width: 380, height: 320, label: "قسم الفيلم" },
-  SEC04: { x: 430, y: 80, width: 380, height: 320, label: "قسم الطباعة" },
-  SEC05: { x: 830, y: 80, width: 380, height: 320, label: "قسم القص" },
+const SECTION_POSITIONS: Record<SectionId, { x: number; y: number; width: number; height: number; labelKey: string }> = {
+  SEC03: { x: 30, y: 80, width: 380, height: 320, labelKey: "factory.sections.film" },
+  SEC04: { x: 430, y: 80, width: 380, height: 320, labelKey: "factory.sections.printing" },
+  SEC05: { x: 830, y: 80, width: 380, height: 320, labelKey: "factory.sections.cutting" },
 };
 
 function isSectionId(id?: string): id is SectionId {
@@ -348,7 +348,7 @@ export default function FactoryFloorMap() {
                         className="fill-slate-600 dark:fill-slate-300"
                         style={{ fontSize: "14px", fontWeight: 600 }}
                       >
-                        {section?.name_ar || pos.label}
+                        {section?.name_ar || t(pos.labelKey)}
                       </text>
 
                       {sectionMachines.map((machine, idx) => (
@@ -426,7 +426,7 @@ export default function FactoryFloorMap() {
                     <div className="text-sm text-muted-foreground">{selectedMachine.name}</div>
                   </div>
                 </DialogTitle>
-                <DialogDescription className="sr-only">عرض تفاصيل ومعلومات الماكينة</DialogDescription>
+                <DialogDescription className="sr-only">{t("factory.machineDetails")}</DialogDescription>
               </DialogHeader>
 
               <div className="space-y-4 mt-4">

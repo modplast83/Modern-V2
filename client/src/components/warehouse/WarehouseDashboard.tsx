@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from 'react-i18next';
 import {
   Card,
   CardContent,
@@ -14,6 +15,7 @@ import {
 } from "lucide-react";
 
 export function WarehouseDashboard() {
+  const { t } = useTranslation();
   const { data: stats } = useQuery({
     queryKey: ["/api/warehouse/vouchers/stats"],
     queryFn: async () => {
@@ -34,42 +36,42 @@ export function WarehouseDashboard() {
 
   const cards = [
     {
-      title: "سندات إدخال مواد خام",
+      title: t('warehouse.dashboard.rawMaterialInVouchers'),
       value: stats?.raw_material_in || 0,
       icon: ArrowDownToLine,
       color: "text-green-600",
       bgColor: "bg-green-50",
     },
     {
-      title: "سندات إخراج مواد خام",
+      title: t('warehouse.dashboard.rawMaterialOutVouchers'),
       value: stats?.raw_material_out || 0,
       icon: ArrowUpFromLine,
       color: "text-red-600",
       bgColor: "bg-red-50",
     },
     {
-      title: "سندات استلام مواد تامة",
+      title: t('warehouse.dashboard.finishedGoodsInVouchers'),
       value: stats?.finished_goods_in || 0,
       icon: Package,
       color: "text-blue-600",
       bgColor: "bg-blue-50",
     },
     {
-      title: "سندات إخراج مواد تامة",
+      title: t('warehouse.dashboard.finishedGoodsOutVouchers'),
       value: stats?.finished_goods_out || 0,
       icon: Boxes,
       color: "text-orange-600",
       bgColor: "bg-orange-50",
     },
     {
-      title: "إجمالي الأصناف",
+      title: t('warehouse.dashboard.totalItems'),
       value: inventoryStats?.totalItems || 0,
       icon: Package,
       color: "text-purple-600",
       bgColor: "bg-purple-50",
     },
     {
-      title: "أصناف منخفضة",
+      title: t('warehouse.dashboard.lowStockItems'),
       value: inventoryStats?.lowStockItems || 0,
       icon: ClipboardCheck,
       color: "text-yellow-600",

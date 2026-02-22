@@ -140,8 +140,8 @@ export default function AttendanceReports() {
   const formatMinutes = (minutes: number) => {
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
-    if (h === 0) return `${m} د`;
-    return `${h} س ${m} د`;
+    if (h === 0) return `${m} ${t("hr.reports.minuteShort")}`;
+    return `${h} ${t("hr.reports.hourShort")} ${m} ${t("hr.reports.minuteShort")}`;
   };
 
   const { data: employeeReportData, isLoading: isLoadingEmployeeReport } = useQuery<{ success: boolean; report: EmployeeReportData }>({
@@ -160,7 +160,7 @@ export default function AttendanceReports() {
       const response = await fetch(
         `/api/attendance/report/${selectedEmployee.user_id}/export?startDate=${format(startDate, "yyyy-MM-dd")}&endDate=${format(endDate, "yyyy-MM-dd")}`
       );
-      if (!response.ok) throw new Error("خطأ في التصدير");
+      if (!response.ok) throw new Error(t("hr.reports.exportError"));
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -170,9 +170,9 @@ export default function AttendanceReports() {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      toast({ title: "تم تصدير التقرير بنجاح" });
+      toast({ title: t("hr.reports.exportSuccess") });
     } catch (err) {
-      toast({ title: "خطأ في تصدير التقرير", variant: "destructive" });
+      toast({ title: t("hr.reports.exportError"), variant: "destructive" });
     }
   };
 
@@ -184,7 +184,7 @@ export default function AttendanceReports() {
         printWindow.document.write(`
           <html dir="rtl">
             <head>
-              <title>تقرير حضور موظف</title>
+              <title>${t("hr.reports.employeeReport")}</title>
               <style>
                 body { font-family: Arial, sans-serif; padding: 20px; direction: rtl; }
                 table { width: 100%; border-collapse: collapse; margin-top: 20px; }
@@ -207,10 +207,10 @@ export default function AttendanceReports() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "حاضر": return <Badge className="bg-green-100 text-green-800">حاضر</Badge>;
-      case "غائب": return <Badge className="bg-red-100 text-red-800">غائب</Badge>;
-      case "إجازة": return <Badge className="bg-blue-100 text-blue-800">إجازة</Badge>;
-      case "مغادر": return <Badge className="bg-yellow-100 text-yellow-800">مغادر</Badge>;
+      case "حاضر": return <Badge className="bg-green-100 text-green-800">{t("hr.reports.statusPresent")}</Badge>;
+      case "غائب": return <Badge className="bg-red-100 text-red-800">{t("hr.reports.statusAbsent")}</Badge>;
+      case "إجازة": return <Badge className="bg-blue-100 text-blue-800">{t("hr.reports.statusLeave")}</Badge>;
+      case "مغادر": return <Badge className="bg-yellow-100 text-yellow-800">{t("hr.reports.statusLeft")}</Badge>;
       default: return <Badge variant="outline">{status}</Badge>;
     }
   };
@@ -225,22 +225,22 @@ export default function AttendanceReports() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
-                تقارير الحضور والانصراف
+                {t("hr.reports.title")}
               </CardTitle>
               <CardDescription>
-                تقرير شامل لحضور وانصراف الموظفين مع ساعات العمل والإضافي
+                {t("hr.reports.description")}
               </CardDescription>
             </div>
             
             <div className="flex items-center gap-2 flex-wrap">
               <Select value={selectedPeriod} onValueChange={handlePeriodChange}>
                 <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="الفترة" />
+                  <SelectValue placeholder={t("hr.reports.period")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="week">هذا الأسبوع</SelectItem>
-                  <SelectItem value="month">هذا الشهر</SelectItem>
-                  <SelectItem value="custom">فترة مخصصة</SelectItem>
+                  <SelectItem value="week">{t("hr.reports.thisWeek")}</SelectItem>
+                  <SelectItem value="month">{t("hr.reports.thisMonth")}</SelectItem>
+                  <SelectItem value="custom">{t("hr.reports.customPeriod")}</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -250,7 +250,7 @@ export default function AttendanceReports() {
                     <PopoverTrigger asChild>
                       <Button variant="outline" size="sm">
                         <CalendarIcon className="h-4 w-4 ml-2" />
-                        من: {format(startDate, "dd/MM/yyyy")}
+                        {t("hr.reports.from")}: {format(startDate, "dd/MM/yyyy")}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
@@ -267,7 +267,7 @@ export default function AttendanceReports() {
                     <PopoverTrigger asChild>
                       <Button variant="outline" size="sm">
                         <CalendarIcon className="h-4 w-4 ml-2" />
-                        إلى: {format(endDate, "dd/MM/yyyy")}
+                        {t("hr.reports.to")}: {format(endDate, "dd/MM/yyyy")}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
@@ -292,35 +292,35 @@ export default function AttendanceReports() {
               <div className="text-2xl font-bold text-green-700 dark:text-green-400">
                 {dailyStats?.data?.present || 0}
               </div>
-              <div className="text-xs text-green-600">حاضرون اليوم</div>
+              <div className="text-xs text-green-600">{t("hr.reports.presentToday")}</div>
             </div>
             <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg p-3 text-center">
               <XCircle className="h-5 w-5 text-red-600 mx-auto mb-1" />
               <div className="text-2xl font-bold text-red-700 dark:text-red-400">
                 {dailyStats?.data?.absent || 0}
               </div>
-              <div className="text-xs text-red-600">غائبون اليوم</div>
+              <div className="text-xs text-red-600">{t("hr.reports.absentToday")}</div>
             </div>
             <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 text-center">
               <AlertTriangle className="h-5 w-5 text-yellow-600 mx-auto mb-1" />
               <div className="text-2xl font-bold text-yellow-700 dark:text-yellow-400">
                 {dailyStats?.data?.late || 0}
               </div>
-              <div className="text-xs text-yellow-600">متأخرون اليوم</div>
+              <div className="text-xs text-yellow-600">{t("hr.reports.lateToday")}</div>
             </div>
             <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-center">
               <Clock className="h-5 w-5 text-blue-600 mx-auto mb-1" />
               <div className="text-2xl font-bold text-blue-700 dark:text-blue-400">
                 {formatHours(totals.workHours)}
               </div>
-              <div className="text-xs text-blue-600">إجمالي ساعات العمل</div>
+              <div className="text-xs text-blue-600">{t("hr.reports.totalWorkHours")}</div>
             </div>
             <div className="bg-purple-50 dark:bg-purple-950 border border-purple-200 dark:border-purple-800 rounded-lg p-3 text-center">
               <TrendingUp className="h-5 w-5 text-purple-600 mx-auto mb-1" />
               <div className="text-2xl font-bold text-purple-700 dark:text-purple-400">
                 {formatHours(totals.overtimeHours)}
               </div>
-              <div className="text-xs text-purple-600">إجمالي الإضافي</div>
+              <div className="text-xs text-purple-600">{t("hr.reports.totalOvertime")}</div>
             </div>
           </div>
 
@@ -328,7 +328,7 @@ export default function AttendanceReports() {
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="بحث بالاسم أو الوظيفة..."
+                placeholder={t("hr.reports.searchPlaceholder")}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pr-10"
@@ -336,7 +336,7 @@ export default function AttendanceReports() {
             </div>
             
             <div className="text-sm text-gray-500">
-              الفترة: {format(startDate, "dd/MM/yyyy")} - {format(endDate, "dd/MM/yyyy")}
+              {t("hr.reports.periodLabel")}: {format(startDate, "dd/MM/yyyy")} - {format(endDate, "dd/MM/yyyy")}
             </div>
           </div>
 
@@ -345,46 +345,46 @@ export default function AttendanceReports() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-gray-50 dark:bg-gray-800">
-                    <TableHead className="text-right min-w-[150px]">الموظف</TableHead>
-                    <TableHead className="text-right min-w-[100px]">الوظيفة</TableHead>
+                    <TableHead className="text-right min-w-[150px]">{t("hr.reports.employee")}</TableHead>
+                    <TableHead className="text-right min-w-[100px]">{t("hr.reports.jobTitle")}</TableHead>
                     <TableHead className="text-center min-w-[80px]">
                       <div className="flex flex-col items-center">
                         <CheckCircle className="h-3 w-3 text-green-600" />
-                        <span>حضور</span>
+                        <span>{t("hr.reports.attendance")}</span>
                       </div>
                     </TableHead>
                     <TableHead className="text-center min-w-[80px]">
                       <div className="flex flex-col items-center">
                         <XCircle className="h-3 w-3 text-red-600" />
-                        <span>غياب</span>
+                        <span>{t("hr.reports.absence")}</span>
                       </div>
                     </TableHead>
                     <TableHead className="text-center min-w-[80px]">
                       <div className="flex flex-col items-center">
                         <AlertTriangle className="h-3 w-3 text-yellow-600" />
-                        <span>تأخير</span>
+                        <span>{t("hr.reports.tardiness")}</span>
                       </div>
                     </TableHead>
                     <TableHead className="text-center min-w-[100px]">
                       <div className="flex flex-col items-center">
                         <Clock className="h-3 w-3 text-blue-600" />
-                        <span>ساعات العمل</span>
+                        <span>{t("hr.reports.workHoursCol")}</span>
                       </div>
                     </TableHead>
                     <TableHead className="text-center min-w-[100px]">
                       <div className="flex flex-col items-center">
                         <TrendingUp className="h-3 w-3 text-purple-600" />
-                        <span>الإضافي</span>
+                        <span>{t("hr.reports.overtimeCol")}</span>
                       </div>
                     </TableHead>
                     <TableHead className="text-center min-w-[100px]">
                       <div className="flex flex-col items-center">
                         <Timer className="h-3 w-3 text-orange-600" />
-                        <span>دقائق التأخير</span>
+                        <span>{t("hr.reports.lateMinutes")}</span>
                       </div>
                     </TableHead>
                     <TableHead className="text-center min-w-[100px]">
-                      <span>إجراءات</span>
+                      <span>{t("hr.reports.actions")}</span>
                     </TableHead>
                   </TableRow>
                 </TableHeader>
@@ -392,13 +392,13 @@ export default function AttendanceReports() {
                   {isLoading ? (
                     <TableRow>
                       <TableCell colSpan={9} className="text-center py-8">
-                        جاري التحميل...
+                        {t("common.loading")}
                       </TableCell>
                     </TableRow>
                   ) : filteredData.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={9} className="text-center py-8 text-gray-500">
-                        لا توجد بيانات للفترة المحددة
+                        {t("hr.reports.noDataForPeriod")}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -420,17 +420,17 @@ export default function AttendanceReports() {
                           </TableCell>
                           <TableCell className="text-center">
                             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                              {presentDays} يوم
+                              {presentDays} {t("hr.reports.day")}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-center">
                             <Badge variant="outline" className={`${absentDays > 0 ? 'bg-red-50 text-red-700 border-red-200' : 'bg-gray-50 text-gray-600'}`}>
-                              {absentDays} يوم
+                              {absentDays} {t("hr.reports.day")}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-center">
                             <Badge variant="outline" className={`${lateDays > 0 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-gray-50 text-gray-600'}`}>
-                              {lateDays} يوم
+                              {lateDays} {t("hr.reports.day")}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-center font-mono">
@@ -452,10 +452,10 @@ export default function AttendanceReports() {
                               size="sm"
                               onClick={() => handleViewReport(employee)}
                               className="h-7 px-2"
-                              title="عرض تقرير مفصل"
+                              title={t("hr.reports.viewDetailedReport")}
                             >
                               <Eye className="h-3 w-3 ml-1" />
-                              تقرير
+                              {t("hr.reports.report")}
                             </Button>
                           </TableCell>
                         </TableRow>
@@ -470,14 +470,14 @@ export default function AttendanceReports() {
           <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
             <div className="flex flex-wrap justify-between items-center gap-4 text-sm">
               <div className="flex items-center gap-4">
-                <span className="font-semibold">إجمالي الفترة:</span>
-                <span className="text-green-600">حضور: {totals.presentDays} يوم</span>
-                <span className="text-red-600">غياب: {totals.absentDays} يوم</span>
-                <span className="text-yellow-600">تأخير: {totals.lateDays} يوم</span>
+                <span className="font-semibold">{t("hr.reports.periodTotal")}:</span>
+                <span className="text-green-600">{t("hr.reports.attendance")}: {totals.presentDays} {t("hr.reports.day")}</span>
+                <span className="text-red-600">{t("hr.reports.absence")}: {totals.absentDays} {t("hr.reports.day")}</span>
+                <span className="text-yellow-600">{t("hr.reports.tardiness")}: {totals.lateDays} {t("hr.reports.day")}</span>
               </div>
               <div className="flex items-center gap-4">
-                <span className="text-blue-600">ساعات العمل: {formatHours(totals.workHours)}</span>
-                <span className="text-purple-600">الإضافي: {formatHours(totals.overtimeHours)}</span>
+                <span className="text-blue-600">{t("hr.reports.workHoursCol")}: {formatHours(totals.workHours)}</span>
+                <span className="text-purple-600">{t("hr.reports.overtimeCol")}: {formatHours(totals.overtimeHours)}</span>
               </div>
             </div>
           </div>
@@ -489,23 +489,23 @@ export default function AttendanceReports() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              تقرير حضور موظف مفصل
+              {t("hr.reports.detailedEmployeeReport")}
             </DialogTitle>
-            <DialogDescription className="sr-only">عرض تقرير الحضور والانصراف المفصل للموظف</DialogDescription>
+            <DialogDescription className="sr-only">{t("hr.reports.detailedReportDesc")}</DialogDescription>
           </DialogHeader>
           
           {isLoadingEmployeeReport ? (
-            <div className="text-center py-8">جاري تحميل التقرير...</div>
+            <div className="text-center py-8">{t("hr.reports.loadingReport")}</div>
           ) : report ? (
             <div className="space-y-4">
               <div className="flex justify-end gap-2">
                 <Button variant="outline" size="sm" onClick={handlePrintReport}>
                   <Printer className="h-4 w-4 ml-2" />
-                  طباعة
+                  {t("hr.reports.print")}
                 </Button>
                 <Button variant="outline" size="sm" onClick={handleExportEmployeeReport}>
                   <Download className="h-4 w-4 ml-2" />
-                  تصدير Excel
+                  {t("hr.reports.exportExcel")}
                 </Button>
               </div>
 
@@ -521,30 +521,30 @@ export default function AttendanceReports() {
                   </div>
 
                   <Separator className="my-4" />
-                  <h2 className="text-xl font-semibold text-center mb-4">تقرير حضور موظف</h2>
+                  <h2 className="text-xl font-semibold text-center mb-4">{t("hr.reports.employeeAttendanceReport")}</h2>
 
                   <div className="grid grid-cols-2 gap-6 mb-6">
                     <div className="bg-gray-50 rounded-lg p-4">
                       <div className="flex items-center gap-2 mb-3">
                         <User className="h-5 w-5 text-primary" />
-                        <span className="font-semibold">بيانات الموظف</span>
+                        <span className="font-semibold">{t("hr.reports.employeeData")}</span>
                       </div>
                       <div className="space-y-1 text-sm">
-                        <p><strong>الاسم:</strong> {report.employee.name}</p>
-                        <p><strong>رقم الموظف:</strong> {report.employee.employeeNumber}</p>
-                        <p><strong>القسم:</strong> {report.employee.department}</p>
-                        <p><strong>المنصب:</strong> {report.employee.position}</p>
+                        <p><strong>{t("hr.reports.name")}:</strong> {report.employee.name}</p>
+                        <p><strong>{t("hr.reports.employeeNumber")}:</strong> {report.employee.employeeNumber}</p>
+                        <p><strong>{t("hr.reports.department")}:</strong> {report.employee.department}</p>
+                        <p><strong>{t("hr.reports.position")}:</strong> {report.employee.position}</p>
                       </div>
                     </div>
                     <div className="bg-gray-50 rounded-lg p-4">
                       <div className="flex items-center gap-2 mb-3">
                         <CalendarIcon className="h-5 w-5 text-primary" />
-                        <span className="font-semibold">الفترة الزمنية</span>
+                        <span className="font-semibold">{t("hr.reports.timePeriod")}</span>
                       </div>
                       <div className="space-y-1 text-sm">
-                        <p><strong>من:</strong> {report.period.startDate}</p>
-                        <p><strong>إلى:</strong> {report.period.endDate}</p>
-                        <p><strong>إجمالي الأيام:</strong> {report.period.totalDays}</p>
+                        <p><strong>{t("hr.reports.from")}:</strong> {report.period.startDate}</p>
+                        <p><strong>{t("hr.reports.to")}:</strong> {report.period.endDate}</p>
+                        <p><strong>{t("hr.reports.totalDays")}:</strong> {report.period.totalDays}</p>
                       </div>
                     </div>
                   </div>
@@ -552,45 +552,45 @@ export default function AttendanceReports() {
                   <div className="summary grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                     <div className="summary-item p-3 bg-green-50 rounded-lg text-center">
                       <p className="text-2xl font-bold text-green-600">{report.summary.presentDays}</p>
-                      <p className="text-sm text-gray-600">أيام الحضور</p>
+                      <p className="text-sm text-gray-600">{t("hr.reports.presentDays")}</p>
                     </div>
                     <div className="summary-item p-3 bg-red-50 rounded-lg text-center">
                       <p className="text-2xl font-bold text-red-600">{report.summary.absentDays}</p>
-                      <p className="text-sm text-gray-600">أيام الغياب</p>
+                      <p className="text-sm text-gray-600">{t("hr.reports.absentDays")}</p>
                     </div>
                     <div className="summary-item p-3 bg-blue-50 rounded-lg text-center">
                       <p className="text-2xl font-bold text-blue-600">{report.summary.leaveDays}</p>
-                      <p className="text-sm text-gray-600">أيام الإجازة</p>
+                      <p className="text-sm text-gray-600">{t("hr.reports.leaveDays")}</p>
                     </div>
                     <div className="summary-item p-3 bg-purple-50 rounded-lg text-center">
                       <p className="text-2xl font-bold text-purple-600">{report.summary.attendanceRate}%</p>
-                      <p className="text-sm text-gray-600">نسبة الحضور</p>
+                      <p className="text-sm text-gray-600">{t("hr.reports.attendanceRate")}</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 mb-6">
                     <div className="p-3 bg-gray-100 rounded-lg text-center">
                       <p className="text-xl font-bold">{report.summary.totalWorkHours}</p>
-                      <p className="text-sm text-gray-600">إجمالي ساعات العمل</p>
+                      <p className="text-sm text-gray-600">{t("hr.reports.totalWorkHours")}</p>
                     </div>
                     <div className="p-3 bg-orange-50 rounded-lg text-center">
                       <p className="text-xl font-bold text-orange-600">{report.summary.totalOvertimeHours}</p>
-                      <p className="text-sm text-gray-600">ساعات إضافية</p>
+                      <p className="text-sm text-gray-600">{t("hr.reports.overtimeHoursLabel")}</p>
                     </div>
                   </div>
 
-                  <h3 className="font-semibold mb-3">تفاصيل الحضور</h3>
+                  <h3 className="font-semibold mb-3">{t("hr.reports.attendanceDetails")}</h3>
                   <div className="border rounded-lg overflow-hidden">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-gray-100">
-                          <TableHead className="text-right">التاريخ</TableHead>
-                          <TableHead className="text-right">اليوم</TableHead>
-                          <TableHead className="text-center">الحالة</TableHead>
-                          <TableHead className="text-center">الحضور</TableHead>
-                          <TableHead className="text-center">الانصراف</TableHead>
-                          <TableHead className="text-center">ساعات العمل</TableHead>
-                          <TableHead className="text-center">إضافي</TableHead>
+                          <TableHead className="text-right">{t("hr.reports.date")}</TableHead>
+                          <TableHead className="text-right">{t("hr.reports.dayName")}</TableHead>
+                          <TableHead className="text-center">{t("hr.reports.status")}</TableHead>
+                          <TableHead className="text-center">{t("hr.reports.checkIn")}</TableHead>
+                          <TableHead className="text-center">{t("hr.reports.checkOut")}</TableHead>
+                          <TableHead className="text-center">{t("hr.reports.workHoursCol")}</TableHead>
+                          <TableHead className="text-center">{t("hr.reports.overtimeCol")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -610,13 +610,13 @@ export default function AttendanceReports() {
                   </div>
 
                   <div className="mt-4 text-center text-xs text-gray-400">
-                    <p>تم إنشاء التقرير بتاريخ: {new Date(report.generatedAt).toLocaleString("ar-SA")}</p>
+                    <p>{t("hr.reports.reportGeneratedAt")}: {new Date(report.generatedAt).toLocaleString("ar-SA")}</p>
                   </div>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">لا توجد بيانات للعرض</div>
+            <div className="text-center py-8 text-gray-500">{t("hr.reports.noDataToDisplay")}</div>
           )}
         </DialogContent>
       </Dialog>

@@ -1,4 +1,5 @@
 import { useState, useMemo, Fragment } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Input } from "../ui/input";
@@ -80,6 +81,7 @@ interface RollsTabProps {
 }
 
 export default function RollsTab({ customers = [], productionOrders = [] }: RollsTabProps) {
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState("");
   const [stageFilter, setStageFilter] = useState("all");
   const [customerFilter, setCustomerFilter] = useState("all");
@@ -94,7 +96,7 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
     queryKey: ["/api/rolls/search"],
     queryFn: async () => {
       const response = await fetch("/api/rolls/search?q=");
-      if (!response.ok) throw new Error("فشل في جلب الرولات");
+      if (!response.ok) throw new Error("Failed to fetch rolls");
       return response.json();
     },
   });
@@ -146,39 +148,39 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
 
   const getStageConfig = (stage: string) => {
     const configs: Record<string, { icon: any; color: string; bg: string; label: string; border: string }> = {
-      film: { icon: Film, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950", label: "فيلم", border: "border-blue-500" },
-      printing: { icon: PrinterIcon, color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950", label: "طباعة", border: "border-purple-500" },
-      cutting: { icon: Scissors, color: "text-orange-600", bg: "bg-orange-50 dark:bg-orange-950", label: "تقطيع", border: "border-orange-500" },
-      done: { icon: CheckCircle, color: "text-green-600", bg: "bg-green-50 dark:bg-green-950", label: "منتهي", border: "border-green-500" },
-      archived: { icon: Package, color: "text-gray-600", bg: "bg-gray-50 dark:bg-gray-800", label: "مؤرشف", border: "border-gray-500" },
+      film: { icon: Film, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950", label: t('orders.rolls.stages.film'), border: "border-blue-500" },
+      printing: { icon: PrinterIcon, color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950", label: t('orders.rolls.stages.printing'), border: "border-purple-500" },
+      cutting: { icon: Scissors, color: "text-orange-600", bg: "bg-orange-50 dark:bg-orange-950", label: t('orders.rolls.stages.cutting'), border: "border-orange-500" },
+      done: { icon: CheckCircle, color: "text-green-600", bg: "bg-green-50 dark:bg-green-950", label: t('orders.rolls.stages.done'), border: "border-green-500" },
+      archived: { icon: Package, color: "text-gray-600", bg: "bg-gray-50 dark:bg-gray-800", label: t('orders.rolls.stages.archived'), border: "border-gray-500" },
     };
     return configs[stage] || configs.film;
   };
 
   const exportToExcel = async () => {
     if (filteredRolls.length === 0) {
-      alert("لا توجد بيانات للتصدير");
+      alert(t('orders.rolls.noDataToExport'));
       return;
     }
 
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("الرولات");
+    const worksheet = workbook.addWorksheet(t('orders.rolls.title'));
 
     worksheet.columns = [
-      { header: "رقم الرول", key: "rollNumber", width: 15 },
-      { header: "رقم أمر الإنتاج", key: "productionOrder", width: 20 },
-      { header: "رقم الطلب", key: "orderNumber", width: 15 },
-      { header: "العميل", key: "customer", width: 25 },
-      { header: "المنتج", key: "product", width: 20 },
-      { header: "المقاس", key: "size", width: 12 },
-      { header: "المرحلة", key: "stage", width: 12 },
-      { header: "الوزن (كجم)", key: "weight", width: 12 },
-      { header: "فيلم بواسطة", key: "filmBy", width: 15 },
-      { header: "طبع بواسطة", key: "printBy", width: 15 },
-      { header: "قطع بواسطة", key: "cutBy", width: 15 },
-      { header: "وزن التقطيع", key: "cutWeight", width: 12 },
-      { header: "الهدر", key: "waste", width: 10 },
-      { header: "تاريخ الإنشاء", key: "createdAt", width: 18 },
+      { header: t('orders.rolls.rollNumber'), key: "rollNumber", width: 15 },
+      { header: t('orders.rolls.productionOrderNumber'), key: "productionOrder", width: 20 },
+      { header: t('orders.orderNumber'), key: "orderNumber", width: 15 },
+      { header: t('orders.customer'), key: "customer", width: 25 },
+      { header: t('orders.rolls.product'), key: "product", width: 20 },
+      { header: t('orders.rolls.size'), key: "size", width: 12 },
+      { header: t('orders.rolls.stage'), key: "stage", width: 12 },
+      { header: t('orders.rolls.weightKg'), key: "weight", width: 12 },
+      { header: t('orders.rolls.filmBy'), key: "filmBy", width: 15 },
+      { header: t('orders.rolls.printBy'), key: "printBy", width: 15 },
+      { header: t('orders.rolls.cutBy'), key: "cutBy", width: 15 },
+      { header: t('orders.rolls.cutWeight'), key: "cutWeight", width: 12 },
+      { header: t('orders.rolls.waste'), key: "waste", width: 10 },
+      { header: t('orders.rolls.createdAt'), key: "createdAt", width: 18 },
     ];
 
     filteredRolls.forEach((roll) => {
@@ -222,7 +224,7 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
   const printRollLabel = async (roll: RollData) => {
     const printWindow = window.open("", "_blank", "width=480,height=720");
     if (!printWindow) {
-      alert("يرجى السماح بالنوافذ المنبثقة");
+      alert(t('orders.rolls.allowPopups'));
       return;
     }
 
@@ -232,7 +234,7 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
       <html dir="rtl">
         <head>
           <meta charset="UTF-8">
-          <title>ملصق رول - ${roll.roll_number}</title>
+          <title>${t('orders.rolls.rollLabel')} - ${roll.roll_number}</title>
           <style>
             @page { size: 4in 6in; margin: 0; }
             * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -254,23 +256,23 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
         <body>
           <div class="label">
             <div class="header">
-              <div class="company">نظام إدارة الإنتاج</div>
+              <div class="company">${t('orders.rolls.productionSystem')}</div>
               <div class="roll-num">${roll.roll_number}</div>
             </div>
             <div class="content">
-              <div class="box full"><div class="lbl">العميل</div><div class="val">${roll.customer_name_ar || roll.customer_name || '-'}</div></div>
+              <div class="box full"><div class="lbl">${t('orders.customer')}</div><div class="val">${roll.customer_name_ar || roll.customer_name || '-'}</div></div>
               <div class="row">
-                <div class="box"><div class="lbl">أمر الإنتاج</div><div class="val">${roll.production_order_number}</div></div>
-                <div class="box"><div class="lbl">رقم الطلب</div><div class="val">${roll.order_number}</div></div>
+                <div class="box"><div class="lbl">${t('orders.rolls.productionOrder')}</div><div class="val">${roll.production_order_number}</div></div>
+                <div class="box"><div class="lbl">${t('orders.orderNumber')}</div><div class="val">${roll.order_number}</div></div>
               </div>
               <div class="row">
-                <div class="box"><div class="lbl">المقاس</div><div class="val">${roll.size_caption || '-'}</div></div>
-                <div class="box"><div class="lbl">المرحلة</div><div class="val">${stageConfig.label}</div></div>
+                <div class="box"><div class="lbl">${t('orders.rolls.size')}</div><div class="val">${roll.size_caption || '-'}</div></div>
+                <div class="box"><div class="lbl">${t('orders.rolls.stage')}</div><div class="val">${stageConfig.label}</div></div>
               </div>
-              <div class="box highlight full"><div class="lbl">الوزن</div><div class="val">${parseFloat(roll.weight_kg).toFixed(2)} كجم</div></div>
-              <div class="box full"><div class="lbl">تاريخ الإنتاج</div><div class="val">${format(new Date(roll.created_at), 'dd/MM/yyyy HH:mm')}</div></div>
+              <div class="box highlight full"><div class="lbl">${t('orders.rolls.weight')}</div><div class="val">${parseFloat(roll.weight_kg).toFixed(2)} ${t('common.kg')}</div></div>
+              <div class="box full"><div class="lbl">${t('orders.rolls.productionDate')}</div><div class="val">${format(new Date(roll.created_at), 'dd/MM/yyyy HH:mm')}</div></div>
             </div>
-            <div class="footer">طُبع: ${format(new Date(), 'dd/MM/yyyy HH:mm')}</div>
+            <div class="footer">${t('orders.rolls.printed')}: ${format(new Date(), 'dd/MM/yyyy HH:mm')}</div>
           </div>
         </body>
       </html>
@@ -307,7 +309,7 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">إجمالي الرولات</p>
+                <p className="text-sm text-muted-foreground">{t('orders.rolls.totalRolls')}</p>
                 <p className="text-3xl font-bold">{stats.total.toLocaleString()}</p>
               </div>
               <Package className="h-8 w-8 text-slate-400" />
@@ -321,7 +323,7 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Film className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm text-muted-foreground">فيلم</span>
+                  <span className="text-sm text-muted-foreground">{t('orders.rolls.stages.film')}</span>
                 </div>
                 <span className="text-2xl font-bold text-blue-600">{stats.byStage.film}</span>
               </div>
@@ -336,7 +338,7 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <PrinterIcon className="h-4 w-4 text-purple-600" />
-                  <span className="text-sm text-muted-foreground">طباعة</span>
+                  <span className="text-sm text-muted-foreground">{t('orders.rolls.stages.printing')}</span>
                 </div>
                 <span className="text-2xl font-bold text-purple-600">{stats.byStage.printing}</span>
               </div>
@@ -351,7 +353,7 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Scissors className="h-4 w-4 text-orange-600" />
-                  <span className="text-sm text-muted-foreground">تقطيع</span>
+                  <span className="text-sm text-muted-foreground">{t('orders.rolls.stages.cutting')}</span>
                 </div>
                 <span className="text-2xl font-bold text-orange-600">{stats.byStage.cutting}</span>
               </div>
@@ -366,7 +368,7 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-green-600" />
-                  <span className="text-sm text-muted-foreground">منتهي</span>
+                  <span className="text-sm text-muted-foreground">{t('orders.rolls.stages.done')}</span>
                 </div>
                 <span className="text-2xl font-bold text-green-600">{stats.byStage.done}</span>
               </div>
@@ -379,8 +381,8 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">إجمالي الوزن</p>
-                <p className="text-xl font-bold text-amber-600">{stats.totalWeight.toLocaleString()} كجم</p>
+                <p className="text-sm text-muted-foreground">{t('orders.rolls.totalWeight')}</p>
+                <p className="text-xl font-bold text-amber-600">{stats.totalWeight.toLocaleString()} {t('common.kg')}</p>
               </div>
               <Scale className="h-8 w-8 text-amber-400" />
             </div>
@@ -396,7 +398,7 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
               <div className="flex-1 relative">
                 <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="بحث برقم الرول أو أمر الإنتاج أو العميل..."
+                  placeholder={t('orders.rolls.searchPlaceholder')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pr-10"
@@ -408,7 +410,7 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
                   onClick={() => setShowFilters(!showFilters)}
                 >
                   <Filter className="h-4 w-4 ml-2" />
-                  الفلاتر
+                  {t('orders.rolls.filters')}
                   {showFilters ? <ChevronUp className="h-4 w-4 mr-2" /> : <ChevronDown className="h-4 w-4 mr-2" />}
                 </Button>
                 <Button variant="outline" size="icon" onClick={() => refetch()}>
@@ -416,7 +418,7 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
                 </Button>
                 <Button variant="outline" onClick={exportToExcel} disabled={filteredRolls.length === 0}>
                   <Download className="h-4 w-4 ml-2" />
-                  تصدير
+                  {t('common.export')}
                 </Button>
               </div>
             </div>
@@ -424,30 +426,30 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
             {showFilters && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-4 bg-muted/50 rounded-lg animate-in slide-in-from-top-2">
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">المرحلة</Label>
+                  <Label className="text-sm font-medium">{t('orders.rolls.stage')}</Label>
                   <Select value={stageFilter} onValueChange={setStageFilter}>
                     <SelectTrigger>
-                      <SelectValue placeholder="كل المراحل" />
+                      <SelectValue placeholder={t('orders.rolls.allStages')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">كل المراحل</SelectItem>
-                      <SelectItem value="film">فيلم</SelectItem>
-                      <SelectItem value="printing">طباعة</SelectItem>
-                      <SelectItem value="cutting">تقطيع</SelectItem>
-                      <SelectItem value="done">منتهي</SelectItem>
-                      <SelectItem value="archived">مؤرشف</SelectItem>
+                      <SelectItem value="all">{t('orders.rolls.allStages')}</SelectItem>
+                      <SelectItem value="film">{t('orders.rolls.stages.film')}</SelectItem>
+                      <SelectItem value="printing">{t('orders.rolls.stages.printing')}</SelectItem>
+                      <SelectItem value="cutting">{t('orders.rolls.stages.cutting')}</SelectItem>
+                      <SelectItem value="done">{t('orders.rolls.stages.done')}</SelectItem>
+                      <SelectItem value="archived">{t('orders.rolls.stages.archived')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">العميل</Label>
+                  <Label className="text-sm font-medium">{t('orders.customer')}</Label>
                   <Select value={customerFilter} onValueChange={setCustomerFilter}>
                     <SelectTrigger>
-                      <SelectValue placeholder="كل العملاء" />
+                      <SelectValue placeholder={t('orders.rolls.allCustomers')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">كل العملاء</SelectItem>
+                      <SelectItem value="all">{t('orders.rolls.allCustomers')}</SelectItem>
                       {customers.map((customer: any) => (
                         <SelectItem key={customer.id} value={customer.id}>
                           {customer.name_ar || customer.name}
@@ -458,7 +460,7 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">من تاريخ</Label>
+                  <Label className="text-sm font-medium">{t('orders.rolls.fromDate')}</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
@@ -466,7 +468,7 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
                         className={cn("w-full justify-start text-right", !startDate && "text-muted-foreground")}
                       >
                         <CalendarIcon className="ml-2 h-4 w-4" />
-                        {startDate ? format(startDate, "dd/MM/yyyy") : "اختر التاريخ"}
+                        {startDate ? format(startDate, "dd/MM/yyyy") : t('orders.rolls.selectDate')}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -476,7 +478,7 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">إلى تاريخ</Label>
+                  <Label className="text-sm font-medium">{t('orders.rolls.toDate')}</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
@@ -484,7 +486,7 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
                         className={cn("w-full justify-start text-right", !endDate && "text-muted-foreground")}
                       >
                         <CalendarIcon className="ml-2 h-4 w-4" />
-                        {endDate ? format(endDate, "dd/MM/yyyy") : "اختر التاريخ"}
+                        {endDate ? format(endDate, "dd/MM/yyyy") : t('orders.rolls.selectDate')}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -496,7 +498,7 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
                 <div className="flex items-end">
                   <Button variant="ghost" onClick={clearFilters} className="w-full">
                     <X className="h-4 w-4 ml-2" />
-                    مسح الفلاتر
+                    {t('orders.rolls.clearFilters')}
                   </Button>
                 </div>
               </div>
@@ -511,11 +513,11 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />
-              قائمة الرولات
+              {t('orders.rolls.rollsList')}
               <Badge variant="secondary">{filteredRolls.length}</Badge>
             </CardTitle>
             {selectedRolls.size > 0 && (
-              <Badge variant="default">{selectedRolls.size} محدد</Badge>
+              <Badge variant="default">{selectedRolls.size} {t('orders.rolls.selected')}</Badge>
             )}
           </div>
         </CardHeader>
@@ -529,8 +531,8 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
           ) : filteredRolls.length === 0 ? (
             <div className="p-12 text-center">
               <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <p className="text-lg font-medium text-muted-foreground">لا توجد رولات</p>
-              <p className="text-sm text-muted-foreground mt-1">جرب تغيير معايير البحث أو الفلاتر</p>
+              <p className="text-lg font-medium text-muted-foreground">{t('orders.rolls.noRolls')}</p>
+              <p className="text-sm text-muted-foreground mt-1">{t('orders.rolls.tryChangingFilters')}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -543,14 +545,14 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
                         onCheckedChange={toggleSelectAll}
                       />
                     </TableHead>
-                    <TableHead className="font-semibold">رقم الرول</TableHead>
-                    <TableHead className="font-semibold text-center">المرحلة</TableHead>
-                    <TableHead className="font-semibold">أمر الإنتاج</TableHead>
-                    <TableHead className="font-semibold">العميل</TableHead>
-                    <TableHead className="font-semibold">المنتج</TableHead>
-                    <TableHead className="font-semibold text-center">الوزن</TableHead>
-                    <TableHead className="font-semibold text-center">التاريخ</TableHead>
-                    <TableHead className="font-semibold text-center w-20">الإجراءات</TableHead>
+                    <TableHead className="font-semibold">{t('orders.rolls.rollNumber')}</TableHead>
+                    <TableHead className="font-semibold text-center">{t('orders.rolls.stage')}</TableHead>
+                    <TableHead className="font-semibold">{t('orders.rolls.productionOrder')}</TableHead>
+                    <TableHead className="font-semibold">{t('orders.customer')}</TableHead>
+                    <TableHead className="font-semibold">{t('orders.rolls.product')}</TableHead>
+                    <TableHead className="font-semibold text-center">{t('orders.rolls.weight')}</TableHead>
+                    <TableHead className="font-semibold text-center">{t('orders.rolls.date')}</TableHead>
+                    <TableHead className="font-semibold text-center w-20">{t('orders.rolls.actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -598,7 +600,7 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
                             </div>
                           </TableCell>
                           <TableCell className="text-center font-semibold">
-                            {parseFloat(roll.weight_kg).toFixed(2)} كجم
+                            {parseFloat(roll.weight_kg).toFixed(2)} {t('common.kg')}
                           </TableCell>
                           <TableCell className="text-center text-sm text-muted-foreground">
                             {format(new Date(roll.created_at), "dd/MM/yyyy", { locale: ar })}
@@ -609,7 +611,7 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => printRollLabel(roll)}
-                                title="طباعة ملصق"
+                                title={t('orders.rolls.printLabel')}
                               >
                                 <Tag className="h-4 w-4" />
                               </Button>
@@ -629,31 +631,31 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
                             <TableCell colSpan={9} className="p-4">
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                                 <div>
-                                  <span className="text-muted-foreground">رقم الطلب:</span>
+                                  <span className="text-muted-foreground">{t('orders.orderNumber')}:</span>
                                   <span className="font-medium mr-2">{roll.order_number}</span>
                                 </div>
                                 <div>
-                                  <span className="text-muted-foreground">فيلم بواسطة:</span>
+                                  <span className="text-muted-foreground">{t('orders.rolls.filmBy')}:</span>
                                   <span className="font-medium mr-2">{roll.created_by_name || "-"}</span>
                                 </div>
                                 <div>
-                                  <span className="text-muted-foreground">طباعة بواسطة:</span>
+                                  <span className="text-muted-foreground">{t('orders.rolls.printBy')}:</span>
                                   <span className="font-medium mr-2">{roll.printed_by_name || "-"}</span>
                                 </div>
                                 <div>
-                                  <span className="text-muted-foreground">تقطيع بواسطة:</span>
+                                  <span className="text-muted-foreground">{t('orders.rolls.cutBy')}:</span>
                                   <span className="font-medium mr-2">{roll.cut_by_name || "-"}</span>
                                 </div>
                                 {roll.cut_weight_total_kg && (
                                   <div>
-                                    <span className="text-muted-foreground">وزن التقطيع:</span>
-                                    <span className="font-medium mr-2">{roll.cut_weight_total_kg} كجم</span>
+                                    <span className="text-muted-foreground">{t('orders.rolls.cutWeight')}:</span>
+                                    <span className="font-medium mr-2">{roll.cut_weight_total_kg} {t('common.kg')}</span>
                                   </div>
                                 )}
                                 {roll.waste_kg && (
                                   <div>
-                                    <span className="text-muted-foreground">الهدر:</span>
-                                    <span className="font-medium mr-2 text-red-600">{roll.waste_kg} كجم</span>
+                                    <span className="text-muted-foreground">{t('orders.rolls.waste')}:</span>
+                                    <span className="font-medium mr-2 text-red-600">{roll.waste_kg} {t('common.kg')}</span>
                                   </div>
                                 )}
                               </div>
@@ -673,7 +675,7 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
       {/* Results Info */}
       {!isLoading && filteredRolls.length > 0 && (
         <div className="text-sm text-muted-foreground text-center">
-          عرض {filteredRolls.length.toLocaleString()} من {rolls.length.toLocaleString()} رول
+          {t('orders.rolls.showing', { filtered: filteredRolls.length.toLocaleString(), total: rolls.length.toLocaleString() })}
         </div>
       )}
     </div>

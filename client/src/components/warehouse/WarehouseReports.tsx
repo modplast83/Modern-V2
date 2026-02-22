@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from 'react-i18next';
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
@@ -22,6 +23,7 @@ import {
 import { useToast } from "../../hooks/use-toast";
 
 export function WarehouseReports() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("summary");
   const [startDate, setStartDate] = useState("");
@@ -74,9 +76,9 @@ export function WarehouseReports() {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
       
-      toast({ title: "تم التصدير بنجاح" });
+      toast({ title: t('warehouse.reports.exportSuccess') });
     } catch (error) {
-      toast({ title: "خطأ في التصدير", variant: "destructive" });
+      toast({ title: t('warehouse.reports.exportError'), variant: "destructive" });
     }
   };
 
@@ -95,15 +97,15 @@ export function WarehouseReports() {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
       
-      toast({ title: "تم تحميل القالب بنجاح" });
+      toast({ title: t('warehouse.reports.templateDownloaded') });
     } catch (error) {
-      toast({ title: "خطأ في تحميل القالب", variant: "destructive" });
+      toast({ title: t('warehouse.reports.templateDownloadError'), variant: "destructive" });
     }
   };
 
   const handleImport = async () => {
     if (!importFile) {
-      toast({ title: "الرجاء اختيار ملف", variant: "destructive" });
+      toast({ title: t('warehouse.reports.selectFile'), variant: "destructive" });
       return;
     }
 
@@ -125,10 +127,10 @@ export function WarehouseReports() {
         refetchSummary();
         refetchStock();
       } else {
-        toast({ title: result.message || "خطأ في الاستيراد", variant: "destructive" });
+        toast({ title: result.message || t('warehouse.reports.importError'), variant: "destructive" });
       }
     } catch (error) {
-      toast({ title: "خطأ في الاستيراد", variant: "destructive" });
+      toast({ title: t('warehouse.reports.importError'), variant: "destructive" });
     } finally {
       setIsImporting(false);
     }
@@ -138,21 +140,21 @@ export function WarehouseReports() {
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="summary">الملخص</TabsTrigger>
-          <TabsTrigger value="stock">الأرصدة</TabsTrigger>
-          <TabsTrigger value="alerts">التنبيهات</TabsTrigger>
-          <TabsTrigger value="movements">الحركات</TabsTrigger>
-          <TabsTrigger value="import-export">استيراد/تصدير</TabsTrigger>
+          <TabsTrigger value="summary">{t('warehouse.reports.summary')}</TabsTrigger>
+          <TabsTrigger value="stock">{t('warehouse.reports.balances')}</TabsTrigger>
+          <TabsTrigger value="alerts">{t('warehouse.reports.alerts')}</TabsTrigger>
+          <TabsTrigger value="movements">{t('warehouse.reports.movements')}</TabsTrigger>
+          <TabsTrigger value="import-export">{t('warehouse.reports.importExport')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="summary" className="space-y-4">
           {summaryLoading ? (
-            <div className="text-center py-8 text-muted-foreground">جاري التحميل...</div>
+            <div className="text-center py-8 text-muted-foreground">{t('warehouse.loading')}</div>
           ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">إجمالي الأصناف</CardTitle>
+                <CardTitle className="text-sm font-medium">{t('warehouse.reports.totalItems')}</CardTitle>
                 <Package className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -162,7 +164,7 @@ export function WarehouseReports() {
             
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">إجمالي الموردين</CardTitle>
+                <CardTitle className="text-sm font-medium">{t('warehouse.reports.totalSuppliers')}</CardTitle>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -172,7 +174,7 @@ export function WarehouseReports() {
             
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">أصناف تحت الحد الأدنى</CardTitle>
+                <CardTitle className="text-sm font-medium">{t('warehouse.reports.itemsBelowMin')}</CardTitle>
                 <AlertTriangle className="h-4 w-4 text-red-500" />
               </CardHeader>
               <CardContent>
@@ -182,12 +184,12 @@ export function WarehouseReports() {
             
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">قيمة المخزون</CardTitle>
+                <CardTitle className="text-sm font-medium">{t('warehouse.reports.inventoryValue')}</CardTitle>
                 <BarChart3 className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {Number((summary as any)?.totalInventoryValue || 0).toLocaleString()} ر.س
+                  {Number((summary as any)?.totalInventoryValue || 0).toLocaleString()} {t('warehouse.currency')}
                 </div>
               </CardContent>
             </Card>
@@ -198,27 +200,27 @@ export function WarehouseReports() {
         <TabsContent value="stock">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>تقرير الأرصدة الحالية</CardTitle>
+              <CardTitle>{t('warehouse.reports.currentBalancesReport')}</CardTitle>
               <Button variant="outline" size="sm" onClick={() => handleExport("items")}>
                 <Download className="h-4 w-4 ml-2" />
-                تصدير Excel
+                {t('warehouse.reports.exportExcel')}
               </Button>
             </CardHeader>
             <CardContent>
               {stockLoading ? (
-                <div className="text-center py-8 text-muted-foreground">جاري التحميل...</div>
+                <div className="text-center py-8 text-muted-foreground">{t('warehouse.loading')}</div>
               ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>الكود</TableHead>
-                    <TableHead>الصنف</TableHead>
-                    <TableHead>التصنيف</TableHead>
-                    <TableHead>الوحدة</TableHead>
-                    <TableHead>الرصيد الحالي</TableHead>
-                    <TableHead>الحد الأدنى</TableHead>
-                    <TableHead>الحالة</TableHead>
-                    <TableHead>القيمة</TableHead>
+                    <TableHead>{t('warehouse.reports.code')}</TableHead>
+                    <TableHead>{t('warehouse.labels.item')}</TableHead>
+                    <TableHead>{t('warehouse.reports.classification')}</TableHead>
+                    <TableHead>{t('warehouse.labels.unit')}</TableHead>
+                    <TableHead>{t('warehouse.reports.currentBalance')}</TableHead>
+                    <TableHead>{t('warehouse.reports.minLimit')}</TableHead>
+                    <TableHead>{t('warehouse.reports.status')}</TableHead>
+                    <TableHead>{t('warehouse.reports.value')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -235,11 +237,11 @@ export function WarehouseReports() {
                           item.stock_status === "low" ? "destructive" : 
                           item.stock_status === "high" ? "outline" : "default"
                         }>
-                          {item.stock_status === "low" ? "منخفض" : 
-                           item.stock_status === "high" ? "مرتفع" : "طبيعي"}
+                          {item.stock_status === "low" ? t('warehouse.reports.statusLow') : 
+                           item.stock_status === "high" ? t('warehouse.reports.statusHigh') : t('warehouse.reports.statusNormal')}
                         </Badge>
                       </TableCell>
-                      <TableCell>{Number(item.total_value || 0).toLocaleString()} ر.س</TableCell>
+                      <TableCell>{Number(item.total_value || 0).toLocaleString()} {t('warehouse.currency')}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -254,23 +256,23 @@ export function WarehouseReports() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-red-500" />
-                تنبيهات المخزون
+                {t('warehouse.reports.inventoryAlerts')}
               </CardTitle>
             </CardHeader>
             <CardContent>
               {(alerts as any[])?.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  لا توجد تنبيهات - جميع الأصناف فوق الحد الأدنى
+                  {t('warehouse.reports.noAlerts')}
                 </div>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>الكود</TableHead>
-                      <TableHead>الصنف</TableHead>
-                      <TableHead>الرصيد الحالي</TableHead>
-                      <TableHead>الحد الأدنى</TableHead>
-                      <TableHead>النقص</TableHead>
+                      <TableHead>{t('warehouse.reports.code')}</TableHead>
+                      <TableHead>{t('warehouse.labels.item')}</TableHead>
+                      <TableHead>{t('warehouse.reports.currentBalance')}</TableHead>
+                      <TableHead>{t('warehouse.reports.minLimit')}</TableHead>
+                      <TableHead>{t('warehouse.reports.shortage')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -295,10 +297,10 @@ export function WarehouseReports() {
         <TabsContent value="movements">
           <Card>
             <CardHeader>
-              <CardTitle>تقرير حركات المخزون</CardTitle>
+              <CardTitle>{t('warehouse.reports.movementsReport')}</CardTitle>
               <div className="flex gap-4 mt-4">
                 <div className="flex-1">
-                  <Label>من تاريخ</Label>
+                  <Label>{t('warehouse.reports.fromDate')}</Label>
                   <Input 
                     type="date" 
                     value={startDate} 
@@ -306,7 +308,7 @@ export function WarehouseReports() {
                   />
                 </div>
                 <div className="flex-1">
-                  <Label>إلى تاريخ</Label>
+                  <Label>{t('warehouse.reports.toDate')}</Label>
                   <Input 
                     type="date" 
                     value={endDate} 
@@ -316,7 +318,7 @@ export function WarehouseReports() {
                 <div className="flex items-end">
                   <Button onClick={() => refetchMovements()}>
                     <RefreshCw className="h-4 w-4 ml-2" />
-                    تحديث
+                    {t('warehouse.reports.refresh')}
                   </Button>
                 </div>
               </div>
@@ -325,12 +327,12 @@ export function WarehouseReports() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>التاريخ</TableHead>
-                    <TableHead>الصنف</TableHead>
-                    <TableHead>نوع الحركة</TableHead>
-                    <TableHead>الكمية</TableHead>
-                    <TableHead>المرجع</TableHead>
-                    <TableHead>ملاحظات</TableHead>
+                    <TableHead>{t('warehouse.reports.dateColumn')}</TableHead>
+                    <TableHead>{t('warehouse.labels.item')}</TableHead>
+                    <TableHead>{t('warehouse.reports.movementType')}</TableHead>
+                    <TableHead>{t('warehouse.labels.quantity')}</TableHead>
+                    <TableHead>{t('warehouse.reports.reference')}</TableHead>
+                    <TableHead>{t('warehouse.labels.notes')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -343,9 +345,9 @@ export function WarehouseReports() {
                       <TableCell>
                         <Badge variant={mov.movement_type === "in" ? "default" : "secondary"}>
                           {mov.movement_type === "in" ? (
-                            <><TrendingUp className="h-3 w-3 ml-1" /> إدخال</>
+                            <><TrendingUp className="h-3 w-3 ml-1" /> {t('warehouse.movementTypes.in')}</>
                           ) : (
-                            <><TrendingDown className="h-3 w-3 ml-1" /> إخراج</>
+                            <><TrendingDown className="h-3 w-3 ml-1" /> {t('warehouse.movementTypes.out')}</>
                           )}
                         </Badge>
                       </TableCell>
@@ -366,25 +368,25 @@ export function WarehouseReports() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Download className="h-5 w-5" />
-                  تصدير البيانات
+                  {t('warehouse.reports.exportData')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Button className="w-full" variant="outline" onClick={() => handleExport("items")}>
                   <FileSpreadsheet className="h-4 w-4 ml-2" />
-                  تصدير الأصناف
+                  {t('warehouse.reports.exportItems')}
                 </Button>
                 <Button className="w-full" variant="outline" onClick={() => handleExport("suppliers")}>
                   <FileSpreadsheet className="h-4 w-4 ml-2" />
-                  تصدير الموردين
+                  {t('warehouse.reports.exportSuppliers')}
                 </Button>
                 <Button className="w-full" variant="outline" onClick={() => handleExport("vouchers/raw-material-in")}>
                   <FileSpreadsheet className="h-4 w-4 ml-2" />
-                  تصدير سندات إدخال المواد الخام
+                  {t('warehouse.reports.exportRawMaterialInVouchers')}
                 </Button>
                 <Button className="w-full" variant="outline" onClick={() => handleExport("vouchers/raw-material-out")}>
                   <FileSpreadsheet className="h-4 w-4 ml-2" />
-                  تصدير سندات إخراج المواد الخام
+                  {t('warehouse.reports.exportRawMaterialOutVouchers')}
                 </Button>
               </CardContent>
             </Card>
@@ -393,25 +395,25 @@ export function WarehouseReports() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Upload className="h-5 w-5" />
-                  استيراد البيانات
+                  {t('warehouse.reports.importData')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label>نوع البيانات</Label>
+                  <Label>{t('warehouse.reports.dataType')}</Label>
                   <Select value={importType} onValueChange={setImportType}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="opening-balance">أرصدة افتتاحية</SelectItem>
-                      <SelectItem value="suppliers">موردين</SelectItem>
+                      <SelectItem value="opening-balance">{t('warehouse.reports.openingBalances')}</SelectItem>
+                      <SelectItem value="suppliers">{t('warehouse.reports.suppliers')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 
                 <div>
-                  <Label>ملف Excel</Label>
+                  <Label>{t('warehouse.reports.excelFile')}</Label>
                   <Input 
                     type="file" 
                     accept=".xlsx,.xls"
@@ -425,13 +427,13 @@ export function WarehouseReports() {
                     onClick={handleImport}
                     disabled={!importFile || isImporting}
                   >
-                    {isImporting ? "جاري الاستيراد..." : "استيراد"}
+                    {isImporting ? t('warehouse.reports.importing') : t('warehouse.reports.import')}
                   </Button>
                   <Button 
                     variant="outline"
                     onClick={() => handleDownloadTemplate(importType)}
                   >
-                    تحميل قالب
+                    {t('warehouse.reports.downloadTemplate')}
                   </Button>
                 </div>
               </CardContent>

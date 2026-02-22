@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { MapContainer, TileLayer, Marker, Circle, useMapEvents, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -65,6 +66,7 @@ export default function LocationMapPicker({
   editable = true,
   factoryLocations = [],
 }: LocationMapPickerProps) {
+  const { t } = useTranslation();
   const [position, setPosition] = useState<[number, number]>([latitude, longitude]);
 
   useEffect(() => {
@@ -96,7 +98,7 @@ export default function LocationMapPicker({
         <Marker position={position} icon={userIcon}>
           <Popup>
             <div className="text-center" dir="rtl">
-              <strong>📍 {editable ? "الموقع المحدد" : "موقعك الحالي"}</strong>
+              <strong>📍 {editable ? t('locationMap.selectedLocation') : t('locationMap.currentLocation')}</strong>
               <br />
               <span className="text-xs font-mono">
                 {position[0].toFixed(6)}°, {position[1].toFixed(6)}°
@@ -127,7 +129,7 @@ export default function LocationMapPicker({
                 <div className="text-center" dir="rtl">
                   <strong>🏭 {factory.name}</strong>
                   <br />
-                  <span className="text-xs">النطاق: {factory.radius} متر</span>
+                  <span className="text-xs">{t('locationMap.range')}: {factory.radius} {t('locationMap.meters')}</span>
                   <br />
                   <span className="text-xs font-mono">
                     {factory.latitude.toFixed(6)}°, {factory.longitude.toFixed(6)}°

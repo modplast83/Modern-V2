@@ -113,7 +113,7 @@ export default function CuttingOperatorDashboard({ hideLayout = false }: Cutting
     if (!selectedMachineId) {
       toast({
         title: t('operators.common.error'),
-        description: "يرجى تحديد ماكينة التقطيع أولاً",
+        description: t('operators.cutting.selectMachineFirst'),
         variant: "destructive",
       });
       return;
@@ -189,15 +189,15 @@ export default function CuttingOperatorDashboard({ hideLayout = false }: Cutting
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Scissors className="h-5 w-5 text-green-600" />
-            تحديد ماكينة التقطيع
+            {t('operators.cutting.selectMachine')}
           </CardTitle>
-          <CardDescription>اختر الماكينة التي ستعمل عليها قبل بدء التقطيع</CardDescription>
+          <CardDescription>{t('operators.cutting.selectMachineDesc')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-3">
             <Select value={selectedMachineId} onValueChange={setSelectedMachineId}>
               <SelectTrigger className="w-full max-w-xs bg-white dark:bg-gray-900">
-                <SelectValue placeholder="اختر ماكينة التقطيع..." />
+                <SelectValue placeholder={t('operators.cutting.selectMachinePlaceholder')} />
               </SelectTrigger>
               <SelectContent>
                 {cuttingMachines.map((machine) => (
@@ -217,7 +217,7 @@ export default function CuttingOperatorDashboard({ hideLayout = false }: Cutting
           {!selectedMachineId && (
             <div className="flex items-center gap-2 mt-3 text-amber-600 dark:text-amber-400 text-sm">
               <AlertCircle className="h-4 w-4" />
-              <span>يجب تحديد الماكينة قبل البدء بالتقطيع</span>
+              <span>{t('operators.cutting.mustSelectMachine')}</span>
             </div>
           )}
         </CardContent>
@@ -367,7 +367,7 @@ export default function CuttingOperatorDashboard({ hideLayout = false }: Cutting
                                 size="sm"
                                 className="bg-green-600 hover:bg-green-700"
                                 data-testid={`button-cut-${roll.roll_id}`}
-                                title={!selectedMachineId ? "يرجى تحديد ماكينة التقطيع أولاً" : ""}
+                                title={!selectedMachineId ? t('operators.cutting.selectMachineFirst') : ""}
                               >
                                 <Scissors className="h-4 w-4 ml-1" />
                                 <span className="hidden sm:inline">{t('operators.cutting.cut')}</span>
@@ -418,7 +418,7 @@ export default function CuttingOperatorDashboard({ hideLayout = false }: Cutting
             {selectedMachine && (
               <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
                 <div className="text-sm">
-                  <p className="text-gray-500 dark:text-gray-400">ماكينة التقطيع</p>
+                  <p className="text-gray-500 dark:text-gray-400">{t('operators.cutting.cuttingMachine')}</p>
                   <p className="font-medium">{selectedMachine.name_ar || selectedMachine.name} ({selectedMachine.id})</p>
                 </div>
               </div>

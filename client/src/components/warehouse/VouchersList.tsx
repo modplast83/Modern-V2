@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from 'react-i18next';
 import {
   Card,
   CardContent,
@@ -24,22 +25,23 @@ interface VouchersListProps {
 }
 
 export function VouchersList({ type, title, onView }: VouchersListProps) {
+  const { t } = useTranslation();
   const { data: vouchers = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/warehouse/vouchers", type],
   });
 
   const getVoucherTypeLabel = (voucherType: string) => {
     const labels: Record<string, string> = {
-      purchase: "شراء",
-      opening_balance: "رصيد افتتاحي",
-      return: "مرتجع",
-      production_transfer: "تحويل للإنتاج",
-      return_to_supplier: "إرجاع للمورد",
-      adjustment: "تسوية",
-      production_receipt: "استلام إنتاج",
-      customer_return: "مرتجع عميل",
-      customer_delivery: "تسليم عميل",
-      sample: "عينة",
+      purchase: t('warehouse.voucherTypes.purchase'),
+      opening_balance: t('warehouse.voucherTypes.openingBalance'),
+      return: t('warehouse.voucherTypes.return'),
+      production_transfer: t('warehouse.voucherTypes.productionTransfer'),
+      return_to_supplier: t('warehouse.voucherTypes.returnToSupplier'),
+      adjustment: t('warehouse.voucherTypes.adjustment'),
+      production_receipt: t('warehouse.voucherTypes.productionReceipt'),
+      customer_return: t('warehouse.voucherTypes.customerReturn'),
+      customer_delivery: t('warehouse.voucherTypes.customerDelivery'),
+      sample: t('warehouse.voucherTypes.sample'),
     };
     return labels[voucherType] || voucherType;
   };
@@ -47,11 +49,11 @@ export function VouchersList({ type, title, onView }: VouchersListProps) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "completed":
-        return <Badge className="bg-green-100 text-green-800">مكتمل</Badge>;
+        return <Badge className="bg-green-100 text-green-800">{t('warehouse.status.completed')}</Badge>;
       case "draft":
-        return <Badge className="bg-yellow-100 text-yellow-800">مسودة</Badge>;
+        return <Badge className="bg-yellow-100 text-yellow-800">{t('warehouse.status.draft')}</Badge>;
       case "cancelled":
-        return <Badge className="bg-red-100 text-red-800">ملغي</Badge>;
+        return <Badge className="bg-red-100 text-red-800">{t('warehouse.status.cancelled')}</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -75,7 +77,7 @@ export function VouchersList({ type, title, onView }: VouchersListProps) {
       <Card>
         <CardContent className="py-8 text-center">
           <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
-          <p className="mt-2 text-gray-500">جاري التحميل...</p>
+          <p className="mt-2 text-gray-500">{t('warehouse.loading')}</p>
         </CardContent>
       </Card>
     );
@@ -92,18 +94,18 @@ export function VouchersList({ type, title, onView }: VouchersListProps) {
       <CardContent>
         {vouchers.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
-            لا توجد سندات بعد
+            {t('warehouse.vouchers.noVouchers')}
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-right">رقم السند</TableHead>
-                <TableHead className="text-right">النوع</TableHead>
-                <TableHead className="text-right">التاريخ</TableHead>
-                <TableHead className="text-right">الكمية</TableHead>
-                <TableHead className="text-right">الحالة</TableHead>
-                <TableHead className="text-right">الإجراءات</TableHead>
+                <TableHead className="text-right">{t('warehouse.vouchers.voucherNumber')}</TableHead>
+                <TableHead className="text-right">{t('warehouse.vouchers.type')}</TableHead>
+                <TableHead className="text-right">{t('warehouse.vouchers.date')}</TableHead>
+                <TableHead className="text-right">{t('warehouse.vouchers.quantity')}</TableHead>
+                <TableHead className="text-right">{t('warehouse.vouchers.status')}</TableHead>
+                <TableHead className="text-right">{t('warehouse.vouchers.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -119,7 +121,7 @@ export function VouchersList({ type, title, onView }: VouchersListProps) {
                     {new Date(voucher.voucher_date).toLocaleDateString("ar-SA")}
                   </TableCell>
                   <TableCell>
-                    {parseFloat(voucher.quantity || 0).toLocaleString()} {voucher.unit || "كيلو"}
+                    {parseFloat(voucher.quantity || 0).toLocaleString()} {voucher.unit || t('warehouse.units.kilo')}
                   </TableCell>
                   <TableCell>
                     {getStatusBadge(voucher.status)}

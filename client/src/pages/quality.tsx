@@ -37,9 +37,9 @@ export default function Quality() {
       case "fail":
         return t('quality.failed');
       case "warning":
-        return "تحذير";
+        return t('quality.warning');
       default:
-        return "قيد الانتظار";
+        return t('quality.pending');
     }
   };
 
@@ -153,10 +153,10 @@ export default function Quality() {
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                          رقم الرولة
+                          {t('quality.rollNumber')}
                         </th>
                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                          نوع الفحص
+                          {t('quality.checkType')}
                         </th>
                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
                           {t('quality.result')}
@@ -165,7 +165,7 @@ export default function Quality() {
                           {t('quality.remarks')}
                         </th>
                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                          المفتش
+                          {t('quality.inspector')}
                         </th>
                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
                           {t('common.date')}

@@ -1,6 +1,6 @@
 // src/components/MachineCard.tsx
-import React from "react";
 import { CheckCircle, XCircle, AlertTriangle, Timer } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { calcOEE, pct } from "../utils/oee";
 import Sparkline from "./Sparkline";
 
@@ -39,6 +39,7 @@ const statusIcon = (s: string) => {
 };
 
 export default function MachineCard({ machine }: { machine: Machine }) {
+  const { t } = useTranslation();
   const {
     machine_name, status, current_rolls = 0, utilization = 0, lastDowntime,
     last24hUtilization = [], operatingTimeSec = 0, plannedProductionSec = 0,
@@ -55,12 +56,14 @@ export default function MachineCard({ machine }: { machine: Machine }) {
 
   const oeePct = pct(computed.oee);
 
+  const statusLabel = status === "active" ? t('machineCard.statusActive') : status === "maintenance" ? t('machineCard.statusMaintenance') : t('machineCard.statusDown');
+
   return (
     <div className={`p-3 rounded-lg border ${statusColor(status)}`}>
       <div className="flex items-center justify-between mb-2">
         <div>
           <div className="font-medium">{machine_name}</div>
-          <div className="text-xs text-gray-500">{status === "active" ? "نشطة" : status === "maintenance" ? "صيانة" : "معطلة"}</div>
+          <div className="text-xs text-gray-500">{statusLabel}</div>
         </div>
         <div className="flex items-center gap-2">
           {statusIcon(status)}
@@ -69,7 +72,7 @@ export default function MachineCard({ machine }: { machine: Machine }) {
 
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-xs text-gray-600">استخدام</div>
+          <div className="text-xs text-gray-600">{t('machineCard.utilization')}</div>
           <div className="text-lg font-bold">{Math.round(utilization * 100)}%</div>
         </div>
 
@@ -85,23 +88,23 @@ export default function MachineCard({ machine }: { machine: Machine }) {
         </div>
 
         <div className="text-xs text-gray-500 text-right">
-          <div>رولات حالية: <strong>{current_rolls}</strong></div>
-          <div>آخر توقف: <strong>{lastDowntime ? new Date(lastDowntime).toLocaleString() : "-"}</strong></div>
+          <div>{t('machineCard.currentRolls')}: <strong>{current_rolls}</strong></div>
+          <div>{t('machineCard.lastDowntime')}: <strong>{lastDowntime ? new Date(lastDowntime).toLocaleString() : "-"}</strong></div>
         </div>
       </div>
 
       <div className="mt-3 text-xs text-gray-600 grid grid-cols-3 gap-2">
         <div className="text-center">
           <div className="font-semibold">{pct(computed.availability)}%</div>
-          <div className="text-[11px] text-gray-500">Availability</div>
+          <div className="text-[11px] text-gray-500">{t('machineCard.availability')}</div>
         </div>
         <div className="text-center">
           <div className="font-semibold">{pct(computed.performance)}%</div>
-          <div className="text-[11px] text-gray-500">Performance</div>
+          <div className="text-[11px] text-gray-500">{t('machineCard.performance')}</div>
         </div>
         <div className="text-center">
           <div className="font-semibold">{pct(computed.quality)}%</div>
-          <div className="text-[11px] text-gray-500">Quality</div>
+          <div className="text-[11px] text-gray-500">{t('machineCard.quality')}</div>
         </div>
       </div>
     </div>

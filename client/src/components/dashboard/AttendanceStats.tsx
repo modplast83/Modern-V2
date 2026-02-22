@@ -163,11 +163,11 @@ export default function AttendanceStats({ userId }: AttendanceStatsProps) {
   };
 
   const periodLabels: Record<PeriodType, string> = {
-    daily: "اليوم",
-    weekly: "هذا الأسبوع",
-    monthly: "هذا الشهر",
-    yearly: "هذه السنة",
-    custom: "فترة مخصصة",
+    daily: t('dashboard.attendance.today'),
+    weekly: t('dashboard.attendance.thisWeek'),
+    monthly: t('dashboard.attendance.thisMonth'),
+    yearly: t('dashboard.attendance.thisYear'),
+    custom: t('dashboard.attendance.customPeriod'),
   };
 
   return (
@@ -176,7 +176,7 @@ export default function AttendanceStats({ userId }: AttendanceStatsProps) {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <CardTitle className="text-lg flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-primary" />
-            إحصائيات الحضور
+            {t('dashboard.attendance.title')}
           </CardTitle>
           <div className="flex flex-wrap gap-1">
             {(["daily", "weekly", "monthly", "yearly", "custom"] as PeriodType[]).map((p) => (
@@ -195,7 +195,7 @@ export default function AttendanceStats({ userId }: AttendanceStatsProps) {
         {period === "custom" && (
           <div className="flex flex-col sm:flex-row gap-3 mt-3">
             <div className="flex items-center gap-2">
-              <Label className="text-xs whitespace-nowrap">من:</Label>
+              <Label className="text-xs whitespace-nowrap">{t('dashboard.attendance.from')}:</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm" className="h-8 text-xs">
@@ -214,7 +214,7 @@ export default function AttendanceStats({ userId }: AttendanceStatsProps) {
               </Popover>
             </div>
             <div className="flex items-center gap-2">
-              <Label className="text-xs whitespace-nowrap">إلى:</Label>
+              <Label className="text-xs whitespace-nowrap">{t('dashboard.attendance.to')}:</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm" className="h-8 text-xs">
@@ -240,52 +240,52 @@ export default function AttendanceStats({ userId }: AttendanceStatsProps) {
           <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 p-3 rounded-lg border border-green-200 dark:border-green-800">
             <div className="flex items-center gap-2 mb-1">
               <Clock className="h-4 w-4 text-green-600" />
-              <span className="text-xs text-green-700 dark:text-green-300">ساعات العمل</span>
+              <span className="text-xs text-green-700 dark:text-green-300">{t('dashboard.attendance.workHours')}</span>
             </div>
             <p className="text-xl font-bold text-green-800 dark:text-green-200">
               {formatHours(stats.totalWorkHours)}
             </p>
             <p className="text-xs text-green-600 dark:text-green-400">
-              {stats.totalWorkHours.toFixed(1)} ساعة
+              {stats.totalWorkHours.toFixed(1)} {t('dashboard.attendance.hour')}
             </p>
           </div>
 
           <div className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 p-3 rounded-lg border border-orange-200 dark:border-orange-800">
             <div className="flex items-center gap-2 mb-1">
               <TrendingUp className="h-4 w-4 text-orange-600" />
-              <span className="text-xs text-orange-700 dark:text-orange-300">ساعات إضافية</span>
+              <span className="text-xs text-orange-700 dark:text-orange-300">{t('dashboard.attendance.overtimeHours')}</span>
             </div>
             <p className="text-xl font-bold text-orange-800 dark:text-orange-200">
               {formatHours(stats.totalOvertimeHours)}
             </p>
             <p className="text-xs text-orange-600 dark:text-orange-400">
-              {stats.totalOvertimeHours.toFixed(1)} ساعة
+              {stats.totalOvertimeHours.toFixed(1)} {t('dashboard.attendance.hour')}
             </p>
           </div>
 
           <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 p-3 rounded-lg border border-yellow-200 dark:border-yellow-800">
             <div className="flex items-center gap-2 mb-1">
               <Coffee className="h-4 w-4 text-yellow-600" />
-              <span className="text-xs text-yellow-700 dark:text-yellow-300">وقت الاستراحة</span>
+              <span className="text-xs text-yellow-700 dark:text-yellow-300">{t('dashboard.attendance.breakTime')}</span>
             </div>
             <p className="text-xl font-bold text-yellow-800 dark:text-yellow-200">
               {Math.floor(stats.totalBreakMinutes / 60)}:{(stats.totalBreakMinutes % 60).toString().padStart(2, "0")}
             </p>
             <p className="text-xs text-yellow-600 dark:text-yellow-400">
-              {stats.totalBreakMinutes} دقيقة
+              {stats.totalBreakMinutes} {t('dashboard.attendance.minute')}
             </p>
           </div>
 
           <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
             <div className="flex items-center gap-2 mb-1">
               <CheckCircle className="h-4 w-4 text-blue-600" />
-              <span className="text-xs text-blue-700 dark:text-blue-300">نسبة الحضور</span>
+              <span className="text-xs text-blue-700 dark:text-blue-300">{t('dashboard.attendance.attendanceRate')}</span>
             </div>
             <p className="text-xl font-bold text-blue-800 dark:text-blue-200">
               {stats.attendanceRate}%
             </p>
             <p className="text-xs text-blue-600 dark:text-blue-400">
-              {stats.presentDays} يوم حضور
+              {stats.presentDays} {t('dashboard.attendance.dayAttendance')}
             </p>
           </div>
         </div>
@@ -294,7 +294,7 @@ export default function AttendanceStats({ userId }: AttendanceStatsProps) {
           <div className="bg-green-50 dark:bg-green-900/10 p-2 rounded-lg text-center">
             <div className="flex items-center justify-center gap-1 mb-1">
               <CheckCircle className="h-3 w-3 text-green-600" />
-              <span className="text-xs text-green-700 dark:text-green-300">أيام الحضور</span>
+              <span className="text-xs text-green-700 dark:text-green-300">{t('dashboard.attendance.presentDays')}</span>
             </div>
             <p className="text-lg font-bold text-green-800 dark:text-green-200">{stats.presentDays}</p>
           </div>
@@ -302,7 +302,7 @@ export default function AttendanceStats({ userId }: AttendanceStatsProps) {
           <div className="bg-red-50 dark:bg-red-900/10 p-2 rounded-lg text-center">
             <div className="flex items-center justify-center gap-1 mb-1">
               <XCircle className="h-3 w-3 text-red-600" />
-              <span className="text-xs text-red-700 dark:text-red-300">أيام الغياب</span>
+              <span className="text-xs text-red-700 dark:text-red-300">{t('dashboard.attendance.absentDays')}</span>
             </div>
             <p className="text-lg font-bold text-red-800 dark:text-red-200">{stats.absentDays}</p>
           </div>
@@ -310,7 +310,7 @@ export default function AttendanceStats({ userId }: AttendanceStatsProps) {
           <div className="bg-amber-50 dark:bg-amber-900/10 p-2 rounded-lg text-center">
             <div className="flex items-center justify-center gap-1 mb-1">
               <Timer className="h-3 w-3 text-amber-600" />
-              <span className="text-xs text-amber-700 dark:text-amber-300">أيام التأخير</span>
+              <span className="text-xs text-amber-700 dark:text-amber-300">{t('dashboard.attendance.lateDays')}</span>
             </div>
             <p className="text-lg font-bold text-amber-800 dark:text-amber-200">{stats.lateDays}</p>
           </div>
@@ -318,14 +318,14 @@ export default function AttendanceStats({ userId }: AttendanceStatsProps) {
           <div className="bg-purple-50 dark:bg-purple-900/10 p-2 rounded-lg text-center">
             <div className="flex items-center justify-center gap-1 mb-1">
               <CalendarIcon className="h-3 w-3 text-purple-600" />
-              <span className="text-xs text-purple-700 dark:text-purple-300">أيام الإجازة</span>
+              <span className="text-xs text-purple-700 dark:text-purple-300">{t('dashboard.attendance.leaveDays')}</span>
             </div>
             <p className="text-lg font-bold text-purple-800 dark:text-purple-200">{stats.leaveDays}</p>
           </div>
         </div>
 
         <div className="mt-3 text-center text-xs text-gray-500 dark:text-gray-400">
-          الفترة: {format(getDateRange.start, "yyyy/MM/dd", { locale: ar })} - {format(getDateRange.end, "yyyy/MM/dd", { locale: ar })}
+          {t('dashboard.attendance.period')}: {format(getDateRange.start, "yyyy/MM/dd", { locale: ar })} - {format(getDateRange.end, "yyyy/MM/dd", { locale: ar })}
         </div>
       </CardContent>
     </Card>

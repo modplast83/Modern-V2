@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -47,6 +48,7 @@ export default function HierarchicalOrdersView({
   stage,
   onCreateRoll,
 }: HierarchicalOrdersViewProps) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [expandedOrders, setExpandedOrders] = useState<Set<number>>(new Set());
   const [expandedProductionOrders, setExpandedProductionOrders] = useState<
@@ -178,7 +180,7 @@ export default function HierarchicalOrdersView({
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
         <Input
-          placeholder="البحث في الطلبات، أوامر العمل، الرولات، أو أسماء العملاء..."
+          placeholder={t('production.searchOrdersPlaceholder')}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-10"
@@ -191,8 +193,8 @@ export default function HierarchicalOrdersView({
         <div className="text-center py-8">
           <p className="text-muted-foreground">
             {searchTerm
-              ? "لا توجد نتائج مطابقة للبحث"
-              : "لا توجد طلبات في الإنتاج"}
+              ? t('production.noSearchResults')
+              : t('production.noOrdersInProduction')}
           </p>
         </div>
       ) : (
@@ -218,31 +220,31 @@ export default function HierarchicalOrdersView({
                       {order.order_number}
                     </CardTitle>
                     <p className="text-base font-bold text-blue-700">
-                      العميل:{" "}
+                      {t('production.customer')}:{" "}
                       {order.customer_name_ar ||
                         order.customer_name ||
-                        "غير محدد"}
+                        t('production.notSpecified')}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline">
-                    {order.production_orders?.length || 0} أوامر إنتاج
+                    {order.production_orders?.length || 0} {t('production.productionOrders')}
                   </Badge>
                   <Badge
                     variant="secondary"
                     data-testid={`badge-order-status-${order.id}`}
                   >
                     {order.status === "for_production"
-                      ? "للإنتاج"
+                      ? t('production.statuses.forProduction')
                       : order.status === "pending"
-                        ? "بالإنتظار"
+                        ? t('production.statuses.pending')
                         : order.status === "in_production"
-                          ? "قيد الإنتاج"
+                          ? t('production.statuses.inProduction')
                           : order.status === "completed"
-                            ? "مكتمل"
+                            ? t('production.statuses.completed')
                             : order.status === "cancelled"
-                              ? "ملغي"
+                              ? t('production.statuses.cancelled')
                               : order.status}
                   </Badge>
                 </div>
@@ -302,13 +304,13 @@ export default function HierarchicalOrdersView({
                                   <p className="text-sm text-muted-foreground">
                                     {productionOrder.item_name_ar ||
                                       productionOrder.item_name ||
-                                      "غير محدد"}
+                                      t('production.notSpecified')}
                                   </p>
                                   <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-xs">
                                     {productionOrder.size_caption && (
                                       <div>
                                         <span className="font-medium">
-                                          المقاس:{" "}
+                                          {t('production.size')}:{" "}
                                         </span>
                                         <span className="text-muted-foreground">
                                           {productionOrder.size_caption}
@@ -318,7 +320,7 @@ export default function HierarchicalOrdersView({
                                     {productionOrder.thickness && (
                                       <div>
                                         <span className="font-medium">
-                                          السماكة:{" "}
+                                          {t('production.thickness')}:{" "}
                                         </span>
                                         <span className="text-muted-foreground">
                                           {productionOrder.thickness}
@@ -328,7 +330,7 @@ export default function HierarchicalOrdersView({
                                     {productionOrder.raw_material && (
                                       <div>
                                         <span className="font-medium">
-                                          الخامة:{" "}
+                                          {t('production.rawMaterial')}:{" "}
                                         </span>
                                         <span className="text-muted-foreground">
                                           {productionOrder.raw_material}
@@ -338,19 +340,19 @@ export default function HierarchicalOrdersView({
                                     {productionOrder.master_batch_id && (
                                       <div className="flex items-center gap-1">
                                         <span className="font-medium">
-                                          لون ماستر باتش:{" "}
+                                          {t('production.masterBatchColor')}:{" "}
                                         </span>
                                         {getMasterBatchDisplay(productionOrder.master_batch_id)}
                                       </div>
                                     )}
                                     <div>
                                       <span className="font-medium">
-                                        طباعة:{" "}
+                                        {t('production.printing.label')}:{" "}
                                       </span>
                                       <span className="text-muted-foreground">
                                         {productionOrder.is_printed
-                                          ? "نعم"
-                                          : "لا"}
+                                          ? t('common.yes')
+                                          : t('common.no')}
                                       </span>
                                     </div>
                                   </div>
@@ -359,7 +361,7 @@ export default function HierarchicalOrdersView({
                               <div className="flex items-center gap-4">
                                 <div className="text-sm">
                                   <span className="text-muted-foreground">
-                                    الكمية:{" "}
+                                    {t('production.quantity')}:{" "}
                                   </span>
                                   {formatWeight(produced)} /{" "}
                                   {formatWeight(required)}
@@ -387,11 +389,11 @@ export default function HierarchicalOrdersView({
                               productionOrder.rolls && (
                                 <div className="mt-4 ml-6 space-y-2">
                                   <h5 className="text-sm font-medium text-gray-700 mb-2">
-                                    الرولات ({productionOrder.rolls.length})
+                                    {t('production.rolls')} ({productionOrder.rolls.length})
                                   </h5>
                                   {productionOrder.rolls.length === 0 ? (
                                     <p className="text-sm text-muted-foreground">
-                                      لا توجد رولات بعد
+                                      {t('production.noRollsYet')}
                                     </p>
                                   ) : (
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -408,7 +410,7 @@ export default function HierarchicalOrdersView({
                                                   {roll.roll_number}
                                                 </p>
                                                 <p className="text-xs text-muted-foreground">
-                                                  الوزن:{" "}
+                                                  {t('production.weight')}:{" "}
                                                   {formatWeight(
                                                     parseFloat(
                                                       roll.weight_kg,
@@ -416,13 +418,13 @@ export default function HierarchicalOrdersView({
                                                   )}
                                                 </p>
                                                 <p className="text-xs text-muted-foreground">
-                                                  المرحلة:{" "}
+                                                  {t('production.stage')}:{" "}
                                                   {roll.stage === "film"
-                                                    ? "فيلم"
+                                                    ? t('production.stages.film')
                                                     : roll.stage === "printing"
-                                                      ? "طباعة"
+                                                      ? t('production.stages.printing')
                                                       : roll.stage === "cutting"
-                                                        ? "تقطيع"
+                                                        ? t('production.stages.cutting')
                                                         : roll.stage}
                                                 </p>
                                               </div>
@@ -435,13 +437,13 @@ export default function HierarchicalOrdersView({
                                                 className="text-xs"
                                               >
                                                 {roll.stage === "done"
-                                                  ? "مكتمل"
+                                                  ? t('production.stages.done')
                                                   : roll.stage === "film"
-                                                    ? "فيلم"
+                                                    ? t('production.stages.film')
                                                     : roll.stage === "printing"
-                                                      ? "طباعة"
+                                                      ? t('production.stages.printing')
                                                       : roll.stage === "cutting"
-                                                        ? "تقطيع"
+                                                        ? t('production.stages.cutting')
                                                         : roll.stage}
                                               </Badge>
                                             </div>
@@ -457,7 +459,7 @@ export default function HierarchicalOrdersView({
                                               data-testid={`button-print-label-${roll.id}`}
                                             >
                                               <Printer className="h-3 w-3 mr-1" />
-                                              طباعة ملصق
+                                              {t('production.printLabel')}
                                             </Button>
                                           </div>
                                         ),
@@ -473,7 +475,7 @@ export default function HierarchicalOrdersView({
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground ml-6">
-                    لا توجد أوامر إنتاج لهذا الطلب
+                    {t('production.noProductionOrdersForOrder')}
                   </p>
                 )}
               </CardContent>

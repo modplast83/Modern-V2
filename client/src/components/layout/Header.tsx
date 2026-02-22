@@ -15,7 +15,7 @@ export default function Header() {
           <div className="flex items-center justify-center w-20 h-20 rounded-lg overflow-hidden">
             <img
               src={FactoryLogoPath}
-              alt="شعار مصنع الأكياس البلاستيكية"
+              alt={t('header.factoryLogo')}
               className="w-full h-full object-contain mt-[0px] mb-[0px] pt-[0px] pb-[0px]"
             />
           </div>
@@ -37,7 +37,7 @@ export default function Header() {
                 {user?.display_name_ar || user?.display_name || user?.username}
               </p>
               <p className="text-xs text-gray-600">
-                {user?.role_name_ar || user?.role_name || "مستخدم"}
+                {user?.role_name_ar || user?.role_name || t('header.defaultRole')}
               </p>
             </div>
             <button
@@ -48,7 +48,7 @@ export default function Header() {
                 user?.display_name_ar ||
                 user?.display_name ||
                 user?.username ||
-                "م"
+                t('header.defaultInitial')
               ).charAt(0)}
             </button>
           </div>

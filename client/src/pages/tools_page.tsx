@@ -480,7 +480,7 @@ function BagWeightCalculator({ onBagWeight, onDims, onPrintRef }: BagWeightCalcu
 </head>
 <body>
   <h1>${t("tools.bagWeight.printTitle")}</h1>
-  <p class="subtitle">${new Date().toLocaleDateString(isAr ? "ar-SA" : "en-US", { year:"numeric", month:"long", day:"numeric" })} — ${records.length > 1 ? records.length + " " + (isAr ? "سجل" : "records") : ""}</p>
+  <p class="subtitle">${new Date().toLocaleDateString(isAr ? "ar-SA" : "en-US", { year:"numeric", month:"long", day:"numeric" })} — ${records.length > 1 ? records.length + " " + t("tools.bagWeight.records") : ""}</p>
   <table>
     <thead>
       <tr>
@@ -489,16 +489,16 @@ function BagWeightCalculator({ onBagWeight, onDims, onPrintRef }: BagWeightCalcu
         <th>${t("tools.bagWeight.thickness")}</th>
         <th>${t("tools.bagWeight.layers")}</th>
         <th>${t("tools.bagWeight.density")}</th>
-        <th>${isAr ? "الحاشية" : "Gusset"}</th>
+        <th>${t("tools.bagWeight.gusset")}</th>
         <th>${t("tools.bagWeight.weightPerBag")}</th>
         <th>${t("tools.bagWeight.bagsPerKg")}</th>
         <th>${t("tools.bagWeight.area")}</th>
-        <th>${isAr ? "التاريخ" : "Date"}</th>
+        <th>${t("tools.bagWeight.date")}</th>
       </tr>
     </thead>
     <tbody>${rows}</tbody>
   </table>
-  <div class="footer">${isAr ? "مصنع الأكياس البلاستيكية — نظام إدارة الإنتاج" : "Plastic Bag Factory — Production Management System"}</div>
+  <div class="footer">${t("tools.bagWeight.printFooter")}</div>
 </body>
 </html>`;
     const w = window.open("", "_blank", "width=900,height=600");

@@ -142,10 +142,10 @@ export default function LeaveManagement() {
     if (!status) return status;
     const lowerStatus = status.toLowerCase();
     if (lowerStatus === "approved" || status === "موافق عليه" || status === "موافق")
-      return "موافق عليه";
-    if (lowerStatus === "rejected" || status === "مرفوض") return "مرفوض";
+      return t("hr.leaves.statusApproved");
+    if (lowerStatus === "rejected" || status === "مرفوض") return t("hr.leaves.statusRejected");
     if (lowerStatus === "pending" || status === "معلق" || status === "قيد المراجعة")
-      return "قيد المراجعة";
+      return t("hr.leaves.statusPending");
     return status;
   };
 
@@ -186,15 +186,15 @@ export default function LeaveManagement() {
     switch (priority.toLowerCase()) {
       case "high":
       case "عالية":
-        return "عالية";
+        return t("hr.leaves.priorityHigh");
       case "medium":
       case "متوسطة":
       case "عادي":
       case "عادية":
-        return "متوسطة";
+        return t("hr.leaves.priorityMedium");
       case "low":
       case "منخفضة":
-        return "منخفضة";
+        return t("hr.leaves.priorityLow");
       default:
         return priority;
     }
@@ -220,9 +220,9 @@ export default function LeaveManagement() {
   };
 
   const getUserDisplayName = (userId: number) => {
-    if (!Array.isArray(users) || users.length === 0) return `المستخدم ${userId}`;
+    if (!Array.isArray(users) || users.length === 0) return `${t("hr.leaves.user")} ${userId}`;
     const user = users.find((u: any) => u.id === userId);
-    return user ? user.display_name_ar || user.display_name || user.username : `المستخدم ${userId}`;
+    return user ? user.display_name_ar || user.display_name || user.username : `${t("hr.leaves.user")} ${userId}`;
   };
 
   // memoize the request groups

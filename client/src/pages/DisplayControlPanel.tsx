@@ -630,7 +630,7 @@ export default function DisplayControlPanel() {
                 <DialogHeader>
                   <DialogTitle>{editingSlide ? t('display.editSlide') : t('display.addSlide')}</DialogTitle>
                   <DialogDescription>
-                    {editingSlide ? 'تعديل بيانات الشريحة الحالية' : 'إضافة شريحة عرض جديدة للشاشة'}
+                    {editingSlide ? t('display.editSlideDescription') : t('display.addSlideDescription')}
                   </DialogDescription>
                 </DialogHeader>
                 <SlideForm

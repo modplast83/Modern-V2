@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Card } from "../ui/card";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -28,6 +29,7 @@ export default function ProductionOrderFilters({
   onFiltersChange,
   customers,
 }: ProductionOrderFiltersProps) {
+  const { t } = useTranslation();
   const handleFilterChange = (key: string, value: any) => {
     onFiltersChange({
       ...filters,
@@ -56,7 +58,7 @@ export default function ProductionOrderFilters({
     <Card className="p-4 mb-4">
       <div className="flex items-center gap-2 mb-4">
         <Filter className="h-5 w-5 text-gray-600" />
-        <h3 className="font-semibold">فلاتر البحث</h3>
+        <h3 className="font-semibold">{t('production.filters.searchFilters')}</h3>
         {hasActiveFilters && (
           <Button
             size="sm"
@@ -66,20 +68,19 @@ export default function ProductionOrderFilters({
             data-testid="button-reset-filters"
           >
             <X className="h-4 w-4 ml-1" />
-            مسح الفلاتر
+            {t('production.filters.clearFilters')}
           </Button>
         )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        {/* البحث النصي */}
         <div>
-          <Label htmlFor="search">البحث</Label>
+          <Label htmlFor="search">{t('production.filters.search')}</Label>
           <div className="relative">
             <Search className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
             <Input
               id="search"
-              placeholder="رقم الطلب أو أمر الإنتاج..."
+              placeholder={t('production.filters.searchPlaceholder')}
               value={filters.searchTerm}
               onChange={(e) => handleFilterChange("searchTerm", e.target.value)}
               className="pr-9"
@@ -88,9 +89,8 @@ export default function ProductionOrderFilters({
           </div>
         </div>
 
-        {/* فلتر الحالة */}
         <div>
-          <Label htmlFor="status">الحالة</Label>
+          <Label htmlFor="status">{t('production.filters.status')}</Label>
           <Select
             value={filters.status}
             onValueChange={(value) => handleFilterChange("status", value)}
@@ -100,49 +100,48 @@ export default function ProductionOrderFilters({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all" data-testid="option-status-all">
-                جميع الحالات
+                {t('production.filters.allStatuses')}
               </SelectItem>
               <SelectItem value="pending" data-testid="option-status-pending">
                 <div className="flex items-center gap-2">
                   <span className="text-yellow-600">⏳</span>
-                  في الانتظار
+                  {t('production.status.pending')}
                 </div>
               </SelectItem>
               <SelectItem value="active" data-testid="option-status-active">
                 <div className="flex items-center gap-2">
                   <span className="text-green-600">▶️</span>
-                  نشط
+                  {t('production.status.active')}
                 </div>
               </SelectItem>
               <SelectItem value="completed" data-testid="option-status-completed">
                 <div className="flex items-center gap-2">
                   <span className="text-gray-600">✅</span>
-                  مكتمل
+                  {t('production.status.completed')}
                 </div>
               </SelectItem>
               <SelectItem value="cancelled" data-testid="option-status-cancelled">
                 <div className="flex items-center gap-2">
                   <span className="text-red-600">❌</span>
-                  ملغي
+                  {t('production.status.cancelled')}
                 </div>
               </SelectItem>
             </SelectContent>
           </Select>
         </div>
 
-        {/* فلتر العميل */}
         <div>
-          <Label htmlFor="customer">العميل</Label>
+          <Label htmlFor="customer">{t('production.filters.customer')}</Label>
           <Select
             value={filters.customerId || "all"}
             onValueChange={(value) => handleFilterChange("customerId", value === "all" ? "" : value)}
           >
             <SelectTrigger id="customer" data-testid="select-customer">
-              <SelectValue placeholder="جميع العملاء" />
+              <SelectValue placeholder={t('production.filters.allCustomers')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all" data-testid="option-customer-all">
-                جميع العملاء
+                {t('production.filters.allCustomers')}
               </SelectItem>
               {customers.map((customer) => (
                 <SelectItem
@@ -157,9 +156,8 @@ export default function ProductionOrderFilters({
           </Select>
         </div>
 
-        {/* التاريخ من */}
         <div>
-          <Label htmlFor="date-from">من تاريخ</Label>
+          <Label htmlFor="date-from">{t('production.filters.dateFrom')}</Label>
           <Input
             id="date-from"
             type="date"
@@ -169,9 +167,8 @@ export default function ProductionOrderFilters({
           />
         </div>
 
-        {/* التاريخ إلى */}
         <div>
-          <Label htmlFor="date-to">إلى تاريخ</Label>
+          <Label htmlFor="date-to">{t('production.filters.dateTo')}</Label>
           <Input
             id="date-to"
             type="date"

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
@@ -74,12 +75,13 @@ function StatCard({
 function TopWorkersCard({ 
   title, 
   workers, 
-  unit = "كغ" 
+  unit
 }: { 
   title: string; 
   workers: TopWorker[]; 
-  unit?: string;
+  unit: string;
 }) {
+  const { t } = useTranslation();
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="pb-2">
@@ -90,7 +92,7 @@ function TopWorkersCard({
       </CardHeader>
       <CardContent className="pt-0">
         {workers.length === 0 ? (
-          <p className="text-xs text-gray-500 text-center py-2">لا يوجد بيانات</p>
+          <p className="text-xs text-gray-500 text-center py-2">{t('dashboard.stats.noData')}</p>
         ) : (
           <div className="space-y-2">
             {workers.map((worker, index) => (
@@ -118,6 +120,7 @@ function TopWorkersCard({
 }
 
 function DashboardStatsContent() {
+  const { t } = useTranslation();
   const { data: stats, isLoading } = useQuery<DashboardStatsData>({
     queryKey: ["/api/dashboard/stats"],
   });
@@ -157,70 +160,73 @@ function DashboardStatsContent() {
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <StatCard
-          title="أوامر إنتاج في الانتظار"
+          title={t('dashboard.stats.waitingOrders')}
           value={waitingCount}
-          subtitle={`${formatNumber(waitingKg)} كغ`}
+          subtitle={`${formatNumber(waitingKg)} ${t('dashboard.stats.kg')}`}
           icon={<Clock className="w-6 h-6" />}
           color="text-orange-600"
-          badge={waitingCount > 0 ? { text: "قيد الانتظار", variant: "secondary" } : undefined}
+          badge={waitingCount > 0 ? { text: t('dashboard.stats.waiting'), variant: "secondary" } : undefined}
         />
 
         <StatCard
-          title="أوامر إنتاج نشطة"
+          title={t('dashboard.stats.activeOrders')}
           value={inProductionCount}
-          subtitle={`${formatNumber(inProductionKg)} كغ`}
+          subtitle={`${formatNumber(inProductionKg)} ${t('dashboard.stats.kg')}`}
           icon={<Factory className="w-6 h-6" />}
           color="text-blue-600"
-          badge={inProductionCount > 0 ? { text: "جاري الإنتاج", variant: "default" } : undefined}
+          badge={inProductionCount > 0 ? { text: t('dashboard.stats.inProduction'), variant: "default" } : undefined}
         />
 
         <StatCard
-          title="إنتاج الشهر"
-          value={`${formatNumber(monthlyProduction)} كغ`}
-          subtitle="إجمالي الإنتاج"
+          title={t('dashboard.stats.monthlyProduction')}
+          value={`${formatNumber(monthlyProduction)} ${t('dashboard.stats.kg')}`}
+          subtitle={t('dashboard.stats.totalProduction')}
           icon={<Scale className="w-6 h-6" />}
           color="text-green-600"
         />
 
         <StatCard
-          title="هدر الشهر"
-          value={`${formatNumber(monthlyWaste)} كغ`}
-          subtitle="إجمالي الهدر"
+          title={t('dashboard.stats.monthlyWaste')}
+          value={`${formatNumber(monthlyWaste)} ${t('dashboard.stats.kg')}`}
+          subtitle={t('dashboard.stats.totalWaste')}
           icon={<Trash2 className="w-6 h-6" />}
           color={monthlyWaste > 100 ? "text-red-600" : "text-gray-600"}
-          badge={monthlyWaste > 100 ? { text: "مرتفع", variant: "destructive" } : undefined}
+          badge={monthlyWaste > 100 ? { text: t('dashboard.stats.high'), variant: "destructive" } : undefined}
         />
 
         <StatCard
-          title="العمال الحاضرين"
+          title={t('dashboard.stats.presentWorkers')}
           value={`${presentEmployees}/${totalEmployees}`}
-          subtitle={`${attendanceRate}% معدل الحضور`}
+          subtitle={`${attendanceRate}% ${t('dashboard.stats.attendanceRate')}`}
           icon={<UserCheck className="w-6 h-6" />}
           color="text-purple-600"
         />
 
         <StatCard
-          title="تنبيهات الصيانة"
+          title={t('dashboard.stats.maintenanceAlerts')}
           value={maintenanceAlerts}
-          subtitle={maintenanceAlerts > 0 ? "يتطلب انتباه" : "لا توجد تنبيهات"}
+          subtitle={maintenanceAlerts > 0 ? t('dashboard.stats.requiresAttention') : t('dashboard.stats.noAlerts')}
           icon={<AlertTriangle className="w-6 h-6" />}
           color={maintenanceAlerts > 0 ? "text-red-600" : "text-green-600"}
-          badge={maintenanceAlerts > 0 ? { text: "تنبيه", variant: "destructive" } : { text: "طبيعي", variant: "default" }}
+          badge={maintenanceAlerts > 0 ? { text: t('dashboard.stats.alert'), variant: "destructive" } : { text: t('dashboard.stats.normal'), variant: "default" }}
         />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <TopWorkersCard
-          title="أفضل عمال الفيلم"
+          title={t('dashboard.stats.topFilmWorkers')}
           workers={stats?.topWorkers?.film || []}
+          unit={t('dashboard.stats.kg')}
         />
         <TopWorkersCard
-          title="أفضل عمال الطباعة"
+          title={t('dashboard.stats.topPrintingWorkers')}
           workers={stats?.topWorkers?.printing || []}
+          unit={t('dashboard.stats.kg')}
         />
         <TopWorkersCard
-          title="أفضل عمال القص"
+          title={t('dashboard.stats.topCuttingWorkers')}
           workers={stats?.topWorkers?.cutting || []}
+          unit={t('dashboard.stats.kg')}
         />
       </div>
     </div>
@@ -228,11 +234,12 @@ function DashboardStatsContent() {
 }
 
 export default function DashboardStats() {
+  const { t } = useTranslation();
   return (
     <ErrorBoundary
       fallback="component"
-      title="خطأ في تحميل الإحصائيات"
-      description="تعذر تحميل إحصائيات لوحة التحكم. يرجى المحاولة مرة أخرى."
+      title={t('dashboard.stats.errorTitle')}
+      description={t('dashboard.stats.errorDescription')}
       onError={(error, errorInfo) => {
         console.error("Dashboard stats error:", error, errorInfo);
       }}

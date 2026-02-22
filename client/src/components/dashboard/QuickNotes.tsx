@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
@@ -53,24 +54,35 @@ interface QuickNote {
   attachments?: any[];
 }
 
-const noteTypeConfig = {
-  order: { label: "طلبية", icon: Package, color: "bg-blue-100 text-blue-700 border-blue-300" },
-  design: { label: "تصميم", icon: Palette, color: "bg-purple-100 text-purple-700 border-purple-300" },
-  statement: { label: "كشف حساب", icon: FileText, color: "bg-green-100 text-green-700 border-green-300" },
-  quote: { label: "عرض أسعار", icon: DollarSign, color: "bg-yellow-100 text-yellow-700 border-yellow-300" },
-  delivery: { label: "توصيل", icon: Truck, color: "bg-orange-100 text-orange-700 border-orange-300" },
-  call_customer: { label: "الاتصال بعميل", icon: Phone, color: "bg-pink-100 text-pink-700 border-pink-300" },
-  other: { label: "أخرى", icon: MoreHorizontal, color: "bg-gray-100 text-gray-700 border-gray-300" },
+const noteTypeIcons = {
+  order: Package,
+  design: Palette,
+  statement: FileText,
+  quote: DollarSign,
+  delivery: Truck,
+  call_customer: Phone,
+  other: MoreHorizontal,
 };
 
-const priorityConfig = {
-  low: { label: "منخفضة", color: "bg-gray-50 border-gray-200" },
-  normal: { label: "عادية", color: "bg-blue-50 border-blue-200" },
-  high: { label: "عالية", color: "bg-orange-50 border-orange-200" },
-  urgent: { label: "عاجلة", color: "bg-red-50 border-red-300 shadow-md" },
+const noteTypeColors = {
+  order: "bg-blue-100 text-blue-700 border-blue-300",
+  design: "bg-purple-100 text-purple-700 border-purple-300",
+  statement: "bg-green-100 text-green-700 border-green-300",
+  quote: "bg-yellow-100 text-yellow-700 border-yellow-300",
+  delivery: "bg-orange-100 text-orange-700 border-orange-300",
+  call_customer: "bg-pink-100 text-pink-700 border-pink-300",
+  other: "bg-gray-100 text-gray-700 border-gray-300",
+};
+
+const priorityColors = {
+  low: "bg-gray-50 border-gray-200",
+  normal: "bg-blue-50 border-blue-200",
+  high: "bg-orange-50 border-orange-200",
+  urgent: "bg-red-50 border-red-300 shadow-md",
 };
 
 export default function QuickNotes() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -82,25 +94,21 @@ export default function QuickNotes() {
     assigned_to: 0,
   });
 
-  // Update assigned_to when user is loaded
   useEffect(() => {
     if (user?.id && newNote.assigned_to === 0) {
       setNewNote(prev => ({ ...prev, assigned_to: user.id }));
     }
   }, [user?.id, newNote.assigned_to]);
 
-  // Fetch quick notes for current user
   const { data: notes = [], isLoading } = useQuery<QuickNote[]>({
     queryKey: ["/api/quick-notes"],
     refetchInterval: false,
   });
 
-  // Fetch users for assignment
   const { data: users = [] } = useQuery<any[]>({
     queryKey: ["/api/users"],
   });
 
-  // Create note mutation
   const createNoteMutation = useMutation({
     mutationFn: async (noteData: any) => {
       return await apiRequest("/api/quick-notes", {
@@ -111,8 +119,8 @@ export default function QuickNotes() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/quick-notes"] });
       toast({
-        title: "تم إنشاء الملاحظة",
-        description: "تم إضافة الملاحظة بنجاح",
+        title: t('dashboard.notes.createSuccess'),
+        description: t('dashboard.notes.createSuccessDesc'),
       });
       setIsModalOpen(false);
       setNewNote({
@@ -124,14 +132,13 @@ export default function QuickNotes() {
     },
     onError: (error: any) => {
       toast({
-        title: "خطأ",
-        description: error.message || "فشل إنشاء الملاحظة",
+        title: t('dashboard.notes.createError'),
+        description: error.message || t('dashboard.notes.createErrorDesc'),
         variant: "destructive",
       });
     },
   });
 
-  // Mark as read mutation
   const markAsReadMutation = useMutation({
     mutationFn: async (noteId: number) => {
       return await apiRequest(`/api/quick-notes/${noteId}/read`, {
@@ -143,7 +150,6 @@ export default function QuickNotes() {
     },
   });
 
-  // Delete note mutation
   const deleteNoteMutation = useMutation({
     mutationFn: async (noteId: number) => {
       return await apiRequest(`/api/quick-notes/${noteId}`, {
@@ -153,8 +159,8 @@ export default function QuickNotes() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/quick-notes"] });
       toast({
-        title: "تم الحذف",
-        description: "تم حذف الملاحظة بنجاح",
+        title: t('dashboard.notes.deleted'),
+        description: t('dashboard.notes.deletedDesc'),
       });
     },
   });
@@ -162,8 +168,8 @@ export default function QuickNotes() {
   const handleCreateNote = () => {
     if (!newNote.content.trim()) {
       toast({
-        title: "خطأ",
-        description: "يرجى إدخال محتوى الملاحظة",
+        title: t('dashboard.notes.createError'),
+        description: t('dashboard.notes.contentRequired'),
         variant: "destructive",
       });
       return;
@@ -172,7 +178,23 @@ export default function QuickNotes() {
     createNoteMutation.mutate(newNote);
   };
 
-  // Filter notes assigned to current user and unread notes
+  const noteTypeLabels: Record<string, string> = {
+    order: t('dashboard.notes.order'),
+    design: t('dashboard.notes.design'),
+    statement: t('dashboard.notes.statement'),
+    quote: t('dashboard.notes.quote'),
+    delivery: t('dashboard.notes.delivery'),
+    call_customer: t('dashboard.notes.callCustomer'),
+    other: t('dashboard.notes.other'),
+  };
+
+  const priorityLabels: Record<string, string> = {
+    low: t('dashboard.notes.lowPriority'),
+    normal: t('dashboard.notes.normalPriority'),
+    high: t('dashboard.notes.highPriority'),
+    urgent: t('dashboard.notes.urgentPriority'),
+  };
+
   const userNotes = notes.filter(
     (note) => note.assigned_to === user?.id || note.created_by === user?.id
   );
@@ -183,7 +205,7 @@ export default function QuickNotes() {
       <CardHeader className="flex flex-row items-center justify-between pb-3">
         <div className="flex items-center gap-2">
           <AlertCircle className="w-5 h-5 text-blue-600" />
-          <CardTitle className="text-lg font-bold">ملاحظات سريعة</CardTitle>
+          <CardTitle className="text-lg font-bold">{t('dashboard.notes.title')}</CardTitle>
           {unreadNotes.length > 0 && (
             <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
               {unreadNotes.length}
@@ -194,17 +216,17 @@ export default function QuickNotes() {
           <DialogTrigger asChild>
             <Button size="sm" className="gap-2" data-testid="button-add-note">
               <Plus className="w-4 h-4" />
-              إضافة ملاحظة
+              {t('dashboard.notes.addNote')}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>إضافة ملاحظة جديدة</DialogTitle>
-              <DialogDescription className="sr-only">نموذج إضافة ملاحظة سريعة جديدة</DialogDescription>
+              <DialogTitle>{t('dashboard.notes.addNewNote')}</DialogTitle>
+              <DialogDescription className="sr-only">{t('dashboard.notes.addNewNoteDesc')}</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div>
-                <Label>نوع الملاحظة</Label>
+                <Label>{t('dashboard.notes.noteType')}</Label>
                 <Select
                   value={newNote.note_type}
                   onValueChange={(value) =>
@@ -215,11 +237,11 @@ export default function QuickNotes() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(noteTypeConfig).map(([key, config]) => (
+                    {Object.entries(noteTypeIcons).map(([key, Icon]) => (
                       <SelectItem key={key} value={key}>
                         <div className="flex items-center gap-2">
-                          <config.icon className="w-4 h-4" />
-                          {config.label}
+                          <Icon className="w-4 h-4" />
+                          {noteTypeLabels[key]}
                         </div>
                       </SelectItem>
                     ))}
@@ -228,7 +250,7 @@ export default function QuickNotes() {
               </div>
 
               <div>
-                <Label>الأولوية</Label>
+                <Label>{t('dashboard.notes.priority')}</Label>
                 <Select
                   value={newNote.priority}
                   onValueChange={(value) =>
@@ -239,9 +261,9 @@ export default function QuickNotes() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(priorityConfig).map(([key, config]) => (
+                    {Object.entries(priorityLabels).map(([key, label]) => (
                       <SelectItem key={key} value={key}>
-                        {config.label}
+                        {label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -249,7 +271,7 @@ export default function QuickNotes() {
               </div>
 
               <div>
-                <Label>تعيين إلى</Label>
+                <Label>{t('dashboard.notes.assignTo')}</Label>
                 <Select
                   value={newNote.assigned_to.toString()}
                   onValueChange={(value) =>
@@ -272,13 +294,13 @@ export default function QuickNotes() {
               </div>
 
               <div>
-                <Label>المحتوى</Label>
+                <Label>{t('dashboard.notes.content')}</Label>
                 <Textarea
                   value={newNote.content}
                   onChange={(e) =>
                     setNewNote({ ...newNote, content: e.target.value })
                   }
-                  placeholder="اكتب ملاحظتك هنا..."
+                  placeholder={t('dashboard.notes.placeholder')}
                   className="min-h-[100px]"
                   data-testid="textarea-note-content"
                 />
@@ -290,14 +312,14 @@ export default function QuickNotes() {
                   onClick={() => setIsModalOpen(false)}
                   data-testid="button-cancel"
                 >
-                  إلغاء
+                  {t('dashboard.notes.cancel')}
                 </Button>
                 <Button
                   onClick={handleCreateNote}
                   disabled={createNoteMutation.isPending}
                   data-testid="button-save-note"
                 >
-                  {createNoteMutation.isPending ? "جاري الحفظ..." : "حفظ"}
+                  {createNoteMutation.isPending ? t('dashboard.notes.saving') : t('dashboard.notes.save')}
                 </Button>
               </div>
             </div>
@@ -307,35 +329,35 @@ export default function QuickNotes() {
 
       <CardContent className="space-y-3 max-h-[500px] overflow-y-auto">
         {isLoading ? (
-          <div className="text-center py-4 text-gray-500">جاري التحميل...</div>
+          <div className="text-center py-4 text-gray-500">{t('dashboard.notes.loading')}</div>
         ) : userNotes.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
-            لا توجد ملاحظات حالياً
+            {t('dashboard.notes.noNotes')}
           </div>
         ) : (
           userNotes.map((note) => {
-            const typeConfig = noteTypeConfig[note.note_type as keyof typeof noteTypeConfig] || noteTypeConfig.other;
-            const priorityStyle = priorityConfig[note.priority as keyof typeof priorityConfig] || priorityConfig.normal;
-            const Icon = typeConfig.icon;
+            const Icon = noteTypeIcons[note.note_type as keyof typeof noteTypeIcons] || noteTypeIcons.other;
+            const typeColor = noteTypeColors[note.note_type as keyof typeof noteTypeColors] || noteTypeColors.other;
+            const priorityStyle = priorityColors[note.priority as keyof typeof priorityColors] || priorityColors.normal;
 
             return (
               <div
                 key={note.id}
-                className={`p-4 rounded-lg border-2 ${priorityStyle.color} ${!note.is_read ? "ring-2 ring-blue-400" : ""}`}
+                className={`p-4 rounded-lg border-2 ${priorityStyle} ${!note.is_read ? "ring-2 ring-blue-400" : ""}`}
                 data-testid={`note-${note.id}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <div className={`p-2 rounded-lg ${typeConfig.color}`}>
+                      <div className={`p-2 rounded-lg ${typeColor}`}>
                         <Icon className="w-4 h-4" />
                       </div>
                       <span className="text-xs font-semibold px-2 py-1 rounded bg-gray-100">
-                        {typeConfig.label}
+                        {noteTypeLabels[note.note_type] || note.note_type}
                       </span>
                       {!note.is_read && (
                         <span className="text-xs font-bold text-blue-600">
-                          جديد
+                          {t('dashboard.notes.new')}
                         </span>
                       )}
                     </div>
@@ -343,9 +365,9 @@ export default function QuickNotes() {
                       {note.content}
                     </p>
                     <div className="flex items-center gap-3 text-xs text-gray-600">
-                      <span>من: {note.creator_name}</span>
+                      <span>{t('dashboard.notes.from')}: {note.creator_name}</span>
                       <span>•</span>
-                      <span>إلى: {note.assignee_name}</span>
+                      <span>{t('dashboard.notes.to')}: {note.assignee_name}</span>
                       <span>•</span>
                       <span>
                         {formatDistanceToNow(new Date(note.created_at), {

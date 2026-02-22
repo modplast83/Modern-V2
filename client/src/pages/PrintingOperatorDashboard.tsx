@@ -95,7 +95,7 @@ export default function PrintingOperatorDashboard({ hideLayout = false }: Printi
     if (!selectedMachineId) {
       toast({
         title: t('operators.common.error'),
-        description: "يرجى تحديد ماكينة الطباعة أولاً",
+        description: t('operators.printing.selectMachineFirst'),
         variant: "destructive",
       });
       return;
@@ -147,15 +147,15 @@ export default function PrintingOperatorDashboard({ hideLayout = false }: Printi
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Printer className="h-5 w-5 text-purple-600" />
-            تحديد ماكينة الطباعة
+            {t('operators.printing.selectMachine')}
           </CardTitle>
-          <CardDescription>اختر الماكينة التي ستعمل عليها قبل بدء الطباعة</CardDescription>
+          <CardDescription>{t('operators.printing.selectMachineDesc')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-3">
             <Select value={selectedMachineId} onValueChange={setSelectedMachineId}>
               <SelectTrigger className="w-full max-w-xs bg-white dark:bg-gray-900">
-                <SelectValue placeholder="اختر ماكينة الطباعة..." />
+                <SelectValue placeholder={t('operators.printing.selectMachinePlaceholder')} />
               </SelectTrigger>
               <SelectContent>
                 {printingMachines.map((machine) => (
@@ -175,7 +175,7 @@ export default function PrintingOperatorDashboard({ hideLayout = false }: Printi
           {!selectedMachineId && (
             <div className="flex items-center gap-2 mt-3 text-amber-600 dark:text-amber-400 text-sm">
               <AlertCircle className="h-4 w-4" />
-              <span>يجب تحديد الماكينة قبل البدء بالطباعة</span>
+              <span>{t('operators.printing.mustSelectMachine')}</span>
             </div>
           )}
         </CardContent>
@@ -314,7 +314,7 @@ export default function PrintingOperatorDashboard({ hideLayout = false }: Printi
                                 disabled={processingRollIds.has(roll.roll_id) || !selectedMachineId}
                                 size="sm"
                                 data-testid={`button-move-to-printing-${roll.roll_id}`}
-                                title={!selectedMachineId ? "يرجى تحديد ماكينة الطباعة أولاً" : ""}
+                                title={!selectedMachineId ? t('operators.printing.selectMachineFirst') : ""}
                               >
                                 {processingRollIds.has(roll.roll_id) ? (
                                   <Loader2 className="h-4 w-4 animate-spin" />

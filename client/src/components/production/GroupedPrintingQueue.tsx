@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
@@ -77,6 +78,7 @@ interface Machine {
 export default function GroupedPrintingQueue({
   items,
 }: GroupedPrintingQueueProps) {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [processingId, setProcessingId] = useState<number | null>(null);
@@ -145,11 +147,11 @@ export default function GroupedPrintingQueue({
       orderGroup = {
         order_id: item.order_id,
         order_number: item.order_number || `ORD-${item.order_id}`,
-        customer_name: item.customer_name || "غير محدد",
+        customer_name: item.customer_name || t('production.notSpecified'),
         customer_name_ar:
-          item.customer_name_ar || item.customer_name || "غير محدد",
-        item_name: item.item_name || "غير محدد",
-        item_name_ar: item.item_name_ar || item.item_name || "غير محدد",
+          item.customer_name_ar || item.customer_name || t('production.notSpecified'),
+        item_name: item.item_name || t('production.notSpecified'),
+        item_name_ar: item.item_name_ar || item.item_name || t('production.notSpecified'),
         size_caption: item.size_caption || "",
         production_orders: [],
         total_weight: 0,
@@ -205,15 +207,15 @@ export default function GroupedPrintingQueue({
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || "فشل في تسجيل الطباعة");
+        throw new Error(error.message || t('production.printing.registrationFailed'));
       }
 
       return response.json();
     },
     onSuccess: () => {
       toast({
-        title: "تم بنجاح",
-        description: "تم تسجيل الطباعة وتحديد ماكينة الطباعة",
+        title: t('messages.success'),
+        description: t('production.printing.registeredSuccess'),
       });
       queryClient.invalidateQueries({
         queryKey: ["/api/production/printing-queue"],
@@ -226,7 +228,7 @@ export default function GroupedPrintingQueue({
     },
     onError: (error: Error) => {
       toast({
-        title: "خطأ",
+        title: t('common.error'),
         description: error.message,
         variant: "destructive",
       });
@@ -243,8 +245,8 @@ export default function GroupedPrintingQueue({
   const handleConfirmPrint = () => {
     if (!selectedRollForPrinting || !selectedPrintingMachine) {
       toast({
-        title: "خطأ",
-        description: "يرجى اختيار ماكينة الطباعة",
+        title: t('common.error'),
+        description: t('production.printing.selectMachineRequired'),
         variant: "destructive",
       });
       return;
@@ -283,7 +285,7 @@ export default function GroupedPrintingQueue({
         <CardContent className="p-6 text-center">
           <div className="text-gray-500">
             <Play className="h-12 w-12 mx-auto mb-2 opacity-50" />
-            <p>لا توجد رولات في قائمة انتظار الطباعة</p>
+            <p>{t('production.printing.noRollsInQueue')}</p>
           </div>
         </CardContent>
       </Card>
@@ -338,10 +340,10 @@ export default function GroupedPrintingQueue({
                         </div>
                       </div>
                       <Badge variant="secondary">
-                        {orderGroup.total_rolls} رول
+                        {orderGroup.total_rolls} {t('production.roll')}
                       </Badge>
                       <Badge variant="outline">
-                        {orderGroup.total_weight.toFixed(2)} كجم
+                        {orderGroup.total_weight.toFixed(2)} {t('production.units.kg')}
                       </Badge>
                     </div>
                   </div>
@@ -399,11 +401,11 @@ export default function GroupedPrintingQueue({
                                     </div>
                                   </div>
                                   <Badge variant="secondary" className="text-xs">
-                                    {productionOrderGroup.rolls_count} رول
+                                    {productionOrderGroup.rolls_count} {t('production.roll')}
                                   </Badge>
                                   <Badge variant="outline" className="text-xs">
                                     {productionOrderGroup.total_weight.toFixed(2)}{" "}
-                                    كجم
+                                    {t('production.units.kg')}
                                   </Badge>
                                 </div>
                               </div>
@@ -414,11 +416,11 @@ export default function GroupedPrintingQueue({
                             <CardContent className="pt-0">
                               <div className="mt-4 ml-6 space-y-2">
                                 <h5 className="text-sm font-medium text-gray-700 mb-2">
-                                  الرولات ({productionOrderGroup.rolls_count})
+                                  {t('production.rolls')} ({productionOrderGroup.rolls_count})
                                 </h5>
                                 {productionOrderGroup.rolls.length === 0 ? (
                                   <p className="text-sm text-muted-foreground">
-                                    لا توجد رولات بعد
+                                    {t('production.noRollsYet')}
                                   </p>
                                 ) : (
                                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -435,10 +437,10 @@ export default function GroupedPrintingQueue({
                                                 {roll.roll_number}
                                               </p>
                                               <p className="text-xs text-muted-foreground">
-                                                الوزن: {formatWeight(roll.weight_kg)}
+                                                {t('production.weight')}: {formatWeight(roll.weight_kg)}
                                               </p>
                                               <p className="text-xs text-muted-foreground">
-                                                المكينة: {roll.machine_id}
+                                                {t('production.machine')}: {roll.machine_id}
                                               </p>
                                             </div>
                                             <Button
@@ -453,7 +455,7 @@ export default function GroupedPrintingQueue({
                                               data-testid={`button-print-roll-${roll.id}`}
                                             >
                                               {processingId === roll.id ? (
-                                                <span className="text-xs">جاري...</span>
+                                                <span className="text-xs">{t('common.processing')}</span>
                                               ) : (
                                                 <Play className="h-3 w-3" />
                                               )}
@@ -483,7 +485,7 @@ export default function GroupedPrintingQueue({
                                             data-testid={`button-print-label-${roll.id}`}
                                           >
                                             <Printer className="h-3 w-3 mr-1" />
-                                            طباعة ملصق
+                                            {t('production.printLabel')}
                                           </Button>
                                         </div>
                                       </div>
@@ -508,35 +510,35 @@ export default function GroupedPrintingQueue({
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-md" dir="rtl">
           <DialogHeader>
-            <DialogTitle>تحديد ماكينة الطباعة</DialogTitle>
+            <DialogTitle>{t('production.printing.selectMachineTitle')}</DialogTitle>
             <DialogDescription>
-              يجب اختيار ماكينة الطباعة قبل تسجيل الطباعة للرول
+              {t('production.printing.selectMachineDescription')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             {selectedRollForPrinting && (
               <div className="p-3 bg-gray-50 rounded-md border">
-                <p className="text-sm font-medium">الرول المحدد:</p>
+                <p className="text-sm font-medium">{t('production.printing.selectedRoll')}:</p>
                 <p className="text-sm text-gray-600">{selectedRollForPrinting.roll_number}</p>
                 <p className="text-xs text-gray-500">
-                  الوزن: {formatWeight(selectedRollForPrinting.weight_kg)}
+                  {t('production.weight')}: {formatWeight(selectedRollForPrinting.weight_kg)}
                 </p>
               </div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="printing-machine">ماكينة الطباعة *</Label>
+              <Label htmlFor="printing-machine">{t('production.printing.printingMachine')} *</Label>
               {printingMachines.length === 0 ? (
                 <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
                   <p className="text-sm text-yellow-800">
-                    لا توجد مكائن طباعة نشطة متاحة حالياً
+                    {t('production.printing.noActiveMachines')}
                   </p>
                 </div>
               ) : (
                 <Select value={selectedPrintingMachine} onValueChange={setSelectedPrintingMachine}>
                   <SelectTrigger id="printing-machine" data-testid="select-printing-machine">
-                    <SelectValue placeholder="اختر ماكينة الطباعة" />
+                    <SelectValue placeholder={t('production.printing.selectPrintingMachine')} />
                   </SelectTrigger>
                   <SelectContent>
                     {printingMachines.map((machine) => (
@@ -560,14 +562,14 @@ export default function GroupedPrintingQueue({
               }}
               data-testid="button-cancel-print"
             >
-              إلغاء
+              {t('common.cancel')}
             </Button>
             <Button
               onClick={handleConfirmPrint}
               disabled={!selectedPrintingMachine || processRollMutation.isPending}
               data-testid="button-confirm-print"
             >
-              {processRollMutation.isPending ? "جاري التسجيل..." : "تسجيل الطباعة"}
+              {processRollMutation.isPending ? t('production.printing.registering') : t('production.printing.registerPrinting')}
             </Button>
           </DialogFooter>
         </DialogContent>

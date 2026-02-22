@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "../ui/card";
 import { Button } from "../ui/button";
@@ -89,15 +90,16 @@ interface EmployeeMonthlyData {
 
 const dayNames = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 const statusOptions = [
-  { value: "حاضر", label: "حاضر", color: "bg-green-100 text-green-800" },
-  { value: "غائب", label: "غائب", color: "bg-red-100 text-red-800" },
-  { value: "إجازة", label: "إجازة", color: "bg-blue-100 text-blue-800" },
-  { value: "مغادر", label: "مغادر مبكراً", color: "bg-yellow-100 text-yellow-800" },
-  { value: "متأخر", label: "متأخر", color: "bg-orange-100 text-orange-800" },
-  { value: "عطلة", label: "عطلة رسمية", color: "bg-purple-100 text-purple-800" },
+  { value: "حاضر", labelKey: "hr.monthlyEditor.statusPresent", color: "bg-green-100 text-green-800" },
+  { value: "غائب", labelKey: "hr.monthlyEditor.statusAbsent", color: "bg-red-100 text-red-800" },
+  { value: "إجازة", labelKey: "hr.monthlyEditor.statusLeave", color: "bg-blue-100 text-blue-800" },
+  { value: "مغادر", labelKey: "hr.monthlyEditor.statusEarlyLeave", color: "bg-yellow-100 text-yellow-800" },
+  { value: "متأخر", labelKey: "hr.monthlyEditor.statusLate", color: "bg-orange-100 text-orange-800" },
+  { value: "عطلة", labelKey: "hr.monthlyEditor.statusHoliday", color: "bg-purple-100 text-purple-800" },
 ];
 
 export default function MonthlyAttendanceEditor() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const printRef = useRef<HTMLDivElement>(null);
@@ -120,7 +122,7 @@ export default function MonthlyAttendanceEditor() {
       const response = await fetch(
         `/api/attendance/monthly-editor/${selectedEmployeeId}?startDate=${monthStart}&endDate=${monthEnd}`
       );
-      if (!response.ok) throw new Error("خطأ في جلب البيانات");
+      if (!response.ok) throw new Error(t("hr.monthlyEditor.fetchError"));
       return response.json();
     },
     enabled: !!selectedEmployeeId,
@@ -143,14 +145,14 @@ export default function MonthlyAttendanceEditor() {
       setModifiedRecords(new Map());
       setHasChanges(false);
       toast({
-        title: "تم الحفظ بنجاح",
-        description: data.message || `تم حفظ ${data.savedCount || 0} سجل`,
+        title: t("hr.monthlyEditor.saveSuccess"),
+        description: data.message || t("hr.monthlyEditor.savedRecords", { count: data.savedCount || 0 }),
       });
       refetch();
     },
     onError: (error: Error) => {
       toast({
-        title: "خطأ في الحفظ",
+        title: t("hr.monthlyEditor.saveError"),
         description: error.message,
         variant: "destructive",
       });
@@ -201,7 +203,7 @@ export default function MonthlyAttendanceEditor() {
 
   const handleSave = () => {
     if (modifiedRecords.size === 0) {
-      toast({ title: "لا توجد تغييرات للحفظ", variant: "destructive" });
+      toast({ title: t("hr.monthlyEditor.noChanges"), variant: "destructive" });
       return;
     }
     saveMutation.mutate(Array.from(modifiedRecords.values()));
@@ -216,7 +218,7 @@ export default function MonthlyAttendanceEditor() {
     
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
-      toast({ title: "خطأ في فتح نافذة الطباعة", variant: "destructive" });
+      toast({ title: t("hr.monthlyEditor.printError"), variant: "destructive" });
       return;
     }
 
@@ -246,7 +248,7 @@ export default function MonthlyAttendanceEditor() {
       <html dir="rtl" lang="ar">
       <head>
         <meta charset="UTF-8">
-        <title>تقرير الحضور الشهري - ${escapeHtml(employee.name)}</title>
+        <title>${t("hr.monthlyEditor.printTitle")} - ${escapeHtml(employee.name)}</title>
         <style>
           * { box-sizing: border-box; margin: 0; padding: 0; }
           @page { 
@@ -338,25 +340,25 @@ export default function MonthlyAttendanceEditor() {
       </head>
       <body>
         <div class="header">
-          <h1>تقرير الحضور الشهري</h1>
+          <h1>${t("hr.monthlyEditor.printTitle")}</h1>
           <p>${format(selectedMonth, "MMMM yyyy", { locale: ar })}</p>
         </div>
 
         <div class="employee-info">
           <div>
-            <strong>اسم الموظف</strong>
+            <strong>${t("hr.monthlyEditor.employeeName")}</strong>
             <span>${escapeHtml(employee.name)}</span>
           </div>
           <div>
-            <strong>الرقم الوظيفي</strong>
+            <strong>${t("hr.monthlyEditor.employeeNumber")}</strong>
             <span>${escapeHtml(employee.employeeNumber) || "-"}</span>
           </div>
           <div>
-            <strong>القسم</strong>
+            <strong>${t("hr.monthlyEditor.department")}</strong>
             <span>${escapeHtml(employee.department) || "-"}</span>
           </div>
           <div>
-            <strong>المسمى الوظيفي</strong>
+            <strong>${t("hr.monthlyEditor.jobTitle")}</strong>
             <span>${escapeHtml(employee.position) || "-"}</span>
           </div>
         </div>
@@ -364,13 +366,13 @@ export default function MonthlyAttendanceEditor() {
         <table>
           <thead>
             <tr>
-              <th>التاريخ</th>
-              <th>اليوم</th>
-              <th>الحالة</th>
-              <th>وقت الحضور</th>
-              <th>وقت الانصراف</th>
-              <th>ساعات العمل</th>
-              <th>ملاحظات</th>
+              <th>${t("hr.monthlyEditor.date")}</th>
+              <th>${t("hr.monthlyEditor.day")}</th>
+              <th>${t("common.status")}</th>
+              <th>${t("hr.checkInTime")}</th>
+              <th>${t("hr.checkOutTime")}</th>
+              <th>${t("hr.workHours")}</th>
+              <th>${t("hr.monthlyEditor.notes")}</th>
             </tr>
           </thead>
           <tbody>
@@ -381,33 +383,33 @@ export default function MonthlyAttendanceEditor() {
         <div class="summary">
           <div class="summary-item">
             <strong>${summary.presentDays}</strong>
-            <span>أيام الحضور</span>
+            <span>${t("hr.monthlyEditor.presentDays")}</span>
           </div>
           <div class="summary-item">
             <strong>${summary.absentDays}</strong>
-            <span>أيام الغياب</span>
+            <span>${t("hr.monthlyEditor.absentDays")}</span>
           </div>
           <div class="summary-item">
             <strong>${summary.leaveDays}</strong>
-            <span>أيام الإجازة</span>
+            <span>${t("hr.monthlyEditor.leaveDays")}</span>
           </div>
           <div class="summary-item">
             <strong>${summary.lateDays}</strong>
-            <span>أيام التأخير</span>
+            <span>${t("hr.monthlyEditor.lateDays")}</span>
           </div>
           <div class="summary-item">
             <strong>${summary.totalWorkHours.toFixed(1)}</strong>
-            <span>ساعات العمل</span>
+            <span>${t("hr.workHours")}</span>
           </div>
           <div class="summary-item">
             <strong>${summary.totalOvertimeHours.toFixed(1)}</strong>
-            <span>ساعات الإضافي</span>
+            <span>${t("hr.monthlyEditor.overtimeHours")}</span>
           </div>
         </div>
 
         <div class="footer">
-          <span>تم إنشاء التقرير بتاريخ: ${format(new Date(), "dd/MM/yyyy HH:mm", { locale: ar })}</span>
-          <span>نظام الموارد البشرية المتقدم</span>
+          <span>${t("hr.monthlyEditor.reportGenerated")}: ${format(new Date(), "dd/MM/yyyy HH:mm", { locale: ar })}</span>
+          <span>${t("hr.monthlyEditor.hrSystem")}</span>
         </div>
 
         <script>
@@ -443,10 +445,10 @@ export default function MonthlyAttendanceEditor() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <FileEdit className="h-5 w-5" />
-                تحرير الحضور الشهري للموظف
+                {t("hr.monthlyEditor.title")}
               </CardTitle>
               <CardDescription>
-                عرض وتعديل سجل حضور موظف معين لشهر كامل مع إمكانية الطباعة
+                {t("hr.monthlyEditor.description")}
               </CardDescription>
             </div>
           </div>
@@ -455,10 +457,10 @@ export default function MonthlyAttendanceEditor() {
         <CardContent>
           <div className="flex flex-wrap gap-4 mb-6 items-end">
             <div className="flex-1 min-w-[200px]">
-              <label className="block text-sm font-medium mb-1">اختر الموظف</label>
+              <label className="block text-sm font-medium mb-1">{t("hr.monthlyEditor.selectEmployee")}</label>
               <Select value={selectedEmployeeId} onValueChange={handleEmployeeChange}>
                 <SelectTrigger>
-                  <SelectValue placeholder="اختر موظف..." />
+                  <SelectValue placeholder={t("hr.monthlyEditor.selectEmployeePlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
                   {employees.map((user: any) => (
@@ -496,7 +498,7 @@ export default function MonthlyAttendanceEditor() {
                 ) : (
                   <Save className="h-4 w-4" />
                 )}
-                حفظ التغييرات
+                {t("hr.monthlyEditor.saveChanges")}
               </Button>
               <Button 
                 variant="outline" 
@@ -505,7 +507,7 @@ export default function MonthlyAttendanceEditor() {
                 className="gap-2"
               >
                 <Printer className="h-4 w-4" />
-                طباعة التقرير
+                {t("hr.monthlyEditor.printReport")}
               </Button>
             </div>
           </div>
@@ -513,31 +515,31 @@ export default function MonthlyAttendanceEditor() {
           {!selectedEmployeeId ? (
             <div className="text-center py-12 text-gray-500">
               <User className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>اختر موظف لعرض سجل الحضور الشهري</p>
+              <p>{t("hr.monthlyEditor.selectEmployeePrompt")}</p>
             </div>
           ) : attendanceLoading ? (
             <div className="text-center py-12">
               <Loader2 className="h-8 w-8 mx-auto animate-spin text-primary" />
-              <p className="mt-2 text-gray-500">جاري تحميل البيانات...</p>
+              <p className="mt-2 text-gray-500">{t("common.loading")}...</p>
             </div>
           ) : (
             <>
               {employee && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                   <div>
-                    <span className="text-sm text-gray-500">الموظف:</span>
+                    <span className="text-sm text-gray-500">{t("hr.monthlyEditor.employeeName")}:</span>
                     <p className="font-medium">{employee.name}</p>
                   </div>
                   <div>
-                    <span className="text-sm text-gray-500">الرقم الوظيفي:</span>
+                    <span className="text-sm text-gray-500">{t("hr.monthlyEditor.employeeNumber")}:</span>
                     <p className="font-medium">{employee.employeeNumber || "-"}</p>
                   </div>
                   <div>
-                    <span className="text-sm text-gray-500">القسم:</span>
+                    <span className="text-sm text-gray-500">{t("hr.monthlyEditor.department")}:</span>
                     <p className="font-medium">{employee.department || "-"}</p>
                   </div>
                   <div>
-                    <span className="text-sm text-gray-500">المسمى:</span>
+                    <span className="text-sm text-gray-500">{t("hr.monthlyEditor.jobTitle")}:</span>
                     <p className="font-medium">{employee.position || "-"}</p>
                   </div>
                 </div>
@@ -548,32 +550,32 @@ export default function MonthlyAttendanceEditor() {
                   <div className="bg-green-50 dark:bg-green-950 border border-green-200 rounded-lg p-3 text-center">
                     <CheckCircle className="h-4 w-4 text-green-600 mx-auto mb-1" />
                     <div className="text-xl font-bold text-green-700">{summary.presentDays}</div>
-                    <div className="text-xs text-green-600">حضور</div>
+                    <div className="text-xs text-green-600">{t("hr.monthlyEditor.present")}</div>
                   </div>
                   <div className="bg-red-50 dark:bg-red-950 border border-red-200 rounded-lg p-3 text-center">
                     <XCircle className="h-4 w-4 text-red-600 mx-auto mb-1" />
                     <div className="text-xl font-bold text-red-700">{summary.absentDays}</div>
-                    <div className="text-xs text-red-600">غياب</div>
+                    <div className="text-xs text-red-600">{t("hr.monthlyEditor.absent")}</div>
                   </div>
                   <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 rounded-lg p-3 text-center">
                     <CalendarIcon className="h-4 w-4 text-blue-600 mx-auto mb-1" />
                     <div className="text-xl font-bold text-blue-700">{summary.leaveDays}</div>
-                    <div className="text-xs text-blue-600">إجازة</div>
+                    <div className="text-xs text-blue-600">{t("hr.monthlyEditor.leave")}</div>
                   </div>
                   <div className="bg-orange-50 dark:bg-orange-950 border border-orange-200 rounded-lg p-3 text-center">
                     <AlertTriangle className="h-4 w-4 text-orange-600 mx-auto mb-1" />
                     <div className="text-xl font-bold text-orange-700">{summary.lateDays}</div>
-                    <div className="text-xs text-orange-600">تأخير</div>
+                    <div className="text-xs text-orange-600">{t("hr.monthlyEditor.late")}</div>
                   </div>
                   <div className="bg-purple-50 dark:bg-purple-950 border border-purple-200 rounded-lg p-3 text-center">
                     <Clock className="h-4 w-4 text-purple-600 mx-auto mb-1" />
                     <div className="text-xl font-bold text-purple-700">{summary.totalWorkHours.toFixed(1)}</div>
-                    <div className="text-xs text-purple-600">ساعات العمل</div>
+                    <div className="text-xs text-purple-600">{t("hr.workHours")}</div>
                   </div>
                   <div className="bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 rounded-lg p-3 text-center">
                     <Clock className="h-4 w-4 text-indigo-600 mx-auto mb-1" />
                     <div className="text-xl font-bold text-indigo-700">{summary.totalOvertimeHours.toFixed(1)}</div>
-                    <div className="text-xs text-indigo-600">إضافي</div>
+                    <div className="text-xs text-indigo-600">{t("hr.overtime")}</div>
                   </div>
                 </div>
               )}
@@ -583,20 +585,20 @@ export default function MonthlyAttendanceEditor() {
                   <Table className="text-xs">
                     <TableHeader className="sticky top-0 z-10">
                       <TableRow className="bg-gray-50 dark:bg-gray-800">
-                        <TableHead className="text-right py-1 px-2 w-[70px]">التاريخ</TableHead>
-                        <TableHead className="text-right py-1 px-2 w-[60px]">اليوم</TableHead>
-                        <TableHead className="text-center py-1 px-2 w-[100px]">الحالة</TableHead>
-                        <TableHead className="text-center py-1 px-2 w-[80px]">حضور</TableHead>
-                        <TableHead className="text-center py-1 px-2 w-[80px]">انصراف</TableHead>
-                        <TableHead className="text-center py-1 px-2 w-[50px]">ساعات</TableHead>
-                        <TableHead className="text-right py-1 px-2">ملاحظات</TableHead>
+                        <TableHead className="text-right py-1 px-2 w-[70px]">{t("hr.monthlyEditor.date")}</TableHead>
+                        <TableHead className="text-right py-1 px-2 w-[60px]">{t("hr.monthlyEditor.day")}</TableHead>
+                        <TableHead className="text-center py-1 px-2 w-[100px]">{t("common.status")}</TableHead>
+                        <TableHead className="text-center py-1 px-2 w-[80px]">{t("hr.monthlyEditor.present")}</TableHead>
+                        <TableHead className="text-center py-1 px-2 w-[80px]">{t("hr.monthlyEditor.departure")}</TableHead>
+                        <TableHead className="text-center py-1 px-2 w-[50px]">{t("hr.monthlyEditor.hours")}</TableHead>
+                        <TableHead className="text-right py-1 px-2">{t("hr.monthlyEditor.notes")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {records.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                            لا توجد بيانات للشهر المحدد
+                            {t("hr.monthlyEditor.noData")}
                           </TableCell>
                         </TableRow>
                       ) : (
@@ -630,7 +632,7 @@ export default function MonthlyAttendanceEditor() {
                                   <SelectContent>
                                     {statusOptions.map((option) => (
                                       <SelectItem key={option.value} value={option.value}>
-                                        {option.label}
+                                        {t(option.labelKey)}
                                       </SelectItem>
                                     ))}
                                   </SelectContent>
@@ -659,7 +661,7 @@ export default function MonthlyAttendanceEditor() {
                                 <Input
                                   value={getRecordValue(record.date, 'notes', record.notes) || ""}
                                   onChange={(e) => handleFieldChange(record.date, 'notes', e.target.value, record)}
-                                  placeholder="ملاحظات..."
+                                  placeholder={t("hr.monthlyEditor.notesPlaceholder")}
                                   className="h-6 text-xs"
                                 />
                               </TableCell>
@@ -675,7 +677,7 @@ export default function MonthlyAttendanceEditor() {
               {hasChanges && (
                 <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 rounded-lg flex items-center justify-between">
                   <span className="text-yellow-800 dark:text-yellow-200">
-                    لديك {modifiedRecords.size} تغييرات غير محفوظة
+                    {t("hr.monthlyEditor.unsavedChanges", { count: modifiedRecords.size })}
                   </span>
                   <Button onClick={handleSave} disabled={saveMutation.isPending} size="sm">
                     {saveMutation.isPending ? (
@@ -683,7 +685,7 @@ export default function MonthlyAttendanceEditor() {
                     ) : (
                       <Save className="h-4 w-4 ml-2" />
                     )}
-                    حفظ الآن
+                    {t("hr.monthlyEditor.saveNow")}
                   </Button>
                 </div>
               )}

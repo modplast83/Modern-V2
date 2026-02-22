@@ -166,15 +166,15 @@ export default function NotificationEventSettingsTab() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/notification-event-settings"] });
       toast({
-        title: "تم التحديث",
-        description: "تم تحديث إعدادات الحدث بنجاح",
+        title: t('notificationEvents.toasts.updated'),
+        description: t('notificationEvents.toasts.settingsUpdated'),
       });
       setEditDialogOpen(false);
     },
     onError: (error: any) => {
       toast({
-        title: "خطأ",
-        description: error.message || "فشل في تحديث الإعدادات",
+        title: t('common.error'),
+        description: error.message || t('notificationEvents.toasts.updateFailed'),
         variant: "destructive",
       });
     },
@@ -189,8 +189,8 @@ export default function NotificationEventSettingsTab() {
     },
     onSuccess: () => {
       toast({
-        title: "تم الإرسال",
-        description: "تم إرسال إشعار اختباري",
+        title: t('notificationEvents.toasts.sent'),
+        description: t('notificationEvents.toasts.testSent'),
       });
       setTestDialogOpen(false);
       setTestPhone("");
@@ -198,8 +198,8 @@ export default function NotificationEventSettingsTab() {
     },
     onError: (error: any) => {
       toast({
-        title: "خطأ",
-        description: error.message || "فشل في إرسال الإشعار",
+        title: t('common.error'),
+        description: error.message || t('notificationEvents.toasts.sendFailed'),
         variant: "destructive",
       });
     },
@@ -279,16 +279,16 @@ export default function NotificationEventSettingsTab() {
   };
 
   const getCategoryLabel = (category: string) => {
-    const labels: Record<string, string> = {
-      orders: "الطلبات",
-      production: "الإنتاج",
-      quality: "الجودة",
-      maintenance: "الصيانة",
-      hr: "الموارد البشرية",
-      inventory: "المخزون",
-      system: "النظام",
+    const labelKeys: Record<string, string> = {
+      orders: "notificationEvents.categories.orders",
+      production: "notificationEvents.categories.production",
+      quality: "notificationEvents.categories.quality",
+      maintenance: "notificationEvents.categories.maintenance",
+      hr: "notificationEvents.categories.hr",
+      inventory: "notificationEvents.categories.inventory",
+      system: "notificationEvents.categories.system",
     };
-    return labels[category] || category;
+    return labelKeys[category] ? t(labelKeys[category]) : category;
   };
 
   return (
@@ -297,11 +297,11 @@ export default function NotificationEventSettingsTab() {
         <TabsList className="grid w-full grid-cols-2 mb-6">
           <TabsTrigger value="settings" className="flex items-center gap-2">
             <Settings2 className="h-4 w-4" />
-            إعدادات الأحداث
+            {t('notificationEvents.tabs.eventSettings')}
           </TabsTrigger>
           <TabsTrigger value="logs" className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
-            سجل الإشعارات
+            {t('notificationEvents.tabs.notificationLog')}
           </TabsTrigger>
         </TabsList>
 
@@ -311,23 +311,23 @@ export default function NotificationEventSettingsTab() {
               <Select value={filterCategory} onValueChange={setFilterCategory}>
                 <SelectTrigger className="w-[200px]">
                   <Filter className="h-4 w-4 ml-2" />
-                  <SelectValue placeholder="تصفية حسب الفئة" />
+                  <SelectValue placeholder={t('notificationEvents.filterByCategory')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">جميع الفئات</SelectItem>
-                  <SelectItem value="orders">الطلبات</SelectItem>
-                  <SelectItem value="production">الإنتاج</SelectItem>
-                  <SelectItem value="quality">الجودة</SelectItem>
-                  <SelectItem value="maintenance">الصيانة</SelectItem>
-                  <SelectItem value="hr">الموارد البشرية</SelectItem>
-                  <SelectItem value="inventory">المخزون</SelectItem>
-                  <SelectItem value="system">النظام</SelectItem>
+                  <SelectItem value="all">{t('notificationEvents.allCategories')}</SelectItem>
+                  <SelectItem value="orders">{t('notificationEvents.categories.orders')}</SelectItem>
+                  <SelectItem value="production">{t('notificationEvents.categories.production')}</SelectItem>
+                  <SelectItem value="quality">{t('notificationEvents.categories.quality')}</SelectItem>
+                  <SelectItem value="maintenance">{t('notificationEvents.categories.maintenance')}</SelectItem>
+                  <SelectItem value="hr">{t('notificationEvents.categories.hr')}</SelectItem>
+                  <SelectItem value="inventory">{t('notificationEvents.categories.inventory')}</SelectItem>
+                  <SelectItem value="system">{t('notificationEvents.categories.system')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <Button variant="outline" onClick={() => refetchSettings()} disabled={settingsLoading}>
               <RefreshCw className={`h-4 w-4 ml-2 ${settingsLoading ? "animate-spin" : ""}`} />
-              تحديث
+              {t('common.refresh')}
             </Button>
           </div>
 
@@ -361,10 +361,10 @@ export default function NotificationEventSettingsTab() {
                               <div className="flex items-center gap-2">
                                 <span className="font-medium">{setting.event_name_ar}</span>
                                 {setting.priority === "high" && (
-                                  <Badge variant="destructive" className="text-xs">عاجل</Badge>
+                                  <Badge variant="destructive" className="text-xs">{t('notificationEvents.priority.high')}</Badge>
                                 )}
                                 {setting.priority === "urgent" && (
-                                  <Badge variant="destructive" className="text-xs bg-red-600">طارئ</Badge>
+                                  <Badge variant="destructive" className="text-xs bg-red-600">{t('notificationEvents.priority.urgent')}</Badge>
                                 )}
                               </div>
                               <p className="text-sm text-muted-foreground">{setting.event_description_ar}</p>
@@ -372,7 +372,7 @@ export default function NotificationEventSettingsTab() {
                             <div className="flex items-center gap-4">
                               <div className="flex items-center gap-2">
                                 <Label htmlFor={`enabled-${setting.id}`} className="text-xs text-muted-foreground">
-                                  مفعل
+                                  {t('notificationEvents.enabled')}
                                 </Label>
                                 <Switch
                                   id={`enabled-${setting.id}`}
@@ -427,19 +427,19 @@ export default function NotificationEventSettingsTab() {
               <Select value={logsFilterStatus} onValueChange={setLogsFilterStatus}>
                 <SelectTrigger className="w-[180px]">
                   <Filter className="h-4 w-4 ml-2" />
-                  <SelectValue placeholder="تصفية حسب الحالة" />
+                  <SelectValue placeholder={t('notificationEvents.filterByStatus')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">جميع الحالات</SelectItem>
-                  <SelectItem value="sent">تم الإرسال</SelectItem>
-                  <SelectItem value="failed">فشل</SelectItem>
-                  <SelectItem value="pending">قيد الانتظار</SelectItem>
+                  <SelectItem value="all">{t('notificationEvents.allStatuses')}</SelectItem>
+                  <SelectItem value="sent">{t('notificationEvents.status.sent')}</SelectItem>
+                  <SelectItem value="failed">{t('notificationEvents.status.failed')}</SelectItem>
+                  <SelectItem value="pending">{t('notificationEvents.status.pending')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <Button variant="outline" onClick={() => refetchLogs()} disabled={logsLoading}>
               <RefreshCw className={`h-4 w-4 ml-2 ${logsLoading ? "animate-spin" : ""}`} />
-              تحديث
+              {t('common.refresh')}
             </Button>
           </div>
 
@@ -448,11 +448,11 @@ export default function NotificationEventSettingsTab() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-right">الحدث</TableHead>
-                    <TableHead className="text-right">المستلم</TableHead>
-                    <TableHead className="text-right">الرسالة</TableHead>
-                    <TableHead className="text-right">الحالة</TableHead>
-                    <TableHead className="text-right">التاريخ</TableHead>
+                    <TableHead className="text-right">{t('notificationEvents.table.event')}</TableHead>
+                    <TableHead className="text-right">{t('notificationEvents.table.recipient')}</TableHead>
+                    <TableHead className="text-right">{t('notificationEvents.table.message')}</TableHead>
+                    <TableHead className="text-right">{t('notificationEvents.table.status')}</TableHead>
+                    <TableHead className="text-right">{t('notificationEvents.table.date')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -465,7 +465,7 @@ export default function NotificationEventSettingsTab() {
                   ) : filteredLogs.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                        لا توجد سجلات
+                        {t('notificationEvents.noLogs')}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -485,7 +485,7 @@ export default function NotificationEventSettingsTab() {
                           <div className="flex items-center gap-2">
                             {getStatusIcon(log.status)}
                             <span className="text-sm">
-                              {log.status === "sent" ? "تم الإرسال" : log.status === "failed" ? "فشل" : "قيد الانتظار"}
+                              {log.status === "sent" ? t('notificationEvents.status.sent') : log.status === "failed" ? t('notificationEvents.status.failed') : t('notificationEvents.status.pending')}
                             </span>
                           </div>
                           {log.error_message && (
@@ -506,7 +506,7 @@ export default function NotificationEventSettingsTab() {
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>تعديل إعدادات الحدث</DialogTitle>
+            <DialogTitle>{t('notificationEvents.editEventSettings')}</DialogTitle>
             <DialogDescription>
               {selectedEvent?.event_name_ar}
             </DialogDescription>
@@ -514,22 +514,22 @@ export default function NotificationEventSettingsTab() {
           {selectedEvent && (
             <div className="space-y-6 py-4">
               <div className="space-y-2">
-                <Label>قالب الرسالة (عربي)</Label>
+                <Label>{t('notificationEvents.messageTemplateAr')}</Label>
                 <Textarea
                   value={selectedEvent.message_template_ar || ""}
                   onChange={(e) => setSelectedEvent({ ...selectedEvent, message_template_ar: e.target.value })}
-                  placeholder="استخدم {{field_name}} للمتغيرات"
+                  placeholder={t('notificationEvents.useVariablesPlaceholder')}
                   className="min-h-[100px]"
                   dir="rtl"
                 />
                 <p className="text-xs text-muted-foreground">
-                  المتغيرات المتاحة: {"{{order_id}}"}, {"{{customer_name}}"}, {"{{status}}"}, {"{{quantity}}"}, الخ.
+                  {t('notificationEvents.availableVariables')}: {"{{order_id}}"}, {"{{customer_name}}"}, {"{{status}}"}, {"{{quantity}}"}
                 </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>الأولوية</Label>
+                  <Label>{t('notificationEvents.priorityLabel')}</Label>
                   <Select
                     value={selectedEvent.priority || "normal"}
                     onValueChange={(value) => setSelectedEvent({ ...selectedEvent, priority: value })}
@@ -538,15 +538,15 @@ export default function NotificationEventSettingsTab() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="low">منخفضة</SelectItem>
-                      <SelectItem value="normal">عادية</SelectItem>
-                      <SelectItem value="high">عالية</SelectItem>
-                      <SelectItem value="urgent">طارئة</SelectItem>
+                      <SelectItem value="low">{t('notificationEvents.priority.low')}</SelectItem>
+                      <SelectItem value="normal">{t('notificationEvents.priority.normal')}</SelectItem>
+                      <SelectItem value="high">{t('notificationEvents.priority.high')}</SelectItem>
+                      <SelectItem value="urgent">{t('notificationEvents.priority.urgent')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>تأخير الإرسال (دقائق)</Label>
+                  <Label>{t('notificationEvents.sendDelay')}</Label>
                   <Input
                     type="number"
                     min={0}
@@ -559,7 +559,7 @@ export default function NotificationEventSettingsTab() {
               <div className="space-y-4">
                 <Label className="flex items-center gap-2">
                   <Users className="h-4 w-4" />
-                  المستلمون
+                  {t('notificationEvents.recipients')}
                 </Label>
                 
                 <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
@@ -568,11 +568,11 @@ export default function NotificationEventSettingsTab() {
                       checked={selectedEvent.notify_customer ?? false}
                       onCheckedChange={(checked) => setSelectedEvent({ ...selectedEvent, notify_customer: checked })}
                     />
-                    <Label>إشعار العميل المرتبط بالحدث</Label>
+                    <Label>{t('notificationEvents.notifyCustomer')}</Label>
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm">الأدوار المستلمة</Label>
+                    <Label className="text-sm">{t('notificationEvents.recipientRoles')}</Label>
                     <div className="flex flex-wrap gap-2">
                       {roles.map((role) => (
                         <Badge
@@ -594,7 +594,7 @@ export default function NotificationEventSettingsTab() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm">المستخدمون المحددون</Label>
+                    <Label className="text-sm">{t('notificationEvents.specificUsers')}</Label>
                     <Select
                       value=""
                       onValueChange={(value) => {
@@ -606,7 +606,7 @@ export default function NotificationEventSettingsTab() {
                       }}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="اختر مستخدم للإضافة" />
+                        <SelectValue placeholder={t('notificationEvents.selectUserToAdd')} />
                       </SelectTrigger>
                       <SelectContent>
                         {users.filter(u => !(selectedEvent.recipient_user_ids || []).includes(u.id)).map((user) => (
@@ -636,9 +636,9 @@ export default function NotificationEventSettingsTab() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm">أرقام هواتف إضافية</Label>
+                    <Label className="text-sm">{t('notificationEvents.additionalPhones')}</Label>
                     <p className="text-xs text-muted-foreground">
-                      أضف أرقام هواتف مباشرة للإرسال إليها (بالصيغة الدولية مثل: +966xxxxxxxxx)
+                      {t('notificationEvents.additionalPhonesDesc')}
                     </p>
                     <div className="flex gap-2">
                       <Input
@@ -708,12 +708,12 @@ export default function NotificationEventSettingsTab() {
                     checked={selectedEvent.condition_enabled ?? false}
                     onCheckedChange={(checked) => setSelectedEvent({ ...selectedEvent, condition_enabled: checked })}
                   />
-                  <Label>تفعيل الشرط</Label>
+                  <Label>{t('notificationEvents.enableCondition')}</Label>
                 </div>
                 {selectedEvent.condition_enabled && (
                   <div className="grid grid-cols-3 gap-4 p-4 bg-muted rounded-lg">
                     <div className="space-y-2">
-                      <Label>الحقل</Label>
+                      <Label>{t('notificationEvents.conditionField')}</Label>
                       <Input
                         value={selectedEvent.condition_field || ""}
                         onChange={(e) => setSelectedEvent({ ...selectedEvent, condition_field: e.target.value })}
@@ -721,26 +721,26 @@ export default function NotificationEventSettingsTab() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>المعامل</Label>
+                      <Label>{t('notificationEvents.conditionOperator')}</Label>
                       <Select
                         value={selectedEvent.condition_operator || ""}
                         onValueChange={(value) => setSelectedEvent({ ...selectedEvent, condition_operator: value })}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="اختر" />
+                          <SelectValue placeholder={t('common.select')} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value=">">أكبر من</SelectItem>
-                          <SelectItem value=">=">أكبر أو يساوي</SelectItem>
-                          <SelectItem value="<">أصغر من</SelectItem>
-                          <SelectItem value="<=">أصغر أو يساوي</SelectItem>
-                          <SelectItem value="==">يساوي</SelectItem>
-                          <SelectItem value="!=">لا يساوي</SelectItem>
+                          <SelectItem value=">">{t('notificationEvents.operators.greaterThan')}</SelectItem>
+                          <SelectItem value=">=">{t('notificationEvents.operators.greaterOrEqual')}</SelectItem>
+                          <SelectItem value="<">{t('notificationEvents.operators.lessThan')}</SelectItem>
+                          <SelectItem value="<=">{t('notificationEvents.operators.lessOrEqual')}</SelectItem>
+                          <SelectItem value="==">{t('notificationEvents.operators.equals')}</SelectItem>
+                          <SelectItem value="!=">{t('notificationEvents.operators.notEquals')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label>القيمة</Label>
+                      <Label>{t('notificationEvents.conditionValue')}</Label>
                       <Input
                         value={selectedEvent.condition_value || ""}
                         onChange={(e) => setSelectedEvent({ ...selectedEvent, condition_value: e.target.value })}
@@ -754,13 +754,13 @@ export default function NotificationEventSettingsTab() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
-              إلغاء
+              {t('common.cancel')}
             </Button>
             <Button onClick={handleEditSave} disabled={updateSettingMutation.isPending}>
               {updateSettingMutation.isPending ? (
                 <RefreshCw className="h-4 w-4 ml-2 animate-spin" />
               ) : null}
-              حفظ التغييرات
+              {t('common.saveChanges')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -769,14 +769,14 @@ export default function NotificationEventSettingsTab() {
       <Dialog open={testDialogOpen} onOpenChange={setTestDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>إرسال إشعار اختباري</DialogTitle>
+            <DialogTitle>{t('notificationEvents.sendTestNotification')}</DialogTitle>
             <DialogDescription>
-              أرسل رسالة اختبارية للتحقق من إعدادات الإشعار
+              {t('notificationEvents.sendTestDesc')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>رقم الهاتف</Label>
+              <Label>{t('notificationEvents.phoneNumber')}</Label>
               <Input
                 value={testPhone}
                 onChange={(e) => setTestPhone(e.target.value)}
@@ -787,7 +787,7 @@ export default function NotificationEventSettingsTab() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setTestDialogOpen(false)}>
-              إلغاء
+              {t('common.cancel')}
             </Button>
             <Button
               onClick={() => selectedEvent && testNotificationMutation.mutate({ id: selectedEvent.id, phone_number: testPhone })}
@@ -798,7 +798,7 @@ export default function NotificationEventSettingsTab() {
               ) : (
                 <Send className="h-4 w-4 ml-2" />
               )}
-              إرسال
+              {t('common.send')}
             </Button>
           </DialogFooter>
         </DialogContent>

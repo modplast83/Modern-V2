@@ -75,34 +75,33 @@ type BatchDetail = {
 };
 
 // Helper function to convert master batch code to color name
-const getMasterBatchColor = (code: string | null | undefined): string => {
-  if (!code) return '';
-  
-  // Map common codes to Arabic color names
-  const colorMap: Record<string, string> = {
-    'PT-000000': 'أبيض',
-    'PT-111111': 'أسود',
-    'PT-CLEAR': 'شفاف',
-    'PT-MIX': 'خليط ألوان',
-  };
-  
-  // Check exact match first
-  if (colorMap[code]) return colorMap[code];
-  
-  // Pattern matching for codes
-  if (code.startsWith('PT-00')) return 'أبيض';
-  if (code.startsWith('PT-11')) return 'أسود';
-  if (code.startsWith('PT-12')) return 'أحمر';
-  if (code.startsWith('PT-13')) return 'أزرق';
-  if (code.startsWith('PT-14')) return 'أخضر';
-  if (code.startsWith('PT-15')) return 'أصفر';
-  if (code.startsWith('PT-16')) return 'برتقالي';
-  if (code.startsWith('PT-17')) return 'بنفسجي';
-  if (code.startsWith('PT-18')) return 'بني';
-  if (code.startsWith('PT-10')) return 'رمادي';
-  
-  // Return code if no match (fallback)
-  return code;
+const COLOR_KEY_MAP: Record<string, string> = {
+  'PT-000000': 'mixing.colors.white',
+  'PT-111111': 'mixing.colors.black',
+  'PT-CLEAR': 'mixing.colors.clear',
+  'PT-MIX': 'mixing.colors.mix',
+};
+
+const PREFIX_KEY_MAP: [string, string][] = [
+  ['PT-00', 'mixing.colors.white'],
+  ['PT-11', 'mixing.colors.black'],
+  ['PT-12', 'mixing.colors.red'],
+  ['PT-13', 'mixing.colors.blue'],
+  ['PT-14', 'mixing.colors.green'],
+  ['PT-15', 'mixing.colors.yellow'],
+  ['PT-16', 'mixing.colors.orange'],
+  ['PT-17', 'mixing.colors.purple'],
+  ['PT-18', 'mixing.colors.brown'],
+  ['PT-10', 'mixing.colors.gray'],
+];
+
+const getMasterBatchColorKey = (code: string | null | undefined): string | null => {
+  if (!code) return null;
+  if (COLOR_KEY_MAP[code]) return COLOR_KEY_MAP[code];
+  for (const [prefix, key] of PREFIX_KEY_MAP) {
+    if (code.startsWith(prefix)) return key;
+  }
+  return null;
 };
 
 export default function MaterialMixing() {
@@ -324,8 +323,8 @@ export default function MaterialMixing() {
                                 <div className="text-sm text-gray-600">
                                   {order.item_name_ar || order.item_name} | 
                                   {' '}{order.raw_material}
-                                  {order.master_batch_id && ` | ${getMasterBatchColor(order.master_batch_id)}`} | 
-                                  {' '}{parseFloat(order.final_quantity_kg || order.quantity_kg || 0).toFixed(2)} كجم |
+                                  {order.master_batch_id && ` | ${getMasterBatchColorKey(order.master_batch_id) ? t(getMasterBatchColorKey(order.master_batch_id)!) : order.master_batch_id}`} | 
+                                  {' '}{parseFloat(order.final_quantity_kg || order.quantity_kg || 0).toFixed(2)} {t('common.kg')} |
                                   {' '}{order.customer_name_ar || order.customer_name}
                                 </div>
                               </div>
@@ -536,7 +535,7 @@ export default function MaterialMixing() {
                               <TableCell>
                                 <Badge variant="outline">{batch.screw_assignment}</Badge>
                               </TableCell>
-                              <TableCell>{parseFloat(batch.total_weight_kg).toFixed(2)} كجم</TableCell>
+                              <TableCell>{parseFloat(batch.total_weight_kg).toFixed(2)} {t('common.kg')}</TableCell>
                               <TableCell>
                                 {new Date(batch.created_at).toLocaleDateString("ar-EG")}
                               </TableCell>
@@ -582,7 +581,7 @@ export default function MaterialMixing() {
         <DialogContent className="max-w-2xl" dir="rtl">
           <DialogHeader>
             <DialogTitle>{t("mixing.batchDetails")}</DialogTitle>
-            <DialogDescription className="sr-only">عرض تفاصيل خلطة المواد الخام</DialogDescription>
+            <DialogDescription className="sr-only">{t("mixing.batchDetailsDescription")}</DialogDescription>
           </DialogHeader>
           {selectedBatch && (
             <div className="space-y-4">
@@ -647,7 +646,7 @@ export default function MaterialMixing() {
 
               {selectedBatch.notes && (
                 <div className="space-y-2">
-                  <Label className="text-muted-foreground">ملاحظات</Label>
+                  <Label className="text-muted-foreground">{t("common.notes")}</Label>
                   <p className="text-sm">{selectedBatch.notes}</p>
                 </div>
               )}

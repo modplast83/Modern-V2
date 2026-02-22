@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
@@ -71,6 +72,7 @@ export default function OrdersTable({
   onOrderSelect,
   onSelectAll,
 }: OrdersTableProps) {
+  const { t } = useTranslation();
   // Ensure arrays are valid
   const safeOrders = Array.isArray(orders) ? orders : [];
   const safeCustomers = Array.isArray(customers) ? customers : [];
@@ -101,52 +103,52 @@ export default function OrdersTable({
       [key: string]: { label: string; variant: any; color: string };
     } = {
       waiting: {
-        label: "انتظار",
+        label: t('orders.statuses.waiting'),
         variant: "secondary",
         color: "bg-yellow-100 text-yellow-800",
       },
       pending: {
-        label: "معلق",
+        label: t('orders.statuses.pending'),
         variant: "secondary",
         color: "bg-yellow-100 text-yellow-800",
       },
       in_production: {
-        label: "قيد الإنتاج",
+        label: t('orders.statuses.in_production'),
         variant: "default",
         color: "bg-blue-100 text-blue-800",
       },
       for_production: {
-        label: "للإنتاج",
+        label: t('orders.statuses.for_production'),
         variant: "default",
         color: "bg-blue-100 text-blue-800",
       },
       paused: {
-        label: "معلق",
+        label: t('orders.statuses.paused'),
         variant: "destructive",
         color: "bg-red-100 text-red-800",
       },
       on_hold: {
-        label: "إيقاف مؤقت",
+        label: t('orders.statuses.on_hold'),
         variant: "destructive",
         color: "bg-red-100 text-red-800",
       },
       completed: {
-        label: "مكتمل",
+        label: t('orders.statuses.completed'),
         variant: "default",
         color: "bg-green-100 text-green-800",
       },
       received: {
-        label: "مستلم",
+        label: t('orders.statuses.received'),
         variant: "default",
         color: "bg-purple-100 text-purple-800",
       },
       delivered: {
-        label: "تم التوصيل",
+        label: t('orders.statuses.delivered'),
         variant: "default",
         color: "bg-gray-100 text-gray-800",
       },
       cancelled: {
-        label: "ملغي",
+        label: t('orders.statuses.cancelled'),
         variant: "destructive",
         color: "bg-red-100 text-red-800",
       },
@@ -208,13 +210,13 @@ export default function OrdersTable({
                   />
                 </TableHead>
               )}
-              <TableHead className="text-right">رقم الطلب</TableHead>
-              <TableHead className="text-right">العميل</TableHead>
-              <TableHead className="text-right">تاريخ الإنشاء</TableHead>
-              <TableHead className="text-right">المنشئ</TableHead>
-              <TableHead className="text-right">التسليم</TableHead>
-              <TableHead className="text-right">نسبة الإكمال</TableHead>
-              <TableHead className="text-center">الإجراءات</TableHead>
+              <TableHead className="text-right">{t('orders.orderNumber')}</TableHead>
+              <TableHead className="text-right">{t('orders.customer')}</TableHead>
+              <TableHead className="text-right">{t('orders.createdDate')}</TableHead>
+              <TableHead className="text-right">{t('orders.creator')}</TableHead>
+              <TableHead className="text-right">{t('orders.delivery')}</TableHead>
+              <TableHead className="text-right">{t('orders.completionRate')}</TableHead>
+              <TableHead className="text-center">{t('common.actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -333,20 +335,20 @@ export default function OrdersTable({
                       <div className="font-medium">
                         {daysRemaining > 0 ? (
                           <span className="text-green-600">
-                            {daysRemaining} يوم متبقي
+                            {t('orders.daysRemaining', { count: daysRemaining })}
                           </span>
                         ) : daysRemaining === 0 ? (
                           <span className="text-orange-600">
-                            يجب التسليم اليوم
+                            {t('orders.deliverToday')}
                           </span>
                         ) : (
                           <span className="text-red-600">
-                            متأخر {Math.abs(daysRemaining)} يوم
+                            {t('orders.daysLate', { days: Math.abs(daysRemaining) })}
                           </span>
                         )}
                       </div>
                       <div className="text-sm text-gray-500">
-                        التسليم: {format(deliveryDate, "dd/MM/yyyy")}
+                        {t('orders.deliveryLabel')}: {format(deliveryDate, "dd/MM/yyyy")}
                       </div>
                     </>
                   ) : (
@@ -376,7 +378,7 @@ export default function OrdersTable({
                     size="sm"
                     className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                     onClick={() => onViewOrder(order)}
-                    title="عرض التفاصيل"
+                    title={t('orders.viewDetails')}
                     data-testid={`button-view-${order.id}`}
                   >
                     <Eye className="h-4 w-4" />
@@ -386,7 +388,7 @@ export default function OrdersTable({
                     size="sm"
                     className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
                     onClick={() => onPrintOrder(order, "standalone")}
-                    title="طباعة"
+                    title={t('common.print')}
                     data-testid={`button-print-${order.id}`}
                   >
                     <Printer className="h-4 w-4" />
@@ -405,7 +407,7 @@ export default function OrdersTable({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56"  style={{ direction: 'rtl' }}>
                       <DropdownMenuLabel className="text-xs text-muted-foreground">
-                        طباعة وتصدير
+                        {t('orders.printAndExport')}
                       </DropdownMenuLabel>
                       
                       <DropdownMenuItem
@@ -414,7 +416,7 @@ export default function OrdersTable({
                         data-testid={`button-print-pdf-${order.id}`}
                       >
                         <Download className="h-4 w-4 ml-2 text-blue-600" />
-                        <span>تصدير PDF</span>
+                        <span>{t('common.exportPdf')}</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => onPrintOrder(order, "standalone")}
@@ -422,48 +424,48 @@ export default function OrdersTable({
                         data-testid={`button-print-standalone-${order.id}`}
                       >
                         <ExternalLink className="h-4 w-4 ml-2 text-purple-600" />
-                        <span>طباعة</span>
+                        <span>{t('common.print')}</span>
                       </DropdownMenuItem>
                       
                       <DropdownMenuSeparator />
                       
                       <DropdownMenuLabel className="text-xs text-muted-foreground">
-                        تغيير الحالة
+                        {t('orders.changeStatus')}
                       </DropdownMenuLabel>
                       <DropdownMenuItem
                         onClick={() => onStatusChange(order, "for_production")}
                         className="cursor-pointer"
                       >
                         <div className="w-2.5 h-2.5 bg-blue-500 rounded-full ml-2"></div>
-                        <span>إلى الإنتاج</span>
+                        <span>{t('orders.toProduction')}</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => onStatusChange(order, "pending")}
                         className="cursor-pointer"
                       >
                         <div className="w-2.5 h-2.5 bg-yellow-500 rounded-full ml-2"></div>
-                        <span>في الانتظار</span>
+                        <span>{t('orders.statuses.pending')}</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => onStatusChange(order, "on_hold")}
                         className="cursor-pointer"
                       >
                         <div className="w-2.5 h-2.5 bg-red-500 rounded-full ml-2"></div>
-                        <span>إيقاف مؤقت</span>
+                        <span>{t('orders.statuses.on_hold')}</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => onStatusChange(order, "completed")}
                         className="cursor-pointer"
                       >
                         <div className="w-2.5 h-2.5 bg-green-500 rounded-full ml-2"></div>
-                        <span>مكتمل</span>
+                        <span>{t('orders.statuses.completed')}</span>
                       </DropdownMenuItem>
                       
                       {(isAdmin && onEditOrder) || isAdmin ? (
                         <>
                           <DropdownMenuSeparator />
                           <DropdownMenuLabel className="text-xs text-muted-foreground">
-                            إدارة
+                            {t('orders.manage')}
                           </DropdownMenuLabel>
                         </>
                       ) : null}
@@ -475,7 +477,7 @@ export default function OrdersTable({
                           data-testid={`button-edit-${order.id}`}
                         >
                           <Edit className="h-4 w-4 ml-2 text-purple-600" />
-                          <span>تعديل الطلب</span>
+                          <span>{t('orders.editOrder')}</span>
                         </DropdownMenuItem>
                       )}
                       
@@ -486,7 +488,7 @@ export default function OrdersTable({
                           data-testid={`button-delete-${order.id}`}
                         >
                           <Trash2 className="h-4 w-4 ml-2" />
-                          <span>حذف الطلب</span>
+                          <span>{t('orders.deleteOrder')}</span>
                         </DropdownMenuItem>
                       )}
                     </DropdownMenuContent>
@@ -502,7 +504,7 @@ export default function OrdersTable({
                   className="py-1.5 px-4 text-right"
                   data-testid={`notes-${order.id}`}
                 >
-                  <span className="text-xs text-muted-foreground font-medium ml-2">ملاحظات:</span>
+                  <span className="text-xs text-muted-foreground font-medium ml-2">{t('common.notes')}:</span>
                   <span className="text-sm text-gray-700">{order.notes}</span>
                 </TableCell>
               </TableRow>
@@ -581,20 +583,20 @@ export default function OrdersTable({
               
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
-                  <span className="text-muted-foreground">الإنشاء:</span>
+                  <span className="text-muted-foreground">{t('orders.createdDate')}:</span>
                   <div className="font-medium">{order.created_at ? format(new Date(order.created_at), "dd/MM") : "-"}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">التسليم:</span>
+                  <span className="text-muted-foreground">{t('orders.deliveryLabel')}:</span>
                   <div className={`font-medium ${daysRemaining !== null ? (daysRemaining > 0 ? "text-green-600" : "text-red-600") : ""}`}>
-                    {daysRemaining !== null ? `${daysRemaining} يوم` : "-"}
+                    {daysRemaining !== null ? t('orders.daysCount', { count: daysRemaining }) : "-"}
                   </div>
                 </div>
               </div>
               
               {orderProductionOrders.length > 0 && (
                 <div className="text-sm">
-                  <span className="text-muted-foreground">التقدم:</span>
+                  <span className="text-muted-foreground">{t('orders.progress')}:</span>
                   <ProductionProgress
                     filmPercentage={avgFilmPercentage}
                     printingPercentage={avgPrintingPercentage}
@@ -612,7 +614,7 @@ export default function OrdersTable({
                   data-testid={`button-view-mobile-${order.id}`}
                 >
                   <Eye className="h-3 w-3 ml-1" />
-                  عرض
+                  {t('common.view')}
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -623,21 +625,21 @@ export default function OrdersTable({
                       data-testid={`button-print-mobile-${order.id}`}
                     >
                       <Printer className="h-3 w-3 ml-1" />
-                      طباعة
+                      {t('common.print')}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" style={{ direction: 'rtl' }}>
                     <DropdownMenuItem onClick={() => onPrintOrder(order, "html")}>
                       <Printer className="h-4 w-4 ml-2 text-green-600" />
-                      طباعة مباشرة
+                      {t('common.directPrint')}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onPrintOrder(order, "pdf")}>
                       <Download className="h-4 w-4 ml-2 text-blue-600" />
-                      تصدير PDF
+                      {t('common.exportPdf')}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onPrintOrder(order, "standalone")}>
                       <ExternalLink className="h-4 w-4 ml-2 text-purple-600" />
-                      صفحة مستقلة
+                      {t('common.standalonePage')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

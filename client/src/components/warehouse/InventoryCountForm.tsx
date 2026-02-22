@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
@@ -54,6 +55,7 @@ interface CountItem {
 }
 
 export function InventoryCountForm({ open, onOpenChange }: InventoryCountFormProps) {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [countId, setCountId] = useState<number | null>(null);
@@ -97,10 +99,10 @@ export function InventoryCountForm({ open, onOpenChange }: InventoryCountFormPro
     },
     onSuccess: (data) => {
       setCountId(data.id);
-      toast({ title: "تم إنشاء عملية الجرد", description: `رقم الجرد: ${data.count_number}` });
+      toast({ title: t('warehouse.inventoryCount.countCreated'), description: `${t('warehouse.inventoryCount.countNumber')}: ${data.count_number}` });
     },
     onError: () => {
-      toast({ title: "خطأ", description: "فشل في إنشاء عملية الجرد", variant: "destructive" });
+      toast({ title: t('warehouse.toast.error'), description: t('warehouse.inventoryCount.countCreateFailed'), variant: "destructive" });
     },
   });
 
@@ -130,12 +132,12 @@ export function InventoryCountForm({ open, onOpenChange }: InventoryCountFormPro
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/warehouse/inventory-counts"] });
-      toast({ title: "تم إتمام عملية الجرد بنجاح" });
+      toast({ title: t('warehouse.inventoryCount.countCompleted') });
       onOpenChange(false);
       resetForm();
     },
     onError: () => {
-      toast({ title: "خطأ", description: "فشل في إتمام الجرد", variant: "destructive" });
+      toast({ title: t('warehouse.toast.error'), description: t('warehouse.inventoryCount.countCompleteFailed'), variant: "destructive" });
     },
   });
 
@@ -178,9 +180,9 @@ export function InventoryCountForm({ open, onOpenChange }: InventoryCountFormPro
         setCountItems([...countItems, newItem]);
       }
       
-      toast({ title: "تم إضافة الصنف", description: inventoryItem.item_name_ar });
+      toast({ title: t('warehouse.toast.itemAdded'), description: inventoryItem.item_name_ar });
     } else {
-      toast({ title: "الباركود غير موجود", variant: "destructive" });
+      toast({ title: t('warehouse.toast.barcodeNotFound'), variant: "destructive" });
     }
     
     setBarcode("");
@@ -227,9 +229,9 @@ export function InventoryCountForm({ open, onOpenChange }: InventoryCountFormPro
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {countId ? "عملية الجرد" : "بدء عملية جرد جديدة"}
+            {countId ? t('warehouse.inventoryCount.countOperation') : t('warehouse.inventoryCount.startNewCount')}
           </DialogTitle>
-          <DialogDescription className="sr-only">نموذج إنشاء وإدارة عملية جرد المخزون بالباركود</DialogDescription>
+          <DialogDescription className="sr-only">{t('warehouse.inventoryCount.description')}</DialogDescription>
         </DialogHeader>
 
         {!countId ? (
@@ -240,7 +242,7 @@ export function InventoryCountForm({ open, onOpenChange }: InventoryCountFormPro
                 name="count_type"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>نوع الجرد</FormLabel>
+                    <FormLabel>{t('warehouse.inventoryCount.countType')}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
@@ -248,10 +250,10 @@ export function InventoryCountForm({ open, onOpenChange }: InventoryCountFormPro
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="opening">رصيد افتتاحي</SelectItem>
-                        <SelectItem value="periodic">جرد دوري</SelectItem>
-                        <SelectItem value="annual">جرد سنوي</SelectItem>
-                        <SelectItem value="spot_check">جرد مفاجئ</SelectItem>
+                        <SelectItem value="opening">{t('warehouse.inventoryCount.openingBalance')}</SelectItem>
+                        <SelectItem value="periodic">{t('warehouse.inventoryCount.periodicCount')}</SelectItem>
+                        <SelectItem value="annual">{t('warehouse.inventoryCount.annualCount')}</SelectItem>
+                        <SelectItem value="spot_check">{t('warehouse.inventoryCount.spotCheck')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </FormItem>
@@ -263,11 +265,11 @@ export function InventoryCountForm({ open, onOpenChange }: InventoryCountFormPro
                 name="location_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>الموقع</FormLabel>
+                    <FormLabel>{t('warehouse.labels.location')}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="جميع المواقع" />
+                          <SelectValue placeholder={t('warehouse.inventoryCount.allLocations')} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -284,10 +286,10 @@ export function InventoryCountForm({ open, onOpenChange }: InventoryCountFormPro
 
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                  إلغاء
+                  {t('warehouse.buttons.cancel')}
                 </Button>
                 <Button type="submit" disabled={createCountMutation.isPending}>
-                  {createCountMutation.isPending ? "جاري الإنشاء..." : "بدء الجرد"}
+                  {createCountMutation.isPending ? t('warehouse.buttons.creating') : t('warehouse.inventoryCount.startCount')}
                 </Button>
               </div>
             </form>
@@ -296,7 +298,7 @@ export function InventoryCountForm({ open, onOpenChange }: InventoryCountFormPro
           <div className="space-y-4">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm">مسح الباركود</CardTitle>
+                <CardTitle className="text-sm">{t('warehouse.inventoryCount.scanBarcode')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex gap-2">
@@ -305,13 +307,13 @@ export function InventoryCountForm({ open, onOpenChange }: InventoryCountFormPro
                     value={barcode}
                     onChange={(e) => setBarcode(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleBarcodeScan()}
-                    placeholder="امسح الباركود هنا..."
+                    placeholder={t('warehouse.inventoryCount.scanBarcodePlaceholder')}
                     className="flex-1"
                     autoFocus
                   />
                   <Button onClick={handleBarcodeScan}>
                     <Scan className="h-4 w-4 ml-2" />
-                    مسح
+                    {t('warehouse.inventoryCount.scan')}
                   </Button>
                 </div>
               </CardContent>
@@ -320,11 +322,11 @@ export function InventoryCountForm({ open, onOpenChange }: InventoryCountFormPro
             <Card>
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-center">
-                  <CardTitle className="text-sm">الأصناف المجرودة ({countItems.length})</CardTitle>
+                  <CardTitle className="text-sm">{t('warehouse.inventoryCount.countedItems')} ({countItems.length})</CardTitle>
                   {totalDiscrepancies > 0 && (
                     <Badge variant="destructive" className="flex items-center gap-1">
                       <AlertTriangle className="h-3 w-3" />
-                      {totalDiscrepancies} فرق
+                      {totalDiscrepancies} {t('warehouse.inventoryCount.discrepancy')}
                     </Badge>
                   )}
                 </div>
@@ -332,16 +334,16 @@ export function InventoryCountForm({ open, onOpenChange }: InventoryCountFormPro
               <CardContent>
                 {countItems.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
-                    ابدأ بمسح الباركود لإضافة الأصناف
+                    {t('warehouse.inventoryCount.startScanningToAdd')}
                   </div>
                 ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-right">الصنف</TableHead>
-                        <TableHead className="text-right">في النظام</TableHead>
-                        <TableHead className="text-right">العدد الفعلي</TableHead>
-                        <TableHead className="text-right">الفرق</TableHead>
+                        <TableHead className="text-right">{t('warehouse.labels.item')}</TableHead>
+                        <TableHead className="text-right">{t('warehouse.inventoryCount.systemQuantity')}</TableHead>
+                        <TableHead className="text-right">{t('warehouse.inventoryCount.actualCount')}</TableHead>
+                        <TableHead className="text-right">{t('warehouse.inventoryCount.difference')}</TableHead>
                         <TableHead className="text-right"></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -385,14 +387,14 @@ export function InventoryCountForm({ open, onOpenChange }: InventoryCountFormPro
                 resetForm();
                 onOpenChange(false);
               }}>
-                إلغاء
+                {t('warehouse.buttons.cancel')}
               </Button>
               <Button
                 onClick={handleCompleteCount}
                 disabled={countItems.length === 0 || completeCountMutation.isPending}
               >
                 <Check className="h-4 w-4 ml-2" />
-                {completeCountMutation.isPending ? "جاري الحفظ..." : "إتمام الجرد"}
+                {completeCountMutation.isPending ? t('warehouse.buttons.saving') : t('warehouse.inventoryCount.completeCount')}
               </Button>
             </div>
           </div>

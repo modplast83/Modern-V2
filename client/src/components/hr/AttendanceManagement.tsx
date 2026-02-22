@@ -149,7 +149,7 @@ export default function AttendanceManagement() {
       });
       if (!response.ok) {
         const err = await response.json();
-        throw new Error(err.message || "خطأ في استيراد البيانات");
+        throw new Error(err.message || t("hr.attendance.importError"));
       }
       return response.json();
     },
@@ -158,14 +158,14 @@ export default function AttendanceManagement() {
       queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
       setUploadingUserId(null);
       toast({
-        title: "تم استيراد البيانات بنجاح",
-        description: data.message || `تم استيراد ${data.importedCount || 0} سجل`,
+        title: t("hr.attendance.importSuccess"),
+        description: data.message || t("hr.attendance.importedRecords", { count: data.importedCount || 0 }),
       });
     },
     onError: (error: Error) => {
       setUploadingUserId(null);
       toast({
-        title: "خطأ في استيراد البيانات",
+        title: t("hr.attendance.importError"),
         description: error.message,
         variant: "destructive",
       });
@@ -177,7 +177,7 @@ export default function AttendanceManagement() {
       const month = format(selectedDate, "yyyy-MM");
       const response = await fetch(`/api/attendance/template/${userId}?month=${month}`);
       if (!response.ok) {
-        throw new Error("خطأ في تحميل القالب");
+        throw new Error(t("hr.attendance.templateError"));
       }
       
       const blob = await response.blob();
@@ -191,13 +191,13 @@ export default function AttendanceManagement() {
       document.body.removeChild(a);
       
       toast({
-        title: "تم تحميل القالب",
-        description: `قالب الحضور للموظف ${userName} للشهر ${month}`,
+        title: t("hr.attendance.templateSuccess"),
+        description: t("hr.attendance.templateDesc", { name: userName, month }),
       });
     } catch (error) {
       toast({
-        title: "خطأ في تحميل القالب",
-        description: error instanceof Error ? error.message : "حدث خطأ",
+        title: t("hr.attendance.templateError"),
+        description: error instanceof Error ? error.message : t("common.errorOccurred"),
         variant: "destructive",
       });
     }
@@ -631,8 +631,8 @@ export default function AttendanceManagement() {
                       </div>
                     </div>
                     <div className="flex justify-between mt-3 text-sm">
-                      <span>ساعات العمل: <span className="text-blue-600 font-semibold">{entry.work_hours?.toFixed(1) || "-"} س</span></span>
-                      <span>الإضافي: <span className="text-purple-600 font-semibold">{entry.overtime_hours && entry.overtime_hours > 0 ? `${entry.overtime_hours.toFixed(1)} س` : "-"}</span></span>
+                      <span>{t("hr.workHours")}: <span className="text-blue-600 font-semibold">{entry.work_hours?.toFixed(1) || "-"} {t("hr.hoursAbbr")}</span></span>
+                      <span>{t("hr.overtime")}: <span className="text-purple-600 font-semibold">{entry.overtime_hours && entry.overtime_hours > 0 ? `${entry.overtime_hours.toFixed(1)} ${t("hr.hoursAbbr")}` : "-"}</span></span>
                     </div>
                   </div>
                 );
@@ -669,13 +669,13 @@ export default function AttendanceManagement() {
                       </div>
                     </TableHead>
                     <TableHead className="text-center min-w-[80px]">
-                      ساعات العمل
+                      {t("hr.workHours")}
                     </TableHead>
                     <TableHead className="text-center min-w-[80px]">
-                      الإضافي
+                      {t("hr.overtime")}
                     </TableHead>
                     <TableHead className="text-center min-w-[150px]">
-                      إجراءات
+                      {t("common.actions")}
                     </TableHead>
                   </TableRow>
                 </TableHeader>
@@ -763,14 +763,14 @@ export default function AttendanceManagement() {
                           </TableCell>
                           <TableCell className="text-center font-mono text-sm">
                             {entry.work_hours ? (
-                              <span className="text-blue-600">{entry.work_hours.toFixed(1)} س</span>
+                              <span className="text-blue-600">{entry.work_hours.toFixed(1)} {t("hr.hoursAbbr")}</span>
                             ) : (
                               <span className="text-gray-400">-</span>
                             )}
                           </TableCell>
                           <TableCell className="text-center font-mono text-sm">
                             {entry.overtime_hours && entry.overtime_hours > 0 ? (
-                              <span className="text-purple-600 font-semibold">{entry.overtime_hours.toFixed(1)} س</span>
+                              <span className="text-purple-600 font-semibold">{entry.overtime_hours.toFixed(1)} {t("hr.hoursAbbr")}</span>
                             ) : (
                               <span className="text-gray-400">-</span>
                             )}
@@ -781,7 +781,7 @@ export default function AttendanceManagement() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleExportTemplate(entry.user_id, entry.display_name_ar || entry.username)}
-                                title="تصدير قالب الشهر"
+                                title={t("hr.attendance.exportTemplate")}
                                 className="h-7 px-2"
                               >
                                 <Download className="h-3 w-3" />
@@ -804,7 +804,7 @@ export default function AttendanceManagement() {
                                   size="sm"
                                   asChild
                                   disabled={uploadingUserId === entry.user_id}
-                                  title="استيراد من ملف اكسل"
+                                  title={t("hr.attendance.importExcel")}
                                   className="h-7 px-2"
                                 >
                                   <span>

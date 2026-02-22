@@ -84,7 +84,7 @@ export default function Orders() {
     queryKey: ["/api/orders"],
     queryFn: async () => {
       const response = await fetch("/api/orders");
-      if (!response.ok) throw new Error("فشل في جلب الطلبات");
+      if (!response.ok) throw new Error(t('orders.fetchOrdersFailed'));
       const result = await response.json();
       const data = result.data || result;
       return Array.isArray(data) ? data : [];
@@ -96,7 +96,7 @@ export default function Orders() {
     queryKey: ["/api/production-orders"],
     queryFn: async () => {
       const response = await fetch("/api/production-orders");
-      if (!response.ok) throw new Error("فشل في جلب أوامر الإنتاج");
+      if (!response.ok) throw new Error(t('orders.fetchProductionOrdersFailed'));
       const result = await response.json();
       const data = result.data || result;
       return Array.isArray(data) ? data : [];
@@ -108,7 +108,7 @@ export default function Orders() {
     queryKey: ["/api/customers", { all: true }],
     queryFn: async () => {
       const response = await fetch("/api/customers?all=true");
-      if (!response.ok) throw new Error("فشل في جلب العملاء");
+      if (!response.ok) throw new Error(t('orders.fetchCustomersFailed'));
       const result = await response.json();
       const data = result.data || result;
       return Array.isArray(data) ? data : [];
@@ -127,7 +127,7 @@ export default function Orders() {
     queryKey: ["/api/users"],
     queryFn: async () => {
       const response = await fetch("/api/users");
-      if (!response.ok) throw new Error("فشل في جلب المستخدمين");
+      if (!response.ok) throw new Error(t('orders.fetchUsersFailed'));
       const result = await response.json();
       const data = result.data || result;
       return Array.isArray(data) ? data : [];
@@ -139,7 +139,7 @@ export default function Orders() {
     queryKey: ["/api/items"],
     queryFn: async () => {
       const response = await fetch("/api/items");
-      if (!response.ok) throw new Error("فشل في جلب العناصر");
+      if (!response.ok) throw new Error(t('orders.fetchItemsFailed'));
       const result = await response.json();
       const data = result.data || result;
       return Array.isArray(data) ? data : [];
@@ -151,7 +151,7 @@ export default function Orders() {
     queryKey: ["/api/categories"],
     queryFn: async () => {
       const response = await fetch("/api/categories");
-      if (!response.ok) throw new Error("فشل في جلب الفئات");
+      if (!response.ok) throw new Error(t('orders.fetchCategoriesFailed'));
       const result = await response.json();
       const data = result.data || result;
       return Array.isArray(data) ? data : [];
@@ -243,7 +243,7 @@ export default function Orders() {
       if (!user?.id) {
         toast({
           title: t('messages.error'),
-          description: "يجب تسجيل الدخول لإنشاء طلب",
+          description: t('orders.loginRequired'),
           variant: "destructive",
         });
         return;
@@ -272,7 +272,7 @@ export default function Orders() {
         if (!updateResponse.ok) {
           const errorText = await updateResponse.text();
           console.error("خطأ في تحديث الطلب:", errorText);
-          throw new Error(`فشل في تحديث الطلب: ${errorText}`);
+          throw new Error(`${t('orders.updateOrderFailed')}: ${errorText}`);
         }
 
         // Always delete existing production orders for this order
@@ -367,7 +367,7 @@ export default function Orders() {
       // Generate order number
       console.log("توليد رقم الطلب...");
       const orderNumberResponse = await fetch("/api/orders/next-number");
-      if (!orderNumberResponse.ok) throw new Error("فشل في توليد رقم الطلب");
+      if (!orderNumberResponse.ok) throw new Error(t('orders.generateOrderNumberFailed'));
       const { orderNumber } = await orderNumberResponse.json();
       console.log("رقم الطلب المولد:", orderNumber);
 
@@ -393,7 +393,7 @@ export default function Orders() {
       if (!orderResponse.ok) {
         const errorText = await orderResponse.text();
         console.error("خطأ في إنشاء الطلب:", errorText);
-        throw new Error(`فشل في إنشاء الطلب: ${errorText}`);
+        throw new Error(`${t('orders.createOrderFailed')}: ${errorText}`);
       }
 
       const newOrder = await orderResponse.json();
@@ -430,7 +430,7 @@ export default function Orders() {
       if (!prodOrderResponse.ok) {
         const errorText = await prodOrderResponse.text();
         console.error("خطأ في إنشاء أوامر الإنتاج:", errorText);
-        throw new Error(`فشل في إنشاء أوامر الإنتاج: ${errorText}`);
+        throw new Error(`${t('orders.createProductionOrdersFailed')}: ${errorText}`);
       }
 
       const batchResult = await prodOrderResponse.json();
@@ -442,12 +442,12 @@ export default function Orders() {
         // Continue with successful orders, but warn about failures
         if (batchResult.successful && batchResult.successful.length > 0) {
           toast({
-            title: "تنبيه",
-            description: `تم إنشاء ${batchResult.successful.length} من ${batchProductionOrders.length} أوامر إنتاج`,
+            title: t('orders.warning'),
+            description: t('orders.partialProductionOrdersCreated', { successful: batchResult.successful.length, total: batchProductionOrders.length }),
             variant: "default",
           });
         } else {
-          throw new Error("فشل في إنشاء جميع أوامر الإنتاج");
+          throw new Error(t('orders.allProductionOrdersFailed'));
         }
       } else {
         console.log("تم إنشاء جميع أوامر الإنتاج بنجاح");
@@ -527,7 +527,7 @@ export default function Orders() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "فشل في حذف الطلب");
+        throw new Error(errorData.message || t('orders.deleteOrderFailed'));
       }
 
       // Refresh all related data
@@ -564,7 +564,7 @@ export default function Orders() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "فشل في تحديث حالة الطلب");
+        throw new Error(errorData.message || t('orders.statusUpdateFailed'));
       }
 
       // Refresh all related data

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
@@ -14,6 +15,7 @@ import {
 } from "lucide-react";
 
 export default function RecentRolls() {
+  const { t } = useTranslation();
   const {
     data: rolls = [],
     isLoading,
@@ -40,13 +42,13 @@ export default function RecentRolls() {
   const getStatusText = (status: string) => {
     switch (status) {
       case "completed":
-        return "مكتمل";
+        return t('dashboard.rolls.completed');
       case "in_progress":
-        return "قيد التنفيذ";
+        return t('dashboard.rolls.inProgress');
       case "pending":
-        return "في الانتظار";
+        return t('dashboard.rolls.pending');
       case "failed":
-        return "فشل";
+        return t('dashboard.rolls.failed');
       default:
         return status;
     }
@@ -75,7 +77,7 @@ export default function RecentRolls() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Package className="w-5 h-5" />
-            الرولات الحديثة
+            {t('dashboard.rolls.title')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -103,7 +105,7 @@ export default function RecentRolls() {
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <Package className="w-5 h-5" />
-            الرولات الحديثة
+            {t('dashboard.rolls.title')}
           </CardTitle>
           <Button variant="outline" size="sm" onClick={() => refetch()}>
             <RefreshCw className="w-4 h-4" />
@@ -135,20 +137,20 @@ export default function RecentRolls() {
                         <div className="space-y-1 text-sm text-gray-600">
                           <div className="flex items-center gap-1">
                             <Package className="w-3 h-3" />
-                            <span>أمر إنتاج: {roll.production_order_id}</span>
+                            <span>{t('dashboard.rolls.productionOrder')}: {roll.production_order_id}</span>
                           </div>
 
                           {roll.machine_id && (
                             <div className="flex items-center gap-1">
                               <Settings className="w-3 h-3" />
-                              <span>ماكينة: {roll.machine_id}</span>
+                              <span>{t('dashboard.rolls.machine')}: {roll.machine_id}</span>
                             </div>
                           )}
 
                           {roll.employee_id && (
                             <div className="flex items-center gap-1">
                               <User className="w-3 h-3" />
-                              <span>عامل: {roll.employee_id}</span>
+                              <span>{t('dashboard.rolls.worker')}: {roll.employee_id}</span>
                             </div>
                           )}
 
@@ -173,24 +175,23 @@ export default function RecentRolls() {
                     <div className="text-right">
                       {roll.length && (
                         <div className="text-sm font-medium text-gray-900">
-                          {roll.length} م
+                          {roll.length} {t('dashboard.rolls.meter')}
                         </div>
                       )}
                       {roll.weight && (
                         <div className="text-xs text-gray-500">
-                          {roll.weight} كغ
+                          {roll.weight} {t('dashboard.rolls.kg')}
                         </div>
                       )}
                     </div>
                   </div>
 
-                  {/* Progress bar for in-progress rolls */}
                   {roll.status === "in_progress" &&
                     roll.length &&
                     roll.target_length && (
                       <div className="mt-3">
                         <div className="flex justify-between text-xs text-gray-600 mb-1">
-                          <span>التقدم</span>
+                          <span>{t('dashboard.rolls.progress')}</span>
                           <span>
                             {Math.round(
                               (roll.length / roll.target_length) * 100,
@@ -214,8 +215,8 @@ export default function RecentRolls() {
           ) : (
             <div className="p-8 text-center">
               <Package className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-600 mb-2">لا توجد رولات حديثة</p>
-              <p className="text-sm text-gray-500">ستظهر الرولات الجديدة هنا</p>
+              <p className="text-gray-600 mb-2">{t('dashboard.rolls.noRolls')}</p>
+              <p className="text-sm text-gray-500">{t('dashboard.rolls.newRollsAppear')}</p>
             </div>
           )}
         </ScrollArea>

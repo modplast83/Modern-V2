@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import {
   Card,
   CardContent,
@@ -30,10 +31,11 @@ import {
 } from "lucide-react";
 
 export default function WhatsAppWebhooksTab() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
   const [testPhone, setTestPhone] = useState("+966");
-  const [testMessage, setTestMessage] = useState("مرحباً! اختبار webhook");
+  const [testMessage, setTestMessage] = useState(t('whatsapp.defaultTestMessage'));
 
   const webhookUrls = {
     meta: `${window.location.origin}/api/notifications/webhook/meta`,
@@ -59,7 +61,7 @@ export default function WhatsAppWebhooksTab() {
         body: JSON.stringify({
           phone_number: testPhone,
           message: testMessage,
-          title: "اختبار Webhook",
+          title: t('whatsapp.testWebhook'),
           use_template: false,
         }),
       });
@@ -67,14 +69,14 @@ export default function WhatsAppWebhooksTab() {
     },
     onSuccess: () => {
       toast({
-        title: "تم إرسال الرسالة",
-        description: "تم إرسال رسالة اختبار بنجاح",
+        title: t('whatsapp.toasts.messageSent'),
+        description: t('whatsapp.toasts.testSentSuccess'),
       });
       refetchNotifications();
     },
     onError: (error: any) => {
       toast({
-        title: "فشل الإرسال",
+        title: t('whatsapp.toasts.sendFailed'),
         description: error.message,
         variant: "destructive",
       });
@@ -85,8 +87,8 @@ export default function WhatsAppWebhooksTab() {
     navigator.clipboard.writeText(text);
     setCopiedUrl(label);
     toast({
-      title: "تم النسخ",
-      description: `تم نسخ ${label} إلى الحافظة`,
+      title: t('whatsapp.toasts.copied'),
+      description: t('whatsapp.toasts.copiedDesc', { label }),
     });
     setTimeout(() => setCopiedUrl(null), 2000);
   };
@@ -94,67 +96,67 @@ export default function WhatsAppWebhooksTab() {
   const metaSetupSteps = [
     {
       step: 1,
-      title: "انتقل إلى Meta App Dashboard",
-      description: "اذهب إلى developers.facebook.com واختر تطبيقك",
+      title: t('whatsapp.meta.step1Title'),
+      description: t('whatsapp.meta.step1Desc'),
       link: "https://developers.facebook.com/apps",
     },
     {
       step: 2,
-      title: "اختر WhatsApp → Configuration",
-      description: "من القائمة الجانبية، اختر WhatsApp ثم Configuration",
+      title: t('whatsapp.meta.step2Title'),
+      description: t('whatsapp.meta.step2Desc'),
     },
     {
       step: 3,
-      title: "أضف Webhook URL",
-      description: "في قسم Webhooks، أضف الـ URL التالي:",
+      title: t('whatsapp.meta.step3Title'),
+      description: t('whatsapp.meta.step3Desc'),
       code: webhookUrls.meta,
     },
     {
       step: 4,
-      title: "أضف Verify Token",
-      description: "استخدم الـ token التالي:",
+      title: t('whatsapp.meta.step4Title'),
+      description: t('whatsapp.meta.step4Desc'),
       code: defaultVerifyToken,
     },
     {
       step: 5,
-      title: "اشترك في Events",
-      description: "اختر الـ events التي تريد استقبالها:",
+      title: t('whatsapp.meta.step5Title'),
+      description: t('whatsapp.meta.step5Desc'),
       items: ["messages", "message_status"],
     },
     {
       step: 6,
-      title: "تحقق من الـ Webhook",
-      description: 'اضغط على "Verify and Save" للتحقق من الـ webhook',
+      title: t('whatsapp.meta.step6Title'),
+      description: t('whatsapp.meta.step6Desc'),
     },
   ];
 
   const twilioSetupSteps = [
     {
       step: 1,
-      title: "انتقل إلى Twilio Console",
-      description: "اذهب إلى console.twilio.com",
+      title: t('whatsapp.twilio.step1Title'),
+      description: t('whatsapp.twilio.step1Desc'),
       link: "https://console.twilio.com",
     },
     {
       step: 2,
-      title: "اختر Messaging → WhatsApp Senders",
-      description: "من القائمة، اختر Messaging ثم WhatsApp senders",
+      title: t('whatsapp.twilio.step2Title'),
+      description: t('whatsapp.twilio.step2Desc'),
     },
     {
       step: 3,
-      title: "اختر رقم WhatsApp",
-      description: "اضغط على رقم WhatsApp الخاص بك",
+      title: t('whatsapp.twilio.step3Title'),
+      description: t('whatsapp.twilio.step3Desc'),
     },
     {
       step: 4,
-      title: "أضف Status Callback URL",
-      description: "في قسم Webhooks، أضف الـ URL التالي:",
+      title: t('whatsapp.twilio.step4Title'),
+      description: t('whatsapp.twilio.step4Desc'),
       code: webhookUrls.twilio,
     },
     {
       step: 5,
-      title: "احفظ التغييرات",
-      description: 'اضغط على "Save" لحفظ إعدادات الـ webhook',
+      title: t('whatsapp.twilio.step5Title'),
+      description: t('whatsapp.twilio.step5Desc'),
     },
   ];
 
@@ -167,7 +169,7 @@ export default function WhatsAppWebhooksTab() {
             Webhook URLs
           </CardTitle>
           <CardDescription>
-            استخدم هذه الـ URLs لتكوين webhooks في Meta و Twilio
+            {t('whatsapp.webhookUrlsDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -252,22 +254,22 @@ export default function WhatsAppWebhooksTab() {
       <Tabs defaultValue="meta" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="meta" data-testid="tab-meta-setup">
-            تكوين Meta
+            {t('whatsapp.tabs.metaSetup')}
           </TabsTrigger>
           <TabsTrigger value="twilio" data-testid="tab-twilio-setup">
-            تكوين Twilio
+            {t('whatsapp.tabs.twilioSetup')}
           </TabsTrigger>
           <TabsTrigger value="test" data-testid="tab-test">
-            اختبار
+            {t('whatsapp.tabs.test')}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="meta">
           <Card>
             <CardHeader>
-              <CardTitle>خطوات تكوين Meta WhatsApp Webhook</CardTitle>
+              <CardTitle>{t('whatsapp.metaSetupTitle')}</CardTitle>
               <CardDescription>
-                اتبع هذه الخطوات لتكوين webhook في Meta
+                {t('whatsapp.metaSetupDesc')}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -299,7 +301,7 @@ export default function WhatsAppWebhooksTab() {
                               target="_blank"
                               rel="noopener noreferrer"
                             >
-                              افتح الرابط <ExternalLink className="mr-1 h-3 w-3" />
+                              {t('whatsapp.openLink')} <ExternalLink className="mr-1 h-3 w-3" />
                             </a>
                           </Button>
                         )}
@@ -338,9 +340,9 @@ export default function WhatsAppWebhooksTab() {
         <TabsContent value="twilio">
           <Card>
             <CardHeader>
-              <CardTitle>خطوات تكوين Twilio Webhook</CardTitle>
+              <CardTitle>{t('whatsapp.twilioSetupTitle')}</CardTitle>
               <CardDescription>
-                اتبع هذه الخطوات لتكوين webhook في Twilio
+                {t('whatsapp.twilioSetupDesc')}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -372,7 +374,7 @@ export default function WhatsAppWebhooksTab() {
                               target="_blank"
                               rel="noopener noreferrer"
                             >
-                              افتح الرابط <ExternalLink className="mr-1 h-3 w-3" />
+                              {t('whatsapp.openLink')} <ExternalLink className="mr-1 h-3 w-3" />
                             </a>
                           </Button>
                         )}
@@ -406,15 +408,15 @@ export default function WhatsAppWebhooksTab() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Send className="h-5 w-5" />
-                اختبار إرسال رسالة
+                {t('whatsapp.testSendTitle')}
               </CardTitle>
               <CardDescription>
-                أرسل رسالة اختبار للتحقق من عمل webhook
+                {t('whatsapp.testSendDesc')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="test-phone">رقم الهاتف</Label>
+                <Label htmlFor="test-phone">{t('whatsapp.phoneNumber')}</Label>
                 <Input
                   id="test-phone"
                   value={testPhone}
@@ -425,12 +427,12 @@ export default function WhatsAppWebhooksTab() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="test-message">الرسالة</Label>
+                <Label htmlFor="test-message">{t('whatsapp.message')}</Label>
                 <Input
                   id="test-message"
                   value={testMessage}
                   onChange={(e) => setTestMessage(e.target.value)}
-                  placeholder="أدخل رسالة الاختبار"
+                  placeholder={t('whatsapp.enterTestMessage')}
                   data-testid="input-test-message"
                 />
               </div>
@@ -444,20 +446,19 @@ export default function WhatsAppWebhooksTab() {
                 {sendTestMessage.isPending ? (
                   <>
                     <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-                    جاري الإرسال...
+                    {t('whatsapp.sending')}
                   </>
                 ) : (
                   <>
                     <Send className="ml-2 h-4 w-4" />
-                    إرسال رسالة اختبار
+                    {t('whatsapp.sendTestMessage')}
                   </>
                 )}
               </Button>
 
               <Alert>
                 <AlertDescription>
-                  💡 بعد إرسال الرسالة، تحقق من قسم سجل الـ Webhooks أدناه
-                  لرؤية التحديثات
+                  {t('whatsapp.testNote')}
                 </AlertDescription>
               </Alert>
             </CardContent>
@@ -470,7 +471,7 @@ export default function WhatsAppWebhooksTab() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Activity className="h-5 w-5" />
-              <CardTitle>سجل Webhook Messages</CardTitle>
+              <CardTitle>{t('whatsapp.webhookLog')}</CardTitle>
             </div>
             <Button
               variant="outline"
@@ -479,17 +480,17 @@ export default function WhatsAppWebhooksTab() {
               data-testid="button-refresh-log"
             >
               <RefreshCw className="h-4 w-4 ml-2" />
-              تحديث
+              {t('common.refresh')}
             </Button>
           </div>
           <CardDescription>
-            آخر {recentWebhookMessages.length} رسالة واتساب
+            {t('whatsapp.recentMessages', { count: recentWebhookMessages.length })}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {recentWebhookMessages.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              لا توجد رسائل webhook حتى الآن
+              {t('whatsapp.noWebhookMessages')}
             </div>
           ) : (
             <div className="space-y-3">
@@ -502,7 +503,7 @@ export default function WhatsAppWebhooksTab() {
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-gray-900 dark:text-white">
-                        {msg.phone_number || "رقم غير محدد"}
+                        {msg.phone_number || t('whatsapp.unknownNumber')}
                       </span>
                       {msg.status === "sent" ? (
                         <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
@@ -532,7 +533,7 @@ export default function WhatsAppWebhooksTab() {
                   )}
                   {msg.error_message && (
                     <p className="text-xs text-red-600 mt-1">
-                      خطأ: {msg.error_message}
+                      {t('whatsapp.error')}: {msg.error_message}
                     </p>
                   )}
                 </div>
@@ -545,12 +546,12 @@ export default function WhatsAppWebhooksTab() {
       <Alert>
         <Settings className="h-4 w-4" />
         <AlertDescription className="text-sm">
-          <strong>ملاحظات هامة:</strong>
+          <strong>{t('whatsapp.importantNotes')}:</strong>
           <ul className="list-disc list-inside mt-2 space-y-1">
-            <li>تأكد من تفعيل webhook في Meta أو Twilio قبل الاختبار</li>
-            <li>الرسائل المرسلة عبر Meta تتطلب قالب معتمد في الإنتاج</li>
-            <li>رسائل Twilio الاختبارية تعمل مع أرقام محددة فقط</li>
-            <li>تحقق من صحة الـ Verify Token في إعدادات Meta</li>
+            <li>{t('whatsapp.note1')}</li>
+            <li>{t('whatsapp.note2')}</li>
+            <li>{t('whatsapp.note3')}</li>
+            <li>{t('whatsapp.note4')}</li>
           </ul>
         </AlertDescription>
       </Alert>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Dialog,
@@ -47,8 +48,8 @@ interface SmartDistributionModalProps {
 interface DistributionAlgorithm {
   id: string;
   name: string;
-  nameAr: string;
-  description: string;
+  nameArKey: string;
+  descriptionKey: string;
   icon: React.ReactNode;
   color: string;
 }
@@ -97,54 +98,12 @@ interface DistributionResult {
   message: string;
 }
 
-const algorithms: DistributionAlgorithm[] = [
-  {
-    id: "balanced",
-    name: "Balanced Distribution",
-    nameAr: "التوزيع المتوازن",
-    description: "توزيع متساوٍ حسب عدد الأوامر على جميع المكائن",
-    icon: <Scale className="h-5 w-5" />,
-    color: "bg-blue-100 border-blue-300",
-  },
-  {
-    id: "load-based",
-    name: "Load-Based Distribution",
-    nameAr: "التوزيع حسب الحمولة",
-    description: "توزيع الأوامر حسب الكمية الإجمالية والسعة المتاحة",
-    icon: <Weight className="h-5 w-5" />,
-    color: "bg-green-100 border-green-300",
-  },
-  {
-    id: "priority",
-    name: "Priority Distribution",
-    nameAr: "التوزيع حسب الأولوية",
-    description: "توزيع الأوامر العاجلة أولاً على المكائن الأقل حملاً",
-    icon: <AlertTriangle className="h-5 w-5" />,
-    color: "bg-red-100 border-red-300",
-  },
-  {
-    id: "product-type",
-    name: "Product Type Grouping",
-    nameAr: "التوزيع حسب نوع المنتج",
-    description: "تجميع المنتجات المشابهة على نفس الماكينة",
-    icon: <Layers className="h-5 w-5" />,
-    color: "bg-purple-100 border-purple-300",
-  },
-  {
-    id: "hybrid",
-    name: "Hybrid Optimization",
-    nameAr: "التوزيع الهجين",
-    description: "مزج جميع المعايير للحصول على أفضل توزيع",
-    icon: <Zap className="h-5 w-5" />,
-    color: "bg-orange-100 border-orange-300",
-  },
-];
-
 export default function SmartDistributionModal({
   isOpen,
   onClose,
   onDistribute,
 }: SmartDistributionModalProps) {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [selectedAlgorithm, setSelectedAlgorithm] = useState("balanced");
   const [hybridParams, setHybridParams] = useState({
@@ -153,6 +112,49 @@ export default function SmartDistributionModal({
     priorityWeight: 20,
     typeWeight: 20,
   });
+
+  const algorithms: DistributionAlgorithm[] = [
+    {
+      id: "balanced",
+      name: "Balanced Distribution",
+      nameArKey: "modals.smartDistribution.balancedName",
+      descriptionKey: "modals.smartDistribution.balancedDesc",
+      icon: <Scale className="h-5 w-5" />,
+      color: "bg-blue-100 border-blue-300",
+    },
+    {
+      id: "load-based",
+      name: "Load-Based Distribution",
+      nameArKey: "modals.smartDistribution.loadBasedName",
+      descriptionKey: "modals.smartDistribution.loadBasedDesc",
+      icon: <Weight className="h-5 w-5" />,
+      color: "bg-green-100 border-green-300",
+    },
+    {
+      id: "priority",
+      name: "Priority Distribution",
+      nameArKey: "modals.smartDistribution.priorityName",
+      descriptionKey: "modals.smartDistribution.priorityDesc",
+      icon: <AlertTriangle className="h-5 w-5" />,
+      color: "bg-red-100 border-red-300",
+    },
+    {
+      id: "product-type",
+      name: "Product Type Grouping",
+      nameArKey: "modals.smartDistribution.productTypeName",
+      descriptionKey: "modals.smartDistribution.productTypeDesc",
+      icon: <Layers className="h-5 w-5" />,
+      color: "bg-purple-100 border-purple-300",
+    },
+    {
+      id: "hybrid",
+      name: "Hybrid Optimization",
+      nameArKey: "modals.smartDistribution.hybridName",
+      descriptionKey: "modals.smartDistribution.hybridDesc",
+      icon: <Zap className="h-5 w-5" />,
+      color: "bg-orange-100 border-orange-300",
+    },
+  ];
 
   // Fetch distribution preview
   const { data: preview, isLoading: isPreviewLoading } = useQuery<DistributionPreviewResponse>({
@@ -199,7 +201,7 @@ export default function SmartDistributionModal({
     onSuccess: (result) => {
       if (result.success) {
         toast({
-          title: "تم التوزيع بنجاح",
+          title: t('modals.smartDistribution.distributionSuccess'),
           description: result.message,
         });
         queryClient.invalidateQueries({ queryKey: ["/api/machine-queues"] });
@@ -210,8 +212,8 @@ export default function SmartDistributionModal({
     },
     onError: (error: any) => {
       toast({
-        title: "خطأ في التوزيع",
-        description: error.message || "فشل تطبيق التوزيع الذكي",
+        title: t('modals.smartDistribution.distributionError'),
+        description: error.message || t('modals.smartDistribution.distributionFailed'),
         variant: "destructive",
       });
     },
@@ -236,6 +238,19 @@ export default function SmartDistributionModal({
     }
   };
 
+  const getCapacityStatusLabel = (status: string) => {
+    switch (status) {
+      case "low":
+        return t('modals.smartDistribution.statusLow');
+      case "moderate":
+        return t('modals.smartDistribution.statusModerate');
+      case "high":
+        return t('modals.smartDistribution.statusHigh');
+      default:
+        return t('modals.smartDistribution.statusOverloaded');
+    }
+  };
+
   const getUtilizationColor = (utilization: number) => {
     if (utilization > 90) return "bg-red-500";
     if (utilization > 70) return "bg-yellow-500";
@@ -249,18 +264,18 @@ export default function SmartDistributionModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Sparkles className="h-6 w-6 text-purple-600" />
-            التوزيع الذكي لأوامر الإنتاج
+            {t('modals.smartDistribution.title')}
           </DialogTitle>
           <DialogDescription>
-            اختر خوارزمية التوزيع المناسبة وعاين النتائج قبل التطبيق
+            {t('modals.smartDistribution.description')}
           </DialogDescription>
         </DialogHeader>
 
         <Tabs defaultValue="algorithm" className="flex-1 overflow-hidden">
           <TabsList className="grid grid-cols-3 w-full">
-            <TabsTrigger value="algorithm" data-testid="tab-algorithm">اختيار الخوارزمية</TabsTrigger>
-            <TabsTrigger value="preview" data-testid="tab-preview">معاينة التوزيع</TabsTrigger>
-            <TabsTrigger value="stats" data-testid="tab-stats">إحصائيات السعة</TabsTrigger>
+            <TabsTrigger value="algorithm" data-testid="tab-algorithm">{t('modals.smartDistribution.tabAlgorithm')}</TabsTrigger>
+            <TabsTrigger value="preview" data-testid="tab-preview">{t('modals.smartDistribution.tabPreview')}</TabsTrigger>
+            <TabsTrigger value="stats" data-testid="tab-stats">{t('modals.smartDistribution.tabStats')}</TabsTrigger>
           </TabsList>
 
           <ScrollArea className="flex-1 h-[500px] mt-4">
@@ -289,10 +304,10 @@ export default function SmartDistributionModal({
                             className="flex items-center gap-2 text-base font-semibold cursor-pointer"
                           >
                             {algo.icon}
-                            {algo.nameAr}
+                            {t(algo.nameArKey)}
                           </Label>
                           <p className="text-sm text-muted-foreground mt-1">
-                            {algo.description}
+                            {t(algo.descriptionKey)}
                           </p>
                         </div>
                       </div>
@@ -304,12 +319,12 @@ export default function SmartDistributionModal({
               {selectedAlgorithm === "hybrid" && (
                 <Card className="mt-4">
                   <CardHeader>
-                    <CardTitle className="text-sm">معايير التوزيع الهجين</CardTitle>
+                    <CardTitle className="text-sm">{t('modals.smartDistribution.hybridCriteria')}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
                       <div className="flex justify-between mb-2">
-                        <Label>وزن الحمولة</Label>
+                        <Label>{t('modals.smartDistribution.loadWeightLabel')}</Label>
                         <span className="text-sm font-medium">
                           {hybridParams.loadWeight}%
                         </span>
@@ -326,7 +341,7 @@ export default function SmartDistributionModal({
 
                     <div>
                       <div className="flex justify-between mb-2">
-                        <Label>وزن السعة</Label>
+                        <Label>{t('modals.smartDistribution.capacityWeightLabel')}</Label>
                         <span className="text-sm font-medium">
                           {hybridParams.capacityWeight}%
                         </span>
@@ -343,7 +358,7 @@ export default function SmartDistributionModal({
 
                     <div>
                       <div className="flex justify-between mb-2">
-                        <Label>وزن الأولوية</Label>
+                        <Label>{t('modals.smartDistribution.priorityWeightLabel')}</Label>
                         <span className="text-sm font-medium">
                           {hybridParams.priorityWeight}%
                         </span>
@@ -360,7 +375,7 @@ export default function SmartDistributionModal({
 
                     <div>
                       <div className="flex justify-between mb-2">
-                        <Label>وزن نوع المنتج</Label>
+                        <Label>{t('modals.smartDistribution.productTypeWeightLabel')}</Label>
                         <span className="text-sm font-medium">
                           {hybridParams.typeWeight}%
                         </span>
@@ -391,11 +406,10 @@ export default function SmartDistributionModal({
                     <AlertDescription>
                       <div className="flex items-center justify-between">
                         <span>
-                          سيتم توزيع {preview.data.totalOrders} أمر على{" "}
-                          {preview.data.machineCount} ماكينة
+                          {t('modals.smartDistribution.willDistribute', { orders: preview.data.totalOrders, machines: preview.data.machineCount })}
                         </span>
                         <Badge variant="outline">
-                          كفاءة التوزيع: {preview.data.efficiency}%
+                          {t('modals.smartDistribution.distributionEfficiency')}: {preview.data.efficiency}%
                         </Badge>
                       </div>
                     </AlertDescription>
@@ -416,16 +430,10 @@ export default function SmartDistributionModal({
                                   machine.newCapacityStatus
                                 )}
                               >
-                                {machine.newCapacityStatus === "low"
-                                  ? "منخفض"
-                                  : machine.newCapacityStatus === "moderate"
-                                  ? "متوسط"
-                                  : machine.newCapacityStatus === "high"
-                                  ? "مرتفع"
-                                  : "مُحمل بشدة"}
+                                {getCapacityStatusLabel(machine.newCapacityStatus)}
                               </Badge>
                               <Badge variant="outline">
-                                {machine.proposedOrders?.length || 0} أمر جديد
+                                {machine.proposedOrders?.length || 0} {t('modals.smartDistribution.newOrder')}
                               </Badge>
                             </div>
                           </div>
@@ -433,20 +441,20 @@ export default function SmartDistributionModal({
                         <CardContent>
                           <div className="space-y-3">
                             <div className="flex items-center justify-between text-sm">
-                              <span>الحمولة الحالية:</span>
+                              <span>{t('modals.smartDistribution.currentLoad')}:</span>
                               <span className="font-medium">
-                                {machine.currentLoad?.toFixed(2)} كجم
+                                {machine.currentLoad?.toFixed(2)} {t('modals.smartDistribution.kg')}
                               </span>
                             </div>
                             <div className="flex items-center justify-between text-sm">
-                              <span>الحمولة المقترحة:</span>
+                              <span>{t('modals.smartDistribution.proposedLoad')}:</span>
                               <span className="font-medium">
-                                {machine.proposedLoad?.toFixed(2)} كجم
+                                {machine.proposedLoad?.toFixed(2)} {t('modals.smartDistribution.kg')}
                               </span>
                             </div>
                             <div className="space-y-1">
                               <div className="flex justify-between text-sm">
-                                <span>نسبة الاستخدام:</span>
+                                <span>{t('modals.smartDistribution.utilizationRate')}:</span>
                                 <span>
                                   {machine.proposedUtilization?.toFixed(1)}%
                                 </span>
@@ -471,10 +479,10 @@ export default function SmartDistributionModal({
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                               <Clock className="h-3 w-3" />
                               <span>
-                                وقت الإنتاج المتوقع:{" "}
+                                {t('modals.smartDistribution.expectedProductionTime')}:{" "}
                                 {((machine.currentLoad + machine.proposedLoad) /
                                   machine.productionRate).toFixed(1)}{" "}
-                                ساعة
+                                {t('modals.smartDistribution.hour')}
                               </span>
                             </div>
                           </div>
@@ -487,7 +495,7 @@ export default function SmartDistributionModal({
                 <Alert>
                   <AlertTriangle className="h-4 w-4" />
                   <AlertDescription>
-                    لا توجد أوامر غير مخصصة للتوزيع
+                    {t('modals.smartDistribution.noUnassignedOrders')}
                   </AlertDescription>
                 </Alert>
               )}
@@ -515,32 +523,32 @@ export default function SmartDistributionModal({
                         <div className="grid grid-cols-2 gap-4 text-sm">
                           <div>
                             <span className="text-muted-foreground">
-                              الحمولة الحالية:
+                              {t('modals.smartDistribution.currentLoad')}:
                             </span>
                             <p className="font-medium">
-                              {stat.currentLoad?.toFixed(2)} كجم
+                              {stat.currentLoad?.toFixed(2)} {t('modals.smartDistribution.kg')}
                             </p>
                           </div>
                           <div>
                             <span className="text-muted-foreground">
-                              السعة القصوى:
+                              {t('modals.smartDistribution.maxCapacity')}:
                             </span>
                             <p className="font-medium">
-                              {stat.maxCapacity?.toFixed(2)} كجم
+                              {stat.maxCapacity?.toFixed(2)} {t('modals.smartDistribution.kg')}
                             </p>
                           </div>
                           <div>
                             <span className="text-muted-foreground">
-                              عدد الأوامر:
+                              {t('modals.smartDistribution.orderCount')}:
                             </span>
                             <p className="font-medium">{stat.orderCount}</p>
                           </div>
                           <div>
                             <span className="text-muted-foreground">
-                              معدل الإنتاج:
+                              {t('modals.smartDistribution.productionRate')}:
                             </span>
                             <p className="font-medium">
-                              {stat.productionRate} كجم/ساعة
+                              {stat.productionRate} {t('modals.smartDistribution.kgPerHour')}
                             </p>
                           </div>
                         </div>
@@ -557,7 +565,7 @@ export default function SmartDistributionModal({
               ) : (
                 <div className="flex items-center justify-center h-64">
                   <p className="text-muted-foreground">
-                    جاري تحميل إحصائيات السعة...
+                    {t('modals.smartDistribution.loadingCapacityStats')}
                   </p>
                 </div>
               )}
@@ -572,7 +580,7 @@ export default function SmartDistributionModal({
             disabled={distributeMutation.isPending}
             data-testid="button-cancel-distribution"
           >
-            إلغاء
+            {t('modals.smartDistribution.cancel')}
           </Button>
           <Button
             onClick={handleApply}
@@ -582,12 +590,12 @@ export default function SmartDistributionModal({
             {distributeMutation.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                جاري التطبيق...
+                {t('modals.smartDistribution.applying')}
               </>
             ) : (
               <>
                 <CheckCircle className="mr-2 h-4 w-4" />
-                تطبيق التوزيع
+                {t('modals.smartDistribution.applyDistribution')}
               </>
             )}
           </Button>

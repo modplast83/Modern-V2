@@ -51,8 +51,7 @@ interface SMSSendersResponse {
 }
 
 export default function SMSSettingsTab() {
-  const { t, i18n } = useTranslation();
-  const isRTL = i18n.language === "ar";
+  const { t } = useTranslation();
   const { toast } = useToast();
 
   const [testPhone, setTestPhone] = useState("");
@@ -88,14 +87,14 @@ export default function SMSSettingsTab() {
     },
     onSuccess: () => {
       toast({
-        title: isRTL ? "تم الإرسال" : "Sent",
-        description: isRTL ? "تم إرسال رسالة الاختبار بنجاح" : "Test message sent successfully",
+        title: t('sms.toasts.sent'),
+        description: t('sms.toasts.testSentSuccess'),
       });
     },
     onError: (error: any) => {
       toast({
-        title: isRTL ? "فشل الإرسال" : "Send Failed",
-        description: error.message || (isRTL ? "فشل في إرسال رسالة الاختبار" : "Failed to send test message"),
+        title: t('sms.toasts.sendFailed'),
+        description: error.message || t('sms.toasts.testSendFailed'),
         variant: "destructive",
       });
     },
@@ -111,15 +110,15 @@ export default function SMSSettingsTab() {
     },
     onSuccess: () => {
       toast({
-        title: isRTL ? "تم الإرسال" : "Sent",
-        description: isRTL ? "تم إرسال الرسالة النصية بنجاح" : "SMS sent successfully",
+        title: t('sms.toasts.sent'),
+        description: t('sms.toasts.smsSentSuccess'),
       });
       setSmsForm({ phone_number: "", message: "", recipients: [], sender_name: "" });
     },
     onError: (error: any) => {
       toast({
-        title: isRTL ? "فشل الإرسال" : "Send Failed",
-        description: error.message || (isRTL ? "فشل في إرسال الرسالة النصية" : "Failed to send SMS"),
+        title: t('sms.toasts.sendFailed'),
+        description: error.message || t('sms.toasts.smsSendFailed'),
         variant: "destructive",
       });
     },
@@ -128,8 +127,8 @@ export default function SMSSettingsTab() {
   const handleSendTest = () => {
     if (!testPhone.trim()) {
       toast({
-        title: isRTL ? "خطأ" : "Error",
-        description: isRTL ? "يرجى إدخال رقم الهاتف" : "Please enter a phone number",
+        title: t('common.error'),
+        description: t('sms.toasts.enterPhone'),
         variant: "destructive",
       });
       return;
@@ -140,16 +139,16 @@ export default function SMSSettingsTab() {
   const handleSendSMS = () => {
     if (!smsForm.phone_number.trim() && smsForm.recipients.length === 0) {
       toast({
-        title: isRTL ? "خطأ" : "Error",
-        description: isRTL ? "يرجى إدخال رقم هاتف واحد على الأقل" : "Please enter at least one phone number",
+        title: t('common.error'),
+        description: t('sms.toasts.enterAtLeastOnePhone'),
         variant: "destructive",
       });
       return;
     }
     if (!smsForm.message.trim()) {
       toast({
-        title: isRTL ? "خطأ" : "Error",
-        description: isRTL ? "يرجى كتابة الرسالة" : "Please write a message",
+        title: t('common.error'),
+        description: t('sms.toasts.writeMessage'),
         variant: "destructive",
       });
       return;
@@ -183,7 +182,7 @@ export default function SMSSettingsTab() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MessageSquare className="w-5 h-5" />
-            {isRTL ? "حالة خدمة الرسائل النصية (تقنيات)" : "SMS Service Status (Taqnyat)"}
+            {t('sms.serviceStatus')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -200,14 +199,14 @@ export default function SMSSettingsTab() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">
-                  {isRTL ? "حالة الخدمة" : "Service Status"}
+                  {t('sms.serviceStatusLabel')}
                 </p>
                 <p className="font-medium">
                   {statusLoading
-                    ? (isRTL ? "جاري التحقق..." : "Checking...")
+                    ? t('sms.checking')
                     : smsStatus?.configured
-                      ? (isRTL ? "مُفعّلة" : "Active")
-                      : (isRTL ? "غير مُعدة" : "Not Configured")}
+                      ? t('sms.active')
+                      : t('sms.notConfigured')}
                 </p>
               </div>
             </div>
@@ -218,14 +217,14 @@ export default function SMSSettingsTab() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">
-                  {isRTL ? "الرصيد المتبقي" : "Balance"}
+                  {t('sms.balance')}
                 </p>
                 <p className="font-medium">
                   {balanceLoading
-                    ? (isRTL ? "جاري التحميل..." : "Loading...")
+                    ? t('common.loading')
                     : balanceData?.success
                       ? `${balanceData.balance} ${balanceData.currency}`
-                      : (isRTL ? "غير متاح" : "Unavailable")}
+                      : t('sms.unavailable')}
                 </p>
               </div>
               <Button
@@ -244,11 +243,11 @@ export default function SMSSettingsTab() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">
-                  {isRTL ? "أسماء المرسلين" : "Sender Names"}
+                  {t('sms.senderNames')}
                 </p>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {sendersLoading ? (
-                    <span className="text-sm">{isRTL ? "جاري التحميل..." : "Loading..."}</span>
+                    <span className="text-sm">{t('common.loading')}</span>
                   ) : sendersData?.success && sendersData?.senders && sendersData.senders.length > 0 ? (
                     sendersData.senders.map((sender: any, idx: number) => {
                       let label = "";
@@ -270,7 +269,7 @@ export default function SMSSettingsTab() {
                     })
                   ) : (
                     <span className="text-sm text-muted-foreground">
-                      {isRTL ? "لا توجد أسماء مرسلين" : "No senders"}
+                      {t('sms.noSenders')}
                     </span>
                   )}
                 </div>
@@ -285,14 +284,12 @@ export default function SMSSettingsTab() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <RefreshCw className="w-5 h-5" />
-              {isRTL ? "رابط الهوك (Webhook URL)" : "Webhook URL"}
+              {t('sms.webhookUrl')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-3">
-              {isRTL
-                ? "انسخ هذا الرابط وأضفه في لوحة تحكم تقنيات لاستقبال تقارير تسليم الرسائل"
-                : "Copy this URL and add it to Taqnyat dashboard to receive SMS delivery reports"}
+              {t('sms.webhookDesc')}
             </p>
             <div className="flex gap-2 items-center">
               <Input
@@ -307,41 +304,27 @@ export default function SMSSettingsTab() {
                 onClick={() => {
                   navigator.clipboard.writeText(smsStatus.webhookUrl!);
                   toast({
-                    title: isRTL ? "تم النسخ" : "Copied",
-                    description: isRTL ? "تم نسخ رابط الهوك بنجاح" : "Webhook URL copied to clipboard",
+                    title: t('sms.toasts.copied'),
+                    description: t('sms.toasts.webhookCopied'),
                   });
                 }}
               >
-                {isRTL ? "نسخ" : "Copy"}
+                {t('common.copy')}
               </Button>
             </div>
             <div className="mt-3 p-3 bg-muted rounded-lg">
               <p className="text-xs text-muted-foreground">
-                {isRTL ? (
-                  <>
-                    <strong>خطوات الإعداد في منصة تقنيات:</strong>
+                <>
+                    <strong>{t('sms.setupStepsTitle')}:</strong>
                     <br />
-                    1. سجل دخول إلى حسابك في <a href="https://portal.taqnyat.sa" target="_blank" rel="noopener noreferrer" className="text-primary underline">portal.taqnyat.sa</a>
+                    1. {t('sms.setupStep1')} <a href="https://portal.taqnyat.sa" target="_blank" rel="noopener noreferrer" className="text-primary underline">portal.taqnyat.sa</a>
                     <br />
-                    2. اذهب إلى إعدادات التطبيق (Application)
+                    2. {t('sms.setupStep2')}
                     <br />
-                    3. الصق رابط الهوك في حقل Callback URL / Webhook URL
+                    3. {t('sms.setupStep3')}
                     <br />
-                    4. احفظ التغييرات
+                    4. {t('sms.setupStep4')}
                   </>
-                ) : (
-                  <>
-                    <strong>Setup steps in Taqnyat platform:</strong>
-                    <br />
-                    1. Login to your account at <a href="https://portal.taqnyat.sa" target="_blank" rel="noopener noreferrer" className="text-primary underline">portal.taqnyat.sa</a>
-                    <br />
-                    2. Go to Application settings
-                    <br />
-                    3. Paste the webhook URL in the Callback URL / Webhook URL field
-                    <br />
-                    4. Save changes
-                  </>
-                )}
               </p>
             </div>
           </CardContent>
@@ -352,13 +335,13 @@ export default function SMSSettingsTab() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Send className="w-5 h-5" />
-            {isRTL ? "اختبار الإرسال" : "Send Test"}
+            {t('sms.sendTest')}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex gap-3 items-end">
             <div className="flex-1">
-              <Label>{isRTL ? "رقم الهاتف (للاختبار)" : "Phone Number (for testing)"}</Label>
+              <Label>{t('sms.phoneForTesting')}</Label>
               <Input
                 value={testPhone}
                 onChange={(e) => setTestPhone(e.target.value)}
@@ -376,13 +359,11 @@ export default function SMSSettingsTab() {
               ) : (
                 <Send className="w-4 h-4 ml-2" />
               )}
-              {isRTL ? "إرسال اختبار" : "Send Test"}
+              {t('sms.sendTest')}
             </Button>
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            {isRTL
-              ? "سيتم إرسال رسالة اختبار قصيرة للتحقق من عمل الخدمة"
-              : "A short test message will be sent to verify the service is working"}
+            {t('sms.testDesc')}
           </p>
         </CardContent>
       </Card>
@@ -393,12 +374,12 @@ export default function SMSSettingsTab() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MessageSquare className="w-5 h-5" />
-            {isRTL ? "إرسال رسالة نصية" : "Send SMS Message"}
+            {t('sms.sendSmsMessage')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label>{isRTL ? "رقم الهاتف الرئيسي" : "Primary Phone Number"}</Label>
+            <Label>{t('sms.primaryPhone')}</Label>
             <Input
               value={smsForm.phone_number}
               onChange={(e) => setSmsForm((prev) => ({ ...prev, phone_number: e.target.value }))}
@@ -411,7 +392,7 @@ export default function SMSSettingsTab() {
           <div>
             <Label className="flex items-center gap-2">
               <Users className="w-4 h-4" />
-              {isRTL ? "مستلمين إضافيين" : "Additional Recipients"}
+              {t('sms.additionalRecipients')}
             </Label>
             <div className="flex gap-2 mt-1">
               <Input
@@ -440,29 +421,29 @@ export default function SMSSettingsTab() {
           </div>
 
           <div>
-            <Label>{isRTL ? "نص الرسالة" : "Message Text"}</Label>
+            <Label>{t('sms.messageText')}</Label>
             <Textarea
               value={smsForm.message}
               onChange={(e) => setSmsForm((prev) => ({ ...prev, message: e.target.value }))}
-              placeholder={isRTL ? "اكتب رسالتك هنا..." : "Write your message here..."}
+              placeholder={t('sms.writeMessagePlaceholder')}
               rows={4}
               maxLength={918}
               className="mt-1"
             />
             <div className="flex justify-between mt-1 text-xs text-muted-foreground">
               <span>
-                {isRTL ? `عدد الرسائل: ${smsCount}` : `SMS Count: ${smsCount}`}
+                {t('sms.smsCount', { count: smsCount })}
               </span>
               <span dir="ltr">{charCount}/918</span>
             </div>
           </div>
 
           <div>
-            <Label>{isRTL ? "اسم المرسل (اختياري)" : "Sender Name (optional)"}</Label>
+            <Label>{t('sms.senderNameOptional')}</Label>
             <Input
               value={smsForm.sender_name}
               onChange={(e) => setSmsForm((prev) => ({ ...prev, sender_name: e.target.value }))}
-              placeholder={isRTL ? "اتركه فارغاً لاستخدام الافتراضي" : "Leave empty for default"}
+              placeholder={t('sms.leaveEmptyDefault')}
               dir="ltr"
               maxLength={20}
               className="mt-1"
@@ -479,7 +460,7 @@ export default function SMSSettingsTab() {
             ) : (
               <Send className="w-4 h-4 ml-2" />
             )}
-            {isRTL ? "إرسال الرسالة" : "Send Message"}
+            {t('sms.sendMessage')}
           </Button>
         </CardContent>
       </Card>

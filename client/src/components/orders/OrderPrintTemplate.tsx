@@ -1,4 +1,5 @@
 import { useMemo, useCallback, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
@@ -106,21 +107,9 @@ const getDeliveryDate = (createdDate: Date, days: number = 0) => {
   return result;
 };
 
-const getStatusText = (status: string | undefined): string => {
+const getStatusTextStatic = (status: string | undefined): string => {
   if (!status) return "-";
-  const statusMap: Record<string, string> = {
-    waiting: "قيد الانتظار",
-    for_production: "جاهز للإنتاج",
-    in_production: "قيد الإنتاج",
-    paused: "متوقف",
-    on_hold: "معلق",
-    pending: "معلق",
-    in_progress: "قيد التنفيذ",
-    completed: "مكتمل",
-    cancelled: "ملغي",
-    delivered: "تم التسليم",
-  };
-  return statusMap[status] || status;
+  return status;
 };
 
 /** ✅ عنوان عربي فوق وإنجليزي تحت + خط أكبر/أعرض */
@@ -142,6 +131,25 @@ export default function OrderPrintTemplate({
   onClose,
   mode = "html",
 }: OrderPrintTemplateProps) {
+  const { t } = useTranslation();
+
+  const getStatusText = (status: string | undefined): string => {
+    if (!status) return "-";
+    const statusMap: Record<string, string> = {
+      waiting: t('orders.status.waiting'),
+      for_production: t('orders.status.forProduction'),
+      in_production: t('orders.status.inProduction'),
+      paused: t('orders.status.paused'),
+      on_hold: t('orders.status.onHold'),
+      pending: t('orders.status.pending'),
+      in_progress: t('orders.status.inProgress'),
+      completed: t('orders.status.completed'),
+      cancelled: t('orders.status.cancelled'),
+      delivered: t('orders.status.delivered'),
+    };
+    return statusMap[status] || status;
+  };
+
   const { data: users } = useQuery<User[]>({
     queryKey: ["/api/users"],
     staleTime: Infinity,
@@ -153,7 +161,7 @@ export default function OrderPrintTemplate({
   });
 
   const getMasterBatchInfo = useCallback((code?: string) => {
-    if (!code) return { name_ar: "غير محدد", code: "-", hex: "#CCCCCC" };
+    if (!code) return { name_ar: t('common.notSpecified'), code: "-", hex: "#CCCCCC" };
     const normalizedCode = code.toUpperCase().trim();
     const found = masterBatchColors.find((c) => {
       if (!c || !c.id) return false;
@@ -262,7 +270,7 @@ export default function OrderPrintTemplate({
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
     pdf.addImage(canvas.toDataURL("image/png"), "PNG", margin, margin, imgWidth, imgHeight);
-    pdf.save(`أمر_تشغيل_${order?.order_number || "new"}.pdf`);
+    pdf.save(`${t('orders.print.productionOrderFile')}_${order?.order_number || "new"}.pdf`);
     onClose();
   }, [canPrint, order?.order_number, onClose]);
 
@@ -278,7 +286,7 @@ export default function OrderPrintTemplate({
       <html lang="ar" dir="rtl">
         <head>
           <meta charset="UTF-8">
-          <title>أمر تشغيل #${order?.order_number}</title>
+          <title>${t('orders.print.productionOrder')} #${order?.order_number}</title>
           <style>
             @page { size: A4 landscape; margin: 2mm; }
             * { box-sizing: border-box; }
@@ -296,7 +304,7 @@ export default function OrderPrintTemplate({
           </style>
         </head>
         <body>
-          <button class="print-btn" onclick="window.print()">🖨️ طباعة</button>
+          <button class="print-btn" onclick="window.print()">🖨️ ${t('common.print')}</button>
           ${element.innerHTML}
         </body>
       </html>
@@ -395,26 +403,26 @@ export default function OrderPrintTemplate({
             <div style={{ flex: 1, display: "flex", alignItems: "center", gap: "12px" }}>
               <img src={factoryLogo} alt="Factory Logo" style={{ width: "70px", height: "70px", objectFit: "contain" }} />
               <div>
-                <h1 style={styles.h1}>مصنع أكياس البلاستيك الحديث</h1>
+                <h1 style={styles.h1}>{t('orders.print.factoryName')}</h1>
                 <p style={{ margin: "2px 0", fontSize: "16px", color: "#666", fontWeight: 800 }}>Modern Plastic Bags Factory</p>
               </div>
             </div>
 
             <div style={{ flex: 1, textAlign: "center" }}>
-              <h2 style={{ fontSize: "20px", margin: 0, color: "#1a365d", fontWeight: 900 }}>أمر تشغيل إنتاج</h2>
+              <h2 style={{ fontSize: "20px", margin: 0, color: "#1a365d", fontWeight: 900 }}>{t('orders.print.productionOrder')}</h2>
               <span style={{ fontSize: "13px", fontWeight: 800 }}>PRODUCTION ORDER</span>
             </div>
 
             <div style={{ flex: 1, display: "flex", justifyContent: "flex-end", gap: "10px" }}>
               <div style={styles.metaBox}>
                 <div>
-                  <strong>رقم الطلب:</strong> #{order?.order_number}
+                  <strong>{t('orders.orderNumber')}:</strong> #{order?.order_number}
                 </div>
                 <div>
-                  <strong>التاريخ:</strong> {orderDateStr}
+                  <strong>{t('orders.print.date')}:</strong> {orderDateStr}
                 </div>
                 <div>
-                  <strong>التسليم:</strong> {deliveryDateStr}
+                  <strong>{t('orders.print.delivery')}:</strong> {deliveryDateStr}
                 </div>
               </div>
               <img src={qrUrl} alt="QR" width="75" height="75" />
@@ -425,7 +433,7 @@ export default function OrderPrintTemplate({
             <tbody>
               <tr>
                 <td style={{ ...styles.td, background: "#f8f9fa", width: "8%" }}>
-                  <Label2Lines ar="العميل" en="Customer" />
+                  <Label2Lines ar={t('orders.customer')} en="Customer" />
                 </td>
 
                 <td style={{ ...styles.td, width: "22%", textAlign: "right", fontWeight: 950 }}>
@@ -437,29 +445,29 @@ export default function OrderPrintTemplate({
                 </td>
 
                 <td style={{ ...styles.td, background: "#f8f9fa", width: "6%" }}>
-                  <Label2Lines ar="الدرج" en="Drawer" />
+                  <Label2Lines ar={t('orders.print.drawer')} en="Drawer" />
                 </td>
 
                 <td style={{ ...styles.td, width: "6%", fontWeight: 900, fontSize: "16px" }}>{customer?.plate_drawer_code || "-"}</td>
 
                 <td style={{ ...styles.td, background: "#f8f9fa", width: "6%" }}>
-                  <Label2Lines ar="المندوب" en="Sales Rep" />
+                  <Label2Lines ar={t('orders.print.salesRep')} en="Sales Rep" />
                 </td>
 
                 <td style={{ ...styles.td, width: "13%", fontWeight: 900 }}>{salesRep?.display_name_ar || salesRep?.display_name || salesRep?.full_name || salesRep?.username || "-"}</td>
 
                 <td style={{ ...styles.td, background: "#f8f9fa", width: "6%" }}>
-                  <Label2Lines ar="الحالة" en="Status" />
+                  <Label2Lines ar={t('orders.status.label')} en="Status" />
                 </td>
 
                 <td style={{ ...styles.td, width: "8%", fontWeight: 900 }}>{getStatusText(order?.status)}</td>
 
                 <td style={{ ...styles.td, background: "#1a365d", color: "white", width: "7%", fontWeight: 900 }}>
-                  <Label2Lines ar="الإجمالي" en="Total" />
+                  <Label2Lines ar={t('orders.print.total')} en="Total" />
                 </td>
 
                 <td style={{ ...styles.td, background: "#e8f4fd", fontWeight: 900, fontSize: "20px" }}>
-                  {formatNumber(totalWeight)} كجم
+                  {formatNumber(totalWeight)} {t('common.kg')}
                 </td>
               </tr>
             </tbody>
@@ -472,37 +480,37 @@ export default function OrderPrintTemplate({
                   <Label2Lines ar="#" en="#" />
                 </th>
                 <th style={{ ...styles.th, width: "14%" }}>
-                  <Label2Lines ar="الصنف" en="Product" />
+                  <Label2Lines ar={t('orders.print.product')} en="Product" />
                 </th>
                 <th style={{ ...styles.th, width: "8%" }}>
-                  <Label2Lines ar="العرض" en="Size" />
+                  <Label2Lines ar={t('orders.width')} en="Size" />
                 </th>
                 <th style={{ ...styles.th, width: "6%" }}>
-                  <Label2Lines ar="الطول" en="Length" />
+                  <Label2Lines ar={t('orders.print.length')} en="Length" />
                 </th>
                 <th style={{ ...styles.th, width: "6%" }}>
-                  <Label2Lines ar="السماكة" en="Thickness" />
+                  <Label2Lines ar={t('orders.thickness')} en="Thickness" />
                 </th>
                 <th style={{ ...styles.th, width: "8%" }}>
-                  <Label2Lines ar="المادة الخام" en="Material" />
+                  <Label2Lines ar={t('orders.rawMaterial')} en="Material" />
                 </th>
                 <th style={{ ...styles.th, width: "8%" }}>
-                  <Label2Lines ar="اللون" en="Color" />
+                  <Label2Lines ar={t('orders.print.color')} en="Color" />
                 </th>
                 <th style={{ ...styles.th, width: "5%" }}>
-                  <Label2Lines ar="الطباعة" en="Print" />
+                  <Label2Lines ar={t('orders.print.printing')} en="Print" />
                 </th>
                 <th style={{ ...styles.th, width: "8%" }}>
-                  <Label2Lines ar="السلندر" en="Cylinder" />
+                  <Label2Lines ar={t('orders.print.cylinder')} en="Cylinder" />
                 </th>
                 <th style={{ ...styles.th, width: "8%" }}>
-                  <Label2Lines ar="التخريم" en="Handle" />
+                  <Label2Lines ar={t('orders.punching')} en="Handle" />
                 </th>
                 <th style={{ ...styles.th, width: "8%" }}>
-                  <Label2Lines ar="الكمية" en="Qty (kg)" />
+                  <Label2Lines ar={t('orders.quantity')} en="Qty (kg)" />
                 </th>
                 <th style={{ ...styles.th, width: "12%" }}>
-                  <Label2Lines ar="ملاحظات" en="Notes" />
+                  <Label2Lines ar={t('common.notes')} en="Notes" />
                 </th>
               </tr>
             </thead>
@@ -526,7 +534,7 @@ export default function OrderPrintTemplate({
                     <td style={{ ...styles.td, direction: "ltr", fontWeight: 900 }}>{cp?.width ? `${cp.width} cm` : "-"}</td>
                     <td style={{ ...styles.td, direction: "ltr", fontWeight: 900 }}>{cp?.cutting_length_cm ? `${cp.cutting_length_cm} cm` : "-"}</td>
                     <td style={{ ...styles.td, direction: "ltr", fontWeight: 900 }}>{cp?.thickness ? `${cp.thickness} mic` : "-"}</td>
-                    <td style={{ ...styles.td, fontWeight: 900 }}>{cp?.raw_material || "بيور"}</td>
+                    <td style={{ ...styles.td, fontWeight: 900 }}>{cp?.raw_material || t('orders.print.pure')}</td>
 
                     <td style={styles.td}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
@@ -578,23 +586,23 @@ export default function OrderPrintTemplate({
           </table>
 
           <div style={{ border: "2px solid #ccc", padding: "12px", marginBottom: "15px", borderRadius: "4px", minHeight: "50px", fontFamily: "'Times New Roman', Times, serif", fontWeight: 900 }}>
-            <strong style={{ fontSize: "14px", display: "block", marginBottom: "5px", fontWeight: 900 }}>ملاحظات عامة / General Notes:</strong>
-            <span style={{ fontSize: "14px", fontWeight: 900 }}>{order?.notes || "لا توجد ملاحظات"}</span>
+            <strong style={{ fontSize: "14px", display: "block", marginBottom: "5px", fontWeight: 900 }}>{t('orders.print.generalNotes')} / General Notes:</strong>
+            <span style={{ fontSize: "14px", fontWeight: 900 }}>{order?.notes || t('orders.print.noNotes')}</span>
           </div>
 
           <div style={styles.footer}>
             <div style={{ textAlign: "center", width: "30%", fontFamily: "'Times New Roman', Times, serif", fontWeight: 900 }}>
-              <div style={{ fontSize: "14px", marginBottom: "30px", fontWeight: 900 }}>مدير الإنتاج / Production Manager</div>
+              <div style={{ fontSize: "14px", marginBottom: "30px", fontWeight: 900 }}>{t('orders.print.productionManager')} / Production Manager</div>
               <div style={{ borderTop: "2px solid #000", width: "60%", margin: "0 auto" }}></div>
             </div>
 
             <div style={{ textAlign: "center", width: "30%", fontFamily: "'Times New Roman', Times, serif", fontWeight: 900 }}>
-              <div style={{ fontSize: "14px", marginBottom: "30px", fontWeight: 900 }}>مسؤول الجودة / Quality Manager</div>
+              <div style={{ fontSize: "14px", marginBottom: "30px", fontWeight: 900 }}>{t('orders.print.qualityManager')} / Quality Manager</div>
               <div style={{ borderTop: "2px solid #000", width: "60%", margin: "0 auto" }}></div>
             </div>
 
             <div style={{ textAlign: "center", width: "30%", fontFamily: "'Times New Roman', Times, serif", fontWeight: 900 }}>
-              <div style={{ fontSize: "14px", marginBottom: "30px", fontWeight: 900 }}>أمين المستودع / Warehouse Keeper</div>
+              <div style={{ fontSize: "14px", marginBottom: "30px", fontWeight: 900 }}>{t('orders.print.warehouseKeeper')} / Warehouse Keeper</div>
               <div style={{ borderTop: "2px solid #000", width: "60%", margin: "0 auto" }}></div>
             </div>
           </div>

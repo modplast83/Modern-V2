@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "../../lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -82,6 +83,7 @@ interface MasterBatchColor {
 }
 
 export default function FilmMaterialMixingTab() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const { user } = useAuth();
   
@@ -174,8 +176,8 @@ export default function FilmMaterialMixingTab() {
   const addMaterial = () => {
     if (materials.length >= 10) {
       toast({
-        title: "تحذير",
-        description: "الحد الأقصى 10 مواد في الخلطة",
+        title: t("production.mixing.warning"),
+        description: t("production.mixing.maxMaterials"),
         variant: "destructive",
       });
       return;
@@ -229,16 +231,16 @@ export default function FilmMaterialMixingTab() {
     },
     onSuccess: () => {
       toast({
-        title: "نجح الحفظ",
-        description: "تم إنشاء الخلطة بنجاح",
+        title: t("production.mixing.saveSuccess"),
+        description: t("production.mixing.batchCreated"),
       });
       queryClient.invalidateQueries({ queryKey: ["/api/mixing-batches"] });
       resetForm();
     },
     onError: (error: any) => {
       toast({
-        title: "خطأ",
-        description: error.message || "فشل في إنشاء الخلطة",
+        title: t("production.mixing.error"),
+        description: error.message || t("production.mixing.batchCreateFailed"),
         variant: "destructive",
       });
     },
@@ -255,19 +257,19 @@ export default function FilmMaterialMixingTab() {
   // Handle save
   const handleSave = () => {
     if (!productionOrderId) {
-      toast({ title: "خطأ", description: "اختر أمر الإنتاج", variant: "destructive" });
+      toast({ title: t("production.mixing.error"), description: t("production.mixing.selectProductionOrder"), variant: "destructive" });
       return;
     }
     if (!machineId) {
-      toast({ title: "خطأ", description: "اختر الماكينة", variant: "destructive" });
+      toast({ title: t("production.mixing.error"), description: t("production.mixing.selectMachine"), variant: "destructive" });
       return;
     }
     if (materials.length === 0) {
-      toast({ title: "خطأ", description: "أضف مادة واحدة على الأقل", variant: "destructive" });
+      toast({ title: t("production.mixing.error"), description: t("production.mixing.addAtLeastOneMaterial"), variant: "destructive" });
       return;
     }
     if (materials.some(m => !m.item_id || !m.weight_kg || parseFloat(m.weight_kg) <= 0)) {
-      toast({ title: "خطأ", description: "تحقق من بيانات المواد", variant: "destructive" });
+      toast({ title: t("production.mixing.error"), description: t("production.mixing.checkMaterialData"), variant: "destructive" });
       return;
     }
 
@@ -302,20 +304,20 @@ export default function FilmMaterialMixingTab() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Beaker className="h-5 w-5" />
-            إنشاء خلطة جديدة
+            {t("production.mixing.createNewBatch")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Production Order & Machine Selection */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label>أمر الإنتاج</Label>
+              <Label>{t("production.mixing.productionOrder")}</Label>
               {ordersLoading ? (
                 <Skeleton className="h-10 w-full" />
               ) : (
                 <Select value={productionOrderId} onValueChange={setProductionOrderId}>
                   <SelectTrigger data-testid="select-production-order">
-                    <SelectValue placeholder="اختر أمر الإنتاج" />
+                    <SelectValue placeholder={t("production.mixing.selectProductionOrder")} />
                   </SelectTrigger>
                   <SelectContent>
                     {productionOrders.map((order: any) => (
@@ -326,7 +328,7 @@ export default function FilmMaterialMixingTab() {
                             {order.item_name_ar || order.item_name} | 
                             {' '}{order.raw_material}
                             {order.master_batch_id && ` | ${getMasterBatchText(order.master_batch_id)}`} | 
-                            {' '}{parseFloat(order.final_quantity_kg || order.quantity_kg || 0).toFixed(2)} كجم |
+                            {' '}{parseFloat(order.final_quantity_kg || order.quantity_kg || 0).toFixed(2)} {t("production.mixing.kg")} |
                             {' '}{order.customer_name_ar || order.customer_name}
                           </div>
                         </div>
@@ -338,13 +340,13 @@ export default function FilmMaterialMixingTab() {
             </div>
 
             <div className="space-y-2">
-              <Label>ماكينة الفيلم</Label>
+              <Label>{t("production.mixing.filmMachine")}</Label>
               {machinesLoading ? (
                 <Skeleton className="h-10 w-full" />
               ) : (
                 <Select value={machineId} onValueChange={setMachineId}>
                   <SelectTrigger data-testid="select-machine">
-                    <SelectValue placeholder="اختر الماكينة" />
+                    <SelectValue placeholder={t("production.mixing.selectMachine")} />
                   </SelectTrigger>
                   <SelectContent>
                     {machines.map((machine: any) => (
@@ -358,7 +360,7 @@ export default function FilmMaterialMixingTab() {
             </div>
 
             <div className="space-y-2">
-              <Label>السكرو</Label>
+              <Label>{t("production.mixing.screw")}</Label>
               <RadioGroup value={screw} onValueChange={setScrew}>
                 <div className="flex gap-4">
                   <div className="flex items-center space-x-2 space-x-reverse">
@@ -377,7 +379,7 @@ export default function FilmMaterialMixingTab() {
           {/* Materials Section */}
           <div className="border rounded-lg p-4 space-y-3">
             <div className="flex justify-between items-center">
-              <Label className="text-lg font-semibold">المواد الخام</Label>
+              <Label className="text-lg font-semibold">{t("production.mixing.rawMaterials")}</Label>
               <Button
                 type="button"
                 variant="outline"
@@ -386,13 +388,13 @@ export default function FilmMaterialMixingTab() {
                 data-testid="button-add-material"
               >
                 <Plus className="h-4 w-4 ml-2" />
-                إضافة مادة
+                {t("production.mixing.addMaterial")}
               </Button>
             </div>
 
             {materials.length === 0 ? (
               <p className="text-muted-foreground text-center py-4">
-                لا توجد مواد. اضغط "إضافة مادة" للبدء
+                {t("production.mixing.noMaterials")}
               </p>
             ) : (
               <div className="space-y-2">
@@ -403,7 +405,7 @@ export default function FilmMaterialMixingTab() {
                     data-testid={`material-row-${index}`}
                   >
                     <div className="col-span-5 space-y-1">
-                      <Label className="text-xs">المادة</Label>
+                      <Label className="text-xs">{t("production.mixing.material")}</Label>
                       {itemsLoading ? (
                         <Skeleton className="h-10 w-full" />
                       ) : (
@@ -412,7 +414,7 @@ export default function FilmMaterialMixingTab() {
                           onValueChange={(val) => updateMaterialItem(material.id, val)}
                         >
                           <SelectTrigger data-testid={`select-material-${index}`}>
-                            <SelectValue placeholder="اختر المادة" />
+                            <SelectValue placeholder={t("production.mixing.selectMaterial")} />
                           </SelectTrigger>
                           <SelectContent>
                             {rawMaterials.map((item: any) => (
@@ -426,7 +428,7 @@ export default function FilmMaterialMixingTab() {
                     </div>
 
                     <div className="col-span-3 space-y-1">
-                      <Label className="text-xs">الوزن (كجم)</Label>
+                      <Label className="text-xs">{t("production.mixing.weightKg")}</Label>
                       <Input
                         type="number"
                         step="0.01"
@@ -439,7 +441,7 @@ export default function FilmMaterialMixingTab() {
                     </div>
 
                     <div className="col-span-3 space-y-1">
-                      <Label className="text-xs">النسبة المئوية</Label>
+                      <Label className="text-xs">{t("production.mixing.percentage")}</Label>
                       <Input
                         type="text"
                         value={material.percentage.toFixed(2) + "%"}
@@ -469,8 +471,8 @@ export default function FilmMaterialMixingTab() {
             {materials.length > 0 && (
               <div className="pt-3 border-t">
                 <div className="flex justify-between items-center text-lg font-semibold">
-                  <span>الوزن الإجمالي:</span>
-                  <span data-testid="text-total-weight">{totalWeight.toFixed(2)} كجم</span>
+                  <span>{t("production.mixing.totalWeight")}:</span>
+                  <span data-testid="text-total-weight">{totalWeight.toFixed(2)} {t("production.mixing.kg")}</span>
                 </div>
               </div>
             )}
@@ -483,7 +485,7 @@ export default function FilmMaterialMixingTab() {
             className="w-full"
             data-testid="button-save-batch"
           >
-            {createBatchMutation.isPending ? "جاري الحفظ..." : "حفظ الخلطة"}
+            {createBatchMutation.isPending ? t("production.mixing.saving") : t("production.mixing.saveBatch")}
           </Button>
         </CardContent>
       </Card>
@@ -491,7 +493,7 @@ export default function FilmMaterialMixingTab() {
       {/* Batches List Table */}
       <Card>
         <CardHeader>
-          <CardTitle>سجل الخلطات</CardTitle>
+          <CardTitle>{t("production.mixing.batchesLog")}</CardTitle>
         </CardHeader>
         <CardContent>
           {batchesLoading ? (
@@ -502,22 +504,22 @@ export default function FilmMaterialMixingTab() {
             </div>
           ) : batches.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
-              لا توجد خلطات مسجلة
+              {t("production.mixing.noBatches")}
             </p>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-right">رقم الخلطة</TableHead>
-                    <TableHead className="text-right">أمر الإنتاج</TableHead>
-                    <TableHead className="text-right">الماكينة</TableHead>
-                    <TableHead className="text-right">السكرو</TableHead>
-                    <TableHead className="text-right">الوزن الكلي</TableHead>
-                    <TableHead className="text-right">التاريخ</TableHead>
-                    <TableHead className="text-right">المشغل</TableHead>
-                    <TableHead className="text-right">الخلطة</TableHead>
-                    <TableHead className="text-right">إجراءات</TableHead>
+                    <TableHead className="text-right">{t("production.mixing.batchNumber")}</TableHead>
+                    <TableHead className="text-right">{t("production.mixing.productionOrder")}</TableHead>
+                    <TableHead className="text-right">{t("production.mixing.machine")}</TableHead>
+                    <TableHead className="text-right">{t("production.mixing.screw")}</TableHead>
+                    <TableHead className="text-right">{t("production.mixing.totalWeightLabel")}</TableHead>
+                    <TableHead className="text-right">{t("production.mixing.date")}</TableHead>
+                    <TableHead className="text-right">{t("production.mixing.operator")}</TableHead>
+                    <TableHead className="text-right">{t("production.mixing.composition")}</TableHead>
+                    <TableHead className="text-right">{t("production.mixing.actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -541,7 +543,7 @@ export default function FilmMaterialMixingTab() {
                         <TableCell>
                           <Badge variant="outline">{batch.screw_assignment}</Badge>
                         </TableCell>
-                        <TableCell>{parseFloat(batch.total_weight_kg).toFixed(2)} كجم</TableCell>
+                        <TableCell>{parseFloat(batch.total_weight_kg).toFixed(2)} {t("production.mixing.kg")}</TableCell>
                         <TableCell>
                           {new Date(batch.created_at).toLocaleDateString("ar-EG")}
                         </TableCell>
@@ -586,38 +588,38 @@ export default function FilmMaterialMixingTab() {
       <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
         <DialogContent className="max-w-2xl" dir="rtl">
           <DialogHeader>
-            <DialogTitle>تفاصيل الخلطة</DialogTitle>
-            <DialogDescription className="sr-only">عرض تفاصيل خلطة المواد الخام</DialogDescription>
+            <DialogTitle>{t("production.mixing.batchDetails")}</DialogTitle>
+            <DialogDescription className="sr-only">{t("production.mixing.batchDetailsDescription")}</DialogDescription>
           </DialogHeader>
           {selectedBatch && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-muted-foreground">رقم الخلطة</Label>
+                  <Label className="text-muted-foreground">{t("production.mixing.batchNumber")}</Label>
                   <p className="font-semibold">{selectedBatch.batch_number}</p>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">أمر الإنتاج</Label>
+                  <Label className="text-muted-foreground">{t("production.mixing.productionOrder")}</Label>
                   <p className="font-semibold">
                     {selectedBatch.production_order_number || `PO-${selectedBatch.production_order_id}`}
                   </p>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">الماكينة</Label>
+                  <Label className="text-muted-foreground">{t("production.mixing.machine")}</Label>
                   <p className="font-semibold">
                     {selectedBatch.machine_name_ar || selectedBatch.machine_name || selectedBatch.machine_id}
                   </p>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">السكرو</Label>
+                  <Label className="text-muted-foreground">{t("production.mixing.screw")}</Label>
                   <p className="font-semibold">{selectedBatch.screw_assignment}</p>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">الوزن الكلي</Label>
-                  <p className="font-semibold">{parseFloat(selectedBatch.total_weight_kg).toFixed(2)} كجم</p>
+                  <Label className="text-muted-foreground">{t("production.mixing.totalWeightLabel")}</Label>
+                  <p className="font-semibold">{parseFloat(selectedBatch.total_weight_kg).toFixed(2)} {t("production.mixing.kg")}</p>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">التاريخ</Label>
+                  <Label className="text-muted-foreground">{t("production.mixing.date")}</Label>
                   <p className="font-semibold">
                     {new Date(selectedBatch.created_at).toLocaleString("ar-EG")}
                   </p>
@@ -626,13 +628,13 @@ export default function FilmMaterialMixingTab() {
 
               {selectedBatch.ingredients && selectedBatch.ingredients.length > 0 && (
                 <div className="space-y-2">
-                  <Label className="text-lg font-semibold">المكونات</Label>
+                  <Label className="text-lg font-semibold">{t("production.mixing.ingredients")}</Label>
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-right">المادة</TableHead>
-                        <TableHead className="text-right">الوزن (كجم)</TableHead>
-                        <TableHead className="text-right">النسبة المئوية</TableHead>
+                        <TableHead className="text-right">{t("production.mixing.material")}</TableHead>
+                        <TableHead className="text-right">{t("production.mixing.weightKg")}</TableHead>
+                        <TableHead className="text-right">{t("production.mixing.percentage")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -650,7 +652,7 @@ export default function FilmMaterialMixingTab() {
 
               {selectedBatch.notes && (
                 <div>
-                  <Label className="text-muted-foreground">ملاحظات</Label>
+                  <Label className="text-muted-foreground">{t("production.mixing.notes")}</Label>
                   <p className="font-medium">{selectedBatch.notes}</p>
                 </div>
               )}

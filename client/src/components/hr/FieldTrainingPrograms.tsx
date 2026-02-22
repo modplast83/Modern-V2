@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
 import { Button } from "../ui/button";
@@ -162,6 +163,7 @@ export default function FieldTrainingPrograms() {
   const [selectedEnrollment, setSelectedEnrollment] =
     useState<TrainingEnrollment | null>(null);
 
+  const { t } = useTranslation();
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -255,10 +257,10 @@ export default function FieldTrainingPrograms() {
       });
       setIsCreateProgramOpen(false);
       programForm.reset();
-      toast({ title: "تم إنشاء برنامج التدريب بنجاح" });
+      toast({ title: t("hr.training.programCreated") });
     },
     onError: () => {
-      toast({ title: "خطأ في إنشاء برنامج التدريب", variant: "destructive" });
+      toast({ title: t("hr.training.programCreateError"), variant: "destructive" });
     },
   });
 
@@ -278,10 +280,10 @@ export default function FieldTrainingPrograms() {
       });
       setIsEnrollmentOpen(false);
       enrollmentForm.reset();
-      toast({ title: "تم تسجيل الموظف في التدريب بنجاح" });
+      toast({ title: t("hr.training.enrollmentSuccess") });
     },
     onError: () => {
-      toast({ title: "خطأ في تسجيل الموظف", variant: "destructive" });
+      toast({ title: t("hr.training.enrollmentError"), variant: "destructive" });
     },
   });
 
@@ -320,10 +322,10 @@ export default function FieldTrainingPrograms() {
       });
       setIsEvaluationOpen(false);
       evaluationForm.reset();
-      toast({ title: "تم حفظ تقييم التدريب بنجاح" });
+      toast({ title: t("hr.training.evaluationSaved") });
     },
     onError: () => {
-      toast({ title: "خطأ في حفظ التقييم", variant: "destructive" });
+      toast({ title: t("hr.training.evaluationError"), variant: "destructive" });
     },
   });
 
@@ -352,19 +354,19 @@ export default function FieldTrainingPrograms() {
   const getScopeText = (scope: string) => {
     switch (scope) {
       case "safety":
-        return "السلامة المهنية";
+        return t("hr.training.scopeSafety");
       case "first_aid":
-        return "الإسعافات الأولية";
+        return t("hr.training.scopeFirstAid");
       case "fire_safety":
-        return "السلامة من الحريق";
+        return t("hr.training.scopeFireSafety");
       case "technical":
-        return "التقني";
+        return t("hr.training.scopeTechnical");
       case "film":
-        return "الفيلم";
+        return t("hr.training.scopeFilm");
       case "printing":
-        return "الطباعة";
+        return t("hr.training.scopePrinting");
       case "cutting":
-        return "التقطيع";
+        return t("hr.training.scopeCutting");
       default:
         return scope;
     }
@@ -373,9 +375,9 @@ export default function FieldTrainingPrograms() {
   const getCategoryText = (category: string) => {
     switch (category) {
       case "general":
-        return "تدريب عام";
+        return t("hr.training.categoryGeneral");
       case "department_specific":
-        return "تدريب متخصص";
+        return t("hr.training.categorySpecialized");
       default:
         return category;
     }
@@ -397,11 +399,11 @@ export default function FieldTrainingPrograms() {
   const getStatusText = (status: string) => {
     switch (status) {
       case "active":
-        return "نشط";
+        return t("hr.training.statusActive");
       case "inactive":
-        return "غير نشط";
+        return t("hr.training.statusInactive");
       case "draft":
-        return "مسودة";
+        return t("hr.training.statusDraft");
       default:
         return status;
     }
@@ -425,13 +427,13 @@ export default function FieldTrainingPrograms() {
   const getAttendanceStatusText = (status: string) => {
     switch (status) {
       case "attended":
-        return "حضر";
+        return t("hr.training.attendanceAttended");
       case "absent":
-        return "غائب";
+        return t("hr.training.attendanceAbsent");
       case "enrolled":
-        return "مسجل";
+        return t("hr.training.attendanceEnrolled");
       case "cancelled":
-        return "ملغى";
+        return t("hr.training.attendanceCancelled");
       default:
         return status;
     }
@@ -453,11 +455,11 @@ export default function FieldTrainingPrograms() {
   const getCompletionStatusText = (status: string) => {
     switch (status) {
       case "completed":
-        return "مكتمل";
+        return t("hr.training.completionCompleted");
       case "failed":
-        return "راسب";
+        return t("hr.training.completionFailed");
       case "not_started":
-        return "لم يبدأ";
+        return t("hr.training.completionNotStarted");
       default:
         return status;
     }
@@ -479,11 +481,11 @@ export default function FieldTrainingPrograms() {
   const getRecommendationText = (recommendation: string) => {
     switch (recommendation) {
       case "pass":
-        return "نجح";
+        return t("hr.training.recommendationPass");
       case "fail":
-        return "رسب";
+        return t("hr.training.recommendationFail");
       case "needs_retraining":
-        return "يحتاج إعادة تدريب";
+        return t("hr.training.recommendationRetraining");
       default:
         return recommendation;
     }
@@ -531,7 +533,7 @@ export default function FieldTrainingPrograms() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600 dark:text-gray-300">
-            جاري تحميل برامج التدريب...
+            {t("hr.training.loadingPrograms")}
           </p>
         </div>
       </div>
@@ -544,10 +546,10 @@ export default function FieldTrainingPrograms() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            نظام التدريب الميداني
+            {t("hr.training.systemTitle")}
           </h2>
           <p className="text-gray-600 dark:text-gray-300">
-            إدارة التدريبات العملية والميدانية مع التقييم وإصدار الشهادات
+            {t("hr.training.systemDescription")}
           </p>
         </div>
 
@@ -561,14 +563,14 @@ export default function FieldTrainingPrograms() {
               data-testid="button-create-program"
             >
               <Plus className="w-4 h-4" />
-              إضافة برنامج تدريبي
+              {t("hr.training.addProgram")}
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl" dir="rtl">
             <DialogHeader>
-              <DialogTitle>إضافة برنامج تدريبي جديد</DialogTitle>
+              <DialogTitle>{t("hr.training.addNewProgram")}</DialogTitle>
               <DialogDescription>
-                إنشاء برنامج تدريبي جديد للموظفين مع تحديد المدة والمتطلبات
+                {t("hr.training.addProgramDesc")}
               </DialogDescription>
             </DialogHeader>
             <Form {...programForm}>
@@ -582,7 +584,7 @@ export default function FieldTrainingPrograms() {
                     name="title"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>العنوان (إنجليزي)</FormLabel>
+                        <FormLabel>{t("hr.training.titleEnglish")}</FormLabel>
                         <FormControl>
                           <Input {...field} data-testid="input-program-title" />
                         </FormControl>
@@ -595,7 +597,7 @@ export default function FieldTrainingPrograms() {
                     name="title_ar"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>العنوان (عربي)</FormLabel>
+                        <FormLabel>{t("hr.training.titleArabic")}</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
@@ -614,7 +616,7 @@ export default function FieldTrainingPrograms() {
                     name="category"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>فئة التدريب</FormLabel>
+                        <FormLabel>{t("hr.training.trainingCategory")}</FormLabel>
                         <FormControl>
                           <Select
                             value={field.value}
@@ -624,9 +626,9 @@ export default function FieldTrainingPrograms() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="general">تدريب عام</SelectItem>
+                              <SelectItem value="general">{t("hr.training.categoryGeneral")}</SelectItem>
                               <SelectItem value="department_specific">
-                                تدريب متخصص
+                                {t("hr.training.categorySpecialized")}
                               </SelectItem>
                             </SelectContent>
                           </Select>
@@ -640,7 +642,7 @@ export default function FieldTrainingPrograms() {
                     name="training_scope"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>نوع التدريب</FormLabel>
+                        <FormLabel>{t("hr.training.trainingType")}</FormLabel>
                         <FormControl>
                           <Select
                             value={field.value}
@@ -651,18 +653,18 @@ export default function FieldTrainingPrograms() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="safety">
-                                السلامة المهنية
+                                {t("hr.training.scopeSafety")}
                               </SelectItem>
                               <SelectItem value="first_aid">
-                                الإسعافات الأولية
+                                {t("hr.training.scopeFirstAid")}
                               </SelectItem>
                               <SelectItem value="fire_safety">
-                                السلامة من الحريق
+                                {t("hr.training.scopeFireSafety")}
                               </SelectItem>
-                              <SelectItem value="technical">التقني</SelectItem>
-                              <SelectItem value="film">الفيلم</SelectItem>
-                              <SelectItem value="printing">الطباعة</SelectItem>
-                              <SelectItem value="cutting">التقطيع</SelectItem>
+                              <SelectItem value="technical">{t("hr.training.scopeTechnical")}</SelectItem>
+                              <SelectItem value="film">{t("hr.training.scopeFilm")}</SelectItem>
+                              <SelectItem value="printing">{t("hr.training.scopePrinting")}</SelectItem>
+                              <SelectItem value="cutting">{t("hr.training.scopeCutting")}</SelectItem>
                             </SelectContent>
                           </Select>
                         </FormControl>
@@ -678,7 +680,7 @@ export default function FieldTrainingPrograms() {
                     name="duration_hours"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>مدة التدريب (ساعات)</FormLabel>
+                        <FormLabel>{t("hr.training.durationHours")}</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
@@ -698,7 +700,7 @@ export default function FieldTrainingPrograms() {
                     name="max_participants"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>العدد الأقصى للمشاركين</FormLabel>
+                        <FormLabel>{t("hr.training.maxParticipants")}</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
@@ -718,7 +720,7 @@ export default function FieldTrainingPrograms() {
                     name="location"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>مكان التدريب</FormLabel>
+                        <FormLabel>{t("hr.training.trainingLocation")}</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
@@ -738,14 +740,14 @@ export default function FieldTrainingPrograms() {
                     onClick={() => setIsCreateProgramOpen(false)}
                     data-testid="button-cancel-program"
                   >
-                    إلغاء
+                    {t("common.cancel")}
                   </Button>
                   <Button
                     type="submit"
                     disabled={createProgramMutation.isPending}
                     data-testid="button-save-program"
                   >
-                    {createProgramMutation.isPending ? "جاري الحفظ..." : "حفظ"}
+                    {createProgramMutation.isPending ? t("common.saving") : t("common.save")}
                   </Button>
                 </div>
               </form>
@@ -763,7 +765,7 @@ export default function FieldTrainingPrograms() {
           data-testid="tab-programs"
         >
           <Shield className="w-4 h-4 ml-2" />
-          برامج التدريب
+          {t("hr.training.trainingPrograms")}
         </Button>
         <Button
           variant={selectedView === "enrollments" ? "default" : "ghost"}
@@ -772,7 +774,7 @@ export default function FieldTrainingPrograms() {
           data-testid="tab-enrollments"
         >
           <Users className="w-4 h-4 ml-2" />
-          التسجيلات
+          {t("hr.training.enrollments")}
         </Button>
         <Button
           variant={selectedView === "evaluations" ? "default" : "ghost"}
@@ -781,7 +783,7 @@ export default function FieldTrainingPrograms() {
           data-testid="tab-evaluations"
         >
           <Star className="w-4 h-4 ml-2" />
-          التقييمات
+          {t("hr.training.evaluationsTab")}
         </Button>
       </div>
 
@@ -821,18 +823,18 @@ export default function FieldTrainingPrograms() {
                 >
                   {program.description_ar ||
                     program.description ||
-                    "لا يوجد وصف"}
+                    t("hr.training.noDescription")}
                 </p>
 
                 <div className="flex items-center gap-4 text-sm text-gray-500">
                   <div className="flex items-center gap-1">
                     <Clock className="w-4 h-4" />
-                    {formatNumber(program.duration_hours)} ساعات
+                    {formatNumber(program.duration_hours)} {t("hr.training.hours")}
                   </div>
                   {program.max_participants && (
                     <div className="flex items-center gap-1">
                       <Users className="w-4 h-4" />
-                      {formatNumber(program.max_participants)} مشارك
+                      {formatNumber(program.max_participants)} {t("hr.training.participant")}
                     </div>
                   )}
                   {program.location && (
@@ -851,7 +853,7 @@ export default function FieldTrainingPrograms() {
 
                 <div className="flex items-center justify-between pt-2">
                   <div className="text-xs text-gray-500">
-                    تم الإنشاء:{" "}
+                    {t("hr.training.createdOn")}:{" "}
                     {format(new Date(program.created_at), "dd/MM/yyyy")}
                   </div>
 
@@ -874,17 +876,17 @@ export default function FieldTrainingPrograms() {
               <CardContent className="flex flex-col items-center justify-center p-8">
                 <Shield className="w-16 h-16 text-gray-400 mb-4" />
                 <h3 className="text-lg font-semibold text-gray-600 mb-2">
-                  لا توجد برامج تدريبية
+                  {t("hr.training.noPrograms")}
                 </h3>
                 <p className="text-gray-500 text-center mb-4">
-                  ابدأ بإضافة برامج التدريب الميداني للموظفين
+                  {t("hr.training.startAddingPrograms")}
                 </p>
                 <Button
                   onClick={() => setIsCreateProgramOpen(true)}
                   data-testid="button-create-first-program"
                 >
                   <Plus className="w-4 h-4 ml-2" />
-                  إضافة برنامج تدريبي
+                  {t("hr.training.addProgram")}
                 </Button>
               </CardContent>
             </Card>
@@ -896,19 +898,19 @@ export default function FieldTrainingPrograms() {
       {selectedView === "enrollments" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold">التسجيلات في التدريب</h3>
+            <h3 className="text-xl font-semibold">{t("hr.training.trainingEnrollments")}</h3>
             <Dialog open={isEnrollmentOpen} onOpenChange={setIsEnrollmentOpen}>
               <DialogTrigger asChild>
                 <Button data-testid="button-new-enrollment">
                   <Plus className="w-4 h-4 ml-2" />
-                  تسجيل جديد
+                  {t("hr.training.newEnrollment")}
                 </Button>
               </DialogTrigger>
               <DialogContent dir="rtl">
                 <DialogHeader>
-                  <DialogTitle>تسجيل موظف في التدريب</DialogTitle>
+                  <DialogTitle>{t("hr.training.enrollEmployee")}</DialogTitle>
                   <DialogDescription>
-                    تسجيل موظف جديد في برنامج التدريب مع تحديد تاريخ التدريب
+                    {t("hr.training.enrollEmployeeDesc")}
                   </DialogDescription>
                 </DialogHeader>
                 <Form {...enrollmentForm}>
@@ -921,14 +923,14 @@ export default function FieldTrainingPrograms() {
                       name="program_id"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>برنامج التدريب</FormLabel>
+                          <FormLabel>{t("hr.training.trainingProgram")}</FormLabel>
                           <FormControl>
                             <Select
                               value={field.value || ""}
                               onValueChange={field.onChange}
                             >
                               <SelectTrigger data-testid="select-training-program">
-                                <SelectValue placeholder="اختر برنامج التدريب" />
+                                <SelectValue placeholder={t("hr.training.selectProgram")} />
                               </SelectTrigger>
                               <SelectContent>
                                 {programs
@@ -959,14 +961,14 @@ export default function FieldTrainingPrograms() {
                       name="employee_id"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>الموظف</FormLabel>
+                          <FormLabel>{t("hr.training.employee")}</FormLabel>
                           <FormControl>
                             <Select
                               value={field.value || ""}
                               onValueChange={field.onChange}
                             >
                               <SelectTrigger data-testid="select-enrollment-employee">
-                                <SelectValue placeholder="اختر الموظف" />
+                                <SelectValue placeholder={t("hr.training.selectEmployee")} />
                               </SelectTrigger>
                               <SelectContent>
                                 {users
@@ -999,7 +1001,7 @@ export default function FieldTrainingPrograms() {
                       name="training_date"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>تاريخ التدريب</FormLabel>
+                          <FormLabel>{t("hr.training.trainingDate")}</FormLabel>
                           <FormControl>
                             <Input
                               type="date"
@@ -1019,7 +1021,7 @@ export default function FieldTrainingPrograms() {
                         onClick={() => setIsEnrollmentOpen(false)}
                         data-testid="button-cancel-enrollment"
                       >
-                        إلغاء
+                        {t("common.cancel")}
                       </Button>
                       <Button
                         type="submit"
@@ -1027,8 +1029,8 @@ export default function FieldTrainingPrograms() {
                         data-testid="button-submit-enrollment"
                       >
                         {createEnrollmentMutation.isPending
-                          ? "جاري التسجيل..."
-                          : "تسجيل"}
+                          ? t("hr.training.enrolling")
+                          : t("hr.training.enroll")}
                       </Button>
                     </div>
                   </form>
@@ -1051,7 +1053,7 @@ export default function FieldTrainingPrograms() {
                           className="font-medium"
                           data-testid={`text-enrollment-program-${enrollment.id}`}
                         >
-                          برنامج التدريب #{enrollment.program_id}
+                          {t("hr.training.trainingProgram")} #{enrollment.program_id}
                         </span>
                         <Badge
                           className={getAttendanceStatusColor(
@@ -1073,10 +1075,10 @@ export default function FieldTrainingPrograms() {
                         </Badge>
                       </div>
                       <div className="flex items-center gap-4 text-sm text-gray-500">
-                        <span>الموظف: {enrollment.employee_id}</span>
+                        <span>{t("hr.training.employee")}: {enrollment.employee_id}</span>
                         {enrollment.training_date && (
                           <span>
-                            تاريخ التدريب:{" "}
+                            {t("hr.training.trainingDate")}:{" "}
                             {format(
                               new Date(enrollment.training_date),
                               "dd/MM/yyyy",
@@ -1084,7 +1086,7 @@ export default function FieldTrainingPrograms() {
                           </span>
                         )}
                         {enrollment.final_score && (
-                          <span>الدرجة: {enrollment.final_score}%</span>
+                          <span>{t("hr.training.score")}: {enrollment.final_score}%</span>
                         )}
                       </div>
                     </div>
@@ -1093,7 +1095,7 @@ export default function FieldTrainingPrograms() {
                       {enrollment.certificate_issued && (
                         <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                           <Award className="w-3 h-3 ml-1" />
-                          شهادة صادرة
+                          {t("hr.training.certificateIssued")}
                         </Badge>
                       )}
 
@@ -1116,17 +1118,17 @@ export default function FieldTrainingPrograms() {
                 <CardContent className="flex flex-col items-center justify-center p-8">
                   <Users className="w-16 h-16 text-gray-400 mb-4" />
                   <h3 className="text-lg font-semibold text-gray-600 mb-2">
-                    لا توجد تسجيلات
+                    {t("hr.training.noEnrollments")}
                   </h3>
                   <p className="text-gray-500 text-center mb-4">
-                    لم يتم تسجيل أي موظفين في التدريبات بعد
+                    {t("hr.training.noEnrollmentsDesc")}
                   </p>
                   <Button
                     onClick={() => setIsEnrollmentOpen(true)}
                     data-testid="button-create-first-enrollment"
                   >
                     <Plus className="w-4 h-4 ml-2" />
-                    تسجيل موظف
+                    {t("hr.training.enrollEmployeeBtn")}
                   </Button>
                 </CardContent>
               </Card>
@@ -1139,7 +1141,7 @@ export default function FieldTrainingPrograms() {
       {selectedView === "evaluations" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold">تقييمات التدريب</h3>
+            <h3 className="text-xl font-semibold">{t("hr.training.trainingEvaluations")}</h3>
           </div>
 
           <div className="grid gap-4">
@@ -1156,7 +1158,7 @@ export default function FieldTrainingPrograms() {
                           className="font-medium"
                           data-testid={`text-evaluation-program-${evaluation.id}`}
                         >
-                          برنامج #{evaluation.program_id} - موظف #
+                          {t("hr.training.program")} #{evaluation.program_id} - {t("hr.training.employee")} #
                           {evaluation.employee_id}
                         </span>
                         <Badge
@@ -1167,7 +1169,7 @@ export default function FieldTrainingPrograms() {
                           {getRecommendationText(evaluation.recommendation)}
                         </Badge>
                         <span className="text-sm text-gray-500">
-                          التقييم الإجمالي: {calculateOverallRating(evaluation)}
+                          {t("hr.training.overallRating")}: {calculateOverallRating(evaluation)}
                           /5
                         </span>
                       </div>
@@ -1175,7 +1177,7 @@ export default function FieldTrainingPrograms() {
                       <div className="grid grid-cols-5 gap-4 text-sm">
                         <div className="text-center">
                           <span className="block text-gray-500">
-                            الفهم النظري
+                            {t("hr.training.theoreticalUnderstanding")}
                           </span>
                           <span className="font-medium">
                             {evaluation.theoretical_understanding}/5
@@ -1183,28 +1185,28 @@ export default function FieldTrainingPrograms() {
                         </div>
                         <div className="text-center">
                           <span className="block text-gray-500">
-                            المهارات العملية
+                            {t("hr.training.practicalSkills")}
                           </span>
                           <span className="font-medium">
                             {evaluation.practical_skills}/5
                           </span>
                         </div>
                         <div className="text-center">
-                          <span className="block text-gray-500">السلامة</span>
+                          <span className="block text-gray-500">{t("hr.training.safety")}</span>
                           <span className="font-medium">
                             {evaluation.safety_compliance}/5
                           </span>
                         </div>
                         <div className="text-center">
                           <span className="block text-gray-500">
-                            العمل الجماعي
+                            {t("hr.training.teamwork")}
                           </span>
                           <span className="font-medium">
                             {evaluation.teamwork}/5
                           </span>
                         </div>
                         <div className="text-center">
-                          <span className="block text-gray-500">التواصل</span>
+                          <span className="block text-gray-500">{t("hr.training.communication")}</span>
                           <span className="font-medium">
                             {evaluation.communication}/5
                           </span>
@@ -1212,7 +1214,7 @@ export default function FieldTrainingPrograms() {
                       </div>
 
                       <div className="text-xs text-gray-500">
-                        تاريخ التقييم:{" "}
+                        {t("hr.training.evaluationDate")}:{" "}
                         {format(
                           new Date(evaluation.evaluation_date),
                           "dd/MM/yyyy",
@@ -1229,10 +1231,10 @@ export default function FieldTrainingPrograms() {
                 <CardContent className="flex flex-col items-center justify-center p-8">
                   <Star className="w-16 h-16 text-gray-400 mb-4" />
                   <h3 className="text-lg font-semibold text-gray-600 mb-2">
-                    لا توجد تقييمات
+                    {t("hr.training.noEvaluations")}
                   </h3>
                   <p className="text-gray-500 text-center mb-4">
-                    لم يتم إجراء أي تقييمات للتدريب بعد
+                    {t("hr.training.noEvaluationsDesc")}
                   </p>
                 </CardContent>
               </Card>
@@ -1245,9 +1247,9 @@ export default function FieldTrainingPrograms() {
       <Dialog open={isEvaluationOpen} onOpenChange={setIsEvaluationOpen}>
         <DialogContent className="max-w-3xl" dir="rtl">
           <DialogHeader>
-            <DialogTitle>تقييم التدريب الميداني</DialogTitle>
+            <DialogTitle>{t("hr.training.fieldTrainingEvaluation")}</DialogTitle>
             <DialogDescription>
-              تقييم أداء الموظف في التدريب الميداني بناءً على المعايير المحددة
+              {t("hr.training.evaluationDesc")}
             </DialogDescription>
           </DialogHeader>
           <Form {...evaluationForm}>
@@ -1261,7 +1263,7 @@ export default function FieldTrainingPrograms() {
                   name="evaluation_date"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>تاريخ التقييم</FormLabel>
+                      <FormLabel>{t("hr.training.evaluationDate")}</FormLabel>
                       <FormControl>
                         <Input
                           type="date"
@@ -1278,7 +1280,7 @@ export default function FieldTrainingPrograms() {
                   name="recommendation"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>التوصية</FormLabel>
+                      <FormLabel>{t("hr.training.recommendation")}</FormLabel>
                       <FormControl>
                         <Select
                           value={field.value}
@@ -1288,10 +1290,10 @@ export default function FieldTrainingPrograms() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="pass">نجح</SelectItem>
-                            <SelectItem value="fail">رسب</SelectItem>
+                            <SelectItem value="pass">{t("hr.training.recommendationPass")}</SelectItem>
+                            <SelectItem value="fail">{t("hr.training.recommendationFail")}</SelectItem>
                             <SelectItem value="needs_retraining">
-                              يحتاج إعادة تدريب
+                              {t("hr.training.recommendationRetraining")}
                             </SelectItem>
                           </SelectContent>
                         </Select>
@@ -1303,14 +1305,14 @@ export default function FieldTrainingPrograms() {
               </div>
 
               <div className="space-y-4">
-                <h4 className="font-medium">معايير التقييم (1-5)</h4>
+                <h4 className="font-medium">{t("hr.training.evaluationCriteria")}</h4>
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={evaluationForm.control}
                     name="theoretical_understanding"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>الفهم النظري</FormLabel>
+                        <FormLabel>{t("hr.training.theoreticalUnderstanding")}</FormLabel>
                         <FormControl>
                           <Select
                             value={field.value}
@@ -1337,7 +1339,7 @@ export default function FieldTrainingPrograms() {
                     name="practical_skills"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>المهارات العملية</FormLabel>
+                        <FormLabel>{t("hr.training.practicalSkills")}</FormLabel>
                         <FormControl>
                           <Select
                             value={field.value}
@@ -1364,7 +1366,7 @@ export default function FieldTrainingPrograms() {
                     name="safety_compliance"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>الالتزام بالسلامة</FormLabel>
+                        <FormLabel>{t("hr.training.safetyCompliance")}</FormLabel>
                         <FormControl>
                           <Select
                             value={field.value}
@@ -1391,7 +1393,7 @@ export default function FieldTrainingPrograms() {
                     name="teamwork"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>العمل الجماعي</FormLabel>
+                        <FormLabel>{t("hr.training.teamwork")}</FormLabel>
                         <FormControl>
                           <Select
                             value={field.value}
@@ -1418,7 +1420,7 @@ export default function FieldTrainingPrograms() {
                     name="communication"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>التواصل</FormLabel>
+                        <FormLabel>{t("hr.training.communication")}</FormLabel>
                         <FormControl>
                           <Select
                             value={field.value}
@@ -1449,7 +1451,7 @@ export default function FieldTrainingPrograms() {
                   name="strengths"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>نقاط القوة</FormLabel>
+                      <FormLabel>{t("hr.training.strengths")}</FormLabel>
                       <FormControl>
                         <Textarea
                           {...field}
@@ -1466,7 +1468,7 @@ export default function FieldTrainingPrograms() {
                   name="areas_for_improvement"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>مجالات التحسين</FormLabel>
+                      <FormLabel>{t("hr.training.areasForImprovement")}</FormLabel>
                       <FormControl>
                         <Textarea
                           {...field}
@@ -1485,7 +1487,7 @@ export default function FieldTrainingPrograms() {
                 name="additional_notes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>ملاحظات إضافية</FormLabel>
+                    <FormLabel>{t("hr.training.additionalNotes")}</FormLabel>
                     <FormControl>
                       <Textarea
                         {...field}
@@ -1505,7 +1507,7 @@ export default function FieldTrainingPrograms() {
                   onClick={() => setIsEvaluationOpen(false)}
                   data-testid="button-cancel-evaluation"
                 >
-                  إلغاء
+                  {t("common.cancel")}
                 </Button>
                 <Button
                   type="submit"
@@ -1513,8 +1515,8 @@ export default function FieldTrainingPrograms() {
                   data-testid="button-save-evaluation"
                 >
                   {createEvaluationMutation.isPending
-                    ? "جاري الحفظ..."
-                    : "حفظ التقييم"}
+                    ? t("common.saving")
+                    : t("hr.training.saveEvaluation")}
                 </Button>
               </div>
             </form>

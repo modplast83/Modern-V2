@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
@@ -50,18 +51,20 @@ import { z } from "zod";
 import { printRollLabel } from "./RollLabelPrint";
 import { safeParseFloat, formatNumberAr } from "../../../../shared/number-utils";
 
-const cutFormSchema = z.object({
-  cut_weight_kg: z.coerce
-    .number()
-    .positive("الوزن الصافي يجب أن يكون أكبر من صفر"),
-  pieces_count: z.coerce
-    .number()
-    .positive("عدد القطع يجب أن يكون أكبر من صفر")
-    .optional(),
-  cutting_machine_id: z.string().min(1, "يجب اختيار ماكينة القطع"),
-});
+function createCutFormSchema(t: (key: string) => string) {
+  return z.object({
+    cut_weight_kg: z.coerce
+      .number()
+      .positive(t('production.cutting.validation.weightPositive')),
+    pieces_count: z.coerce
+      .number()
+      .positive(t('production.cutting.validation.piecesPositive'))
+      .optional(),
+    cutting_machine_id: z.string().min(1, t('production.cutting.validation.selectMachine')),
+  });
+}
 
-type CutFormData = z.infer<typeof cutFormSchema>;
+type CutFormData = z.infer<ReturnType<typeof createCutFormSchema>>;
 
 interface GroupedCuttingQueueProps {
   items: any[];
@@ -70,6 +73,7 @@ interface GroupedCuttingQueueProps {
 export default function GroupedCuttingQueue({
   items,
 }: GroupedCuttingQueueProps) {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [expandedOrders, setExpandedOrders] = useState<Record<number, boolean>>(
@@ -102,6 +106,7 @@ export default function GroupedCuttingQueue({
     (m.type === "cutting" || m.section_id === cuttingSection?.id)
   );
 
+  const cutFormSchema = createCutFormSchema(t);
   const form = useForm<CutFormData>({
     resolver: zodResolver(cutFormSchema),
     defaultValues: {
@@ -126,15 +131,15 @@ export default function GroupedCuttingQueue({
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || "فشل في تسجيل التقطيع");
+        throw new Error(error.message || t('production.cutting.registrationFailed'));
       }
 
       return response.json();
     },
     onSuccess: () => {
       toast({
-        title: "تم بنجاح",
-        description: "تم تسجيل التقطيع وحساب الهدر",
+        title: t('messages.success'),
+        description: t('production.cutting.registeredSuccess'),
       });
       queryClient.invalidateQueries({
         queryKey: ["/api/production/grouped-cutting-queue"],
@@ -149,7 +154,7 @@ export default function GroupedCuttingQueue({
     },
     onError: (error: Error) => {
       toast({
-        title: "خطأ",
+        title: t('common.error'),
         description: error.message,
         variant: "destructive",
       });
@@ -226,7 +231,7 @@ export default function GroupedCuttingQueue({
         <CardContent className="p-6 text-center">
           <div className="text-gray-500">
             <Clock className="h-12 w-12 mx-auto mb-2 opacity-50" />
-            <p>لا توجد رولات جاهزة للتقطيع</p>
+            <p>{t('production.cutting.noRollsReady')}</p>
           </div>
         </CardContent>
       </Card>
@@ -243,13 +248,13 @@ export default function GroupedCuttingQueue({
                 <Package className="h-5 w-5 text-blue-600" />
                 <div>
                   <CardTitle className="text-lg">
-                    طلب رقم: {order.order_number}
+                    {t('production.orderNumber')}: {order.order_number}
                   </CardTitle>
                   <p className="text-base font-bold text-blue-700">
-                    العميل:{" "}
+                    {t('production.customer')}:{" "}
                     {order.customer_name_ar ||
                       order.customer_name ||
-                      "غير محدد"}
+                      t('production.notSpecified')}
                   </p>
                 </div>
               </div>
@@ -270,7 +275,7 @@ export default function GroupedCuttingQueue({
                     (total: number, po: any) => total + (po.rolls?.length || 0),
                     0,
                   ) || 0}{" "}
-                  رول
+                  {t('production.roll')}
                 </Badge>
                 <Button
                   variant="ghost"
@@ -306,12 +311,12 @@ export default function GroupedCuttingQueue({
                             <p className="text-sm text-muted-foreground">
                               {productionOrder.item_name_ar ||
                                 productionOrder.item_name ||
-                                "غير محدد"}
+                                t('production.notSpecified')}
                             </p>
                             <div className="grid grid-cols-3 gap-x-4 gap-y-1 mt-2 text-xs">
                               {productionOrder.size_caption && (
                                 <div>
-                                  <span className="font-medium">المقاس: </span>
+                                  <span className="font-medium">{t('production.size')}: </span>
                                   <span className="text-muted-foreground">
                                     {productionOrder.size_caption}
                                   </span>
@@ -319,7 +324,7 @@ export default function GroupedCuttingQueue({
                               )}
                               {productionOrder.thickness && (
                                 <div>
-                                  <span className="font-medium">السماكة: </span>
+                                  <span className="font-medium">{t('production.thickness')}: </span>
                                   <span className="text-muted-foreground">
                                     {productionOrder.thickness}
                                   </span>
@@ -327,7 +332,7 @@ export default function GroupedCuttingQueue({
                               )}
                               {productionOrder.raw_material && (
                                 <div>
-                                  <span className="font-medium">الخامة: </span>
+                                  <span className="font-medium">{t('production.rawMaterial')}: </span>
                                   <span className="text-muted-foreground">
                                     {productionOrder.raw_material}
                                   </span>
@@ -353,7 +358,7 @@ export default function GroupedCuttingQueue({
                               </div>
                             </div>
                             <Badge variant="secondary">
-                              {productionOrder.rolls?.length || 0} رول
+                              {productionOrder.rolls?.length || 0} {t('production.cutting.rolls')}
                             </Badge>
                             <Button
                               variant="ghost"
@@ -382,11 +387,11 @@ export default function GroupedCuttingQueue({
                           <CardContent className="pt-0">
                             <div className="mt-4 ml-6 space-y-2">
                               <h5 className="text-sm font-medium text-gray-700 mb-2">
-                                الرولات ({productionOrder.rolls?.length || 0})
+                                {t('production.rolls')} ({productionOrder.rolls?.length || 0})
                               </h5>
                               {!productionOrder.rolls || productionOrder.rolls.length === 0 ? (
                                 <p className="text-sm text-muted-foreground">
-                                  لا توجد رولات بعد
+                                  {t('production.noRollsYet')}
                                 </p>
                               ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -403,15 +408,15 @@ export default function GroupedCuttingQueue({
                                               {roll.roll_number}
                                             </p>
                                             <p className="text-xs text-muted-foreground">
-                                              الوزن: {formatWeight(safeParseFloat(roll.weight_kg, 0))}
+                                              {t('production.weight')}: {formatWeight(safeParseFloat(roll.weight_kg, 0))}
                                             </p>
                                             {roll.cut_weight_total_kg > 0 && (
                                               <div className="text-xs space-y-1 mt-1">
                                                 <p className="text-green-600">
-                                                  الوزن الصافي: {formatWeight(safeParseFloat(roll.cut_weight_total_kg, 0))}
+                                                  {t('production.netWeight')}: {formatWeight(safeParseFloat(roll.cut_weight_total_kg, 0))}
                                                 </p>
                                                 <p className="text-red-600">
-                                                  الهدر: {formatWeight(safeParseFloat(roll.waste_kg, 0))}
+                                                  {t('production.waste')}: {formatWeight(safeParseFloat(roll.waste_kg, 0))}
                                                 </p>
                                               </div>
                                             )}
@@ -449,7 +454,7 @@ export default function GroupedCuttingQueue({
                                           data-testid={`button-print-label-${roll.id}`}
                                         >
                                           <Printer className="h-3 w-3 mr-1" />
-                                          طباعة ملصق
+                                          {t('production.printLabel')}
                                         </Button>
                                       </div>
                                     </div>
@@ -473,9 +478,9 @@ export default function GroupedCuttingQueue({
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>تقطيع الرول</DialogTitle>
+            <DialogTitle>{t('production.cutting.cutRoll')}</DialogTitle>
             <DialogDescription>
-              إدخال بيانات تقطيع الرول وتحديد الكميات المطلوبة
+              {t('production.cutting.enterCuttingData')}
             </DialogDescription>
           </DialogHeader>
 
@@ -484,8 +489,8 @@ export default function GroupedCuttingQueue({
               <div className="p-3 bg-gray-50 rounded-lg">
                 <p className="font-medium">{selectedRoll.roll_number}</p>
                 <p className="text-sm text-gray-500">
-                  الوزن الأصلي:{" "}
-                  {formatNumberAr(safeParseFloat(selectedRoll.weight_kg, 0), 2)} كجم
+                  {t('production.originalWeight')}:{" "}
+                  {formatNumberAr(safeParseFloat(selectedRoll.weight_kg, 0), 2)} {t('production.units.kg')}
                 </p>
               </div>
 
@@ -499,20 +504,20 @@ export default function GroupedCuttingQueue({
                     name="cutting_machine_id"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>ماكينة القطع *</FormLabel>
+                        <FormLabel>{t('production.cutting.cuttingMachine')} *</FormLabel>
                         <Select
                           onValueChange={field.onChange}
                           value={field.value}
                         >
                           <FormControl>
                             <SelectTrigger data-testid="select-cutting-machine">
-                              <SelectValue placeholder="اختر ماكينة القطع" />
+                              <SelectValue placeholder={t('production.cutting.selectCuttingMachine')} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
                             {cuttingMachines.length === 0 ? (
                               <div className="p-2 text-sm text-muted-foreground text-center">
-                                لا توجد ماكينات قطع نشطة
+                                {t('production.cutting.noActiveCuttingMachines')}
                               </div>
                             ) : (
                               cuttingMachines.map((machine) => (
@@ -537,12 +542,12 @@ export default function GroupedCuttingQueue({
                     name="cut_weight_kg"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>الوزن الصافي المقطع (كجم)</FormLabel>
+                        <FormLabel>{t('production.cutting.netCutWeight')}</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
                             step="0.01"
-                            placeholder="أدخل الوزن الصافي"
+                            placeholder={t('production.cutting.enterNetWeight')}
                             {...field}
                             data-testid="input-cut-weight"
                           />
@@ -557,11 +562,11 @@ export default function GroupedCuttingQueue({
                     name="pieces_count"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>عدد القطع (اختياري)</FormLabel>
+                        <FormLabel>{t('production.cutting.piecesCountOptional')}</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
-                            placeholder="أدخل عدد القطع"
+                            placeholder={t('production.cutting.enterPiecesCount')}
                             {...field}
                             data-testid="input-pieces-count"
                           />
@@ -574,7 +579,7 @@ export default function GroupedCuttingQueue({
                   {form.watch("cut_weight_kg") > 0 && selectedRoll && (
                     <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
                       <p className="text-sm">
-                        <span className="font-medium">الهدر المحسوب: </span>
+                        <span className="font-medium">{t('production.cutting.calculatedWaste')}: </span>
                         <span
                           className={
                             calculateWaste(
@@ -589,7 +594,7 @@ export default function GroupedCuttingQueue({
                             safeParseFloat(selectedRoll.weight_kg, 0),
                             form.watch("cut_weight_kg"),
                           ), 2)}{" "}
-                          كجم
+                          {t('production.units.kg')}
                         </span>
                       </p>
                     </div>
@@ -602,7 +607,7 @@ export default function GroupedCuttingQueue({
                       onClick={() => setDialogOpen(false)}
                       data-testid="button-cancel-cut"
                     >
-                      إلغاء
+                      {t('common.cancel')}
                     </Button>
                     <Button
                       type="submit"
@@ -610,8 +615,8 @@ export default function GroupedCuttingQueue({
                       data-testid="button-confirm-cut"
                     >
                       {cutMutation.isPending
-                        ? "جاري التقطيع..."
-                        : "تأكيد التقطيع"}
+                        ? t('production.cutting.cuttingInProgress')
+                        : t('production.cutting.confirmCutting')}
                     </Button>
                   </div>
                 </form>

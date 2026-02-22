@@ -318,7 +318,7 @@ export default function Definitions() {
   const handleDeleteCustomerProduct = (product: any) => {
     if (
       window.confirm(
-        `هل أنت متأكد من حذف منتج العميل "${product.size_caption || "بدون وصف"}"؟`,
+        `${t("definitions.messages.confirmDeleteProduct", { name: product.size_caption || t("definitions.print.noDescription") })}`,
       )
     ) {
       deleteCustomerProductMutation.mutate(product.id);
@@ -331,7 +331,7 @@ export default function Definitions() {
       customer_id: product.customer_id || "none",
       category_id: product.category_id || "none",
       item_id: product.item_id || "none",
-      size_caption: `نسخة من ${product.size_caption || ""}`,
+      size_caption: `${t("definitions.messages.copyOf")} ${product.size_caption || ""}`,
       width: product.width || "",
       left_facing: product.left_facing || "",
       right_facing: product.right_facing || "",
@@ -374,20 +374,20 @@ export default function Definitions() {
     const customerName = Array.isArray(customers)
       ? customers.find((c: any) => c.id === product.customer_id)?.name_ar ||
         customers.find((c: any) => c.id === product.customer_id)?.name ||
-        "غير محدد"
-      : "غير محدد";
+        t("definitions.print.unspecified")
+      : t("definitions.print.unspecified");
 
     const categoryName = Array.isArray(categories)
       ? categories.find((c: any) => c.id === product.category_id)?.name_ar ||
         categories.find((c: any) => c.id === product.category_id)?.name ||
-        "غير محدد"
-      : "غير محدد";
+        t("definitions.print.unspecified")
+      : t("definitions.print.unspecified");
 
     const itemName = Array.isArray(items)
       ? items.find((i: any) => i.id === product.item_id)?.name_ar ||
         items.find((i: any) => i.id === product.item_id)?.name ||
-        "غير محدد"
-      : "غير محدد";
+        t("definitions.print.unspecified")
+      : t("definitions.print.unspecified");
 
     const masterBatchColor = masterBatchColors.find(
       (mb) => mb.id === product.master_batch_id || mb.aliases?.includes(product.master_batch_id || ""),
@@ -398,7 +398,7 @@ export default function Definitions() {
     <html dir="rtl" lang="ar">
     <head>
       <meta charset="UTF-8">
-      <title>تفاصيل منتج العميل</title>
+      <title>${t("definitions.print.productDetails")}</title>
       <style>
         body { 
           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
@@ -515,71 +515,71 @@ export default function Definitions() {
     </head>
     <body>
       <div class="header">
-        <h1>تفاصيل منتج العميل</h1>
-        <p>نظام إدارة مصنع الأكياس البلاستيكية</p>
-        <p>رقم المنتج: ${product.id}</p>
+        <h1>${t("definitions.print.productDetails")}</h1>
+        <p>${t("definitions.print.systemName")}</p>
+        <p>${t("definitions.print.productNumber")}: ${product.id}</p>
       </div>
 
       <div class="section">
-        <h3>معلومات أساسية</h3>
+        <h3>${t("definitions.print.basicInfo")}</h3>
         <div class="detail-row">
-          <span class="detail-label">اسم العميل:</span>
+          <span class="detail-label">${t("definitions.print.customerName")}:</span>
           <span class="detail-value">${customerName}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">الفئة:</span>
+          <span class="detail-label">${t("definitions.print.category")}:</span>
           <span class="detail-value">${categoryName}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">الصنف:</span>
+          <span class="detail-label">${t("definitions.print.item")}:</span>
           <span class="detail-value">${itemName}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">وصف المقاس:</span>
+          <span class="detail-label">${t("definitions.print.sizeCaption")}:</span>
           <span class="detail-value">${product.size_caption || "-"}</span>
         </div>
       </div>
 
       <div class="section">
-        <h3>المقاسات والأبعاد</h3>
+        <h3>${t("definitions.print.sizesAndDimensions")}</h3>
         <div class="detail-row">
-          <span class="detail-label">العرض (سم):</span>
+          <span class="detail-label">${t("definitions.print.widthCm")}:</span>
           <span class="detail-value">${product.width || "-"}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">الوجه الأيسر (سم):</span>
+          <span class="detail-label">${t("definitions.print.leftFacingCm")}:</span>
           <span class="detail-value">${product.left_facing || "-"}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">الوجه الأيمن (سم):</span>
+          <span class="detail-label">${t("definitions.print.rightFacingCm")}:</span>
           <span class="detail-value">${product.right_facing || "-"}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">السمك (ميكرون):</span>
+          <span class="detail-label">${t("definitions.print.thicknessMicron")}:</span>
           <span class="detail-value">${product.thickness || "-"}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">طول القطع (سم):</span>
+          <span class="detail-label">${t("definitions.print.cuttingLengthCm")}:</span>
           <span class="detail-value">${product.cutting_length_cm || "-"}</span>
         </div>
       </div>
 
       <div class="section">
-        <h3>الطباعة والإنتاج</h3>
+        <h3>${t("definitions.print.printingAndProduction")}</h3>
         <div class="detail-row">
-          <span class="detail-label">اسطوانة الطباعة:</span>
-          <span class="detail-value">${product.printing_cylinder || "بدون طباعة"}</span>
+          <span class="detail-label">${t("definitions.print.printingCylinder")}:</span>
+          <span class="detail-value">${product.printing_cylinder || t("definitions.print.noPrinting")}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">هل مطبوع:</span>
-          <span class="detail-value">${product.is_printed ? "نعم" : "لا"}</span>
+          <span class="detail-label">${t("definitions.print.isPrinted")}:</span>
+          <span class="detail-value">${product.is_printed ? t("common.yes") : t("common.no")}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">المادة الخام:</span>
+          <span class="detail-label">${t("definitions.print.rawMaterial")}:</span>
           <span class="detail-value">${product.raw_material || "-"}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">الماستر باتش:</span>
+          <span class="detail-label">${t("definitions.print.masterBatch")}:</span>
           <span class="detail-value">
             ${
               masterBatchColor
@@ -589,63 +589,63 @@ export default function Definitions() {
           </span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">التخريم:</span>
+          <span class="detail-label">${t("definitions.print.punching")}:</span>
           <span class="detail-value">${product.punching || "-"}</span>
         </div>
       </div>
 
       <div class="section">
-        <h3>الوزن والكميات</h3>
+        <h3>${t("definitions.print.weightAndQuantities")}</h3>
         <div class="detail-row">
-          <span class="detail-label">وحدة القطع:</span>
+          <span class="detail-label">${t("definitions.print.cuttingUnit")}:</span>
           <span class="detail-value">${product.cutting_unit || "-"}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">وزن الوحدة (كيلو):</span>
+          <span class="detail-label">${t("definitions.print.unitWeightKg")}:</span>
           <span class="detail-value">${product.unit_weight_kg || "-"}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">الكمية لكل وحدة:</span>
+          <span class="detail-label">${t("definitions.print.quantityPerUnit")}:</span>
           <span class="detail-value">${product.unit_quantity || "-"}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">وزن التعبئة (كيلو):</span>
+          <span class="detail-label">${t("definitions.print.packageWeightKg")}:</span>
           <span class="detail-value">${product.package_weight_kg || "-"}</span>
         </div>
       </div>
 
       <div class="section">
-        <h3>التصاميم</h3>
+        <h3>${t("definitions.print.designs")}</h3>
         <div class="design-container">
           <div class="design-box">
-            <h4>تصميم الواجهة الأمامية</h4>
+            <h4>${t("definitions.print.frontDesign")}</h4>
             <div class="design-image-wrapper">
-              ${product.cliche_front_design ? `<img src="${product.cliche_front_design}" alt="تصميم الواجهة الأمامية" />` : '<span class="no-design">لا يوجد تصميم</span>'}
+              ${product.cliche_front_design ? `<img src="${product.cliche_front_design}" alt="${t("definitions.print.frontDesign")}" />` : `<span class="no-design">${t("definitions.print.noDesign")}</span>`}
             </div>
           </div>
           <div class="design-box">
-            <h4>تصميم الواجهة الخلفية</h4>
+            <h4>${t("definitions.print.backDesign")}</h4>
             <div class="design-image-wrapper">
-              ${product.cliche_back_design ? `<img src="${product.cliche_back_design}" alt="تصميم الواجهة الخلفية" />` : '<span class="no-design">لا يوجد تصميم</span>'}
+              ${product.cliche_back_design ? `<img src="${product.cliche_back_design}" alt="${t("definitions.print.backDesign")}" />` : `<span class="no-design">${t("definitions.print.noDesign")}</span>`}
             </div>
           </div>
         </div>
       </div>
 
       <div class="section">
-        <h3>الملاحظات والحالة</h3>
+        <h3>${t("definitions.print.notesAndStatus")}</h3>
         <div class="detail-row">
-          <span class="detail-label">ملاحظات:</span>
+          <span class="detail-label">${t("definitions.print.notes")}:</span>
           <span class="detail-value">${product.notes || "-"}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">الحالة:</span>
-          <span class="detail-value">${product.status === "active" ? "نشط" : "غير نشط"}</span>
+          <span class="detail-label">${t("definitions.print.status")}:</span>
+          <span class="detail-value">${product.status === "active" ? t("common.active") : t("common.inactive")}</span>
         </div>
       </div>
 
       <div class="print-date">
-        تم الطباعة بتاريخ: ${new Date().toLocaleDateString("ar")} - ${new Date().toLocaleTimeString("ar")}
+        ${t("definitions.print.printedOn")}: ${new Date().toLocaleDateString("ar")} - ${new Date().toLocaleTimeString("ar")}
       </div>
 
       <script>
@@ -1104,13 +1104,13 @@ export default function Definitions() {
           <td style="padding:8px 6px;border:1px solid #d1d5db;text-align:center">${product.thickness || "-"}</td>
           <td style="padding:8px 6px;border:1px solid #d1d5db;text-align:center">${product.raw_material || "-"}</td>
           <td style="padding:8px 6px;border:1px solid #d1d5db;text-align:center">${mbColor?.name_ar || mbColor?.name || product.master_batch_id || "-"}</td>
-          <td style="padding:8px 6px;border:1px solid #d1d5db;text-align:center">${product.is_printed ? (product.printing_cylinder || "نعم") : "لا"}</td>
-          <td style="padding:8px 6px;border:1px solid #d1d5db;text-align:center">${product.cutting_length_cm ? product.cutting_length_cm + " سم" : "-"}</td>
+          <td style="padding:8px 6px;border:1px solid #d1d5db;text-align:center">${product.is_printed ? (product.printing_cylinder || t("common.yes")) : t("common.no")}</td>
+          <td style="padding:8px 6px;border:1px solid #d1d5db;text-align:center">${product.cutting_length_cm ? product.cutting_length_cm + " " + t("common.cm") : "-"}</td>
           <td style="padding:8px 6px;border:1px solid #d1d5db;text-align:center">${product.punching || "-"}</td>
           <td style="padding:8px 6px;border:1px solid #d1d5db;text-align:center">${product.cutting_unit || "-"}</td>
-          <td style="padding:8px 6px;border:1px solid #d1d5db;text-align:center">${product.unit_weight_kg ? product.unit_weight_kg + " كجم" : "-"}</td>
+          <td style="padding:8px 6px;border:1px solid #d1d5db;text-align:center">${product.unit_weight_kg ? product.unit_weight_kg + " " + t("common.kg") : "-"}</td>
           <td style="padding:8px 6px;border:1px solid #d1d5db;text-align:center">${product.unit_quantity || "-"}</td>
-          <td style="padding:8px 6px;border:1px solid #d1d5db;text-align:center">${product.package_weight_kg ? product.package_weight_kg + " كجم" : "-"}</td>
+          <td style="padding:8px 6px;border:1px solid #d1d5db;text-align:center">${product.package_weight_kg ? product.package_weight_kg + " " + t("common.kg") : "-"}</td>
           <td style="padding:8px 6px;border:1px solid #d1d5db;text-align:center;max-width:120px;word-break:break-word">${product.notes || "-"}</td>
         </tr>`;
       })
@@ -1120,7 +1120,7 @@ export default function Definitions() {
 <html dir="rtl" lang="ar">
 <head>
   <meta charset="UTF-8">
-  <title>بيانات العميل - ${customer.name_ar || customer.name}</title>
+  <title>${t("definitions.print.customerData")} - ${customer.name_ar || customer.name}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; padding: 24px; direction: rtl; color: #1f2937; background: #fff; }
@@ -1153,54 +1153,54 @@ export default function Definitions() {
 </head>
 <body>
   <div class="header">
-    <h1>بطاقة بيانات العميل</h1>
-    <div class="sub">${customer.name_ar || customer.name} | كود: ${customer.id} | تاريخ الطباعة: ${new Date().toLocaleDateString("ar-SA")} - ${new Date().toLocaleTimeString("ar-SA")}</div>
+    <h1>${t("definitions.print.customerCard")}</h1>
+    <div class="sub">${customer.name_ar || customer.name} | ${t("definitions.print.code")}: ${customer.id} | ${t("definitions.print.printDate")}: ${new Date().toLocaleDateString("ar-SA")} - ${new Date().toLocaleTimeString("ar-SA")}</div>
   </div>
 
-  <div class="section-title">المعلومات الأساسية</div>
+  <div class="section-title">${t("definitions.print.basicInfo")}</div>
   <div class="info-grid">
-    <div class="info-cell"><span class="label">كود العميل</span><span class="value">${customer.id || "-"}</span></div>
-    <div class="info-cell"><span class="label">الكود</span><span class="value">${customer.code || "-"}</span></div>
-    <div class="info-cell"><span class="label">الاسم العربي</span><span class="value">${customer.name_ar || "-"}</span></div>
-    <div class="info-cell"><span class="label">الاسم الإنجليزي</span><span class="value">${customer.name || "-"}</span></div>
-    <div class="info-cell"><span class="label">الهاتف</span><span class="value">${customer.phone || "-"}</span></div>
-    <div class="info-cell"><span class="label">المدينة</span><span class="value">${customer.city || "-"}</span></div>
-    <div class="info-cell"><span class="label">العنوان</span><span class="value">${customer.address || "-"}</span></div>
-    <div class="info-cell"><span class="label">الرقم الضريبي</span><span class="value">${customer.tax_number || "-"}</span></div>
-    <div class="info-cell"><span class="label">رقم درج الكليشيهات</span><span class="value">${customer.plate_drawer_code || "-"}</span></div>
-    <div class="info-cell"><span class="label">الاسم التجاري</span><span class="value">${customer.commercial_name || "-"}</span></div>
-    <div class="info-cell"><span class="label">الرقم الموحد</span><span class="value">${customer.unified_number || "-"}</span></div>
-    <div class="info-cell"><span class="label">رقم العميل الفريد</span><span class="value">${customer.unique_customer_number || "-"}</span></div>
-    <div class="info-cell"><span class="label">المندوب</span><span class="value">${rep ? (rep.display_name_ar || rep.display_name || "-") : "-"}</span></div>
-    <div class="info-cell"><span class="label">الحالة</span><span class="value">${customer.is_active !== false ? "نشط" : "غير نشط"}</span></div>
+    <div class="info-cell"><span class="label">${t("definitions.print.customerId")}</span><span class="value">${customer.id || "-"}</span></div>
+    <div class="info-cell"><span class="label">${t("definitions.print.code")}</span><span class="value">${customer.code || "-"}</span></div>
+    <div class="info-cell"><span class="label">${t("definitions.print.nameAr")}</span><span class="value">${customer.name_ar || "-"}</span></div>
+    <div class="info-cell"><span class="label">${t("definitions.print.nameEn")}</span><span class="value">${customer.name || "-"}</span></div>
+    <div class="info-cell"><span class="label">${t("definitions.print.phone")}</span><span class="value">${customer.phone || "-"}</span></div>
+    <div class="info-cell"><span class="label">${t("definitions.print.city")}</span><span class="value">${customer.city || "-"}</span></div>
+    <div class="info-cell"><span class="label">${t("definitions.print.address")}</span><span class="value">${customer.address || "-"}</span></div>
+    <div class="info-cell"><span class="label">${t("definitions.print.taxNumber")}</span><span class="value">${customer.tax_number || "-"}</span></div>
+    <div class="info-cell"><span class="label">${t("definitions.print.plateDrawerCode")}</span><span class="value">${customer.plate_drawer_code || "-"}</span></div>
+    <div class="info-cell"><span class="label">${t("definitions.print.commercialName")}</span><span class="value">${customer.commercial_name || "-"}</span></div>
+    <div class="info-cell"><span class="label">${t("definitions.print.unifiedNumber")}</span><span class="value">${customer.unified_number || "-"}</span></div>
+    <div class="info-cell"><span class="label">${t("definitions.print.uniqueCustomerNumber")}</span><span class="value">${customer.unique_customer_number || "-"}</span></div>
+    <div class="info-cell"><span class="label">${t("definitions.print.representative")}</span><span class="value">${rep ? (rep.display_name_ar || rep.display_name || "-") : "-"}</span></div>
+    <div class="info-cell"><span class="label">${t("definitions.print.status")}</span><span class="value">${customer.is_active !== false ? t("common.active") : t("common.inactive")}</span></div>
   </div>
 
-  <div class="section-title">منتجات العميل <span class="badge badge-count">${customerProds.length} منتج</span></div>
+  <div class="section-title">${t("definitions.print.customerProducts")} <span class="badge badge-count">${customerProds.length} ${t("definitions.print.product")}</span></div>
   ${customerProds.length > 0 ? `<table class="products-table">
     <thead>
       <tr>
         <th>#</th>
-        <th>رقم المنتج</th>
-        <th>الصنف</th>
-        <th>وصف المقاس</th>
-        <th>العرض</th>
-        <th>السماكة</th>
-        <th>المادة الخام</th>
-        <th>الماستر باتش</th>
-        <th>الطباعة</th>
-        <th>طول القطع</th>
-        <th>التخريم</th>
-        <th>الوحدة</th>
-        <th>وزن الوحدة</th>
-        <th>الكمية</th>
-        <th>وزن التعبئة</th>
-        <th>ملاحظات</th>
+        <th>${t("definitions.print.productNumber")}</th>
+        <th>${t("definitions.print.item")}</th>
+        <th>${t("definitions.print.sizeCaption")}</th>
+        <th>${t("definitions.print.width")}</th>
+        <th>${t("definitions.print.thickness")}</th>
+        <th>${t("definitions.print.rawMaterial")}</th>
+        <th>${t("definitions.print.masterBatch")}</th>
+        <th>${t("definitions.print.printing")}</th>
+        <th>${t("definitions.print.cuttingLength")}</th>
+        <th>${t("definitions.print.punching")}</th>
+        <th>${t("definitions.print.unit")}</th>
+        <th>${t("definitions.print.unitWeight")}</th>
+        <th>${t("definitions.print.quantity")}</th>
+        <th>${t("definitions.print.packageWeight")}</th>
+        <th>${t("definitions.print.notes")}</th>
       </tr>
     </thead>
     <tbody>${productsRows}</tbody>
-  </table>` : `<div class="no-products">لا توجد منتجات مسجلة لهذا العميل</div>`}
+  </table>` : `<div class="no-products">${t("definitions.print.noProducts")}</div>`}
 
-  <div class="footer">تم الطباعة من نظام إدارة المصنع</div>
+  <div class="footer">${t("definitions.print.printedFromSystem")}</div>
 </body>
 </html>`);
     printWindow.document.close();
@@ -1565,11 +1565,11 @@ export default function Definitions() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
-      toast({ title: "تم حذف العميل بنجاح" });
+      toast({ title: t("definitions.messages.customerDeleted") });
     },
     onError: (error: any) => {
       console.error("Error deleting customer:", error);
-      toast({ title: "فشل في حذف العميل - قد يكون مرتبطاً بطلبات", variant: "destructive" });
+      toast({ title: t("definitions.messages.customerDeleteFailed"), variant: "destructive" });
     },
   });
 
@@ -1712,11 +1712,11 @@ export default function Definitions() {
       queryClient.invalidateQueries({ queryKey: ["/api/master-batch-colors"] });
       resetForm();
       setIsDialogOpen(false);
-      toast({ title: "تم إضافة اللون بنجاح" });
+      toast({ title: t("definitions.messages.colorAdded") });
     },
     onError: (error: any) => {
       console.error("Error creating master batch color:", error);
-      toast({ title: "خطأ في إضافة اللون", variant: "destructive" });
+      toast({ title: t("definitions.messages.colorAddError"), variant: "destructive" });
     },
   });
 
@@ -1735,11 +1735,11 @@ export default function Definitions() {
       queryClient.invalidateQueries({ queryKey: ["/api/master-batch-colors"] });
       resetForm();
       setIsDialogOpen(false);
-      toast({ title: "تم تحديث اللون بنجاح" });
+      toast({ title: t("definitions.messages.colorUpdated") });
     },
     onError: (error: any) => {
       console.error("Error updating master batch color:", error);
-      toast({ title: "خطأ في تحديث اللون", variant: "destructive" });
+      toast({ title: t("definitions.messages.colorUpdateError"), variant: "destructive" });
     },
   });
 
@@ -1754,11 +1754,11 @@ export default function Definitions() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/master-batch-colors"] });
-      toast({ title: "تم حذف اللون بنجاح" });
+      toast({ title: t("definitions.messages.colorDeleted") });
     },
     onError: (error: any) => {
       console.error("Error deleting master batch color:", error);
-      toast({ title: "خطأ في حذف اللون", variant: "destructive" });
+      toast({ title: t("definitions.messages.colorDeleteError"), variant: "destructive" });
     },
   });
 
@@ -1965,7 +1965,7 @@ export default function Definitions() {
                              text-gray-600 hover:text-blue-600 px-2 py-2 text-xs font-medium
                              transition-all duration-200 rounded-md min-w-0 flex-1"
                   >
-                    ألوان الماستر
+                    {t("definitions.tabs.masterBatchColors")}
                   </TabsTrigger>
                 </TabsList>
 
@@ -2053,7 +2053,7 @@ export default function Definitions() {
                                             className="text-red-600"
                                             disabled={deleteCustomerMutation.isPending}
                                             onClick={() => {
-                                              if (confirm(`هل أنت متأكد من حذف العميل "${customer.name_ar || customer.name}"؟`)) {
+                                              if (confirm(t("definitions.messages.confirmDeleteCustomer", { name: customer.name_ar || customer.name }))) {
                                                 deleteCustomerMutation.mutate(customer.id);
                                               }
                                             }}
@@ -2063,9 +2063,9 @@ export default function Definitions() {
                                         </div>
                                       </div>
                                       <div className="grid grid-cols-2 gap-2 text-sm">
-                                        <div><span className="text-gray-500">الهاتف:</span> {customer.phone || "-"}</div>
-                                        <div><span className="text-gray-500">المندوب:</span> {rep ? (rep.display_name_ar || rep.display_name) : "-"}</div>
-                                        <div><span className="text-gray-500">رقم الدرج:</span> {customer.plate_drawer_code || "-"}</div>
+                                        <div><span className="text-gray-500">{t("definitions.print.phone")}:</span> {customer.phone || "-"}</div>
+                                        <div><span className="text-gray-500">{t("definitions.print.representative")}:</span> {rep ? (rep.display_name_ar || rep.display_name) : "-"}</div>
+                                        <div><span className="text-gray-500">{t("definitions.print.plateDrawerCode")}:</span> {customer.plate_drawer_code || "-"}</div>
                                       </div>
                                     </div>
                                   );
@@ -2099,7 +2099,7 @@ export default function Definitions() {
                                   {t("definitions.customers.phone")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  المندوب
+                                  {t("definitions.print.representative")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
                                   {t("definitions.customers.actions")}
@@ -2149,7 +2149,7 @@ export default function Definitions() {
                                             size="sm"
                                             className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                                             onClick={() => handlePrintCustomer(customer)}
-                                            title="طباعة بيانات العميل"
+                                            title={t("definitions.print.customerData")}
                                           >
                                             <Printer className="w-4 h-4" />
                                           </Button>
@@ -2186,7 +2186,7 @@ export default function Definitions() {
                                             className="text-red-600 hover:text-red-700 hover:bg-red-50"
                                             disabled={deleteCustomerMutation.isPending}
                                             onClick={() => {
-                                              if (confirm(`هل أنت متأكد من حذف العميل "${customer.name_ar || customer.name}"؟`)) {
+                                              if (confirm(t("definitions.messages.confirmDeleteCustomer", { name: customer.name_ar || customer.name }))) {
                                                 deleteCustomerMutation.mutate(customer.id);
                                               }
                                             }}
@@ -2274,19 +2274,19 @@ export default function Definitions() {
                             <thead className="bg-gray-50">
                               <tr>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الرقم
+                                  {t("definitions.table.id")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الاسم العربي
+                                  {t("definitions.table.nameAr")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الاسم الإنجليزي
+                                  {t("definitions.table.nameEn")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الكود
+                                  {t("definitions.table.code")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  العمليات
+                                  {t("definitions.table.actions")}
                                 </th>
                               </tr>
                             </thead>
@@ -2419,19 +2419,19 @@ export default function Definitions() {
                             <thead className="bg-gray-50">
                               <tr>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الرقم
+                                  {t("definitions.table.id")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الاسم العربي
+                                  {t("definitions.table.nameAr")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الاسم الإنجليزي
+                                  {t("definitions.table.nameEn")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الوصف
+                                  {t("definitions.table.description")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  العمليات
+                                  {t("definitions.table.actions")}
                                 </th>
                               </tr>
                             </thead>
@@ -2557,19 +2557,19 @@ export default function Definitions() {
                             <thead className="bg-gray-50">
                               <tr>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الرقم
+                                  {t("definitions.table.id")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الاسم العربي
+                                  {t("definitions.table.nameAr")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الاسم الإنجليزي
+                                  {t("definitions.table.nameEn")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الفئة
+                                  {t("definitions.table.category")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  العمليات
+                                  {t("definitions.table.actions")}
                                 </th>
                               </tr>
                             </thead>
@@ -2697,37 +2697,37 @@ export default function Definitions() {
                             <thead className="bg-gray-50">
                               <tr>
                                 <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الرقم
+                                  {t("definitions.table.id")}
                                 </th>
                                 <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  اسم العميل
+                                  {t("definitions.print.customerName")}
                                 </th>
                                 <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  اسم الصنف
+                                  {t("definitions.print.item")}
                                 </th>
                                 <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  وصف المقاس
+                                  {t("definitions.print.sizeCaption")}
                                 </th>
                                 <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الطباعة/القطع
+                                  {t("definitions.table.printingCutting")}
                                 </th>
                                 <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  المادة الخام
+                                  {t("definitions.print.rawMaterial")}
                                 </th>
                                 <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الماستر باتش
+                                  {t("definitions.print.masterBatch")}
                                 </th>
                                 <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  التخريم
+                                  {t("definitions.print.punching")}
                                 </th>
                                 <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الوحدة
+                                  {t("definitions.print.unit")}
                                 </th>
                                 <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  وزن التعبئة
+                                  {t("definitions.print.packageWeight")}
                                 </th>
                                 <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  العمليات
+                                  {t("definitions.table.actions")}
                                 </th>
                               </tr>
                             </thead>
@@ -2788,7 +2788,7 @@ export default function Definitions() {
                                               ? product.printing_cylinder ||
                                                 "بدون طباعة"
                                               : product.cutting_length_cm
-                                                ? `${formatNumber(parseFloat(product.cutting_length_cm))} سم`
+                                                ? `${formatNumber(parseFloat(product.cutting_length_cm))} ${t("common.cm")}`
                                                 : "-"}
                                           </td>
                                           <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
@@ -2833,7 +2833,7 @@ export default function Definitions() {
                                           </td>
                                           <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
                                             {product.package_weight_kg
-                                              ? `${formatNumber(parseFloat(product.package_weight_kg))} كغ`
+                                              ? `${formatNumber(parseFloat(product.package_weight_kg))} ${t("common.kg")}`
                                               : "-"}
                                           </td>
                                           <td className="px-2 py-3 text-sm font-medium text-center">
@@ -2911,7 +2911,7 @@ export default function Definitions() {
                                                   );
                                                   setIsDialogOpen(true);
                                                 }}
-                                                title="تحديث"
+                                                title={t("definitions.table.update")}
                                               >
                                                 <Edit className="w-3 h-3" />
                                               </Button>
@@ -2924,7 +2924,7 @@ export default function Definitions() {
                                                     product,
                                                   )
                                                 }
-                                                title="استنساخ"
+                                                title={t("definitions.table.clone")}
                                               >
                                                 <Copy className="w-3 h-3" />
                                               </Button>
@@ -2937,7 +2937,7 @@ export default function Definitions() {
                                                     product,
                                                   )
                                                 }
-                                                title="طباعة"
+                                                title={t("definitions.table.print")}
                                               >
                                                 <Printer className="w-3 h-3" />
                                               </Button>
@@ -2950,7 +2950,7 @@ export default function Definitions() {
                                                     product,
                                                   )
                                                 }
-                                                title="حذف"
+                                                title={t("definitions.table.delete")}
                                                 disabled={
                                                   deleteCustomerProductMutation.isPending
                                                 }
@@ -3042,37 +3042,37 @@ export default function Definitions() {
                             <thead className="bg-gray-50">
                               <tr>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الرقم
+                                  {t("definitions.table.id")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الاسم العربي
+                                  {t("definitions.table.nameAr")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الاسم الإنجليزي
+                                  {t("definitions.table.nameEn")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  النوع
+                                  {t("definitions.table.type")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  نشطة
+                                  {t("definitions.table.active")}
                                 </th>
                                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  قدرة صغير
+                                  {t("definitions.table.capacitySmall")}
                                   <br />
-                                  <span className="text-[10px] font-normal">(كجم/ساعة)</span>
+                                  <span className="text-[10px] font-normal">({t("common.kgPerHour")})</span>
                                 </th>
                                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  قدرة وسط
+                                  {t("definitions.table.capacityMedium")}
                                   <br />
-                                  <span className="text-[10px] font-normal">(كجم/ساعة)</span>
+                                  <span className="text-[10px] font-normal">({t("common.kgPerHour")})</span>
                                 </th>
                                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  قدرة كبير
+                                  {t("definitions.table.capacityLarge")}
                                   <br />
-                                  <span className="text-[10px] font-normal">(كجم/ساعة)</span>
+                                  <span className="text-[10px] font-normal">({t("common.kgPerHour")})</span>
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  العمليات
+                                  {t("definitions.table.actions")}
                                 </th>
                               </tr>
                             </thead>
@@ -3106,7 +3106,7 @@ export default function Definitions() {
                                           variant={machine.status === "active" ? "default" : "secondary"}
                                           className={machine.status === "active" ? "bg-green-500 hover:bg-green-600" : "bg-gray-500 hover:bg-gray-600"}
                                         >
-                                          {machine.status === "active" ? "نشطة" : machine.status === "maintenance" ? "صيانة" : "متوقفة"}
+                                          {machine.status === "active" ? t("common.active") : machine.status === "maintenance" ? t("definitions.table.maintenance") : t("definitions.table.stopped")}
                                         </Badge>
                                       </td>
                                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-center" data-testid={`text-capacity-small-${machine.id}`}>
@@ -3222,22 +3222,22 @@ export default function Definitions() {
                             <thead className="bg-gray-50">
                               <tr>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الرقم
+                                  {t("definitions.table.id")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  اسم المستخدم
+                                  {t("definitions.table.username")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الاسم
+                                  {t("definitions.table.name")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  القسم
+                                  {t("definitions.table.section")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الدور
+                                  {t("definitions.table.role")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  العمليات
+                                  {t("definitions.table.actions")}
                                 </th>
                               </tr>
                             </thead>
@@ -3287,7 +3287,7 @@ export default function Definitions() {
                                             );
                                           return section
                                             ? section.name_ar || section.name
-                                            : `قسم ${user.section_id}`;
+                                            : `${t("definitions.table.section")} ${user.section_id}`;
                                         })()}
                                       </td>
                                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
@@ -3400,7 +3400,7 @@ export default function Definitions() {
                       <div className="flex items-center justify-between">
                         <CardTitle className="flex items-center gap-2">
                           <Package className="w-5 h-5" />
-                          ألوان الماستر باتش
+                          {t("definitions.masterBatch.title")}
                         </CardTitle>
                         <Button
                           onClick={() => {
@@ -3410,7 +3410,7 @@ export default function Definitions() {
                           }}
                         >
                           <Plus className="w-4 h-4 mr-2" />
-                          إضافة لون جديد
+                          {t("definitions.masterBatch.addNew")}
                         </Button>
                       </div>
                     </CardHeader>
@@ -3428,25 +3428,25 @@ export default function Definitions() {
                             <thead className="bg-gray-50">
                               <tr>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الكود
+                                  {t("definitions.table.code")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  اللون
+                                  {t("definitions.masterBatch.color")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الاسم بالعربية
+                                  {t("definitions.table.nameAr")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الاسم بالإنجليزية
+                                  {t("definitions.table.nameEn")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  المورد
+                                  {t("definitions.masterBatch.supplier")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الحالة
+                                  {t("definitions.masterBatch.status")}
                                 </th>
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  الإجراءات
+                                  {t("definitions.table.actions")}
                                 </th>
                               </tr>
                             </thead>
@@ -3494,7 +3494,7 @@ export default function Definitions() {
                                       </td>
                                       <td className="px-6 py-4 text-center">
                                         <Badge variant={color.is_active ? "default" : "secondary"}>
-                                          {color.is_active ? "نشط" : "غير نشط"}
+                                          {color.is_active ? t("common.active") : t("definitions.masterBatch.inactive")}
                                         </Badge>
                                       </td>
                                       <td className="px-6 py-4 text-center">
@@ -3525,7 +3525,7 @@ export default function Definitions() {
                                             size="icon"
                                             className="text-red-500 hover:text-red-700"
                                             onClick={() => {
-                                              if (window.confirm(`هل أنت متأكد من حذف اللون "${color.name_ar}"؟`)) {
+                                              if (window.confirm(t("definitions.masterBatch.confirmDelete", { name: color.name_ar }))) {
                                                 deleteMasterBatchColorMutation.mutate(color.id);
                                               }
                                             }}
@@ -3539,7 +3539,7 @@ export default function Definitions() {
                               ) : (
                                 <tr>
                                   <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
-                                    لا توجد ألوان مضافة
+                                    {t("definitions.masterBatch.noColors")}
                                   </td>
                                 </tr>
                               )}
@@ -3586,7 +3586,7 @@ export default function Definitions() {
                               name_ar: e.target.value,
                             })
                           }
-                          placeholder="اسم العميل بالعربية"
+                          placeholder={t("definitions.form.customerNameAr")}
                           className="mt-1"
                         />
                       </div>
@@ -3635,7 +3635,7 @@ export default function Definitions() {
                               code: e.target.value,
                             })
                           }
-                          placeholder="كود العميل"
+                          placeholder={t("definitions.form.customerCode")}
                           className="mt-1"
                         />
                       </div>
@@ -3657,10 +3657,10 @@ export default function Definitions() {
                             }}
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="الحرف" />
+                              <SelectValue placeholder={t("definitions.form.letter")} />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="none">بدون</SelectItem>
+                              <SelectItem value="none">{t("definitions.form.none")}</SelectItem>
                               <SelectItem value="A">A</SelectItem>
                               <SelectItem value="B">B</SelectItem>
                               <SelectItem value="C">C</SelectItem>
@@ -3685,10 +3685,10 @@ export default function Definitions() {
                             }}
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="الرقم" />
+                              <SelectValue placeholder={t("definitions.form.number")} />
                             </SelectTrigger>
                             <SelectContent className="max-h-[200px]">
-                              <SelectItem value="none">بدون</SelectItem>
+                              <SelectItem value="none">{t("definitions.form.none")}</SelectItem>
                               {Array.from({ length: 60 }, (_, i) => i + 1).map((num) => (
                                 <SelectItem key={num} value={num.toString()}>
                                   {num}
@@ -3709,7 +3709,7 @@ export default function Definitions() {
                               phone: e.target.value,
                             })
                           }
-                          placeholder="رقم الهاتف"
+                          placeholder={t("definitions.form.phoneNumber")}
                           className="mt-1"
                         />
                       </div>
@@ -3726,14 +3726,14 @@ export default function Definitions() {
                               city: e.target.value,
                             })
                           }
-                          placeholder="المدينة"
+                          placeholder={t("definitions.form.city")}
                           className="mt-1"
                         />
                       </div>
                       <div>
                         <Label htmlFor="tax_number">
                           {t("definitions.customers.taxNumber")}
-                          <span className="text-xs text-muted-foreground mr-1">(14 رقم)</span>
+                          <span className="text-xs text-muted-foreground mr-1">({t("definitions.form.14digits")})</span>
                         </Label>
                         <Input
                           id="tax_number"
@@ -3745,13 +3745,13 @@ export default function Definitions() {
                               tax_number: value,
                             });
                           }}
-                          placeholder="الرقم الضريبي (14 رقم)"
+                          placeholder={t("definitions.form.taxNumberPlaceholder")}
                           className={`mt-1 ${customerForm.tax_number && customerForm.tax_number.length > 0 && customerForm.tax_number.length !== 14 ? 'border-yellow-500' : ''}`}
                           maxLength={14}
                         />
                         {customerForm.tax_number && customerForm.tax_number.length > 0 && customerForm.tax_number.length !== 14 && (
                           <p className="text-xs text-yellow-600 mt-1">
-                            {customerForm.tax_number.length}/14 - يجب إدخال 14 رقم
+                            {customerForm.tax_number.length}/14 - {t("definitions.form.mustEnter14digits")}
                           </p>
                         )}
                       </div>
@@ -3768,10 +3768,10 @@ export default function Definitions() {
                         }
                       >
                         <SelectTrigger className="mt-1" data-testid="select-sales-rep">
-                          <SelectValue placeholder="اختر المندوب" />
+                          <SelectValue placeholder={t("definitions.form.selectRep")} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">بدون مندوب</SelectItem>
+                          <SelectItem value="none">{t("definitions.form.noRep")}</SelectItem>
                           {Array.isArray(salesReps) &&
                             salesReps.map((rep: any) => (
                               <SelectItem
@@ -3797,7 +3797,7 @@ export default function Definitions() {
                             address: e.target.value,
                           })
                         }
-                        placeholder="العنوان كاملاً"
+                        placeholder={t("definitions.form.fullAddress")}
                         className="mt-1"
                       />
                     </div>
@@ -3877,7 +3877,7 @@ export default function Definitions() {
                               name_ar: e.target.value,
                             })
                           }
-                          placeholder="اسم القسم بالعربية"
+                          placeholder={t("definitions.form.sectionNameAr")}
                           className="mt-1"
                         />
                       </div>
@@ -3908,7 +3908,7 @@ export default function Definitions() {
                             description: e.target.value,
                           })
                         }
-                        placeholder="وصف القسم (اختياري)"
+                        placeholder={t("definitions.form.sectionDescOptional")}
                         className="mt-1"
                       />
                     </div>
@@ -3980,7 +3980,7 @@ export default function Definitions() {
                               name_ar: e.target.value,
                             })
                           }
-                          placeholder="اسم الفئة بالعربية"
+                          placeholder={t("definitions.form.categoryNameAr")}
                           className="mt-1"
                         />
                       </div>
@@ -4013,7 +4013,7 @@ export default function Definitions() {
                               code: e.target.value,
                             })
                           }
-                          placeholder="كود الفئة (اختياري)"
+                          placeholder={t("definitions.form.categoryCodeOptional")}
                           className="mt-1"
                         />
                       </div>
@@ -4029,11 +4029,11 @@ export default function Definitions() {
                           }
                         >
                           <SelectTrigger className="mt-1">
-                            <SelectValue placeholder="اختر الفئة الرئيسية" />
+                            <SelectValue placeholder={t("definitions.form.selectParentCategory")} />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="none">
-                              بدون فئة رئيسية
+                              {t("definitions.form.noParentCategory")}
                             </SelectItem>
                             {Array.isArray(categories) &&
                               categories
@@ -4068,7 +4068,7 @@ export default function Definitions() {
                             description: e.target.value,
                           })
                         }
-                        placeholder="وصف الفئة (اختياري)"
+                        placeholder={t("definitions.form.categoryDescOptional")}
                         className="mt-1"
                       />
                     </div>
@@ -4158,7 +4158,7 @@ export default function Definitions() {
                               name_ar: e.target.value,
                             })
                           }
-                          placeholder="اسم الصنف بالعربية"
+                          placeholder={t("definitions.form.itemNameAr")}
                           className="mt-1"
                         />
                       </div>
@@ -4184,7 +4184,7 @@ export default function Definitions() {
                           onChange={(e) =>
                             setItemForm({ ...itemForm, code: e.target.value })
                           }
-                          placeholder="كود الصنف"
+                          placeholder={t("definitions.form.itemCode")}
                           className="mt-1"
                         />
                       </div>
@@ -4197,10 +4197,10 @@ export default function Definitions() {
                           }
                         >
                           <SelectTrigger className="mt-1">
-                            <SelectValue placeholder="اختر الفئة" />
+                            <SelectValue placeholder={t("definitions.form.selectCategory")} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="none">بدون فئة</SelectItem>
+                            <SelectItem value="none">{t("definitions.form.noCategory")}</SelectItem>
                             {Array.isArray(categories) &&
                               categories
                                 .filter(
@@ -4288,7 +4288,7 @@ export default function Definitions() {
                           <div className="relative">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <Input
-                              placeholder="البحث بالاسم العربي أو الإنجليزي..."
+                              placeholder={t("definitions.form.searchByName")}
                               value={customerSearchTermInProducts}
                               onChange={(e) =>
                                 setCustomerSearchTermInProducts(e.target.value)
@@ -4307,10 +4307,10 @@ export default function Definitions() {
                             }
                           >
                             <SelectTrigger data-testid="select-customer-in-products">
-                              <SelectValue placeholder="اختر العميل" />
+                              <SelectValue placeholder={t("definitions.form.selectCustomer")} />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="none">اختر العميل</SelectItem>
+                              <SelectItem value="none">{t("definitions.form.selectCustomer")}</SelectItem>
                               {filteredCustomersInProducts.length > 0 ? (
                                 filteredCustomersInProducts
                                   .filter(
@@ -4332,8 +4332,8 @@ export default function Definitions() {
                               ) : (
                                 <div className="p-2 text-sm text-gray-500 text-center">
                                   {customerSearchTermInProducts 
-                                    ? "لا توجد نتائج للبحث"
-                                    : "جاري تحميل العملاء..."}
+                                    ? t("definitions.form.noSearchResults")
+                                    : t("definitions.form.loadingCustomers")}
                                 </div>
                               )}
                             </SelectContent>
@@ -4341,7 +4341,7 @@ export default function Definitions() {
                           <div className="text-xs text-gray-500 mt-1">
                             {filteredCustomersInProducts.length > 0 && (
                               <span>
-                                {filteredCustomersInProducts.length} عميل متاح
+                                {filteredCustomersInProducts.length} {t("definitions.form.customersAvailable")}
                               </span>
                             )}
                           </div>
@@ -4360,10 +4360,10 @@ export default function Definitions() {
                           }}
                         >
                           <SelectTrigger className="mt-1">
-                            <SelectValue placeholder="اختر الفئة" />
+                            <SelectValue placeholder={t("definitions.form.selectCategory")} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="none">اختر الفئة</SelectItem>
+                            <SelectItem value="none">{t("definitions.form.selectCategory")}</SelectItem>
                             {Array.isArray(categories) &&
                               categories
                                 .filter(
@@ -4404,13 +4404,13 @@ export default function Definitions() {
                               placeholder={
                                 !customerProductForm.category_id ||
                                 customerProductForm.category_id === "none"
-                                  ? "اختر الفئة أولاً"
-                                  : "اختر الصنف"
+                                  ? t("definitions.form.selectCategoryFirst")
+                                  : t("definitions.form.selectItem")
                               }
                             />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="none">اختر الصنف</SelectItem>
+                            <SelectItem value="none">{t("definitions.form.selectItem")}</SelectItem>
                             {Array.isArray(items) &&
                               items
                                 .filter(
@@ -4444,17 +4444,17 @@ export default function Definitions() {
                     {/* وصف الحجم والتثقيب */}
                     <div className="space-y-4">
                       <h4 className="text-lg sm:text-xl font-medium border-b border-gray-200 pb-2">
-                        مواصفات المنتج
+                        {t("definitions.form.productSpecs")}
                       </h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="size_caption">
-                            مقاس المنتج (يُحسب تلقائياً)
+                            {t("definitions.form.productSizeAuto")}
                           </Label>
                           <Input
                             id="size_caption"
                             value={customerProductForm.size_caption}
-                            placeholder="سيتم إنشاؤه تلقائياً: العرض × الطول"
+                            placeholder={t("definitions.form.autoGeneratedSize")}
                             className="mt-1 bg-gray-50"
                             readOnly
                           />
@@ -4471,7 +4471,7 @@ export default function Definitions() {
                             }
                           >
                             <SelectTrigger className="mt-1">
-                              <SelectValue placeholder="اختر نوع التخريم" />
+                              <SelectValue placeholder={t("definitions.form.selectPunchType")} />
                             </SelectTrigger>
                             <SelectContent>
                               {(() => {
@@ -4509,12 +4509,12 @@ export default function Definitions() {
                     {/* الأبعاد والقياسات بالترتيب المطلوب */}
                     <div className="space-y-4">
                       <h4 className="text-lg sm:text-xl font-medium border-b border-gray-200 pb-2">
-                        الأبعاد والقياسات
+                        {t("definitions.form.dimensionsMeasurements")}
                       </h4>
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                         <div>
                           <Label htmlFor="right_facing">
-                            الجانب الأيمن (سم)
+                            {t("definitions.form.rightSide")}
                           </Label>
                           <Input
                             id="right_facing"
@@ -4532,7 +4532,7 @@ export default function Definitions() {
                           />
                         </div>
                         <div>
-                          <Label htmlFor="width">العرض (سم)</Label>
+                          <Label htmlFor="width">{t("definitions.form.width")}</Label>
                           <Input
                             id="width"
                             type="number"
@@ -4550,7 +4550,7 @@ export default function Definitions() {
                         </div>
                         <div>
                           <Label htmlFor="left_facing">
-                            الجانب الأيسر (سم)
+                            {t("definitions.form.leftSide")}
                           </Label>
                           <Input
                             id="left_facing"
@@ -4568,7 +4568,7 @@ export default function Definitions() {
                           />
                         </div>
                         <div>
-                          <Label htmlFor="thickness">السماكة (ميكرون)</Label>
+                          <Label htmlFor="thickness">{t("definitions.form.thickness")}</Label>
                           <Input
                             id="thickness"
                             type="number"
@@ -4590,12 +4590,12 @@ export default function Definitions() {
                     {/* الطباعة والقطع */}
                     <div className="space-y-4">
                       <h4 className="text-lg sm:text-xl font-medium border-b border-gray-200 pb-2">
-                        مواصفات الطباعة والقطع
+                        {t("definitions.form.printingCuttingSpecs")}
                       </h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
                           <Label htmlFor="printing_cylinder">
-                            أسطوانة الطباعة
+                            {t("definitions.form.printingCylinder")}
                           </Label>
                           <Select
                             value={customerProductForm.printing_cylinder}
@@ -4607,7 +4607,7 @@ export default function Definitions() {
                             }
                           >
                             <SelectTrigger className="mt-1">
-                              <SelectValue placeholder="اختر الأسطوانة" />
+                              <SelectValue placeholder={t("definitions.form.selectCylinder")} />
                             </SelectTrigger>
                             <SelectContent>
                               {printingCylinderOptions
@@ -4631,7 +4631,7 @@ export default function Definitions() {
                         </div>
                         <div>
                           <Label htmlFor="cutting_length_cm">
-                            طول القطع (سم)
+                            {t("definitions.form.cuttingLength")}
                           </Label>
                           {(() => {
                             const selectedCat = Array.isArray(categories)
@@ -4650,7 +4650,7 @@ export default function Definitions() {
                                     cutting_length_cm: e.target.value,
                                   })
                                 }
-                                placeholder={isSufra ? "أدخل طول القطع بالسنتيمتر" : "يحسب تلقائياً"}
+                                placeholder={isSufra ? t("definitions.form.enterCuttingLength") : t("definitions.form.autoCalculated")}
                                 className="mt-1"
                                 disabled={!isSufra}
                               />
@@ -4669,11 +4669,11 @@ export default function Definitions() {
                             htmlFor="is_printed"
                             className="text-gray-600 text-sm"
                           >
-                            منتج مطبوع (يتم تحديده تلقائياً)
+                            {t("definitions.form.printedProduct")}
                           </Label>
                         </div>
                         <div>
-                          <Label htmlFor="cutting_unit">وحدة القطع</Label>
+                          <Label htmlFor="cutting_unit">{t("definitions.form.cuttingUnit")}</Label>
                           <Select
                             value={customerProductForm.cutting_unit || "none"}
                             onValueChange={(value) =>
@@ -4684,17 +4684,17 @@ export default function Definitions() {
                             }
                           >
                             <SelectTrigger className="mt-1">
-                              <SelectValue placeholder="اختر الوحدة" />
+                              <SelectValue placeholder={t("definitions.form.selectUnit")} />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="none">اختر الوحدة</SelectItem>
-                              <SelectItem value="كيلو">كيلو</SelectItem>
-                              <SelectItem value="رول">رول</SelectItem>
-                              <SelectItem value="باكت">باكت</SelectItem>
-                              <SelectItem value="كرتون">كرتون</SelectItem>
-                              <SelectItem value="قطعة">قطعة</SelectItem>
-                              <SelectItem value="كيس">كيس</SelectItem>
-                              <SelectItem value="غطاء">غطاء</SelectItem>
+                              <SelectItem value="none">{t("definitions.form.selectUnit")}</SelectItem>
+                              <SelectItem value="كيلو">{t("definitions.form.unitKilo")}</SelectItem>
+                              <SelectItem value="رول">{t("definitions.form.unitRoll")}</SelectItem>
+                              <SelectItem value="باكت">{t("definitions.form.unitPacket")}</SelectItem>
+                              <SelectItem value="كرتون">{t("definitions.form.unitCarton")}</SelectItem>
+                              <SelectItem value="قطعة">{t("definitions.form.unitPiece")}</SelectItem>
+                              <SelectItem value="كيس">{t("definitions.form.unitBag")}</SelectItem>
+                              <SelectItem value="غطاء">{t("definitions.form.unitCover")}</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -4704,11 +4704,11 @@ export default function Definitions() {
                     {/* المواد والخامات */}
                     <div className="space-y-4">
                       <h4 className="text-lg sm:text-xl font-medium border-b border-gray-200 pb-2">
-                        المواد والخامات
+                        {t("definitions.form.materialsRaw")}
                       </h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <Label htmlFor="raw_material">المادة الخام</Label>
+                          <Label htmlFor="raw_material">{t("definitions.form.rawMaterial")}</Label>
                           <Select
                             value={customerProductForm.raw_material}
                             onValueChange={(value) =>
@@ -4719,7 +4719,7 @@ export default function Definitions() {
                             }
                           >
                             <SelectTrigger className="mt-1">
-                              <SelectValue placeholder="اختر المادة الخام" />
+                              <SelectValue placeholder={t("definitions.form.selectRawMaterial")} />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="HDPE">HDPE</SelectItem>
@@ -4730,7 +4730,7 @@ export default function Definitions() {
                         </div>
                         <div>
                           <Label htmlFor="master_batch_id">
-                            لون الماستر باتش
+                            {t("definitions.form.masterBatchColor")}
                           </Label>
                           <Select
                             value={customerProductForm.master_batch_id}
@@ -4742,10 +4742,10 @@ export default function Definitions() {
                             }
                           >
                             <SelectTrigger className="mt-1">
-                              <SelectValue placeholder="اختر اللون" />
+                              <SelectValue placeholder={t("definitions.form.selectColor")} />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="none">بدون لون</SelectItem>
+                              <SelectItem value="none">{t("definitions.form.noColor")}</SelectItem>
                               {masterBatchColors
                                 .filter(
                                   (color) =>
@@ -4794,12 +4794,12 @@ export default function Definitions() {
                     {/* الأوزان والكميات */}
                     <div className="space-y-4">
                       <h4 className="text-lg sm:text-xl font-medium border-b border-gray-200 pb-2">
-                        الأوزان والكميات
+                        {t("definitions.form.weightsQuantities")}
                       </h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div>
                           <Label htmlFor="unit_weight_kg">
-                            وزن الوحدة (كغ)
+                            {t("definitions.form.unitWeight")}
                           </Label>
                           <Input
                             id="unit_weight_kg"
@@ -4817,7 +4817,7 @@ export default function Definitions() {
                           />
                         </div>
                         <div>
-                          <Label htmlFor="unit_quantity">التعبئة</Label>
+                          <Label htmlFor="unit_quantity">{t("definitions.form.packaging")}</Label>
                           <Input
                             id="unit_quantity"
                             type="number"
@@ -4834,14 +4834,14 @@ export default function Definitions() {
                         </div>
                         <div>
                           <Label htmlFor="package_weight_kg">
-                            وزن العبوة (كغ) - محسوب تلقائياً
+                            {t("definitions.form.packageWeightAuto")}
                           </Label>
                           <Input
                             id="package_weight_kg"
                             type="number"
                             step="0.01"
                             value={customerProductForm.package_weight_kg}
-                            placeholder="وزن الوحدة × كمية الوحدة"
+                            placeholder={t("definitions.form.unitWeightTimesQty")}
                             className="mt-1 bg-gray-50"
                             readOnly
                           />
@@ -4852,12 +4852,12 @@ export default function Definitions() {
                     {/* الكليشيهات والتصاميم */}
                     <div className="space-y-4">
                       <h4 className="text-lg sm:text-xl font-medium border-b border-gray-200 pb-2">
-                        الكليشيهات والتصاميم
+                        {t("definitions.form.clichesDesigns")}
                       </h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="cliche_front_design">
-                            تصميم الوجه الأمامي
+                            {t("definitions.form.frontDesign")}
                           </Label>
                           <div className="space-y-2">
                             <Input
@@ -4870,9 +4870,9 @@ export default function Definitions() {
                                   // Validate file size (max 5MB)
                                   if (file.size > 5 * 1024 * 1024) {
                                     toast({
-                                      title: "حجم الملف كبير جداً",
+                                      title: t("definitions.form.fileTooLarge"),
                                       description:
-                                        "يجب أن يكون حجم الصورة أقل من 5 ميجابايت",
+                                        t("definitions.form.imageSizeLimit"),
                                       variant: "destructive",
                                     });
                                     return;
@@ -4896,7 +4896,7 @@ export default function Definitions() {
                               <div className="relative">
                                 <img
                                   src={customerProductForm.cliche_front_design}
-                                  alt="التصميم الأمامي"
+                                  alt={t("definitions.form.frontDesign")}
                                   className="max-w-full max-h-32 object-contain border rounded-md bg-gray-50"
                                 />
                                 <Button
@@ -4920,7 +4920,7 @@ export default function Definitions() {
                         </div>
                         <div>
                           <Label htmlFor="cliche_back_design">
-                            تصميم الوجه الخلفي
+                            {t("definitions.form.backDesign")}
                           </Label>
                           <div className="space-y-2">
                             <Input
@@ -4933,9 +4933,9 @@ export default function Definitions() {
                                   // Validate file size (max 5MB)
                                   if (file.size > 5 * 1024 * 1024) {
                                     toast({
-                                      title: "حجم الملف كبير جداً",
+                                      title: t("definitions.form.fileTooLarge"),
                                       description:
-                                        "يجب أن يكون حجم الصورة أقل من 5 ميجابايت",
+                                        t("definitions.form.imageSizeLimit"),
                                       variant: "destructive",
                                     });
                                     return;
@@ -4959,7 +4959,7 @@ export default function Definitions() {
                               <div className="relative">
                                 <img
                                   src={customerProductForm.cliche_back_design}
-                                  alt="التصميم الخلفي"
+                                  alt={t("definitions.form.backDesign")}
                                   className="max-w-full max-h-32 object-contain border rounded-md bg-gray-50"
                                 />
                                 <Button
@@ -4987,7 +4987,7 @@ export default function Definitions() {
                     {/* ملاحظات */}
                     <div>
                       <Label htmlFor="notes" className="text-base">
-                        ملاحظات
+                        {t("definitions.form.notes")}
                       </Label>
                       <textarea
                         id="notes"
@@ -4998,7 +4998,7 @@ export default function Definitions() {
                             notes: e.target.value,
                           })
                         }
-                        placeholder="أي ملاحظات إضافية حول المنتج..."
+                        placeholder={t("definitions.form.notesPlaceholder")}
                         className="mt-2 w-full p-3 border border-gray-300 rounded-md resize-none text-right"
                         rows={4}
                         dir="rtl"
@@ -5107,7 +5107,7 @@ export default function Definitions() {
                               name_ar: e.target.value,
                             })
                           }
-                          placeholder="اسم الماكينة بالعربية"
+                          placeholder={t("definitions.form.machineNameAr")}
                           className="mt-1"
                         />
                       </div>
@@ -5140,10 +5140,10 @@ export default function Definitions() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="extruder">فيلم</SelectItem>
-                            <SelectItem value="cutting">قطع</SelectItem>
-                            <SelectItem value="printing">طباعة</SelectItem>
-                            <SelectItem value="packaging">تعبئة</SelectItem>
+                            <SelectItem value="extruder">{t("definitions.form.typeFilm")}</SelectItem>
+                            <SelectItem value="cutting">{t("definitions.form.typeCutting")}</SelectItem>
+                            <SelectItem value="printing">{t("definitions.form.typePrinting")}</SelectItem>
+                            <SelectItem value="packaging">{t("definitions.form.typePackaging")}</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -5159,10 +5159,10 @@ export default function Definitions() {
                           }
                         >
                           <SelectTrigger className="mt-1">
-                            <SelectValue placeholder="اختر القسم" />
+                            <SelectValue placeholder={t("definitions.form.selectSection")} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="none">بدون قسم</SelectItem>
+                            <SelectItem value="none">{t("definitions.form.noSection")}</SelectItem>
                             {Array.isArray(sections) &&
                               sections
                                 .filter(
@@ -5199,19 +5199,19 @@ export default function Definitions() {
                         }
                       >
                         <SelectTrigger className="mt-1" data-testid="select-machine-status">
-                          <SelectValue placeholder="اختر الحالة" />
+                          <SelectValue placeholder={t("definitions.form.selectStatus")} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="active">نشطة</SelectItem>
-                          <SelectItem value="maintenance">صيانة</SelectItem>
-                          <SelectItem value="down">متوقفة</SelectItem>
+                          <SelectItem value="active">{t("common.active")}</SelectItem>
+                          <SelectItem value="maintenance">{t("definitions.table.maintenance")}</SelectItem>
+                          <SelectItem value="down">{t("definitions.table.stopped")}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     {/* قدرة الإنتاج حسب الحجم */}
                     <div className="border-t pt-4 mt-4">
-                      <h3 className="text-sm font-medium mb-3">قدرة الإنتاج (كجم/ساعة)</h3>
+                      <h3 className="text-sm font-medium mb-3">{t("definitions.form.productionCapacity")}</h3>
                       <div className="grid grid-cols-3 gap-4">
                         <div>
                           <Label htmlFor="capacity_small">{t("definitions.machines.capacitySmall")}</Label>
@@ -5226,7 +5226,7 @@ export default function Definitions() {
                                 capacity_small_kg_per_hour: e.target.value,
                               })
                             }
-                            placeholder="كجم/ساعة"
+                            placeholder={t("common.kgPerHour")}
                             className="mt-1"
                             data-testid="input-capacity-small"
                           />
@@ -5244,7 +5244,7 @@ export default function Definitions() {
                                 capacity_medium_kg_per_hour: e.target.value,
                               })
                             }
-                            placeholder="كجم/ساعة"
+                            placeholder={t("common.kgPerHour")}
                             className="mt-1"
                             data-testid="input-capacity-medium"
                           />
@@ -5262,7 +5262,7 @@ export default function Definitions() {
                                 capacity_large_kg_per_hour: e.target.value,
                               })
                             }
-                            placeholder="كجم/ساعة"
+                            placeholder={t("common.kgPerHour")}
                             className="mt-1"
                             data-testid="input-capacity-large"
                           />
@@ -5328,7 +5328,7 @@ export default function Definitions() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="display_name_ar">
-                          الاسم بالعربية *
+                          {t("definitions.table.nameAr")} *
                         </Label>
                         <Input
                           id="display_name_ar"
@@ -5339,7 +5339,7 @@ export default function Definitions() {
                               display_name_ar: e.target.value,
                             })
                           }
-                          placeholder="اسم المستخدم بالعربية"
+                          placeholder={t("definitions.form.userNameAr")}
                           className="mt-1"
                         />
                       </div>
@@ -5378,7 +5378,7 @@ export default function Definitions() {
                       </div>
                       <div>
                         <Label htmlFor="password">
-                          كلمة المرور {editingItem ? "(اتركها فارغة إذا لم ترد تغييرها)" : "*"}
+                          {t("definitions.form.password")} {editingItem ? t("definitions.form.leaveBlank") : "*"}
                         </Label>
                         <div className="relative">
                           <Input
@@ -5391,7 +5391,7 @@ export default function Definitions() {
                                 password: e.target.value,
                               })
                             }
-                            placeholder={editingItem ? "أدخل كلمة مرور جديدة" : "أدخل كلمة المرور"}
+                            placeholder={editingItem ? t("definitions.form.enterNewPassword") : t("definitions.form.enterPassword")}
                             className="mt-1 pr-10"
                             data-testid="input-password"
                           />
@@ -5412,7 +5412,7 @@ export default function Definitions() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="phone">رقم الجوال</Label>
+                        <Label htmlFor="phone">{t("definitions.form.mobileNumber")}</Label>
                         <Input
                           id="phone"
                           type="tel"
@@ -5437,10 +5437,10 @@ export default function Definitions() {
                           }
                         >
                           <SelectTrigger className="mt-1">
-                            <SelectValue placeholder="اختر الدور" />
+                            <SelectValue placeholder={t("definitions.form.selectRole")} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="none">بدون دور</SelectItem>
+                            <SelectItem value="none">{t("definitions.form.noRole")}</SelectItem>
                             {Array.isArray(roles) &&
                               roles
                                 .filter(
@@ -5470,10 +5470,10 @@ export default function Definitions() {
                           }
                         >
                           <SelectTrigger className="mt-1">
-                            <SelectValue placeholder="اختر القسم" />
+                            <SelectValue placeholder={t("definitions.form.selectSection")} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="none">بدون قسم</SelectItem>
+                            <SelectItem value="none">{t("definitions.form.noSection")}</SelectItem>
                             {Array.isArray(sections) &&
                               sections
                                 .filter(
@@ -5504,7 +5504,7 @@ export default function Definitions() {
                           }
                         >
                           <SelectTrigger className="mt-1">
-                            <SelectValue placeholder="اختر الحالة" />
+                            <SelectValue placeholder={t("definitions.form.selectStatus")} />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="active">{t("definitions.active")}</SelectItem>
@@ -5575,18 +5575,18 @@ export default function Definitions() {
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>
-                      {editingItem ? "تعديل لون الماستر باتش" : "إضافة لون جديد"}
+                      {editingItem ? t("definitions.masterBatch.editColor") : t("definitions.masterBatch.addNew")}
                     </DialogTitle>
                     <DialogDescription>
                       {editingItem
-                        ? "قم بتعديل بيانات اللون"
-                        : "أدخل بيانات اللون الجديد"}
+                        ? t("definitions.masterBatch.editColorDesc")
+                        : t("definitions.masterBatch.addColorDesc")}
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="color_id">كود اللون *</Label>
+                        <Label htmlFor="color_id">{t("definitions.masterBatch.colorCode")} *</Label>
                         <Input
                           id="color_id"
                           value={masterBatchColorForm.id}
@@ -5596,13 +5596,13 @@ export default function Definitions() {
                               id: e.target.value,
                             })
                           }
-                          placeholder="مثال: White, Red, Blue"
+                          placeholder={t("definitions.masterBatch.colorCodePlaceholder")}
                           className="mt-1"
                           disabled={!!editingItem}
                         />
                       </div>
                       <div>
-                        <Label htmlFor="brand">المورد</Label>
+                        <Label htmlFor="brand">{t("definitions.masterBatch.supplier")}</Label>
                         <Input
                           id="brand"
                           value={masterBatchColorForm.brand}
@@ -5612,14 +5612,14 @@ export default function Definitions() {
                               brand: e.target.value,
                             })
                           }
-                          placeholder="اسم المورد"
+                          placeholder={t("definitions.masterBatch.supplierName")}
                           className="mt-1"
                         />
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="name_ar">الاسم بالعربية *</Label>
+                        <Label htmlFor="name_ar">{t("definitions.table.nameAr")} *</Label>
                         <Input
                           id="name_ar"
                           value={masterBatchColorForm.name_ar}
@@ -5629,12 +5629,12 @@ export default function Definitions() {
                               name_ar: e.target.value,
                             })
                           }
-                          placeholder="الاسم بالعربية"
+                          placeholder={t("definitions.table.nameAr")}
                           className="mt-1"
                         />
                       </div>
                       <div>
-                        <Label htmlFor="name">الاسم بالإنجليزية *</Label>
+                        <Label htmlFor="name">{t("definitions.table.nameEn")} *</Label>
                         <Input
                           id="name"
                           value={masterBatchColorForm.name}
@@ -5651,7 +5651,7 @@ export default function Definitions() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="color_hex">لون العرض *</Label>
+                        <Label htmlFor="color_hex">{t("definitions.masterBatch.displayColor")} *</Label>
                         <div className="flex items-center gap-2 mt-1">
                           <input
                             type="color"
@@ -5679,7 +5679,7 @@ export default function Definitions() {
                         </div>
                       </div>
                       <div>
-                        <Label htmlFor="text_color">لون النص</Label>
+                        <Label htmlFor="text_color">{t("definitions.masterBatch.textColor")}</Label>
                         <div className="flex items-center gap-2 mt-1">
                           <input
                             type="color"
@@ -5709,7 +5709,7 @@ export default function Definitions() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="aliases">أكواد بديلة</Label>
+                        <Label htmlFor="aliases">{t("definitions.masterBatch.aliases")}</Label>
                         <Input
                           id="aliases"
                           value={masterBatchColorForm.aliases}
@@ -5719,15 +5719,15 @@ export default function Definitions() {
                               aliases: e.target.value,
                             })
                           }
-                          placeholder="أكواد مفصولة بفاصلة (مثال: PT-111111,OLD-WHITE)"
+                          placeholder={t("definitions.masterBatch.aliasesPlaceholder")}
                           className="mt-1"
                         />
                         <p className="text-xs text-gray-500 mt-1">
-                          للتوافق مع الأكواد القديمة
+                          {t("definitions.masterBatch.aliasesHint")}
                         </p>
                       </div>
                       <div>
-                        <Label htmlFor="sort_order">ترتيب العرض</Label>
+                        <Label htmlFor="sort_order">{t("definitions.masterBatch.sortOrder")}</Label>
                         <Input
                           id="sort_order"
                           type="number"
@@ -5756,10 +5756,10 @@ export default function Definitions() {
                         }
                         className="w-4 h-4"
                       />
-                      <Label htmlFor="is_active">نشط</Label>
+                      <Label htmlFor="is_active">{t("common.active")}</Label>
                     </div>
                     <div className="p-4 bg-gray-50 rounded-lg">
-                      <p className="text-sm text-gray-600 mb-2">معاينة اللون:</p>
+                      <p className="text-sm text-gray-600 mb-2">{t("definitions.masterBatch.preview")}:</p>
                       <div className="flex items-center gap-4">
                         <div
                           className="w-16 h-16 rounded-lg border-2 flex items-center justify-center text-sm font-medium shadow-md"
@@ -5769,12 +5769,12 @@ export default function Definitions() {
                             borderColor: masterBatchColorForm.color_hex === "#ffffff" ? "#e5e7eb" : masterBatchColorForm.color_hex,
                           }}
                         >
-                          {masterBatchColorForm.name_ar?.substring(0, 4) || "لون"}
+                          {masterBatchColorForm.name_ar?.substring(0, 4) || t("definitions.masterBatch.color")}
                         </div>
                         <div>
-                          <p className="font-medium">{masterBatchColorForm.name_ar || "الاسم بالعربية"}</p>
+                          <p className="font-medium">{masterBatchColorForm.name_ar || t("definitions.table.nameAr")}</p>
                           <p className="text-sm text-gray-500">{masterBatchColorForm.name || "English Name"}</p>
-                          <p className="text-xs text-gray-400">{masterBatchColorForm.id || "الكود"}</p>
+                          <p className="text-xs text-gray-400">{masterBatchColorForm.id || t("definitions.table.code")}</p>
                         </div>
                       </div>
                     </div>
@@ -5790,8 +5790,8 @@ export default function Definitions() {
                       onClick={() => {
                         if (!masterBatchColorForm.id || !masterBatchColorForm.name || !masterBatchColorForm.name_ar) {
                           toast({
-                            title: "خطأ",
-                            description: "يرجى ملء جميع الحقول المطلوبة",
+                            title: t("common.error"),
+                            description: t("definitions.masterBatch.fillRequired"),
                             variant: "destructive",
                           });
                           return;
@@ -5814,7 +5814,7 @@ export default function Definitions() {
                       updateMasterBatchColorMutation.isPending ? (
                         <>
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          {editingItem ? "جاري التحديث..." : "جاري الحفظ..."}
+                          {editingItem ? t("definitions.masterBatch.updating") : t("definitions.masterBatch.saving")}
                         </>
                       ) : editingItem ? (
                         t("definitions.update")

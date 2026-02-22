@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../hooks/use-auth";
 import { userHasPermission } from "../utils/roleUtils";
 import type { PermissionKey } from "../../../shared/permissions";
@@ -74,6 +75,7 @@ const reportsTabPermissions: { tab: string; permissions: PermissionKey[] }[] = [
 ];
 
 export default function Reports() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
   const [selectedPeriod, setSelectedPeriod] = useState("month");
@@ -185,27 +187,27 @@ export default function Reports() {
   const reportTypes = [
     {
       value: "production",
-      label: "تقارير الإنتاج",
+      labelKey: "reports.types.production",
       icon: <Package className="w-4 h-4" />,
     },
     {
       value: "quality",
-      label: "تقارير الجودة",
+      labelKey: "reports.types.quality",
       icon: <CheckCircle2 className="w-4 h-4" />,
     },
     {
       value: "maintenance",
-      label: "تقارير الصيانة",
+      labelKey: "reports.types.maintenance",
       icon: <Settings className="w-4 h-4" />,
     },
     {
       value: "hr",
-      label: "تقارير الموارد البشرية",
+      labelKey: "reports.types.hr",
       icon: <Users className="w-4 h-4" />,
     },
     {
       value: "financial",
-      label: "التقارير المالية",
+      labelKey: "reports.types.financial",
       icon: <BarChart3 className="w-4 h-4" />,
     },
   ];
@@ -284,27 +286,27 @@ export default function Reports() {
       case "percentage":
         return `${safeValue.toFixed(1)}%`;
       case "currency":
-        return `${formatNumberWithCommas(safeValue)} ريال`;
+        return `${formatNumberWithCommas(safeValue)} ${t('common.sar')}`;
       default:
         return formatNumberWithCommas(safeValue);
     }
   };
 
   return (
-    <PageLayout title="التقارير والتحليلات" description="تقارير شاملة حول الأداء والإنتاجية">
+    <PageLayout title={t("reports.title")} description={t("reports.description")}>
       {/* Report Controls */}
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Filter className="w-5 h-5" />
-                خيارات التقرير
+                {t('reports.reportOptions')}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-1 block">
-                    نوع التقرير
+                    {t('reports.reportType')}
                   </label>
                   <Select value={reportType} onValueChange={setReportType}>
                     <SelectTrigger>
@@ -318,7 +320,7 @@ export default function Reports() {
                         >
                           <div className="flex items-center gap-2">
                             {type.icon}
-                            {type.label}
+                            {t(type.labelKey)}
                           </div>
                         </SelectItem>
                       ))}
@@ -328,7 +330,7 @@ export default function Reports() {
 
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-1 block">
-                    الفترة الزمنية
+                    {t('reports.timePeriod')}
                   </label>
                   <Select
                     value={selectedPeriod}
@@ -338,18 +340,18 @@ export default function Reports() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="week">هذا الأسبوع</SelectItem>
-                      <SelectItem value="month">هذا الشهر</SelectItem>
-                      <SelectItem value="quarter">هذا الربع</SelectItem>
-                      <SelectItem value="year">هذا العام</SelectItem>
-                      <SelectItem value="custom">فترة مخصصة</SelectItem>
+                      <SelectItem value="week">{t('reports.periods.week')}</SelectItem>
+                      <SelectItem value="month">{t('reports.periods.month')}</SelectItem>
+                      <SelectItem value="quarter">{t('reports.periods.quarter')}</SelectItem>
+                      <SelectItem value="year">{t('reports.periods.year')}</SelectItem>
+                      <SelectItem value="custom">{t('reports.periods.custom')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-1 block">
-                    من تاريخ
+                    {t('reports.fromDate')}
                   </label>
                   <Popover>
                     <PopoverTrigger asChild>
@@ -360,7 +362,7 @@ export default function Reports() {
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         {dateRange.from
                           ? format(dateRange.from, "PPP", { locale: ar })
-                          : "اختر التاريخ"}
+                          : t('reports.selectDate')}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
@@ -382,7 +384,7 @@ export default function Reports() {
                     className="flex-1"
                   >
                     <Download className="w-4 h-4 mr-2" />
-                    تصدير Excel
+                    {t('reports.exportExcel')}
                   </Button>
                   <Button
                     variant="outline"
@@ -416,7 +418,7 @@ export default function Reports() {
                     <div className="flex items-center gap-1">
                       {type.icon}
                       <span className="hidden sm:inline">
-                        {type.label.split(" ")[1]}
+                        {t(type.labelKey)}
                       </span>
                     </div>
                   </TabsTrigger>
@@ -432,7 +434,7 @@ export default function Reports() {
                   data-testid="loading-production"
                 >
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="mt-2 text-gray-600">جاري تحميل التقارير...</p>
+                  <p className="mt-2 text-gray-600">{t('reports.loading')}</p>
                 </div>
               ) : (
                 <>
@@ -443,53 +445,53 @@ export default function Reports() {
                       className="mb-6"
                       metrics={[
                         {
-                          title: "إجمالي الإنتاج",
+                          title: t("reports.production.totalProduction"),
                           value: formatNumberWithCommas(
                             dashboardData.data.realTime?.currentStats
                               ?.daily_weight || 0,
                           ),
-                          description: "كيلوجرام",
+                          description: t("reports.production.kilograms"),
                           icon: <Package className="w-5 h-5" />,
                           trend: {
                             value: 5.2,
                             isPositive: true,
-                            label: "من الأسبوع الماضي",
+                            label: t("reports.production.fromLastWeek"),
                           },
                         },
                         {
-                          title: "كفاءة الإنتاج",
+                          title: t("reports.production.efficiency"),
                           value: `${safeToFixed(dashboardData.data.realTime?.currentStats?.avg_efficiency || 90)}%`,
-                          description: "متوسط الكفاءة",
+                          description: t("reports.production.avgEfficiency"),
                           icon: <Target className="w-5 h-5" />,
                           trend: {
                             value: 3.1,
                             isPositive: true,
-                            label: "تحسن",
+                            label: t("reports.production.improved"),
                           },
                         },
                         {
-                          title: "الطلبات النشطة",
+                          title: t("reports.production.activeOrders"),
                           value: formatNumber(
                             dashboardData.data.realTime?.currentStats
                               ?.active_orders || 0,
                           ),
-                          description: "طلبات قيد التنفيذ",
+                          description: t("reports.production.ordersInProgress"),
                           icon: <Activity className="w-5 h-5" />,
                           trend: {
                             value: 0,
                             isPositive: true,
-                            label: "مستقر",
+                            label: t("reports.production.stable"),
                           },
                         },
                         {
-                          title: "معدل الهدر",
+                          title: t("reports.production.wasteRate"),
                           value: `${safeToFixed(((dashboardData.data.realTime?.currentStats?.current_waste || 0) / Math.max(dashboardData.data.realTime?.currentStats?.daily_weight || 1, 1)) * 100)}%`,
-                          description: "نسبة الهدر",
+                          description: t("reports.production.wastePercentage"),
                           icon: <AlertTriangle className="w-5 h-5" />,
                           trend: {
                             value: 1.8,
                             isPositive: false,
-                            label: "يحتاج تحسين",
+                            label: t("reports.production.needsImprovement"),
                           },
                         },
                       ]}
@@ -502,14 +504,14 @@ export default function Reports() {
                       dashboardData.data.machineUtilization && (
                         <InteractiveBarChart
                           data={dashboardData.data.machineUtilization}
-                          title="إنتاجية المكائن"
-                          description="إجمالي الإنتاج لكل ماكينة بالكيلوجرام"
+                          title={t("reports.production.machineProductivity")}
+                          description={t("reports.production.totalProductionPerMachine")}
                           xAxisKey="machine_name"
                           yAxisKey="total_weight"
                           barColor="#3b82f6"
                           height={350}
                           formatValue={(value) =>
-                            formatChartValue(value, "number") + " كج"
+                            formatChartValue(value, "number") + " " + t('common.kg')
                           }
                           className="h-full"
                         />
@@ -520,13 +522,13 @@ export default function Reports() {
                       dashboardData.data.productionEfficiency?.trends && (
                         <InteractiveLineChart
                           data={dashboardData.data.productionEfficiency.trends}
-                          title="اتجاهات الكفاءة اليومية"
-                          description="تتبع كفاءة الإنتاج على مدار الأيام"
+                          title={t("reports.production.dailyEfficiencyTrends")}
+                          description={t("reports.production.trackEfficiencyOverDays")}
                           xAxisKey="date"
                           lines={[
                             {
                               key: "daily_efficiency",
-                              name: "الكفاءة اليومية",
+                              name: t("reports.production.dailyEfficiency"),
                               color: "#10b981",
                             },
                           ]}
@@ -555,10 +557,10 @@ export default function Reports() {
                                 acc.push({
                                   status:
                                     machine.status === "active"
-                                      ? "نشطة"
+                                      ? t("reports.production.statuses.active")
                                       : machine.status === "idle"
-                                        ? "متوقفة"
-                                        : "تحت الصيانة",
+                                        ? t("reports.production.statuses.idle")
+                                        : t("reports.production.statuses.maintenance"),
                                   count: 1,
                                 });
                               }
@@ -566,8 +568,8 @@ export default function Reports() {
                             },
                             [],
                           )}
-                          title="حالة المكائن"
-                          description="توزيع حالات المكائن"
+                          title={t("reports.production.machineStatus")}
+                          description={t("reports.production.machineStatusDist")}
                           nameKey="status"
                           valueKey="count"
                           height={300}
@@ -581,32 +583,32 @@ export default function Reports() {
                         <InteractiveBarChart
                           data={[
                             {
-                              stage: "البثق",
+                              stage: t("reports.production.stages.extrusion"),
                               count:
                                 dashboardData.data.realTime.queueStats
                                   .film_queue,
                             },
                             {
-                              stage: "الطباعة",
+                              stage: t("reports.production.stages.printing"),
                               count:
                                 dashboardData.data.realTime.queueStats
                                   .printing_queue,
                             },
                             {
-                              stage: "القطع",
+                              stage: t("reports.production.stages.cutting"),
                               count:
                                 dashboardData.data.realTime.queueStats
                                   .cutting_queue,
                             },
                             {
-                              stage: "في الانتظار",
+                              stage: t("reports.production.stages.pending"),
                               count:
                                 dashboardData.data.realTime.queueStats
                                   .pending_orders,
                             },
                           ]}
-                          title="طوابير الإنتاج"
-                          description="عدد الطلبات في كل مرحلة"
+                          title={t("reports.production.productionQueues")}
+                          description={t("reports.production.ordersPerStage")}
                           xAxisKey="stage"
                           yAxisKey="count"
                           barColor="#8b5cf6"
@@ -621,28 +623,28 @@ export default function Reports() {
                       advancedMetrics.data.oeeMetrics.length > 0 && (
                         <ComboChart
                           data={advancedMetrics.data.oeeMetrics}
-                          title="مؤشر فعالية المعدات (OEE)"
-                          description="التوفر والأداء والجودة"
+                          title={t("reports.production.oeeTitle")}
+                          description={t("reports.production.oeeDescription")}
                           xAxisKey="machine_name"
                           elements={[
                             {
                               type: "bar",
                               key: "availability",
-                              name: "التوفر",
+                              name: t("reports.production.availability"),
                               color: "#3b82f6",
                               yAxisId: "left",
                             },
                             {
                               type: "bar",
                               key: "performance",
-                              name: "الأداء",
+                              name: t("reports.production.performance"),
                               color: "#10b981",
                               yAxisId: "left",
                             },
                             {
                               type: "line",
                               key: "oee",
-                              name: "OEE الإجمالي",
+                              name: t("reports.production.totalOEE"),
                               color: "#f59e0b",
                               yAxisId: "right",
                             },
@@ -651,7 +653,7 @@ export default function Reports() {
                           formatValue={(value) =>
                             formatChartValue(value, "percentage")
                           }
-                          leftAxisLabel="النسبة %"
+                          leftAxisLabel={t("reports.production.percentageLabel")}
                           rightAxisLabel="OEE %"
                         />
                       )}
@@ -665,7 +667,7 @@ export default function Reports() {
                         <CardHeader>
                           <CardTitle className="flex items-center gap-2">
                             <AlertTriangle className="w-5 h-5 text-amber-500" />
-                            تنبيهات الإنتاج
+                            {t("reports.production.alerts")}
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -704,10 +706,10 @@ export default function Reports() {
                                     }
                                   >
                                     {alert.priority === "critical"
-                                      ? "حرج"
+                                      ? t("reports.priorities.critical")
                                       : alert.priority === "high"
-                                        ? "عالي"
-                                        : "متوسط"}
+                                        ? t("reports.priorities.high")
+                                        : t("reports.priorities.medium")}
                                   </Badge>
                                 </div>
                               ))}
@@ -725,7 +727,7 @@ export default function Reports() {
                 <div className="text-center py-8" data-testid="loading-quality">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                   <p className="mt-2 text-gray-600">
-                    جاري تحميل تقارير الجودة...
+                    {t('reports.loading')}
                   </p>
                 </div>
               ) : (
@@ -737,53 +739,53 @@ export default function Reports() {
                       className="mb-6"
                       metrics={[
                         {
-                          title: "معدل الجودة",
+                          title: t("reports.quality.qualityRate"),
                           value: `${safeToFixed(advancedMetrics.data.qualityMetrics?.quality_rate || 95)}%`,
-                          description: "نسبة الإنتاج السليم",
+                          description: t("reports.quality.goodProductionRate"),
                           icon: <CheckCircle2 className="w-5 h-5" />,
                           trend: {
                             value: 2.1,
                             isPositive: true,
-                            label: "تحسن",
+                            label: t("reports.production.improved"),
                           },
                         },
                         {
-                          title: "إجمالي الرولات",
+                          title: t("reports.quality.totalRolls"),
                           value: formatNumber(
                             advancedMetrics.data.qualityMetrics?.total_rolls ||
                               0,
                           ),
-                          description: "رولات مفحوصة",
+                          description: t("reports.quality.inspectedRolls"),
                           icon: <Package className="w-5 h-5" />,
                           trend: {
                             value: 15.3,
                             isPositive: true,
-                            label: "زيادة",
+                            label: t("reports.quality.increase"),
                           },
                         },
                         {
-                          title: "الرولات المعيبة",
+                          title: t("reports.quality.defectiveRolls"),
                           value: formatNumber(
                             advancedMetrics.data.qualityMetrics
                               ?.defective_rolls || 0,
                           ),
-                          description: "تحتاج إعادة عمل",
+                          description: t("reports.quality.needsRework"),
                           icon: <AlertTriangle className="w-5 h-5" />,
                           trend: {
                             value: 3.2,
                             isPositive: false,
-                            label: "انخفاض",
+                            label: t("reports.quality.decrease"),
                           },
                         },
                         {
-                          title: "متوسط الهدر",
+                          title: t("reports.quality.avgWaste"),
                           value: `${safeToFixed(advancedMetrics.data.qualityMetrics?.avg_waste_percentage || 0)}%`,
-                          description: "نسبة الهدر",
+                          description: t("reports.production.wastePercentage"),
                           icon: <Activity className="w-5 h-5" />,
                           trend: {
                             value: 1.5,
                             isPositive: false,
-                            label: "يحتاج تحسين",
+                            label: t("reports.production.needsImprovement"),
                           },
                         },
                       ]}
@@ -796,7 +798,7 @@ export default function Reports() {
                       <ComboChart
                         data={[
                           {
-                            period: "هذا الشهر",
+                            period: t("reports.periods.month"),
                             quality_rate:
                               advancedMetrics.data.qualityMetrics
                                 ?.quality_rate || 95,
@@ -809,26 +811,26 @@ export default function Reports() {
                                 ?.rework_rate || 2,
                           },
                         ]}
-                        title="مؤشرات الجودة الشاملة"
-                        description="معدل الجودة مقابل معدل العيوب"
+                        title={t("reports.quality.comprehensiveIndicators")}
+                        description={t("reports.quality.qualityVsDefects")}
                         xAxisKey="period"
                         elements={[
                           {
                             type: "bar",
                             key: "quality_rate",
-                            name: "معدل الجودة",
+                            name: t("reports.quality.qualityRate"),
                             color: "#10b981",
                           },
                           {
                             type: "bar",
                             key: "defect_rate",
-                            name: "معدل العيوب",
+                            name: t("reports.quality.defectRate"),
                             color: "#ef4444",
                           },
                           {
                             type: "line",
                             key: "rework_rate",
-                            name: "معدل إعادة العمل",
+                            name: t("reports.quality.reworkRate"),
                             color: "#f59e0b",
                           },
                         ]}
@@ -836,7 +838,7 @@ export default function Reports() {
                         formatValue={(value) =>
                           formatChartValue(value, "percentage")
                         }
-                        leftAxisLabel="النسبة %"
+                        leftAxisLabel={t("reports.production.percentageLabel")}
                       />
                     )}
 
@@ -846,28 +848,28 @@ export default function Reports() {
                         <InteractiveBarChart
                           data={[
                             {
-                              stage: "البثق → الطباعة",
+                              stage: t("reports.quality.extrusionToPrinting"),
                               time: advancedMetrics.data.cycleTimeStats
                                 .avg_film_to_printing,
                             },
                             {
-                              stage: "الطباعة → القطع",
+                              stage: t("reports.quality.printingToCutting"),
                               time: advancedMetrics.data.cycleTimeStats
                                 .avg_printing_to_cutting,
                             },
                             {
-                              stage: "إجمالي الدورة",
+                              stage: t("reports.quality.totalCycle"),
                               time: advancedMetrics.data.cycleTimeStats
                                 .avg_total_cycle_time,
                             },
                           ]}
-                          title="تحليل أوقات الدورة"
-                          description="متوسط الوقت لكل مرحلة بالساعات"
+                          title={t("reports.quality.cycleTimeAnalysis")}
+                          description={t("reports.quality.avgTimePerStage")}
                           xAxisKey="stage"
                           yAxisKey="time"
                           barColor="#6366f1"
                           height={350}
-                          formatValue={(value) => `${safeToFixed(value)} ساعة`}
+                          formatValue={(value) => `${safeToFixed(value)} ${t('common.hour')}`}
                         />
                       )}
                   </div>
@@ -879,7 +881,7 @@ export default function Reports() {
                       <Card className="mb-6">
                         <CardHeader>
                           <CardTitle>
-                            أداء المكائن - فعالية المعدات الشاملة (OEE)
+                            {t("reports.quality.machineOEEPerformance")}
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -910,7 +912,7 @@ export default function Reports() {
                 >
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                   <p className="mt-2 text-gray-600">
-                    جاري تحميل تقارير الصيانة...
+                    {t('reports.loading')}
                   </p>
                 </div>
               ) : (
@@ -922,56 +924,56 @@ export default function Reports() {
                       className="mb-6"
                       metrics={[
                         {
-                          title: "طلبات الصيانة",
+                          title: t("reports.maintenance.requests"),
                           value: formatNumber(
                             maintenanceReports.data.maintenanceStats
                               ?.total_requests || 0,
                           ),
-                          description: "إجمالي الطلبات",
+                          description: t("reports.maintenance.totalRequests"),
                           icon: <Settings className="w-5 h-5" />,
                           trend: {
                             value: 8.3,
                             isPositive: false,
-                            label: "انخفاض",
+                            label: t("reports.quality.decrease"),
                           },
                         },
                         {
-                          title: "الطلبات المكتملة",
+                          title: t("reports.maintenance.completedRequests"),
                           value: formatNumber(
                             maintenanceReports.data.maintenanceStats
                               ?.completed_requests || 0,
                           ),
-                          description: "تم الانتهاء",
+                          description: t("reports.maintenance.completed"),
                           icon: <CheckCircle2 className="w-5 h-5" />,
                           trend: {
                             value: 12.5,
                             isPositive: true,
-                            label: "تحسن",
+                            label: t("reports.production.improved"),
                           },
                         },
                         {
-                          title: "متوسط وقت الإصلاح",
+                          title: t("reports.maintenance.avgRepairTime"),
                           value: `${safeToFixed(maintenanceReports.data.maintenanceStats?.avg_resolution_time || 0)}`,
-                          description: "ساعة",
+                          description: t("common.hour"),
                           icon: <Clock className="w-5 h-5" />,
                           trend: {
                             value: 5.7,
                             isPositive: false,
-                            label: "تقليل الوقت",
+                            label: t("reports.maintenance.reducedTime"),
                           },
                         },
                         {
-                          title: "الطلبات الحرجة",
+                          title: t("reports.maintenance.criticalRequests"),
                           value: formatNumber(
                             maintenanceReports.data.maintenanceStats
                               ?.critical_requests || 0,
                           ),
-                          description: "تحتاج انتباه",
+                          description: t("reports.maintenance.needsAttention"),
                           icon: <AlertTriangle className="w-5 h-5" />,
                           trend: {
                             value: 15.2,
                             isPositive: false,
-                            label: "انخفاض",
+                            label: t("reports.quality.decrease"),
                           },
                         },
                       ]}
@@ -984,8 +986,8 @@ export default function Reports() {
                       maintenanceReports.data.costAnalysis && (
                         <InteractiveBarChart
                           data={maintenanceReports.data.costAnalysis}
-                          title="تحليل تكاليف الصيانة"
-                          description="التكلفة التقديرية لصيانة كل ماكينة"
+                          title={t("reports.maintenance.costAnalysis")}
+                          description={t("reports.maintenance.estimatedCostPerMachine")}
                           xAxisKey="machine_name"
                           yAxisKey="estimated_cost"
                           barColor="#f59e0b"
@@ -1002,36 +1004,36 @@ export default function Reports() {
                         <InteractiveAreaChart
                           data={[
                             {
-                              type: "التوقف المخطط",
+                              type: t("reports.maintenance.plannedDowntime"),
                               hours:
                                 maintenanceReports.data.downtimeAnalysis
                                   .planned_downtime,
                             },
                             {
-                              type: "التوقف الطارئ",
+                              type: t("reports.maintenance.unplannedDowntime"),
                               hours:
                                 maintenanceReports.data.downtimeAnalysis
                                   .unplanned_downtime,
                             },
                             {
-                              type: "الإجمالي",
+                              type: t("reports.maintenance.total"),
                               hours:
                                 maintenanceReports.data.downtimeAnalysis
                                   .total_downtime,
                             },
                           ]}
-                          title="تحليل فترات التوقف"
-                          description="ساعات التوقف حسب النوع"
+                          title={t("reports.maintenance.downtimeAnalysis")}
+                          description={t("reports.maintenance.downtimeByType")}
                           xAxisKey="type"
                           areas={[
                             {
                               key: "hours",
-                              name: "الساعات",
+                              name: t("common.hours"),
                               color: "#ef4444",
                             },
                           ]}
                           height={350}
-                          formatValue={(value) => `${safeToFixed(value)} ساعة`}
+                          formatValue={(value) => `${safeToFixed(value)} ${t('common.hour')}`}
                         />
                       )}
                   </div>
@@ -1040,7 +1042,7 @@ export default function Reports() {
                   {maintenanceReports?.success && (
                     <Card>
                       <CardHeader>
-                        <CardTitle>متوسط الوقت بين الأعطال (MTBF)</CardTitle>
+                        <CardTitle>{t("reports.maintenance.mtbf")}</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="flex items-center justify-center p-8">
@@ -1052,9 +1054,9 @@ export default function Reports() {
                                 0,
                               )}
                             </div>
-                            <div className="text-lg text-gray-600">ساعة</div>
+                            <div className="text-lg text-gray-600">{t("common.hour")}</div>
                             <div className="text-sm text-gray-500 mt-2">
-                              متوسط الوقت بين الأعطال للمكائن
+                              {t("reports.maintenance.mtbfDescription")}
                             </div>
                           </div>
                         </div>
@@ -1071,7 +1073,7 @@ export default function Reports() {
                 <div className="text-center py-8" data-testid="loading-hr">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                   <p className="mt-2 text-gray-600">
-                    جاري تحميل تقارير الموارد البشرية...
+                    {t('reports.loading')}
                   </p>
                 </div>
               ) : (
@@ -1083,49 +1085,49 @@ export default function Reports() {
                       className="mb-6"
                       metrics={[
                         {
-                          title: "معدل الحضور",
+                          title: t("reports.hr.attendanceRate"),
                           value: "94.5%",
-                          description: "نسبة الحضور العامة",
+                          description: t("reports.hr.overallAttendance"),
                           icon: <Users className="w-5 h-5" />,
                           trend: {
                             value: 2.1,
                             isPositive: true,
-                            label: "تحسن",
+                            label: t("reports.production.improved"),
                           },
                         },
                         {
-                          title: "برامج التدريب",
+                          title: t("reports.hr.trainingPrograms"),
                           value: formatNumber(
                             hrReports.data.trainingStats?.total_programs || 0,
                           ),
-                          description: "برامج نشطة",
+                          description: t("reports.hr.activePrograms"),
                           icon: <Package className="w-5 h-5" />,
                           trend: {
                             value: 15.3,
                             isPositive: true,
-                            label: "زيادة",
+                            label: t("reports.quality.increase"),
                           },
                         },
                         {
-                          title: "معدل الإكمال",
+                          title: t("reports.hr.completionRate"),
                           value: `${safeToFixed(hrReports.data.trainingStats?.completion_rate || 0)}%`,
-                          description: "إكمال التدريب",
+                          description: t("reports.hr.trainingCompletion"),
                           icon: <Target className="w-5 h-5" />,
                           trend: {
                             value: 8.7,
                             isPositive: true,
-                            label: "ممتاز",
+                            label: t("reports.hr.excellent"),
                           },
                         },
                         {
-                          title: "كفاءة الفريق",
+                          title: t("reports.hr.teamEfficiency"),
                           value: "91.2%",
-                          description: "متوسط الأداء",
+                          description: t("reports.hr.avgPerformance"),
                           icon: <Zap className="w-5 h-5" />,
                           trend: {
                             value: 4.3,
                             isPositive: true,
-                            label: "تحسن مستمر",
+                            label: t("reports.hr.continuousImprovement"),
                           },
                         },
                       ]}
@@ -1137,8 +1139,8 @@ export default function Reports() {
                     {hrReports?.success && hrReports.data.attendanceStats && (
                       <InteractiveBarChart
                         data={hrReports.data.attendanceStats.slice(0, 10)}
-                        title="تحليل الحضور والغياب"
-                        description="معدل الحضور لكل موظف"
+                        title={t("reports.hr.attendanceAnalysis")}
+                        description={t("reports.hr.attendancePerEmployee")}
                         xAxisKey="display_name_ar"
                         yAxisKey="attendance_rate"
                         barColor="#10b981"
@@ -1153,21 +1155,21 @@ export default function Reports() {
                     {hrReports?.success && hrReports.data.performanceStats && (
                       <ComboChart
                         data={hrReports.data.performanceStats.slice(0, 8)}
-                        title="الأداء مقابل التدريب"
-                        description="كفاءة الإنتاج ومعدل الأخطاء"
+                        title={t("reports.hr.performanceVsTraining")}
+                        description={t("reports.hr.efficiencyAndErrors")}
                         xAxisKey="display_name_ar"
                         elements={[
                           {
                             type: "bar",
                             key: "production_efficiency",
-                            name: "كفاءة الإنتاج",
+                            name: t("reports.hr.productionEfficiency"),
                             color: "#3b82f6",
                             yAxisId: "left",
                           },
                           {
                             type: "line",
                             key: "error_rate",
-                            name: "معدل الأخطاء",
+                            name: t("reports.hr.errorRate"),
                             color: "#ef4444",
                             yAxisId: "right",
                           },
@@ -1179,8 +1181,8 @@ export default function Reports() {
                         formatRightAxis={(value) =>
                           formatChartValue(value, "percentage")
                         }
-                        leftAxisLabel="الكفاءة %"
-                        rightAxisLabel="الأخطاء %"
+                        leftAxisLabel={t("reports.hr.efficiencyLabel")}
+                        rightAxisLabel={t("reports.hr.errorsLabel")}
                       />
                     )}
                   </div>
@@ -1189,7 +1191,7 @@ export default function Reports() {
                   {hrReports?.success && hrReports.data.trainingStats && (
                     <Card>
                       <CardHeader>
-                        <CardTitle>تقدم برامج التدريب</CardTitle>
+                        <CardTitle>{t("reports.hr.trainingProgress")}</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1198,7 +1200,7 @@ export default function Reports() {
                               {hrReports.data.trainingStats.total_programs}
                             </div>
                             <div className="text-sm text-gray-600">
-                              إجمالي البرامج
+                              {t("reports.hr.totalPrograms")}
                             </div>
                           </div>
                           <div className="text-center p-4 bg-green-50 rounded-lg">
@@ -1206,7 +1208,7 @@ export default function Reports() {
                               {hrReports.data.trainingStats.completed_trainings}
                             </div>
                             <div className="text-sm text-gray-600">
-                              تدريبات مكتملة
+                              {t("reports.hr.completedTrainings")}
                             </div>
                           </div>
                           <div className="text-center p-4 bg-amber-50 rounded-lg">
@@ -1216,7 +1218,7 @@ export default function Reports() {
                                   .completed_trainings}
                             </div>
                             <div className="text-sm text-gray-600">
-                              قيد التنفيذ
+                              {t("reports.hr.inProgress")}
                             </div>
                           </div>
                         </div>
@@ -1236,7 +1238,7 @@ export default function Reports() {
                 >
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                   <p className="mt-2 text-gray-600">
-                    جاري تحميل التقارير المالية...
+                    {t('reports.loading')}
                   </p>
                 </div>
               ) : (
@@ -1248,57 +1250,57 @@ export default function Reports() {
                       className="mb-6"
                       metrics={[
                         {
-                          title: "إجمالي الطلبات",
+                          title: t("reports.financial.totalOrders"),
                           value: formatNumber(
                             orderReports.data.revenueStats?.total_orders || 0,
                           ),
-                          description: "طلب مكتمل",
+                          description: t("reports.financial.completedOrder"),
                           icon: <Package className="w-5 h-5" />,
                           trend: {
                             value: 12.5,
                             isPositive: true,
-                            label: "نمو",
+                            label: t("reports.financial.growth"),
                           },
                         },
                         {
-                          title: "الإيرادات المقدرة",
+                          title: t("reports.financial.estimatedRevenue"),
                           value: formatChartValue(
                             orderReports.data.revenueStats?.estimated_revenue ||
                               0,
                             "currency",
                           ),
-                          description: "ريال سعودي",
+                          description: t("reports.financial.saudiRiyal"),
                           icon: <BarChart3 className="w-5 h-5" />,
                           trend: {
                             value: 18.3,
                             isPositive: true,
-                            label: "زيادة",
+                            label: t("reports.quality.increase"),
                           },
                         },
                         {
-                          title: "متوسط قيمة الطلب",
+                          title: t("reports.financial.avgOrderValue"),
                           value: formatChartValue(
                             orderReports.data.revenueStats?.avg_order_value ||
                               0,
                             "currency",
                           ),
-                          description: "ريال للطلب",
+                          description: t("reports.financial.riyalPerOrder"),
                           icon: <Target className="w-5 h-5" />,
                           trend: {
                             value: 5.7,
                             isPositive: true,
-                            label: "نمو",
+                            label: t("reports.financial.growth"),
                           },
                         },
                         {
-                          title: "الطلبات في الوقت",
+                          title: t("reports.financial.onTimeOrders"),
                           value: `${safeToFixed(((orderReports.data.deliveryPerformance?.on_time_orders || 0) / Math.max(orderReports.data.revenueStats?.total_orders || 1, 1)) * 100)}%`,
-                          description: "أداء التسليم",
+                          description: t("reports.financial.deliveryPerformance"),
                           icon: <CheckCircle2 className="w-5 h-5" />,
                           trend: {
                             value: 8.9,
                             isPositive: true,
-                            label: "تحسن",
+                            label: t("reports.production.improved"),
                           },
                         },
                       ]}
@@ -1314,19 +1316,19 @@ export default function Reports() {
                             (status: any) => ({
                               status:
                                 status.status === "completed"
-                                  ? "مكتمل"
+                                  ? t("reports.financial.statuses.completed")
                                   : status.status === "in_production"
-                                    ? "قيد الإنتاج"
+                                    ? t("reports.financial.statuses.inProduction")
                                     : status.status === "pending"
-                                      ? "في الانتظار"
+                                      ? t("reports.financial.statuses.pending")
                                       : status.status === "cancelled"
-                                        ? "ملغي"
+                                        ? t("reports.financial.statuses.cancelled")
                                         : status.status,
                               count: status.count,
                             }),
                           )}
-                          title="توزيع حالة الطلبات"
-                          description="نسبة كل حالة من إجمالي الطلبات"
+                          title={t("reports.financial.orderStatusDist")}
+                          description={t("reports.financial.statusPercentage")}
                           nameKey="status"
                           valueKey="count"
                           height={350}
@@ -1339,13 +1341,13 @@ export default function Reports() {
                       orderReports.data.topCustomers && (
                         <InteractiveBarChart
                           data={orderReports.data.topCustomers.slice(0, 8)}
-                          title="أكثر العملاء طلباً"
-                          description="العملاء الأكثر نشاطاً من حيث عدد الطلبات"
+                          title={t("reports.financial.topCustomers")}
+                          description={t("reports.financial.mostActiveCustomers")}
                           xAxisKey="customer_name"
                           yAxisKey="order_count"
                           barColor="#8b5cf6"
                           height={350}
-                          formatValue={(value) => formatNumber(value) + " طلب"}
+                          formatValue={(value) => formatNumber(value) + " " + t("reports.financial.order")}
                         />
                       )}
                   </div>
@@ -1354,34 +1356,34 @@ export default function Reports() {
                   {orderReports?.success && orderReports.data.topCustomers && (
                     <ComboChart
                       data={orderReports.data.topCustomers.slice(0, 6)}
-                      title="الإيرادات مقابل الكمية"
-                      description="تحليل الإيرادات والكميات للعملاء الرئيسيين"
+                      title={t("reports.financial.revenueVsQuantity")}
+                      description={t("reports.financial.revenueQuantityAnalysis")}
                       xAxisKey="customer_name"
                       elements={[
                         {
                           type: "bar",
                           key: "total_quantity",
-                          name: "الكمية (كج)",
+                          name: t("reports.financial.quantityKg"),
                           color: "#3b82f6",
                           yAxisId: "left",
                         },
                         {
                           type: "line",
                           key: "total_value",
-                          name: "القيمة (ريال)",
+                          name: t("reports.financial.valueRiyal"),
                           color: "#10b981",
                           yAxisId: "right",
                         },
                       ]}
                       height={350}
                       formatValue={(value) =>
-                        formatChartValue(value, "number") + " كج"
+                        formatChartValue(value, "number") + " " + t('common.kg')
                       }
                       formatRightAxis={(value) =>
                         formatChartValue(value, "currency")
                       }
-                      leftAxisLabel="الكمية"
-                      rightAxisLabel="القيمة"
+                      leftAxisLabel={t("reports.financial.quantity")}
+                      rightAxisLabel={t("reports.financial.value")}
                     />
                   )}
 
@@ -1390,7 +1392,7 @@ export default function Reports() {
                     orderReports.data.deliveryPerformance && (
                       <Card className="mt-6">
                         <CardHeader>
-                          <CardTitle>أداء التسليم</CardTitle>
+                          <CardTitle>{t("reports.financial.deliveryPerformanceTitle")}</CardTitle>
                         </CardHeader>
                         <CardContent>
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1402,7 +1404,7 @@ export default function Reports() {
                                 }
                               </div>
                               <div className="text-sm text-gray-600">
-                                طلبات في الوقت
+                                {t("reports.financial.onTimeOrders")}
                               </div>
                             </div>
                             <div className="text-center p-4 bg-red-50 rounded-lg">
@@ -1413,7 +1415,7 @@ export default function Reports() {
                                 }
                               </div>
                               <div className="text-sm text-gray-600">
-                                طلبات متأخرة
+                                {t("reports.financial.lateOrders")}
                               </div>
                             </div>
                             <div className="text-center p-4 bg-blue-50 rounded-lg">
@@ -1424,7 +1426,7 @@ export default function Reports() {
                                 )}
                               </div>
                               <div className="text-sm text-gray-600">
-                                متوسط أيام التسليم
+                                {t("reports.financial.avgDeliveryDays")}
                               </div>
                             </div>
                           </div>

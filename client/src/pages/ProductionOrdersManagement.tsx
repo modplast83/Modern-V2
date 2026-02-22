@@ -104,11 +104,11 @@ export default function ProductionOrdersManagement() {
 
   const getStatusConfig = (status: string) => {
     const configs: Record<string, { icon: any; color: string; bg: string; label: string }> = {
-      pending: { icon: Clock, color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950", label: "قيد الانتظار" },
-      active: { icon: Play, color: "text-green-600", bg: "bg-green-50 dark:bg-green-950", label: "نشط" },
-      in_production: { icon: Factory, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950", label: "قيد الإنتاج" },
-      completed: { icon: CheckCircle2, color: "text-gray-600", bg: "bg-gray-50 dark:bg-gray-800", label: "مكتمل" },
-      cancelled: { icon: XCircle, color: "text-red-600", bg: "bg-red-50 dark:bg-red-950", label: "ملغي" },
+      pending: { icon: Clock, color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950", label: t('production.status.pending') },
+      active: { icon: Play, color: "text-green-600", bg: "bg-green-50 dark:bg-green-950", label: t('production.status.active') },
+      in_production: { icon: Factory, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950", label: t('production.status.inProduction') },
+      completed: { icon: CheckCircle2, color: "text-gray-600", bg: "bg-gray-50 dark:bg-gray-800", label: t('production.status.completed') },
+      cancelled: { icon: XCircle, color: "text-red-600", bg: "bg-red-50 dark:bg-red-950", label: t('production.status.cancelled') },
     };
     return configs[status] || configs.pending;
   };
@@ -125,7 +125,7 @@ export default function ProductionOrdersManagement() {
       <div className="flex items-center justify-center py-12">
         <div className="text-center space-y-4">
           <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
-          <p className="text-muted-foreground">جاري تحميل أوامر الإنتاج...</p>
+          <p className="text-muted-foreground">{t('production.loadingOrders')}</p>
         </div>
       </div>
     );
@@ -139,7 +139,7 @@ export default function ProductionOrdersManagement() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">قيد الانتظار</p>
+                <p className="text-sm text-muted-foreground">{t('production.status.pending')}</p>
                 <p className="text-3xl font-bold text-amber-600">{stats.pending}</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-amber-100 dark:bg-amber-950 flex items-center justify-center">
@@ -153,7 +153,7 @@ export default function ProductionOrdersManagement() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">قيد التنفيذ</p>
+                <p className="text-sm text-muted-foreground">{t('production.status.inExecution')}</p>
                 <p className="text-3xl font-bold text-green-600">{stats.active}</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-950 flex items-center justify-center">
@@ -167,7 +167,7 @@ export default function ProductionOrdersManagement() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">مكتملة</p>
+                <p className="text-sm text-muted-foreground">{t('production.status.completedFem')}</p>
                 <p className="text-3xl font-bold text-blue-600">{stats.completed}</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-950 flex items-center justify-center">
@@ -181,8 +181,8 @@ export default function ProductionOrdersManagement() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">إجمالي الكمية</p>
-                <p className="text-2xl font-bold text-purple-600">{stats.totalQuantity.toLocaleString()} كجم</p>
+                <p className="text-sm text-muted-foreground">{t('production.totalQuantity')}</p>
+                <p className="text-2xl font-bold text-purple-600">{stats.totalQuantity.toLocaleString()} {t('production.kg')}</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-950 flex items-center justify-center">
                 <TrendingUp className="h-6 w-6 text-purple-600" />
@@ -199,7 +199,7 @@ export default function ProductionOrdersManagement() {
             <div className="relative flex-1">
               <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="بحث برقم الأمر أو العميل..."
+                placeholder={t('production.searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pr-10"
@@ -207,15 +207,15 @@ export default function ProductionOrdersManagement() {
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder="الحالة" />
+                <SelectValue placeholder={t('production.statusLabel')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">جميع الحالات</SelectItem>
-                <SelectItem value="pending">قيد الانتظار</SelectItem>
-                <SelectItem value="active">نشط</SelectItem>
-                <SelectItem value="in_production">قيد الإنتاج</SelectItem>
-                <SelectItem value="completed">مكتمل</SelectItem>
-                <SelectItem value="cancelled">ملغي</SelectItem>
+                <SelectItem value="all">{t('production.allStatuses')}</SelectItem>
+                <SelectItem value="pending">{t('production.status.pending')}</SelectItem>
+                <SelectItem value="active">{t('production.status.active')}</SelectItem>
+                <SelectItem value="in_production">{t('production.status.inProduction')}</SelectItem>
+                <SelectItem value="completed">{t('production.status.completed')}</SelectItem>
+                <SelectItem value="cancelled">{t('production.status.cancelled')}</SelectItem>
               </SelectContent>
             </Select>
             <Button variant="outline" size="icon" onClick={() => refetch()}>
@@ -231,7 +231,7 @@ export default function ProductionOrdersManagement() {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />
-              أوامر الإنتاج
+              {t('production.productionOrders')}
               <Badge variant="secondary">{filteredOrders.length}</Badge>
             </CardTitle>
           </div>
@@ -241,15 +241,15 @@ export default function ProductionOrdersManagement() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  <TableHead className="font-semibold">رقم أمر الإنتاج</TableHead>
-                  <TableHead className="font-semibold">رقم الطلب</TableHead>
-                  <TableHead className="font-semibold">العميل</TableHead>
-                  <TableHead className="font-semibold">المنتج</TableHead>
-                  <TableHead className="font-semibold text-center">الكمية</TableHead>
-                  <TableHead className="font-semibold text-center">التقدم</TableHead>
-                  <TableHead className="font-semibold text-center">الحالة</TableHead>
-                  <TableHead className="font-semibold">التعيين</TableHead>
-                  <TableHead className="font-semibold text-center">الإجراءات</TableHead>
+                  <TableHead className="font-semibold">{t('production.table.productionOrderNumber')}</TableHead>
+                  <TableHead className="font-semibold">{t('production.table.orderNumber')}</TableHead>
+                  <TableHead className="font-semibold">{t('production.table.customer')}</TableHead>
+                  <TableHead className="font-semibold">{t('production.table.product')}</TableHead>
+                  <TableHead className="font-semibold text-center">{t('production.table.quantity')}</TableHead>
+                  <TableHead className="font-semibold text-center">{t('production.table.progress')}</TableHead>
+                  <TableHead className="font-semibold text-center">{t('production.table.status')}</TableHead>
+                  <TableHead className="font-semibold">{t('production.table.assignment')}</TableHead>
+                  <TableHead className="font-semibold text-center">{t('production.table.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -258,7 +258,7 @@ export default function ProductionOrdersManagement() {
                     <TableCell colSpan={9} className="text-center py-12">
                       <div className="flex flex-col items-center gap-2 text-muted-foreground">
                         <Package className="h-12 w-12 opacity-50" />
-                        <p>لا توجد أوامر إنتاج</p>
+                        <p>{t('production.noOrders')}</p>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -284,16 +284,16 @@ export default function ProductionOrdersManagement() {
                             <div className="text-sm">{order.size_caption}</div>
                             {order.is_printed && (
                               <Badge variant="outline" className="text-xs">
-                                مطبوع
+                                {t('production.printed')}
                               </Badge>
                             )}
                           </div>
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="space-y-1">
-                            <div className="font-semibold">{order.quantity_kg} كجم</div>
+                            <div className="font-semibold">{order.quantity_kg} {t('production.kg')}</div>
                             <div className="text-xs text-muted-foreground">
-                              النهائي: {order.final_quantity_kg} كجم
+                              {t('production.final')}: {order.final_quantity_kg} {t('production.kg')}
                             </div>
                           </div>
                         </TableCell>
@@ -330,7 +330,7 @@ export default function ProductionOrdersManagement() {
                               size="sm"
                               variant="ghost"
                               onClick={() => setShowStats(showStats === order.id ? null : order.id)}
-                              title="عرض التفاصيل"
+                              title={t('production.viewDetails')}
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
@@ -338,7 +338,7 @@ export default function ProductionOrdersManagement() {
                               size="sm"
                               variant="ghost"
                               onClick={() => setPrintingProductionOrder(order)}
-                              title="طباعة"
+                              title={t('production.print')}
                             >
                               <Printer className="h-4 w-4" />
                             </Button>
@@ -373,6 +373,7 @@ export default function ProductionOrdersManagement() {
 }
 
 function PrintProductionOrderWrapper({ productionOrder, onClose }: { productionOrder: any, onClose: () => void }) {
+  const { t } = useTranslation();
   const { data: rollsData, isLoading: rollsLoading } = useQuery({
     queryKey: ["/api/rolls/search"],
     queryFn: async () => {
@@ -389,22 +390,22 @@ function PrintProductionOrderWrapper({ productionOrder, onClose }: { productionO
     
     const getStageLabel = (stage: string) => {
       const labels: Record<string, string> = {
-        film: "فيلم",
-        printing: "طباعة",
-        cutting: "تقطيع",
-        done: "منتهي",
-        archived: "مؤرشف"
+        film: t('production.stages.film'),
+        printing: t('production.stages.printing'),
+        cutting: t('production.stages.cutting'),
+        done: t('production.stages.done'),
+        archived: t('production.stages.archived')
       };
       return labels[stage] || stage;
     };
 
     const getStatusLabel = (status: string) => {
       const labels: Record<string, string> = {
-        pending: "قيد الانتظار",
-        active: "نشط",
-        in_production: "قيد الإنتاج",
-        completed: "مكتمل",
-        cancelled: "ملغي"
+        pending: t('production.status.pending'),
+        active: t('production.status.active'),
+        in_production: t('production.status.inProduction'),
+        completed: t('production.status.completed'),
+        cancelled: t('production.status.cancelled')
       };
       return labels[status] || status;
     };
@@ -438,14 +439,14 @@ function PrintProductionOrderWrapper({ productionOrder, onClose }: { productionO
 
     const uniqueMachines = new Set<string>();
     rolls.forEach((r: any) => {
-      if (r.film_machine_name) uniqueMachines.add(`فيلم: ${r.film_machine_name}`);
-      if (r.printing_machine_name) uniqueMachines.add(`طباعة: ${r.printing_machine_name}`);
-      if (r.cutting_machine_name) uniqueMachines.add(`تقطيع: ${r.cutting_machine_name}`);
+      if (r.film_machine_name) uniqueMachines.add(`${t('production.stages.film')}: ${r.film_machine_name}`);
+      if (r.printing_machine_name) uniqueMachines.add(`${t('production.stages.printing')}: ${r.printing_machine_name}`);
+      if (r.cutting_machine_name) uniqueMachines.add(`${t('production.stages.cutting')}: ${r.cutting_machine_name}`);
     });
 
     const printWindow = window.open("", "_blank", "width=900,height=700");
     if (!printWindow) {
-      alert("يرجى السماح بالنوافذ المنبثقة");
+      alert(t('production.allowPopups'));
       onClose();
       return;
     }
@@ -455,7 +456,7 @@ function PrintProductionOrderWrapper({ productionOrder, onClose }: { productionO
       <html dir="rtl" lang="ar">
       <head>
         <meta charset="UTF-8">
-        <title>أمر إنتاج - ${productionOrder.production_order_number}</title>
+        <title>${t('production.printTemplate.productionOrder')} - ${productionOrder.production_order_number}</title>
         <style>
           @page { size: A4; margin: 10mm; }
           * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -510,12 +511,12 @@ function PrintProductionOrderWrapper({ productionOrder, onClose }: { productionO
         </style>
       </head>
       <body>
-        <button class="print-btn" onclick="window.print()">🖨️ طباعة</button>
+        <button class="print-btn" onclick="window.print()">🖨️ ${t('production.print')}</button>
         <div class="print-container">
           <div class="header">
             <div class="header-right">
-              <h1>أمر إنتاج</h1>
-              <p>مصنع أكياس البلاستيك الحديث</p>
+              <h1>${t('production.printTemplate.productionOrder')}</h1>
+              <p>${t('production.printTemplate.factoryName')}</p>
             </div>
             <div class="order-number">${productionOrder.production_order_number}</div>
             <div>
@@ -528,77 +529,77 @@ function PrintProductionOrderWrapper({ productionOrder, onClose }: { productionO
           <div class="content">
             <div class="info-section">
               <div class="info-box">
-                <div class="info-label">رقم الطلب</div>
+                <div class="info-label">${t('production.table.orderNumber')}</div>
                 <div class="info-value">${productionOrder.order_number || '-'}</div>
               </div>
               <div class="info-box">
-                <div class="info-label">العميل</div>
+                <div class="info-label">${t('production.table.customer')}</div>
                 <div class="info-value">${productionOrder.customer_name_ar || productionOrder.customer_name || '-'}</div>
               </div>
               <div class="info-box">
-                <div class="info-label">المنتج</div>
+                <div class="info-label">${t('production.table.product')}</div>
                 <div class="info-value">${productionOrder.item_name_ar || productionOrder.item_name || '-'}</div>
               </div>
               <div class="info-box">
-                <div class="info-label">المقاس</div>
+                <div class="info-label">${t('production.printTemplate.size')}</div>
                 <div class="info-value">${productionOrder.size_caption || '-'}</div>
               </div>
               <div class="info-box highlight">
-                <div class="info-label">الكمية المطلوبة</div>
-                <div class="info-value">${targetWeight.toFixed(2)} كجم</div>
+                <div class="info-label">${t('production.printTemplate.requiredQuantity')}</div>
+                <div class="info-value">${targetWeight.toFixed(2)} ${t('production.kg')}</div>
               </div>
               <div class="info-box">
-                <div class="info-label">تاريخ الإنشاء</div>
+                <div class="info-label">${t('production.printTemplate.creationDate')}</div>
                 <div class="info-value">${productionOrder.created_at ? new Date(productionOrder.created_at).toLocaleDateString('ar-SA') : '-'}</div>
               </div>
             </div>
 
-            <div class="section-title">📊 سير العمل والمراحل</div>
+            <div class="section-title">📊 ${t('production.printTemplate.workflowAndStages')}</div>
             <div class="workflow-container">
               <div class="workflow-stage film">
                 <div class="stage-icon">🎬</div>
-                <div class="stage-name">مرحلة الفيلم</div>
-                <div class="stage-count stage-film">${filmRolls.length} رول</div>
-                <div class="stage-weight">${filmRolls.reduce((s: number, r: any) => s + parseFloat(r.weight_kg || 0), 0).toFixed(2)} كجم</div>
+                <div class="stage-name">${t('production.printTemplate.filmStage')}</div>
+                <div class="stage-count stage-film">${filmRolls.length} ${t('production.printTemplate.roll')}</div>
+                <div class="stage-weight">${filmRolls.reduce((s: number, r: any) => s + parseFloat(r.weight_kg || 0), 0).toFixed(2)} ${t('production.kg')}</div>
               </div>
               <div class="workflow-stage printing">
                 <div class="stage-icon">🖨️</div>
-                <div class="stage-name">مرحلة الطباعة</div>
-                <div class="stage-count stage-printing">${printingRolls.length} رول</div>
-                <div class="stage-weight">${printingRolls.reduce((s: number, r: any) => s + parseFloat(r.weight_kg || 0), 0).toFixed(2)} كجم</div>
+                <div class="stage-name">${t('production.printTemplate.printingStage')}</div>
+                <div class="stage-count stage-printing">${printingRolls.length} ${t('production.printTemplate.roll')}</div>
+                <div class="stage-weight">${printingRolls.reduce((s: number, r: any) => s + parseFloat(r.weight_kg || 0), 0).toFixed(2)} ${t('production.kg')}</div>
               </div>
               <div class="workflow-stage cutting">
                 <div class="stage-icon">✂️</div>
-                <div class="stage-name">مرحلة التقطيع</div>
-                <div class="stage-count stage-cutting">${cuttingRolls.length} رول</div>
-                <div class="stage-weight">${cuttingRolls.reduce((s: number, r: any) => s + parseFloat(r.weight_kg || 0), 0).toFixed(2)} كجم</div>
+                <div class="stage-name">${t('production.printTemplate.cuttingStage')}</div>
+                <div class="stage-count stage-cutting">${cuttingRolls.length} ${t('production.printTemplate.roll')}</div>
+                <div class="stage-weight">${cuttingRolls.reduce((s: number, r: any) => s + parseFloat(r.weight_kg || 0), 0).toFixed(2)} ${t('production.kg')}</div>
               </div>
               <div class="workflow-stage done">
                 <div class="stage-icon">✅</div>
-                <div class="stage-name">منتهي</div>
-                <div class="stage-count stage-done">${doneRolls.length} رول</div>
-                <div class="stage-weight">${doneRolls.reduce((s: number, r: any) => s + parseFloat(r.weight_kg || 0), 0).toFixed(2)} كجم</div>
+                <div class="stage-name">${t('production.stages.done')}</div>
+                <div class="stage-count stage-done">${doneRolls.length} ${t('production.printTemplate.roll')}</div>
+                <div class="stage-weight">${doneRolls.reduce((s: number, r: any) => s + parseFloat(r.weight_kg || 0), 0).toFixed(2)} ${t('production.kg')}</div>
               </div>
             </div>
 
             <div class="progress-bar">
               <div class="progress-fill" style="width: ${progress}%"></div>
-              <div class="progress-text">${progress.toFixed(1)}% (${totalWeight.toFixed(2)} / ${targetWeight.toFixed(2)} كجم)</div>
+              <div class="progress-text">${progress.toFixed(1)}% (${totalWeight.toFixed(2)} / ${targetWeight.toFixed(2)} ${t('production.kg')})</div>
             </div>
 
             ${rolls.length > 0 ? `
-              <div class="section-title">📦 قائمة الرولات (${rolls.length} رول)</div>
+              <div class="section-title">📦 ${t('production.printTemplate.rollsList')} (${rolls.length} ${t('production.printTemplate.roll')})</div>
               <table class="rolls-table">
                 <thead>
                   <tr>
                     <th>#</th>
-                    <th>رقم الرول</th>
-                    <th>المرحلة</th>
-                    <th>الوزن</th>
-                    <th>فيلم بواسطة</th>
-                    <th>طباعة بواسطة</th>
-                    <th>تقطيع بواسطة</th>
-                    <th>تاريخ الإنتاج</th>
+                    <th>${t('production.printTemplate.rollNumber')}</th>
+                    <th>${t('production.printTemplate.stage')}</th>
+                    <th>${t('production.printTemplate.weight')}</th>
+                    <th>${t('production.printTemplate.filmBy')}</th>
+                    <th>${t('production.printTemplate.printedBy')}</th>
+                    <th>${t('production.printTemplate.cutBy')}</th>
+                    <th>${t('production.printTemplate.productionDate')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -607,7 +608,7 @@ function PrintProductionOrderWrapper({ productionOrder, onClose }: { productionO
                       <td>${index + 1}</td>
                       <td><strong>${roll.roll_number}</strong></td>
                       <td class="stage-${roll.stage}"><strong>${getStageLabel(roll.stage)}</strong></td>
-                      <td>${parseFloat(roll.weight_kg || 0).toFixed(2)} كجم</td>
+                      <td>${parseFloat(roll.weight_kg || 0).toFixed(2)} ${t('production.kg')}</td>
                       <td>${roll.created_by_name || '-'}</td>
                       <td>${roll.printed_by_name || '-'}</td>
                       <td>${roll.cut_by_name || '-'}</td>
@@ -616,26 +617,26 @@ function PrintProductionOrderWrapper({ productionOrder, onClose }: { productionO
                   `).join('')}
                 </tbody>
               </table>
-            ` : '<p style="text-align:center;color:#64748b;padding:20px;">لا توجد رولات حتى الآن</p>'}
+            ` : `<p style="text-align:center;color:#64748b;padding:20px;">${t('production.printTemplate.noRollsYet')}</p>`}
 
             <div class="team-section">
               <div class="team-box">
-                <h4>👷 العمال المشاركين</h4>
+                <h4>👷 ${t('production.printTemplate.participatingWorkers')}</h4>
                 <div class="team-list">
-                  ${uniqueOperators.size > 0 ? Array.from(uniqueOperators).join(' • ') : 'لا يوجد عمال مسجلين'}
+                  ${uniqueOperators.size > 0 ? Array.from(uniqueOperators).join(' • ') : t('production.printTemplate.noRegisteredWorkers')}
                 </div>
               </div>
               <div class="team-box">
-                <h4>🏭 المكائن المستخدمة</h4>
+                <h4>🏭 ${t('production.printTemplate.usedMachines')}</h4>
                 <div class="team-list">
-                  ${uniqueMachines.size > 0 ? Array.from(uniqueMachines).join(' • ') : 'لا توجد مكائن مسجلة'}
+                  ${uniqueMachines.size > 0 ? Array.from(uniqueMachines).join(' • ') : t('production.printTemplate.noRegisteredMachines')}
                 </div>
               </div>
             </div>
           </div>
 
           <div class="footer">
-            تم الطباعة في: ${new Date().toLocaleString('ar-SA')} | نظام إدارة الإنتاج
+            ${t('production.printTemplate.printedAt')}: ${new Date().toLocaleString('ar-SA')} | ${t('production.printTemplate.productionManagementSystem')}
           </div>
         </div>
       </body>
@@ -659,7 +660,7 @@ function PrintProductionOrderWrapper({ productionOrder, onClose }: { productionO
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg p-6 text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
-          <p>جاري تحميل البيانات...</p>
+          <p>{t('production.loadingData')}</p>
         </div>
       </div>
     );
