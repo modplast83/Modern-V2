@@ -805,7 +805,7 @@ export default function Maintenance() {
                         {selectedAction.performed_at
                           ? new Date(
                               selectedAction.performed_at,
-                            ).toLocaleDateString("ar")
+                            ).toLocaleDateString("en-US")
                           : t('maintenance.notAssigned')}
                       </p>
                     </div>
@@ -817,7 +817,7 @@ export default function Maintenance() {
                         {selectedAction.created_at
                           ? new Date(
                               selectedAction.created_at,
-                            ).toLocaleDateString("ar")
+                            ).toLocaleDateString("en-US")
                           : t('maintenance.notAssigned')}
                       </p>
                     </div>
@@ -1292,8 +1292,8 @@ function MaintenanceActionsTab({
                           <p><strong>${t('maintenance.operatorNegligenceReport')}:</strong> ${action.operator_negligence_report || "-"}</p>
                           <p><strong>${t('maintenance.textReport')}:</strong> ${action.text_report || "-"}</p>
                           <p><strong>${t('maintenance.managementApprovalRequired')}:</strong> ${action.requires_management_action ? t('maintenance.yes') : t('maintenance.no')}</p>
-                          <p><strong>${t('maintenance.executionDate')}:</strong> ${new Date(action.action_date).toLocaleDateString("ar")}</p>
-                          <p><strong>${t('maintenance.executionTime')}:</strong> ${new Date(action.action_date).toLocaleTimeString("ar")}</p>
+                          <p><strong>${t('maintenance.executionDate')}:</strong> ${new Date(action.action_date).toLocaleDateString("en-US")}</p>
+                          <p><strong>${t('maintenance.executionTime')}:</strong> ${new Date(action.action_date).toLocaleTimeString("en-US")}</p>
                         </div>
                       </div>
                     `;
@@ -2024,7 +2024,7 @@ function OperatorNegligenceTab({
                   </div>
                   <div>
                     <span className="font-medium">{t('maintenance.incidentDate')}: </span>
-                    {new Date(report.incident_date).toLocaleDateString("ar")}
+                    {new Date(report.incident_date).toLocaleDateString("en-US")}
                   </div>
                 </div>
               </div>

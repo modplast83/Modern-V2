@@ -7863,7 +7863,7 @@ export class DatabaseStorage implements IStorage {
         tableCount,
         totalRecords,
         databaseSize: dbSize.rows[0]?.size || "0 MB",
-        lastBackup: new Date().toLocaleDateString("ar"),
+        lastBackup: new Date().toLocaleDateString("en-US"),
       };
     } catch (error) {
       console.error("Error getting database stats:", error);

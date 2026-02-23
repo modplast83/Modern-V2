@@ -182,7 +182,7 @@ export default function ProductionOrdersManagement() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">{t('production.totalQuantity')}</p>
-                <p className="text-2xl font-bold text-purple-600">{stats.totalQuantity.toLocaleString()} {t('production.kg')}</p>
+                <p className="text-2xl font-bold text-purple-600">{stats.totalQuantity.toLocaleString("en-US")} {t('production.kg')}</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-950 flex items-center justify-center">
                 <TrendingUp className="h-6 w-6 text-purple-600" />
@@ -550,7 +550,7 @@ function PrintProductionOrderWrapper({ productionOrder, onClose }: { productionO
               </div>
               <div class="info-box">
                 <div class="info-label">${t('production.printTemplate.creationDate')}</div>
-                <div class="info-value">${productionOrder.created_at ? new Date(productionOrder.created_at).toLocaleDateString('ar-SA') : '-'}</div>
+                <div class="info-value">${productionOrder.created_at ? new Date(productionOrder.created_at).toLocaleDateString('en-US') : '-'}</div>
               </div>
             </div>
 
@@ -612,7 +612,7 @@ function PrintProductionOrderWrapper({ productionOrder, onClose }: { productionO
                       <td>${roll.created_by_name || '-'}</td>
                       <td>${roll.printed_by_name || '-'}</td>
                       <td>${roll.cut_by_name || '-'}</td>
-                      <td>${roll.created_at ? new Date(roll.created_at).toLocaleDateString('ar-SA') : '-'}</td>
+                      <td>${roll.created_at ? new Date(roll.created_at).toLocaleDateString('en-US') : '-'}</td>
                     </tr>
                   `).join('')}
                 </tbody>
@@ -636,7 +636,7 @@ function PrintProductionOrderWrapper({ productionOrder, onClose }: { productionO
           </div>
 
           <div class="footer">
-            ${t('production.printTemplate.printedAt')}: ${new Date().toLocaleString('ar-SA')} | ${t('production.printTemplate.productionManagementSystem')}
+            ${t('production.printTemplate.printedAt')}: ${new Date().toLocaleString('en-US')} | ${t('production.printTemplate.productionManagementSystem')}
           </div>
         </div>
       </body>

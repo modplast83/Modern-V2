@@ -662,7 +662,7 @@ export default function NotificationCenter() {
                                 {t('notifications.date')}:{" "}
                                 {new Date(
                                   notification.created_at,
-                                ).toLocaleString("ar")}
+                                ).toLocaleString("en-US")}
                               </span>
                               {notification.context_type && (
                                 <span>{t('notifications.context')}: {notification.context_type}</span>

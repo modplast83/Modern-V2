@@ -529,7 +529,7 @@ export default function WhatsAppWebhooks() {
                             )}
                           </div>
                           <span className="text-xs text-gray-500">
-                            {new Date(msg.created_at).toLocaleString("ar")}
+                            {new Date(msg.created_at).toLocaleString("en-US")}
                           </span>
                         </div>
                         <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">

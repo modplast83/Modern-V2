@@ -89,7 +89,7 @@ export default function MachineCard({ machine }: { machine: Machine }) {
 
         <div className="text-xs text-gray-500 text-right">
           <div>{t('machineCard.currentRolls')}: <strong>{current_rolls}</strong></div>
-          <div>{t('machineCard.lastDowntime')}: <strong>{lastDowntime ? new Date(lastDowntime).toLocaleString() : "-"}</strong></div>
+          <div>{t('machineCard.lastDowntime')}: <strong>{lastDowntime ? new Date(lastDowntime).toLocaleString("en-US") : "-"}</strong></div>
         </div>
       </div>
 

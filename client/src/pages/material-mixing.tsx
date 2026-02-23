@@ -537,7 +537,7 @@ export default function MaterialMixing() {
                               </TableCell>
                               <TableCell>{parseFloat(batch.total_weight_kg).toFixed(2)} {t('common.kg')}</TableCell>
                               <TableCell>
-                                {new Date(batch.created_at).toLocaleDateString("ar-EG")}
+                                {new Date(batch.created_at).toLocaleDateString("en-US")}
                               </TableCell>
                               <TableCell>
                                 {operator?.display_name_ar || operator?.display_name || "-"}
@@ -613,7 +613,7 @@ export default function MaterialMixing() {
                 <div>
                   <Label className="text-muted-foreground">{t("mixing.date")}</Label>
                   <p className="font-semibold">
-                    {new Date(selectedBatch.created_at).toLocaleString("ar-EG")}
+                    {new Date(selectedBatch.created_at).toLocaleString("en-US")}
                   </p>
                 </div>
               </div>

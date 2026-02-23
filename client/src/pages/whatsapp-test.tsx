@@ -311,7 +311,7 @@ export default function WhatsAppTest() {
                         </Badge>
                       </div>
                       <span className="text-sm text-gray-500">
-                        {result.timestamp.toLocaleTimeString("ar")}
+                        {result.timestamp.toLocaleTimeString("en-US")}
                       </span>
                     </div>
 
@@ -363,7 +363,7 @@ export default function WhatsAppTest() {
                         </Badge>
                       </div>
                       <span className="text-sm text-gray-500">
-                        {new Date(notification.created_at).toLocaleString("ar")}
+                        {new Date(notification.created_at).toLocaleString("en-US")}
                       </span>
                     </div>
 

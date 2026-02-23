@@ -503,7 +503,7 @@ function QuotesHistory() {
   });
 
   const formatDate = (date: string | Date) => {
-    return new Date(date).toLocaleDateString("ar-SA");
+    return new Date(date).toLocaleDateString("en-US");
   };
 
   const formatCurrency = (amount: string | number) => {

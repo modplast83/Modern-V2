@@ -378,7 +378,7 @@ export default function OrderProgress() {
                       {roll.printed_at && (
                         <span className="text-xs text-gray-400">
                           {t('production.orderProgress.printedAt')}:{" "}
-                          {new Date(roll.printed_at).toLocaleDateString("ar")}
+                          {new Date(roll.printed_at).toLocaleDateString("en-US")}
                         </span>
                       )}
                     </div>
@@ -408,7 +408,7 @@ export default function OrderProgress() {
                         </p>
                       </div>
                       <div className="text-xs text-gray-400">
-                        {new Date(receipt.created_at).toLocaleDateString("ar")}
+                        {new Date(receipt.created_at).toLocaleDateString("en-US")}
                       </div>
                     </div>
                   ))}

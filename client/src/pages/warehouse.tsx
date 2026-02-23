@@ -587,7 +587,7 @@ export default function Warehouse() {
           <CardContent>
             <div className="text-2xl font-bold">
               {stats?.totalValue
-                ? `${Number(stats.totalValue).toLocaleString()} ${t('warehouse.currency')}`
+                ? `${Number(stats.totalValue).toLocaleString("en-US")} ${t('warehouse.currency')}`
                 : `0 ${t('warehouse.currency')}`}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -1047,7 +1047,7 @@ export default function Warehouse() {
                                         "-"}
                                     </td>
                                     <td className="px-6 py-4 text-sm text-gray-900">
-                                      {currentStock.toLocaleString()}{" "}
+                                      {currentStock.toLocaleString("en-US")}{" "}
                                       {item.unit}
                                     </td>
                                     <td className="px-6 py-4">
@@ -1367,7 +1367,7 @@ export default function Warehouse() {
                                 <td className="px-6 py-4 text-sm text-gray-900">
                                   {parseFloat(
                                     movement.quantity,
-                                  ).toLocaleString()}
+                                  ).toLocaleString("en-US")}
                                 </td>
                                 <td className="px-6 py-4 text-sm text-gray-900">
                                   {movement.reference_number || "-"}
@@ -2053,7 +2053,7 @@ function ReceivedQuantitiesContent() {
                             {latestReceipt
                               ? new Date(
                                   latestReceipt.receipt_date,
-                                ).toLocaleDateString("ar")
+                                ).toLocaleDateString("en-US")
                               : "-"}
                           </p>
                         </div>
@@ -2153,7 +2153,7 @@ function ReceivedQuantitiesContent() {
                               <span className="text-xs text-gray-500">
                                 {new Date(
                                   receipt.receipt_date,
-                                ).toLocaleDateString("ar")}
+                                ).toLocaleDateString("en-US")}
                               </span>
                             </div>
 

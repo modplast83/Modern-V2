@@ -6,12 +6,11 @@
 
 // ===================== Arabic Helpers =====================
 function toArabicDigits(input: string | number): string {
-  const str = String(input ?? "");
-  return str.replace(/[0-9]/g, (d) => "٠١٢٣٤٥٦٧٨٩"[Number(d)]);
+  return String(input ?? "");
 }
 
 function formatNumberAr(n: string | number, digits = 2): string {
-  return new Intl.NumberFormat("ar-SA", {
+  return new Intl.NumberFormat("en-US", {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   }).format(Number(n || 0));
@@ -19,7 +18,7 @@ function formatNumberAr(n: string | number, digits = 2): string {
 
 function formatDateAr(date: string | Date): string {
   try {
-    return new Date(date).toLocaleDateString("ar-SA", {
+    return new Date(date).toLocaleDateString("en-US", {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",

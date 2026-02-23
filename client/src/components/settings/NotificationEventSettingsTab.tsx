@@ -275,7 +275,7 @@ export default function NotificationEventSettingsTab() {
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "-";
-    return new Date(dateString).toLocaleString("ar-SA");
+    return new Date(dateString).toLocaleString("en-US");
   };
 
   const getCategoryLabel = (category: string) => {

@@ -85,19 +85,19 @@ interface TopProducersData {
 
 function useLocale() {
   const { i18n } = useTranslation();
-  return i18n.language === "ar" ? "ar-SA" : "en-US";
+  return "en-US";
 }
 
-function formatNumber(val: string | number | null | undefined, locale: string = "ar-SA") {
+function formatNumber(val: string | number | null | undefined, locale: string = "en-US") {
   const num = Number(val);
   if (isNaN(num)) return "0";
-  return num.toLocaleString(locale, { maximumFractionDigits: 1 });
+  return num.toLocaleString("en-US", { maximumFractionDigits: 1 });
 }
 
-function formatTime(dateStr: string, locale: string = "ar-SA") {
+function formatTime(dateStr: string, locale: string = "en-US") {
   if (!dateStr) return "";
   const d = new Date(dateStr);
-  return d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 }
 
 function CurrentDateTime() {

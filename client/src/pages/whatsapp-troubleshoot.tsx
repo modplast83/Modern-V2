@@ -371,7 +371,7 @@ export default function WhatsAppTroubleshoot() {
                       </p>
                     )}
                     <p className="text-xs text-gray-500">
-                      {new Date(message.created_at).toLocaleString("ar")}
+                      {new Date(message.created_at).toLocaleString("en-US")}
                     </p>
                   </div>
                 ))}

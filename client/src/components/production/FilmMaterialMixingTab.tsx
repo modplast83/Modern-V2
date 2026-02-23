@@ -545,7 +545,7 @@ export default function FilmMaterialMixingTab() {
                         </TableCell>
                         <TableCell>{parseFloat(batch.total_weight_kg).toFixed(2)} {t("production.mixing.kg")}</TableCell>
                         <TableCell>
-                          {new Date(batch.created_at).toLocaleDateString("ar-EG")}
+                          {new Date(batch.created_at).toLocaleDateString("en-US")}
                         </TableCell>
                         <TableCell>
                           {operator?.display_name_ar || operator?.display_name || "-"}
@@ -621,7 +621,7 @@ export default function FilmMaterialMixingTab() {
                 <div>
                   <Label className="text-muted-foreground">{t("production.mixing.date")}</Label>
                   <p className="font-semibold">
-                    {new Date(selectedBatch.created_at).toLocaleString("ar-EG")}
+                    {new Date(selectedBatch.created_at).toLocaleString("en-US")}
                   </p>
                 </div>
               </div>

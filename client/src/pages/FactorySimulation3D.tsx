@@ -1879,7 +1879,7 @@ export default function FactorySimulation3D() {
                               )}
                               <div className="flex items-center gap-1.5 mt-1 text-[8px] text-slate-500">
                                 <Clock size={8} />
-                                <span>{snapshot.created_at ? new Date(snapshot.created_at).toLocaleDateString('ar-SA', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                                <span>{snapshot.created_at ? new Date(snapshot.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</span>
                                 <span className="mx-1">·</span>
                                 <Factory size={8} />
                                 <span>{Array.isArray(snapshot.layout_data) ? snapshot.layout_data.length : 0} ماكينة</span>

@@ -121,14 +121,14 @@ export default function ProductionOrderStatsCard({
               <div className="flex justify-between text-sm mt-2">
                 <span className="text-gray-600">تاريخ البدء</span>
                 <span className="font-medium">
-                  {new Date(data.production_order.production_start_time).toLocaleString("ar-SA")}
+                  {new Date(data.production_order.production_start_time).toLocaleString("en-US")}
                 </span>
               </div>
               {data.production_order.production_end_time && (
                 <div className="flex justify-between text-sm mt-2">
                   <span className="text-gray-600">تاريخ الانتهاء</span>
                   <span className="font-medium">
-                    {new Date(data.production_order.production_end_time).toLocaleString("ar-SA")}
+                    {new Date(data.production_order.production_end_time).toLocaleString("en-US")}
                   </span>
                 </div>
               )}

@@ -310,7 +310,7 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">{t('orders.rolls.totalRolls')}</p>
-                <p className="text-3xl font-bold">{stats.total.toLocaleString()}</p>
+                <p className="text-3xl font-bold">{stats.total.toLocaleString("en-US")}</p>
               </div>
               <Package className="h-8 w-8 text-slate-400" />
             </div>
@@ -382,7 +382,7 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">{t('orders.rolls.totalWeight')}</p>
-                <p className="text-xl font-bold text-amber-600">{stats.totalWeight.toLocaleString()} {t('common.kg')}</p>
+                <p className="text-xl font-bold text-amber-600">{stats.totalWeight.toLocaleString("en-US")} {t('common.kg')}</p>
               </div>
               <Scale className="h-8 w-8 text-amber-400" />
             </div>
@@ -675,7 +675,7 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
       {/* Results Info */}
       {!isLoading && filteredRolls.length > 0 && (
         <div className="text-sm text-muted-foreground text-center">
-          {t('orders.rolls.showing', { filtered: filteredRolls.length.toLocaleString(), total: rolls.length.toLocaleString() })}
+          {t('orders.rolls.showing', { filtered: filteredRolls.length.toLocaleString("en-US"), total: rolls.length.toLocaleString("en-US") })}
         </div>
       )}
     </div>

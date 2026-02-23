@@ -2107,7 +2107,7 @@ export default function Settings() {
                       <Card className="p-3">
                         <div className="text-center">
                           <div className="text-2xl font-bold text-green-600">
-                            {databaseStats.totalRecords.toLocaleString("ar-SA")}
+                            {databaseStats.totalRecords.toLocaleString("en-US")}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {t('settings.database.totalRecords')}
@@ -2322,7 +2322,7 @@ export default function Settings() {
                     <p>{t('settings.restoreConfirm.tableCount')}: {pendingBackupData.metadata.totalTables}</p>
                     <p>
                       {t('settings.restoreConfirm.date')}:{" "}
-                      {new Date(pendingBackupData.metadata.timestamp).toLocaleString("ar-SA")}
+                      {new Date(pendingBackupData.metadata.timestamp).toLocaleString("en-US")}
                     </p>
                   </div>
                 )}

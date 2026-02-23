@@ -410,7 +410,7 @@ export default function LeaveManagement() {
                           </Badge>
                         </td>
                         <td className="p-3 text-sm text-gray-600 dark:text-gray-400">
-                          {new Date(request.created_at).toLocaleDateString("ar")}
+                          {new Date(request.created_at).toLocaleDateString("en-US")}
                         </td>
                         <td className="p-3">
                           <div className="flex justify-center gap-2">
@@ -486,7 +486,7 @@ export default function LeaveManagement() {
                   <div>
                     <Label className="font-semibold">{t("hr.leaves.startDate")}:</Label>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {new Date(selectedRequest.start_date).toLocaleDateString("ar")}
+                      {new Date(selectedRequest.start_date).toLocaleDateString("en-US")}
                     </p>
                   </div>
                 )}
@@ -494,7 +494,7 @@ export default function LeaveManagement() {
                   <div>
                     <Label className="font-semibold">{t("hr.leaves.endDate")}:</Label>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {new Date(selectedRequest.end_date).toLocaleDateString("ar")}
+                      {new Date(selectedRequest.end_date).toLocaleDateString("en-US")}
                     </p>
                   </div>
                 )}

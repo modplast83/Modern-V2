@@ -645,7 +645,7 @@ export default function Definitions() {
       </div>
 
       <div class="print-date">
-        ${t("definitions.print.printedOn")}: ${new Date().toLocaleDateString("ar")} - ${new Date().toLocaleTimeString("ar")}
+        ${t("definitions.print.printedOn")}: ${new Date().toLocaleDateString("en-US")} - ${new Date().toLocaleTimeString("en-US")}
       </div>
 
       <script>
@@ -1159,7 +1159,7 @@ export default function Definitions() {
 <body>
   <div class="header">
     <h1>${t("definitions.print.customerCard")}</h1>
-    <div class="sub">${customer.name_ar || customer.name} | ${t("definitions.print.code")}: ${customer.id} | ${t("definitions.print.printDate")}: ${new Date().toLocaleDateString("ar-SA")} - ${new Date().toLocaleTimeString("ar-SA")}</div>
+    <div class="sub">${customer.name_ar || customer.name} | ${t("definitions.print.code")}: ${customer.id} | ${t("definitions.print.printDate")}: ${new Date().toLocaleDateString("en-US")} - ${new Date().toLocaleTimeString("en-US")}</div>
   </div>
 
   <div class="section-title">${t("definitions.print.basicInfo")}</div>

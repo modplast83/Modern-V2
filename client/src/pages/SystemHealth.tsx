@@ -143,7 +143,7 @@ export default function SystemHealth() {
     .filter((metric) => metric.metric_name === "memory_usage_percent")
     .slice(-24)
     .map((metric) => ({
-      time: new Date(metric.timestamp).toLocaleTimeString("ar"),
+      time: new Date(metric.timestamp).toLocaleTimeString("en-US"),
       memory: parseFloat(metric.value.toString()),
       timestamp: metric.timestamp,
     }));
@@ -540,7 +540,7 @@ export default function SystemHealth() {
                   </span>
                   <span className="font-medium">
                     {overview?.last_check
-                      ? new Date(overview.last_check).toLocaleString("ar")
+                      ? new Date(overview.last_check).toLocaleString("en-US")
                       : t('system.health.notDefined')}
                   </span>
                 </div>

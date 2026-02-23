@@ -314,7 +314,7 @@ function useBagWeightHistory() {
     const newRecord: BagWeightRecord = {
       ...record,
       id: Date.now().toString(),
-      createdAt: new Date().toLocaleString("ar-SA"),
+      createdAt: new Date().toLocaleString("en-US"),
     };
     const updated = [newRecord, ...history].slice(0, 10);
     setHistory(updated);
@@ -480,7 +480,7 @@ function BagWeightCalculator({ onBagWeight, onDims, onPrintRef }: BagWeightCalcu
 </head>
 <body>
   <h1>${t("tools.bagWeight.printTitle")}</h1>
-  <p class="subtitle">${new Date().toLocaleDateString(isAr ? "ar-SA" : "en-US", { year:"numeric", month:"long", day:"numeric" })} — ${records.length > 1 ? records.length + " " + t("tools.bagWeight.records") : ""}</p>
+  <p class="subtitle">${new Date().toLocaleDateString("en-US", { year:"numeric", month:"long", day:"numeric" })} — ${records.length > 1 ? records.length + " " + t("tools.bagWeight.records") : ""}</p>
   <table>
     <thead>
       <tr>
@@ -517,7 +517,7 @@ function BagWeightCalculator({ onBagWeight, onDims, onPrintRef }: BagWeightCalcu
   const handlePrintCurrent = () => {
     const currentRecord: BagWeightRecord = {
       id: "current",
-      createdAt: new Date().toLocaleString(document.documentElement.dir === "rtl" ? "ar-SA" : "en-US"),
+      createdAt: new Date().toLocaleString("en-US"),
       bagType, widthCm, lengthCm, sideGussetCm, thicknessMicron, layers, density,
       gramsPerBag: result.gramsPerBag, bagsPerKg: result.bagsPerKg, areaM2: result.areaM2,
     };

@@ -118,10 +118,10 @@ export function VouchersList({ type, title, onView }: VouchersListProps) {
                     {getVoucherTypeLabel(voucher.voucher_type)}
                   </TableCell>
                   <TableCell>
-                    {new Date(voucher.voucher_date).toLocaleDateString("ar-SA")}
+                    {new Date(voucher.voucher_date).toLocaleDateString("en-US")}
                   </TableCell>
                   <TableCell>
-                    {parseFloat(voucher.quantity || 0).toLocaleString()} {voucher.unit || t('warehouse.units.kilo')}
+                    {parseFloat(voucher.quantity || 0).toLocaleString("en-US")} {voucher.unit || t('warehouse.units.kilo')}
                   </TableCell>
                   <TableCell>
                     {getStatusBadge(voucher.status)}

@@ -1599,7 +1599,7 @@ export default function UserDashboard() {
                           </p>
                           <p className="text-xs text-gray-500">
                             {t('userDashboard.violations.date')}:{" "}
-                            {new Date(violation.date).toLocaleDateString("ar")}
+                            {new Date(violation.date).toLocaleDateString("en-US")}
                           </p>
                         </div>
                       ))}
@@ -1736,7 +1736,7 @@ export default function UserDashboard() {
                             )}
                             <p className="text-xs text-gray-500">
                               {t('userDashboard.requests.date')}:{" "}
-                              {new Date(request.date).toLocaleDateString("ar")}
+                              {new Date(request.date).toLocaleDateString("en-US")}
                             </p>
                           </div>
                         ))}

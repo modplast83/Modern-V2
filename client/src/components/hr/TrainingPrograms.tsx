@@ -291,7 +291,7 @@ export default function TrainingPrograms() {
                 <Calendar className="w-3 h-3" />
                 <span>
                   {t("hr.training.createdAt")}:{" "}
-                  {new Date(program.created_at).toLocaleDateString("ar")}
+                  {new Date(program.created_at).toLocaleDateString("en-US")}
                 </span>
               </div>
 

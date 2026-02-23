@@ -401,7 +401,7 @@ export default function PerformanceReviews() {
                 <Calendar className="w-3 h-3" />
                 <span>
                   {t("hr.performance.createdAt")}:{" "}
-                  {new Date(review.created_at).toLocaleDateString("ar")}
+                  {new Date(review.created_at).toLocaleDateString("en-US")}
                 </span>
               </div>
 

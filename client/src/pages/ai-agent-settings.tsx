@@ -658,7 +658,7 @@ export default function AiAgentSettings() {
                                 <p className="text-sm text-muted-foreground">{template.product_name}</p>
                                 <div className="flex gap-2 mt-2">
                                   <span className="text-sm font-medium text-primary">
-                                    {Number(template.unit_price).toLocaleString("ar-SA")} {t("aiAgent.templates.currency")}/{template.unit}
+                                    {Number(template.unit_price).toLocaleString("en-US")} {t("aiAgent.templates.currency")}/{template.unit}
                                   </span>
                                   {template.min_quantity && (
                                     <span className="text-xs text-muted-foreground">

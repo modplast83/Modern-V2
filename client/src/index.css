@@ -76,6 +76,7 @@
 @layer base {
   * {
     border-color: var(--border);
+    font-variant-numeric: tabular-nums;
   }
 
   body {

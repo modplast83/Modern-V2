@@ -189,7 +189,7 @@ export function WarehouseReports() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {Number((summary as any)?.totalInventoryValue || 0).toLocaleString()} {t('warehouse.currency')}
+                  {Number((summary as any)?.totalInventoryValue || 0).toLocaleString("en-US")} {t('warehouse.currency')}
                 </div>
               </CardContent>
             </Card>
@@ -241,7 +241,7 @@ export function WarehouseReports() {
                            item.stock_status === "high" ? t('warehouse.reports.statusHigh') : t('warehouse.reports.statusNormal')}
                         </Badge>
                       </TableCell>
-                      <TableCell>{Number(item.total_value || 0).toLocaleString()} {t('warehouse.currency')}</TableCell>
+                      <TableCell>{Number(item.total_value || 0).toLocaleString("en-US")} {t('warehouse.currency')}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -339,7 +339,7 @@ export function WarehouseReports() {
                   {(movements as any[])?.map((mov: any) => (
                     <TableRow key={mov.id}>
                       <TableCell>
-                        {new Date(mov.created_at).toLocaleDateString("ar-SA")}
+                        {new Date(mov.created_at).toLocaleDateString("en-US")}
                       </TableCell>
                       <TableCell>{mov.item_name || mov.item_code}</TableCell>
                       <TableCell>

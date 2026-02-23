@@ -265,7 +265,7 @@ export default function RollsTable({ stage }: RollsTableProps) {
           </div>
           
           <div class="footer">
-            ${t("production.rolls.printDate")}: ${new Date().toLocaleDateString("ar")} | ${t("common.appName")}
+            ${t("production.rolls.printDate")}: ${new Date().toLocaleDateString("en-US")} | ${t("common.appName")}
           </div>
         </body>
         </html>
@@ -455,7 +455,7 @@ export default function RollsTable({ stage }: RollsTableProps) {
                       </div>
                       <div className="text-xs text-gray-400">
                         {roll.created_at
-                          ? new Date(roll.created_at).toLocaleDateString("ar")
+                          ? new Date(roll.created_at).toLocaleDateString("en-US")
                           : ""}
                       </div>
 
@@ -469,7 +469,7 @@ export default function RollsTable({ stage }: RollsTableProps) {
                       )}
                       {roll.printed_at && (
                         <div className="text-xs text-gray-400">
-                          {new Date(roll.printed_at).toLocaleDateString("ar")}
+                          {new Date(roll.printed_at).toLocaleDateString("en-US")}
                         </div>
                       )}
 

@@ -610,7 +610,7 @@ export default function AttendanceReports() {
                   </div>
 
                   <div className="mt-4 text-center text-xs text-gray-400">
-                    <p>{t("hr.reports.reportGeneratedAt")}: {new Date(report.generatedAt).toLocaleString("ar-SA")}</p>
+                    <p>{t("hr.reports.reportGeneratedAt")}: {new Date(report.generatedAt).toLocaleString("en-US")}</p>
                   </div>
                 </div>
               </div>

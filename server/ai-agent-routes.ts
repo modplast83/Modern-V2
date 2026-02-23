@@ -1174,7 +1174,7 @@ async function executeFunction(name: string, args: Record<string, unknown>): Pro
         const quoteMessage = `عرض سعر جديد\n\n` +
           `رقم المستند: ${quote.document_number}\n` +
           `العميل: ${quote.customer_name}\n` +
-          `التاريخ: ${new Date(quote.created_at!).toLocaleDateString('ar-SA')}\n\n` +
+          `التاريخ: ${new Date(quote.created_at!).toLocaleDateString('en-US')}\n\n` +
           `المجموع قبل الضريبة: ${Number(quote.total_before_tax).toFixed(2)} ر.س\n` +
           `ضريبة القيمة المضافة 15%: ${Number(quote.tax_amount).toFixed(2)} ر.س\n` +
           `الإجمالي: ${Number(quote.total_with_tax).toFixed(2)} ر.س\n\n` +

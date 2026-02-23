@@ -2639,7 +2639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         sheet.addRow([]);
-        sheet.addRow([`تاريخ التقرير: ${new Date().toLocaleDateString("ar-SA")}`]);
+        sheet.addRow([`تاريخ التقرير: ${new Date().toLocaleDateString("en-US")}`]);
         if (date_from && date_to) {
           sheet.addRow([`الفترة: من ${date_from} إلى ${date_to}`]);
         }
@@ -5989,7 +5989,7 @@ Do not include quotes or explanations.`;
       for (let day = 1; day <= daysInMonth; day++) {
         const dateStr = `${year}-${String(monthNum).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
         const dayDate = new Date(year, monthNum - 1, day);
-        const dayName = dayDate.toLocaleDateString("ar-SA", { weekday: "long" });
+        const dayName = dayDate.toLocaleDateString("en-US", { weekday: "long" });
         
         templateData.push({
           "التاريخ": dateStr,
@@ -6329,10 +6329,10 @@ Do not include quotes or explanations.`;
           },
           records: attendanceRecords.map(r => ({
             date: r.date,
-            dayName: new Date(r.date).toLocaleDateString("ar-SA", { weekday: "long" }),
+            dayName: new Date(r.date).toLocaleDateString("en-US", { weekday: "long" }),
             status: r.status,
-            checkIn: r.check_in_time ? new Date(r.check_in_time).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }) : null,
-            checkOut: r.check_out_time ? new Date(r.check_out_time).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }) : null,
+            checkIn: r.check_in_time ? new Date(r.check_in_time).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : null,
+            checkOut: r.check_out_time ? new Date(r.check_out_time).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : null,
             workHours: r.work_hours,
             overtimeHours: r.overtime_hours,
             notes: r.notes
@@ -6406,7 +6406,7 @@ Do not include quotes or explanations.`;
         { "": `اسم الموظف: ${user.display_name_ar || user.display_name || user.username}` },
         { "": `رقم الموظف: EMP-${user.id}` },
         { "": `الفترة: من ${startDate} إلى ${endDate}` },
-        { "": `تاريخ التقرير: ${new Date().toLocaleDateString("ar-SA")}` },
+        { "": `تاريخ التقرير: ${new Date().toLocaleDateString("en-US")}` },
         { "": "-----------------------------" },
         { "": `إجمالي أيام الحضور: ${presentDays}` },
         { "": `إجمالي أيام الغياب: ${absentDays}` },
@@ -6423,10 +6423,10 @@ Do not include quotes or explanations.`;
       // Attendance details sheet
       const detailsData = attendanceRecords.map(r => ({
         "التاريخ": r.date,
-        "اليوم": new Date(r.date).toLocaleDateString("ar-SA", { weekday: "long" }),
+        "اليوم": new Date(r.date).toLocaleDateString("en-US", { weekday: "long" }),
         "الحالة": r.status,
-        "وقت الحضور": r.check_in_time ? new Date(r.check_in_time).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }) : "-",
-        "وقت الانصراف": r.check_out_time ? new Date(r.check_out_time).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }) : "-",
+        "وقت الحضور": r.check_in_time ? new Date(r.check_in_time).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "-",
+        "وقت الانصراف": r.check_out_time ? new Date(r.check_out_time).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "-",
         "ساعات العمل": r.work_hours || 0,
         "ساعات إضافية": r.overtime_hours || 0,
         "ملاحظات": r.notes || ""
@@ -6657,19 +6657,19 @@ Do not include quotes or explanations.`;
 
           switch (req.body.status) {
             case "حاضر":
-              messageTemplate = `مرحباً ${user.display_name_ar || user.username}، تم تسجيل حضورك اليوم بنجاح في ${new Date().toLocaleTimeString("ar")}. نتمنى لك يوم عمل مثمر!`;
+              messageTemplate = `مرحباً ${user.display_name_ar || user.username}، تم تسجيل حضورك اليوم بنجاح في ${new Date().toLocaleTimeString("en-US")}. نتمنى لك يوم عمل مثمر!`;
               priority = "normal";
               break;
             case "في الاستراحة":
-              messageTemplate = `${user.display_name_ar || user.username}، تم تسجيل بدء استراحة الغداء في ${new Date().toLocaleTimeString("ar")}. استمتع بوقت راحتك!`;
+              messageTemplate = `${user.display_name_ar || user.username}، تم تسجيل بدء استراحة الغداء في ${new Date().toLocaleTimeString("en-US")}. استمتع بوقت راحتك!`;
               priority = "low";
               break;
             case "يعمل":
-              messageTemplate = `${user.display_name_ar || user.username}، تم تسجيل انتهاء استراحة الغداء في ${new Date().toLocaleTimeString("ar")}. مرحباً بعودتك للعمل!`;
+              messageTemplate = `${user.display_name_ar || user.username}، تم تسجيل انتهاء استراحة الغداء في ${new Date().toLocaleTimeString("en-US")}. مرحباً بعودتك للعمل!`;
               priority = "normal";
               break;
             case "مغادر":
-              messageTemplate = `${user.display_name_ar || user.username}، تم تسجيل انصرافك في ${new Date().toLocaleTimeString("ar")}. شكراً لجهودك اليوم، نراك غداً!`;
+              messageTemplate = `${user.display_name_ar || user.username}، تم تسجيل انصرافك في ${new Date().toLocaleTimeString("en-US")}. شكراً لجهودك اليوم، نراك غداً!`;
               priority = "normal";
               break;
           }
