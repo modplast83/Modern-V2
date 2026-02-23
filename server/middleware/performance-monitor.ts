@@ -24,8 +24,25 @@ export class PerformanceMonitor {
   private static metricsBuffer: PerformanceMetrics[] = [];
   private static bufferSize = 100;
 
+  private static devAssetPaths = [
+    '/client/src/',
+    '/node_modules/',
+    '/@vite/',
+    '/@fs/',
+    '/__vite_ping',
+    '/src/',
+  ];
+
+  private static isDevAsset(path: string): boolean {
+    return PerformanceMonitor.devAssetPaths.some(prefix => path.startsWith(prefix));
+  }
+
   static middleware() {
     return async (req: Request, res: Response, next: NextFunction) => {
+      if (this.isDevAsset(req.path)) {
+        return next();
+      }
+
       const startTime = Date.now();
       const startMemory = process.memoryUsage().heapUsed;
 
