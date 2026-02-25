@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from 'react-i18next';
+import { useLocalizedName } from "../hooks/use-localized-name";
 import PageLayout from "../components/layout/PageLayout";
 import RollCreationModalEnhanced from "../components/modals/RollCreationModalEnhanced";
 import FilmMaterialMixingTab from "../components/production/FilmMaterialMixingTab";
@@ -37,7 +38,11 @@ interface ActiveProductionOrderDetails {
   created_at: string;
   order_number: string;
   customer_name: string;
+  customer_name_ar?: string;
+  customer_name_en?: string;
   product_name: string;
+  product_name_ar?: string;
+  product_name_en?: string;
   rolls_count: number;
   total_weight_produced: string | number;
   remaining_quantity: string | number;
@@ -76,6 +81,7 @@ interface FilmOperatorDashboardProps {
 
 export default function FilmOperatorDashboard({ hideLayout = false }: FilmOperatorDashboardProps) {
   const { t } = useTranslation();
+  const ln = useLocalizedName();
   const [selectedProductionOrder, setSelectedProductionOrder] = useState<ActiveProductionOrderDetails | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isFinalRoll, setIsFinalRoll] = useState(false);
@@ -288,11 +294,11 @@ export default function FilmOperatorDashboard({ hideLayout = false }: FilmOperat
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <p className="text-gray-500 dark:text-gray-400">{t('operators.common.customer')}</p>
-                          <p className="font-bold text-gray-900 dark:text-white" data-testid={`text-customer-${order.id}`}>{order.customer_name}</p>
+                          <p className="font-bold text-gray-900 dark:text-white" data-testid={`text-customer-${order.id}`}>{ln(order.customer_name_ar, order.customer_name_en) || order.customer_name}</p>
                         </div>
                         <div>
                           <p className="text-gray-500 dark:text-gray-400">{t('operators.common.product')}</p>
-                          <p className="font-medium" data-testid={`text-product-${order.id}`}>{order.product_name}</p>
+                          <p className="font-medium" data-testid={`text-product-${order.id}`}>{ln(order.product_name_ar, order.product_name_en) || order.product_name}</p>
                         </div>
                       </div>
 

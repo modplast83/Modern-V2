@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useTranslation } from 'react-i18next';
+import { useLocalizedName } from "../hooks/use-localized-name";
 import PageLayout from "../components/layout/PageLayout";
 import { Button } from "../components/ui/button";
 import { Progress } from "../components/ui/progress";
@@ -37,7 +38,11 @@ interface ProductionOrderWithRolls {
   production_order_number: string;
   order_number: string;
   customer_name: string;
+  customer_name_ar?: string;
+  customer_name_en?: string;
   product_name: string;
+  product_name_ar?: string;
+  product_name_en?: string;
   rolls: RollDetails[];
   total_rolls: number;
   total_weight: number;
@@ -58,6 +63,7 @@ interface PrintingOperatorDashboardProps {
 
 export default function PrintingOperatorDashboard({ hideLayout = false }: PrintingOperatorDashboardProps) {
   const { t } = useTranslation();
+  const ln = useLocalizedName();
   const { toast } = useToast();
   const [processingRollIds, setProcessingRollIds] = useState<Set<number>>(new Set());
   const [selectedMachineId, setSelectedMachineId] = useState<string>("");
@@ -160,7 +166,7 @@ export default function PrintingOperatorDashboard({ hideLayout = false }: Printi
               <SelectContent>
                 {printingMachines.map((machine) => (
                   <SelectItem key={machine.id} value={machine.id}>
-                    {machine.name_ar || machine.name} ({machine.id})
+                    {ln(machine.name_ar, machine.name)} ({machine.id})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -168,7 +174,7 @@ export default function PrintingOperatorDashboard({ hideLayout = false }: Printi
             {selectedMachine && (
               <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 whitespace-nowrap">
                 <CheckCircle2 className="h-3 w-3 ml-1" />
-                {selectedMachine.name_ar || selectedMachine.name}
+                {ln(selectedMachine.name_ar, selectedMachine.name)}
               </Badge>
             )}
           </div>
@@ -258,11 +264,11 @@ export default function PrintingOperatorDashboard({ hideLayout = false }: Printi
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <p className="text-gray-500 dark:text-gray-400">{t('operators.common.customer')}</p>
-                          <p className="font-bold text-gray-900 dark:text-white" data-testid={`text-customer-${order.production_order_id}`}>{order.customer_name}</p>
+                          <p className="font-bold text-gray-900 dark:text-white" data-testid={`text-customer-${order.production_order_id}`}>{ln(order.customer_name_ar, order.customer_name_en) || order.customer_name}</p>
                         </div>
                         <div>
                           <p className="text-gray-500 dark:text-gray-400">{t('operators.common.product')}</p>
-                          <p className="font-medium" data-testid={`text-product-${order.production_order_id}`}>{order.product_name}</p>
+                          <p className="font-medium" data-testid={`text-product-${order.production_order_id}`}>{ln(order.product_name_ar, order.product_name_en) || order.product_name}</p>
                         </div>
                       </div>
 
