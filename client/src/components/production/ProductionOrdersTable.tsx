@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { useLocalizedName } from "../../hooks/use-localized-name";
 import { Button } from "../ui/button";
 import { Progress } from "../ui/progress";
 import { Eye, Plus } from "lucide-react";
@@ -20,6 +21,7 @@ export default function ProductionOrdersTable({
   onCreateRoll,
 }: ProductionOrdersTableProps) {
   const { t } = useTranslation();
+  const ln = useLocalizedName();
   
   const { data: productionOrders = [], isLoading } = useQuery<
     ProductionOrderWithDetails[]
@@ -77,8 +79,8 @@ export default function ProductionOrdersTable({
               return (
                 <tr key={order.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{order.production_order_number}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{order.customer_name_ar || order.customer_name || t("common.notSpecified")}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{(order as any).item_name_ar || (order as any).item_name || (order as any).size_caption || t("common.notSpecified")}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{ln(order.customer_name_ar, order.customer_name) || t("common.notSpecified")}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{ln((order as any).item_name_ar, (order as any).item_name) || (order as any).size_caption || t("common.notSpecified")}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatWeight(required)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatWeight(produced)}</td>
                   <td className="px-6 py-4 whitespace-nowrap"><div className="flex items-center"><div className="w-full bg-gray-200 rounded-full h-2 ml-3"><div className={`h-2 rounded-full ${progressColor}`} style={{ width: `${Math.min(progress, 100)}%` }}></div></div><span className="text-sm text-gray-900">{formatPercentage(progress)}</span></div></td>
@@ -99,7 +101,7 @@ export default function ProductionOrdersTable({
           return (
             <div key={order.id} className="bg-white rounded-lg border p-4 space-y-3">
               <div className="font-semibold">{order.production_order_number}</div>
-              <div className="text-sm font-bold text-gray-900">{order.customer_name_ar || order.customer_name}</div>
+              <div className="text-sm font-bold text-gray-900">{ln(order.customer_name_ar, order.customer_name)}</div>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div><span className="text-muted-foreground">{t("production.table.required")}:</span><div className="font-medium">{formatWeight(required)}</div></div>
                 <div><span className="text-muted-foreground">{t("production.table.produced")}:</span><div className="font-medium">{formatWeight(produced)}</div></div>

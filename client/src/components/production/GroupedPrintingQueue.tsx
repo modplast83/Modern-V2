@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useLocalizedName } from "../../hooks/use-localized-name";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
@@ -79,6 +80,7 @@ export default function GroupedPrintingQueue({
   items,
 }: GroupedPrintingQueueProps) {
   const { t } = useTranslation();
+  const ln = useLocalizedName();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [processingId, setProcessingId] = useState<number | null>(null);
@@ -317,11 +319,11 @@ export default function GroupedPrintingQueue({
                         <CardTitle className="text-lg">
                           {orderGroup.order_number} -{" "}
                           <span className="font-bold text-blue-700">
-                            {orderGroup.customer_name_ar}
+                            {ln(orderGroup.customer_name_ar, orderGroup.customer_name)}
                           </span>
                         </CardTitle>
                         <p className="text-sm text-gray-600">
-                          {orderGroup.item_name_ar}{" "}
+                          {ln(orderGroup.item_name_ar, orderGroup.item_name)}{" "}
                           {orderGroup.size_caption &&
                             `- ${orderGroup.size_caption}`}
                         </p>

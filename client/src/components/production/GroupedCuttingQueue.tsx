@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useLocalizedName } from "../../hooks/use-localized-name";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
@@ -74,6 +75,7 @@ export default function GroupedCuttingQueue({
   items,
 }: GroupedCuttingQueueProps) {
   const { t } = useTranslation();
+  const ln = useLocalizedName();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [expandedOrders, setExpandedOrders] = useState<Record<number, boolean>>(
@@ -252,8 +254,7 @@ export default function GroupedCuttingQueue({
                   </CardTitle>
                   <p className="text-base font-bold text-blue-700">
                     {t('production.customer')}:{" "}
-                    {order.customer_name_ar ||
-                      order.customer_name ||
+                    {ln(order.customer_name_ar, order.customer_name) ||
                       t('production.notSpecified')}
                   </p>
                 </div>
@@ -309,8 +310,7 @@ export default function GroupedCuttingQueue({
                               {productionOrder.production_order_number}
                             </h4>
                             <p className="text-sm text-muted-foreground">
-                              {productionOrder.item_name_ar ||
-                                productionOrder.item_name ||
+                              {ln(productionOrder.item_name_ar, productionOrder.item_name) ||
                                 t('production.notSpecified')}
                             </p>
                             <div className="grid grid-cols-3 gap-x-4 gap-y-1 mt-2 text-xs">

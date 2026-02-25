@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { useLocalizedName } from "../../hooks/use-localized-name";
 import { Card, CardContent } from "../ui/card";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
@@ -33,6 +34,7 @@ export default function ProductionQueue({
   items,
 }: ProductionQueueProps) {
   const { t } = useTranslation();
+  const ln = useLocalizedName();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [processingId, setProcessingId] = useState<number | null>(null);
@@ -276,7 +278,7 @@ export default function ProductionQueue({
                   {printingMachines.length > 0 ? (
                     printingMachines.map((machine) => (
                       <SelectItem key={machine.id} value={machine.id}>
-                        {machine.name_ar || machine.name} - {machine.id}
+                        {ln(machine.name_ar, machine.name)} - {machine.id}
                       </SelectItem>
                     ))
                   ) : (

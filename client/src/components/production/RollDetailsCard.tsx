@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { useLocalizedName } from "../../hooks/use-localized-name";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
@@ -133,6 +134,7 @@ interface RollHistory {
 
 export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProps) {
   const { t } = useTranslation();
+  const ln = useLocalizedName();
   const { toast } = useToast();
 
   // Fetch roll details
@@ -282,7 +284,7 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
               {rollDetails.roll_number}
             </CardTitle>
             <CardDescription className="mt-1 font-bold text-base text-gray-800 dark:text-gray-100">
-              {rollDetails.customer_name_ar || rollDetails.customer_name}
+              {ln(rollDetails.customer_name_ar, rollDetails.customer_name)}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -380,7 +382,7 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">{t('production.product')}</span>
                         <span className="font-medium">
-                          {rollDetails.item_name_ar || rollDetails.item_name}
+                          {ln(rollDetails.item_name_ar, rollDetails.item_name)}
                         </span>
                       </div>
                     )}
@@ -453,7 +455,7 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">{t('production.name')}</span>
                       <span className="font-bold text-gray-900 dark:text-white">
-                        {rollDetails.customer_name_ar || rollDetails.customer_name}
+                        {ln(rollDetails.customer_name_ar, rollDetails.customer_name)}
                       </span>
                     </div>
                     {rollDetails.customer_city && (

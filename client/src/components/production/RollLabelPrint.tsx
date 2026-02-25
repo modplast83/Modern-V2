@@ -43,6 +43,9 @@ interface RollLabelPrintProps {
 }
 
 export function printRollLabel({ roll, productionOrder, order }: RollLabelPrintProps) {
+  const currentLang = localStorage.getItem('i18nextLng') || 'ar';
+  const resolvedName = (nameAr?: string, nameEn?: string) =>
+    currentLang === 'en' && nameEn ? nameEn : (nameAr || nameEn || '');
   const printContent = `
     <html dir="rtl">
       <head>
@@ -213,7 +216,7 @@ export function printRollLabel({ roll, productionOrder, order }: RollLabelPrintP
             ${order && (order.customer_name_ar || order.customer_name) ? `
               <div class="info-box full">
                 <div class="info-label">العميل</div>
-                <div class="info-value">${order.customer_name_ar || order.customer_name}</div>
+                <div class="info-value">${resolvedName(order.customer_name_ar, order.customer_name)}</div>
               </div>
             ` : ''}
             
@@ -244,7 +247,7 @@ export function printRollLabel({ roll, productionOrder, order }: RollLabelPrintP
             ${productionOrder && (productionOrder.item_name_ar || productionOrder.item_name) ? `
               <div class="info-box full">
                 <div class="info-label">اسم الصنف</div>
-                <div class="info-value">${productionOrder.item_name_ar || productionOrder.item_name}</div>
+                <div class="info-value">${resolvedName(productionOrder.item_name_ar, productionOrder.item_name)}</div>
               </div>
             ` : ''}
             

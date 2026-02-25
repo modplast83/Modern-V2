@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useTranslation } from 'react-i18next';
+import { useLocalizedName } from "../hooks/use-localized-name";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Card,
@@ -77,6 +78,7 @@ import { useAuth } from "../hooks/use-auth";
 
 export default function Warehouse() {
   const { t } = useTranslation();
+  const ln = useLocalizedName();
 
   const inventoryFormSchema = z.object({
     material_group_id: z.string().min(1, t('warehouse.validation.materialGroupRequired')),
@@ -1034,7 +1036,7 @@ export default function Warehouse() {
                                     <td className="px-6 py-4">
                                       <div>
                                         <div className="text-sm font-medium text-gray-900">
-                                          {item.item_name_ar || item.item_name}
+                                          {ln(item.item_name_ar, item.item_name)}
                                         </div>
                                         <div className="text-sm text-gray-500">
                                           {item.item_code}
@@ -1042,9 +1044,7 @@ export default function Warehouse() {
                                       </div>
                                     </td>
                                     <td className="px-6 py-4 text-sm text-gray-900">
-                                      {item.category_name_ar ||
-                                        item.category_name ||
-                                        "-"}
+                                      {ln(item.category_name_ar, item.category_name) || "-"}
                                     </td>
                                     <td className="px-6 py-4 text-sm text-gray-900">
                                       {currentStock.toLocaleString("en-US")}{" "}
@@ -1137,7 +1137,7 @@ export default function Warehouse() {
                                           key={item.id}
                                           value={item.id.toString()}
                                         >
-                                          {item.item_name_ar} -{" "}
+                                          {ln(item.item_name_ar, item.item_name)} -{" "}
                                           {item.location_name_ar}
                                         </SelectItem>
                                       ))}
@@ -1410,6 +1410,7 @@ export default function Warehouse() {
 // Production Hall Component
 function ProductionHallContent() {
   const { t } = useTranslation();
+  const ln = useLocalizedName();
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
   const [receiptWeight, setReceiptWeight] = useState("");
@@ -1681,7 +1682,7 @@ function ProductionHallContent() {
                               </Badge>
                             </td>
                             <td className="py-2 px-3">
-                              <div className="font-medium">{order.item_name_ar || order.item_name}</div>
+                              <div className="font-medium">{ln(order.item_name_ar, order.item_name)}</div>
                               {order.size_caption && <div className="text-xs text-gray-500">{order.size_caption}</div>}
                             </td>
                             <td className="py-2 px-3 font-medium">
@@ -1757,6 +1758,7 @@ function ProductionHallContent() {
 // Received Quantities Component
 function ReceivedQuantitiesContent() {
   const { t } = useTranslation();
+  const ln = useLocalizedName();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
@@ -2028,7 +2030,7 @@ function ReceivedQuantitiesContent() {
                             className="font-medium"
                             data-testid={`item-name-${order.order_number}`}
                           >
-                            {order.item_name_ar || order.item_name}
+                            {ln(order.item_name_ar, order.item_name)}
                           </p>
                         </div>
 

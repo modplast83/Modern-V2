@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { useLocalizedName } from "../../hooks/use-localized-name";
 import { Card } from "../ui/card";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -30,6 +31,7 @@ export default function ProductionOrderFilters({
   customers,
 }: ProductionOrderFiltersProps) {
   const { t } = useTranslation();
+  const ln = useLocalizedName();
   const handleFilterChange = (key: string, value: any) => {
     onFiltersChange({
       ...filters,
@@ -149,7 +151,7 @@ export default function ProductionOrderFilters({
                   value={customer.id}
                   data-testid={`option-customer-${customer.id}`}
                 >
-                  {customer.name_ar || customer.name}
+                  {ln(customer.name_ar, customer.name)}
                 </SelectItem>
               ))}
             </SelectContent>

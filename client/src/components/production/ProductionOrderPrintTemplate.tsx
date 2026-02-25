@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useLocalizedName } from "../../hooks/use-localized-name";
 import { format } from "date-fns";
 import "../../print.css";
 
@@ -27,6 +28,7 @@ export default function ProductionOrderPrintTemplate({
   onClose,
 }: ProductionOrderPrintTemplateProps) {
   const { t } = useTranslation();
+  const ln = useLocalizedName();
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
 
   useEffect(() => {
@@ -38,7 +40,7 @@ export default function ProductionOrderPrintTemplate({
           production_order_id: productionOrder.id,
           production_order_number: productionOrder.production_order_number,
           order_number: order?.order_number,
-          customer: customer?.name_ar || customer?.name,
+          customer: ln(customer?.name_ar, customer?.name),
           date: productionOrder.created_at,
         });
         const qrUrl = await QRCode.toDataURL(qrData, {
@@ -266,7 +268,7 @@ function PrintContentInner({
         </div>
         <div className="print-info-box">
           <div className="print-info-label">{t("production.print.customer")}</div>
-          <div className="print-info-value">{customer?.name_ar || customer?.name || t("production.print.notSpecified")}</div>
+          <div className="print-info-value">{ln(customer?.name_ar, customer?.name) || t("production.print.notSpecified")}</div>
         </div>
         <div className="print-info-box">
           <div className="print-info-label">{t("production.print.statusLabel")}</div>
@@ -302,7 +304,7 @@ function PrintContentInner({
         <div className="print-specs-grid">
           <div className="print-specs-item">
             <strong>{t("production.print.itemName")}:</strong>
-            {item?.name_ar || item?.name || t("production.print.notSpecified")}
+            {ln(item?.name_ar, item?.name) || t("production.print.notSpecified")}
           </div>
           <div className="print-specs-item">
             <strong>{t("production.print.size")}:</strong>

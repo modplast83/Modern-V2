@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useLocalizedName } from "../../hooks/use-localized-name";
 import {
   Dialog,
   DialogContent,
@@ -39,6 +40,7 @@ export default function ProductionOrderActivationModal({
   isUpdating = false,
 }: ProductionOrderActivationModalProps) {
   const { t } = useTranslation();
+  const ln = useLocalizedName();
   const [selectedMachineId, setSelectedMachineId] = useState<string>("");
   const [selectedOperatorId, setSelectedOperatorId] = useState<string>("");
 
@@ -78,7 +80,7 @@ export default function ProductionOrderActivationModal({
                 <div className="flex justify-between">
                   <span className="text-gray-600">{t('production.activation.customer')}:</span>
                   <span className="font-medium">
-                    {order.customer_name_ar || order.customer_name}
+                    {ln(order.customer_name_ar, order.customer_name)}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -110,7 +112,7 @@ export default function ProductionOrderActivationModal({
                     data-testid={`option-machine-${machine.id}`}
                   >
                     <div className="flex items-center gap-2">
-                      {machine.name_ar || machine.name}
+                      {ln(machine.name_ar, machine.name)}
                       {machine.type && (
                         <Badge variant="outline" className="text-xs">
                           {machine.type}

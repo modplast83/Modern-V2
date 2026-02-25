@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '../lib/queryClient';
 import { useToast } from '../hooks/use-toast';
+import { useLocalizedName } from '../hooks/use-localized-name';
 
 import Header from '../components/layout/Header';
 import Sidebar from '../components/layout/Sidebar';
@@ -1011,6 +1012,7 @@ function DraggableGroup({ machine, isSelected, onSelect, onDrag, rolls }: { mach
 
 function MachineDetailPanel({ machine, onClose }: { machine: Machine; onClose: () => void }) {
   const dbId = machine.dbId || machine.id;
+  const ln = useLocalizedName();
   
   const { data: orders = [], isLoading } = useQuery<ProductionOrder[]>({
     queryKey: ["/api/factory-3d/machine-orders", dbId],
@@ -1103,10 +1105,10 @@ function MachineDetailPanel({ machine, onClose }: { machine: Machine; onClose: (
                     </div>
                     <div className="flex items-center gap-1.5 mb-1">
                       <div className="w-2 h-2 rounded-full" style={{ backgroundColor: order.color_hex }} />
-                      <span className="text-[9px] text-slate-400">{order.customer_name_ar || order.customer_name}</span>
+                      <span className="text-[9px] text-slate-400">{ln(order.customer_name_ar, order.customer_name)}</span>
                     </div>
                     <div className="flex items-center justify-between text-[8px] text-slate-500">
-                      <span>{order.product_name_ar || order.product_name}</span>
+                      <span>{ln(order.product_name_ar, order.product_name)}</span>
                       <span className="font-mono">{parseFloat(order.quantity_kg).toFixed(0)} كجم</span>
                     </div>
                     <div className="flex items-center gap-2 mt-1 text-[8px]">

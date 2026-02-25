@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from 'react-i18next';
+import { useLocalizedName } from "../hooks/use-localized-name";
 import { useAuth } from "../hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
@@ -44,6 +45,7 @@ import { ar } from "date-fns/locale";
 
 export default function ProductionOrdersManagement() {
   const { t } = useTranslation();
+  const ln = useLocalizedName();
   const { user } = useAuth();
   const [showStats, setShowStats] = useState<number | null>(null);
   const [printingProductionOrder, setPrintingProductionOrder] = useState<any>(null);
@@ -277,7 +279,7 @@ export default function ProductionOrdersManagement() {
                           {order.order_number}
                         </TableCell>
                         <TableCell>
-                          <div className="font-bold text-gray-900">{order.customer_name_ar || order.customer_name}</div>
+                          <div className="font-bold text-gray-900">{ln(order.customer_name_ar, order.customer_name)}</div>
                         </TableCell>
                         <TableCell>
                           <div className="space-y-1">

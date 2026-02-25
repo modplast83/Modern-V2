@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { useLocalizedName } from "../../hooks/use-localized-name";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
@@ -25,6 +26,7 @@ interface MachineStatusProps {
 
 export default function MachineStatus({ onCreateRoll }: MachineStatusProps) {
   const { t } = useTranslation();
+  const ln = useLocalizedName();
   const { data: machines = [], isLoading } = useQuery({
     queryKey: ["/api/machines"],
   });
@@ -168,7 +170,7 @@ export default function MachineStatus({ onCreateRoll }: MachineStatusProps) {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <h4 className="font-medium text-gray-900 truncate">
-                            {machine.name_ar || machine.name}
+                            {ln(machine.name_ar, machine.name)}
                           </h4>
                           <Badge className={getStatusColor(machine.status)}>
                             {getStatusText(machine.status)}

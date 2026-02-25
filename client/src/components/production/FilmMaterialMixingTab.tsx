@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useLocalizedName } from "../../hooks/use-localized-name";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "../../lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -84,6 +85,7 @@ interface MasterBatchColor {
 
 export default function FilmMaterialMixingTab() {
   const { t } = useTranslation();
+  const ln = useLocalizedName();
   const { toast } = useToast();
   const { user } = useAuth();
   
@@ -325,11 +327,11 @@ export default function FilmMaterialMixingTab() {
                         <div className="flex flex-col gap-1">
                           <div className="font-semibold">{order.production_order_number}</div>
                           <div className="text-sm text-gray-600">
-                            {order.item_name_ar || order.item_name} | 
+                            {ln(order.item_name_ar, order.item_name)} | 
                             {' '}{order.raw_material}
                             {order.master_batch_id && ` | ${getMasterBatchText(order.master_batch_id)}`} | 
                             {' '}{parseFloat(order.final_quantity_kg || order.quantity_kg || 0).toFixed(2)} {t("production.mixing.kg")} |
-                            {' '}{order.customer_name_ar || order.customer_name}
+                            {' '}{ln(order.customer_name_ar, order.customer_name)}
                           </div>
                         </div>
                       </SelectItem>
@@ -640,7 +642,7 @@ export default function FilmMaterialMixingTab() {
                     <TableBody>
                       {selectedBatch.ingredients.map((ing, idx) => (
                         <TableRow key={idx}>
-                          <TableCell>{ing.item_name_ar || ing.item_name || ing.item_id}</TableCell>
+                          <TableCell>{ln(ing.item_name_ar, ing.item_name) || ing.item_id}</TableCell>
                           <TableCell>{parseFloat(ing.actual_weight_kg).toFixed(2)}</TableCell>
                           <TableCell>{parseFloat(ing.percentage).toFixed(2)}%</TableCell>
                         </TableRow>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useTranslation } from 'react-i18next';
+import { useLocalizedName } from "../hooks/use-localized-name";
 import PageLayout from "../components/layout/PageLayout";
 import {
   DndContext,
@@ -153,7 +154,7 @@ function SortableItem({
               
               {(isQueueItem ? item.customer_name_ar || item.customer_name : (item as ProductionOrder).customer_name_ar || (item as ProductionOrder).customer_name) && (
                 <div className="text-xs font-bold text-gray-900 dark:text-white mb-1" data-testid={`text-customer-${itemId}`}>
-                  {t('production.queues.customer')}: {isQueueItem ? item.customer_name_ar || item.customer_name : (item as ProductionOrder).customer_name_ar || (item as ProductionOrder).customer_name}
+                  {t('production.queues.customer')}: {isQueueItem ? ln(item.customer_name_ar, item.customer_name) : ln((item as ProductionOrder).customer_name_ar, (item as ProductionOrder).customer_name)}
                 </div>
               )}
               
@@ -276,6 +277,7 @@ function MachineColumn({
 
 export default function ProductionQueues() {
   const { t } = useTranslation();
+  const ln = useLocalizedName();
   const { toast } = useToast();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [localQueues, setLocalQueues] = useState<{ [key: string]: any[] }>({});

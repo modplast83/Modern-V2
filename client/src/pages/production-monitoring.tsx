@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { useLocalizedName } from "../hooks/use-localized-name";
 import { useQuery } from "@tanstack/react-query";
 import PageLayout from "../components/layout/PageLayout";
 import {
@@ -129,7 +130,8 @@ interface ProductionOrder {
 }
 
 export default function ProductionMonitoring() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const ln = useLocalizedName();
   const [activeTab, setActiveTab] = useState("film");
   const [searchRoll, setSearchRoll] = useState("");
   const [searchOrder, setSearchOrder] = useState("");
@@ -967,8 +969,8 @@ function SectionContent({
                     <TableCell className="font-mono">{roll.roll_number}</TableCell>
                     <TableCell>{roll.production_order_number}</TableCell>
                     <TableCell>
-                      <div className="font-bold text-gray-900">{roll.customer_name}</div>
-                      {roll.customer_name_en && roll.customer_name_en !== roll.customer_name && (
+                      <div className="font-bold text-gray-900">{ln(roll.customer_name, roll.customer_name_en)}</div>
+                      {i18n.language === 'ar' && roll.customer_name_en && roll.customer_name_en !== roll.customer_name && (
                         <div className="text-xs text-gray-500 mt-0.5">{roll.customer_name_en}</div>
                       )}
                     </TableCell>
@@ -981,7 +983,7 @@ function SectionContent({
           </div>
           <div className="md:hidden space-y-2">
             {filteredRolls.slice(0, 10).map((roll) => (
-              <div key={roll.roll_id} className="bg-gray-50 p-3 rounded border"><div className="flex justify-between items-start"><div><strong>{roll.roll_number}</strong><div className="text-xs text-gray-600">{roll.production_order_number}</div></div><Badge className={roll.stage === 'done' ? 'bg-green-500 text-xs' : 'text-xs'}>{roll.stage === 'done' ? t('production.monitoring.completed') : roll.stage === 'film' ? t('production.monitoring.filmStage') : t('production.monitoring.printingStage')}</Badge></div><div className="mt-2 text-xs"><div className="font-bold text-gray-900">{roll.customer_name}</div>{roll.customer_name_en && roll.customer_name_en !== roll.customer_name && <div className="text-gray-500">{roll.customer_name_en}</div>}<div>{formatWeight(roll.weight_kg)}</div></div></div>
+              <div key={roll.roll_id} className="bg-gray-50 p-3 rounded border"><div className="flex justify-between items-start"><div><strong>{roll.roll_number}</strong><div className="text-xs text-gray-600">{roll.production_order_number}</div></div><Badge className={roll.stage === 'done' ? 'bg-green-500 text-xs' : 'text-xs'}>{roll.stage === 'done' ? t('production.monitoring.completed') : roll.stage === 'film' ? t('production.monitoring.filmStage') : t('production.monitoring.printingStage')}</Badge></div><div className="mt-2 text-xs"><div className="font-bold text-gray-900">{ln(roll.customer_name, roll.customer_name_en)}</div>{i18n.language === 'ar' && roll.customer_name_en && roll.customer_name_en !== roll.customer_name && <div className="text-gray-500">{roll.customer_name_en}</div>}<div>{formatWeight(roll.weight_kg)}</div></div></div>
             ))}
           </div>
         </CardContent>
@@ -1028,8 +1030,8 @@ function SectionContent({
                       </TableCell>
                       <TableCell>{order.order_number}</TableCell>
                       <TableCell>
-                        <div className="font-bold text-gray-900">{order.customer_name}</div>
-                        {order.customer_name_en && order.customer_name_en !== order.customer_name && (
+                        <div className="font-bold text-gray-900">{ln(order.customer_name, order.customer_name_en)}</div>
+                        {i18n.language === 'ar' && order.customer_name_en && order.customer_name_en !== order.customer_name && (
                           <div className="text-xs text-gray-500 mt-0.5">{order.customer_name_en}</div>
                         )}
                       </TableCell>

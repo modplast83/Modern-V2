@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useTranslation } from 'react-i18next';
+import { useLocalizedName } from "../hooks/use-localized-name";
 import PageLayout from "../components/layout/PageLayout";
 import { Card } from "../components/ui/card";
 import { Input } from "../components/ui/input";
@@ -97,6 +98,7 @@ interface SearchFilters {
 
 export default function RollSearch() {
   const { t } = useTranslation();
+  const ln = useLocalizedName();
   const [, navigate] = useLocation();
   const { toast } = useToast();
   
@@ -657,7 +659,7 @@ export default function RollSearch() {
                                                   <span className="mr-1">{getStageLabel(roll.stage)}</span>
                                                 </Badge>
                                               </TableCell>
-                                              <TableCell className="text-sm">{roll.item_name_ar || roll.item_name || "-"}</TableCell>
+                                              <TableCell className="text-sm">{ln(roll.item_name_ar, roll.item_name) || "-"}</TableCell>
                                               <TableCell className="text-sm font-medium">{roll.weight_kg} كجم</TableCell>
                                               <TableCell className="text-sm">
                                                 <div className="flex items-center gap-1 text-muted-foreground">

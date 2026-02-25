@@ -1,5 +1,6 @@
 import { useState, useMemo, Fragment } from "react";
 import { useTranslation } from "react-i18next";
+import { useLocalizedName } from "../../hooks/use-localized-name";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Input } from "../ui/input";
@@ -82,6 +83,7 @@ interface RollsTabProps {
 
 export default function RollsTab({ customers = [], productionOrders = [] }: RollsTabProps) {
   const { t } = useTranslation();
+  const ln = useLocalizedName();
   const [searchTerm, setSearchTerm] = useState("");
   const [stageFilter, setStageFilter] = useState("all");
   const [customerFilter, setCustomerFilter] = useState("all");
@@ -589,11 +591,11 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
                             {roll.production_order_number}
                           </TableCell>
                           <TableCell>
-                            <span className="font-bold text-gray-900">{roll.customer_name_ar || roll.customer_name}</span>
+                            <span className="font-bold text-gray-900">{ln(roll.customer_name_ar, roll.customer_name)}</span>
                           </TableCell>
                           <TableCell>
                             <div className="space-y-0.5">
-                              <div className="text-sm">{roll.item_name_ar || roll.item_name || "-"}</div>
+                              <div className="text-sm">{ln(roll.item_name_ar, roll.item_name) || "-"}</div>
                               {roll.size_caption && (
                                 <div className="text-xs text-muted-foreground">{roll.size_caption}</div>
                               )}
