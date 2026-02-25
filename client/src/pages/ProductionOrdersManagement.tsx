@@ -277,7 +277,7 @@ export default function ProductionOrdersManagement() {
                           {order.order_number}
                         </TableCell>
                         <TableCell>
-                          <div className="font-medium">{order.customer_name_ar || order.customer_name}</div>
+                          <div className="font-bold text-gray-900">{order.customer_name_ar || order.customer_name}</div>
                         </TableCell>
                         <TableCell>
                           <div className="space-y-1">

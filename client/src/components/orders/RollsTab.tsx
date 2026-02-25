@@ -589,7 +589,7 @@ export default function RollsTab({ customers = [], productionOrders = [] }: Roll
                             {roll.production_order_number}
                           </TableCell>
                           <TableCell>
-                            {roll.customer_name_ar || roll.customer_name}
+                            <span className="font-bold text-gray-900">{roll.customer_name_ar || roll.customer_name}</span>
                           </TableCell>
                           <TableCell>
                             <div className="space-y-0.5">

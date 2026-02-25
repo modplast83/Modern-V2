@@ -109,6 +109,7 @@ interface Roll {
   roll_number: string;
   production_order_number: string;
   customer_name: string;
+  customer_name_en?: string;
   weight_kg: number;
   stage: string;
   section: string;
@@ -120,6 +121,7 @@ interface ProductionOrder {
   production_order_number: string;
   order_number: string;
   customer_name: string;
+  customer_name_en?: string;
   section: string;
   status: string;
   progress_percent: number;
@@ -964,7 +966,12 @@ function SectionContent({
                   <TableRow key={roll.roll_id}>
                     <TableCell className="font-mono">{roll.roll_number}</TableCell>
                     <TableCell>{roll.production_order_number}</TableCell>
-                    <TableCell>{roll.customer_name}</TableCell>
+                    <TableCell>
+                      <div className="font-bold text-gray-900">{roll.customer_name}</div>
+                      {roll.customer_name_en && roll.customer_name_en !== roll.customer_name && (
+                        <div className="text-xs text-gray-500 mt-0.5">{roll.customer_name_en}</div>
+                      )}
+                    </TableCell>
                     <TableCell>{formatWeight(roll.weight_kg)}</TableCell>
                     <TableCell><Badge className={roll.stage === 'done' ? 'bg-green-500' : ''}>{roll.stage === 'done' ? t('production.monitoring.completed') : roll.stage === 'film' ? t('production.monitoring.filmStage') : roll.stage === 'printing' ? t('production.monitoring.printingStage') : t('production.monitoring.cuttingStage')}</Badge></TableCell>
                   </TableRow>
@@ -974,7 +981,7 @@ function SectionContent({
           </div>
           <div className="md:hidden space-y-2">
             {filteredRolls.slice(0, 10).map((roll) => (
-              <div key={roll.roll_id} className="bg-gray-50 p-3 rounded border"><div className="flex justify-between items-start"><div><strong>{roll.roll_number}</strong><div className="text-xs text-gray-600">{roll.production_order_number}</div></div><Badge className={roll.stage === 'done' ? 'bg-green-500 text-xs' : 'text-xs'}>{roll.stage === 'done' ? t('production.monitoring.completed') : roll.stage === 'film' ? t('production.monitoring.filmStage') : t('production.monitoring.printingStage')}</Badge></div><div className="mt-2 text-xs"><div>{roll.customer_name}</div><div>{formatWeight(roll.weight_kg)}</div></div></div>
+              <div key={roll.roll_id} className="bg-gray-50 p-3 rounded border"><div className="flex justify-between items-start"><div><strong>{roll.roll_number}</strong><div className="text-xs text-gray-600">{roll.production_order_number}</div></div><Badge className={roll.stage === 'done' ? 'bg-green-500 text-xs' : 'text-xs'}>{roll.stage === 'done' ? t('production.monitoring.completed') : roll.stage === 'film' ? t('production.monitoring.filmStage') : t('production.monitoring.printingStage')}</Badge></div><div className="mt-2 text-xs"><div className="font-bold text-gray-900">{roll.customer_name}</div>{roll.customer_name_en && roll.customer_name_en !== roll.customer_name && <div className="text-gray-500">{roll.customer_name_en}</div>}<div>{formatWeight(roll.weight_kg)}</div></div></div>
             ))}
           </div>
         </CardContent>
@@ -1020,7 +1027,12 @@ function SectionContent({
                         {order.production_order_number}
                       </TableCell>
                       <TableCell>{order.order_number}</TableCell>
-                      <TableCell>{order.customer_name}</TableCell>
+                      <TableCell>
+                        <div className="font-bold text-gray-900">{order.customer_name}</div>
+                        {order.customer_name_en && order.customer_name_en !== order.customer_name && (
+                          <div className="text-xs text-gray-500 mt-0.5">{order.customer_name_en}</div>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Badge
                           variant={order.status === 'completed' ? 'default' : 'secondary'}

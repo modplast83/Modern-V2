@@ -152,7 +152,7 @@ function SortableItem({
               </div>
               
               {(isQueueItem ? item.customer_name_ar || item.customer_name : (item as ProductionOrder).customer_name_ar || (item as ProductionOrder).customer_name) && (
-                <div className="text-xs text-muted-foreground mb-1" data-testid={`text-customer-${itemId}`}>
+                <div className="text-xs font-bold text-gray-900 dark:text-white mb-1" data-testid={`text-customer-${itemId}`}>
                   {t('production.queues.customer')}: {isQueueItem ? item.customer_name_ar || item.customer_name : (item as ProductionOrder).customer_name_ar || (item as ProductionOrder).customer_name}
                 </div>
               )}

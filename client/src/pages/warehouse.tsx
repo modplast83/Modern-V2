@@ -1634,8 +1634,8 @@ function ProductionHallContent() {
                     <span className="font-bold text-sm">{t('warehouse.production.order')}: {group.order_number}</span>
                     <span className="text-gray-500 text-sm">|</span>
                     <User className="h-4 w-4 text-gray-500" />
-                    <span className="text-sm">{group.customer_name_ar || group.customer_name}</span>
-                    {group.customer_name_ar && group.customer_name && (
+                    <span className="font-bold text-sm text-gray-900 dark:text-white">{group.customer_name_ar || group.customer_name}</span>
+                    {group.customer_name_ar && group.customer_name && group.customer_name_ar !== group.customer_name && (
                       <span className="text-xs text-gray-400">({group.customer_name})</span>
                     )}
                   </div>

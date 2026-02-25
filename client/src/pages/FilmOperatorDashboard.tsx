@@ -288,7 +288,7 @@ export default function FilmOperatorDashboard({ hideLayout = false }: FilmOperat
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <p className="text-gray-500 dark:text-gray-400">{t('operators.common.customer')}</p>
-                          <p className="font-medium" data-testid={`text-customer-${order.id}`}>{order.customer_name}</p>
+                          <p className="font-bold text-gray-900 dark:text-white" data-testid={`text-customer-${order.id}`}>{order.customer_name}</p>
                         </div>
                         <div>
                           <p className="text-gray-500 dark:text-gray-400">{t('operators.common.product')}</p>

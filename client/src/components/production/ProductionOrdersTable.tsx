@@ -77,7 +77,7 @@ export default function ProductionOrdersTable({
               return (
                 <tr key={order.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{order.production_order_number}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order.customer_name_ar || order.customer_name || t("common.notSpecified")}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{order.customer_name_ar || order.customer_name || t("common.notSpecified")}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{(order as any).item_name_ar || (order as any).item_name || (order as any).size_caption || t("common.notSpecified")}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatWeight(required)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatWeight(produced)}</td>
@@ -99,7 +99,7 @@ export default function ProductionOrdersTable({
           return (
             <div key={order.id} className="bg-white rounded-lg border p-4 space-y-3">
               <div className="font-semibold">{order.production_order_number}</div>
-              <div className="text-sm text-muted-foreground">{order.customer_name_ar || order.customer_name}</div>
+              <div className="text-sm font-bold text-gray-900">{order.customer_name_ar || order.customer_name}</div>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div><span className="text-muted-foreground">{t("production.table.required")}:</span><div className="font-medium">{formatWeight(required)}</div></div>
                 <div><span className="text-muted-foreground">{t("production.table.produced")}:</span><div className="font-medium">{formatWeight(produced)}</div></div>

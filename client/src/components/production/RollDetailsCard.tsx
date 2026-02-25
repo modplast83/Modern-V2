@@ -281,7 +281,7 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
               <Package className="h-6 w-6" />
               {rollDetails.roll_number}
             </CardTitle>
-            <CardDescription className="mt-1">
+            <CardDescription className="mt-1 font-bold text-base text-gray-800 dark:text-gray-100">
               {rollDetails.customer_name_ar || rollDetails.customer_name}
             </CardDescription>
           </div>
@@ -452,7 +452,7 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">{t('production.name')}</span>
-                      <span className="font-medium">
+                      <span className="font-bold text-gray-900 dark:text-white">
                         {rollDetails.customer_name_ar || rollDetails.customer_name}
                       </span>
                     </div>
