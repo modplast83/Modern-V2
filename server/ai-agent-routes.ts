@@ -1940,58 +1940,94 @@ async function executeFunction(name: string, args: Record<string, unknown>): Pro
 </body>
 </html>`;
 
-        try {
-          const nodemailerModule = await import("nodemailer");
-          const nodemailer = nodemailerModule.default;
-          
-          const smtpHost = process.env.SMTP_HOST;
-          const smtpUser = process.env.SMTP_USER;
-          const smtpPass = process.env.SMTP_PASS;
-          const smtpFrom = process.env.SMTP_FROM || smtpUser;
-          
-          if (!smtpHost || !smtpUser || !smtpPass) {
-            return JSON.stringify({
-              success: false,
-              error: "إعدادات البريد الإلكتروني غير مكتملة",
-              message: "لم يتم إعداد خادم SMTP. يرجى إضافة SMTP_HOST وSMTP_USER وSMTP_PASS في متغيرات البيئة.",
-              pdf_url: pdfUrl,
-              manual_action: `يمكنك تحميل عرض السعر PDF من الرابط التالي وإرساله يدوياً إلى ${email}:\n${pdfUrl}`
+        const subjectLine = `عرض السعر ${quote.document_number} - مصنع الأكياس البلاستيكية الحديثة`;
+        const plainText = `عرض السعر ${quote.document_number}\nالعميل: ${quote.customer_name}\nالإجمالي: ${fmt(quote.total_with_tax)} ر.س\nرابط PDF: ${pdfUrl}`;
+        const fromEmail = process.env.SENDGRID_FROM_EMAIL || process.env.SMTP_FROM || "noreply@modplastic.com";
+
+        // الأولوية 1: SendGrid API (Twilio Email Service)
+        const sendgridApiKey = process.env.SENDGRID_API_KEY;
+        if (sendgridApiKey) {
+          try {
+            const sgMail = (await import("@sendgrid/mail")).default;
+            sgMail.setApiKey(sendgridApiKey);
+            
+            await sgMail.send({
+              to: email,
+              from: { email: fromEmail, name: "مصنع الأكياس البلاستيكية الحديثة" },
+              subject: subjectLine,
+              text: plainText,
+              html: htmlBody,
             });
+            
+            return JSON.stringify({
+              success: true,
+              method: "sendgrid",
+              message: `✅ تم إرسال عرض السعر ${quote.document_number} بنجاح إلى ${email} عبر SendGrid`,
+              quote_id: quoteId,
+              document_number: quote.document_number,
+              email_sent_to: email,
+              pdf_url: pdfUrl
+            });
+          } catch (sgError: any) {
+            console.error("SendGrid error:", sgError?.response?.body || sgError?.message);
           }
-          
-          const transporter = nodemailer.createTransport({
-            host: smtpHost,
-            port: parseInt(process.env.SMTP_PORT || "587"),
-            secure: process.env.SMTP_SECURE === "true",
-            auth: { user: smtpUser, pass: smtpPass }
-          });
-          
-          await transporter.sendMail({
-            from: `"مصنع الأكياس البلاستيكية الحديثة" <${smtpFrom}>`,
-            to: email,
-            subject: `عرض السعر ${quote.document_number} - مصنع الأكياس البلاستيكية الحديثة`,
-            html: htmlBody,
-            text: `عرض السعر ${quote.document_number}\nالعميل: ${quote.customer_name}\nالإجمالي: ${fmt(quote.total_with_tax)} ر.س\nرابط PDF: ${pdfUrl}`
-          });
-          
-          return JSON.stringify({
-            success: true,
-            message: `تم إرسال عرض السعر ${quote.document_number} بنجاح إلى ${email}`,
-            quote_id: quoteId,
-            document_number: quote.document_number,
-            email_sent_to: email,
-            pdf_url: pdfUrl
-          });
-          
-        } catch (emailError: any) {
-          return JSON.stringify({
-            success: false,
-            error: emailError?.message || "فشل إرسال البريد الإلكتروني",
-            message: `تعذر إرسال البريد الإلكتروني. يمكنك تحميل عرض السعر PDF وإرساله يدوياً.`,
-            pdf_url: pdfUrl,
-            manual_action: `تحميل PDF: ${pdfUrl}\nإرسال إلى: ${email}`
-          });
         }
+
+        // الأولوية 2: SMTP (مع دعم SendGrid SMTP: smtp.sendgrid.net)
+        const smtpHost = process.env.SMTP_HOST;
+        const smtpUser = process.env.SMTP_USER || (sendgridApiKey ? "apikey" : undefined);
+        const smtpPass = process.env.SMTP_PASS || sendgridApiKey;
+        
+        if (smtpHost || sendgridApiKey) {
+          try {
+            const nodemailerModule = await import("nodemailer");
+            const nodemailer = nodemailerModule.default;
+            
+            const transportConfig = smtpHost ? {
+              host: smtpHost,
+              port: parseInt(process.env.SMTP_PORT || "587"),
+              secure: process.env.SMTP_SECURE === "true",
+              auth: { user: smtpUser!, pass: smtpPass! }
+            } : {
+              // SendGrid SMTP fallback
+              host: "smtp.sendgrid.net",
+              port: 587,
+              secure: false,
+              auth: { user: "apikey", pass: sendgridApiKey! }
+            };
+            
+            const transporter = nodemailer.createTransport(transportConfig);
+            
+            await transporter.sendMail({
+              from: `"مصنع الأكياس البلاستيكية الحديثة" <${fromEmail}>`,
+              to: email,
+              subject: subjectLine,
+              html: htmlBody,
+              text: plainText
+            });
+            
+            return JSON.stringify({
+              success: true,
+              method: "smtp",
+              message: `✅ تم إرسال عرض السعر ${quote.document_number} بنجاح إلى ${email}`,
+              quote_id: quoteId,
+              document_number: quote.document_number,
+              email_sent_to: email,
+              pdf_url: pdfUrl
+            });
+          } catch (smtpError: any) {
+            console.error("SMTP error:", smtpError?.message);
+          }
+        }
+
+        // لا توجد إعدادات بريد - توفير رابط PDF للإرسال اليدوي
+        return JSON.stringify({
+          success: false,
+          error: "لم يتم تكوين خدمة البريد الإلكتروني بعد",
+          message: `لإتمام الإرسال، أضف المتغير SENDGRID_API_KEY إلى إعدادات البيئة.\n\nيمكنك في الوقت الحالي تحميل عرض السعر PDF وإرساله يدوياً إلى ${email}:`,
+          pdf_url: pdfUrl,
+          setup_instructions: "أضف SENDGRID_API_KEY من: Twilio Console → Email → SendGrid → API Keys"
+        });
       }
 
       default:
