@@ -1353,6 +1353,7 @@ export default function FactorySimulation3D() {
     },
     onSuccess: () => {
       setHasUnsavedChanges(false);
+      queryClient.invalidateQueries({ queryKey: ['/api/factory-3d/layout'] });
       toast({ title: 'تم الحفظ', description: 'تم حفظ تخطيط المصنع بنجاح' });
     },
     onError: () => {

@@ -99,6 +99,7 @@ export function InventoryCountForm({ open, onOpenChange }: InventoryCountFormPro
     },
     onSuccess: (data) => {
       setCountId(data.id);
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouse/inventory-counts"] });
       toast({ title: t('warehouse.inventoryCount.countCreated'), description: `${t('warehouse.inventoryCount.countNumber')}: ${data.count_number}` });
     },
     onError: () => {
