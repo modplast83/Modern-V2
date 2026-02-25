@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import OpenAI from "openai";
 import { db } from "./db";
-import { orders, production_orders, rolls, quotes, quote_items, customers, ai_agent_settings, ai_agent_knowledge, quote_templates } from "@shared/schema";
+import { orders, production_orders, rolls, quotes, quote_items, customers, ai_agent_settings, ai_agent_knowledge, quote_templates, users, machines, inventory, maintenance_requests, items } from "@shared/schema";
 import { eq, desc, and, gte, lte, count, sum, like, or } from "drizzle-orm";
 import multer, { FileFilterCallback } from "multer";
 import * as XLSX from "exceljs";
@@ -544,53 +544,81 @@ async function getSystemPrompt(): Promise<string> {
       knowledge.map(k => `**${k.title}** (${k.category}): ${k.content}`).join("\n\n");
   }
 
-  return `أنت ${agentName}، مساعد ذكي متقدم لشركة ${companyName} (www.modplastic.com). 
+  return `أنت ${agentName}، مساعد ذكي متقدم ومتكامل مع نظام إدارة الإنتاج لشركة ${companyName} (www.modplastic.com).
 
-### قدراتك الأساسية:
-1. **الطلبات والإنتاج**: الإجابة عن استفسارات الطلبات، أوامر الإنتاج، والكميات المنتجة
-2. **عروض الأسعار**: إنشاء عروض أسعار احترافية بصيغة PDF ورفعها على modplastic.com
-3. **التواصل**: إرسال عروض الأسعار عبر الواتساب للعملاء
-4. **تحويل العملات**: تحويل بين العملات المختلفة (العملة الأساسية: الريال السعودي)
-5. **تحليل الملفات**: قراءة وتحليل الصور، Excel، CSV، PDF
-6. **الرسائل الصوتية**: استقبال وتحويل الرسائل الصوتية إلى نص
-7. **قاعدة المعرفة**: البحث في قاعدة المعرفة والتعلم وحفظ المعلومات الجديدة
-8. **معلومات الموقع**: جلب معلومات من موقع المصنع www.modplastic.com
-9. **معلومات العملاء**: البحث عن بيانات العملاء والاستعلام عنها
+### قدراتك الكاملة:
+1. **الطلبات والإنتاج**: الاستعلام عن الطلبات وأوامر الإنتاج والكميات المنتجة
+2. **العملاء**: الاستعلام عن بيانات العملاء وقوائمهم الكاملة
+3. **المستخدمون والموظفون**: عرض معلومات الموظفين وأدوارهم وحالتهم
+4. **المكائن**: متابعة حالة مكائن المصنع (بثق، طباعة، قطع) وطلبات الصيانة
+5. **المخزون**: الاستعلام عن مستويات المواد الخام والمنتجات
+6. **الحسابات الذكية**:
+   - حساب عدد الأكياس من الأبعاد والوزن (عرض × طول × سُمك × كثافة المادة)
+   - حساب الوزن المطلوب لعدد أكياس معين
+   - حساب تكلفة الكليشهات الطباعية بناء على عدد الألوان وأبعاد الكليشه
+7. **عروض الأسعار**: إنشاء عروض احترافية بـ PDF ثنائي اللغة (عربي/إنجليزي)
+8. **إرسال العروض**: عبر الواتساب أو البريد الإلكتروني
+9. **تحويل العملات**: بين العملات الرئيسية (الأساس: الريال السعودي)
+10. **تحليل الملفات**: صور، Excel، CSV، PDF
+11. **الرسائل الصوتية**: تحويل الصوت إلى نص
+12. **قاعدة المعرفة**: البحث والتعلم وحفظ المعلومات
 
 ### معلومات المصنع:
-- الموقع الإلكتروني: www.modplastic.com
-- متخصصون في تصنيع الأكياس البلاستيكية والأفلام البلاستيكية عالية الجودة
-- نقدم حلول تغليف متكاملة للمصانع والشركات
+- الموقع: www.modplastic.com | متخصصون في الأكياس البلاستيكية والأفلام البلاستيكية
+- المواد: HDPE (كثافة 0.95)، LDPE (كثافة 0.92)، LLDPE (كثافة 0.93)، PP (كثافة 0.91)
 
 ${defaultGreeting ? `رسالة الترحيب: ${defaultGreeting}\n` : ""}
 أسلوب الرد: ${responseStyle}
-العملة الأساسية هي الريال السعودي (ر.س). نسبة ضريبة القيمة المضافة: ${parseFloat(vatRate) * 100}%
+العملة الأساسية: الريال السعودي (ر.س). ضريبة القيمة المضافة: ${parseFloat(vatRate) * 100}%
 
-### إرشادات العمل:
+### إرشادات العمل المتكاملة:
+
+**عند سؤال عن حساب أكياس:**
+1. اطلب: العرض (سم)، الطول (سم)، السُمك (ميكرون)، نوع المادة (HDPE/LDPE/LLDPE/PP)
+2. اطلب: الوزن المتاح (كيلو) أو العدد المطلوب
+3. استخدم calculate_bag_quantity وقدّم النتيجة بوضوح مع الصيغة المستخدمة
+
+**عند سؤال عن تكلفة الكليشهات:**
+1. اطلب: عدد الألوان، عرض الكليشه (سم)، محيط الكليشه (سم)
+2. استخدم calculate_printing_costs وقدّم تفصيل التكلفة
 
 **عند إنشاء عرض سعر:**
-1. اجمع: اسم العميل، الرقم الضريبي (14 رقم)، الأصناف (الاسم، الوحدة، السعر، الكمية)
-2. استخدم get_quote_templates لمعرفة المنتجات والأسعار المتاحة
-3. بعد الإنشاء، استخدم generate_quote_pdf لإنشاء رابط PDF على modplastic.com
-4. قدم رابط التحميل بوضوح
+1. استخدم calculate_bag_quantity وcalculate_printing_costs للحسابات الدقيقة
+2. استخدم get_quote_templates لمعرفة الأسعار المتاحة
+3. اجمع: اسم العميل، الرقم الضريبي (14 رقم)، الأصناف مع أبعادها
+4. أنشئ العرض بـ create_quote ثم PDF بـ generate_quote_pdf
+5. اسأل المستخدم: هل يريد الإرسال عبر واتساب أو بريد إلكتروني؟
 
-**عند إرسال عرض عبر الواتساب:**
-1. تأكد من وجود العرض (استخدم get_quote_by_number)
-2. اطلب رقم الجوال مع رمز الدولة (+966501234567)
-3. استخدم send_quote_whatsapp للإرسال
+**عند الإرسال عبر الواتساب:**
+1. تأكد من وجود PDF (generate_quote_pdf أولاً)
+2. اطلب رقم الجوال مع رمز الدولة
+3. استخدم send_quote_whatsapp
 
-**عند تلقي سؤال عام:**
-1. ابحث أولاً في قاعدة المعرفة باستخدام search_knowledge_base
-2. إذا لم تجد إجابة، استخدم get_website_info لجلب معلومات من الموقع
-3. تعلم من المحادثات وأضف معلومات مهمة باستخدام add_to_knowledge_base
+**عند الإرسال عبر البريد الإلكتروني:**
+1. اطلب عنوان البريد الإلكتروني
+2. استخدم send_quote_email
 
-**عند الاستعلام عن عميل:**
-استخدم get_customer_info للبحث بالاسم أو الرقم
+**عند الاستعلام عن العملاء:**
+- بحث محدد: get_customer_info | قائمة كاملة: get_customers_list
+
+**عند الاستعلام عن الموظفين/المستخدمين:**
+استخدم get_users_info
+
+**عند الاستعلام عن المكائن:**
+استخدم get_machines_status مع تحديد النوع إن أمكن
+
+**عند الاستعلام عن المخزون:**
+استخدم get_inventory_status (يمكن تصفية المواد منخفضة المخزون)
+
+**عند سؤال عام:**
+1. ابحث في قاعدة المعرفة بـ search_knowledge_base أولاً
+2. ثم get_website_info للموقع إن لزم
+3. احفظ المعلومات المهمة بـ add_to_knowledge_base
 
 ${customInstructions ? `### تعليمات إضافية:\n${customInstructions}\n` : ""}
 ${knowledgeText}
 
-قم بالرد باللغة العربية دائماً. كن ذكياً، مفيداً، وتعلم من كل محادثة.`;
+قم بالرد باللغة نفسها التي يستخدمها المستخدم (عربي أو إنجليزي). كن دقيقاً في الحسابات ومفيداً واحترافياً.`;
 }
 
 const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
@@ -817,6 +845,115 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
           search_term: { type: "string", description: "اسم العميل أو رقم العميل للبحث" }
         },
         required: ["search_term"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_customers_list",
+      description: "الحصول على قائمة جميع العملاء مع بياناتهم الكاملة",
+      parameters: {
+        type: "object",
+        properties: {
+          limit: { type: "number", description: "الحد الأقصى لعدد العملاء (افتراضي 20)" },
+          active_only: { type: "boolean", description: "عرض العملاء النشطين فقط (افتراضي true)" }
+        }
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_users_info",
+      description: "الحصول على معلومات المستخدمين والموظفين في النظام، أدوارهم وحالتهم",
+      parameters: {
+        type: "object",
+        properties: {
+          search_term: { type: "string", description: "اسم المستخدم أو رقمه للبحث (اختياري)" },
+          role: { type: "string", description: "تصفية حسب الدور (اختياري)" }
+        }
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_machines_status",
+      description: "الحصول على حالة المكائن في المصنع وإنتاجيتها وصيانتها",
+      parameters: {
+        type: "object",
+        properties: {
+          machine_type: { type: "string", enum: ["extruder", "printer", "cutter", "all"], description: "نوع الماكينة (extruder=بثق، printer=طباعة، cutter=قطع، all=الكل)" }
+        }
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_inventory_status",
+      description: "الحصول على حالة المخزون من المواد الخام والمنتجات",
+      parameters: {
+        type: "object",
+        properties: {
+          category: { type: "string", description: "تصفية حسب الفئة (اختياري)" },
+          low_stock_only: { type: "boolean", description: "عرض المواد منخفضة المخزون فقط" }
+        }
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "calculate_bag_quantity",
+      description: "حساب عدد الأكياس بناء على الأبعاد والوزن، أو حساب الوزن المطلوب لعدد أكياس معين. مفيد لتحديد الكميات في عروض الأسعار",
+      parameters: {
+        type: "object",
+        properties: {
+          width_cm: { type: "number", description: "عرض الكيس بالسنتيمتر" },
+          length_cm: { type: "number", description: "طول الكيس بالسنتيمتر" },
+          thickness_micron: { type: "number", description: "سُمك الكيس بالميكرون" },
+          material_type: { type: "string", enum: ["HDPE", "LDPE", "LLDPE", "PP"], description: "نوع المادة (HDPE كثافة=0.95، LDPE كثافة=0.92، LLDPE كثافة=0.93، PP كثافة=0.91)" },
+          weight_kg: { type: "number", description: "الوزن بالكيلو (إذا أردت حساب عدد الأكياس من الوزن)" },
+          bag_count: { type: "number", description: "عدد الأكياس المطلوبة (إذا أردت حساب الوزن المطلوب)" }
+        },
+        required: ["width_cm", "length_cm", "thickness_micron", "material_type"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "calculate_printing_costs",
+      description: "حساب تكلفة الكليشهات (الأسطوانات الطباعية) وتكلفة الطباعة بناء على عدد الألوان وأبعاد الكليشه",
+      parameters: {
+        type: "object",
+        properties: {
+          colors_count: { type: "number", description: "عدد ألوان الطباعة (1-8)" },
+          width_cm: { type: "number", description: "عرض الكليشه بالسنتيمتر" },
+          circumference_cm: { type: "number", description: "محيط الكليشه بالسنتيمتر (طول الدورة)" },
+          cliche_price_per_sqcm: { type: "number", description: "سعر الكليشه لكل سم² (افتراضي: 2 ريال)" },
+          printing_price_per_kg: { type: "number", description: "سعر الطباعة لكل كيلو (افتراضي: يتغير حسب عدد الألوان)" },
+          quantity_kg: { type: "number", description: "الكمية المطلوبة بالكيلو لحساب التكلفة الكلية" }
+        },
+        required: ["colors_count", "width_cm", "circumference_cm"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "send_quote_email",
+      description: "إرسال عرض السعر بالبريد الإلكتروني مع ملف PDF مرفق",
+      parameters: {
+        type: "object",
+        properties: {
+          quote_id: { type: "number", description: "رقم معرف عرض السعر (ID)" },
+          email: { type: "string", description: "عنوان البريد الإلكتروني للمستلم" },
+          customer_name: { type: "string", description: "اسم المستلم (اختياري)" }
+        },
+        required: ["quote_id", "email"]
       }
     }
   }
@@ -1395,6 +1532,466 @@ async function executeFunction(name: string, args: Record<string, unknown>): Pro
             is_active: c.is_active
           }))
         });
+      }
+
+      case "get_customers_list": {
+        const limit = (args.limit as number) || 20;
+        const activeOnly = args.active_only !== false;
+        
+        if (activeOnly) {
+          const results = await db.select().from(customers)
+            .where(eq(customers.is_active, true))
+            .orderBy(customers.name)
+            .limit(limit);
+          return JSON.stringify({
+            count: results.length,
+            customers: results.map(c => ({
+              id: c.id,
+              name: c.name,
+              name_ar: c.name_ar,
+              phone: c.phone,
+              city: c.city,
+              tax_number: c.tax_number,
+              commercial_name: c.commercial_name,
+              is_active: c.is_active
+            }))
+          });
+        } else {
+          const results = await db.select().from(customers)
+            .orderBy(customers.name)
+            .limit(limit);
+          return JSON.stringify({
+            count: results.length,
+            customers: results.map(c => ({
+              id: c.id,
+              name: c.name,
+              name_ar: c.name_ar,
+              phone: c.phone,
+              city: c.city,
+              tax_number: c.tax_number,
+              commercial_name: c.commercial_name,
+              is_active: c.is_active
+            }))
+          });
+        }
+      }
+
+      case "get_users_info": {
+        const searchTerm = args.search_term as string | undefined;
+        const roleFilter = args.role as string | undefined;
+        
+        let userResults = await db.select().from(users).limit(50);
+        
+        if (searchTerm) {
+          userResults = userResults.filter(u => 
+            u.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            u.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            u.phone?.includes(searchTerm)
+          );
+        }
+        
+        if (roleFilter) {
+          userResults = userResults.filter(u => u.role_id !== null);
+        }
+        
+        return JSON.stringify({
+          count: userResults.length,
+          users: userResults.map(u => ({
+            id: u.id,
+            username: u.username,
+            full_name: u.full_name,
+            display_name: u.display_name,
+            display_name_ar: u.display_name_ar,
+            phone: u.phone,
+            email: u.email,
+            status: u.status,
+            role_id: u.role_id,
+            section_id: u.section_id,
+            created_at: u.created_at
+          }))
+        });
+      }
+
+      case "get_machines_status": {
+        const machineType = args.machine_type as string || "all";
+        
+        let machineResults = await db.select().from(machines);
+        
+        if (machineType !== "all") {
+          machineResults = machineResults.filter(m => m.type === machineType);
+        }
+        
+        const maintenanceData = await db.select().from(maintenance_requests)
+          .where(eq(maintenance_requests.status, "open"))
+          .limit(50);
+        
+        const machinesWithMaintenance = machineResults.map(m => {
+          const openMaintenance = maintenanceData.filter(mr => mr.machine_id === m.id);
+          return {
+            id: m.id,
+            name: m.name,
+            name_ar: m.name_ar,
+            machine_type: m.type,
+            status: m.status,
+            capacity_small_kg_per_hour: m.capacity_small_kg_per_hour,
+            capacity_medium_kg_per_hour: m.capacity_medium_kg_per_hour,
+            capacity_large_kg_per_hour: m.capacity_large_kg_per_hour,
+            open_maintenance_requests: openMaintenance.length,
+            maintenance_issues: openMaintenance.map(mr => ({
+              id: mr.id,
+              description: mr.description,
+              priority: mr.priority,
+              reported_at: mr.created_at
+            }))
+          };
+        });
+        
+        const statusSummary = {
+          total: machineResults.length,
+          active: machineResults.filter(m => m.status === "active").length,
+          down: machineResults.filter(m => m.status === "down").length,
+          maintenance: machineResults.filter(m => m.status === "maintenance").length,
+          extruders: machineResults.filter(m => m.type === "extruder").length,
+          printers: machineResults.filter(m => m.type === "printer").length,
+          cutters: machineResults.filter(m => m.type === "cutter").length
+        };
+        
+        return JSON.stringify({
+          summary: statusSummary,
+          machines: machinesWithMaintenance
+        });
+      }
+
+      case "get_inventory_status": {
+        const categoryFilter = args.category as string | undefined;
+        const lowStockOnly = args.low_stock_only as boolean || false;
+        
+        const inventoryResults = await db
+          .select({
+            id: inventory.id,
+            item_id: inventory.item_id,
+            item_name: items.name,
+            item_name_ar: items.name_ar,
+            current_stock: inventory.current_stock,
+            min_stock: inventory.min_stock,
+            max_stock: inventory.max_stock,
+            unit: inventory.unit,
+            cost_per_unit: inventory.cost_per_unit,
+            last_updated: inventory.last_updated
+          })
+          .from(inventory)
+          .leftJoin(items, eq(inventory.item_id, items.id))
+          .limit(100);
+        
+        let filtered = inventoryResults;
+        
+        if (categoryFilter) {
+          filtered = filtered.filter(i => 
+            i.item_name?.toLowerCase().includes(categoryFilter.toLowerCase()) ||
+            i.item_name_ar?.toLowerCase().includes(categoryFilter.toLowerCase())
+          );
+        }
+        
+        if (lowStockOnly) {
+          filtered = filtered.filter(i => {
+            const current = parseFloat(i.current_stock || "0");
+            const minimum = parseFloat(i.min_stock || "0");
+            return current <= minimum;
+          });
+        }
+        
+        const summary = {
+          total_items: filtered.length,
+          low_stock_count: filtered.filter(i => {
+            const current = parseFloat(i.current_stock || "0");
+            const minimum = parseFloat(i.min_stock || "0");
+            return current <= minimum;
+          }).length
+        };
+        
+        return JSON.stringify({
+          summary,
+          inventory: filtered.map(i => ({
+            id: i.id,
+            item_id: i.item_id,
+            name: i.item_name,
+            name_ar: i.item_name_ar,
+            unit: i.unit,
+            current_stock: i.current_stock,
+            min_stock: i.min_stock,
+            max_stock: i.max_stock,
+            cost_per_unit: i.cost_per_unit,
+            is_low_stock: parseFloat(i.current_stock || "0") <= parseFloat(i.min_stock || "0"),
+            last_updated: i.last_updated
+          }))
+        });
+      }
+
+      case "calculate_bag_quantity": {
+        const { width_cm, length_cm, thickness_micron, material_type, weight_kg, bag_count } = args as {
+          width_cm: number;
+          length_cm: number;
+          thickness_micron: number;
+          material_type: string;
+          weight_kg?: number;
+          bag_count?: number;
+        };
+        
+        const densityMap: Record<string, number> = {
+          HDPE: 0.95,
+          LDPE: 0.92,
+          LLDPE: 0.93,
+          PP: 0.91
+        };
+        const density = densityMap[material_type] || 0.92;
+        
+        const thickness_cm = thickness_micron / 10000;
+        const bag_area_cm2 = width_cm * 2 * length_cm;
+        const bag_volume_cm3 = bag_area_cm2 * thickness_cm;
+        const bag_weight_grams = bag_volume_cm3 * density;
+        const bag_weight_kg = bag_weight_grams / 1000;
+        const bags_per_kg = 1 / bag_weight_kg;
+        
+        let result: Record<string, unknown> = {
+          inputs: {
+            width_cm,
+            length_cm,
+            thickness_micron,
+            material_type,
+            density
+          },
+          bag_weight_grams: bag_weight_grams.toFixed(4),
+          bags_per_kg: Math.round(bags_per_kg),
+          formula_used: `وزن الكيس = (عرض×2 × طول × سُمك_cm × كثافة) = ${bag_weight_grams.toFixed(4)} جرام`
+        };
+        
+        if (weight_kg) {
+          const total_bags = Math.floor(bags_per_kg * weight_kg);
+          result.from_weight = {
+            weight_kg,
+            total_bags,
+            message: `${weight_kg} كيلو ينتج تقريباً ${total_bags.toLocaleString()} كيس من ${material_type} بأبعاد ${width_cm}×${length_cm} سم وسُمك ${thickness_micron} ميكرون`
+          };
+        }
+        
+        if (bag_count) {
+          const required_weight = bag_count / bags_per_kg;
+          result.from_count = {
+            bag_count,
+            required_weight_kg: required_weight.toFixed(2),
+            message: `لإنتاج ${bag_count.toLocaleString()} كيس من ${material_type} بأبعاد ${width_cm}×${length_cm} سم وسُمك ${thickness_micron} ميكرون تحتاج ${required_weight.toFixed(2)} كيلو`
+          };
+        }
+        
+        if (!weight_kg && !bag_count) {
+          result.summary = `كيس ${width_cm}×${length_cm} سم، سُمك ${thickness_micron} ميكرون، مادة ${material_type}: وزن الكيس ${bag_weight_grams.toFixed(3)} جرام، الكيلو يحتوي ${Math.round(bags_per_kg)} كيس`;
+        }
+        
+        return JSON.stringify(result);
+      }
+
+      case "calculate_printing_costs": {
+        const { colors_count, width_cm, circumference_cm, cliche_price_per_sqcm, printing_price_per_kg, quantity_kg } = args as {
+          colors_count: number;
+          width_cm: number;
+          circumference_cm: number;
+          cliche_price_per_sqcm?: number;
+          printing_price_per_kg?: number;
+          quantity_kg?: number;
+        };
+        
+        const clichePrice = cliche_price_per_sqcm || 2.0;
+        
+        const printingPriceMap: Record<number, number> = {
+          1: 1.5, 2: 2.5, 3: 3.5, 4: 4.5,
+          5: 5.5, 6: 6.5, 7: 7.5, 8: 8.5
+        };
+        const printingPrice = printing_price_per_kg || printingPriceMap[Math.min(colors_count, 8)] || 1.5;
+        
+        const cliche_area_cm2 = width_cm * circumference_cm;
+        const cliche_cost_per_color = cliche_area_cm2 * clichePrice;
+        const total_cliche_cost = cliche_cost_per_color * colors_count;
+        
+        let result: Record<string, unknown> = {
+          inputs: {
+            colors_count,
+            width_cm,
+            circumference_cm,
+            cliche_area_cm2,
+            cliche_price_per_sqcm: clichePrice,
+            printing_price_per_kg: printingPrice
+          },
+          cliche_costs: {
+            area_cm2: cliche_area_cm2,
+            cost_per_color_sar: cliche_cost_per_color.toFixed(2),
+            total_cliche_cost_sar: total_cliche_cost.toFixed(2),
+            note: `${colors_count} كليشه × ${cliche_area_cm2} سم² × ${clichePrice} ريال/سم²`
+          },
+          printing_rate_per_kg: `${printingPrice} ريال/كيلو للـ ${colors_count} ألوان`
+        };
+        
+        if (quantity_kg) {
+          const printing_cost = quantity_kg * printingPrice;
+          const total_production_cost = total_cliche_cost + printing_cost;
+          const cliche_cost_per_kg = total_cliche_cost / quantity_kg;
+          const total_cost_per_kg = printingPrice + cliche_cost_per_kg;
+          
+          result.production_costs = {
+            quantity_kg,
+            printing_cost_sar: printing_cost.toFixed(2),
+            cliche_cost_sar: total_cliche_cost.toFixed(2),
+            total_cost_sar: total_production_cost.toFixed(2),
+            cliche_cost_per_kg: cliche_cost_per_kg.toFixed(4),
+            total_cost_per_kg: total_cost_per_kg.toFixed(4),
+            message: `لـ ${quantity_kg} كيلو:\n- تكلفة كليشهات: ${total_cliche_cost.toFixed(2)} ر.س (مرة واحدة)\n- تكلفة طباعة: ${printing_cost.toFixed(2)} ر.س\n- الإجمالي: ${total_production_cost.toFixed(2)} ر.س\n- تكلفة الطباعة لكل كيلو (شاملة الكليشه): ${total_cost_per_kg.toFixed(2)} ر.س`
+          };
+        }
+        
+        return JSON.stringify(result);
+      }
+
+      case "send_quote_email": {
+        const quoteId = args.quote_id as number;
+        const email = args.email as string;
+        const recipientName = args.customer_name as string | undefined;
+        
+        const [quote] = await db.select().from(quotes).where(eq(quotes.id, quoteId));
+        if (!quote) {
+          return JSON.stringify({ error: "عرض السعر غير موجود" });
+        }
+        
+        const quoteItemsList = await db.select().from(quote_items)
+          .where(eq(quote_items.quote_id, quoteId))
+          .orderBy(quote_items.line_number);
+        
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          return JSON.stringify({ error: "البريد الإلكتروني غير صحيح" });
+        }
+        
+        const fmt = (n: string | number) => new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n || 0));
+        
+        const itemsHtml = quoteItemsList.map(item => `
+          <tr>
+            <td style="padding:8px;border:1px solid #e2e8f0;text-align:center;">${item.line_number}</td>
+            <td style="padding:8px;border:1px solid #e2e8f0;">${item.item_name}</td>
+            <td style="padding:8px;border:1px solid #e2e8f0;text-align:center;">${item.unit}</td>
+            <td style="padding:8px;border:1px solid #e2e8f0;text-align:center;">${fmt(item.quantity)}</td>
+            <td style="padding:8px;border:1px solid #e2e8f0;text-align:center;">${fmt(item.unit_price)}</td>
+            <td style="padding:8px;border:1px solid #e2e8f0;text-align:center;font-weight:bold;">${fmt(item.line_total)}</td>
+          </tr>
+        `).join("");
+        
+        const baseUrl = getAppBaseUrl();
+        const pdfUrl = `${baseUrl}/api/quotes/${quoteId}/pdf`;
+        const greeting = recipientName ? `عزيزي ${recipientName}،` : `عزيزنا العميل الكريم،`;
+        
+        const htmlBody = `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family: Arial, sans-serif; background:#f8fafc; margin:0; padding:20px; direction:rtl;">
+  <div style="max-width:700px; margin:0 auto; background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.1);">
+    <div style="background:linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%); padding:30px; text-align:center; color:#fff;">
+      <h1 style="margin:0; font-size:24px; font-weight:bold;">مصنع الأكياس البلاستيكية الحديثة</h1>
+      <p style="margin:8px 0 0; font-size:14px; opacity:0.9;">Modern Plastic Bags Factory | www.modplastic.com</p>
+    </div>
+    <div style="padding:30px;">
+      <h2 style="color:#1e3a5f; margin-bottom:8px;">عرض السعر رقم: ${quote.document_number}</h2>
+      <p style="color:#64748b; font-size:14px; margin-bottom:24px;">التاريخ: ${new Date(quote.created_at!).toLocaleDateString('ar-SA')}</p>
+      <p style="color:#374151; margin-bottom:20px;">${greeting}</p>
+      <p style="color:#374151; margin-bottom:24px;">يسعدنا تقديم عرض السعر التالي لكم، ونأمل أن يلبي احتياجاتكم:</p>
+      <table style="width:100%; border-collapse:collapse; margin-bottom:20px;">
+        <thead>
+          <tr style="background:#1e3a5f; color:#fff;">
+            <th style="padding:10px;border:1px solid #1e3a5f;text-align:center;">#</th>
+            <th style="padding:10px;border:1px solid #1e3a5f;text-align:right;">الصنف</th>
+            <th style="padding:10px;border:1px solid #1e3a5f;text-align:center;">الوحدة</th>
+            <th style="padding:10px;border:1px solid #1e3a5f;text-align:center;">الكمية</th>
+            <th style="padding:10px;border:1px solid #1e3a5f;text-align:center;">سعر الوحدة</th>
+            <th style="padding:10px;border:1px solid #1e3a5f;text-align:center;">الإجمالي</th>
+          </tr>
+        </thead>
+        <tbody>${itemsHtml}</tbody>
+      </table>
+      <div style="background:#f0f4f8; border-radius:8px; padding:16px; margin-bottom:24px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+          <span style="color:#64748b;">المجموع قبل الضريبة:</span>
+          <span style="font-weight:bold;">${fmt(quote.total_before_tax)} ر.س</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+          <span style="color:#64748b;">ضريبة القيمة المضافة (15%):</span>
+          <span style="font-weight:bold;">${fmt(quote.tax_amount)} ر.س</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding-top:8px; border-top:2px solid #1e3a5f;">
+          <span style="color:#1e3a5f; font-size:16px; font-weight:bold;">الإجمالي الكلي:</span>
+          <span style="color:#1e3a5f; font-size:18px; font-weight:bold;">${fmt(quote.total_with_tax)} ر.س</span>
+        </div>
+      </div>
+      <p style="color:#64748b; font-size:13px; margin-bottom:16px;">⚠️ هذا العرض صالح لمدة 15 يوم من تاريخ الإصدار.</p>
+      <div style="text-align:center; margin-top:24px;">
+        <a href="${pdfUrl}" style="background:#1e3a5f; color:#fff; padding:12px 28px; border-radius:8px; text-decoration:none; font-weight:bold; display:inline-block;">تحميل ملف PDF</a>
+      </div>
+    </div>
+    <div style="background:#f0f4f8; padding:20px; text-align:center; color:#64748b; font-size:12px;">
+      <p style="margin:0;">للاستفسار: www.modplastic.com | صناعة الأكياس البلاستيكية عالية الجودة</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+        try {
+          const nodemailerModule = await import("nodemailer");
+          const nodemailer = nodemailerModule.default;
+          
+          const smtpHost = process.env.SMTP_HOST;
+          const smtpUser = process.env.SMTP_USER;
+          const smtpPass = process.env.SMTP_PASS;
+          const smtpFrom = process.env.SMTP_FROM || smtpUser;
+          
+          if (!smtpHost || !smtpUser || !smtpPass) {
+            return JSON.stringify({
+              success: false,
+              error: "إعدادات البريد الإلكتروني غير مكتملة",
+              message: "لم يتم إعداد خادم SMTP. يرجى إضافة SMTP_HOST وSMTP_USER وSMTP_PASS في متغيرات البيئة.",
+              pdf_url: pdfUrl,
+              manual_action: `يمكنك تحميل عرض السعر PDF من الرابط التالي وإرساله يدوياً إلى ${email}:\n${pdfUrl}`
+            });
+          }
+          
+          const transporter = nodemailer.createTransport({
+            host: smtpHost,
+            port: parseInt(process.env.SMTP_PORT || "587"),
+            secure: process.env.SMTP_SECURE === "true",
+            auth: { user: smtpUser, pass: smtpPass }
+          });
+          
+          await transporter.sendMail({
+            from: `"مصنع الأكياس البلاستيكية الحديثة" <${smtpFrom}>`,
+            to: email,
+            subject: `عرض السعر ${quote.document_number} - مصنع الأكياس البلاستيكية الحديثة`,
+            html: htmlBody,
+            text: `عرض السعر ${quote.document_number}\nالعميل: ${quote.customer_name}\nالإجمالي: ${fmt(quote.total_with_tax)} ر.س\nرابط PDF: ${pdfUrl}`
+          });
+          
+          return JSON.stringify({
+            success: true,
+            message: `تم إرسال عرض السعر ${quote.document_number} بنجاح إلى ${email}`,
+            quote_id: quoteId,
+            document_number: quote.document_number,
+            email_sent_to: email,
+            pdf_url: pdfUrl
+          });
+          
+        } catch (emailError: any) {
+          return JSON.stringify({
+            success: false,
+            error: emailError?.message || "فشل إرسال البريد الإلكتروني",
+            message: `تعذر إرسال البريد الإلكتروني. يمكنك تحميل عرض السعر PDF وإرساله يدوياً.`,
+            pdf_url: pdfUrl,
+            manual_action: `تحميل PDF: ${pdfUrl}\nإرسال إلى: ${email}`
+          });
+        }
       }
 
       default:

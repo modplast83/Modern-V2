@@ -43,6 +43,32 @@ The system is built with a modern stack emphasizing efficiency and scalability, 
 
 ## Recent Changes
 
+### AI Agent Major Enhancement (February 25, 2026)
+
+**New Tools Added to AI Agent (server/ai-agent-routes.ts):**
+- `get_customers_list` - Full customers list with filters
+- `get_users_info` - Query users/employees by name or role
+- `get_machines_status` - Machine status with maintenance requests (extruder/printer/cutter)
+- `get_inventory_status` - Inventory levels with join to items table, low stock filter
+- `calculate_bag_quantity` - Smart calculation: bags count from dimensions/weight or weight from bag count using density formulas (HDPE=0.95, LDPE=0.92, LLDPE=0.93, PP=0.91)
+- `calculate_printing_costs` - Cliché/plate printing costs based on colors, dimensions, and quantity
+- `send_quote_email` - Send quote PDF via email using Nodemailer (SMTP_HOST, SMTP_USER, SMTP_PASS env vars needed)
+
+**System Prompt Updated:** Full awareness of all system entities (customers, users, machines, inventory)
+
+**UI Improvements (client/src/pages/ai-agent.tsx):**
+- Clickable quick suggestion buttons (6 shortcuts) on welcome screen
+- Message timestamps shown on hover
+- Scroll-to-bottom floating button
+- Improved message bubbles with better shadows and styling
+- Better mobile responsive input area
+- Improved quotes history with inline status badges
+- Professional recording indicator
+
+**Dependencies added:** nodemailer, @types/nodemailer
+
+
+
 ### Internationalization (i18n) - English Language Support (January 5, 2026)
 
 **Implementation:**
