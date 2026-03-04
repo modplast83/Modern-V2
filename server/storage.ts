@@ -2345,18 +2345,24 @@ export class DatabaseStorage implements IStorage {
       conditions.push(sql`${customer_products.name} ILIKE ${s}`);
     }
 
-    let query = db.select().from(customer_products) as any;
-    if (conditions.length > 0) {
-      query = query.where(conditions.length === 1 ? conditions[0] : and(...conditions));
-    }
+    const whereClause = conditions.length > 0
+      ? (conditions.length === 1 ? conditions[0] : and(...conditions))
+      : undefined;
 
-    const countQuery = db.select({ count: count() }).from(customer_products) as any;
-    const [totalResult] = conditions.length > 0
-      ? await countQuery.where(conditions.length === 1 ? conditions[0] : and(...conditions))
-      : await countQuery;
+    const [totalResult] = await db
+      .select({ count: count() })
+      .from(customer_products)
+      .where(whereClause);
     const total = totalResult?.count || 0;
 
-    const data = await query.orderBy(customer_products.id).limit(pageLimit).offset(offset);
+    const data = await db
+      .select()
+      .from(customer_products)
+      .where(whereClause)
+      .orderBy(customer_products.id)
+      .limit(pageLimit)
+      .offset(offset);
+
     return { data, total, page: pageNum, limit: pageLimit };
   }
 
