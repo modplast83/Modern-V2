@@ -1077,7 +1077,19 @@ export class DatabaseStorage implements IStorage {
           throw new Error(`خطأ في البيانات: ${validation.errors.map(e => e.message_ar).join(', ')}`);
         }
 
-        const [newPo] = await db.insert(production_orders).values(po).returning();
+        const result = await db.execute(
+          sql`SELECT MAX(CAST(SUBSTRING(production_order_number FROM 3) AS INTEGER)) as max_num
+              FROM production_orders
+              WHERE production_order_number ~ '^PO[0-9]+$'`
+        );
+        const maxNum = (result as any).rows?.[0]?.max_num || 0;
+        const nextNumber = maxNum + 1;
+        const productionOrderNumber = `PO${nextNumber.toString().padStart(3, "0")}`;
+
+        const [newPo] = await db.insert(production_orders).values({
+          ...po,
+          production_order_number: productionOrderNumber,
+        }).returning();
         invalidateProductionCache();
         return newPo;
       },
