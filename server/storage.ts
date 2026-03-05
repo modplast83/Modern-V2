@@ -1134,6 +1134,14 @@ export class DatabaseStorage implements IStorage {
     );
   }
 
+  async updateProductionOrdersStatusByOrder(orderId: number, fromStatuses: string[], toStatus: string): Promise<void> {
+    await db
+      .update(production_orders)
+      .set({ status: toStatus, updated_at: new Date() } as any)
+      .where(and(eq(production_orders.order_id, orderId), inArray(production_orders.status, fromStatuses)));
+    invalidateProductionCache();
+  }
+
   async deleteProductionOrder(id: number): Promise<void> {
     return withDatabaseErrorHandling(
       async () => {

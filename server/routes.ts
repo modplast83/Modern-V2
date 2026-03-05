@@ -5341,6 +5341,18 @@ Do not include quotes or explanations.`;
         // STEP 4: Perform atomic status update with validation
         const order = await storage.updateOrderStatus(orderId, newStatus);
 
+        // STEP 5: Sync production orders status based on the new order status
+        if (newStatus === "in_production") {
+          // Activate all pending production orders when order moves to production
+          await storage.updateProductionOrdersStatusByOrder(orderId, ["pending"], "active");
+        } else if (newStatus === "paused") {
+          // Suspend active production orders when order is paused
+          await storage.updateProductionOrdersStatusByOrder(orderId, ["active"], "pending");
+        } else if (newStatus === "cancelled") {
+          // Cancel all open production orders
+          await storage.updateProductionOrdersStatusByOrder(orderId, ["pending", "active"], "cancelled");
+        }
+
         res.json({
           data: order,
           message: `تم تغيير حالة الطلب إلى "${newStatus}" بنجاح`,
