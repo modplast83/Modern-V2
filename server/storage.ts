@@ -2875,7 +2875,9 @@ export class DatabaseStorage implements IStorage {
       LEFT JOIN rolls r ON r.production_order_id = po.id
       WHERE o.status = 'in_production'
         AND po.status IN ('pending', 'active')
+        AND po.film_completed = false
       GROUP BY po.id, o.id, c.id, cp.id, i.id
+      HAVING COALESCE(SUM(r.weight_kg), 0) < (CASE WHEN po.final_quantity_kg IS NOT NULL AND po.final_quantity_kg > 0 THEN po.final_quantity_kg ELSE po.quantity_kg END)::numeric
       ORDER BY po.id DESC
     `);
     return result.rows as any[];
