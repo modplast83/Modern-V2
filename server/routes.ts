@@ -2207,7 +2207,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!isLastRoll) {
         const po = await storage.getProductionOrderById(validatedData.production_order_id);
         if (po) {
-          const targetKg = parseFloat(po.final_quantity_kg?.toString() || po.quantity_kg?.toString() || '0');
+          const finalQty = parseFloat(po.final_quantity_kg?.toString() || '0');
+          const targetKg = finalQty > 0 ? finalQty : parseFloat(po.quantity_kg?.toString() || '0');
           const overrunPct = parseFloat(po.overrun_percentage?.toString() || '0');
           const maxAllowed = targetKg * (1 + overrunPct / 100);
           const existingRolls = await storage.getRollsByProductionOrder(validatedData.production_order_id);
