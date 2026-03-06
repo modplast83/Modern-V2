@@ -2836,7 +2836,7 @@ export class DatabaseStorage implements IStorage {
         po.order_id,
         po.customer_product_id,
         po.quantity_kg,
-        po.final_quantity_kg,
+        CASE WHEN po.final_quantity_kg IS NOT NULL AND po.final_quantity_kg > 0 THEN po.final_quantity_kg ELSE po.quantity_kg END AS final_quantity_kg,
         po.produced_quantity_kg,
         po.overrun_percentage,
         po.status,
@@ -2866,13 +2866,13 @@ export class DatabaseStorage implements IStorage {
         cp.thickness,
         COUNT(r.id) AS rolls_count,
         COALESCE(SUM(r.weight_kg), 0) AS total_weight_produced,
-        GREATEST(0, COALESCE(po.final_quantity_kg::numeric, po.quantity_kg::numeric) - COALESCE(po.produced_quantity_kg::numeric, 0)) AS remaining_quantity
+        GREATEST(0, (CASE WHEN po.final_quantity_kg IS NOT NULL AND po.final_quantity_kg > 0 THEN po.final_quantity_kg ELSE po.quantity_kg END)::numeric - COALESCE(SUM(r.weight_kg), 0)) AS remaining_quantity
       FROM production_orders po
       JOIN orders o ON o.id = po.order_id
       JOIN customers c ON c.id = o.customer_id
       LEFT JOIN customer_products cp ON cp.id = po.customer_product_id
       LEFT JOIN items i ON i.id = cp.item_id
-      LEFT JOIN rolls r ON r.production_order_id = po.id AND r.stage != 'done'
+      LEFT JOIN rolls r ON r.production_order_id = po.id
       WHERE o.status = 'in_production'
         AND po.status IN ('pending', 'active')
       GROUP BY po.id, o.id, c.id, cp.id, i.id
