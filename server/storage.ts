@@ -2237,7 +2237,47 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createRollWithTiming(data: any): Promise<Roll> {
-    return this.createRoll(data);
+    return withDatabaseErrorHandling(
+      async () => {
+        // Get the production order to build the roll_number
+        const [po] = await db
+          .select({ production_order_number: production_orders.production_order_number })
+          .from(production_orders)
+          .where(eq(production_orders.id, data.production_order_id));
+
+        if (!po) throw new Error("أمر الإنتاج غير موجود");
+
+        // Get the next roll_seq for this production order
+        const [seqResult] = await db
+          .select({ maxSeq: sql<number>`COALESCE(MAX(${rolls.roll_seq}), 0)` })
+          .from(rolls)
+          .where(eq(rolls.production_order_id, data.production_order_id));
+
+        const nextSeq = (seqResult?.maxSeq ?? 0) + 1;
+        const rollNumber = `${po.production_order_number}-R${String(nextSeq).padStart(3, '0')}`;
+
+        // Build qr_code_text JSON
+        const qrCodeText = JSON.stringify({
+          roll_number: rollNumber,
+          production_order_number: po.production_order_number,
+          roll_seq: nextSeq,
+          weight_kg: data.weight_kg,
+          created_at: new Date().toISOString(),
+        });
+
+        const rollData = {
+          ...data,
+          roll_seq: nextSeq,
+          roll_number: rollNumber,
+          qr_code_text: qrCodeText,
+        };
+
+        const [roll] = await db.insert(rolls).values(rollData).returning();
+        return roll;
+      },
+      "createRoll",
+      "إنشاء رول",
+    );
   }
 
   async markRollAsPrinted(id: number, data?: any): Promise<Roll> {
