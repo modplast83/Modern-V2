@@ -2289,7 +2289,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createFinalRoll(data: any): Promise<Roll> {
-    return this.createRoll(data);
+    return this.createRollWithTiming(data);
   }
 
   async getSections(): Promise<Section[]> {
