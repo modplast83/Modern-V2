@@ -1537,18 +1537,33 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(attendance.created_at));
 
     if (records.length === 0) {
-      return { status: 'غائب' };
+      return {
+        status: 'غائب',
+        currentStatus: 'غائب',
+        hasCheckedIn: false,
+        hasStartedLunch: false,
+        hasEndedLunch: false,
+        hasCheckedOut: false,
+      };
     }
 
     const latest = records[0];
+    const hasCheckedIn = records.some(r => r.status === 'حاضر');
+    const hasStartedLunch = records.some(r => r.status === 'في الاستراحة');
+    const hasEndedLunch = records.some(r => r.status === 'يعمل');
+    const hasCheckedOut = records.some(r => r.status === 'مغادر');
+
     return {
       status: latest.status,
-      check_in_time: latest.check_in_time,
-      check_out_time: latest.check_out_time,
-      lunch_start_time: latest.lunch_start_time,
-      lunch_end_time: latest.lunch_end_time,
-      break_start_time: latest.break_start_time,
-      break_end_time: latest.break_end_time,
+      currentStatus: latest.status,
+      hasCheckedIn,
+      hasStartedLunch,
+      hasEndedLunch,
+      hasCheckedOut,
+      check_in_time: records.find(r => r.status === 'حاضر')?.check_in_time || latest.check_in_time,
+      check_out_time: records.find(r => r.status === 'مغادر')?.check_out_time || latest.check_out_time,
+      lunch_start_time: records.find(r => r.status === 'في الاستراحة')?.lunch_start_time || latest.lunch_start_time,
+      lunch_end_time: records.find(r => r.status === 'يعمل')?.lunch_end_time || latest.lunch_end_time,
       work_hours: latest.work_hours,
       records: records,
     };
