@@ -1286,10 +1286,8 @@ async function executeFunction(name: string, args: Record<string, unknown>): Pro
           return JSON.stringify({ error: "عرض السعر غير موجود" });
         }
         
-        // تنسيق رقم الجوال - إزالة المسافات والرموز الزائدة
         let formattedPhone = phoneNumber.replace(/[\s\-\(\)]/g, "");
         if (!formattedPhone.startsWith("+")) {
-          // إضافة رمز السعودية افتراضياً إذا لم يكن موجوداً
           if (formattedPhone.startsWith("05")) {
             formattedPhone = "+966" + formattedPhone.substring(1);
           } else if (formattedPhone.startsWith("5")) {
@@ -1299,16 +1297,6 @@ async function executeFunction(name: string, args: Record<string, unknown>): Pro
           }
         }
         
-        // الحصول على URL الأساسي للتطبيق
-        const baseUrl = process.env.REPLIT_DEV_DOMAIN 
-          ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
-          : process.env.REPLIT_DOMAINS 
-            ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-            : 'http://localhost:5000';
-        
-        const pdfUrl = `${baseUrl}/api/quotes/${quoteId}/pdf`;
-        
-        // إنشاء رسالة عرض السعر مع رابط PDF (بدون رموز خاصة قد تسبب مشاكل)
         const quoteMessage = `عرض سعر جديد\n\n` +
           `رقم المستند: ${quote.document_number}\n` +
           `العميل: ${quote.customer_name}\n` +
@@ -1316,33 +1304,47 @@ async function executeFunction(name: string, args: Record<string, unknown>): Pro
           `المجموع قبل الضريبة: ${Number(quote.total_before_tax).toFixed(2)} ر.س\n` +
           `ضريبة القيمة المضافة 15%: ${Number(quote.tax_amount).toFixed(2)} ر.س\n` +
           `الإجمالي: ${Number(quote.total_with_tax).toFixed(2)} ر.س\n\n` +
-          `رابط تحميل PDF:\n${pdfUrl}\n\n` +
           `هذا العرض صالح لمدة 15 يوم من تاريخ الإصدار.`;
         
-        // محاولة إرسال الرسالة عبر WhatsApp API (Meta أو Twilio)
         try {
           const { NotificationService } = await import("./services/notification-service");
           const { storage } = await import("./storage");
           const notificationService = new NotificationService(storage);
           
-          // إرسال ملف PDF أولاً
+          let pdfBuffer: Buffer | undefined;
+          try {
+            if (isAdobePdfAvailable()) {
+              pdfBuffer = await generateQuotePdfWithAdobe(quoteId);
+            } else {
+              pdfBuffer = await generateQuotePdfBuffer(quoteId);
+            }
+            console.log(`📄 PDF buffer generated for WhatsApp send: ${(pdfBuffer.length / 1024).toFixed(1)} KB`);
+          } catch (pdfErr) {
+            console.error("Failed to generate PDF for WhatsApp:", pdfErr);
+            try {
+              pdfBuffer = await generateQuotePdfBuffer(quoteId);
+            } catch (fallbackErr) {
+              console.error("Fallback PDF also failed:", fallbackErr);
+            }
+          }
+          
           const pdfCaption = `عرض سعر ${quote.document_number}\n` +
             `العميل: ${quote.customer_name}\n` +
             `الإجمالي: ${Number(quote.total_with_tax).toFixed(2)} ر.س`;
           
           const docResult = await notificationService.sendWhatsAppDocument(
             formattedPhone,
-            pdfUrl,
+            "",
             `عرض_سعر_${quote.document_number}.pdf`,
             pdfCaption,
             {
               title: `مستند عرض سعر ${quote.document_number}`,
               context_type: "quote",
-              context_id: String(quoteId)
+              context_id: String(quoteId),
+              pdfBuffer: pdfBuffer,
             }
           );
           
-          // إرسال رسالة نصية تفصيلية بعد الملف
           const textResult = await notificationService.sendWhatsAppMessage(
             formattedPhone,
             quoteMessage,

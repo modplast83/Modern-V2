@@ -249,6 +249,7 @@ export class NotificationService {
       priority?: string;
       context_type?: string;
       context_id?: string;
+      pdfBuffer?: Buffer;
     },
   ): Promise<{ success: boolean; messageId?: string; error?: string }> {
     if (this.useMetaAPI) {

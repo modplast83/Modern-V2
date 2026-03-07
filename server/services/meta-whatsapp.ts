@@ -168,9 +168,39 @@ export class MetaWhatsAppService {
     }
   }
 
-  /**
-   * إرسال مستند PDF عبر WhatsApp
-   */
+  async uploadMediaBuffer(buffer: Buffer, filename: string, mimeType: string): Promise<string> {
+    if (!this.config.accessToken || !this.config.phoneNumberId) {
+      throw new Error("Meta WhatsApp API غير مُعد بشكل صحيح");
+    }
+
+    const FormData = (await import("form-data")).default;
+    const formData = new FormData();
+    formData.append("messaging_product", "whatsapp");
+    formData.append("type", mimeType);
+    formData.append("file", buffer, { filename, contentType: mimeType });
+
+    const response = await fetch(
+      `${this.baseUrl}/${this.config.phoneNumberId}/media`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.config.accessToken}`,
+          ...formData.getHeaders(),
+        },
+        body: formData as any,
+      },
+    );
+
+    const result: any = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error?.message || `Media upload failed: HTTP ${response.status}`);
+    }
+
+    logger.info(`📤 تم رفع ملف إلى Meta Media API - ID ${result.id}`);
+    return result.id;
+  }
+
   async sendDocumentMessage(
     to: string,
     documentUrl: string,
@@ -181,6 +211,7 @@ export class MetaWhatsAppService {
       priority?: string;
       context_type?: string;
       context_id?: string;
+      pdfBuffer?: Buffer;
     },
   ): Promise<{ success: boolean; messageId?: string; error?: string }> {
     try {
@@ -192,16 +223,29 @@ export class MetaWhatsAppService {
         .replace(/[\+\s\-\(\)]/g, "")
         .replace("whatsapp:", "");
 
+      let documentPayload: any;
+
+      if (options?.pdfBuffer) {
+        const mediaId = await this.uploadMediaBuffer(options.pdfBuffer, filename, "application/pdf");
+        documentPayload = {
+          id: mediaId,
+          filename: filename,
+          caption: caption || "",
+        };
+      } else {
+        documentPayload = {
+          link: documentUrl,
+          filename: filename,
+          caption: caption || "",
+        };
+      }
+
       const messageData = {
         messaging_product: "whatsapp",
         recipient_type: "individual",
         to: formattedPhone,
         type: "document",
-        document: {
-          link: documentUrl,
-          filename: filename,
-          caption: caption || "",
-        },
+        document: documentPayload,
       };
 
       const response = await fetch(
