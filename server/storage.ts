@@ -1525,7 +1525,33 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDailyAttendanceStatus(userId: number, date: string): Promise<any> {
-    return { status: 'غائب' };
+    const records = await db
+      .select()
+      .from(attendance)
+      .where(
+        and(
+          eq(attendance.user_id, userId),
+          eq(attendance.date, date)
+        )
+      )
+      .orderBy(desc(attendance.created_at));
+
+    if (records.length === 0) {
+      return { status: 'غائب' };
+    }
+
+    const latest = records[0];
+    return {
+      status: latest.status,
+      check_in_time: latest.check_in_time,
+      check_out_time: latest.check_out_time,
+      lunch_start_time: latest.lunch_start_time,
+      lunch_end_time: latest.lunch_end_time,
+      break_start_time: latest.break_start_time,
+      break_end_time: latest.break_end_time,
+      work_hours: latest.work_hours,
+      records: records,
+    };
   }
 
   async getAllWaste(): Promise<any[]> {
