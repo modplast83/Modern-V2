@@ -2292,7 +2292,17 @@ export function registerAiAgentRoutes(app: Express): void {
         return res.status(404).json({ error: "عرض السعر غير موجود" });
       }
       
-      const pdfBuffer = await generateQuotePdfBuffer(id);
+      let pdfBuffer: Buffer;
+      if (isAdobePdfAvailable()) {
+        try {
+          pdfBuffer = await generateQuotePdfWithAdobe(id);
+        } catch (adobeErr) {
+          console.error("Adobe template PDF failed for download, falling back to PDFKit:", adobeErr);
+          pdfBuffer = await generateQuotePdfBuffer(id);
+        }
+      } else {
+        pdfBuffer = await generateQuotePdfBuffer(id);
+      }
       
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Length", pdfBuffer.length);

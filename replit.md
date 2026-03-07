@@ -49,7 +49,15 @@ The system is built with a modern stack emphasizing efficiency and scalability, 
 - Installed `@adobe/pdfservices-node-sdk` (v4.1.0) for Adobe Document Generation API
 - Created PDF service module at `server/services/adobe-pdf/pdf-service.ts`
 - Templates directory: `server/services/adobe-pdf/templates/` (place .docx templates here)
-- Sample template and data extracted from Adobe SDK samples
+
+**Arabic Quote Template (Document Merge):**
+- AI agent's `generate_quote_pdf` tool now uses Adobe Document Merge API with Arabic Word template (`quote-template-ar.docx`)
+- Template created programmatically via `server/services/adobe-pdf/create-template.ts` using the `docx` library
+- Supports up to 10 items per quote with fields like `item_N_name`, `item_N_quantity`, `item_N_unit_price`, `item_N_total`, etc.
+- Includes company logo, customer info, items table, totals with VAT, notes, terms, and dual signature blocks
+- Falls back to PDFKit (`server/pdf-generator.ts`) if Adobe credentials are unavailable or Document Merge fails
+- The main function `generateQuotePdfWithAdobe()` in `server/adobe-pdf-service.ts` handles the Document Merge flow
+- Data mapping function `buildTemplateData()` converts quote DB records to template merge fields
 
 **Environment Variables:**
 - `ADOBE_CLIENT_ID` - Adobe API Key
