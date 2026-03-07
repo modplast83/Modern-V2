@@ -2,16 +2,16 @@ import {
   ServicePrincipalCredentials,
   PDFServices,
   MimeType,
-  DocumentMergeParams,
-  OutputFormat,
-  DocumentMergeJob,
-  DocumentMergeResult,
+  CreatePDFJob,
+  CreatePDFResult,
 } from "@adobe/pdfservices-node-sdk";
 import { db } from "./db";
 import { quotes, quote_items } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import * as fs from "fs";
 import * as path from "path";
+import * as os from "os";
+import JSZip from "jszip";
 
 const ADOBE_CLIENT_ID = process.env.ADOBE_CLIENT_ID;
 const ADOBE_CLIENT_SECRET = process.env.ADOBE_CLIENT_SECRET;
@@ -89,6 +89,36 @@ async function streamToBuffer(stream: any): Promise<Buffer> {
   });
 }
 
+async function mergeTemplateData(templatePath: string, data: Record<string, string>): Promise<Buffer> {
+  const templateBuf = fs.readFileSync(templatePath);
+  const zip = await JSZip.loadAsync(templateBuf);
+
+  const xmlFiles = ["word/document.xml", "word/header1.xml", "word/header2.xml", "word/header3.xml", "word/footer1.xml", "word/footer2.xml", "word/footer3.xml"];
+
+  for (const xmlFile of xmlFiles) {
+    const file = zip.file(xmlFile);
+    if (!file) continue;
+
+    let xml = await file.async("string");
+
+    for (const [key, value] of Object.entries(data)) {
+      const escaped = value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&apos;");
+      xml = xml.split(`{{${key}}}`).join(escaped);
+    }
+
+    xml = xml.replace(/\{\{[^}]+\}\}/g, "");
+
+    zip.file(xmlFile, xml);
+  }
+
+  return await zip.generateAsync({ type: "nodebuffer" });
+}
+
 export async function generateQuotePdfWithAdobe(quoteId: number): Promise<Buffer> {
   if (!ADOBE_CLIENT_ID || !ADOBE_CLIENT_SECRET) {
     throw new Error("Adobe PDF Services credentials not configured");
@@ -110,7 +140,13 @@ export async function generateQuotePdfWithAdobe(quoteId: number): Promise<Buffer
 
   console.log(`📄 Using Arabic Word template for quote ${quote.document_number} with ${items.length} items`);
 
+  const tempDocx = path.join(os.tmpdir(), `quote_${quoteId}_${Date.now()}.docx`);
+
   try {
+    const mergedDocx = await mergeTemplateData(templatePath, templateData);
+    fs.writeFileSync(tempDocx, mergedDocx);
+    console.log(`📝 Template merged (${(mergedDocx.length / 1024).toFixed(1)} KB), converting to PDF...`);
+
     const credentials = new ServicePrincipalCredentials({
       clientId: ADOBE_CLIENT_ID,
       clientSecret: ADOBE_CLIENT_SECRET,
@@ -118,23 +154,18 @@ export async function generateQuotePdfWithAdobe(quoteId: number): Promise<Buffer
 
     const pdfServices = new PDFServices({ credentials });
 
-    const readStream = fs.createReadStream(templatePath);
+    const readStream = fs.createReadStream(tempDocx);
     const inputAsset = await pdfServices.upload({
       readStream,
       mimeType: MimeType.DOCX,
     });
 
-    const params = new DocumentMergeParams({
-      jsonDataForMerge: templateData,
-      outputFormat: OutputFormat.PDF,
-    });
-
-    const job = new DocumentMergeJob({ inputAsset, params });
+    const job = new CreatePDFJob({ inputAsset });
 
     const pollingURL = await pdfServices.submit({ job });
     const pdfServicesResponse = await pdfServices.getJobResult({
       pollingURL,
-      resultType: DocumentMergeResult,
+      resultType: CreatePDFResult,
     });
 
     if (!pdfServicesResponse.result) {
@@ -145,10 +176,13 @@ export async function generateQuotePdfWithAdobe(quoteId: number): Promise<Buffer
     const streamAsset = await pdfServices.getContent({ asset: resultAsset });
     const pdfBuffer = await streamToBuffer(streamAsset.readStream);
 
+    if (fs.existsSync(tempDocx)) fs.unlinkSync(tempDocx);
+
     console.log(`✅ Arabic template PDF generated successfully for quote: ${quoteId} (${(pdfBuffer.length / 1024).toFixed(1)} KB)`);
     return pdfBuffer;
   } catch (error) {
-    console.error("Adobe Document Merge PDF generation error:", error);
+    if (fs.existsSync(tempDocx)) fs.unlinkSync(tempDocx);
+    console.error("Adobe PDF generation error:", error);
     throw error;
   }
 }

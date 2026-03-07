@@ -55,9 +55,10 @@ The system is built with a modern stack emphasizing efficiency and scalability, 
 - Template created programmatically via `server/services/adobe-pdf/create-template.ts` using the `docx` library
 - Supports up to 10 items per quote with fields like `item_N_name`, `item_N_quantity`, `item_N_unit_price`, `item_N_total`, etc.
 - Includes company logo, customer info, items table, totals with VAT, notes, terms, and dual signature blocks
-- Falls back to PDFKit (`server/pdf-generator.ts`) if Adobe credentials are unavailable or Document Merge fails
-- The main function `generateQuotePdfWithAdobe()` in `server/adobe-pdf-service.ts` handles the Document Merge flow
-- Data mapping function `buildTemplateData()` converts quote DB records to template merge fields
+- Falls back to PDFKit (`server/pdf-generator.ts`) if Adobe credentials are unavailable or fails
+- Uses manual XML merge approach: replaces `{{tag}}` placeholders directly in DOCX XML via JSZip, then converts to PDF using Adobe CreatePDF API (not Document Merge, which has table-cell merge limitations with `docx` library templates)
+- The main function `generateQuotePdfWithAdobe()` in `server/adobe-pdf-service.ts` handles the flow
+- Helper `mergeTemplateData()` does the XML tag replacement, `buildTemplateData()` converts quote DB records to template fields
 
 **Environment Variables:**
 - `ADOBE_CLIENT_ID` - Adobe API Key
