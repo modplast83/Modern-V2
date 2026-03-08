@@ -173,7 +173,7 @@ const taqnyatSMS = new TaqnyatSMSService(storage);
 let notificationManager: ReturnType<typeof getNotificationManager> | null =
   null;
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export async function registerRoutes(app: Express, existingServer?: Server): Promise<Server> {
   // Setup Replit Auth (OpenID Connect)
   await setupAuth(app);
   
@@ -10410,6 +10410,6 @@ Do not include quotes or explanations.`;
     }
   });
 
-  const httpServer = createServer(app);
+  const httpServer = existingServer || createServer(app);
   return httpServer;
 }

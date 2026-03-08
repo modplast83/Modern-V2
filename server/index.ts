@@ -383,6 +383,25 @@ function sanitizeResponseForLogging(response: any): any {
 }
 
 (async () => {
+  // In production, start server early so healthcheck can respond while DB initializes
+  let earlyServer: any = null;
+  if (app.get("env") === "production") {
+    const port = parseInt(process.env.PORT || "5000", 10);
+    const http = await import("http");
+    earlyServer = http.createServer(app);
+    
+    app.get("/", (_req: Request, res: Response, next: NextFunction) => {
+      if (!(app as any).__routesReady) {
+        return res.status(200).send("OK");
+      }
+      next();
+    });
+    
+    earlyServer.listen({ port, host: "0.0.0.0", reusePort: true }, () => {
+      log(`early server listening on port ${port} for healthcheck`);
+    });
+  }
+
   // Enhanced database initialization for production deployment
   if (app.get("env") === "production") {
     try {
@@ -722,7 +741,7 @@ function sanitizeResponseForLogging(response: any): any {
   // 🔧 Register monitoring routes
   app.use(monitoringRoutes);
 
-  const server = await registerRoutes(app);
+  const server = await registerRoutes(app, earlyServer || undefined);
 
   // 404 handler for unmatched API routes (MUST be after routes)
   app.use("/api/*", (req: Request, res: Response, next: NextFunction) => {
@@ -766,19 +785,21 @@ function sanitizeResponseForLogging(response: any): any {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || "5000", 10);
-  server.listen(
-    {
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    },
-    () => {
-      log(`serving on port ${port}`);
-    },
-  );
+  (app as any).__routesReady = true;
+
+  if (app.get("env") === "production" && earlyServer) {
+    log(`production server fully initialized`);
+  } else {
+    const port = parseInt(process.env.PORT || "5000", 10);
+    server.listen(
+      {
+        port,
+        host: "0.0.0.0",
+        reusePort: true,
+      },
+      () => {
+        log(`serving on port ${port}`);
+      },
+    );
+  }
 })();
