@@ -1,6 +1,5 @@
 import { Route, Switch, Redirect } from "wouter";
 import { AuthProvider, useAuth } from "./hooks/use-auth";
-import { Toaster } from "./components/ui/toaster";
 
 import Login from "./pages/login";
 import Dashboard from "./pages/dashboard";
@@ -311,7 +310,6 @@ function App() {
   return (
     <AuthProvider>
       <AppRoutes />
-      <Toaster />
     </AuthProvider>
   );
 }
