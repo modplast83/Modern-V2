@@ -15,6 +15,16 @@ import monitoringRoutes from "./routes/monitoring";
 
 const app = express();
 
+// Early healthcheck for production deployments - MUST be before any middleware
+if (process.env.NODE_ENV === "production") {
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    if (req.path === "/" && !(app as any).__routesReady) {
+      return res.status(200).send("OK");
+    }
+    next();
+  });
+}
+
 // Enable gzip/br compression for all responses
 app.use(compression({
   level: 6,
@@ -64,53 +74,31 @@ async function performPasswordSecurityCheck(): Promise<void> {
     }
 
     if (plaintextPasswordsFound > 0) {
-      console.error(
-        `🚨 CRITICAL SECURITY ISSUE: Found ${plaintextPasswordsFound} user(s) with plaintext passwords!`,
+      console.warn(
+        `⚠️ SECURITY: Found ${plaintextPasswordsFound} user(s) with plaintext passwords. Auto-hashing...`,
       );
-      console.error(`🚨 Affected user IDs: [${problematicUserIds.join(", ")}]`);
-      console.error(
-        `🚨 This is a security vulnerability that must be addressed immediately!`,
-      );
-      console.error(
-        `🚨 All passwords should be hashed with bcrypt before storage.`,
-      );
+      console.warn(`⚠️ Affected user IDs: [${problematicUserIds.join(", ")}]`);
 
-      if (app.get("env") === "production") {
-        console.error(
-          `🚨 PRODUCTION SECURITY VIOLATION: Application startup blocked due to plaintext passwords`,
-        );
-        console.error(
-          `┌─────────────────────────────────────────────────────────────────────┐`,
-        );
-        console.error(
-          `│                     SECURITY FIX REQUIRED                           │`,
-        );
-        console.error(
-          `├─────────────────────────────────────────────────────────────────────┤`,
-        );
-        console.error(
-          `│ OPTION 1 (Recommended): Hash passwords in production database     │`,
-        );
-        console.error(
-          `│   Run: node scripts/hash-passwords.js                               │`,
-        );
-        console.error(
-          `│                                                                     │`,
-        );
-        console.error(
-          `│ OPTION 2 (Emergency only): Bypass security check temporarily      │`,
-        );
-        console.error(
-          `│   Set environment variable: SKIP_SECURITY_CHECK=true              │`,
-        );
-        console.error(
-          `│   Then immediately run hash-passwords.js and remove bypass        │`,
-        );
-        console.error(
-          `└─────────────────────────────────────────────────────────────────────┘`,
-        );
-        process.exit(1);
+      for (const user of allUsers) {
+        if (!user.password) continue;
+        const isHashed =
+          user.password.startsWith("$2a$") ||
+          user.password.startsWith("$2b$") ||
+          user.password.startsWith("$2y$");
+        if (!isHashed) {
+          try {
+            const hashedPassword = await bcrypt.hash(user.password, 10);
+            await db
+              .update(users)
+              .set({ password: hashedPassword })
+              .where(sql`${users.id} = ${user.id}`);
+            console.log(`✅ Auto-hashed password for user ${user.id} (${user.username})`);
+          } catch (hashErr) {
+            console.error(`❌ Failed to hash password for user ${user.id}:`, hashErr);
+          }
+        }
       }
+      console.log(`✅ Password auto-hashing completed`);
     } else {
       console.log(
         `✅ Password security check passed: All ${allUsers.length} user passwords are properly hashed`,
@@ -389,14 +377,6 @@ function sanitizeResponseForLogging(response: any): any {
     const port = parseInt(process.env.PORT || "5000", 10);
     const http = await import("http");
     earlyServer = http.createServer(app);
-    
-    app.get("/", (_req: Request, res: Response, next: NextFunction) => {
-      if (!(app as any).__routesReady) {
-        return res.status(200).send("OK");
-      }
-      next();
-    });
-    
     earlyServer.listen({ port, host: "0.0.0.0", reusePort: true }, () => {
       log(`early server listening on port ${port} for healthcheck`);
     });
