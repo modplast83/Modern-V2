@@ -71,7 +71,7 @@ export default function Dashboard() {
 
   const saveConfigMutation = useMutation({
     mutationFn: async (widgets: string[]) => {
-      await apiRequest("PUT", "/api/dashboard/config", { widgets });
+      await apiRequest("/api/dashboard/config", { method: "PUT", body: JSON.stringify({ widgets }) });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/config"] });
