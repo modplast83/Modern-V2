@@ -2985,6 +2985,7 @@ export class DatabaseStorage implements IStorage {
         cp.thickness,
         cp.master_batch_id,
         COALESCE(mb.name_ar, mb.name, cp.master_batch_id) AS master_batch_name,
+        mb.color_hex AS master_batch_color_hex,
         COUNT(r.id) AS rolls_count,
         COALESCE(SUM(r.weight_kg), 0) AS total_weight_produced,
         GREATEST(0, (CASE WHEN po.final_quantity_kg IS NOT NULL AND po.final_quantity_kg > 0 THEN po.final_quantity_kg ELSE po.quantity_kg END)::numeric - COALESCE(SUM(r.weight_kg), 0)) AS remaining_quantity

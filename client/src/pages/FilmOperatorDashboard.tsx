@@ -58,6 +58,7 @@ interface ActiveProductionOrderDetails {
   thickness?: string;
   master_batch_id?: string;
   master_batch_name?: string;
+  master_batch_color_hex?: string;
   overrun_percentage?: string | number;
 }
 
@@ -334,7 +335,15 @@ export default function FilmOperatorDashboard({ hideLayout = false }: FilmOperat
                         {order.master_batch_id && (
                           <div>
                             <p className="text-gray-500 dark:text-gray-400">{isArabic ? "لون الماستر باتش" : "Masterbatch Color"}</p>
-                            <p className="font-medium" data-testid={`text-masterbatch-${order.id}`}>{order.master_batch_name || order.master_batch_id}</p>
+                            <p className="font-medium flex items-center gap-2" data-testid={`text-masterbatch-${order.id}`}>
+                              {order.master_batch_color_hex && (
+                                <span
+                                  className="inline-block w-4 h-4 rounded-full border border-gray-300 dark:border-gray-600 flex-shrink-0"
+                                  style={{ backgroundColor: order.master_batch_color_hex }}
+                                />
+                              )}
+                              {order.master_batch_name || order.master_batch_id}
+                            </p>
                           </div>
                         )}
                       </div>
