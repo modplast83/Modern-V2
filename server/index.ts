@@ -1,3 +1,4 @@
+import http from "http";
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
@@ -23,6 +24,13 @@ if (process.env.NODE_ENV === "production") {
     }
     next();
   });
+
+  const port = parseInt(process.env.PORT || "5000", 10);
+  const earlyServer = http.createServer(app);
+  earlyServer.listen({ port, host: "0.0.0.0", reusePort: true }, () => {
+    log(`early server listening on port ${port} for healthcheck`);
+  });
+  (app as any).__earlyServer = earlyServer;
 }
 
 // Enable gzip/br compression for all responses
@@ -371,16 +379,7 @@ function sanitizeResponseForLogging(response: any): any {
 }
 
 (async () => {
-  // In production, start server early so healthcheck can respond while DB initializes
-  let earlyServer: any = null;
-  if (app.get("env") === "production") {
-    const port = parseInt(process.env.PORT || "5000", 10);
-    const http = await import("http");
-    earlyServer = http.createServer(app);
-    earlyServer.listen({ port, host: "0.0.0.0", reusePort: true }, () => {
-      log(`early server listening on port ${port} for healthcheck`);
-    });
-  }
+  const earlyServer = (app as any).__earlyServer || null;
 
   // Enhanced database initialization for production deployment
   if (app.get("env") === "production") {
