@@ -4048,6 +4048,194 @@ export class DatabaseStorage implements IStorage {
     return { sectionId, total: 0 };
   }
 
+  async getMonitoringDashboard(dateFrom?: string, dateTo?: string): Promise<any> {
+    const dateCondition = (dateField: any) => {
+      const conditions: any[] = [];
+      if (dateFrom) conditions.push(sql`${dateField} >= ${dateFrom}::timestamp`);
+      if (dateTo) conditions.push(sql`${dateField} <= (${dateTo}::date + interval '1 day')`);
+      return conditions.length > 0 ? and(...conditions) : undefined;
+    };
+
+    const allRolls = await db
+      .select({
+        id: rolls.id,
+        weight_kg: rolls.weight_kg,
+        stage: rolls.stage,
+        created_at: rolls.created_at,
+        printed_at: rolls.printed_at,
+        cut_completed_at: rolls.cut_completed_at,
+        film_machine_id: rolls.film_machine_id,
+        printing_machine_id: rolls.printing_machine_id,
+        cutting_machine_id: rolls.cutting_machine_id,
+        created_by: rolls.created_by,
+        printed_by: rolls.printed_by,
+        cut_by: rolls.cut_by,
+        production_order_id: rolls.production_order_id,
+        waste_kg: rolls.waste_kg,
+        cut_weight_total_kg: rolls.cut_weight_total_kg,
+      })
+      .from(rolls)
+      .where(dateCondition(rolls.created_at));
+
+    const machineRows = await db
+      .select({ id: machines.id, name: machines.name, name_ar: machines.name_ar, type: machines.type })
+      .from(machines);
+    const machineMap = new Map(machineRows.map(m => [m.id, m]));
+
+    const userRows = await db
+      .select({ id: users.id, display_name: users.display_name, display_name_ar: users.display_name_ar })
+      .from(users);
+    const userMap = new Map(userRows.map(u => [u.id, u]));
+
+    const poRows = await db
+      .select({
+        po_id: production_orders.id,
+        po_number: production_orders.production_order_number,
+        cp_id: production_orders.customer_product_id,
+        order_id: production_orders.order_id,
+        quantity_kg: production_orders.quantity_kg,
+        status: production_orders.status,
+        size_caption: customer_products.size_caption,
+        item_name: items.name,
+        item_name_ar: items.name_ar,
+        customer_name: customers.name,
+        customer_name_ar: customers.name_ar,
+      })
+      .from(production_orders)
+      .innerJoin(orders, eq(production_orders.order_id, orders.id))
+      .innerJoin(customers, eq(orders.customer_id, customers.id))
+      .leftJoin(customer_products, eq(production_orders.customer_product_id, customer_products.id))
+      .leftJoin(items, eq(customer_products.item_id, items.id));
+    const poMap = new Map(poRows.map(p => [p.po_id, p]));
+
+    let filmKg = 0, printingKg = 0, cuttingKg = 0, doneKg = 0;
+    let filmRolls = 0, printingRolls = 0, cuttingRolls = 0, doneRolls = 0;
+    let totalWaste = 0;
+
+    const machineStats: Record<string, { film_kg: number; film_rolls: number; printing_kg: number; printing_rolls: number; cutting_kg: number; cutting_rolls: number; last_production: string | null }> = {};
+    const workerStats: Record<number, { film_kg: number; film_rolls: number; printing_kg: number; printing_rolls: number; cutting_kg: number; cutting_rolls: number }> = {};
+    const productStats: Record<number, { total_kg: number; total_rolls: number }> = {};
+
+    for (const r of allRolls) {
+      const w = parseFloat(String(r.weight_kg || 0));
+      const wasteW = parseFloat(String(r.waste_kg || 0));
+      totalWaste += wasteW;
+
+      if (r.stage === 'film') { filmKg += w; filmRolls++; }
+      else if (r.stage === 'printing') { printingKg += w; printingRolls++; }
+      else if (r.stage === 'cutting') { cuttingKg += w; cuttingRolls++; }
+      else if (r.stage === 'done' || r.stage === 'archived') { doneKg += w; doneRolls++; }
+
+      if (r.film_machine_id) {
+        if (!machineStats[r.film_machine_id]) machineStats[r.film_machine_id] = { film_kg: 0, film_rolls: 0, printing_kg: 0, printing_rolls: 0, cutting_kg: 0, cutting_rolls: 0, last_production: null };
+        machineStats[r.film_machine_id].film_kg += w;
+        machineStats[r.film_machine_id].film_rolls++;
+        const ts = r.created_at ? new Date(r.created_at).toISOString() : null;
+        if (ts && (!machineStats[r.film_machine_id].last_production || ts > machineStats[r.film_machine_id].last_production!)) machineStats[r.film_machine_id].last_production = ts;
+      }
+      if (r.printing_machine_id && r.printed_at) {
+        if (!machineStats[r.printing_machine_id]) machineStats[r.printing_machine_id] = { film_kg: 0, film_rolls: 0, printing_kg: 0, printing_rolls: 0, cutting_kg: 0, cutting_rolls: 0, last_production: null };
+        machineStats[r.printing_machine_id].printing_kg += w;
+        machineStats[r.printing_machine_id].printing_rolls++;
+        const pts = new Date(r.printed_at).toISOString();
+        if (!machineStats[r.printing_machine_id].last_production || pts > machineStats[r.printing_machine_id].last_production!) machineStats[r.printing_machine_id].last_production = pts;
+      }
+      if (r.cutting_machine_id && r.cut_completed_at) {
+        if (!machineStats[r.cutting_machine_id]) machineStats[r.cutting_machine_id] = { film_kg: 0, film_rolls: 0, printing_kg: 0, printing_rolls: 0, cutting_kg: 0, cutting_rolls: 0, last_production: null };
+        machineStats[r.cutting_machine_id].cutting_kg += w;
+        machineStats[r.cutting_machine_id].cutting_rolls++;
+        const cts = new Date(r.cut_completed_at).toISOString();
+        if (!machineStats[r.cutting_machine_id].last_production || cts > machineStats[r.cutting_machine_id].last_production!) machineStats[r.cutting_machine_id].last_production = cts;
+      }
+
+      if (r.created_by) {
+        if (!workerStats[r.created_by]) workerStats[r.created_by] = { film_kg: 0, film_rolls: 0, printing_kg: 0, printing_rolls: 0, cutting_kg: 0, cutting_rolls: 0 };
+        workerStats[r.created_by].film_kg += w;
+        workerStats[r.created_by].film_rolls++;
+      }
+      if (r.printed_by && r.printed_at) {
+        if (!workerStats[r.printed_by]) workerStats[r.printed_by] = { film_kg: 0, film_rolls: 0, printing_kg: 0, printing_rolls: 0, cutting_kg: 0, cutting_rolls: 0 };
+        workerStats[r.printed_by].printing_kg += w;
+        workerStats[r.printed_by].printing_rolls++;
+      }
+      if (r.cut_by && r.cut_completed_at) {
+        if (!workerStats[r.cut_by]) workerStats[r.cut_by] = { film_kg: 0, film_rolls: 0, printing_kg: 0, printing_rolls: 0, cutting_kg: 0, cutting_rolls: 0 };
+        workerStats[r.cut_by].cutting_kg += w;
+        workerStats[r.cut_by].cutting_rolls++;
+      }
+
+      if (r.production_order_id) {
+        if (!productStats[r.production_order_id]) productStats[r.production_order_id] = { total_kg: 0, total_rolls: 0 };
+        productStats[r.production_order_id].total_kg += w;
+        productStats[r.production_order_id].total_rolls++;
+      }
+    }
+
+    const totalKg = filmKg + printingKg + cuttingKg + doneKg;
+    const totalRolls = allRolls.length;
+
+    const machinesResult = Object.entries(machineStats).map(([id, s]) => {
+      const m = machineMap.get(id);
+      const totalMachineKg = s.film_kg + s.printing_kg + s.cutting_kg;
+      const totalMachineRolls = s.film_rolls + s.printing_rolls + s.cutting_rolls;
+      return {
+        id, name: m?.name || id, name_ar: m?.name_ar || m?.name || id, type: m?.type || '',
+        film_kg: +s.film_kg.toFixed(2), film_rolls: s.film_rolls,
+        printing_kg: +s.printing_kg.toFixed(2), printing_rolls: s.printing_rolls,
+        cutting_kg: +s.cutting_kg.toFixed(2), cutting_rolls: s.cutting_rolls,
+        total_kg: +totalMachineKg.toFixed(2), total_rolls: totalMachineRolls,
+        last_production: s.last_production,
+      };
+    }).sort((a, b) => b.total_kg - a.total_kg);
+
+    const workersResult = Object.entries(workerStats).map(([id, s]) => {
+      const u = userMap.get(Number(id));
+      const totalWorkerKg = s.film_kg + s.printing_kg + s.cutting_kg;
+      const totalWorkerRolls = s.film_rolls + s.printing_rolls + s.cutting_rolls;
+      return {
+        id: Number(id), name: u?.display_name || `User ${id}`, name_ar: u?.display_name_ar || u?.display_name || `عامل ${id}`,
+        film_kg: +s.film_kg.toFixed(2), film_rolls: s.film_rolls,
+        printing_kg: +s.printing_kg.toFixed(2), printing_rolls: s.printing_rolls,
+        cutting_kg: +s.cutting_kg.toFixed(2), cutting_rolls: s.cutting_rolls,
+        total_kg: +totalWorkerKg.toFixed(2), total_rolls: totalWorkerRolls,
+      };
+    }).sort((a, b) => b.total_kg - a.total_kg);
+
+    const productAgg: Record<string, { item_name: string; item_name_ar: string; customer_name: string; customer_name_ar: string; size_caption: string; total_kg: number; total_rolls: number }> = {};
+    for (const [poId, s] of Object.entries(productStats)) {
+      const po = poMap.get(Number(poId));
+      if (!po) continue;
+      const key = `${po.cp_id || 'unknown'}`;
+      if (!productAgg[key]) {
+        productAgg[key] = {
+          item_name: po.item_name || '', item_name_ar: po.item_name_ar || po.item_name || '',
+          customer_name: po.customer_name || '', customer_name_ar: po.customer_name_ar || po.customer_name || '',
+          size_caption: po.size_caption || '', total_kg: 0, total_rolls: 0,
+        };
+      }
+      productAgg[key].total_kg += s.total_kg;
+      productAgg[key].total_rolls += s.total_rolls;
+    }
+    const productsResult = Object.values(productAgg)
+      .map(p => ({ ...p, total_kg: +p.total_kg.toFixed(2) }))
+      .sort((a, b) => b.total_kg - a.total_kg)
+      .slice(0, 20);
+
+    return {
+      summary: {
+        total_kg: +totalKg.toFixed(2), total_rolls: totalRolls,
+        film_kg: +filmKg.toFixed(2), film_rolls: filmRolls,
+        printing_kg: +printingKg.toFixed(2), printing_rolls: printingRolls,
+        cutting_kg: +cuttingKg.toFixed(2), cutting_rolls: cuttingRolls,
+        done_kg: +doneKg.toFixed(2), done_rolls: doneRolls,
+        total_waste_kg: +totalWaste.toFixed(2),
+      },
+      machines: machinesResult,
+      workers: workersResult,
+      products: productsResult,
+    };
+  }
+
   async getProductionSummary(options?: any): Promise<any> {
     const stats = await this.getProductionStats();
     return stats;

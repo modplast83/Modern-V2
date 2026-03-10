@@ -8243,6 +8243,18 @@ Do not include quotes or explanations.`;
     }
   });
 
+  app.get("/api/production/monitoring-dashboard", requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const dateFrom = req.query.dateFrom as string;
+      const dateTo = req.query.dateTo as string;
+      const data = await storage.getMonitoringDashboard(dateFrom, dateTo);
+      res.json({ success: true, data });
+    } catch (error: any) {
+      console.error("Error fetching monitoring dashboard:", error);
+      res.status(500).json({ message: "خطأ في جلب بيانات لوحة المراقبة", error: error.message });
+    }
+  });
+
   // Get real-time production statistics
   app.get("/api/production/real-time-stats", requireAuth, async (req, res) => {
     try {
