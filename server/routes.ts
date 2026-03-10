@@ -9111,7 +9111,7 @@ Do not include quotes or explanations.`;
 
       const voucherData = {
         ...req.body,
-        received_by: userId,
+        created_by: userId,
       };
 
       const voucher = await storage.createFinishedGoodsVoucherIn(voucherData);
@@ -9156,7 +9156,7 @@ Do not include quotes or explanations.`;
 
       const voucherData = {
         ...req.body,
-        issued_by: userId,
+        created_by: userId,
       };
 
       const voucher = await storage.createFinishedGoodsVoucherOut(voucherData);
