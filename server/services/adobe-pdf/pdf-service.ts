@@ -67,6 +67,9 @@ export async function mergeDocumentToPDF(options: DocumentMergeOptions): Promise
       resultType: DocumentMergeResult,
     });
 
+    if (!pdfServicesResponse.result) {
+      throw new Error("PDF Services returned null result");
+    }
     const resultAsset = pdfServicesResponse.result.asset;
     const streamAsset = await pdfServices.getContent({ asset: resultAsset });
 

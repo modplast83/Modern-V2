@@ -536,7 +536,8 @@ function SectionContent({
   dateFrom,
   dateTo,
 }: SectionContentProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const ln = useLocalizedName();
   const [selectedMachineId, setSelectedMachineId] = useState<string | null>(null);
   const [showMachineDetail, setShowMachineDetail] = useState(false);
 

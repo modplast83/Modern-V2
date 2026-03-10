@@ -91,11 +91,13 @@ interface Machine {
 function SortableItem({ 
   item, 
   machineId,
-  t
+  t,
+  ln
 }: { 
   item: QueueItem | ProductionOrder; 
   machineId: string | null;
   t: (key: string) => string;
+  ln: (nameAr?: string | null, nameEn?: string | null) => string;
 }) {
   const isQueueItem = "queue_id" in item;
   const id = isQueueItem ? `queue-${item.queue_id}` : `order-${item.id}`;
@@ -191,12 +193,14 @@ function MachineColumn({
   machine, 
   items,
   onItemsChange,
-  t
+  t,
+  ln
 }: { 
   machine: Machine | null; 
   items: (QueueItem | ProductionOrder)[];
   onItemsChange?: (items: any[]) => void;
   t: (key: string) => string;
+  ln: (nameAr?: string | null, nameEn?: string | null) => string;
 }) {
   const machineId = machine?.id || "unassigned";
   const sortableItems = items.map(item => {
@@ -264,6 +268,7 @@ function MachineColumn({
                     item={item}
                     machineId={machineId}
                     t={t}
+                    ln={ln}
                   />
                 ))
               )}
@@ -650,6 +655,7 @@ export default function ProductionQueues() {
             machine={null}
             items={localQueues["unassigned"] || []}
             t={t}
+            ln={ln}
           />
           {activeMachines.map((machine) => (
             <MachineColumn
@@ -657,6 +663,7 @@ export default function ProductionQueues() {
               machine={machine}
               items={localQueues[machine.id] || []}
               t={t}
+              ln={ln}
             />
           ))}
         </div>

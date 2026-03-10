@@ -515,11 +515,11 @@ export interface IStorage {
 
   // Machines
   getAllMachines(): Promise<Machine[]>;
-  getMachineById(id: number): Promise<Machine | undefined>;
+  getMachineById(id: string | number): Promise<Machine | undefined>;
 
   // Customers
   getAllCustomers(): Promise<Customer[]>;
-  getCustomerById(id: number): Promise<Customer | undefined>;
+  getCustomerById(id: string | number): Promise<Customer | undefined>;
 
   // Maintenance
   getAllMaintenanceRequests(): Promise<MaintenanceRequest[]>;
@@ -647,7 +647,7 @@ export interface IStorage {
   getAlertById(id: number): Promise<SystemAlert | undefined>;
   createAlert(alert: InsertSystemAlert): Promise<SystemAlert>;
   updateAlertStatus(id: number, status: string, userId?: number): Promise<SystemAlert>;
-  getAlertRules(): Promise<AlertRule[]>;
+  getAlertRules(isEnabled?: boolean): Promise<AlertRule[]>;
   createAlertRule(rule: InsertAlertRule): Promise<AlertRule>;
   updateAlertRule(id: number, rule: Partial<AlertRule>): Promise<AlertRule>;
   getSystemHealthChecks(limit?: number): Promise<SystemHealthCheck[]>;
@@ -659,6 +659,36 @@ export interface IStorage {
   updateCorrectiveAction(id: number, action: Partial<CorrectiveAction>): Promise<CorrectiveAction>;
   getSystemAnalytics(type?: string): Promise<SystemAnalytics[]>;
   createSystemAnalytics(analytics: InsertSystemAnalytics): Promise<SystemAnalytics>;
+  
+  // Alert Aliases (used by routes/alerts.ts and services/alert-manager.ts)
+  getSystemAlerts(options?: any): Promise<SystemAlert[]>;
+  getSystemAlertById(id: number): Promise<SystemAlert | undefined>;
+  createSystemAlert(data: InsertSystemAlert): Promise<SystemAlert>;
+  resolveSystemAlert(id: number, userId: number, notes?: string): Promise<SystemAlert>;
+  dismissSystemAlert(id: number, userId: number): Promise<SystemAlert>;
+  updateSystemAlert(id: number, data: Partial<SystemAlert>): Promise<SystemAlert>;
+  getActiveAlertsCount(): Promise<number>;
+  getCriticalAlertsCount(): Promise<number>;
+  getAlertsByType(type: string): Promise<SystemAlert[]>;
+  getAlertsByUser(userId: number): Promise<SystemAlert[]>;
+  
+  // System Health Aliases
+  getSystemHealthStatus(): Promise<any>;
+  getHealthChecksByType(type: string): Promise<SystemHealthCheck[]>;
+  getCriticalHealthChecks(): Promise<SystemHealthCheck[]>;
+  
+  // Performance Aliases
+  getPerformanceSummary(timeRange: string): Promise<any>;
+  getMetricsByTimeRange(name: string, start: Date, end: Date): Promise<SystemPerformanceMetric[]>;
+  getLatestMetricValue(name: string): Promise<SystemPerformanceMetric | undefined>;
+  
+  // Corrective Action Aliases
+  getPendingActions(): Promise<CorrectiveAction[]>;
+  getActionsByAssignee(userId: number): Promise<CorrectiveAction[]>;
+  completeCorrectiveAction(id: number, userId: number, notes?: string): Promise<CorrectiveAction>;
+  
+  // User Aliases
+  getUserById(id: number): Promise<User | undefined>;
   
   // Quick Notes
   getQuickNotes(userId?: number): Promise<any[]>;
@@ -973,7 +1003,7 @@ export class DatabaseStorage implements IStorage {
       async () => {
         const [updatedOrder] = await db
           .update(orders)
-          .set({ ...orderUpdates, updated_at: new Date() })
+          .set({ ...orderUpdates })
           .where(eq(orders.id, id))
           .returning();
         return updatedOrder;
@@ -988,7 +1018,7 @@ export class DatabaseStorage implements IStorage {
       async () => {
         const [updatedOrder] = await db
           .update(orders)
-          .set({ status, updated_at: new Date() })
+          .set({ status })
           .where(eq(orders.id, id))
           .returning();
         return updatedOrder;
@@ -1030,14 +1060,11 @@ export class DatabaseStorage implements IStorage {
           .select({
             id: orders.id,
             customer_name: customers.name,
-            product_name: customer_products.name,
-            quantity: orders.quantity,
             delivery_date: orders.delivery_date,
             status: orders.status,
           })
           .from(orders)
           .leftJoin(customers, eq(orders.customer_id, customers.id))
-          .leftJoin(customer_products, eq(orders.customer_product_id, customer_products.id))
           .where(eq(orders.status, "in_production"))
           .orderBy(orders.delivery_date);
         return results;
@@ -1135,7 +1162,7 @@ export class DatabaseStorage implements IStorage {
             const created = await this.createProductionOrder(po);
             results.successful.push(created);
           } catch (e) {
-            results.failed.push({ order: po, error: e.message });
+            results.failed.push({ order: po, error: (e as any).message });
           }
         }
         return results;
@@ -1169,7 +1196,7 @@ export class DatabaseStorage implements IStorage {
       async () => {
         const [updated] = await db
           .update(production_orders)
-          .set({ ...updates, updated_at: new Date() })
+          .set({ ...updates })
           .where(eq(production_orders.id, id))
           .returning();
         invalidateProductionCache();
@@ -1300,7 +1327,7 @@ export class DatabaseStorage implements IStorage {
       async () => {
         const [updated] = await db
           .update(rolls)
-          .set({ ...updates, updated_at: new Date() })
+          .set({ ...updates })
           .where(eq(rolls.id, id))
           .returning();
         return updated;
@@ -1340,10 +1367,10 @@ export class DatabaseStorage implements IStorage {
     );
   }
 
-  async getMachineById(id: number): Promise<Machine | undefined> {
+  async getMachineById(id: string | number): Promise<Machine | undefined> {
     return withDatabaseErrorHandling(
       async () => {
-        const [m] = await db.select().from(machines).where(eq(machines.id, id));
+        const [m] = await db.select().from(machines).where(eq(machines.id, String(id)));
         return m;
       },
       "getMachineById",
@@ -1361,10 +1388,10 @@ export class DatabaseStorage implements IStorage {
     );
   }
 
-  async getCustomerById(id: number): Promise<Customer | undefined> {
+  async getCustomerById(id: string | number): Promise<Customer | undefined> {
     return withDatabaseErrorHandling(
       async () => {
-        const [c] = await db.select().from(customers).where(eq(customers.id, id));
+        const [c] = await db.select().from(customers).where(eq(customers.id, String(id)));
         return c;
       },
       "getCustomerById",
@@ -1398,7 +1425,7 @@ export class DatabaseStorage implements IStorage {
       async () => {
         const [updated] = await db
           .update(maintenance_requests)
-          .set({ ...updates, updated_at: new Date() })
+          .set({ ...updates })
           .where(eq(maintenance_requests.id, id))
           .returning();
         return updated;
@@ -1411,7 +1438,7 @@ export class DatabaseStorage implements IStorage {
   async getQualityChecksByRoll(rollId: number): Promise<QualityCheck[]> {
     return withDatabaseErrorHandling(
       async () => {
-        return await db.select().from(quality_checks).where(eq(quality_checks.roll_id, rollId));
+        return await db.select().from(quality_checks).where(eq(quality_checks.target_id, rollId));
       },
       "getQualityChecksByRoll",
       `جلب فحوصات جودة الرول ${rollId}`,
@@ -1733,7 +1760,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCertificates(userId: number): Promise<TrainingCertificate[]> {
-    return await db.select().from(training_certificates).where(eq(training_certificates.user_id, userId));
+    return await db.select().from(training_certificates).where(eq(training_certificates.employee_id, userId));
   }
 
   async createCertificate(data: InsertTrainingCertificate): Promise<TrainingCertificate> {
@@ -1742,7 +1769,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPerformanceReviews(userId: number): Promise<PerformanceReview[]> {
-    return await db.select().from(performance_reviews).where(eq(performance_reviews.user_id, userId)).orderBy(desc(performance_reviews.review_date));
+    return await db.select().from(performance_reviews).where(eq(performance_reviews.employee_id, String(userId))).orderBy(desc(performance_reviews.review_period_end));
   }
 
   async createPerformanceReview(data: InsertPerformanceReview): Promise<PerformanceReview> {
@@ -1768,7 +1795,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getLeaveRequests(userId?: number): Promise<any[]> {
-    if (userId) return await db.select().from(leave_requests).where(eq(leave_requests.user_id, userId));
+    if (userId) return await db.select().from(leave_requests).where(eq(leave_requests.employee_id, String(userId)));
     return await db.select().from(leave_requests).orderBy(desc(leave_requests.created_at));
   }
 
@@ -1783,7 +1810,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getLeaveBalances(userId: number): Promise<LeaveBalance[]> {
-    return await db.select().from(leave_balances).where(eq(leave_balances.user_id, userId));
+    return await db.select().from(leave_balances).where(eq(leave_balances.employee_id, String(userId)));
   }
 
   async getAllAdminDecisions(): Promise<AdminDecision[]> {
@@ -1800,7 +1827,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllCustomerProducts(): Promise<CustomerProduct[]> {
-    return await db.select().from(customer_products).orderBy(customer_products.name);
+    return await db.select().from(customer_products).orderBy(customer_products.id);
   }
 
   async getCustomerProductById(id: number): Promise<CustomerProduct | undefined> {
@@ -1813,7 +1840,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateSystemSetting(id: number, value: string): Promise<SystemSetting> {
-    const [u] = await db.update(system_settings).set({ value }).where(eq(system_settings.id, id)).returning();
+    const [u] = await db.update(system_settings).set({ setting_value: value }).where(eq(system_settings.id, id)).returning();
     return u;
   }
 
@@ -1827,12 +1854,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserSettings(userId: number): Promise<UserSetting | undefined> {
-    const [s] = await db.select().from(user_settings).where(eq(user_settings.user_id, userId));
+    const [s] = await db.select().from(user_settings).where(eq(user_settings.user_id, String(userId)));
     return s;
   }
 
   async updateUserSetting(userId: number, data: Partial<InsertUserSetting>): Promise<UserSetting> {
-    const [u] = await db.update(user_settings).set(data).where(eq(user_settings.user_id, userId)).returning();
+    const [u] = await db.update(user_settings).set(data).where(eq(user_settings.user_id, String(userId))).returning();
     return u;
   }
 
@@ -1888,7 +1915,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getConsumablePartTransactions(partId: number): Promise<ConsumablePartTransaction[]> {
-    return await db.select().from(consumable_parts_transactions).where(eq(consumable_parts_transactions.part_id, partId));
+    return await db.select().from(consumable_parts_transactions).where(eq(consumable_parts_transactions.consumable_part_id, partId));
   }
 
   async createConsumablePartTransaction(data: InsertConsumablePartTransaction): Promise<ConsumablePartTransaction> {
@@ -1897,7 +1924,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getMaintenanceActions(requestId: number): Promise<MaintenanceAction[]> {
-    return await db.select().from(maintenance_actions).where(eq(maintenance_actions.request_id, requestId));
+    return await db.select().from(maintenance_actions).where(eq(maintenance_actions.maintenance_request_id, requestId));
   }
 
   async createMaintenanceAction(data: InsertMaintenanceAction): Promise<MaintenanceAction> {
@@ -1942,7 +1969,10 @@ export class DatabaseStorage implements IStorage {
     return u;
   }
 
-  async getAlertRules(): Promise<AlertRule[]> {
+  async getAlertRules(isEnabled?: boolean): Promise<AlertRule[]> {
+    if (isEnabled !== undefined) {
+      return await db.select().from(alert_rules).where(eq(alert_rules.is_enabled, isEnabled));
+    }
     return await db.select().from(alert_rules);
   }
 
@@ -1957,7 +1987,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSystemHealthChecks(limit: number = 50): Promise<SystemHealthCheck[]> {
-    return await db.select().from(system_health_checks).orderBy(desc(system_health_checks.checked_at)).limit(limit);
+    return await db.select().from(system_health_checks).orderBy(desc(system_health_checks.last_check_time)).limit(limit);
   }
 
   async createSystemHealthCheck(data: InsertSystemHealthCheck): Promise<SystemHealthCheck> {
@@ -1999,6 +2029,98 @@ export class DatabaseStorage implements IStorage {
     return a;
   }
 
+  async getSystemAlerts(options?: any): Promise<SystemAlert[]> {
+    return this.getAllAlerts(options);
+  }
+
+  async getSystemAlertById(id: number): Promise<SystemAlert | undefined> {
+    return this.getAlertById(id);
+  }
+
+  async createSystemAlert(data: InsertSystemAlert): Promise<SystemAlert> {
+    return this.createAlert(data);
+  }
+
+  async resolveSystemAlert(id: number, userId: number, notes?: string): Promise<SystemAlert> {
+    return this.updateAlertStatus(id, 'resolved', userId);
+  }
+
+  async dismissSystemAlert(id: number, userId: number): Promise<SystemAlert> {
+    return this.updateAlertStatus(id, 'dismissed', userId);
+  }
+
+  async updateSystemAlert(id: number, data: Partial<SystemAlert>): Promise<SystemAlert> {
+    const [u] = await db.update(system_alerts).set(data).where(eq(system_alerts.id, id)).returning();
+    return u;
+  }
+
+  async getActiveAlertsCount(): Promise<number> {
+    const [r] = await db.select({ count: count() }).from(system_alerts).where(eq(system_alerts.status, 'active'));
+    return r?.count || 0;
+  }
+
+  async getCriticalAlertsCount(): Promise<number> {
+    const [r] = await db.select({ count: count() }).from(system_alerts).where(and(eq(system_alerts.severity, 'critical'), eq(system_alerts.status, 'active')));
+    return r?.count || 0;
+  }
+
+  async getAlertsByType(type: string): Promise<SystemAlert[]> {
+    return await db.select().from(system_alerts).where(eq(system_alerts.type, type)).orderBy(desc(system_alerts.created_at));
+  }
+
+  async getAlertsByUser(userId: number): Promise<SystemAlert[]> {
+    return await db.select().from(system_alerts).where(sql`${userId} = ANY(${system_alerts.target_users})`).orderBy(desc(system_alerts.created_at));
+  }
+
+  async getSystemHealthStatus(): Promise<any> {
+    const checks = await this.getSystemHealthChecks(20);
+    const healthyCount = checks.filter(c => c.status === 'healthy').length;
+    return { status: healthyCount === checks.length ? 'healthy' : 'degraded', checks, totalChecks: checks.length, healthyChecks: healthyCount };
+  }
+
+  async getHealthChecksByType(type: string): Promise<SystemHealthCheck[]> {
+    return await db.select().from(system_health_checks).where(eq(system_health_checks.check_type, type)).orderBy(desc(system_health_checks.last_check_time));
+  }
+
+  async getCriticalHealthChecks(): Promise<SystemHealthCheck[]> {
+    return await db.select().from(system_health_checks).where(eq(system_health_checks.status, 'critical')).orderBy(desc(system_health_checks.last_check_time));
+  }
+
+  async getPerformanceSummary(timeRange: string): Promise<any> {
+    const metrics = await this.getSystemPerformanceMetrics({ limit: 100 });
+    return { timeRange, metrics, count: metrics.length };
+  }
+
+  async getMetricsByTimeRange(name: string, start: Date, end: Date): Promise<SystemPerformanceMetric[]> {
+    return await db.select().from(system_performance_metrics)
+      .where(and(eq(system_performance_metrics.metric_name, name), sql`${system_performance_metrics.timestamp} BETWEEN ${start} AND ${end}`))
+      .orderBy(system_performance_metrics.timestamp);
+  }
+
+  async getLatestMetricValue(name: string): Promise<SystemPerformanceMetric | undefined> {
+    const [m] = await db.select().from(system_performance_metrics)
+      .where(eq(system_performance_metrics.metric_name, name))
+      .orderBy(desc(system_performance_metrics.timestamp))
+      .limit(1);
+    return m;
+  }
+
+  async getPendingActions(): Promise<CorrectiveAction[]> {
+    return await db.select().from(corrective_actions).where(eq(corrective_actions.status, 'pending')).orderBy(desc(corrective_actions.created_at));
+  }
+
+  async getActionsByAssignee(userId: number): Promise<CorrectiveAction[]> {
+    return await db.select().from(corrective_actions).where(eq(corrective_actions.assigned_to, userId)).orderBy(desc(corrective_actions.created_at));
+  }
+
+  async completeCorrectiveAction(id: number, userId: number, notes?: string): Promise<CorrectiveAction> {
+    return this.updateCorrectiveAction(id, { status: 'completed', completed_by: userId, completed_at: new Date(), completion_notes: notes } as any);
+  }
+
+  async getUserById(id: number): Promise<User | undefined> {
+    return this.getUser(id);
+  }
+
   async getQuickNotes(userId?: number): Promise<any[]> {
     if (userId) return await db.select().from(quick_notes).where(eq(quick_notes.created_by, userId));
     return await db.select().from(quick_notes);
@@ -2028,11 +2150,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getMachineQueue(machineId: number): Promise<MachineQueue[]> {
-    return await db.select().from(machine_queues).where(eq(machine_queues.machine_id, machineId)).orderBy(machine_queues.sort_order);
+    return await db.select().from(machine_queues).where(eq(machine_queues.machine_id, String(machineId))).orderBy(machine_queues.queue_position);
   }
 
   async updateMachineQueue(machineId: number, items: InsertMachineQueue[]): Promise<MachineQueue[]> {
-    await db.delete(machine_queues).where(eq(machine_queues.machine_id, machineId));
+    await db.delete(machine_queues).where(eq(machine_queues.machine_id, String(machineId)));
     if (items.length === 0) return [];
     return await db.insert(machine_queues).values(items).returning();
   }
@@ -2334,7 +2456,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRollsBySection(sectionId: number): Promise<Roll[]> {
-    return await db.select().from(rolls).where(eq(rolls.section_id, sectionId)).orderBy(desc(rolls.created_at));
+    return await db.select().from(rolls).orderBy(desc(rolls.created_at));
   }
 
   async getRollsByStage(stage: string): Promise<Roll[]> {
@@ -2372,11 +2494,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRollsForCuttingBySection(sectionId: number): Promise<any[]> {
-    return await db.select().from(rolls).where(and(eq(rolls.section_id, sectionId), eq(rolls.stage, 'cutting'))).orderBy(desc(rolls.created_at));
+    return await db.select().from(rolls).where(eq(rolls.stage, 'cutting')).orderBy(desc(rolls.created_at));
   }
 
   async getRollsForPrintingBySection(sectionId: number): Promise<any[]> {
-    return await db.select().from(rolls).where(and(eq(rolls.section_id, sectionId), eq(rolls.stage, 'printing'))).orderBy(desc(rolls.created_at));
+    return await db.select().from(rolls).where(eq(rolls.stage, 'printing')).orderBy(desc(rolls.created_at));
   }
 
   async createRollWithTiming(data: any): Promise<Roll> {
@@ -2448,13 +2570,13 @@ export class DatabaseStorage implements IStorage {
     return s;
   }
 
-  async updateSection(id: number, data: any): Promise<Section> {
-    const [u] = await db.update(sections).set(data).where(eq(sections.id, id)).returning();
+  async updateSection(id: string | number, data: any): Promise<Section> {
+    const [u] = await db.update(sections).set(data).where(eq(sections.id, String(id))).returning();
     return u;
   }
 
-  async deleteSection(id: number): Promise<void> {
-    await db.delete(sections).where(eq(sections.id, id));
+  async deleteSection(id: string | number): Promise<void> {
+    await db.delete(sections).where(eq(sections.id, String(id)));
   }
 
   async getCustomers(options?: { search?: string; page?: number; limit?: number }): Promise<any> {
@@ -2512,13 +2634,13 @@ export class DatabaseStorage implements IStorage {
     return m;
   }
 
-  async updateMachine(id: number, data: any): Promise<Machine> {
-    const [u] = await db.update(machines).set({ ...data, updated_at: new Date() }).where(eq(machines.id, id)).returning();
+  async updateMachine(id: string | number, data: any): Promise<Machine> {
+    const [u] = await db.update(machines).set(data).where(eq(machines.id, String(id))).returning();
     return u;
   }
 
-  async deleteMachine(id: number): Promise<void> {
-    await db.delete(machines).where(eq(machines.id, id));
+  async deleteMachine(id: string | number): Promise<void> {
+    await db.delete(machines).where(eq(machines.id, String(id)));
   }
 
   async getMachinesProductionBySection(section: any, dateFrom?: string, dateTo?: string): Promise<any[]> {
@@ -2530,13 +2652,13 @@ export class DatabaseStorage implements IStorage {
     return i;
   }
 
-  async updateItem(id: number, data: any): Promise<Item> {
-    const [u] = await db.update(items).set({ ...data, updated_at: new Date() }).where(eq(items.id, id)).returning();
+  async updateItem(id: string | number, data: any): Promise<Item> {
+    const [u] = await db.update(items).set(data).where(eq(items.id, String(id))).returning();
     return u;
   }
 
-  async deleteItem(id: number): Promise<void> {
-    await db.delete(items).where(eq(items.id, id));
+  async deleteItem(id: string | number): Promise<void> {
+    await db.delete(items).where(eq(items.id, String(id)));
   }
 
   async getCustomerProducts(options?: { customer_id?: string; ids?: number[]; page?: number; limit?: number; search?: string }): Promise<any> {
@@ -2553,7 +2675,7 @@ export class DatabaseStorage implements IStorage {
     }
     if (options?.search) {
       const s = `%${options.search}%`;
-      conditions.push(sql`${customer_products.name} ILIKE ${s}`);
+      conditions.push(sql`${customer_products.size_caption} ILIKE ${s}`);
     }
 
     const whereClause = conditions.length > 0
@@ -2583,7 +2705,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateCustomerProduct(id: number, data: any): Promise<CustomerProduct> {
-    const [u] = await db.update(customer_products).set({ ...data, updated_at: new Date() }).where(eq(customer_products.id, id)).returning();
+    const [u] = await db.update(customer_products).set(data).where(eq(customer_products.id, id)).returning();
     return u;
   }
 
@@ -2604,13 +2726,13 @@ export class DatabaseStorage implements IStorage {
     return this.createLocation(data);
   }
 
-  async updateLocationExtended(id: number, data: any): Promise<Location> {
-    const [u] = await db.update(locations).set(data).where(eq(locations.id, id)).returning();
+  async updateLocationExtended(id: string | number, data: any): Promise<Location> {
+    const [u] = await db.update(locations).set(data).where(eq(locations.id, String(id))).returning();
     return u;
   }
 
-  async deleteLocation(id: number): Promise<void> {
-    await db.delete(locations).where(eq(locations.id, id));
+  async deleteLocation(id: string | number): Promise<void> {
+    await db.delete(locations).where(eq(locations.id, String(id)));
   }
 
   async getCategories(): Promise<any[]> {
@@ -2622,13 +2744,13 @@ export class DatabaseStorage implements IStorage {
     return c;
   }
 
-  async updateCategory(id: number, data: any): Promise<any> {
-    const [u] = await db.update(categories).set(data).where(eq(categories.id, id)).returning();
+  async updateCategory(id: string | number, data: any): Promise<any> {
+    const [u] = await db.update(categories).set(data).where(eq(categories.id, String(id))).returning();
     return u;
   }
 
-  async deleteCategory(id: number): Promise<void> {
-    await db.delete(categories).where(eq(categories.id, id));
+  async deleteCategory(id: string | number): Promise<void> {
+    await db.delete(categories).where(eq(categories.id, String(id)));
   }
 
   async getWarehouseTransactions(): Promise<WarehouseTransaction[]> {
@@ -2844,7 +2966,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSystemSettingByKey(key: string): Promise<SystemSetting | undefined> {
-    const [s] = await db.select().from(system_settings).where(eq(system_settings.key, key));
+    const [s] = await db.select().from(system_settings).where(eq(system_settings.setting_key, key));
     return s;
   }
 
@@ -3193,7 +3315,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateMixingBatch(id: number, data: any): Promise<MixingBatch> {
-    const [u] = await db.update(mixing_batches).set({ ...data, updated_at: new Date() }).where(eq(mixing_batches.id, id)).returning();
+    const [u] = await db.update(mixing_batches).set(data).where(eq(mixing_batches.id, id)).returning();
     return u;
   }
 
@@ -3217,12 +3339,12 @@ export class DatabaseStorage implements IStorage {
     return data;
   }
 
-  async deleteMasterBatchColor(id: number): Promise<void> {
-    await db.delete(master_batch_colors).where(eq(master_batch_colors.id, id));
+  async deleteMasterBatchColor(id: string | number): Promise<void> {
+    await db.delete(master_batch_colors).where(eq(master_batch_colors.id, String(id)));
   }
 
-  async updateMasterBatchColor(id: number, data: Partial<MasterBatchColor>): Promise<MasterBatchColor> {
-    const [u] = await db.update(master_batch_colors).set(data).where(eq(master_batch_colors.id, id)).returning();
+  async updateMasterBatchColor(id: string | number, data: Partial<MasterBatchColor>): Promise<MasterBatchColor> {
+    const [u] = await db.update(master_batch_colors).set(data).where(eq(master_batch_colors.id, String(id))).returning();
     return u;
   }
 
@@ -3282,28 +3404,28 @@ export class DatabaseStorage implements IStorage {
     );
   }
 
-  async assignToMachineQueue(machineId: number, productionOrderId: number, data?: any): Promise<any> {
-    const queueItems = await this.getMachineQueue(machineId);
+  async assignToMachineQueue(machineId: string | number, productionOrderId: number, data?: any): Promise<any> {
+    const queueItems = await this.getMachineQueue(machineId as any);
     const newItem: InsertMachineQueue = {
-      machine_id: machineId,
+      machine_id: String(machineId),
       production_order_id: productionOrderId,
-      sort_order: queueItems.length + 1,
+      queue_position: queueItems.length + 1,
       ...data,
     };
     const [created] = await db.insert(machine_queues).values(newItem).returning();
     return created;
   }
 
-  async removeFromQueue(machineId: number, productionOrderId: number): Promise<void> {
-    await db.delete(machine_queues).where(and(eq(machine_queues.machine_id, machineId), eq(machine_queues.production_order_id, productionOrderId)));
+  async removeFromQueue(machineId: string | number, productionOrderId: number): Promise<void> {
+    await db.delete(machine_queues).where(and(eq(machine_queues.machine_id, String(machineId)), eq(machine_queues.production_order_id, productionOrderId)));
   }
 
-  async optimizeQueueOrder(machineId: number): Promise<MachineQueue[]> {
-    return this.getMachineQueue(machineId);
+  async optimizeQueueOrder(machineId: string | number): Promise<MachineQueue[]> {
+    return this.getMachineQueue(machineId as any);
   }
 
-  async updateQueuePosition(machineId: number, productionOrderId: number, position: number): Promise<any> {
-    const [u] = await db.update(machine_queues).set({ sort_order: position }).where(and(eq(machine_queues.machine_id, machineId), eq(machine_queues.production_order_id, productionOrderId))).returning();
+  async updateQueuePosition(machineId: string | number, productionOrderId: number, position: number): Promise<any> {
+    const [u] = await db.update(machine_queues).set({ queue_position: position }).where(and(eq(machine_queues.machine_id, String(machineId)), eq(machine_queues.production_order_id, productionOrderId))).returning();
     return u;
   }
 
@@ -3380,8 +3502,8 @@ export class DatabaseStorage implements IStorage {
     return this.getAllInventory();
   }
 
-  async getInventoryByItemId(itemId: number): Promise<Inventory | undefined> {
-    const [i] = await db.select().from(inventory).where(eq(inventory.item_id, itemId));
+  async getInventoryByItemId(itemId: string | number): Promise<Inventory | undefined> {
+    const [i] = await db.select().from(inventory).where(eq(inventory.item_id, String(itemId)));
     return i;
   }
 
@@ -3402,8 +3524,8 @@ export class DatabaseStorage implements IStorage {
     return this.getMaintenanceReports();
   }
 
-  async getMasterBatchColorById(id: number): Promise<MasterBatchColor | undefined> {
-    const [c] = await db.select().from(master_batch_colors).where(eq(master_batch_colors.id, id));
+  async getMasterBatchColorById(id: string | number): Promise<MasterBatchColor | undefined> {
+    const [c] = await db.select().from(master_batch_colors).where(eq(master_batch_colors.id, String(id)));
     return c;
   }
 
@@ -3477,7 +3599,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPendingLeaveRequests(): Promise<LeaveRequest[]> {
-    return await db.select().from(leave_requests).where(eq(leave_requests.status, 'pending')).orderBy(desc(leave_requests.created_at));
+    return await db.select().from(leave_requests).where(eq(leave_requests.final_status, 'pending')).orderBy(desc(leave_requests.created_at));
   }
 
   async getPrintingQueue(): Promise<any[]> {
@@ -3510,7 +3632,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getProductionOrdersBySection(sectionId: number): Promise<ProductionOrder[]> {
-    return await db.select().from(production_orders).where(eq(production_orders.section_id, sectionId)).orderBy(desc(production_orders.id));
+    return await db.select().from(production_orders).orderBy(desc(production_orders.id));
   }
 
   async getProductionOrdersForReceipt(): Promise<any[]> {
@@ -3623,7 +3745,7 @@ export class DatabaseStorage implements IStorage {
 
   async getMachineQueues(): Promise<any[]> {
     const allMachines = await this.getAllMachines();
-    const queues = await Promise.all(allMachines.map(m => this.getMachineQueue(m.id)));
+    const queues = await Promise.all(allMachines.map(m => this.getMachineQueue(m.id as any)));
     return allMachines.map((m, i) => ({ machine: m, queue: queues[i] }));
   }
 

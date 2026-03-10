@@ -359,7 +359,7 @@ export class NotificationService {
   ): Promise<boolean> {
     try {
       // Get user details
-      const user = await this.storage.getUserById(userId);
+      const user = await this.storage.getUser(userId);
       if (!user) {
         console.warn(`المستخدم ${userId} غير موجود`);
         return false;
@@ -404,7 +404,7 @@ export class NotificationService {
     notificationData: NotificationData,
   ): Promise<number> {
     try {
-      const users = await this.storage.getUsersByRole(roleId);
+      const users = await this.storage.getSafeUsersByRole(roleId);
       let successCount = 0;
 
       for (const user of users) {

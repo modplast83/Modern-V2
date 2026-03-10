@@ -205,21 +205,8 @@ export class SystemHealthMonitor extends EventEmitter {
         "System Health API",
       ];
 
-      for (const checkName of checkNames) {
-        const normalizedKey = this.normalizeAlertKey("", checkName);
-        const lastAlertTime =
-          await this.storage.getLastAlertTime(normalizedKey);
-
-        if (lastAlertTime) {
-          this.lastAlertTimes.set(normalizedKey, lastAlertTime);
-          logger.debug(
-            `[SystemHealthMonitor] تم تحميل وقت التحذير الأخير للفحص ${checkName} في ${lastAlertTime.toISOString()}`
-          );
-        }
-      }
-
       logger.info(
-        `[SystemHealthMonitor] تم تحميل ${this.lastAlertTimes.size} من أوقات التحذير من قاعدة البيانات`
+        `[SystemHealthMonitor] تم تحميل أوقات التحذير من الذاكرة المؤقتة`
       );
     } catch (error) {
       logger.error(
@@ -698,20 +685,7 @@ export class SystemHealthMonitor extends EventEmitter {
         }
       }
 
-      // Check persistent storage for last alert time
-      const lastAlertTime = await this.storage.getLastAlertTime(normalizedKey);
-
-      if (!lastAlertTime) {
-        return true; // لم يتم إرسال تحذير من قبل
-      }
-
-      // Update in-memory cache with persistent storage value
-      this.lastAlertTimes.set(normalizedKey, lastAlertTime);
-
-      const cooldownPeriod = this.getAlertCooldown(checkName);
-      const timeSinceLastAlert = Date.now() - lastAlertTime.getTime();
-
-      return timeSinceLastAlert >= cooldownPeriod;
+      return true;
     } catch (error) {
       logger.error("[SystemHealthMonitor] خطأ في فحص Rate Limiting", error);
       return false; // في حالة الخطأ، نمنع التحذير لتجنب السبام
@@ -731,9 +705,6 @@ export class SystemHealthMonitor extends EventEmitter {
 
       // Update in-memory cache first for immediate effect
       this.lastAlertTimes.set(normalizedKey, now);
-
-      // Save to persistent storage using storage interface
-      await this.storage.setLastAlertTime(normalizedKey, now);
 
       logger.debug(
         `[SystemHealthMonitor] تم تسجيل إرسال التحذير ${normalizedKey} في ${now.toISOString()}`

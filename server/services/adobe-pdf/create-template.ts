@@ -71,7 +71,7 @@ function txt(text: string, opts: { bold?: boolean; size?: number; color?: string
 
 function cell(content: string | TextRun[], opts: {
   bold?: boolean; size?: number; color?: string; shading?: string;
-  width?: number; align?: AlignmentType; borders?: any; vAlign?: VerticalAlign;
+  width?: number; align?: (typeof AlignmentType)[keyof typeof AlignmentType]; borders?: any; vAlign?: (typeof VerticalAlign)[keyof typeof VerticalAlign];
   colspan?: number;
 } = {}): TableCell {
   const children = typeof content === "string"
@@ -105,7 +105,7 @@ function headerCell(label: string, width?: number): TableCell {
 
 function mergeCell(field: string, opts: {
   bold?: boolean; size?: number; color?: string; shading?: string;
-  width?: number; align?: AlignmentType; borders?: any;
+  width?: number; align?: (typeof AlignmentType)[keyof typeof AlignmentType]; borders?: any;
 } = {}): TableCell {
   return cell(`{{${field}}}`, opts);
 }
@@ -133,7 +133,7 @@ export async function createQuoteTemplate(): Promise<Buffer> {
       default: {
         document: {
           run: { font: "Arial", size: 22, color: COLORS.textDark },
-          paragraph: { bidirectional: true, alignment: AlignmentType.RIGHT },
+          paragraph: { alignment: AlignmentType.RIGHT },
         },
       },
     },

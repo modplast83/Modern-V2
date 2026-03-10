@@ -58,7 +58,7 @@ export default function DashboardCustomizer({
   const isAdmin = userPermissions?.includes("admin") || userRoleId === 1;
   const allWidgets = isAdmin ? Object.values(WIDGET_REGISTRY) : availableWidgets;
 
-  const categories = [...new Set(allWidgets.map((w) => w.category))];
+  const categories = Array.from(new Set(allWidgets.map((w) => w.category)));
 
   const toggleWidget = (widgetId: string) => {
     setSelectedWidgets((prev) =>

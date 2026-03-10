@@ -240,6 +240,7 @@ function PrintContentInner({
   rolls,
 }: any) {
   const { t } = useTranslation();
+  const ln = useLocalizedName();
   return (
     <div className="print-page">
       {/* الترويسة */}

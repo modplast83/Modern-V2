@@ -225,7 +225,7 @@ export class EventTriggerService {
     if (setting.recipient_user_ids && Array.isArray(setting.recipient_user_ids)) {
       for (const userId of setting.recipient_user_ids) {
         try {
-          const user = await this.storage.getUserById(userId);
+          const user = await this.storage.getUser(userId);
           if (user && user.phone) {
             recipients.push({
               phone: user.phone,
@@ -244,7 +244,7 @@ export class EventTriggerService {
         try {
           const users = await this.storage.getSafeUsersByRole(roleId);
           for (const user of users) {
-            const fullUser = await this.storage.getUserById(user.id);
+            const fullUser = await this.storage.getUser(user.id);
             if (fullUser && fullUser.phone && !recipients.find(r => r.phone === fullUser.phone)) {
               recipients.push({
                 phone: fullUser.phone,

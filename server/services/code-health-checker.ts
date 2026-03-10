@@ -205,7 +205,7 @@ export class CodeHealthChecker {
 
     Array.from(functionHashes.entries()).forEach(([, filesList]) => {
       if (filesList.length > 1) {
-        const uniqueFiles = [...new Set(filesList)];
+        const uniqueFiles = Array.from(new Set(filesList));
         if (uniqueFiles.length > 1) {
           issues.push({
             type: 'duplicate_code',

@@ -2095,6 +2095,10 @@ export type UpsertUser = {
   firstName: string | null;
   lastName: string | null;
   profileImageUrl: string | null;
+  replit_user_id?: string;
+  display_name?: string;
+  display_name_ar?: string;
+  username?: string;
 };
 export type SparePart = typeof spare_parts.$inferSelect;
 export type InsertSparePart = typeof spare_parts.$inferInsert;

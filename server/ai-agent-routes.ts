@@ -1374,7 +1374,7 @@ async function executeFunction(name: string, args: Record<string, unknown>): Pro
               error: textResult.error || docResult.error || "فشل في إرسال الرسالة",
               message: "لم يتم إرسال الرسالة تلقائياً. يمكنك استخدام الرابط التالي للإرسال يدوياً:",
               whatsapp_link: whatsappWebLink,
-              pdf_url: pdfUrl
+              pdf_url: `${getAppBaseUrl()}/api/quotes/${quoteId}/pdf`
             });
           }
         } catch (error) {
@@ -1386,7 +1386,7 @@ async function executeFunction(name: string, args: Record<string, unknown>): Pro
             error: "خدمة الواتساب غير متاحة حالياً",
             message: "يمكنك استخدام الرابط التالي للإرسال يدوياً عبر WhatsApp Web:",
             whatsapp_link: whatsappWebLink,
-            pdf_url: pdfUrl
+            pdf_url: `${getAppBaseUrl()}/api/quotes/${quoteId}/pdf`
           });
         }
       }
@@ -1643,8 +1643,8 @@ async function executeFunction(name: string, args: Record<string, unknown>): Pro
             maintenance_issues: openMaintenance.map(mr => ({
               id: mr.id,
               description: mr.description,
-              priority: mr.priority,
-              reported_at: mr.created_at
+              priority: mr.urgency_level,
+              reported_at: mr.date_reported
             }))
           };
         });
