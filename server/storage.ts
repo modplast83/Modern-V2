@@ -2697,6 +2697,7 @@ export class DatabaseStorage implements IStorage {
     const results = await db
       .select({
         id: rolls.id,
+        roll_id: rolls.id,
         roll_seq: rolls.roll_seq,
         roll_number: rolls.roll_number,
         production_order_id: rolls.production_order_id,
@@ -2714,6 +2715,15 @@ export class DatabaseStorage implements IStorage {
         printed_at: rolls.printed_at,
         cut_completed_at: rolls.cut_completed_at,
         created_at: rolls.created_at,
+        production_order_number: production_orders.production_order_number,
+        order_id: orders.id,
+        order_number: orders.order_number,
+        customer_id: customers.id,
+        customer_name: customers.name,
+        customer_name_ar: customers.name_ar,
+        size_caption: customer_products.size_caption,
+        item_name: items.name,
+        item_name_ar: items.name_ar,
         created_by_name: createdByUser.display_name_ar,
         printed_by_name: printedByUser.display_name_ar,
         cut_by_name: cutByUser.display_name_ar,
@@ -2722,6 +2732,11 @@ export class DatabaseStorage implements IStorage {
         cutting_machine_name: cuttingMachine.name_ar,
       })
       .from(rolls)
+      .innerJoin(production_orders, eq(rolls.production_order_id, production_orders.id))
+      .innerJoin(orders, eq(production_orders.order_id, orders.id))
+      .innerJoin(customers, eq(orders.customer_id, customers.id))
+      .leftJoin(customer_products, eq(production_orders.customer_product_id, customer_products.id))
+      .leftJoin(items, eq(customer_products.item_id, items.id))
       .leftJoin(createdByUser, eq(rolls.created_by, createdByUser.id))
       .leftJoin(printedByUser, eq(rolls.printed_by, printedByUser.id))
       .leftJoin(cutByUser, eq(rolls.cut_by, cutByUser.id))
@@ -2730,7 +2745,7 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(cuttingMachine, eq(rolls.cutting_machine_id, cuttingMachine.id))
       .where(whereClause)
       .orderBy(desc(rolls.created_at))
-      .limit(200);
+      .limit(500);
 
     return results;
   }
