@@ -109,12 +109,12 @@ export function VoucherForm({ type, open, onOpenChange }: VoucherFormProps) {
 
   const schema = getSchemaForType(type);
   
-  const form = useForm({
+  const form = useForm<Record<string, any>>({
     resolver: zodResolver(schema),
     defaultValues: {
       item_id: "",
       quantity: "",
-      unit: "كيلو",
+      unit: "kg",
       barcode: "",
       batch_number: "",
       notes: "",
@@ -122,6 +122,11 @@ export function VoucherForm({ type, open, onOpenChange }: VoucherFormProps) {
       voucher_type: type === "raw-material-in" ? "purchase" : 
                     type === "raw-material-out" ? "production_transfer" :
                     type === "finished-goods-in" ? "production_receipt" : "customer_delivery",
+      supplier_id: "",
+      customer_id: "",
+      driver_name: "",
+      driver_phone: "",
+      vehicle_number: "",
     },
   });
 
