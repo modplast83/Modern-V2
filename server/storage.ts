@@ -3870,7 +3870,39 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getProductionOrdersWithDetails(): Promise<any[]> {
-    return await db.select().from(production_orders).orderBy(desc(production_orders.id));
+    const results = await db
+      .select({
+        id: production_orders.id,
+        production_order_number: production_orders.production_order_number,
+        order_id: production_orders.order_id,
+        customer_product_id: production_orders.customer_product_id,
+        quantity_kg: production_orders.quantity_kg,
+        final_quantity_kg: production_orders.final_quantity_kg,
+        produced_kg: production_orders.produced_quantity_kg,
+        status: production_orders.status,
+        assigned_machine_id: production_orders.assigned_machine_id,
+        assigned_operator_id: production_orders.assigned_operator_id,
+        warehouse_received_kg: production_orders.warehouse_received_kg,
+        overrun_percentage: production_orders.overrun_percentage,
+        created_at: production_orders.created_at,
+        order_number: orders.order_number,
+        customer_name: customers.name,
+        customer_name_ar: customers.name_ar,
+        size_caption: customer_products.size_caption,
+        is_printed: customer_products.is_printed,
+        machine_name: machines.name,
+        machine_name_ar: machines.name_ar,
+        operator_name: users.display_name,
+        operator_name_ar: users.display_name_ar,
+      })
+      .from(production_orders)
+      .innerJoin(orders, eq(production_orders.order_id, orders.id))
+      .innerJoin(customers, eq(orders.customer_id, customers.id))
+      .leftJoin(customer_products, eq(production_orders.customer_product_id, customer_products.id))
+      .leftJoin(machines, eq(production_orders.assigned_machine_id, machines.id))
+      .leftJoin(users, eq(production_orders.assigned_operator_id, users.id))
+      .orderBy(desc(production_orders.id));
+    return results;
   }
 
   async getProductionStatsBySection(sectionId?: number): Promise<any> {
