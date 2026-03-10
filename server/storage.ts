@@ -3546,7 +3546,7 @@ export class DatabaseStorage implements IStorage {
           SELECT
             COALESCE(SUM(weight_kg), 0) AS total_weight,
             COALESCE(SUM(CASE WHEN stage IN ('printing', 'done') THEN weight_kg ELSE 0 END), 0) AS printing_weight,
-            COALESCE(SUM(CASE WHEN stage = 'done' THEN COALESCE(cut_weight_total_kg, weight_kg) ELSE 0 END), 0) AS cutting_weight
+            COALESCE(SUM(CASE WHEN stage = 'done' THEN COALESCE(cut_weight_total_kg, weight_kg) + COALESCE(waste_kg, 0) ELSE 0 END), 0) AS cutting_weight
           FROM rolls
           WHERE production_order_id = ${id}
         `).then(r => r.rows as any[]);
