@@ -45,16 +45,18 @@ import DisplayScreen from "./pages/DisplayScreen";
 import DisplayControlPanel from "./pages/DisplayControlPanel";
 import FactoryFloor from "./pages/FactoryFloor";
 import MaterialMixing from "./pages/material-mixing";
+import { useTranslation } from "react-i18next";
 
 function AppRoutes() {
   const { isAuthenticated, isLoading } = useAuth();
+  const { t } = useTranslation();
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">جاري التحميل...</p>
+          <p className="text-muted-foreground">{t('common.loading')}</p>
         </div>
       </div>
     );

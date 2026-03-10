@@ -197,6 +197,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       res.json(user);
     } catch (error) {
       logger.error("Error fetching Replit auth user", error);
+      console.error("[API Error]", error);
       res.status(500).json({ message: "Failed to fetch user" });
     }
   });
@@ -311,6 +312,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         });
       } catch (error) {
         logger.error("Login error", error);
+        console.error("[API Error]", error);
         res.status(500).json({ message: "خطأ في الخادم" });
       }
     },
@@ -401,6 +403,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       });
     } catch (error) {
       logger.error("Get current user error", error);
+      console.error("[API Error]", error);
       res.status(500).json({
         message: "خطأ في الخادم",
         success: false,
@@ -458,6 +461,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       }
     } catch (error) {
       logger.error("Logout error", error);
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في تسجيل الخروج" });
     }
   });
@@ -469,6 +473,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       res.json(stats);
     } catch (error) {
       logger.error("Dashboard stats error", error);
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب الإحصائيات" });
     }
   });
@@ -555,6 +560,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       res.json({ widgets: defaultWidgets });
     } catch (error) {
       logger.error("Dashboard config error", error);
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب إعدادات لوحة التحكم" });
     }
   });
@@ -607,6 +613,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       res.json({ success: true, widgets: validWidgets });
     } catch (error) {
       logger.error("Dashboard config save error", error);
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في حفظ إعدادات لوحة التحكم" });
     }
   });
@@ -1123,6 +1130,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       );
     } catch (error) {
       logger.error("Error establishing SSE connection", error);
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في إنشاء الاتصال" });
     }
   });
@@ -2087,6 +2095,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         res.json(rolls);
       }
     } catch (error) {
+      console.error("[GET /api/rolls] Error fetching rolls:", error);
       res.status(500).json({ message: "خطأ في جلب الرولات" });
     }
   });
@@ -2233,6 +2242,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       const machines = await storage.getMachines();
       res.json(machines);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب المكائن" });
     }
   });
@@ -2263,6 +2273,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       const result = await storage.getCustomers(options);
       res.json(result);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب العملاء" });
     }
   });
@@ -3011,6 +3022,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       const files = fs.readdirSync(templatesDir).filter((f: string) => f.endsWith(".docx"));
       res.json({ templates: files, success: true });
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب القوالب", success: false });
     }
   });
@@ -3150,6 +3162,7 @@ Do not include quotes or explanations.`;
       const sections = await storage.getSections();
       res.json(sections);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب الأقسام" });
     }
   });
@@ -3266,6 +3279,7 @@ Do not include quotes or explanations.`;
       const locations = await storage.getLocations();
       res.json(locations);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب المواقع" });
     }
   });
@@ -3390,6 +3404,7 @@ Do not include quotes or explanations.`;
       const categories = await storage.getCategories();
       res.json(categories);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب الفئات" });
     }
   });
@@ -3568,6 +3583,7 @@ Do not include quotes or explanations.`;
       const trainingRecords = await storage.getTrainingRecords();
       res.json(trainingRecords);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب سجلات التدريب" });
     }
   });
@@ -3587,6 +3603,7 @@ Do not include quotes or explanations.`;
       const adminDecisions = await storage.getAdminDecisions();
       res.json(adminDecisions);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب القرارات الإدارية" });
     }
   });
@@ -3606,6 +3623,7 @@ Do not include quotes or explanations.`;
       const warehouseTransactions = await storage.getWarehouseTransactions();
       res.json(warehouseTransactions);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب حركات المستودع" });
     }
   });
@@ -3627,6 +3645,7 @@ Do not include quotes or explanations.`;
       const mixingRecipes = await storage.getMixingRecipes();
       res.json(mixingRecipes);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب وصفات الخلط" });
     }
   });
@@ -3646,6 +3665,7 @@ Do not include quotes or explanations.`;
       const requests = await storage.getMaintenanceRequests();
       res.json(requests);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب طلبات الصيانة" });
     }
   });
@@ -3666,6 +3686,7 @@ Do not include quotes or explanations.`;
       const qualityChecks = await storage.getQualityChecks();
       res.json(qualityChecks);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب فحوصات الجودة" });
     }
   });
@@ -3676,6 +3697,7 @@ Do not include quotes or explanations.`;
       const maintenanceRequests = await storage.getMaintenanceRequests();
       res.json(maintenanceRequests);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب طلبات الصيانة" });
     }
   });
@@ -4081,6 +4103,7 @@ Do not include quotes or explanations.`;
       const reports: any[] = []; // Placeholder for reports data
       res.json(reports);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب التقارير" });
     }
   });
@@ -4467,6 +4490,7 @@ Do not include quotes or explanations.`;
       }
       res.json(section);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في تحديث القسم" });
     }
   });
@@ -4628,6 +4652,7 @@ Do not include quotes or explanations.`;
       const programs = await storage.getTrainingPrograms();
       res.json(programs);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب البرامج التدريبية" });
     }
   });
@@ -4637,6 +4662,7 @@ Do not include quotes or explanations.`;
       const program = await storage.createTrainingProgram(req.body);
       res.json(program);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في إنشاء البرنامج التدريبي" });
     }
   });
@@ -4667,6 +4693,7 @@ Do not include quotes or explanations.`;
       }
       res.json(program);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في تحديث البرنامج التدريبي" });
     }
   });
@@ -4693,6 +4720,7 @@ Do not include quotes or explanations.`;
       }
       res.json(program);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب البرنامج التدريبي" });
     }
   });
@@ -4716,6 +4744,7 @@ Do not include quotes or explanations.`;
       }
       res.json(materials);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب المواد التدريبية" });
     }
   });
@@ -4725,6 +4754,7 @@ Do not include quotes or explanations.`;
       const material = await storage.createTrainingMaterial(req.body);
       res.json(material);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في إنشاء المادة التدريبية" });
     }
   });
@@ -4748,6 +4778,7 @@ Do not include quotes or explanations.`;
       }
       res.json(enrollments);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب التسجيلات التدريبية" });
     }
   });
@@ -4757,6 +4788,7 @@ Do not include quotes or explanations.`;
       const enrollment = await storage.createTrainingEnrollment(req.body);
       res.json(enrollment);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في تسجيل الموظف في البرنامج" });
     }
   });
@@ -4767,6 +4799,7 @@ Do not include quotes or explanations.`;
       const enrollment = await storage.updateTrainingEnrollment(id, req.body);
       res.json(enrollment);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في تحديث التسجيل التدريبي" });
     }
   });
@@ -4786,6 +4819,7 @@ Do not include quotes or explanations.`;
       );
       res.json(evaluations);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب التقييمات التدريبية" });
     }
   });
@@ -4795,6 +4829,7 @@ Do not include quotes or explanations.`;
       const evaluation = await storage.createTrainingEvaluation(req.body);
       res.json(evaluation);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في إنشاء التقييم التدريبي" });
     }
   });
@@ -4805,6 +4840,7 @@ Do not include quotes or explanations.`;
       const evaluation = await storage.updateTrainingEvaluation(id, req.body);
       res.json(evaluation);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في تحديث التقييم التدريبي" });
     }
   });
@@ -4819,6 +4855,7 @@ Do not include quotes or explanations.`;
         res.status(404).json({ message: "التقييم التدريبي غير موجود" });
       }
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب التقييم التدريبي" });
     }
   });
@@ -4832,6 +4869,7 @@ Do not include quotes or explanations.`;
       const certificates = await storage.getTrainingCertificates(employeeId);
       res.json(certificates);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب الشهادات التدريبية" });
     }
   });
@@ -4841,6 +4879,7 @@ Do not include quotes or explanations.`;
       const certificate = await storage.createTrainingCertificate(req.body);
       res.json(certificate);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في إنشاء الشهادة التدريبية" });
     }
   });
@@ -4855,6 +4894,7 @@ Do not include quotes or explanations.`;
           await storage.generateTrainingCertificate(enrollmentId);
         res.json(certificate);
       } catch (error) {
+        console.error("[API Error]", error);
         res.status(500).json({ message: "خطأ في إصدار الشهادة التدريبية" });
       }
     },
@@ -4866,6 +4906,7 @@ Do not include quotes or explanations.`;
       const certificate = await storage.updateTrainingCertificate(id, req.body);
       res.json(certificate);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في تحديث الشهادة التدريبية" });
     }
   });
@@ -4876,6 +4917,7 @@ Do not include quotes or explanations.`;
       const certificate = await storage.generateTrainingCertificate(id);
       res.json(certificate);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في توليد شهادة التدريب" });
     }
   });
@@ -4889,6 +4931,7 @@ Do not include quotes or explanations.`;
       const reviews = await storage.getPerformanceReviews(employeeId);
       res.json(reviews);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب تقييمات الأداء" });
     }
   });
@@ -4898,6 +4941,7 @@ Do not include quotes or explanations.`;
       const review = await storage.createPerformanceReview(req.body);
       res.json(review);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في إنشاء تقييم الأداء" });
     }
   });
@@ -4908,6 +4952,7 @@ Do not include quotes or explanations.`;
       const review = await storage.updatePerformanceReview(id, req.body);
       res.json(review);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في تحديث تقييم الأداء" });
     }
   });
@@ -4918,6 +4963,7 @@ Do not include quotes or explanations.`;
       const criteria = await storage.getPerformanceCriteria();
       res.json(criteria);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب معايير التقييم" });
     }
   });
@@ -4927,6 +4973,7 @@ Do not include quotes or explanations.`;
       const criteria = await storage.createPerformanceCriteria(req.body);
       res.json(criteria);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في إنشاء معيار التقييم" });
     }
   });
@@ -4937,6 +4984,7 @@ Do not include quotes or explanations.`;
       const leaveTypes = await storage.getLeaveTypes();
       res.json(leaveTypes);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب أنواع الإجازات" });
     }
   });
@@ -4946,6 +4994,7 @@ Do not include quotes or explanations.`;
       const leaveType = await storage.createLeaveType(req.body);
       res.json(leaveType);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في إنشاء نوع الإجازة" });
     }
   });
@@ -4959,6 +5008,7 @@ Do not include quotes or explanations.`;
       const requests = await storage.getLeaveRequests(employeeId);
       res.json(requests);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب طلبات الإجازات" });
     }
   });
@@ -4968,6 +5018,7 @@ Do not include quotes or explanations.`;
       const request = await storage.createLeaveRequest(req.body);
       res.json(request);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في إنشاء طلب الإجازة" });
     }
   });
@@ -4978,6 +5029,7 @@ Do not include quotes or explanations.`;
       const request = await storage.updateLeaveRequest(id, req.body);
       res.json(request);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في تحديث طلب الإجازة" });
     }
   });
@@ -4987,6 +5039,7 @@ Do not include quotes or explanations.`;
       const requests = await storage.getPendingLeaveRequests();
       res.json(requests);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب الطلبات المعلقة" });
     }
   });
@@ -5001,6 +5054,7 @@ Do not include quotes or explanations.`;
       const balances = await storage.getLeaveBalances(employeeId, year);
       res.json(balances);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب أرصدة الإجازات" });
     }
   });
@@ -5010,6 +5064,7 @@ Do not include quotes or explanations.`;
       const balance = await storage.createLeaveBalance(req.body);
       res.json(balance);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في إنشاء رصيد الإجازة" });
     }
   });
@@ -5020,6 +5075,7 @@ Do not include quotes or explanations.`;
       await storage.deleteCustomer(req.params.id);
       res.json({ message: "تم حذف العميل بنجاح" });
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في حذف العميل" });
     }
   });
@@ -5030,6 +5086,7 @@ Do not include quotes or explanations.`;
       await storage.deleteSection(id);
       res.json({ message: "تم حذف القسم بنجاح" });
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في حذف القسم" });
     }
   });
@@ -5039,6 +5096,7 @@ Do not include quotes or explanations.`;
       await storage.deleteItem(req.params.id);
       res.json({ message: "تم حذف الصنف بنجاح" });
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في حذف الصنف" });
     }
   });
@@ -5049,6 +5107,7 @@ Do not include quotes or explanations.`;
       await storage.deleteCustomerProduct(id);
       res.json({ message: "تم حذف منتج العميل بنجاح" });
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في حذف منتج العميل" });
     }
   });
@@ -5059,6 +5118,7 @@ Do not include quotes or explanations.`;
       await storage.deleteLocation(id);
       res.json({ message: "تم حذف الموقع بنجاح" });
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في حذف الموقع" });
     }
   });
@@ -5069,6 +5129,7 @@ Do not include quotes or explanations.`;
       await storage.deleteMachine(id);
       res.json({ message: "تم حذف الماكينة بنجاح" });
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في حذف الماكينة" });
     }
   });
@@ -5079,6 +5140,7 @@ Do not include quotes or explanations.`;
       await storage.deleteUser(id);
       res.json({ message: "تم حذف المستخدم بنجاح" });
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في حذف المستخدم" });
     }
   });
@@ -5089,6 +5151,7 @@ Do not include quotes or explanations.`;
       const inventory = await storage.getInventoryItems();
       res.json(inventory);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب بيانات المخزون" });
     }
   });
@@ -5098,6 +5161,7 @@ Do not include quotes or explanations.`;
       const stats = await storage.getInventoryStats();
       res.json(stats);
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في جلب إحصائيات المخزون" });
     }
   });
@@ -5214,6 +5278,7 @@ Do not include quotes or explanations.`;
       await storage.deleteInventoryItem(id);
       res.json({ message: "تم حذف صنف المخزون بنجاح" });
     } catch (error) {
+      console.error("[API Error]", error);
       res.status(500).json({ message: "خطأ في حذف صنف المخزون" });
     }
   });

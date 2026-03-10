@@ -1012,8 +1012,11 @@ export class DatabaseStorage implements IStorage {
   async deleteOrder(id: number): Promise<void> {
     return withDatabaseErrorHandling(
       async () => {
-        await db.delete(production_orders).where(eq(production_orders.order_id, id));
-        await db.delete(orders).where(eq(orders.id, id));
+        await db.transaction(async (tx) => {
+          await tx.delete(production_orders).where(eq(production_orders.order_id, id));
+          await tx.delete(orders).where(eq(orders.id, id));
+        });
+        invalidateProductionCache();
       },
       "deleteOrder",
       `حذف الطلب ${id}`,
@@ -1091,24 +1094,30 @@ export class DatabaseStorage implements IStorage {
           throw new Error(`خطأ في البيانات: ${validation.errors.map(e => e.message_ar).join(', ')}`);
         }
 
-        const result = await db.execute(
-          sql`SELECT MAX(CAST(SUBSTRING(production_order_number FROM 3) AS INTEGER)) as max_num
-              FROM production_orders
-              WHERE production_order_number ~ '^PO[0-9]+$'`
-        );
-        const maxNum = (result as any).rows?.[0]?.max_num || 0;
-        const nextNumber = maxNum + 1;
-        const productionOrderNumber = `PO${nextNumber.toString().padStart(3, "0")}`;
+        const newPo = await db.transaction(async (tx) => {
+          await tx.execute(sql`SELECT pg_advisory_xact_lock(1001)`);
 
-        const insertValues: any = {
-          ...po,
-          production_order_number: productionOrderNumber,
-        };
-        if (extra?.final_quantity_kg !== undefined) {
-          insertValues.final_quantity_kg = extra.final_quantity_kg.toString();
-        }
+          const result = await tx.execute(
+            sql`SELECT MAX(CAST(SUBSTRING(production_order_number FROM 3) AS INTEGER)) as max_num
+                FROM production_orders
+                WHERE production_order_number ~ '^PO[0-9]+$'`
+          );
+          const maxNum = (result as any).rows?.[0]?.max_num || 0;
+          const nextNumber = maxNum + 1;
+          const productionOrderNumber = `PO${nextNumber.toString().padStart(3, "0")}`;
 
-        const [newPo] = await db.insert(production_orders).values(insertValues).returning();
+          const insertValues: any = {
+            ...po,
+            production_order_number: productionOrderNumber,
+          };
+          if (extra?.final_quantity_kg !== undefined) {
+            insertValues.final_quantity_kg = extra.final_quantity_kg.toString();
+          }
+
+          const [created] = await tx.insert(production_orders).values(insertValues).returning();
+          return created;
+        });
+
         invalidateProductionCache();
         return newPo;
       },
@@ -2040,12 +2049,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createMixingBatch(batch: InsertMixingBatch, ingredients: InsertBatchIngredient[]): Promise<MixingBatch> {
-    const [createdBatch] = await db.insert(mixing_batches).values(batch).returning();
-    if (ingredients.length > 0) {
-      const ingredientsToInsert = ingredients.map(i => ({ ...i, batch_id: createdBatch.id }));
-      await db.insert(batch_ingredients).values(ingredientsToInsert);
-    }
-    return createdBatch;
+    return await db.transaction(async (tx) => {
+      const [createdBatch] = await tx.insert(mixing_batches).values(batch).returning();
+      if (ingredients.length > 0) {
+        const ingredientsToInsert = ingredients.map(i => ({ ...i, batch_id: createdBatch.id }));
+        await tx.insert(batch_ingredients).values(ingredientsToInsert);
+      }
+      return createdBatch;
+    });
   }
 
   async updateMixingBatchStatus(id: number, status: string): Promise<MixingBatch> {
@@ -2371,40 +2382,43 @@ export class DatabaseStorage implements IStorage {
   async createRollWithTiming(data: any): Promise<Roll> {
     return withDatabaseErrorHandling(
       async () => {
-        // Get the production order to build the roll_number
-        const [po] = await db
-          .select({ production_order_number: production_orders.production_order_number })
-          .from(production_orders)
-          .where(eq(production_orders.id, data.production_order_id));
+        const roll = await db.transaction(async (tx) => {
+          await tx.execute(sql`SELECT pg_advisory_xact_lock(1003, ${data.production_order_id})`);
 
-        if (!po) throw new Error("أمر الإنتاج غير موجود");
+          const [po] = await tx
+            .select({ production_order_number: production_orders.production_order_number })
+            .from(production_orders)
+            .where(eq(production_orders.id, data.production_order_id));
 
-        // Get the next roll_seq for this production order
-        const [seqResult] = await db
-          .select({ maxSeq: sql<number>`COALESCE(MAX(${rolls.roll_seq}), 0)` })
-          .from(rolls)
-          .where(eq(rolls.production_order_id, data.production_order_id));
+          if (!po) throw new Error("أمر الإنتاج غير موجود");
 
-        const nextSeq = (seqResult?.maxSeq ?? 0) + 1;
-        const rollNumber = `${po.production_order_number}-R${String(nextSeq).padStart(3, '0')}`;
+          const [seqResult] = await tx
+            .select({ maxSeq: sql<number>`COALESCE(MAX(${rolls.roll_seq}), 0)` })
+            .from(rolls)
+            .where(eq(rolls.production_order_id, data.production_order_id));
 
-        // Build qr_code_text JSON
-        const qrCodeText = JSON.stringify({
-          roll_number: rollNumber,
-          production_order_number: po.production_order_number,
-          roll_seq: nextSeq,
-          weight_kg: data.weight_kg,
-          created_at: new Date().toISOString(),
+          const nextSeq = (seqResult?.maxSeq ?? 0) + 1;
+          const rollNumber = `${po.production_order_number}-R${String(nextSeq).padStart(3, '0')}`;
+
+          const qrCodeText = JSON.stringify({
+            roll_number: rollNumber,
+            production_order_number: po.production_order_number,
+            roll_seq: nextSeq,
+            weight_kg: data.weight_kg,
+            created_at: new Date().toISOString(),
+          });
+
+          const rollData = {
+            ...data,
+            roll_seq: nextSeq,
+            roll_number: rollNumber,
+            qr_code_text: qrCodeText,
+          };
+
+          const [created] = await tx.insert(rolls).values(rollData).returning();
+          return created;
         });
 
-        const rollData = {
-          ...data,
-          roll_seq: nextSeq,
-          roll_number: rollNumber,
-          qr_code_text: qrCodeText,
-        };
-
-        const [roll] = await db.insert(rolls).values(rollData).returning();
         await this.updateProductionOrderCompletionPercentages(data.production_order_id);
         return roll;
       },
@@ -2466,15 +2480,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCustomer(data: any): Promise<Customer> {
-    // Auto-generate ID if not provided (format: CID001)
-    let id = data.id;
-    if (!id) {
-      const [last] = await db.select({ id: customers.id }).from(customers).orderBy(desc(customers.id)).limit(1);
-      const lastNum = last ? parseInt((last.id || '').replace(/\D/g, '') || '0') : 0;
-      id = `CID${String(lastNum + 1).padStart(3, '0')}`;
-    }
-    const [c] = await db.insert(customers).values({ ...data, id }).returning();
-    return c;
+    return await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(1002)`);
+
+      let id = data.id;
+      if (!id) {
+        const [last] = await tx.select({ id: customers.id }).from(customers).orderBy(desc(customers.id)).limit(1);
+        const lastNum = last ? parseInt((last.id || '').replace(/\D/g, '') || '0') : 0;
+        id = `CID${String(lastNum + 1).padStart(3, '0')}`;
+      }
+      const [c] = await tx.insert(customers).values({ ...data, id }).returning();
+      return c;
+    });
   }
 
   async updateCustomer(id: string | any, data: any): Promise<Customer> {

@@ -770,15 +770,8 @@ function sanitizeResponseForLogging(response: any): any {
     log(`production server fully initialized`);
   } else {
     const port = parseInt(process.env.PORT || "5000", 10);
-    server.listen(
-      {
-        port,
-        host: "0.0.0.0",
-        reusePort: true,
-      },
-      () => {
-        log(`serving on port ${port}`);
-      },
-    );
+    server.listen(port, "0.0.0.0", () => {
+      log(`serving on port ${port}`);
+    });
   }
 })();
