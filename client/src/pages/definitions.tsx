@@ -59,16 +59,29 @@ import {
   Loader2,
 } from "lucide-react";
 import { formatNumber } from "../lib/formatNumber";
+import { useAuth } from "../hooks/use-auth";
+import { canAccessDefinitionsTab } from "../utils/roleUtils";
+
+const DEFINITIONS_TABS = [
+  { value: 'customers', labelKey: 'definitions.tabs.customers' },
+  { value: 'sections', labelKey: 'definitions.tabs.sections' },
+  { value: 'categories', labelKey: 'definitions.tabs.categories' },
+  { value: 'items', labelKey: 'definitions.tabs.items' },
+  { value: 'customer-products', labelKey: 'definitions.tabs.customerProducts' },
+  { value: 'machines', labelKey: 'definitions.tabs.machines' },
+  { value: 'users', labelKey: 'definitions.tabs.users' },
+  { value: 'master-batch-colors', labelKey: 'definitions.tabs.masterBatchColors' },
+];
 
 export default function Definitions() {
   const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
-  // Remove aggressive cache clearing that causes unnecessary refetches
-  // React Query's default staleTime and gcTime will handle cache freshness automatically
+  const accessibleTabs = DEFINITIONS_TABS.filter(tab => canAccessDefinitionsTab(user, tab.value));
 
-  const [selectedTab, setSelectedTab] = useState("customers");
+  const [selectedTab, setSelectedTab] = useState(() => accessibleTabs[0]?.value || "customers");
   const [editingItem, setEditingItem] = useState<any>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -1906,76 +1919,23 @@ export default function Definitions() {
                 className="space-y-4 w-full"
               >
                 <TabsList
-                  className="grid grid-cols-4 lg:grid-cols-8 w-full h-auto p-1 bg-white rounded-lg border border-gray-200 shadow-sm gap-1"
+                  className={`grid w-full h-auto p-1 bg-white rounded-lg border border-gray-200 shadow-sm gap-1`}
                   dir="rtl"
+                  style={{ gridTemplateColumns: `repeat(${Math.min(accessibleTabs.length, 8)}, minmax(0, 1fr))` }}
                 >
-                  <TabsTrigger
-                    value="customers"
-                    className="data-[state=active]:bg-white data-[state=active]:text-blue-600 
-                             text-gray-600 hover:text-blue-600 px-3 py-2 text-sm font-medium
-                             transition-all duration-200 rounded-md min-w-0 flex-1"
-                  >
-                    {t("definitions.tabs.customers")}
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="sections"
-                    className="data-[state=active]:bg-white data-[state=active]:text-blue-600 
-                             text-gray-600 hover:text-blue-600 px-3 py-2 text-sm font-medium
-                             transition-all duration-200 rounded-md min-w-0 flex-1"
-                  >
-                    {t("definitions.tabs.sections")}
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="categories"
-                    className="data-[state=active]:bg-white data-[state=active]:text-blue-600 
-                             text-gray-600 hover:text-blue-600 px-3 py-2 text-sm font-medium
-                             transition-all duration-200 rounded-md min-w-0 flex-1"
-                  >
-                    {t("definitions.tabs.categories")}
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="items"
-                    className="data-[state=active]:bg-white data-[state=active]:text-blue-600 
-                             text-gray-600 hover:text-blue-600 px-3 py-2 text-sm font-medium
-                             transition-all duration-200 rounded-md min-w-0 flex-1"
-                  >
-                    {t("definitions.tabs.items")}
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="customer-products"
-                    className="data-[state=active]:bg-white data-[state=active]:text-blue-600 
-                             text-gray-600 hover:text-blue-600 px-2 py-2 text-xs font-medium
-                             transition-all duration-200 rounded-md min-w-0 flex-1"
-                  >
-                    {t("definitions.tabs.customerProducts")}
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="machines"
-                    className="data-[state=active]:bg-white data-[state=active]:text-blue-600 
-                             text-gray-600 hover:text-blue-600 px-3 py-2 text-sm font-medium
-                             transition-all duration-200 rounded-md min-w-0 flex-1"
-                  >
-                    {t("definitions.tabs.machines")}
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="users"
-                    className="data-[state=active]:bg-white data-[state=active]:text-blue-600 
-                             text-gray-600 hover:text-blue-600 px-3 py-2 text-sm font-medium
-                             transition-all duration-200 rounded-md min-w-0 flex-1"
-                  >
-                    {t("definitions.tabs.users")}
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="master-batch-colors"
-                    className="data-[state=active]:bg-white data-[state=active]:text-blue-600 
-                             text-gray-600 hover:text-blue-600 px-2 py-2 text-xs font-medium
-                             transition-all duration-200 rounded-md min-w-0 flex-1"
-                  >
-                    {t("definitions.tabs.masterBatchColors")}
-                  </TabsTrigger>
+                  {accessibleTabs.map(tab => (
+                    <TabsTrigger
+                      key={tab.value}
+                      value={tab.value}
+                      className="data-[state=active]:bg-white data-[state=active]:text-blue-600 
+                               text-gray-600 hover:text-blue-600 px-2 py-2 text-xs sm:text-sm font-medium
+                               transition-all duration-200 rounded-md min-w-0 flex-1"
+                    >
+                      {t(tab.labelKey)}
+                    </TabsTrigger>
+                  ))}
                 </TabsList>
 
-                {/* Customers Tab */}
                 <TabsContent value="customers" className="space-y-6">
                   <Card>
                     <CardHeader>
@@ -2245,7 +2205,6 @@ export default function Definitions() {
                   </Card>
                 </TabsContent>
 
-                {/* Categories Tab */}
                 <TabsContent value="categories" className="space-y-6">
                   <Card>
                     <CardHeader>

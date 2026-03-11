@@ -51,6 +51,7 @@ The system is built with a modern stack emphasizing efficiency and scalability, 
 - **Admin compatibility**: Session population (`session-auth.ts`) auto-injects `'admin'` permission if role name is 'admin' (case-insensitive).
 - **Backend route enforcement**: Added `requirePermission(...)` to ~60 write/delete API routes across all modules (orders, production, quality, maintenance, warehouse, HR, definitions, users).
 - **Route permissions**: Added `/factory-floor` to `ROUTE_PERMISSIONS` in `shared/permissions.ts`.
+- **Definitions tab-level permissions**: Added `DEFINITIONS_TAB_PERMISSIONS` map in `shared/permissions.ts` controlling per-tab access (customers, sections, categories, items, customer-products, machines, users, master-batch-colors). Frontend filters visible tabs via `canAccessDefinitionsTab()` in `roleUtils.ts`. Backend enforces granular permissions on all definitions CRUD endpoints (e.g., `manage_customers` for customers, `manage_items` for items, `manage_machines` for machines, etc.) with `manage_definitions` as a broad override.
 - **Important**: Admin role (role_id 10, name "Admin") must have `'admin'` in its permissions array to bypass all permission checks. This is already the case in the database.
 
 ### Quality Management System (March 11, 2026)

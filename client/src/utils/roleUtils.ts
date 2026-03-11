@@ -3,6 +3,7 @@ import {
   hasPermission, 
   ROUTE_PERMISSIONS,
   SETTINGS_TAB_PERMISSIONS,
+  DEFINITIONS_TAB_PERMISSIONS,
   type PermissionKey 
 } from "../../../shared/permissions";
 
@@ -116,7 +117,22 @@ export function canAccessSettingsTab(
   return hasPermission(user.permissions, requiredPermissions, false);
 }
 
-// Get user's role display name
+export function canAccessDefinitionsTab(
+  user: AuthUser | null,
+  tabName: string
+): boolean {
+  if (!user) return false;
+  
+  if (isUserAdmin(user)) return true;
+  
+  const requiredPermissions = DEFINITIONS_TAB_PERMISSIONS[tabName];
+  if (!requiredPermissions || requiredPermissions.length === 0) {
+    return false;
+  }
+  
+  return hasPermission(user.permissions, requiredPermissions, false);
+}
+
 export function getUserRoleName(user: AuthUser | null): string {
   if (!user) return 'غير مسجل';
   

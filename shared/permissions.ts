@@ -680,7 +680,7 @@ export const ROUTE_PERMISSIONS: Record<string, PermissionKey[]> = {
   '/hr': ['view_hr', 'manage_hr'],
   '/reports': ['view_reports', 'view_production_reports'],
   '/settings': ['manage_settings', 'admin'],
-  '/definitions': ['manage_definitions', 'admin'],
+  '/definitions': ['manage_definitions', 'manage_customers', 'manage_sections', 'manage_categories', 'manage_items', 'manage_machines', 'manage_users', 'manage_master_batch', 'admin'],
   '/users': ['manage_users'],
   '/user-dashboard': ['view_user_dashboard'],
   '/notifications': ['view_notifications'],
@@ -733,6 +733,17 @@ export const ROUTE_PERMISSIONS: Record<string, PermissionKey[]> = {
 };
 
 // Settings tabs permissions
+export const DEFINITIONS_TAB_PERMISSIONS: Record<string, PermissionKey[]> = {
+  'customers': ['manage_customers', 'manage_definitions', 'admin'],
+  'sections': ['manage_sections', 'manage_definitions', 'admin'],
+  'categories': ['manage_categories', 'manage_definitions', 'admin'],
+  'items': ['manage_items', 'manage_definitions', 'admin'],
+  'customer-products': ['manage_customers', 'manage_definitions', 'admin'],
+  'machines': ['manage_machines', 'manage_definitions', 'admin'],
+  'users': ['manage_users', 'admin'],
+  'master-batch-colors': ['manage_master_batch', 'manage_definitions', 'admin'],
+};
+
 export const SETTINGS_TAB_PERMISSIONS: Record<string, PermissionKey[]> = {
   'roles': ['manage_roles', 'admin'],
   'notifications': ['manage_settings', 'admin'],

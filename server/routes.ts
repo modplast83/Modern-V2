@@ -3103,7 +3103,7 @@ Do not include quotes or explanations.`;
   });
 
   // Customers routes
-  app.post("/api/customers", requireAuth, requirePermission('manage_orders'), async (req, res) => {
+  app.post("/api/customers", requireAuth, requirePermission('manage_customers', 'manage_definitions'), async (req, res) => {
     try {
       const validatedData = insertCustomerSchema.parse(req.body);
       
@@ -3130,7 +3130,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.put("/api/customers/:id", requireAuth, requirePermission('manage_orders'), async (req, res) => {
+  app.put("/api/customers/:id", requireAuth, requirePermission('manage_customers', 'manage_definitions'), async (req, res) => {
     try {
       const id = req.params.id;
       const validatedData = insertCustomerSchema.parse(req.body);
@@ -3223,7 +3223,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/customer-products", requireAuth, async (req, res) => {
+  app.post("/api/customer-products", requireAuth, requirePermission('manage_customers', 'manage_definitions'), async (req, res) => {
     try {
       // STEP 1: Zod schema validation
       const validatedData = insertCustomerProductSchema.parse(req.body);
@@ -3408,7 +3408,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/categories", requireAuth, async (req, res) => {
+  app.post("/api/categories", requireAuth, requirePermission('manage_categories', 'manage_definitions'), async (req, res) => {
     try {
 
       // Generate sequential ID if not provided with enhanced null safety
@@ -3461,7 +3461,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.put("/api/categories/:id", requireAuth, async (req, res) => {
+  app.put("/api/categories/:id", requireAuth, requirePermission('manage_categories', 'manage_definitions'), async (req, res) => {
     try {
       const id = req.params.id;
 
@@ -3485,7 +3485,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.delete("/api/categories/:id", requireAuth, async (req, res) => {
+  app.delete("/api/categories/:id", requireAuth, requirePermission('manage_categories', 'manage_definitions'), async (req, res) => {
     try {
       const id = req.params.id;
       await storage.deleteCategory(id);
@@ -3523,7 +3523,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/master-batch-colors", requireAuth, async (req, res) => {
+  app.post("/api/master-batch-colors", requireAuth, requirePermission('manage_master_batch', 'manage_definitions'), async (req, res) => {
     try {
       const parseResult = insertMasterBatchColorSchema.safeParse(req.body);
       if (!parseResult.success) {
@@ -3543,7 +3543,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.put("/api/master-batch-colors/:id", requireAuth, async (req, res) => {
+  app.put("/api/master-batch-colors/:id", requireAuth, requirePermission('manage_master_batch', 'manage_definitions'), async (req, res) => {
     try {
       const parseResult = insertMasterBatchColorSchema.partial().safeParse(req.body);
       if (!parseResult.success) {
@@ -3563,7 +3563,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.delete("/api/master-batch-colors/:id", requireAuth, async (req, res) => {
+  app.delete("/api/master-batch-colors/:id", requireAuth, requirePermission('manage_master_batch', 'manage_definitions'), async (req, res) => {
     try {
       await storage.deleteMasterBatchColor(req.params.id);
       res.json({ message: "تم حذف اللون بنجاح" });
@@ -4226,7 +4226,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/machines", requireAuth, requirePermission('manage_definitions'), async (req, res) => {
+  app.post("/api/machines", requireAuth, requirePermission('manage_machines', 'manage_definitions'), async (req, res) => {
     try {
 
       // Generate sequential ID if not provided with enhanced null safety
@@ -4297,7 +4297,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.put("/api/machines/:id", requireAuth, requirePermission('manage_definitions'), async (req, res) => {
+  app.put("/api/machines/:id", requireAuth, requirePermission('manage_machines', 'manage_definitions'), async (req, res) => {
     try {
       const id = req.params.id; // Now using string ID
       
@@ -4550,7 +4550,7 @@ Do not include quotes or explanations.`;
   });
 
   // Sections routes
-  app.post("/api/sections", requireAuth, async (req, res) => {
+  app.post("/api/sections", requireAuth, requirePermission('manage_sections', 'manage_definitions'), async (req, res) => {
     try {
 
       // Generate sequential ID if not provided with enhanced null safety
@@ -4590,7 +4590,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.put("/api/sections/:id", requireAuth, async (req, res) => {
+  app.put("/api/sections/:id", requireAuth, requirePermission('manage_sections', 'manage_definitions'), async (req, res) => {
     try {
       // Enhanced parameter validation
       if (!req.params?.id?.trim()) {
@@ -4616,7 +4616,7 @@ Do not include quotes or explanations.`;
   // Material Groups routes
 
   // Items routes
-  app.post("/api/items", requireAuth, requirePermission('manage_warehouse'), async (req, res) => {
+  app.post("/api/items", requireAuth, requirePermission('manage_items', 'manage_definitions'), async (req, res) => {
     try {
 
       // Generate sequential ID if not provided with enhanced null safety
@@ -4667,7 +4667,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.put("/api/items/:id", requireAuth, requirePermission('manage_warehouse'), async (req, res) => {
+  app.put("/api/items/:id", requireAuth, requirePermission('manage_items', 'manage_definitions'), async (req, res) => {
     try {
       // Enhanced parameter validation
       if (!req.params?.id?.trim()) {
@@ -4707,7 +4707,7 @@ Do not include quotes or explanations.`;
   });
 
 
-  app.put("/api/customer-products/:id", requireAuth, async (req, res) => {
+  app.put("/api/customer-products/:id", requireAuth, requirePermission('manage_customers', 'manage_definitions'), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
 
@@ -5188,7 +5188,7 @@ Do not include quotes or explanations.`;
   });
 
   // DELETE routes for definitions
-  app.delete("/api/customers/:id", requireAuth, async (req, res) => {
+  app.delete("/api/customers/:id", requireAuth, requirePermission('manage_customers', 'manage_definitions'), async (req, res) => {
     try {
       await storage.deleteCustomer(req.params.id);
       res.json({ message: "تم حذف العميل بنجاح" });
@@ -5198,7 +5198,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.delete("/api/sections/:id", requireAuth, async (req, res) => {
+  app.delete("/api/sections/:id", requireAuth, requirePermission('manage_sections', 'manage_definitions'), async (req, res) => {
     try {
       const id = req.params.id;
       await storage.deleteSection(id);
@@ -5209,7 +5209,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.delete("/api/items/:id", requireAuth, requirePermission('manage_warehouse'), async (req, res) => {
+  app.delete("/api/items/:id", requireAuth, requirePermission('manage_items', 'manage_definitions'), async (req, res) => {
     try {
       await storage.deleteItem(req.params.id);
       res.json({ message: "تم حذف الصنف بنجاح" });
@@ -5219,7 +5219,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.delete("/api/customer-products/:id", requireAuth, async (req, res) => {
+  app.delete("/api/customer-products/:id", requireAuth, requirePermission('manage_customers', 'manage_definitions'), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       await storage.deleteCustomerProduct(id);
@@ -5241,7 +5241,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.delete("/api/machines/:id", requireAuth, requirePermission('manage_definitions'), async (req, res) => {
+  app.delete("/api/machines/:id", requireAuth, requirePermission('manage_machines', 'manage_definitions'), async (req, res) => {
     try {
       const id = req.params.id;
       await storage.deleteMachine(id);
