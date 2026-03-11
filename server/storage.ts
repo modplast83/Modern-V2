@@ -2654,8 +2654,9 @@ export class DatabaseStorage implements IStorage {
     return this.getAllRolls();
   }
 
-  async getRollsBySection(sectionId: number): Promise<Roll[]> {
-    return await db.select().from(rolls).orderBy(desc(rolls.created_at));
+  async getRollsBySection(stage: string, search?: string): Promise<Roll[]> {
+    let query = db.select().from(rolls).where(eq(rolls.stage, stage)).orderBy(desc(rolls.created_at));
+    return await query;
   }
 
   async getRollsByStage(stage: string): Promise<Roll[]> {

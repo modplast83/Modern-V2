@@ -3724,7 +3724,7 @@ Do not include quotes or explanations.`;
 
   app.get("/api/quality-issues/:id", requireAuth, async (req: AuthRequest, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const issue = await storage.getQualityIssueById(id);
       if (!issue) return res.status(404).json({ message: "لم يتم العثور على المشكلة" });
       res.json({ success: true, data: issue });
@@ -3746,7 +3746,7 @@ Do not include quotes or explanations.`;
 
   app.patch("/api/quality-issues/:id", requireAuth, requirePermission('manage_quality'), async (req: AuthRequest, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const issue = await storage.updateQualityIssue(id, req.body);
       if (!issue) return res.status(404).json({ message: "لم يتم العثور على المشكلة" });
       res.json({ success: true, data: issue });
@@ -3758,7 +3758,7 @@ Do not include quotes or explanations.`;
 
   app.post("/api/quality-issues/:id/responsibles", requireAuth, requirePermission('manage_quality'), async (req: AuthRequest, res) => {
     try {
-      const issueId = parseInt(req.params.id);
+      const issueId = parseRouteParam(req.params.id, "id");
       const resp = await storage.addQualityIssueResponsible({ ...req.body, quality_issue_id: issueId });
       res.status(201).json({ success: true, data: resp });
     } catch (error: any) {
@@ -3769,7 +3769,7 @@ Do not include quotes or explanations.`;
 
   app.patch("/api/quality-issues/responsibles/:id", requireAuth, requirePermission('manage_quality'), async (req: AuthRequest, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const resp = await storage.updateQualityIssueResponsible(id, req.body);
       if (!resp) return res.status(404).json({ message: "لم يتم العثور على السجل" });
       res.json({ success: true, data: resp });
@@ -3781,7 +3781,7 @@ Do not include quotes or explanations.`;
 
   app.delete("/api/quality-issues/responsibles/:id", requireAuth, requirePermission('manage_quality'), async (req: AuthRequest, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const deleted = await storage.deleteQualityIssueResponsible(id);
       if (!deleted) return res.status(404).json({ message: "لم يتم العثور على السجل" });
       res.json({ success: true });
@@ -3793,7 +3793,7 @@ Do not include quotes or explanations.`;
 
   app.post("/api/quality-issues/:id/actions", requireAuth, requirePermission('manage_quality'), async (req: AuthRequest, res) => {
     try {
-      const issueId = parseInt(req.params.id);
+      const issueId = parseRouteParam(req.params.id, "id");
       const action = await storage.addQualityIssueAction({ ...req.body, quality_issue_id: issueId });
       res.status(201).json({ success: true, data: action });
     } catch (error: any) {
@@ -3804,7 +3804,7 @@ Do not include quotes or explanations.`;
 
   app.patch("/api/quality-issues/actions/:id", requireAuth, requirePermission('manage_quality'), async (req: AuthRequest, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const action = await storage.updateQualityIssueAction(id, req.body);
       if (!action) return res.status(404).json({ message: "لم يتم العثور على الإجراء" });
       res.json({ success: true, data: action });
@@ -5025,7 +5025,7 @@ Do not include quotes or explanations.`;
 
   app.put("/api/hr/training-certificates/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const certificate = await storage.updateTrainingCertificate(id, req.body);
       res.json(certificate);
     } catch (error) {
@@ -5036,7 +5036,7 @@ Do not include quotes or explanations.`;
 
   app.get("/api/hr/training-certificates/:id/generate", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const certificate = await storage.generateTrainingCertificate(id);
       res.json(certificate);
     } catch (error) {
@@ -5071,7 +5071,7 @@ Do not include quotes or explanations.`;
 
   app.put("/api/hr/performance-reviews/:id", requireAuth, requirePermission('manage_hr'), async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const review = await storage.updatePerformanceReview(id, req.body);
       res.json(review);
     } catch (error) {
@@ -5148,7 +5148,7 @@ Do not include quotes or explanations.`;
 
   app.put("/api/hr/leave-requests/:id", requireAuth, requirePermission('manage_hr'), async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const request = await storage.updateLeaveRequest(id, req.body);
       res.json(request);
     } catch (error) {
@@ -5226,7 +5226,7 @@ Do not include quotes or explanations.`;
 
   app.delete("/api/customer-products/:id", requireAuth, requirePermission('manage_customers', 'manage_definitions'), async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       await storage.deleteCustomerProduct(id);
       res.json({ message: "تم حذف منتج العميل بنجاح" });
     } catch (error) {
@@ -5259,7 +5259,7 @@ Do not include quotes or explanations.`;
 
   app.delete("/api/users/:id", requireAuth, requirePermission('manage_users'), async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       await storage.deleteUser(id);
       res.json({ message: "تم حذف المستخدم بنجاح" });
     } catch (error) {
@@ -5397,7 +5397,7 @@ Do not include quotes or explanations.`;
 
   app.delete("/api/inventory/:id", requireAuth, requirePermission('manage_warehouse'), async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       await storage.deleteInventoryItem(id);
       res.json({ message: "تم حذف صنف المخزون بنجاح" });
     } catch (error) {
@@ -5633,7 +5633,7 @@ Do not include quotes or explanations.`;
 
   app.put("/api/orders/:id", requireAuth, requireAdmin, async (req, res) => {
     try {
-      const orderId = parseInt(req.params.id);
+      const orderId = parseRouteParam(req.params.id, "id");
       const result = insertNewOrderSchema.safeParse(req.body);
       if (!result.success) {
         return res
@@ -5662,7 +5662,7 @@ Do not include quotes or explanations.`;
     requireAdmin,
     async (req, res) => {
       try {
-        const orderId = parseInt(req.params.id);
+        const orderId = parseRouteParam(req.params.id, "id");
         const { status } = req.body;
 
         if (!status) {
@@ -7136,7 +7136,7 @@ Do not include quotes or explanations.`;
 
   app.put("/api/attendance/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const attendance = await storage.updateAttendance(id, req.body);
       res.json(attendance);
     } catch (error) {
@@ -7147,7 +7147,7 @@ Do not include quotes or explanations.`;
 
   app.delete("/api/attendance/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       await storage.deleteAttendance(id);
       res.json({ message: "تم حذف سجل الحضور بنجاح" });
     } catch (error) {
@@ -7218,7 +7218,7 @@ Do not include quotes or explanations.`;
   // Calculate and update work hours for an attendance record
   app.put("/api/attendance/:id/calculate-hours", requireAuth, requirePermission("manage_attendance"), async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const attendance = await storage.getAttendanceById(id);
       
       if (!attendance) {
@@ -7448,7 +7448,7 @@ Do not include quotes or explanations.`;
   // Record break time
   app.post("/api/attendance/:id/break", requireAuth, requirePermission("manage_attendance"), async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const { action } = req.body; // 'start' or 'end'
       
       const attendance = await storage.getAttendanceById(id);
@@ -7499,7 +7499,7 @@ Do not include quotes or explanations.`;
 
   app.put("/api/violations/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const violation = await storage.updateViolation(id, req.body);
       res.json(violation);
     } catch (error) {
@@ -7510,7 +7510,7 @@ Do not include quotes or explanations.`;
 
   app.delete("/api/violations/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       await storage.deleteViolation(id);
       res.json({ message: "تم حذف المخالفة بنجاح" });
     } catch (error) {
@@ -7544,7 +7544,7 @@ Do not include quotes or explanations.`;
 
   app.put("/api/user-requests/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const request = await storage.updateUserRequest(id, req.body);
       res.json(request);
     } catch (error) {
@@ -7555,7 +7555,7 @@ Do not include quotes or explanations.`;
 
   app.patch("/api/user-requests/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const request = await storage.updateUserRequest(id, req.body);
       res.json(request);
     } catch (error) {
@@ -7566,7 +7566,7 @@ Do not include quotes or explanations.`;
 
   app.delete("/api/user-requests/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       await storage.deleteUserRequest(id);
       res.json({ message: "تم حذف الطلب بنجاح" });
     } catch (error) {
@@ -7655,7 +7655,7 @@ Do not include quotes or explanations.`;
   // Get single factory location
   app.get("/api/factory-locations/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const location = await storage.getFactoryLocation(id);
       if (!location) {
         return res.status(404).json({ message: "الموقع غير موجود" });
@@ -7684,7 +7684,7 @@ Do not include quotes or explanations.`;
   // Update factory location
   app.put("/api/factory-locations/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const location = await storage.updateFactoryLocation(id, req.body);
       res.json(location);
     } catch (error) {
@@ -7696,7 +7696,7 @@ Do not include quotes or explanations.`;
   // Delete factory location
   app.delete("/api/factory-locations/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       await storage.deleteFactoryLocation(id);
       res.json({ message: "تم حذف الموقع بنجاح" });
     } catch (error) {
@@ -7747,7 +7747,7 @@ Do not include quotes or explanations.`;
   // Start Production
   app.patch("/api/production-orders/:id/start-production", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const productionOrder = await storage.startProduction(id);
       res.json(productionOrder);
     } catch (error) {
@@ -7867,7 +7867,7 @@ Do not include quotes or explanations.`;
   // Printing Operations
   app.patch("/api/rolls/:id/print", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       if (!getAuthUserId(req)) {
         return res.status(401).json({ message: "غير مسجل الدخول" });
       }
@@ -8089,7 +8089,7 @@ Do not include quotes or explanations.`;
 
   app.get("/api/rolls/:id/qr", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const qrData = await storage.getRollQR(id);
       res.json(qrData);
     } catch (error) {
@@ -8101,7 +8101,7 @@ Do not include quotes or explanations.`;
   // Label printing endpoint - generates 4" x 5" label
   app.get("/api/rolls/:id/label", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const labelData = await storage.getRollLabelData(id);
       res.json(labelData);
     } catch (error) {
@@ -8207,7 +8207,7 @@ Do not include quotes or explanations.`;
   app.post("/api/rolls/:id/complete-cutting", requireAuth, async (req, res) => {
     try {
       const authReq = req as AuthRequest;
-      const rollId = parseInt(req.params.id);
+      const rollId = parseRouteParam(req.params.id, "id");
       const { net_weight, cutting_machine_id } = req.body;
       
       if (!net_weight || net_weight <= 0) {
@@ -8685,7 +8685,7 @@ Do not include quotes or explanations.`;
   // Get a single note by ID
   app.get("/api/quick-notes/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const note = await storage.getQuickNoteById(id);
       
       if (!note) {
@@ -8761,7 +8761,7 @@ Do not include quotes or explanations.`;
   // Update a note
   app.patch("/api/quick-notes/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       
       // Get existing note to check authorization
       const existingNote = await storage.getQuickNoteById(id);
@@ -8804,7 +8804,7 @@ Do not include quotes or explanations.`;
   // Mark note as read
   app.patch("/api/quick-notes/:id/read", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       
       // Get existing note to check authorization
       const existingNote = await storage.getQuickNoteById(id);
@@ -8828,7 +8828,7 @@ Do not include quotes or explanations.`;
   // Delete a note
   app.delete("/api/quick-notes/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       
       // Get existing note to check authorization
       const existingNote = await storage.getQuickNoteById(id);
@@ -8852,7 +8852,7 @@ Do not include quotes or explanations.`;
   // Get attachments for a note
   app.get("/api/quick-notes/:id/attachments", requireAuth, async (req, res) => {
     try {
-      const noteId = parseInt(req.params.id);
+      const noteId = parseRouteParam(req.params.id, "id");
       
       // Get note to check authorization
       const note = await storage.getQuickNoteById(noteId);
@@ -8878,7 +8878,7 @@ Do not include quotes or explanations.`;
   // Upload attachment (placeholder - will be implemented with actual file upload)
   app.post("/api/quick-notes/:id/attachments", requireAuth, async (req, res) => {
     try {
-      const noteId = parseInt(req.params.id);
+      const noteId = parseRouteParam(req.params.id, "id");
       
       // Get note to check authorization
       const note = await storage.getQuickNoteById(noteId);
@@ -8915,7 +8915,7 @@ Do not include quotes or explanations.`;
   // Delete attachment
   app.delete("/api/note-attachments/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       
       // Get attachment to find its note
       const attachments = await storage.getNoteAttachments(0); // This won't work, need to get by ID
@@ -8948,7 +8948,7 @@ Do not include quotes or explanations.`;
   // Get mixing batch by ID
   app.get("/api/mixing-batches/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const batch = await storage.getMixingBatchById(id);
       
       if (!batch) {
@@ -9026,7 +9026,7 @@ Do not include quotes or explanations.`;
   // Update mixing batch
   app.put("/api/mixing-batches/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const updates = req.body;
       
       const updatedBatch = await storage.updateMixingBatch(id, updates);
@@ -9040,7 +9040,7 @@ Do not include quotes or explanations.`;
   // Update batch ingredient actuals
   app.put("/api/mixing-batches/:id/ingredients", requireAuth, async (req, res) => {
     try {
-      const batchId = parseInt(req.params.id);
+      const batchId = parseRouteParam(req.params.id, "id");
       const { ingredientUpdates } = req.body;
       
       if (!ingredientUpdates || !Array.isArray(ingredientUpdates)) {
@@ -9059,7 +9059,7 @@ Do not include quotes or explanations.`;
   // Complete mixing batch
   app.post("/api/mixing-batches/:id/complete", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const completedBatch = await storage.completeMixingBatch(id);
       res.json(completedBatch);
     } catch (error: any) {
@@ -9171,7 +9171,7 @@ Do not include quotes or explanations.`;
 
   app.get("/api/warehouse/vouchers/raw-material-in/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const voucher = await storage.getRawMaterialVoucherInById(id);
       if (!voucher) {
         return res.status(404).json({ message: "السند غير موجود" });
@@ -9216,7 +9216,7 @@ Do not include quotes or explanations.`;
 
   app.get("/api/warehouse/vouchers/raw-material-out/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const voucher = await storage.getRawMaterialVoucherOutById(id);
       if (!voucher) {
         return res.status(404).json({ message: "السند غير موجود" });
@@ -9273,7 +9273,7 @@ Do not include quotes or explanations.`;
 
   app.get("/api/warehouse/vouchers/finished-goods-in/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const voucher = await storage.getFinishedGoodsVoucherInById(id);
       if (!voucher) {
         return res.status(404).json({ message: "السند غير موجود" });
@@ -9319,7 +9319,7 @@ Do not include quotes or explanations.`;
 
   app.get("/api/warehouse/vouchers/finished-goods-out/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const voucher = await storage.getFinishedGoodsVoucherOutById(id);
       if (!voucher) {
         return res.status(404).json({ message: "السند غير موجود" });
@@ -9376,7 +9376,7 @@ Do not include quotes or explanations.`;
 
   app.get("/api/warehouse/inventory-counts/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const count = await storage.getInventoryCountById(id);
       if (!count) {
         return res.status(404).json({ message: "عملية الجرد غير موجودة" });
@@ -9390,7 +9390,7 @@ Do not include quotes or explanations.`;
 
   app.post("/api/warehouse/inventory-counts/:id/items", requireAuth, async (req: AuthRequest, res) => {
     try {
-      const countId = parseInt(req.params.id);
+      const countId = parseRouteParam(req.params.id, "id");
       const itemData = {
         ...req.body,
         count_id: countId,
@@ -9411,7 +9411,7 @@ Do not include quotes or explanations.`;
         return res.status(401).json({ message: "غير مصرح" });
       }
 
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const count = await storage.completeInventoryCount(id, userId);
       res.json(count);
     } catch (error: any) {
@@ -9475,7 +9475,7 @@ Do not include quotes or explanations.`;
 
   app.put("/api/suppliers/:id", requireAuth, requirePermission('manage_warehouse'), async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const { name, name_ar, phone, email, address, contact_person } = req.body;
       const result = await db.execute(sql`
         UPDATE suppliers 
@@ -9493,7 +9493,7 @@ Do not include quotes or explanations.`;
 
   app.delete("/api/suppliers/:id", requireAuth, requirePermission('manage_warehouse'), async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       await db.execute(sql`UPDATE suppliers SET is_active = false WHERE id = ${id}`);
       res.json({ success: true });
     } catch (error) {
@@ -9530,7 +9530,7 @@ Do not include quotes or explanations.`;
 
   app.put("/api/units/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const { name, name_ar, symbol, conversion_factor } = req.body;
       const result = await db.execute(sql`
         UPDATE units 
@@ -9548,7 +9548,7 @@ Do not include quotes or explanations.`;
 
   app.delete("/api/units/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       await db.execute(sql`UPDATE units SET is_active = false WHERE id = ${id}`);
       res.json({ success: true });
     } catch (error) {
@@ -9930,7 +9930,7 @@ Do not include quotes or explanations.`;
   // Get notification event setting by ID
   app.get("/api/notification-event-settings/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const setting = await storage.getNotificationEventSettingById(id);
       if (!setting) {
         return res.status(404).json({ message: "إعداد الحدث غير موجود", success: false });
@@ -9958,7 +9958,7 @@ Do not include quotes or explanations.`;
   // Update notification event setting
   app.patch("/api/notification-event-settings/:id", requireAuth, requireAdmin, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const userId = req.user?.id;
       const updates = { ...req.body, updated_by: userId };
       const setting = await storage.updateNotificationEventSetting(id, updates);
@@ -9972,7 +9972,7 @@ Do not include quotes or explanations.`;
   // Delete notification event setting
   app.delete("/api/notification-event-settings/:id", requireAuth, requireAdmin, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       await storage.deleteNotificationEventSetting(id);
       res.json({ message: "تم حذف إعداد الحدث بنجاح", success: true });
     } catch (error) {
@@ -10001,7 +10001,7 @@ Do not include quotes or explanations.`;
   // Test notification sending
   app.post("/api/notification-event-settings/:id/test", requireAuth, requireAdmin, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteParam(req.params.id, "id");
       const setting = await storage.getNotificationEventSettingById(id);
       if (!setting) {
         return res.status(404).json({ message: "إعداد الحدث غير موجود", success: false });
@@ -10577,8 +10577,15 @@ Do not include quotes or explanations.`;
 
   app.put("/api/display/slides/reorder", requireAuth, async (req, res) => {
     try {
-      const { slideOrders } = req.body;
-      for (const item of slideOrders) {
+      const slideOrderSchema = z.array(z.object({
+        id: z.number().int().positive(),
+        sort_order: z.number().int().min(0),
+      }));
+      const parseResult = slideOrderSchema.safeParse(req.body?.slideOrders);
+      if (!parseResult.success) {
+        return res.status(400).json({ message: "بيانات الترتيب غير صحيحة" });
+      }
+      for (const item of parseResult.data) {
         await storage.updateDisplaySlide(item.id, { sort_order: item.sort_order });
       }
       res.json({ success: true });
@@ -10590,7 +10597,7 @@ Do not include quotes or explanations.`;
 
   app.put("/api/display/slides/:id", requireAuth, async (req, res) => {
     try {
-      const slide = await storage.updateDisplaySlide(Number(req.params.id), req.body);
+      const slide = await storage.updateDisplaySlide(parseRouteParam(req.params.id, "id"), req.body);
       res.json(slide);
     } catch (error) {
       console.error("Error updating display slide:", error);
@@ -10600,7 +10607,7 @@ Do not include quotes or explanations.`;
 
   app.delete("/api/display/slides/:id", requireAuth, async (req, res) => {
     try {
-      await storage.deleteDisplaySlide(Number(req.params.id));
+      await storage.deleteDisplaySlide(parseRouteParam(req.params.id, "id"));
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting display slide:", error);

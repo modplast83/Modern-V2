@@ -43,6 +43,12 @@ The system is built with a modern stack emphasizing efficiency and scalability, 
 
 ## Recent Changes
 
+### Bug Fixes - Route Parameter Validation & Data Filtering (March 11, 2026)
+- **Fixed `getRollsBySection`**: Was ignoring its `stage` parameter and returning all rolls — now properly filters by production stage (film/printing/cutting)
+- **Fixed 59 unsafe `parseInt` calls**: Routes using `parseInt(req.params.id)` without NaN validation replaced with `parseRouteParam()` which throws on invalid input, preventing NaN from reaching database queries
+- **Fixed `Number()` without NaN check**: Display slide update/delete routes now use `parseRouteParam()` instead of `Number(req.params.id)`
+- **Added input validation for slide reorder**: `/api/display/slides/reorder` now validates `slideOrders` array with Zod schema enforcing positive integer IDs and non-negative sort orders
+
 ### Mobile API - Token-Based Authentication (March 11, 2026)
 - **Token auth**: `server/middleware/session-auth.ts` now supports `Authorization: Bearer <token>` header alongside session cookies
 - **In-memory token store**: `generateMobileToken()` / `revokeMobileToken()` with 30-day expiry
