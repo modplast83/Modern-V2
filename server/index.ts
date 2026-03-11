@@ -3,7 +3,6 @@ import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import compression from "compression";
-import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { db, pool } from "./db";
 import { users } from "@shared/schema";
@@ -381,8 +380,6 @@ function sanitizeResponseForLogging(response: any): any {
 (async () => {
   const earlyServer = (app as any).__earlyServer || null;
 
-  // In development, start listening IMMEDIATELY so port detection works
-  // Vite and routes will be set up after the port is open
   let devServer: import("http").Server | null = null;
   if (app.get("env") !== "production") {
     const http = await import("http");
@@ -735,6 +732,7 @@ function sanitizeResponseForLogging(response: any): any {
   // 🔧 Register monitoring routes
   app.use(monitoringRoutes);
 
+  const { registerRoutes } = await import("./routes");
   const server = await registerRoutes(app, devServer || earlyServer || undefined);
 
   // 404 handler for unmatched API routes (MUST be after routes)
