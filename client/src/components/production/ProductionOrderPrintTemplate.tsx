@@ -115,9 +115,10 @@ export default function ProductionOrderPrintTemplate({
     (sum: number, r: any) => sum + parseFloat(r.weight_kg || 0),
     0
   );
+  const targetQuantity = parseFloat(productionOrder.final_quantity_kg || 0) || parseFloat(productionOrder.quantity_kg || 0);
   const progressPercentage =
-    productionOrder.quantity_kg > 0
-      ? (totalWeight / productionOrder.quantity_kg) * 100
+    targetQuantity > 0
+      ? (totalWeight / targetQuantity) * 100
       : 0;
 
   return (
@@ -290,7 +291,12 @@ function PrintContentInner({
         <div className="print-info-box highlight">
           <div className="print-info-label">{t("production.print.requiredQuantity")}</div>
           <div className="print-info-value large">
-            {parseFloat(productionOrder.quantity_kg || 0).toFixed(2)} {t("production.print.kg")}
+            {parseFloat(productionOrder.final_quantity_kg || productionOrder.quantity_kg || 0).toFixed(2)} {t("production.print.kg")}
+            {parseFloat(productionOrder.overrun_percentage || 0) > 0 && (
+              <span style={{ fontSize: "12px", color: "#2563eb", marginRight: "4px" }}>
+                (+{productionOrder.overrun_percentage}%)
+              </span>
+            )}
           </div>
         </div>
         <div className="print-info-box">

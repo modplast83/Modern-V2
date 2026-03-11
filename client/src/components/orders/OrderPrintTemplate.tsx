@@ -34,6 +34,7 @@ interface ProductionOrder {
   customer_product_id: string;
   quantity_kg?: number | string;
   final_quantity_kg?: number | string;
+  overrun_percentage?: number | string;
   notes?: string;
 }
 
@@ -222,7 +223,7 @@ export default function OrderPrintTemplate({
 
   const totalWeight = useMemo(() => {
     return sortedOrders.reduce((sum, po) => {
-      const raw = Number(po.quantity_kg ?? 0) || Number(po.final_quantity_kg ?? 0);
+      const raw = Number(po.final_quantity_kg ?? 0) || Number(po.quantity_kg ?? 0);
       return sum + raw;
     }, 0);
   }, [sortedOrders]);
@@ -520,7 +521,7 @@ export default function OrderPrintTemplate({
                 const cp = customerProductsMap.get(po.customer_product_id);
                 const item = cp ? itemsMap.get(cp.item_id) : undefined;
                 const color = getMasterBatchInfo(cp?.master_batch_id);
-                const qty = Number(po.quantity_kg ?? 0) || Number(po.final_quantity_kg ?? 0);
+                const qty = Number(po.final_quantity_kg ?? 0) || Number(po.quantity_kg ?? 0);
 
                 return (
                   <tr key={po.id}>
@@ -577,7 +578,14 @@ export default function OrderPrintTemplate({
                         <span style={{ color: "#dc2626", fontWeight: 900, fontSize: "22px" }}>✗</span>
                       )}
                     </td>
-                    <td style={{ ...styles.td, fontWeight: 900, fontSize: "18px" }}>{formatNumber(qty)}</td>
+                    <td style={{ ...styles.td, fontWeight: 900, fontSize: "18px" }}>
+                      {formatNumber(qty)}
+                      {Number(po.overrun_percentage ?? 0) > 0 && (
+                        <div style={{ fontSize: "11px", color: "#2563eb", fontWeight: 700 }}>
+                          (+{po.overrun_percentage}%)
+                        </div>
+                      )}
+                    </td>
                     <td style={{ ...styles.td, fontSize: "13px", textAlign: "right", fontWeight: 900 }}>{cp?.notes || "-"}</td>
                   </tr>
                 );
