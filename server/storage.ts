@@ -3909,7 +3909,58 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getOrdersEnhanced(options?: any): Promise<any> {
-    return this.getAllOrders();
+    return withDatabaseErrorHandling(
+      async () => {
+        let query = db
+          .select({
+            id: orders.id,
+            order_number: orders.order_number,
+            customer_id: orders.customer_id,
+            customer_name: customers.name,
+            customer_name_ar: customers.name_ar,
+            delivery_days: orders.delivery_days,
+            delivery_date: orders.delivery_date,
+            status: orders.status,
+            notes: orders.notes,
+            created_by: orders.created_by,
+            created_at: orders.created_at,
+          })
+          .from(orders)
+          .leftJoin(customers, eq(orders.customer_id, customers.id))
+          .orderBy(desc(orders.id));
+
+        const results = await query;
+
+        const enhancedOrders = await Promise.all(
+          results.map(async (order) => {
+            const productionOrdersList = await db
+              .select()
+              .from(production_orders)
+              .where(eq(production_orders.order_id, order.id));
+
+            return {
+              ...order,
+              production_orders_count: productionOrdersList.length,
+              production_orders: productionOrdersList.map((po) => ({
+                id: po.id,
+                production_order_number: po.production_order_number,
+                quantity_kg: po.quantity_kg,
+                final_quantity_kg: po.final_quantity_kg,
+                produced_quantity_kg: po.produced_quantity_kg,
+                film_completion_percentage: po.film_completion_percentage,
+                printing_completion_percentage: po.printing_completion_percentage,
+                cutting_completion_percentage: po.cutting_completion_percentage,
+                status: po.status,
+              })),
+            };
+          })
+        );
+
+        return enhancedOrders;
+      },
+      "getOrdersEnhanced",
+      "جلب الطلبات المحسّنة",
+    );
   }
 
   async getPendingLeaveRequests(): Promise<LeaveRequest[]> {
