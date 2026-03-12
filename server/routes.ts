@@ -1623,6 +1623,20 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
     }
   });
 
+  app.get("/api/production-orders/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseRouteParam(req.params.id, "id");
+      const productionOrder = await storage.getProductionOrderById(id);
+      if (!productionOrder) {
+        return res.status(404).json({ message: "أمر الإنتاج غير موجود" });
+      }
+      res.json(productionOrder);
+    } catch (error) {
+      console.error("Error fetching production order:", error instanceof Error ? error.message : String(error));
+      res.status(500).json({ message: "خطأ في جلب أمر الإنتاج" });
+    }
+  });
+
   app.post("/api/production-orders", requireAuth, requirePermission('manage_production'), async (req, res) => {
     try {
       // Extract and validate basic fields first
@@ -2079,6 +2093,20 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
     }
   });
 
+  app.get("/api/rolls/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseRouteParam(req.params.id, "ID");
+      const roll = await storage.getRollById(id);
+      if (!roll) {
+        return res.status(404).json({ message: "الرول غير موجود" });
+      }
+      res.json(roll);
+    } catch (error) {
+      console.error("Error fetching roll:", error instanceof Error ? error.message : String(error));
+      res.status(500).json({ message: "خطأ في جلب الرول" });
+    }
+  });
+
   app.patch("/api/rolls/:id", requireAuth, async (req, res) => {
     try {
       const id = parseRouteParam(req.params.id, "ID");
@@ -2114,6 +2142,10 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       if (cut_weight_total_kg !== undefined)
         safeUpdates.cut_weight_total_kg = cut_weight_total_kg;
 
+      if (Object.keys(safeUpdates).length === 0) {
+        return res.status(400).json({ message: "لا توجد بيانات للتحديث" });
+      }
+
       const roll = await storage.updateRoll(id, safeUpdates);
 
       // Update completion percentages when stage changes
@@ -2123,7 +2155,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
 
       res.json(roll);
     } catch (error) {
-      console.error("Error updating roll:", error);
+      console.error("Error updating roll:", error instanceof Error ? error.message : String(error));
       res.status(400).json({ message: "خطأ في تحديث الرول" });
     }
   });
@@ -2365,7 +2397,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         roll_number: newRoll.roll_number,
       });
     } catch (error) {
-      console.error("Error creating roll with timing:", error);
+      console.error("Error creating roll with timing:", error instanceof Error ? error.message : String(error));
       res.status(500).json({ 
         success: false,
         message: "خطأ في إنشاء الرول" 

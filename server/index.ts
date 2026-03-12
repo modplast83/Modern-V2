@@ -13,6 +13,22 @@ import { performanceMonitor } from "./middleware/performance-monitor";
 import { MemoryMonitor } from "./middleware/memory-monitor";
 import monitoringRoutes from "./routes/monitoring";
 
+process.on("uncaughtException", (err) => {
+  try {
+    console.error("Uncaught exception:", err?.message || String(err));
+  } catch {
+    console.error("Uncaught exception (unformattable)");
+  }
+});
+
+process.on("unhandledRejection", (reason) => {
+  try {
+    console.error("Unhandled rejection:", reason instanceof Error ? reason.message : String(reason));
+  } catch {
+    console.error("Unhandled rejection (unformattable)");
+  }
+});
+
 const app = express();
 
 app.use((req: Request, res: Response, next: NextFunction) => {
