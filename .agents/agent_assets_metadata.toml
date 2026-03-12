@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "zSIxatfzCOvQffuV2c1r1"
+uri = "file://attached_assets/MOBILE_APP_API_GUIDE.md"
+type = "text"
+title = "دليل API لتطبيق الموبايل"
