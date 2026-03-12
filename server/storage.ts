@@ -2615,10 +2615,6 @@ export class DatabaseStorage implements IStorage {
 
   // ============ ALIASES & MISSING METHODS ============
 
-  async getUserById(id: number): Promise<User | undefined> {
-    return this.getUser(id);
-  }
-
   async getRoles(): Promise<Role[]> {
     return await db.select().from(roles).orderBy(roles.name);
   }

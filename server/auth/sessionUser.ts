@@ -21,7 +21,8 @@ export async function resolveSessionUser(req: Request): Promise<SafeUser | null>
       const user = await storage.getUserById(req.session.userId);
       if (user && user.status === "active") {
         logger.debug("User resolved from session.userId", req.session.userId);
-        return user;
+        const { password, ...safeUser } = user;
+        return safeUser;
       } else {
         logger.debug("Session userId found but user not active or not found");
       }
@@ -48,7 +49,8 @@ export async function resolveSessionUser(req: Request): Promise<SafeUser | null>
           });
         }
         
-        return user;
+        const { password, ...safeUser } = user;
+        return safeUser;
       } else {
         logger.debug("Replit user ID found but user not active or not found");
       }

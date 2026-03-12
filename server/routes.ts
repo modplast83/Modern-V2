@@ -4425,11 +4425,16 @@ Do not include quotes or explanations.`;
         }
       }
 
-      const processedData = {
-        ...req.body,
+      const allowedFields = ['username', 'display_name', 'display_name_ar', 'full_name', 'phone', 'email', 'status', 'password'];
+      const processedData: Record<string, any> = {
         role_id: roleId,
         section_id: sectionId,
       };
+      for (const field of allowedFields) {
+        if (req.body[field] !== undefined) {
+          processedData[field] = req.body[field];
+        }
+      }
 
       const user = await storage.updateUser(id, processedData);
       if (!user) {
