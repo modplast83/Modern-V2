@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Route, Switch, Redirect } from "wouter";
 import { AuthProvider, useAuth } from "./hooks/use-auth";
 
@@ -52,15 +51,15 @@ function AppRoutes() {
   const { isAuthenticated, isLoading } = useAuth();
   const { t } = useTranslation();
 
-  useEffect(() => {
-    if (!isLoading) {
-      const loader = document.getElementById("initial-loader");
-      if (loader) loader.remove();
-    }
-  }, [isLoading]);
-
   if (isLoading) {
-    return null;
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ textAlign: "center" }}>
+          <div className="loading-spinner" style={{ margin: "0 auto 1rem" }} />
+          <p style={{ margin: 0, fontSize: "0.875rem", color: "#6b7280" }}>جاري تحميل النظام...</p>
+        </div>
+      </div>
+    );
   }
 
   return (

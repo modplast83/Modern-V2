@@ -80,7 +80,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 animate-fade-in">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto w-20 h-20 mb-4 flex items-center justify-center">

@@ -15,11 +15,14 @@ import monitoringRoutes from "./routes/monitoring";
 
 const app = express();
 
-// Early healthcheck - MUST be before any middleware
-// Returns 200 immediately while the app finishes loading
 app.use((req: Request, res: Response, next: NextFunction) => {
-  if ((req.path === "/" || req.path === "/api/health") && !(app as any).__routesReady) {
-    return res.status(200).send("OK");
+  if (!(app as any).__routesReady) {
+    if (req.path === "/api/health") {
+      return res.status(200).send("OK");
+    }
+    if (!req.path.startsWith("/api/")) {
+      return res.status(200).send(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><style>body{font-family:Cairo,system-ui,sans-serif;margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#fafafa}.s{width:2rem;height:2rem;border:2px solid #f3f4f6;border-radius:50%;border-top-color:#3984f6;animation:r 1s ease-in-out infinite;margin:0 auto 1rem}@keyframes r{to{transform:rotate(360deg)}}</style></head><body><div style="text-align:center"><div class="s"></div><p style="font-size:.875rem;color:#6b7280">جاري تحميل النظام...</p></div><script>setTimeout(()=>location.reload(),2000)</script></body></html>`);
+    }
   }
   next();
 });
