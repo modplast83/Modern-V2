@@ -86,13 +86,9 @@
         }
       }
 
-      /* Hide content until fonts are loaded */
-      .font-loading {
-        visibility: hidden;
-      }
-
-      .fonts-loaded .font-loading {
-        visibility: visible;
+      /* Smooth font swap - no visibility hidden to avoid flicker */
+      .fonts-loaded body {
+        font-family: 'Cairo', system-ui, -apple-system, sans-serif;
       }
     </style>
 
@@ -127,7 +123,7 @@
       }
     </script>
   </head>
-  <body class="font-loading">
+  <body>
     <div id="root">
       <div
         id="initial-loader"

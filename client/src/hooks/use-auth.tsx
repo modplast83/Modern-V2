@@ -54,6 +54,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth();
   }, []);
 
+  useEffect(() => {
+    const onSessionExpired = () => {
+      setUser(null);
+    };
+    window.addEventListener("auth:session-expired", onSessionExpired);
+    return () => window.removeEventListener("auth:session-expired", onSessionExpired);
+  }, []);
+
   const login = async (username: string, password: string) => {
     setIsLoading(true);
     try {
@@ -92,9 +100,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setUser(null);
     localStorage.removeItem("mpbf_user");
-    if (typeof window !== "undefined") {
-      window.location.href = "/login";
-    }
   };
 
   return (
@@ -122,9 +127,7 @@ export function useAuth() {
         login: async () => {
           throw new Error("Auth not available - please refresh page");
         },
-        logout: () => {
-          window.location.reload();
-        },
+        logout: () => {},
         isLoading: false,
         isAuthenticated: false,
       };

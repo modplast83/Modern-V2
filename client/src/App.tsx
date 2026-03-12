@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Route, Switch, Redirect } from "wouter";
 import { AuthProvider, useAuth } from "./hooks/use-auth";
 
@@ -51,15 +52,15 @@ function AppRoutes() {
   const { isAuthenticated, isLoading } = useAuth();
   const { t } = useTranslation();
 
+  useEffect(() => {
+    if (!isLoading) {
+      const loader = document.getElementById("initial-loader");
+      if (loader) loader.remove();
+    }
+  }, [isLoading]);
+
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">{t('common.loading')}</p>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (

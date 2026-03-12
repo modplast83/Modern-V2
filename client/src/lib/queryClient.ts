@@ -8,21 +8,11 @@ import {
 // Create a single instance to prevent multiple React contexts
 let globalQueryClient: QueryClient | undefined;
 
-// Global 401 handler - redirect to login instead of reloading to prevent flicker loops
-const REDIRECT_COOLDOWN = 3000;
-
 function handle401Error() {
-  if (typeof window === "undefined") return;
-
-  if (window.location.pathname === "/login") return;
-
-  const lastRedirect = Number(sessionStorage.getItem("_401_redirect_ts") || "0");
-  const now = Date.now();
-  if (now - lastRedirect < REDIRECT_COOLDOWN) return;
-
-  sessionStorage.setItem("_401_redirect_ts", String(now));
   localStorage.removeItem("mpbf_user");
-  window.location.href = "/login";
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("auth:session-expired"));
+  }
 }
 
 async function throwIfResNotOk(res: Response) {
