@@ -43,7 +43,9 @@ The system is built with a modern stack emphasizing efficiency and scalability, 
 
 ## Recent Changes
 
-### Bug Fixes - Remaining Error Message Leaks (March 12, 2026)
+### Bug Fixes - Server Crash & Error Message Leaks (March 12, 2026)
+- **Fixed server crash from `throw err` in error middleware**: The global error handling middleware in `server/index.ts` had `throw err` after sending the response, causing uncaught exceptions that crashed the entire Node.js process. Removed the throw and added proper error logging instead.
+- **Fixed error message leak in global error handler**: The global error middleware was sending `err.message` directly to clients. Now sends a generic Arabic error message.
 - **Fixed 26 remaining internal error message leaks**: Despite prior cleanup, 26 catch blocks still sent `error.message` to API clients. Fixed patterns include:
   - 5 `DatabaseError` blocks exposing raw SQL errors (orders, customer products, machines, inventory, order status)
   - 5 notification route error leaks

@@ -773,10 +773,8 @@ function sanitizeResponseForLogging(response: any): any {
   // General error handling middleware
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    res.status(status).json({ message });
-    throw err;
+    console.error("Unhandled error:", err);
+    res.status(status).json({ message: "حدث خطأ في الخادم" });
   });
 
   if (app.get("env") === "development") {
