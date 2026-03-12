@@ -8,41 +8,21 @@ import {
 // Create a single instance to prevent multiple React contexts
 let globalQueryClient: QueryClient | undefined;
 
-// Global 401 handler - automatically logout user and redirect to login (with timing protection)
-let recentLogoutTime = 0;
-let logoutCount = 0;
-const LOGOUT_COOLDOWN = 5000; // 5 seconds cooldown to prevent rapid logouts
-const MAX_RAPID_LOGOUTS = 3; // Maximum rapid logouts before backing off
+// Global 401 handler - redirect to login instead of reloading to prevent flicker loops
+const REDIRECT_COOLDOWN = 3000;
 
 function handle401Error() {
+  if (typeof window === "undefined") return;
+
+  if (window.location.pathname === "/login") return;
+
+  const lastRedirect = Number(sessionStorage.getItem("_401_redirect_ts") || "0");
   const now = Date.now();
+  if (now - lastRedirect < REDIRECT_COOLDOWN) return;
 
-  // Check if we're already on login page to prevent reload loops
-  if (typeof window !== "undefined" && window.location.pathname === "/login") {
-    return; // Don't reload if already on login page
-  }
-
-  // Prevent rapid successive logouts (race condition protection)
-  if (now - recentLogoutTime < LOGOUT_COOLDOWN) {
-    logoutCount++;
-
-    // If we're getting too many rapid logouts, something is wrong - back off
-    if (logoutCount >= MAX_RAPID_LOGOUTS) {
-      return;
-    }
-    return;
-  }
-
-  recentLogoutTime = now;
-  logoutCount = 0; // Reset counter
-
-  // Clear user data from localStorage
+  sessionStorage.setItem("_401_redirect_ts", String(now));
   localStorage.removeItem("mpbf_user");
-
-  // Force reload to redirect to login through AuthProvider
-  if (typeof window !== "undefined") {
-    window.location.reload();
-  }
+  window.location.href = "/login";
 }
 
 async function throwIfResNotOk(res: Response) {

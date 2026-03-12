@@ -85,16 +85,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await fetch("/api/logout", {
         method: "POST",
-        credentials: "include", // Ensure cookies are included
+        credentials: "include",
       });
     } catch (error) {
       console.warn("Error during logout:", error);
     }
-    // Security improvement: Only clear in-memory user state
     setUser(null);
-    // Clear any cached queries related to user data
+    localStorage.removeItem("mpbf_user");
     if (typeof window !== "undefined") {
-      window.location.reload();
+      window.location.href = "/login";
     }
   };
 
