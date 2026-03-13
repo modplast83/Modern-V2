@@ -1623,7 +1623,10 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
     }
   });
 
-  app.get("/api/production-orders/:id", requireAuth, async (req, res) => {
+  app.get("/api/production-orders/:id", requireAuth, async (req, res, next) => {
+    if (!/^\d+$/.test(req.params.id)) {
+      return next();
+    }
     try {
       const id = parseRouteParam(req.params.id, "id");
       const productionOrder = await storage.getProductionOrderById(id);
@@ -2093,7 +2096,10 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
     }
   });
 
-  app.get("/api/rolls/:id", requireAuth, async (req, res) => {
+  app.get("/api/rolls/:id", requireAuth, async (req, res, next) => {
+    if (!/^\d+$/.test(req.params.id)) {
+      return next();
+    }
     try {
       const id = parseRouteParam(req.params.id, "ID");
       const roll = await storage.getRollById(id);
