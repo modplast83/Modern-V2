@@ -54,9 +54,9 @@ export default function ProductionOrdersManagement() {
   const [showFilters, setShowFilters] = useState(false);
 
   const { data: ordersData, isLoading: ordersLoading, refetch } = useQuery({
-    queryKey: ["/api/production-orders/management"],
+    queryKey: ["/api/production-orders"],
     queryFn: async () => {
-      const response = await fetch("/api/production-orders/management");
+      const response = await fetch("/api/production-orders");
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || t('production.ordersManagement.noProductionOrders'));
