@@ -90,6 +90,12 @@ app.get("/manifest.json", (_req, res) => {
   }
 });
 app.use("/icons", express.static(path.resolve(import.meta.dirname, "..", "public", "icons")));
+app.get("/favicon-32x32.png", (_req, res) => {
+  res.sendFile(path.resolve(import.meta.dirname, "..", "public", "favicon-32x32.png"));
+});
+app.get("/favicon-16x16.png", (_req, res) => {
+  res.sendFile(path.resolve(import.meta.dirname, "..", "public", "favicon-16x16.png"));
+});
 
 // Security function to check for plaintext passwords
 async function performPasswordSecurityCheck(): Promise<void> {
