@@ -29,7 +29,7 @@ export default function Sidebar() {
                   <div className="w-full">
                     <div className="flex items-center gap-3">
                       <Icon className="h-5 w-5" />
-                      <span className="font-medium">{getLocalizedName(module, language)}</span>
+                      <span className="font-bold">{getLocalizedName(module, language)}</span>
                     </div>
                   </div>
                 </div>
