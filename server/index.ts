@@ -8,6 +8,8 @@ import { db, pool } from "./db";
 import { users } from "@shared/schema";
 import { sql } from "drizzle-orm";
 import bcrypt from "bcrypt";
+import path from "path";
+import fs from "fs";
 import { populateUserFromSession } from "./middleware/session-auth";
 import { performanceMonitor } from "./middleware/performance-monitor";
 import { MemoryMonitor } from "./middleware/memory-monitor";
@@ -66,6 +68,28 @@ app.use(compression({
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: false, limit: "50mb" }));
+
+app.get("/sw.js", (_req, res) => {
+  const swPath = path.resolve(import.meta.dirname, "..", "public", "sw.js");
+  if (fs.existsSync(swPath)) {
+    res.setHeader("Content-Type", "application/javascript");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Service-Worker-Allowed", "/");
+    res.sendFile(swPath);
+  } else {
+    res.status(404).send("Not found");
+  }
+});
+app.get("/manifest.json", (_req, res) => {
+  const manifestPath = path.resolve(import.meta.dirname, "..", "public", "manifest.json");
+  if (fs.existsSync(manifestPath)) {
+    res.setHeader("Content-Type", "application/manifest+json");
+    res.sendFile(manifestPath);
+  } else {
+    res.status(404).send("Not found");
+  }
+});
+app.use("/icons", express.static(path.resolve(import.meta.dirname, "..", "public", "icons")));
 
 // Security function to check for plaintext passwords
 async function performPasswordSecurityCheck(): Promise<void> {

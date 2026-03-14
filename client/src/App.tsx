@@ -46,6 +46,7 @@ import DisplayControlPanel from "./pages/DisplayControlPanel";
 import FactoryFloor from "./pages/FactoryFloor";
 import MaterialMixing from "./pages/material-mixing";
 import { useTranslation } from "react-i18next";
+import InstallPrompt from "./components/pwa/InstallPrompt";
 
 function AppRoutes() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -312,6 +313,7 @@ function App() {
   return (
     <AuthProvider>
       <AppRoutes />
+      <InstallPrompt />
     </AuthProvider>
   );
 }

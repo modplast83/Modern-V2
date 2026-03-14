@@ -5292,5 +5292,17 @@
     "leaveEmptyDefault": "Leave Empty Default",
     "sendMessage": "Send Message",
     "smsCount": "Sms Count"
+  },
+  "pwa": {
+    "installTitle": "Install App",
+    "installDescription": "Install the app on your phone for quick access and offline use",
+    "install": "Install",
+    "later": "Later",
+    "updateAvailable": "Update Available",
+    "updateDescription": "A new version of the app is available",
+    "update": "Update",
+    "offline": "You are offline",
+    "iosGuide": "Tap",
+    "iosThen": "then choose \"Add to Home Screen\""
   }
 }

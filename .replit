@@ -11,22 +11,6 @@ build = ["npm", "run", "build"]
 run = ["npm", "run", "start"]
 publicDir = "dist/public"
 
-[[ports]]
-localPort = 3000
-externalPort = 80
-
-[[ports]]
-localPort = 5000
-externalPort = 9000
-
-[[ports]]
-localPort = 5904
-externalPort = 5000
-
-[[ports]]
-localPort = 8000
-externalPort = 8000
-
 [env]
 PORT = "5000"
 
@@ -68,3 +52,14 @@ META_BUSINESS_ACCOUNT_ID = "1179138877371660"
 TAQNYAT_SENDER_NAME = "MPBF"
 ADOBE_CLIENT_ID = "8aa5634f5c82489a944a48f93ef723da"
 ADOBE_ORGANIZATION_ID = "530624B567F2CE210A495EAC@AdobeOrg"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[[ports]]
+localPort = 8000
+externalPort = 8000
+
+[[ports]]
+localPort = 9000

@@ -50,6 +50,17 @@ The system is built with a modern stack emphasizing efficiency and scalability, 
 - **CORS**: Must support `Authorization` header and `Bearer` token for cross-origin requests from mobile.
 - **⚠️ DO NOT** change field names, data types, or remove existing fields without updating the contract doc and notifying the mobile developer.
 
+## PWA (Progressive Web App) Support
+
+The application supports PWA installation on mobile devices:
+- **Manifest**: `public/manifest.json` with app metadata, icons, and shortcuts
+- **Service Worker**: `public/sw.js` with network-first caching for API calls and cache-first for static assets
+- **Icons**: `public/icons/` contains PNG icons in sizes 72-512px
+- **Install Prompt**: `client/src/components/pwa/InstallPrompt.tsx` shows a native install banner on mobile
+- **HTML Meta Tags**: Apple touch icon, theme-color, mobile-web-app-capable meta tags in `client/index.html`
+- **Express Routes**: `server/index.ts` serves `sw.js`, `manifest.json`, and `/icons/` with correct headers
+- **i18n**: PWA translations in `pwa` namespace in both `ar.json` and `en.json`
+
 ## Recent Changes
 
 ### Bug Fixes - Server Crash & Error Message Leaks (March 12, 2026)
