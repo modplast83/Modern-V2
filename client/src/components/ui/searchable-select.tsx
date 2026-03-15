@@ -1,16 +1,8 @@
 import * as React from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, Search, X } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Button } from "./button";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "./command";
 
 export interface SearchableSelectOption {
   value: string;
@@ -41,7 +33,22 @@ export function SearchableSelect({
   triggerClassName,
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
+  const [search, setSearch] = React.useState("");
   const selectedLabel = options.find((o) => o.value === value)?.label;
+
+  const filtered = React.useMemo(() => {
+    if (!search.trim()) return options;
+    const q = search.toLowerCase();
+    return options.filter(
+      (o) =>
+        o.label.toLowerCase().includes(q) ||
+        o.value.toLowerCase().includes(q)
+    );
+  }, [options, search]);
+
+  React.useEffect(() => {
+    if (!open) setSearch("");
+  }, [open]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -68,26 +75,40 @@ export function SearchableSelect({
         style={{ width: "var(--radix-popover-trigger-width)" }}
         align="start"
       >
-        <Command dir="rtl" filter={(value, search) => {
-          const option = options.find((o) => o.value === value);
-          if (!option) return 0;
-          if (option.label.toLowerCase().includes(search.toLowerCase())) return 1;
-          if (option.value.toLowerCase().includes(search.toLowerCase())) return 1;
-          return 0;
-        }}>
-          <CommandInput placeholder={searchPlaceholder} className="text-right" />
-          <CommandList>
-            <CommandEmpty>{emptyText}</CommandEmpty>
-            <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
+        <div className="flex flex-col" dir="rtl">
+          <div className="flex items-center border-b px-3">
+            <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={searchPlaceholder}
+              className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 text-right"
+              autoFocus
+            />
+            {search && (
+              <button onClick={() => setSearch("")} className="p-1 hover:opacity-70">
+                <X className="h-3 w-3 opacity-50" />
+              </button>
+            )}
+          </div>
+          <div className="max-h-[250px] overflow-y-auto p-1">
+            {filtered.length === 0 ? (
+              <div className="py-6 text-center text-sm text-muted-foreground">
+                {emptyText}
+              </div>
+            ) : (
+              filtered.map((option) => (
+                <button
                   key={option.value}
-                  value={option.value}
-                  onSelect={(currentValue) => {
-                    onValueChange(currentValue === value ? "" : currentValue);
+                  type="button"
+                  onClick={() => {
+                    onValueChange(option.value === value ? "" : option.value);
                     setOpen(false);
                   }}
-                  className="flex items-center gap-2"
+                  className={cn(
+                    "relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground gap-2",
+                    value === option.value && "bg-accent text-accent-foreground"
+                  )}
                 >
                   <Check
                     className={cn(
@@ -96,11 +117,11 @@ export function SearchableSelect({
                     )}
                   />
                   <span className="flex-1 text-right">{option.label}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
       </PopoverContent>
     </Popover>
   );
