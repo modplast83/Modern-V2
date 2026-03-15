@@ -84,6 +84,7 @@ app.get("/manifest.json", (_req, res) => {
   const manifestPath = path.resolve(import.meta.dirname, "..", "public", "manifest.json");
   if (fs.existsSync(manifestPath)) {
     res.setHeader("Content-Type", "application/manifest+json");
+    res.setHeader("Cache-Control", "no-cache");
     res.sendFile(manifestPath);
   } else {
     res.status(404).send("Not found");
