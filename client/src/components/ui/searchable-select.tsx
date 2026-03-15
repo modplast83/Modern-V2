@@ -1,8 +1,6 @@
 import * as React from "react";
-import { Check, ChevronsUpDown, Search, X } from "lucide-react";
+import { Check, ChevronDown, Search, X } from "lucide-react";
 import { cn } from "../../lib/utils";
-import { Button } from "./button";
-import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 
 export interface SearchableSelectOption {
   value: string;
@@ -34,6 +32,7 @@ export function SearchableSelect({
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
+  const containerRef = React.useRef<HTMLDivElement>(null);
   const selectedLabel = options.find((o) => o.value === value)?.label;
 
   const filtered = React.useMemo(() => {
@@ -47,46 +46,62 @@ export function SearchableSelect({
   }, [options, search]);
 
   React.useEffect(() => {
-    if (!open) setSearch("");
+    if (!open) {
+      setSearch("");
+      return;
+    }
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          disabled={disabled}
+    <div ref={containerRef} className="relative" dir="rtl">
+      <button
+        type="button"
+        role="combobox"
+        aria-expanded={open}
+        disabled={disabled}
+        onClick={() => !disabled && setOpen(!open)}
+        className={cn(
+          "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+          !value && "text-muted-foreground",
+          triggerClassName,
+        )}
+      >
+        <span className="truncate text-right flex-1">
+          {selectedLabel || placeholder}
+        </span>
+        <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+      </button>
+
+      {open && (
+        <div
           className={cn(
-            "w-full justify-between font-normal",
-            !value && "text-muted-foreground",
-            triggerClassName,
+            "absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md",
+            className,
           )}
         >
-          <span className="truncate text-right flex-1">
-            {selectedLabel || placeholder}
-          </span>
-          <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50 mr-1" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        className={cn("p-0", className)}
-        style={{ width: "var(--radix-popover-trigger-width)" }}
-        align="start"
-      >
-        <div className="flex flex-col" dir="rtl">
           <div className="flex items-center border-b px-3">
             <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={searchPlaceholder}
-              className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 text-right"
+              className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground text-right"
               autoFocus
             />
             {search && (
-              <button onClick={() => setSearch("")} className="p-1 hover:opacity-70">
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => setSearch("")}
+                className="p-1 hover:opacity-70"
+              >
                 <X className="h-3 w-3 opacity-50" />
               </button>
             )}
@@ -98,10 +113,13 @@ export function SearchableSelect({
               </div>
             ) : (
               filtered.map((option) => (
-                <button
+                <div
                   key={option.value}
-                  type="button"
-                  onClick={() => {
+                  role="option"
+                  aria-selected={value === option.value}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     onValueChange(option.value === value ? "" : option.value);
                     setOpen(false);
                   }}
@@ -117,12 +135,12 @@ export function SearchableSelect({
                     )}
                   />
                   <span className="flex-1 text-right">{option.label}</span>
-                </button>
+                </div>
               ))
             )}
           </div>
         </div>
-      </PopoverContent>
-    </Popover>
+      )}
+    </div>
   );
 }
