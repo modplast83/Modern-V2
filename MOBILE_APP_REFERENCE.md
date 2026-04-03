@@ -34,20 +34,69 @@ Content-Type: application/json
 Body:
 {
   "username": "string",
-  "password": "string"
+  "password": "string",
+  "device_id": "string (optional)",
+  "device_name": "string (optional)",
+  "platform": "ios" | "android" | "web" (optional),
+  "app_version": "string (optional)"
 }
 
 Response (200):
 {
-  "success": true,
-  "token": "string",           // JWT أو session token
-  "user": { ...UserObject }
+  "token": "string",
+  "refresh_token": "string",
+  "expires_at": "ISO8601 string",
+  "refresh_expires_at": "ISO8601 string",
+  "user": {
+    "id": number,
+    "username": "string",
+    "display_name": "string",
+    "display_name_ar": "string",
+    "full_name": "string",
+    "phone": "string",
+    "email": "string",
+    "profile_image_url": "string",
+    "role_id": number,
+    "role_name": "string",
+    "role_name_ar": "string",
+    "section_id": number,
+    "permissions": ["string"]
+  }
 }
 
 Response (401):
 {
-  "success": false,
-  "message": "اسم المستخدم أو كلمة المرور غير صحيحة"
+  "message": "بيانات تسجيل الدخول غير صحيحة"
+}
+
+Response (429):  // Rate limited
+{
+  "message": "تم تجاوز عدد محاولات تسجيل الدخول المسموحة...",
+  "retry_after_seconds": number
+}
+```
+
+### 2.1.1 تجديد الجلسة (Refresh Token)
+```
+POST /api/mobile/refresh-token
+Content-Type: application/json
+
+Body:
+{
+  "refresh_token": "string"
+}
+
+Response (200):
+{
+  "token": "string",
+  "refresh_token": "string",
+  "expires_at": "ISO8601 string",
+  "refresh_expires_at": "ISO8601 string"
+}
+
+Response (401):
+{
+  "message": "الجلسة منتهية. يرجى تسجيل الدخول مرة أخرى"
 }
 ```
 
@@ -99,13 +148,65 @@ Response (200):
 ```
 POST /api/logout        // Web
 POST /api/mobile/logout  // Mobile
+Authorization: Bearer <token>
+Body (optional):
+{
+  "device_token": "string"  // FCM token to unregister on logout
+}
 ```
 
-### 2.5 ملاحظات المصادقة للجوال
-- جميع الطلبات المحمية تتطلب `requireAuth` middleware
-- أرسل الـ Cookie أو Token في كل طلب
-- بعض الـ endpoints تتطلب صلاحيات محددة عبر `requirePermission`
-- الجلسة محفوظة في PostgreSQL (تبقى بعد إعادة تشغيل الخادم)
+### 2.5 إدارة الجلسات (Session Management)
+```
+GET /api/mobile/sessions
+Authorization: Bearer <token>
+
+Response:
+{
+  "data": [{
+    "id": number,
+    "device_id": "string",
+    "device_name": "string",
+    "platform": "ios" | "android" | "web",
+    "app_version": "string",
+    "ip_address": "string",
+    "last_active_at": "ISO8601",
+    "created_at": "ISO8601",
+    "is_active": true
+  }]
+}
+
+DELETE /api/mobile/sessions/:id  // Terminate specific session
+Authorization: Bearer <token>
+```
+
+### 2.6 تسجيل جهاز الإشعارات (Push Notification Token)
+```
+POST /api/mobile/device-token
+Authorization: Bearer <token>
+Body:
+{
+  "device_token": "string",     // FCM token
+  "platform": "ios" | "android" | "web",
+  "device_id": "string (optional)",
+  "device_name": "string (optional)",
+  "app_version": "string (optional)"
+}
+
+DELETE /api/mobile/device-token
+Authorization: Bearer <token>
+Body:
+{
+  "device_token": "string"
+}
+```
+
+### 2.7 ملاحظات المصادقة للجوال
+- Access token مدته 24 ساعة، refresh token مدته 90 يوم
+- الـ tokens مخزنة كـ SHA-256 hash في قاعدة البيانات
+- عند انتهاء access token استخدم `POST /api/mobile/refresh-token`
+- تحديد عدد محاولات الدخول: 10 محاولات كل 15 دقيقة
+- الجلسات محفوظة في PostgreSQL (تبقى بعد إعادة تشغيل الخادم)
+- أرسل `Authorization: Bearer <token>` في كل طلب محمي
 
 ---
 
@@ -1788,6 +1889,92 @@ Response: { status: "ok", timestamp: string }
 // حالة الجوال
 GET /api/mobile/status
 // بدون مصادقة
+Response: {
+  status: "online",
+  version: "2.0.0",
+  api_version: "v2",
+  features: [...],
+  auth: { token_expiry_hours, refresh_token_expiry_days, ... }
+}
+```
+
+---
+
+### 5.32 واجهات الجوال المحسّنة (Mobile-Optimized APIs)
+
+```
+// لوحة التحكم المختصرة
+GET /api/mobile/dashboard
+Auth: requireAuth
+Response: {
+  orders: { total, waiting, in_production, completed },
+  production: { total, active, completed },
+  machines: { total, active, maintenance, down },
+  today_attendance: { status, check_in_time, check_out_time } | null,
+  unread_notifications: number
+}
+
+// بيانات المزامنة
+GET /api/mobile/sync/metadata
+Auth: requireAuth
+Response: {
+  data: {
+    "orders": { count: number, last_updated: "ISO8601" | null },
+    "production_orders": { ... },
+    "rolls": { ... },
+    ...
+  },
+  server_time: "ISO8601"
+}
+
+// مزامنة الحضور (دفعة واحدة)
+POST /api/mobile/sync/attendance
+Auth: requireAuth
+Body: {
+  records: [{
+    date: "YYYY-MM-DD",
+    status: "string",
+    check_in_time: "string",
+    check_out_time: "string",
+    location_accuracy: "string",
+    distance_from_factory: "string",
+    device_info: "string",
+    notes: "string",
+    shift_type: "string",
+    client_id: "string"
+  }]
+}
+Response: {
+  data: [{ client_id, status: "created"|"updated"|"error", server_id?, error? }],
+  synced: number,
+  errors: number
+}
+// ملاحظة: user_id يُجبر على المستخدم الحالي، فقط Admin يمكنه تحديد user_id مختلف
+
+// قائمة الانتظار للإجراءات
+POST /api/mobile/sync/actions
+Auth: requireAuth
+Body: {
+  actions: [{
+    action_type: "create"|"update"|"delete",
+    entity_type: "string",
+    entity_data: { ... },
+    client_timestamp: "ISO8601",
+    client_id: "string"
+  }]
+}
+Response: { data: [...], queued: number, errors: number }
+
+// رفع صورة
+POST /api/mobile/upload/image
+Auth: requireAuth
+Content-Type: multipart/form-data
+Fields: image (file), purpose?, entity_type?, entity_id?
+Limits: 10MB max, JPEG/PNG/WebP/HEIC only
+Response: {
+  success: true,
+  image: { data_url, mimetype, size, original_name, purpose, entity_type, entity_id }
+}
 
 // التنبيهات
 GET /api/alerts

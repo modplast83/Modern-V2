@@ -539,7 +539,7 @@ function sanitizeResponseForLogging(response: any): any {
       // Existing database: verify critical tables, skip push to preserve performance
       console.log("✅ قاعدة البيانات موجودة - التحقق من الجداول الأساسية...");
 
-      const criticalTables = ["users", "system_settings", "roles", "face_registrations"];
+      const criticalTables = ["users", "system_settings", "roles", "face_registrations", "mobile_sessions", "mobile_device_tokens", "mobile_sync_queue"];
       for (const tableName of criticalTables) {
         try {
           await db.execute(sql`SELECT 1 FROM ${sql.identifier(tableName)} LIMIT 1`);

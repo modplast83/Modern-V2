@@ -325,9 +325,19 @@ The AI smart agent now has full database interaction capabilities:
 - `POST /api/logout` — Session logout
 - `GET /api/me` — Current user with role/permissions
 - `GET /api/auth/user` — Replit Auth user resolution
-- `POST /api/mobile/login` — Mobile Bearer token login
-- `POST /api/mobile/logout` — Revoke mobile token
-- `GET /api/mobile/status` — Public health check
+- `POST /api/mobile/login` — Mobile login with device info, returns access + refresh tokens
+- `POST /api/mobile/refresh-token` — Refresh expired access token
+- `POST /api/mobile/logout` — Revoke session + unregister device token
+- `GET /api/mobile/status` — Public health check with feature list
+- `GET /api/mobile/sessions` — List active sessions for user
+- `DELETE /api/mobile/sessions/:id` — Terminate specific session
+- `POST /api/mobile/device-token` — Register FCM push notification token
+- `DELETE /api/mobile/device-token` — Unregister device token
+- `GET /api/mobile/dashboard` — Lightweight dashboard summary
+- `GET /api/mobile/sync/metadata` — Table counts and last-updated timestamps
+- `POST /api/mobile/sync/attendance` — Batch sync offline attendance records
+- `POST /api/mobile/sync/actions` — Queue offline actions for processing
+- `POST /api/mobile/upload/image` — Upload image (max 10MB, JPEG/PNG/WebP/HEIC)
 
 ### Orders & Production
 - `GET/POST /api/orders` — CRUD orders
@@ -430,7 +440,7 @@ The AI smart agent now has full database interaction capabilities:
 ### Auth Flow
 1. **Web Login**: `POST /api/login` → bcrypt password check → session cookie with userId, roleName, permissions
 2. **Replit Auth**: OpenID Connect callback → `GET /api/auth/user` → auto-create user if new
-3. **Mobile Login**: `POST /api/mobile/login` → bcrypt check → Bearer token (30-day expiry, in-memory store)
+3. **Mobile Login**: `POST /api/mobile/login` → bcrypt check → DB-backed session with hashed access token (24h) + refresh token (90d), rate-limited (10 attempts/15min)
 
 ### Permission System
 - Permissions defined in `shared/permissions.ts` (~86 permission keys)
@@ -509,9 +519,15 @@ Customer Order → Production Order(s) → Film Stage → Printing Stage → Cut
 
 ## Mobile App Integration
 
-- **API Contract**: `attached_assets/MOBILE_APP_API_CONTRACT.md`
-- **Auth**: Bearer token via `POST /api/mobile/login`, 30-day expiry
-- **Token Store**: In-memory Map in `session-auth.ts` with hourly expired token cleanup
+- **API Contract**: `attached_assets/MOBILE_APP_API_CONTRACT.md` and `MOBILE_APP_REFERENCE.md`
+- **Auth**: DB-backed sessions via `POST /api/mobile/login`, access token 24h + refresh token 90d
+- **Token Store**: PostgreSQL `mobile_sessions` table, tokens stored as SHA-256 hashes
+- **Refresh Flow**: `POST /api/mobile/refresh-token` rotates both tokens, invalidates old session
+- **Push Notifications**: FCM device tokens stored in `mobile_device_tokens` table (ios/android/web)
+- **Offline Sync**: `POST /api/mobile/sync/attendance` (batch), `POST /api/mobile/sync/actions` (queue)
+- **File Upload**: `POST /api/mobile/upload/image` with multer limits (10MB, JPEG/PNG/WebP/HEIC)
+- **Rate Limiting**: Mobile login rate-limited to 10 attempts per 15 minutes per username
+- **Security**: SHA-256 hashed tokens in DB, IDOR-safe attendance sync (admin-only cross-user), multer pre-buffering limits
 - **CORS**: Allows Expo dev origins, Replit domains, and null Origin (mobile apps)
 - **Data Rules**: Decimals returned as STRING. Customer/Machine IDs are STRING. Order status uses `waiting` (not `pending`).
 - **Response Format**: Mixed — some endpoints return `{data:[], success}`, others return raw arrays. Mobile app handles both patterns.

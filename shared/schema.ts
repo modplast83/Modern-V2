@@ -3656,3 +3656,50 @@ export const face_registrations = pgTable("face_registrations", {
 });
 
 export type FaceRegistration = typeof face_registrations.$inferSelect;
+
+export const mobile_device_tokens = pgTable("mobile_device_tokens", {
+  id: serial("id").primaryKey(),
+  user_id: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  device_token: varchar("device_token", { length: 500 }).notNull(),
+  platform: varchar("platform", { length: 20 }).notNull(),
+  device_id: varchar("device_id", { length: 255 }),
+  device_name: varchar("device_name", { length: 200 }),
+  app_version: varchar("app_version", { length: 20 }),
+  is_active: boolean("is_active").default(true),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+export type MobileDeviceToken = typeof mobile_device_tokens.$inferSelect;
+
+export const mobile_sessions = pgTable("mobile_sessions", {
+  id: serial("id").primaryKey(),
+  user_id: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  token: varchar("token", { length: 128 }).notNull().unique(),
+  refresh_token: varchar("refresh_token", { length: 128 }).notNull().unique(),
+  device_id: varchar("device_id", { length: 255 }),
+  device_name: varchar("device_name", { length: 200 }),
+  platform: varchar("platform", { length: 20 }),
+  app_version: varchar("app_version", { length: 20 }),
+  ip_address: varchar("ip_address", { length: 45 }),
+  last_active_at: timestamp("last_active_at").defaultNow(),
+  expires_at: timestamp("expires_at").notNull(),
+  refresh_expires_at: timestamp("refresh_expires_at").notNull(),
+  is_active: boolean("is_active").default(true),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+export type MobileSession = typeof mobile_sessions.$inferSelect;
+
+export const mobile_sync_queue = pgTable("mobile_sync_queue", {
+  id: serial("id").primaryKey(),
+  user_id: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  action_type: varchar("action_type", { length: 50 }).notNull(),
+  entity_type: varchar("entity_type", { length: 50 }).notNull(),
+  entity_data: jsonb("entity_data").notNull(),
+  client_timestamp: timestamp("client_timestamp").notNull(),
+  server_timestamp: timestamp("server_timestamp").defaultNow(),
+  status: varchar("status", { length: 20 }).default("pending"),
+  error_message: text("error_message"),
+  resolved_at: timestamp("resolved_at"),
+});

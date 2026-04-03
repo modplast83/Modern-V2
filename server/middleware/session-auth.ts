@@ -1,6 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import crypto from "crypto";
 import { storage } from "../storage";
+import { db } from "../db";
+import { mobile_sessions } from "@shared/schema";
+import { eq, and, gt } from "drizzle-orm";
 
 declare module "express-serve-static-core" {
   interface Request {
@@ -60,6 +63,92 @@ export function revokeMobileToken(token: string): void {
   mobileTokens.delete(token);
 }
 
+const ACCESS_TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000;
+const REFRESH_TOKEN_EXPIRY_MS = 90 * 24 * 60 * 60 * 1000;
+
+function hashToken(token: string): string {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+export async function createMobileSession(userId: number, deviceInfo: {
+  device_id?: string;
+  device_name?: string;
+  platform?: string;
+  app_version?: string;
+  ip_address?: string;
+}): Promise<{ token: string; refresh_token: string; expires_at: Date; refresh_expires_at: Date }> {
+  const token = crypto.randomBytes(48).toString("hex");
+  const refreshToken = crypto.randomBytes(48).toString("hex");
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + ACCESS_TOKEN_EXPIRY_MS);
+  const refreshExpiresAt = new Date(now.getTime() + REFRESH_TOKEN_EXPIRY_MS);
+
+  await db.insert(mobile_sessions).values({
+    user_id: userId,
+    token: hashToken(token),
+    refresh_token: hashToken(refreshToken),
+    device_id: deviceInfo.device_id || null,
+    device_name: deviceInfo.device_name || null,
+    platform: deviceInfo.platform || null,
+    app_version: deviceInfo.app_version || null,
+    ip_address: deviceInfo.ip_address || null,
+    expires_at: expiresAt,
+    refresh_expires_at: refreshExpiresAt,
+    is_active: true,
+  });
+
+  return { token, refresh_token: refreshToken, expires_at: expiresAt, refresh_expires_at: refreshExpiresAt };
+}
+
+export async function refreshMobileSession(refreshToken: string): Promise<{ token: string; refresh_token: string; expires_at: Date; refresh_expires_at: Date } | null> {
+  const hashedRefresh = hashToken(refreshToken);
+  const [session] = await db.select().from(mobile_sessions)
+    .where(and(
+      eq(mobile_sessions.refresh_token, hashedRefresh),
+      eq(mobile_sessions.is_active, true),
+      gt(mobile_sessions.refresh_expires_at, new Date())
+    )).limit(1);
+
+  if (!session) return null;
+
+  await db.update(mobile_sessions)
+    .set({ is_active: false })
+    .where(eq(mobile_sessions.id, session.id));
+
+  return createMobileSession(session.user_id, {
+    device_id: session.device_id || undefined,
+    device_name: session.device_name || undefined,
+    platform: session.platform || undefined,
+    app_version: session.app_version || undefined,
+    ip_address: session.ip_address || undefined,
+  });
+}
+
+export async function revokeMobileSession(token: string): Promise<void> {
+  const hashedToken = hashToken(token);
+  await db.update(mobile_sessions)
+    .set({ is_active: false })
+    .where(eq(mobile_sessions.token, hashedToken));
+}
+
+async function getUserIdFromDbToken(token: string): Promise<number | null> {
+  const hashedToken = hashToken(token);
+  const [session] = await db.select().from(mobile_sessions)
+    .where(and(
+      eq(mobile_sessions.token, hashedToken),
+      eq(mobile_sessions.is_active, true),
+      gt(mobile_sessions.expires_at, new Date())
+    )).limit(1);
+
+  if (!session) return null;
+
+  await db.update(mobile_sessions)
+    .set({ last_active_at: new Date() })
+    .where(eq(mobile_sessions.id, session.id));
+
+  return session.user_id;
+}
+
 function getUserIdFromToken(token: string): number | null {
   const entry = mobileTokens.get(token);
   if (!entry) return null;
@@ -70,26 +159,32 @@ function getUserIdFromToken(token: string): number | null {
   return entry.userId;
 }
 
-// Middleware to populate req.user from session
 export async function populateUserFromSession(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.slice(7);
-    const userId = getUserIdFromToken(token);
-    if (userId) {
+
+    const inMemoryUserId = getUserIdFromToken(token);
+    if (inMemoryUserId) {
       try {
-        const user = await resolveUserById(userId);
-        if (user) {
-          req.user = user;
-        }
-      } catch (e) {
-        // continue without user
-      }
+        const user = await resolveUserById(inMemoryUserId);
+        if (user) req.user = user;
+      } catch (e) {}
       return next();
     }
+
+    try {
+      const dbUserId = await getUserIdFromDbToken(token);
+      if (dbUserId) {
+        const user = await resolveUserById(dbUserId);
+        if (user) req.user = user;
+        return next();
+      }
+    } catch (e) {}
+
+    return next();
   }
 
-  // Skip if no session or no userId in session
   if (!req.session?.userId) {
     return next();
   }
