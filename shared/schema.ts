@@ -3199,6 +3199,26 @@ export const insertAiAgentKnowledgeSchema = createInsertSchema(ai_agent_knowledg
   updated_at: true,
 });
 
+export const ai_agent_feature_instructions = pgTable("ai_agent_feature_instructions", {
+  id: serial("id").primaryKey(),
+  feature_name: varchar("feature_name", { length: 255 }).notNull(),
+  instructions: text("instructions").notNull(),
+  is_active: boolean("is_active").default(true).notNull(),
+  priority: integer("priority").default(0).notNull(),
+  created_at: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updated_at: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  created_by: integer("created_by").references(() => users.id),
+});
+
+export type AiAgentFeatureInstruction = typeof ai_agent_feature_instructions.$inferSelect;
+export type InsertAiAgentFeatureInstruction = typeof ai_agent_feature_instructions.$inferInsert;
+
+export const insertAiAgentFeatureInstructionSchema = createInsertSchema(ai_agent_feature_instructions).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+
 // ===== نماذج عروض الأسعار =====
 
 export const quote_templates = pgTable("quote_templates", {

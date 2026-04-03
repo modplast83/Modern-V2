@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { requireAuth } from "./middleware/auth";
 import OpenAI from "openai";
 import { db } from "./db";
-import { orders, production_orders, rolls, quotes, quote_items, customers, customer_products, categories, ai_agent_settings, ai_agent_knowledge, quote_templates, users, machines, inventory, maintenance_requests, items } from "@shared/schema";
+import { orders, production_orders, rolls, quotes, quote_items, customers, customer_products, categories, ai_agent_settings, ai_agent_knowledge, ai_agent_feature_instructions, quote_templates, users, machines, inventory, maintenance_requests, items } from "@shared/schema";
 import { eq, desc, and, gte, lte, count, sum, like, or, sql, ilike } from "drizzle-orm";
 import multer, { FileFilterCallback } from "multer";
 import * as XLSX from "exceljs";
@@ -544,6 +544,7 @@ async function searchKnowledgeBase(query: string): Promise<Array<{ title: string
 async function getSystemPrompt(): Promise<string> {
   const settings = await db.select().from(ai_agent_settings);
   const knowledge = await db.select().from(ai_agent_knowledge).where(eq(ai_agent_knowledge.is_active, true));
+  const featureInstructions = await db.select().from(ai_agent_feature_instructions).where(eq(ai_agent_feature_instructions.is_active, true)).orderBy(desc(ai_agent_feature_instructions.priority));
   
   const agentName = settings.find(s => s.key === "agent_name")?.value || "المساعد الذكي";
   const companyName = settings.find(s => s.key === "company_name")?.value || "مصنع الأكياس البلاستيكية";
@@ -682,6 +683,7 @@ ${defaultGreeting ? `رسالة الترحيب: ${defaultGreeting}\n` : ""}
 3. احفظ المعلومات المهمة بـ add_to_knowledge_base
 
 ${customInstructions ? `### تعليمات إضافية:\n${customInstructions}\n` : ""}
+${featureInstructions.length > 0 ? `### تعليمات الخصائص المسبقة:\n${featureInstructions.map(fi => `**${fi.feature_name}:**\n${fi.instructions}`).join("\n\n")}\n` : ""}
 ${knowledgeText}
 
 قم بالرد باللغة نفسها التي يستخدمها المستخدم (عربي أو إنجليزي). كن دقيقاً في الحسابات ومفيداً واحترافياً.`;
@@ -3864,6 +3866,68 @@ export function registerAiAgentRoutes(app: Express): void {
     } catch (error) {
       console.error("Error deleting knowledge:", error);
       res.status(500).json({ error: "فشل في الحذف" });
+    }
+  });
+
+  // ===== تعليمات الخصائص =====
+  app.get("/api/ai-agent/feature-instructions", requireAuth, async (_req: Request, res: Response) => {
+    try {
+      const instructions = await db.select().from(ai_agent_feature_instructions).orderBy(desc(ai_agent_feature_instructions.priority), desc(ai_agent_feature_instructions.created_at));
+      res.json(instructions);
+    } catch (error) {
+      console.error("Error fetching feature instructions:", error);
+      res.status(500).json({ error: "فشل في جلب تعليمات الخصائص" });
+    }
+  });
+
+  app.post("/api/ai-agent/feature-instructions", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { feature_name, instructions, priority } = req.body;
+      if (!feature_name || !instructions) {
+        return res.status(400).json({ error: "اسم الخاصية والتعليمات مطلوبة" });
+      }
+      const [newInstruction] = await db.insert(ai_agent_feature_instructions).values({
+        feature_name,
+        instructions,
+        priority: priority || 0,
+        is_active: true,
+      }).returning();
+      res.json(newInstruction);
+    } catch (error) {
+      console.error("Error adding feature instruction:", error);
+      res.status(500).json({ error: "فشل في إضافة تعليمات الخاصية" });
+    }
+  });
+
+  app.put("/api/ai-agent/feature-instructions/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id) || id <= 0) {
+        return res.status(400).json({ error: "معرف غير صالح" });
+      }
+      const { feature_name, instructions, is_active, priority } = req.body;
+      const [updated] = await db.update(ai_agent_feature_instructions)
+        .set({ feature_name, instructions, is_active, priority, updated_at: new Date() })
+        .where(eq(ai_agent_feature_instructions.id, id))
+        .returning();
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating feature instruction:", error);
+      res.status(500).json({ error: "فشل في تحديث تعليمات الخاصية" });
+    }
+  });
+
+  app.delete("/api/ai-agent/feature-instructions/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id) || id <= 0) {
+        return res.status(400).json({ error: "معرف غير صالح" });
+      }
+      await db.delete(ai_agent_feature_instructions).where(eq(ai_agent_feature_instructions.id, id));
+      res.json({ success: true, message: "تم حذف تعليمات الخاصية بنجاح" });
+    } catch (error) {
+      console.error("Error deleting feature instruction:", error);
+      res.status(500).json({ error: "فشل في حذف تعليمات الخاصية" });
     }
   });
 

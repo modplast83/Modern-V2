@@ -13,7 +13,7 @@ import { Switch } from "../components/ui/switch";
 import { Label } from "../components/ui/label";
 import { useToast } from "../hooks/use-toast";
 import { apiRequest } from "../lib/queryClient";
-import { Plus, Edit, Trash2, Save, Settings, BookOpen, Sparkles, FileText } from "lucide-react";
+import { Plus, Edit, Trash2, Save, Settings, BookOpen, Sparkles, FileText, Lightbulb } from "lucide-react";
 
 interface Setting {
   id: number;
@@ -30,6 +30,16 @@ interface Knowledge {
   content: string;
   category: string;
   is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface FeatureInstruction {
+  id: number;
+  feature_name: string;
+  instructions: string;
+  is_active: boolean;
+  priority: number;
   created_at: string;
   updated_at: string;
 }
@@ -71,6 +81,9 @@ export default function AiAgentSettings() {
     category: ""
   });
   const [editingTemplate, setEditingTemplate] = useState<QuoteTemplate | null>(null);
+  const [isAddFeatureDialogOpen, setIsAddFeatureDialogOpen] = useState(false);
+  const [newFeatureInstruction, setNewFeatureInstruction] = useState({ feature_name: "", instructions: "", priority: 0 });
+  const [editingFeatureInstruction, setEditingFeatureInstruction] = useState<FeatureInstruction | null>(null);
 
   const { data: settings = [], isLoading: loadingSettings } = useQuery<Setting[]>({
     queryKey: ["/api/ai-agent/settings"]
@@ -82,6 +95,10 @@ export default function AiAgentSettings() {
 
   const { data: templates = [], isLoading: loadingTemplates } = useQuery<QuoteTemplate[]>({
     queryKey: ["/api/quote-templates"]
+  });
+
+  const { data: featureInstructions = [], isLoading: loadingFeatureInstructions } = useQuery<FeatureInstruction[]>({
+    queryKey: ["/api/ai-agent/feature-instructions"]
   });
 
   const updateSettingMutation = useMutation({
@@ -161,6 +178,39 @@ export default function AiAgentSettings() {
     }
   });
 
+  const addFeatureInstructionMutation = useMutation({
+    mutationFn: async (data: { feature_name: string; instructions: string; priority: number }) => {
+      return apiRequest("/api/ai-agent/feature-instructions", { method: "POST", body: JSON.stringify(data) });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-agent/feature-instructions"] });
+      setNewFeatureInstruction({ feature_name: "", instructions: "", priority: 0 });
+      setIsAddFeatureDialogOpen(false);
+      toast({ title: t("aiAgent.toasts.added"), description: t("aiAgent.toasts.featureInstructionAdded") });
+    }
+  });
+
+  const updateFeatureInstructionMutation = useMutation({
+    mutationFn: async (data: FeatureInstruction) => {
+      return apiRequest(`/api/ai-agent/feature-instructions/${data.id}`, { method: "PUT", body: JSON.stringify(data) });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-agent/feature-instructions"] });
+      setEditingFeatureInstruction(null);
+      toast({ title: t("aiAgent.toasts.updated"), description: t("aiAgent.toasts.featureInstructionUpdated") });
+    }
+  });
+
+  const deleteFeatureInstructionMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest(`/api/ai-agent/feature-instructions/${id}`, { method: "DELETE" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-agent/feature-instructions"] });
+      toast({ title: t("aiAgent.toasts.deleted"), description: t("aiAgent.toasts.featureInstructionDeleted") });
+    }
+  });
+
   const categoryLabels: Record<string, string> = {
     general: t("aiAgent.categories.general"),
     products: t("aiAgent.categories.products"),
@@ -191,10 +241,14 @@ export default function AiAgentSettings() {
         </div>
 
         <Tabs defaultValue="settings" dir="rtl">
-          <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsList className="grid w-full grid-cols-4 mb-6">
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               {t("aiAgent.tabs.settings")}
+            </TabsTrigger>
+            <TabsTrigger value="feature-instructions" className="flex items-center gap-2">
+              <Lightbulb className="h-4 w-4" />
+              {t("aiAgent.tabs.featureInstructions")}
             </TabsTrigger>
             <TabsTrigger value="knowledge" className="flex items-center gap-2">
               <BookOpen className="h-4 w-4" />
@@ -296,6 +350,180 @@ export default function AiAgentSettings() {
                     </Button>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="feature-instructions">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>{t("aiAgent.featureInstructions.title")}</CardTitle>
+                  <CardDescription>{t("aiAgent.featureInstructions.description")}</CardDescription>
+                </div>
+                <Dialog open={isAddFeatureDialogOpen} onOpenChange={setIsAddFeatureDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="h-4 w-4 ml-2" />
+                      {t("aiAgent.featureInstructions.addInstruction")}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-lg" dir="rtl">
+                    <DialogHeader>
+                      <DialogTitle>{t("aiAgent.featureInstructions.addNewInstruction")}</DialogTitle>
+                      <DialogDescription>{t("aiAgent.featureInstructions.addInstructionDescription")}</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 mt-4">
+                      <div>
+                        <Label>{t("aiAgent.featureInstructions.featureName")}</Label>
+                        <Input
+                          value={newFeatureInstruction.feature_name}
+                          onChange={(e) => setNewFeatureInstruction({ ...newFeatureInstruction, feature_name: e.target.value })}
+                          placeholder={t("aiAgent.featureInstructions.featureNamePlaceholder")}
+                        />
+                      </div>
+                      <div>
+                        <Label>{t("aiAgent.featureInstructions.instructions")}</Label>
+                        <Textarea
+                          className="min-h-[200px]"
+                          value={newFeatureInstruction.instructions}
+                          onChange={(e) => setNewFeatureInstruction({ ...newFeatureInstruction, instructions: e.target.value })}
+                          placeholder={t("aiAgent.featureInstructions.instructionsPlaceholder")}
+                        />
+                      </div>
+                      <div>
+                        <Label>{t("aiAgent.featureInstructions.priority")}</Label>
+                        <Input
+                          type="number"
+                          value={newFeatureInstruction.priority}
+                          onChange={(e) => setNewFeatureInstruction({ ...newFeatureInstruction, priority: parseInt(e.target.value) || 0 })}
+                          min={0}
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">{t("aiAgent.featureInstructions.priorityHelp")}</p>
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => setIsAddFeatureDialogOpen(false)}>
+                          {t("common.cancel")}
+                        </Button>
+                        <Button
+                          onClick={() => addFeatureInstructionMutation.mutate(newFeatureInstruction)}
+                          disabled={addFeatureInstructionMutation.isPending || !newFeatureInstruction.feature_name || !newFeatureInstruction.instructions}
+                        >
+                          {t("aiAgent.featureInstructions.add")}
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
+              <CardContent>
+                {loadingFeatureInstructions ? (
+                  <div className="text-center py-8 text-muted-foreground">{t("aiAgent.featureInstructions.loading")}</div>
+                ) : featureInstructions.length === 0 ? (
+                  <div className="text-center py-12 border-2 border-dashed rounded-lg">
+                    <Lightbulb className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">{t("aiAgent.featureInstructions.noInstructions")}</p>
+                    <p className="text-sm text-muted-foreground">{t("aiAgent.featureInstructions.noInstructionsDesc")}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {featureInstructions.map((item) => (
+                      <div
+                        key={item.id}
+                        className={`border rounded-lg p-4 ${!item.is_active ? "opacity-50" : ""}`}
+                      >
+                        {editingFeatureInstruction?.id === item.id ? (
+                          <div className="space-y-4">
+                            <div>
+                              <Label>{t("aiAgent.featureInstructions.featureName")}</Label>
+                              <Input
+                                value={editingFeatureInstruction.feature_name}
+                                onChange={(e) => setEditingFeatureInstruction({ ...editingFeatureInstruction, feature_name: e.target.value })}
+                              />
+                            </div>
+                            <div>
+                              <Label>{t("aiAgent.featureInstructions.instructions")}</Label>
+                              <Textarea
+                                className="min-h-[150px]"
+                                value={editingFeatureInstruction.instructions}
+                                onChange={(e) => setEditingFeatureInstruction({ ...editingFeatureInstruction, instructions: e.target.value })}
+                              />
+                            </div>
+                            <div>
+                              <Label>{t("aiAgent.featureInstructions.priority")}</Label>
+                              <Input
+                                type="number"
+                                value={editingFeatureInstruction.priority}
+                                onChange={(e) => setEditingFeatureInstruction({ ...editingFeatureInstruction, priority: parseInt(e.target.value) || 0 })}
+                                min={0}
+                              />
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-2">
+                                <Switch
+                                  checked={editingFeatureInstruction.is_active}
+                                  onCheckedChange={(checked) => setEditingFeatureInstruction({ ...editingFeatureInstruction, is_active: checked })}
+                                />
+                                <Label>{t("aiAgent.featureInstructions.active")}</Label>
+                              </div>
+                              <div className="flex-1" />
+                              <Button variant="outline" size="sm" onClick={() => setEditingFeatureInstruction(null)}>
+                                {t("common.cancel")}
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => updateFeatureInstructionMutation.mutate(editingFeatureInstruction)}
+                                disabled={updateFeatureInstructionMutation.isPending}
+                              >
+                                {t("common.save")}
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Lightbulb className="h-4 w-4 text-amber-500" />
+                                  <h4 className="font-medium">{item.feature_name}</h4>
+                                </div>
+                                {item.priority > 0 && (
+                                  <span className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded">
+                                    {t("aiAgent.featureInstructions.priority")}: {item.priority}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setEditingFeatureInstruction(item)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-destructive"
+                                  onClick={() => {
+                                    if (confirm(t("aiAgent.featureInstructions.confirmDelete"))) {
+                                      deleteFeatureInstructionMutation.mutate(item.id);
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap bg-muted/30 p-3 rounded-md">
+                              {item.instructions.length > 300 ? item.instructions.slice(0, 300) + "..." : item.instructions}
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

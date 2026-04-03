@@ -4988,7 +4988,10 @@
       "knowledgeDeleted": "تم حذف المعرفة بنجاح",
       "templateAdded": "تم إضافة النموذج بنجاح",
       "templateUpdated": "تم تحديث النموذج بنجاح",
-      "templateDeleted": "تم حذف النموذج بنجاح"
+      "templateDeleted": "تم حذف النموذج بنجاح",
+      "featureInstructionAdded": "تم إضافة تعليمات الخاصية بنجاح",
+      "featureInstructionUpdated": "تم تحديث تعليمات الخاصية بنجاح",
+      "featureInstructionDeleted": "تم حذف تعليمات الخاصية بنجاح"
     },
     "categories": {
       "general": "عام",
@@ -5041,7 +5044,27 @@
       "quotesHistory": "عروض الأسعار",
       "settings": "الإعدادات",
       "knowledge": "قاعدة المعرفة",
-      "templates": "نماذج الأسعار"
+      "templates": "نماذج الأسعار",
+      "featureInstructions": "تعليمات الخصائص"
+    },
+    "featureInstructions": {
+      "title": "تعليمات الخصائص",
+      "description": "حدد التعليمات المسبقة لكل خاصية من خصائص الوكيل الذكي",
+      "addInstruction": "إضافة تعليمات",
+      "addNewInstruction": "إضافة تعليمات خاصية جديدة",
+      "addInstructionDescription": "أضف اسم الخاصية وشرح كيفية عملها للوكيل الذكي",
+      "featureName": "اسم الخاصية",
+      "featureNamePlaceholder": "مثال: توليد تقرير رسمي",
+      "instructions": "التعليمات والشرح",
+      "instructionsPlaceholder": "اكتب شرحاً تفصيلياً لكيفية عمل هذه الخاصية والنقاط التي يجب أن يراعيها الوكيل...",
+      "priority": "الأولوية",
+      "priorityHelp": "كلما كان الرقم أعلى، كانت الأولوية أعلى",
+      "active": "مفعّل",
+      "noInstructions": "لا توجد تعليمات خصائص بعد",
+      "noInstructionsDesc": "أضف تعليمات مسبقة لتوجيه الوكيل الذكي في كيفية التعامل مع الخصائص المختلفة",
+      "loading": "جاري التحميل...",
+      "confirmDelete": "هل أنت متأكد من حذف هذه التعليمات؟",
+      "add": "إضافة"
     },
     "quotes": {
       "title": "عروض الأسعار",

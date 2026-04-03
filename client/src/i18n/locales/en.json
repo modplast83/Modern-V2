@@ -4486,7 +4486,10 @@
       "knowledgeDeleted": "Knowledge deleted successfully",
       "templateAdded": "Template added successfully",
       "templateUpdated": "Template updated successfully",
-      "templateDeleted": "Template deleted successfully"
+      "templateDeleted": "Template deleted successfully",
+      "featureInstructionAdded": "Feature instruction added successfully",
+      "featureInstructionUpdated": "Feature instruction updated successfully",
+      "featureInstructionDeleted": "Feature instruction deleted successfully"
     },
     "categories": {
       "general": "General",
@@ -4539,7 +4542,27 @@
       "quotesHistory": "Price Quotes",
       "settings": "Settings",
       "knowledge": "Knowledge Base",
-      "templates": "Quote Templates"
+      "templates": "Quote Templates",
+      "featureInstructions": "Feature Instructions"
+    },
+    "featureInstructions": {
+      "title": "Feature Instructions",
+      "description": "Define pre-set instructions for each AI agent feature",
+      "addInstruction": "Add Instructions",
+      "addNewInstruction": "Add New Feature Instructions",
+      "addInstructionDescription": "Add a feature name and explain how it should work for the AI agent",
+      "featureName": "Feature Name",
+      "featureNamePlaceholder": "Example: Official Report Generation",
+      "instructions": "Instructions & Description",
+      "instructionsPlaceholder": "Write a detailed explanation of how this feature works and the key points the agent should follow...",
+      "priority": "Priority",
+      "priorityHelp": "Higher number means higher priority",
+      "active": "Active",
+      "noInstructions": "No feature instructions yet",
+      "noInstructionsDesc": "Add pre-set instructions to guide the AI agent on how to handle different features",
+      "loading": "Loading...",
+      "confirmDelete": "Are you sure you want to delete this instruction?",
+      "add": "Add"
     },
     "quotes": {
       "title": "Quotes",
