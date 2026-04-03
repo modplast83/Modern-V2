@@ -12,3 +12,9 @@ id = "yV2DI1RIHMYUUtWbHew9s"
 uri = "file://performance-analysis-report.md"
 type = "text"
 title = "تقرير تحليل أداء التطبيق الشامل"
+
+[[outputs]]
+id = "1jRgGyVwzUTxQZ8g1KQfL"
+uri = "file://MOBILE_APP_REFERENCE.md"
+type = "text"
+title = "دليل مرجعي شامل لتطوير تطبيق الجوال - MPBF"
