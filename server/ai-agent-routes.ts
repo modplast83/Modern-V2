@@ -541,7 +541,13 @@ async function searchKnowledgeBase(query: string): Promise<Array<{ title: string
   }
 }
 
+let systemPromptCache: { prompt: string; timestamp: number } | null = null;
+const SYSTEM_PROMPT_CACHE_TTL = 60000;
+
 async function getSystemPrompt(): Promise<string> {
+  if (systemPromptCache && Date.now() - systemPromptCache.timestamp < SYSTEM_PROMPT_CACHE_TTL) {
+    return systemPromptCache.prompt;
+  }
   const settings = await db.select().from(ai_agent_settings);
   const knowledge = await db.select().from(ai_agent_knowledge).where(eq(ai_agent_knowledge.is_active, true));
   const featureInstructions = await db.select().from(ai_agent_feature_instructions).where(eq(ai_agent_feature_instructions.is_active, true)).orderBy(desc(ai_agent_feature_instructions.priority));
@@ -559,7 +565,7 @@ async function getSystemPrompt(): Promise<string> {
       knowledge.map(k => `**${k.title}** (${k.category}): ${k.content}`).join("\n\n");
   }
 
-  return `أنت ${agentName}، مساعد ذكي متقدم ومتكامل مع نظام إدارة الإنتاج لشركة ${companyName} (www.modplastic.com).
+  const result = `أنت ${agentName}، مساعد ذكي متقدم ومتكامل مع نظام إدارة الإنتاج لشركة ${companyName} (www.modplastic.com).
 
 ### قدراتك الكاملة:
 1. **الطلبات والإنتاج**: الاستعلام عن الطلبات وأوامر الإنتاج والكميات المنتجة، وعرض قوائم الطلبات المفصلة مع التصفية والبحث
@@ -687,6 +693,8 @@ ${featureInstructions.length > 0 ? `### تعليمات الخصائص المسب
 ${knowledgeText}
 
 قم بالرد باللغة نفسها التي يستخدمها المستخدم (عربي أو إنجليزي). كن دقيقاً في الحسابات ومفيداً واحترافياً.`;
+  systemPromptCache = { prompt: result, timestamp: Date.now() };
+  return result;
 }
 
 const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [

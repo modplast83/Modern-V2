@@ -1260,15 +1260,42 @@ export class DatabaseStorage implements IStorage {
   async createProductionOrdersBatch(batch: InsertProductionOrder[]): Promise<any> {
     return withDatabaseErrorHandling(
       async () => {
-        const results = { successful: [], failed: [] };
-        for (const po of batch) {
-          try {
-            const created = await this.createProductionOrder(po);
-            results.successful.push(created);
-          } catch (e) {
-            results.failed.push({ order: po, error: (e as any).message });
+        const results: { successful: any[]; failed: any[] } = { successful: [], failed: [] };
+        
+        if (batch.length === 0) return results;
+
+        try {
+          const created = await db.transaction(async (tx) => {
+            await tx.execute(sql`SELECT pg_advisory_xact_lock(1001)`);
+
+            const maxResult = await tx.execute(
+              sql`SELECT MAX(CAST(SUBSTRING(production_order_number FROM 3) AS INTEGER)) as max_num
+                  FROM production_orders
+                  WHERE production_order_number ~ '^PO[0-9]+$'`
+            );
+            let nextNum = ((maxResult as any).rows?.[0]?.max_num || 0) + 1;
+
+            const valuesToInsert = batch.map((po) => {
+              const poNumber = `PO${(nextNum++).toString().padStart(3, "0")}`;
+              return { ...po, production_order_number: poNumber };
+            });
+
+            return await tx.insert(production_orders).values(valuesToInsert).returning();
+          });
+
+          results.successful = created;
+        } catch (e) {
+          for (const po of batch) {
+            try {
+              const created = await this.createProductionOrder(po);
+              results.successful.push(created);
+            } catch (err) {
+              results.failed.push({ order: po, error: (err as any).message });
+            }
           }
         }
+
+        invalidateProductionCache();
         return results;
       },
       "createProductionOrdersBatch",
@@ -1280,14 +1307,41 @@ export class DatabaseStorage implements IStorage {
     return withDatabaseErrorHandling(
       async () => {
         const results = { successful: [] as ProductionOrder[], failed: [] as Array<{ order: InsertProductionOrder; error: string }> };
-        for (const { data, finalQuantityKg } of batch) {
-          try {
-            const created = await this.createProductionOrder(data, { final_quantity_kg: finalQuantityKg });
-            results.successful.push(created);
-          } catch (e: any) {
-            results.failed.push({ order: data, error: e.message });
+        
+        if (batch.length === 0) return results;
+
+        try {
+          const created = await db.transaction(async (tx) => {
+            await tx.execute(sql`SELECT pg_advisory_xact_lock(1001)`);
+
+            const maxResult = await tx.execute(
+              sql`SELECT MAX(CAST(SUBSTRING(production_order_number FROM 3) AS INTEGER)) as max_num
+                  FROM production_orders
+                  WHERE production_order_number ~ '^PO[0-9]+$'`
+            );
+            let nextNum = ((maxResult as any).rows?.[0]?.max_num || 0) + 1;
+
+            const valuesToInsert = batch.map(({ data, finalQuantityKg }) => {
+              const poNumber = `PO${(nextNum++).toString().padStart(3, "0")}`;
+              return { ...data, production_order_number: poNumber, final_quantity_kg: finalQuantityKg.toString() };
+            });
+
+            return await tx.insert(production_orders).values(valuesToInsert).returning();
+          });
+
+          results.successful = created;
+        } catch (e) {
+          for (const { data, finalQuantityKg } of batch) {
+            try {
+              const created = await this.createProductionOrder(data, { final_quantity_kg: finalQuantityKg });
+              results.successful.push(created);
+            } catch (err: any) {
+              results.failed.push({ order: data, error: err.message });
+            }
           }
         }
+
+        invalidateProductionCache();
         return results;
       },
       "createProductionOrdersBatchWithFinalQty",
@@ -4856,30 +4910,41 @@ export class DatabaseStorage implements IStorage {
 
         const results = await query;
 
-        const enhancedOrders = await Promise.all(
-          results.map(async (order) => {
-            const productionOrdersList = await db
-              .select()
-              .from(production_orders)
-              .where(eq(production_orders.order_id, order.id));
+        if (results.length === 0) return [];
 
-            return {
-              ...order,
-              production_orders_count: productionOrdersList.length,
-              production_orders: productionOrdersList.map((po) => ({
-                id: po.id,
-                production_order_number: po.production_order_number,
-                quantity_kg: po.quantity_kg,
-                final_quantity_kg: po.final_quantity_kg,
-                produced_quantity_kg: po.produced_quantity_kg,
-                film_completion_percentage: po.film_completion_percentage,
-                printing_completion_percentage: po.printing_completion_percentage,
-                cutting_completion_percentage: po.cutting_completion_percentage,
-                status: po.status,
-              })),
-            };
+        const orderIds = results.map(o => o.id);
+        const allProductionOrders = await db
+          .select({
+            id: production_orders.id,
+            order_id: production_orders.order_id,
+            production_order_number: production_orders.production_order_number,
+            quantity_kg: production_orders.quantity_kg,
+            final_quantity_kg: production_orders.final_quantity_kg,
+            produced_quantity_kg: production_orders.produced_quantity_kg,
+            film_completion_percentage: production_orders.film_completion_percentage,
+            printing_completion_percentage: production_orders.printing_completion_percentage,
+            cutting_completion_percentage: production_orders.cutting_completion_percentage,
+            status: production_orders.status,
           })
-        );
+          .from(production_orders)
+          .where(inArray(production_orders.order_id, orderIds));
+
+        const poByOrderId = new Map<number, typeof allProductionOrders>();
+        for (const po of allProductionOrders) {
+          if (po.order_id != null) {
+            if (!poByOrderId.has(po.order_id)) poByOrderId.set(po.order_id, []);
+            poByOrderId.get(po.order_id)!.push(po);
+          }
+        }
+
+        const enhancedOrders = results.map(order => {
+          const pos = poByOrderId.get(order.id) || [];
+          return {
+            ...order,
+            production_orders_count: pos.length,
+            production_orders: pos,
+          };
+        });
 
         return enhancedOrders;
       },

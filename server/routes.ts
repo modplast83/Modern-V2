@@ -1187,11 +1187,13 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         JSON.stringify(req.body, null, 2),
       );
 
-      if (notificationService.metaWhatsApp) {
-        await notificationService.metaWhatsApp.handleWebhook(req.body);
-      }
-
       res.status(200).send("OK");
+
+      if (notificationService.metaWhatsApp) {
+        notificationService.metaWhatsApp.handleWebhook(req.body).catch((err: any) => {
+          logger.error("Error processing Meta webhook in background", err);
+        });
+      }
     } catch (error: any) {
       logger.error("Error processing Meta webhook", error);
       res.status(200).send("OK");
@@ -7889,14 +7891,35 @@ Do not include quotes or explanations.`;
 
       let savedCount = 0;
 
-      for (const record of records) {
-        const { date, status, check_in_time, check_out_time, notes } = record;
-        
-        // Check if record exists for this user and date
-        const existingRecords = await storage.getAttendanceByUserAndDateRange(userId, date, date);
-        const existing = existingRecords[0];
+      if (records.length === 0) {
+        return res.json({ success: true, message: "لا توجد سجلات لحفظها", savedCount: 0 });
+      }
 
-        // Parse times
+      const seenDates = new Set<string>();
+      const dedupedRecords = [];
+      for (const record of records) {
+        const dateStr = typeof record.date === 'string' ? record.date : new Date(record.date).toISOString().split('T')[0];
+        if (!seenDates.has(dateStr)) {
+          seenDates.add(dateStr);
+          dedupedRecords.push(record);
+        }
+      }
+
+      const allDates = dedupedRecords.map((r: any) => typeof r.date === 'string' ? r.date : new Date(r.date).toISOString().split('T')[0]);
+      const minDate = allDates.reduce((a: string, b: string) => a < b ? a : b);
+      const maxDate = allDates.reduce((a: string, b: string) => a > b ? a : b);
+      const existingRecords = await storage.getAttendanceByUserAndDateRange(userId, minDate, maxDate);
+      const existingByDate = new Map<string, any>();
+      for (const rec of existingRecords) {
+        const d = typeof rec.date === 'string' ? rec.date : new Date(rec.date).toISOString().split('T')[0];
+        existingByDate.set(d, rec);
+      }
+
+      for (const record of dedupedRecords) {
+        const { date, status, check_in_time, check_out_time, notes } = record;
+        const dateStr = typeof date === 'string' ? date : new Date(date).toISOString().split('T')[0];
+        const existing = existingByDate.get(dateStr);
+
         let checkInTime = null;
         let checkOutTime = null;
         
@@ -7912,7 +7935,6 @@ Do not include quotes or explanations.`;
           checkOutTime.setHours(hours, minutes, 0, 0);
         }
 
-        // Calculate work hours
         let workHours = null;
         if (checkInTime && checkOutTime) {
           workHours = (checkOutTime.getTime() - checkInTime.getTime()) / (1000 * 60 * 60);
@@ -7921,7 +7943,7 @@ Do not include quotes or explanations.`;
 
         const attendanceData = {
           user_id: userId,
-          date: typeof date === 'string' ? date : new Date(date).toISOString().split('T')[0],
+          date: dateStr,
           status: status || 'غائب',
           check_in_time: checkInTime,
           check_out_time: checkOutTime,
@@ -7930,10 +7952,8 @@ Do not include quotes or explanations.`;
         };
 
         if (existing) {
-          // Update existing record
           await storage.updateAttendance(existing.id, attendanceData);
         } else {
-          // Create new record
           await storage.createAttendance(attendanceData);
         }
         
