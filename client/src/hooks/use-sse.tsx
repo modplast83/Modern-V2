@@ -66,17 +66,26 @@ export function useSSE(eventHandlers?: SSEEventHandlers) {
     return Math.min(exponentialDelay, maxReconnectDelay);
   }, []);
 
-  // Play notification sound based on priority
+  const audioContextRef = useRef<AudioContext | null>(null);
+
+  const getAudioContext = useCallback(() => {
+    if (!audioContextRef.current || audioContextRef.current.state === "closed") {
+      audioContextRef.current = new (window.AudioContext ||
+        (window as any).webkitAudioContext)();
+    }
+    if (audioContextRef.current.state === "suspended") {
+      audioContextRef.current.resume();
+    }
+    return audioContextRef.current;
+  }, []);
+
   const playNotificationSound = useCallback(
     (priority: string, shouldPlaySound: boolean = true) => {
       if (!shouldPlaySound) return;
 
       try {
-        // Create audio context for playing notification sounds
-        const audioContext = new (window.AudioContext ||
-          (window as any).webkitAudioContext)();
+        const audioContext = getAudioContext();
 
-        // Different frequencies for different priorities
         const frequencies: Record<string, number> = {
           low: 300,
           normal: 400,
@@ -94,7 +103,6 @@ export function useSSE(eventHandlers?: SSEEventHandlers) {
         oscillator.frequency.value = frequency;
         oscillator.type = "sine";
 
-        // Volume based on priority
         const volume =
           priority === "urgent" ? 0.3 : priority === "high" ? 0.2 : 0.1;
         gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
@@ -106,29 +114,29 @@ export function useSSE(eventHandlers?: SSEEventHandlers) {
         oscillator.start(audioContext.currentTime);
         oscillator.stop(audioContext.currentTime + 0.5);
 
-        // Play multiple beeps for urgent notifications
         if (priority === "urgent") {
           setTimeout(() => {
-            const oscillator2 = audioContext.createOscillator();
-            const gainNode2 = audioContext.createGain();
+            const ctx = getAudioContext();
+            const oscillator2 = ctx.createOscillator();
+            const gainNode2 = ctx.createGain();
             oscillator2.connect(gainNode2);
-            gainNode2.connect(audioContext.destination);
+            gainNode2.connect(ctx.destination);
             oscillator2.frequency.value = frequency;
             oscillator2.type = "sine";
-            gainNode2.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode2.gain.setValueAtTime(0.3, ctx.currentTime);
             gainNode2.gain.exponentialRampToValueAtTime(
               0.01,
-              audioContext.currentTime + 0.3,
+              ctx.currentTime + 0.3,
             );
             oscillator2.start();
-            oscillator2.stop(audioContext.currentTime + 0.3);
+            oscillator2.stop(ctx.currentTime + 0.3);
           }, 600);
         }
       } catch (error) {
         console.warn("Could not play notification sound:", error);
       }
     },
-    [],
+    [getAudioContext],
   );
 
   // Clean up existing connection
@@ -350,7 +358,13 @@ export function useSSE(eventHandlers?: SSEEventHandlers) {
 
   // Cleanup on unmount
   useEffect(() => {
-    return cleanup;
+    return () => {
+      cleanup();
+      if (audioContextRef.current && audioContextRef.current.state !== "closed") {
+        audioContextRef.current.close().catch(() => {});
+        audioContextRef.current = null;
+      }
+    };
   }, [cleanup]);
 
   // Handle page visibility changes - reconnect when page becomes visible

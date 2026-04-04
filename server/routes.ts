@@ -289,6 +289,10 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
     }
   });
   
+  const webLoginAttempts = new Map<string, { count: number; lastAttempt: number }>();
+  const WEB_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+  const WEB_MAX_ATTEMPTS = 10;
+
   // Authentication routes
   app.post(
     "/api/login",
@@ -304,8 +308,23 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
             .json({ message: "اسم المستخدم وكلمة المرور مطلوبان" });
         }
 
+        const rateLimitKey = username.trim().toLowerCase();
+        const attempts = webLoginAttempts.get(rateLimitKey);
+        if (attempts) {
+          if (Date.now() - attempts.lastAttempt > WEB_RATE_LIMIT_WINDOW_MS) {
+            webLoginAttempts.delete(rateLimitKey);
+          } else if (attempts.count >= WEB_MAX_ATTEMPTS) {
+            return res.status(429).json({
+              message: "تم تجاوز عدد المحاولات المسموح. حاول مرة أخرى لاحقاً.",
+              retry_after_seconds: Math.ceil((WEB_RATE_LIMIT_WINDOW_MS - (Date.now() - attempts.lastAttempt)) / 1000)
+            });
+          }
+        }
+
         const user = await storage.getUserByUsername(username.trim());
         if (!user) {
+          const current = webLoginAttempts.get(rateLimitKey) || { count: 0, lastAttempt: 0 };
+          webLoginAttempts.set(rateLimitKey, { count: current.count + 1, lastAttempt: Date.now() });
           return res
             .status(401)
             .json({ message: "بيانات تسجيل الدخول غير صحيحة" });
@@ -314,6 +333,8 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         // Enhanced null checks for user properties
         if (!user.password) {
           logger.error("User found but password is null or undefined");
+          const current = webLoginAttempts.get(rateLimitKey) || { count: 0, lastAttempt: 0 };
+          webLoginAttempts.set(rateLimitKey, { count: current.count + 1, lastAttempt: Date.now() });
           return res
             .status(401)
             .json({ message: "بيانات تسجيل الدخول غير صحيحة" });
@@ -322,16 +343,22 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         // Check password using bcrypt for security
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
+          const current = webLoginAttempts.get(rateLimitKey) || { count: 0, lastAttempt: 0 };
+          webLoginAttempts.set(rateLimitKey, { count: current.count + 1, lastAttempt: Date.now() });
           return res
             .status(401)
             .json({ message: "بيانات تسجيل الدخول غير صحيحة" });
         }
 
         if (user.status !== "active") {
+          const current = webLoginAttempts.get(rateLimitKey) || { count: 0, lastAttempt: 0 };
+          webLoginAttempts.set(rateLimitKey, { count: current.count + 1, lastAttempt: Date.now() });
           return res
             .status(401)
             .json({ message: "بيانات تسجيل الدخول غير صحيحة" });
         }
+
+        webLoginAttempts.delete(rateLimitKey);
 
         // Get role information before saving session
         let roleName = "user";
@@ -6449,7 +6476,8 @@ Do not include quotes or explanations.`;
     } catch (error: any) {
       console.error("Error during setup:", error);
       setupInProgress = false;
-      res.status(500).json({ message: "خطأ في إعداد النظام: " + error.message });
+      console.error("Setup error details:", error.message);
+      res.status(500).json({ message: "خطأ في إعداد النظام. يرجى المحاولة مرة أخرى." });
     }
   });
 
