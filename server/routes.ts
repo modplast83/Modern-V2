@@ -2247,6 +2247,67 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
     }
   });
 
+  app.get("/api/orders/:id/enhanced", requireAuth, async (req, res) => {
+    try {
+      const orderId = parseInt(req.params.id);
+      if (!orderId || isNaN(orderId) || orderId <= 0) {
+        return res.status(400).json({ message: "معرف الطلب غير صحيح", success: false });
+      }
+
+      const orderResult = await db
+        .select({
+          id: orders.id,
+          order_number: orders.order_number,
+          customer_id: orders.customer_id,
+          customer_name: customers.name,
+          customer_name_ar: customers.name_ar,
+          customer_phone: customers.phone,
+          delivery_days: orders.delivery_days,
+          delivery_date: orders.delivery_date,
+          status: orders.status,
+          notes: orders.notes,
+          created_by: orders.created_by,
+          created_at: orders.created_at,
+        })
+        .from(orders)
+        .leftJoin(customers, eq(orders.customer_id, customers.id))
+        .where(eq(orders.id, orderId))
+        .limit(1);
+
+      if (orderResult.length === 0) {
+        return res.status(404).json({ message: "الطلب غير موجود", success: false });
+      }
+
+      const productionOrdersList = await db
+        .select({
+          id: production_orders.id,
+          order_id: production_orders.order_id,
+          production_order_number: production_orders.production_order_number,
+          quantity_kg: production_orders.quantity_kg,
+          final_quantity_kg: production_orders.final_quantity_kg,
+          produced_quantity_kg: production_orders.produced_quantity_kg,
+          film_completion_percentage: production_orders.film_completion_percentage,
+          printing_completion_percentage: production_orders.printing_completion_percentage,
+          cutting_completion_percentage: production_orders.cutting_completion_percentage,
+          status: production_orders.status,
+        })
+        .from(production_orders)
+        .where(eq(production_orders.order_id, orderId));
+
+      res.json({
+        success: true,
+        data: {
+          ...orderResult[0],
+          production_orders_count: productionOrdersList.length,
+          production_orders: productionOrdersList,
+        },
+      });
+    } catch (error) {
+      console.error("Enhanced order detail fetch error:", error);
+      res.status(500).json({ message: "خطأ في جلب تفاصيل الطلب", success: false });
+    }
+  });
+
   app.get("/api/my-orders", requireAuth, requirePermission('view_my_orders', 'manage_orders', 'admin'), async (req, res) => {
     try {
       const userId = (req as any).user?.id;
@@ -7504,7 +7565,7 @@ Do not include quotes or explanations.`;
   });
 
   // تسجيل الحضور مع تحقق الموقع الجغرافي المحسّن
-  app.post(["/api/attendance", "/api/attendance/check-in"], requireAuth, async (req, res) => {
+  app.post(["/api/attendance", "/api/attendance/check-in", "/api/attendance/check-out"], requireAuth, async (req, res) => {
     try {
       const isDevMode = process.env.NODE_ENV === 'development';
       

@@ -4962,7 +4962,49 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getFilmQueue(): Promise<any[]> {
-    return await db.select().from(production_orders).where(eq(production_orders.status, 'waiting_for_film')).orderBy(production_orders.id);
+    return withDatabaseErrorHandling(
+      async () => {
+        const result = await db
+          .select({
+            id: production_orders.id,
+            production_order_number: production_orders.production_order_number,
+            order_id: production_orders.order_id,
+            customer_product_id: production_orders.customer_product_id,
+            quantity_kg: production_orders.quantity_kg,
+            produced_quantity_kg: production_orders.produced_quantity_kg,
+            film_completion_percentage: production_orders.film_completion_percentage,
+            assigned_machine_id: production_orders.assigned_machine_id,
+            status: production_orders.status,
+            overrun_percentage: production_orders.overrun_percentage,
+            final_quantity_kg: production_orders.final_quantity_kg,
+            customer_name: customers.name,
+            customer_name_ar: customers.name_ar,
+            size_caption: customer_products.size_caption,
+            is_printed: customer_products.is_printed,
+            item_name: items.name,
+            item_name_ar: items.name_ar,
+          })
+          .from(production_orders)
+          .leftJoin(orders, eq(production_orders.order_id, orders.id))
+          .leftJoin(customers, eq(orders.customer_id, customers.id))
+          .leftJoin(customer_products, eq(production_orders.customer_product_id, customer_products.id))
+          .leftJoin(items, eq(customer_products.item_id, items.id))
+          .where(
+            or(
+              eq(production_orders.status, 'waiting_for_film'),
+              eq(production_orders.status, 'in_film_production'),
+            )
+          )
+          .orderBy(production_orders.id);
+
+        return result.map(row => ({
+          ...row,
+          product_info: `${row.item_name_ar || row.item_name || ''} - ${row.size_caption || ''}`.trim(),
+        }));
+      },
+      "getFilmQueue",
+      "جلب طابور الأفلام",
+    );
   }
 
   async getPrintingStats(): Promise<any> {
