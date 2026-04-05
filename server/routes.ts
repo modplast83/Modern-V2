@@ -293,6 +293,15 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   const WEB_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
   const WEB_MAX_ATTEMPTS = 10;
 
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, value] of webLoginAttempts) {
+      if (now - value.lastAttempt > WEB_RATE_LIMIT_WINDOW_MS) {
+        webLoginAttempts.delete(key);
+      }
+    }
+  }, 5 * 60 * 1000);
+
   // Authentication routes
   app.post(
     "/api/login",
@@ -11411,7 +11420,7 @@ Do not include quotes or explanations.`;
 
   // ============ Display Screen API Routes ============
 
-  app.get("/api/display/slides", requireAuth, async (req, res) => {
+  app.get("/api/display/slides", requireAuth, requirePermission('manage_display_screen'), async (req, res) => {
     try {
       const slides = await storage.getDisplaySlides();
       res.json(slides);
@@ -11431,10 +11440,14 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/display/slides", requireAuth, async (req: AuthRequest, res) => {
+  app.post("/api/display/slides", requireAuth, requirePermission('manage_display_screen'), async (req: AuthRequest, res) => {
     try {
+      const parseResult = insertDisplaySlideSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ message: "بيانات غير صحيحة", errors: parseResult.error.errors });
+      }
       const slide = await storage.createDisplaySlide({
-        ...req.body,
+        ...parseResult.data,
         created_by: getAuthUserId(req),
       });
       res.json(slide);
@@ -11464,9 +11477,13 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.put("/api/display/slides/:id", requireAuth, async (req, res) => {
+  app.put("/api/display/slides/:id", requireAuth, requirePermission('manage_display_screen'), async (req, res) => {
     try {
-      const slide = await storage.updateDisplaySlide(parseRouteParam(req.params.id, "id"), req.body);
+      const parseResult = insertDisplaySlideSchema.partial().safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ message: "بيانات غير صحيحة", errors: parseResult.error.errors });
+      }
+      const slide = await storage.updateDisplaySlide(parseRouteParam(req.params.id, "id"), parseResult.data);
       res.json(slide);
     } catch (error) {
       console.error("Error updating display slide:", error);
@@ -11474,7 +11491,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.delete("/api/display/slides/:id", requireAuth, async (req, res) => {
+  app.delete("/api/display/slides/:id", requireAuth, requirePermission('manage_display_screen'), async (req, res) => {
     try {
       await storage.deleteDisplaySlide(parseRouteParam(req.params.id, "id"));
       res.json({ success: true });
@@ -11613,7 +11630,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/display/upload-image", requireAuth, upload.single("image"), async (req, res) => {
+  app.post("/api/display/upload-image", requireAuth, requirePermission('manage_display_screen'), upload.single("image"), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "لم يتم رفع صورة" });
@@ -11649,6 +11666,15 @@ Do not include quotes or explanations.`;
   const mobileLoginAttempts = new Map<string, { count: number; lastAttempt: number }>();
   const MOBILE_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
   const MOBILE_MAX_ATTEMPTS = 10;
+
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, value] of mobileLoginAttempts) {
+      if (now - value.lastAttempt > MOBILE_RATE_LIMIT_WINDOW_MS) {
+        mobileLoginAttempts.delete(key);
+      }
+    }
+  }, 5 * 60 * 1000);
 
   app.post("/api/mobile/login", async (req, res) => {
     try {

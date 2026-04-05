@@ -3073,20 +3073,53 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
         const queryStr = (args.query as string || "").trim();
         const description = args.description as string || "";
         
-        const forbidden = /\b(DROP|TRUNCATE|ALTER|DELETE\s+FROM|CREATE\s+TABLE|CREATE\s+INDEX|GRANT|REVOKE|COPY|EXECUTE|DO\s*\$|pg_read_file|pg_write_file|lo_import|lo_export)\b/i;
+        const forbidden = /\b(DROP|TRUNCATE|ALTER|DELETE\s+FROM|CREATE\s+TABLE|CREATE\s+INDEX|GRANT|REVOKE|COPY|EXECUTE|DO\s*\$|pg_read_file|pg_write_file|lo_import|lo_export|pg_sleep|pg_terminate|pg_cancel|set\s+role|set\s+session|reset\s+role|VACUUM|ANALYZE|REINDEX|CLUSTER|COMMENT|SECURITY|OWNER)\b/i;
         if (forbidden.test(queryStr)) {
           return JSON.stringify({ error: "هذا النوع من الاستعلامات غير مسموح به. يُسمح فقط بـ SELECT و INSERT و UPDATE." });
+        }
+
+        const sensitiveTablePattern = /\b(UPDATE|INSERT\s+INTO)\b[^;]*\b(users|roles|system_settings|mobile_sessions)\b/i;
+        if (sensitiveTablePattern.test(queryStr)) {
+          return JSON.stringify({ error: "لا يُسمح بتعديل الجداول الحساسة (users, roles, system_settings, mobile_sessions) عبر الاستعلامات المباشرة." });
+        }
+
+        const passwordPattern = /\bpassword\b/i;
+        if (passwordPattern.test(queryStr)) {
+          return JSON.stringify({ error: "لا يُسمح بالوصول إلى حقول كلمات المرور عبر الاستعلامات المباشرة." });
         }
 
         if (queryStr.includes(';') && queryStr.replace(/;[\s]*$/, '').includes(';')) {
           return JSON.stringify({ error: "لا يُسمح بتنفيذ استعلامات متعددة في نفس الوقت. أرسل كل استعلام على حدة." });
         }
 
-        const isWrite = /^\s*(INSERT|UPDATE)\b/i.test(queryStr);
-        const isSelect = /^\s*SELECT\b/i.test(queryStr);
+        const containsWrite = /\b(INSERT|UPDATE)\b/i.test(queryStr);
+        const startsWithSelect = /^\s*SELECT\b/i.test(queryStr);
+        const startsWithWith = /^\s*WITH\b/i.test(queryStr);
+        const startsWithInsert = /^\s*INSERT\b/i.test(queryStr);
+        const startsWithUpdate = /^\s*UPDATE\b/i.test(queryStr);
+
+        if (startsWithWith && containsWrite) {
+          return JSON.stringify({ error: "لا يُسمح باستخدام WITH مع استعلامات الكتابة (INSERT/UPDATE). استخدم الاستعلام مباشرة." });
+        }
+
+        const isSelect = startsWithSelect || (startsWithWith && !containsWrite);
+        const isWrite = startsWithInsert || startsWithUpdate;
         
         if (!isSelect && !isWrite) {
           return JSON.stringify({ error: "يُسمح فقط باستعلامات SELECT و INSERT و UPDATE" });
+        }
+
+        if (isSelect) {
+          const sensitiveSelectPattern = /\bFROM\b[^;]*\b(users|roles|system_settings|mobile_sessions)\b/i;
+          if (sensitiveSelectPattern.test(queryStr)) {
+            return JSON.stringify({ error: "لا يُسمح بالاستعلام المباشر من الجداول الحساسة (users, roles, system_settings, mobile_sessions). استخدم الأدوات المخصصة بدلاً من ذلك." });
+          }
+        }
+
+        if (isWrite) {
+          if (startsWithUpdate && !queryStr.toLowerCase().includes('where')) {
+            return JSON.stringify({ error: "يجب تحديد شرط WHERE في استعلامات UPDATE لمنع التعديل الشامل." });
+          }
         }
 
         console.log(`[AI Agent] Executing SQL (${description}): ${queryStr.substring(0, 200)}`);
