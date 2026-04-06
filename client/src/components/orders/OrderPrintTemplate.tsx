@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import "../../print.css";
-import factoryLogo from "../../../../attached_assets/MPBF11_factory_logo.webp";
+import { useCompanyLogo } from "../../hooks/use-company-logo";
 
 type PrintMode = "html" | "pdf" | "standalone";
 
@@ -133,6 +133,7 @@ export default function OrderPrintTemplate({
   mode = "html",
 }: OrderPrintTemplateProps) {
   const { t } = useTranslation();
+  const { logoUrl } = useCompanyLogo();
 
   const getStatusText = (status: string | undefined): string => {
     if (!status) return "-";
@@ -402,7 +403,7 @@ export default function OrderPrintTemplate({
         <div className="order-print-area" ref={printContainerRef} style={styles.page}>
           <div style={styles.header}>
             <div style={{ flex: 1, display: "flex", alignItems: "center", gap: "12px" }}>
-              <img src={factoryLogo} alt="Factory Logo" style={{ width: "70px", height: "70px", objectFit: "contain" }} />
+              <img src={logoUrl} alt="Factory Logo" style={{ width: "70px", height: "70px", objectFit: "contain" }} />
               <div>
                 <h1 style={styles.h1}>{t('orders.print.factoryName')}</h1>
                 <p style={{ margin: "2px 0", fontSize: "16px", color: "#666", fontWeight: 800 }}>Modern Plastic Bags Factory</p>

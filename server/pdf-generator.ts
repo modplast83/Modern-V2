@@ -12,7 +12,38 @@ import bidiFactory from "bidi-js";
 const bidi = bidiFactory();
 import { db } from "./db";
 import { eq } from "drizzle-orm";
-import { quotes, quote_items } from "@shared/schema";
+import { quotes, quote_items, company_profile } from "@shared/schema";
+import { objectStorageClient } from "./replit_integrations/object_storage";
+
+async function getCompanyLogoBuffer(fallbackPath: string): Promise<{ buffer: Buffer | null; path: string | null }> {
+  try {
+    const [profile] = await db.select({ logo_url: company_profile.logo_url }).from(company_profile).limit(1);
+    if (profile?.logo_url && profile.logo_url.startsWith("/objects/")) {
+      const parts = profile.logo_url.slice(1).split("/");
+      const entityId = parts.slice(1).join("/");
+      const privateDir = process.env.PRIVATE_OBJECT_DIR || "";
+      if (privateDir) {
+        const fullPath = privateDir.endsWith("/") ? `${privateDir}${entityId}` : `${privateDir}/${entityId}`;
+        const pathParts = fullPath.startsWith("/") ? fullPath.slice(1).split("/") : fullPath.split("/");
+        const bucketName = pathParts[0];
+        const objectName = pathParts.slice(1).join("/");
+        const bucket = objectStorageClient.bucket(bucketName);
+        const file = bucket.file(objectName);
+        const [exists] = await file.exists();
+        if (exists) {
+          const [contents] = await file.download();
+          return { buffer: contents, path: null };
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Error fetching company logo from storage:", e);
+  }
+  if (fs.existsSync(fallbackPath)) {
+    return { buffer: null, path: fallbackPath };
+  }
+  return { buffer: null, path: null };
+}
 
 // ===================== Arabic Helpers =====================
 function toArabicDigits(input: string | number): string {
@@ -131,14 +162,16 @@ export async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
   const fontDir = path.join(__dirname, "fonts");
   const amiri = path.join(fontDir, "Amiri-Regular.ttf");
   const amiriBold = path.join(fontDir, "Amiri-Bold.ttf");
-  const logoPath = path.join(fontDir, "factory-logo.png");
+  const fallbackLogoPath = path.join(fontDir, "factory-logo.png");
 
   if (fs.existsSync(amiri)) doc.registerFont("Arabic", amiri);
   if (fs.existsSync(amiriBold)) doc.registerFont("Arabic-Bold", amiriBold);
 
   const haveArabic = fs.existsSync(amiri);
   const haveBoldAr = fs.existsSync(amiriBold);
-  const haveLogo = fs.existsSync(logoPath);
+
+  const logoData = await getCompanyLogoBuffer(fallbackLogoPath);
+  const haveLogo = logoData.buffer !== null || logoData.path !== null;
 
   doc.on("data", (c: Buffer) => chunks.push(c));
   doc.on("end", () => {});
@@ -158,7 +191,8 @@ export async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
 
     if (haveLogo) {
       try {
-        doc.image(logoPath, left, y, { width: 55 });
+        const logoSource = logoData.buffer || logoData.path!;
+        doc.image(logoSource, left, y, { width: 55 });
       } catch {}
     }
 

@@ -129,6 +129,7 @@ import {
   mobile_device_tokens,
   mobile_sessions,
   mobile_sync_queue,
+  company_profile,
 } from "@shared/schema";
 import { eq, sql, and, gte, lte, gt, desc, inArray } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -6592,6 +6593,35 @@ Do not include quotes or explanations.`;
     } catch (error) {
       console.error("Error saving user settings:", error);
       res.status(500).json({ message: "خطأ في حفظ إعدادات المستخدم" });
+    }
+  });
+
+  app.get("/api/company/logo", async (_req, res) => {
+    try {
+      const [profile] = await db.select({ logo_url: company_profile.logo_url }).from(company_profile).limit(1);
+      res.json({ logo_url: profile?.logo_url || null });
+    } catch (error) {
+      console.error("Error fetching company logo:", error);
+      res.status(500).json({ message: "خطأ في جلب شعار الشركة" });
+    }
+  });
+
+  app.post("/api/company/logo", requireAuth, requirePermission('manage_settings'), async (req: AuthRequest, res) => {
+    try {
+      const { logo_url } = req.body;
+      if (!logo_url || typeof logo_url !== "string" || !logo_url.startsWith("/objects/")) {
+        return res.status(400).json({ message: "رابط الشعار غير صالح" });
+      }
+      const [existing] = await db.select().from(company_profile).limit(1);
+      if (existing) {
+        await db.update(company_profile).set({ logo_url }).where(eq(company_profile.id, existing.id));
+      } else {
+        await db.insert(company_profile).values({ name: "Company", logo_url });
+      }
+      res.json({ message: "تم حفظ شعار الشركة بنجاح", logo_url });
+    } catch (error) {
+      console.error("Error saving company logo:", error);
+      res.status(500).json({ message: "خطأ في حفظ شعار الشركة" });
     }
   });
 

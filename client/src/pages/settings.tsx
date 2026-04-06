@@ -27,7 +27,7 @@ import {
   Trash2, HardDrive, Save, RefreshCw,
   MapPin, Smartphone,
   Loader2, Activity, Clock, ChevronLeft, ChevronRight,
-  MessageCircle, Building2, Plus, Eye, EyeOff,
+  MessageCircle, Building2, Plus, Eye, EyeOff, ImageIcon,
 } from "lucide-react";
 import RoleManagementTab from "../components/RoleManagementTab";
 import NotificationCenter from "../components/notifications/NotificationCenter";
@@ -37,6 +37,7 @@ import NotificationEventSettingsTab from "../components/settings/NotificationEve
 import LocationMapPicker from "../components/LocationMapPicker";
 import TableImportDialog from "../components/settings/TableImportDialog";
 import { canAccessSettingsTab } from "../utils/roleUtils";
+import { useCompanyLogo } from "../hooks/use-company-logo";
 
 const SECTIONS = [
   { id: "system", icon: SettingsIcon, label: "النظام" },
@@ -117,6 +118,101 @@ export default function Settings() {
         </main>
       </div>
     </PageLayout>
+  );
+}
+
+function CompanyLogoUpload() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { logoUrl } = useCompanyLogo();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "يرجى اختيار ملف صورة", variant: "destructive" });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "حجم الصورة يجب أن يكون أقل من 5 ميجابايت", variant: "destructive" });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const urlRes = await apiRequest("/api/uploads/request-url", {
+        method: "POST",
+        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+      });
+      const { uploadURL, objectPath } = await urlRes.json();
+
+      const uploadRes = await fetch(uploadURL, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type },
+      });
+      if (!uploadRes.ok) {
+        throw new Error("فشل رفع الملف");
+      }
+
+      await apiRequest("/api/company/logo", {
+        method: "POST",
+        body: JSON.stringify({ logo_url: objectPath }),
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["/api/company/logo"] });
+      toast({ title: "تم رفع شعار الشركة بنجاح" });
+    } catch (error) {
+      toast({ title: "خطأ في رفع الشعار", variant: "destructive" });
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2"><ImageIcon className="h-5 w-5" /> شعار الشركة</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center gap-6">
+          <div className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-hidden bg-gray-50">
+            <img
+              src={logoUrl}
+              alt="شعار الشركة"
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              يظهر الشعار في رأس التطبيق، صفحة تسجيل الدخول، وجميع التقارير والمستندات المطبوعة.
+            </p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleLogoUpload}
+            />
+            <Button
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+            >
+              {uploading ? (
+                <><Loader2 className="w-4 h-4 ml-2 animate-spin" /> جاري الرفع...</>
+              ) : (
+                <><Upload className="w-4 h-4 ml-2" /> تغيير الشعار</>
+              )}
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -284,6 +380,8 @@ function SystemSection() {
           <p className="text-sm text-muted-foreground">الإعدادات العامة للنظام والشركة</p>
         </div>
       </div>
+
+      <CompanyLogoUpload />
 
       <Card>
         <CardHeader>

@@ -36,7 +36,7 @@ import {
 } from "../ui/alert-dialog";
 import { Eye, Printer, Package, ArrowDownToLine, ArrowUpFromLine, Trash2, X } from "lucide-react";
 import { useToast } from "../../hooks/use-toast";
-import FactoryLogoPath from "../../../../attached_assets/MPBF11_factory_logo.webp";
+import { useCompanyLogo } from "../../hooks/use-company-logo";
 
 interface VouchersListProps {
   type: "raw-material-in" | "raw-material-out" | "finished-goods-in" | "finished-goods-out";
@@ -50,6 +50,7 @@ export function VouchersList({ type, title, onView }: VouchersListProps) {
   const queryClient = useQueryClient();
   const [viewVoucher, setViewVoucher] = useState<any>(null);
   const printRef = useRef<HTMLDivElement>(null);
+  const { logoUrl } = useCompanyLogo();
 
   const { data: rawData, isLoading } = useQuery<any>({
     queryKey: ["/api/warehouse/vouchers", type],
@@ -273,7 +274,7 @@ export function VouchersList({ type, title, onView }: VouchersListProps) {
     return (
       <div className="voucher-print">
         <div className="header">
-          <img src={FactoryLogoPath} alt={t('warehouse.print.factoryLogo')} />
+          <img src={logoUrl} alt={t('warehouse.print.factoryLogo')} />
           <div className="header-center">
             <h1>{t('warehouse.print.factoryName')}</h1>
             <h2>{getTypeTitleLabel()}</h2>

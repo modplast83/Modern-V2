@@ -22,12 +22,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Factory } from "lucide-react";
 import { useTranslation } from 'react-i18next';
-import FactoryLogoPath from "../../../attached_assets/MPBF11_factory_logo.webp";
+import { useCompanyLogo } from "../hooks/use-company-logo";
 
 export default function Login() {
   const { t } = useTranslation();
   const { login, isLoading } = useAuth();
   const { toast } = useToast();
+  const { logoUrl } = useCompanyLogo();
 
   const loginSchema = z.object({
     username: z
@@ -85,7 +86,7 @@ export default function Login() {
         <CardHeader className="text-center">
           <div className="mx-auto w-20 h-20 mb-4 flex items-center justify-center">
             <img 
-              src={FactoryLogoPath} 
+              src={logoUrl} 
               alt={t('auth.factoryLogoAlt')} 
               className="w-full h-full object-contain"
             />

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../../hooks/use-auth";
 import { NotificationBell } from "../notifications/NotificationBell";
 import { LanguageSwitcher } from "../ui/LanguageSwitcher";
-import FactoryLogoPath from "../../../../attached_assets/MPBF11_factory_logo.webp";
+import { useCompanyLogo } from "../../hooks/use-company-logo";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -14,6 +14,7 @@ export default function Header() {
   const { t } = useTranslation();
   const { isRTL } = useLanguage();
   const { theme, toggleTheme } = useTheme();
+  const { logoUrl } = useCompanyLogo();
 
   return (
     <header className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
@@ -21,7 +22,7 @@ export default function Header() {
         <div className="flex items-center gap-4">
           <div className="flex items-center justify-center w-20 h-20 rounded-lg overflow-hidden">
             <img
-              src={FactoryLogoPath}
+              src={logoUrl}
               alt={t('header.factoryLogo')}
               className="w-full h-full object-contain mt-[0px] mb-[0px] pt-[0px] pb-[0px]"
             />

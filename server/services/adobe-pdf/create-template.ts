@@ -19,6 +19,9 @@ import {
 } from "docx";
 import * as fs from "fs";
 import * as path from "path";
+import { db } from "../../db";
+import { company_profile } from "@shared/schema";
+import { objectStorageClient } from "../../replit_integrations/object_storage";
 
 const COLORS = {
   primary: "1B5E20",
@@ -124,9 +127,36 @@ function spacer(before = 200, after = 100): Paragraph {
   return new Paragraph({ children: [], spacing: { before, after } });
 }
 
+async function getCompanyLogoBufferForDocx(fallbackPath: string): Promise<Buffer> {
+  try {
+    const [profile] = await db.select({ logo_url: company_profile.logo_url }).from(company_profile).limit(1);
+    if (profile?.logo_url && profile.logo_url.startsWith("/objects/")) {
+      const parts = profile.logo_url.slice(1).split("/");
+      const entityId = parts.slice(1).join("/");
+      const privateDir = process.env.PRIVATE_OBJECT_DIR || "";
+      if (privateDir) {
+        const fullPath = privateDir.endsWith("/") ? `${privateDir}${entityId}` : `${privateDir}/${entityId}`;
+        const pathParts = fullPath.startsWith("/") ? fullPath.slice(1).split("/") : fullPath.split("/");
+        const bucketName = pathParts[0];
+        const objectName = pathParts.slice(1).join("/");
+        const bucket = objectStorageClient.bucket(bucketName);
+        const file = bucket.file(objectName);
+        const [exists] = await file.exists();
+        if (exists) {
+          const [contents] = await file.download();
+          return contents;
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Error fetching company logo for DOCX:", e);
+  }
+  return await fs.promises.readFile(fallbackPath);
+}
+
 export async function createQuoteTemplate(): Promise<Buffer> {
   const logoPath = path.join(process.cwd(), "server", "fonts", "factory-logo.png");
-  const logoBuffer = await fs.promises.readFile(logoPath);
+  const logoBuffer = await getCompanyLogoBufferForDocx(logoPath);
 
   const doc = new Document({
     styles: {

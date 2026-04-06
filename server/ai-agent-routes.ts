@@ -18,6 +18,36 @@ import { objectStorageClient } from "./replit_integrations/object_storage";
 import { generateQuotePdfWithAdobe, isAdobePdfAvailable } from "./adobe-pdf-service";
 import { processArabicText, isArabicText } from "./services/arabic-text-service";
 
+async function getCompanyLogoForPdf(fallbackPath: string): Promise<{ buffer: Buffer | null; path: string | null }> {
+  try {
+    const [profile] = await db.select({ logo_url: company_profile.logo_url }).from(company_profile).limit(1);
+    if (profile?.logo_url && profile.logo_url.startsWith("/objects/")) {
+      const parts = profile.logo_url.slice(1).split("/");
+      const entityId = parts.slice(1).join("/");
+      const privateDir = process.env.PRIVATE_OBJECT_DIR || "";
+      if (privateDir) {
+        const fullPath = privateDir.endsWith("/") ? `${privateDir}${entityId}` : `${privateDir}/${entityId}`;
+        const pathParts = fullPath.startsWith("/") ? fullPath.slice(1).split("/") : fullPath.split("/");
+        const bucketName = pathParts[0];
+        const objectName = pathParts.slice(1).join("/");
+        const bucket = objectStorageClient.bucket(bucketName);
+        const file = bucket.file(objectName);
+        const [exists] = await file.exists();
+        if (exists) {
+          const [contents] = await file.download();
+          return { buffer: contents, path: null };
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Error fetching company logo from storage:", e);
+  }
+  if (fs.existsSync(fallbackPath)) {
+    return { buffer: null, path: fallbackPath };
+  }
+  return { buffer: null, path: null };
+}
+
 const AI_MODEL = "gpt-4.1" as const;
 const AI_MODEL_VISION = "gpt-4.1" as const;
 const MAX_TOOL_ROUNDS = 10;
@@ -115,14 +145,17 @@ async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
   const tax = Number(quote.tax_amount || subtotal * 0.15);
   const total = Number(quote.total_with_tax || subtotal + tax);
 
+  const lp = path.join(__dirname, 'fonts', 'factory-logo.png');
+  const logoData = await getCompanyLogoForPdf(lp);
+
   return new Promise<Buffer>((resolve, reject) => {
     const chunks: Buffer[] = [];
     const doc = new PDFDocument({ size: "A4", margin: 30 });
     const fp = path.join(__dirname, 'fonts', 'Amiri-Regular.ttf');
-    const lp = path.join(__dirname, 'fonts', 'factory-logo.png');
     const hasAr = fs.existsSync(fp);
-    const hasLogo = fs.existsSync(lp);
     if (hasAr) doc.registerFont('Arabic', fp);
+
+    const hasLogo = logoData.buffer !== null || logoData.path !== null;
 
     doc.on('data', (c: Buffer) => chunks.push(c));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
@@ -150,7 +183,10 @@ async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
     const headerH = 55;
 
     if (hasLogo) {
-      try { doc.image(lp, L, Y, { width: 50, height: 50 }); } catch (e) { console.error("Logo:", e); }
+      try {
+        const logoSource = logoData.buffer || logoData.path!;
+        doc.image(logoSource, L, Y, { width: 50, height: 50 });
+      } catch (e) { console.error("Logo:", e); }
     }
 
     doc.font('Helvetica-Bold').fontSize(13).fillColor("#1e3a5f");
