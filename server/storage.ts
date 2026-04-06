@@ -2570,7 +2570,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateMixingBatchStatus(id: number, status: string): Promise<MixingBatch> {
-    const [u] = await db.update(mixing_batches).set({ status, updated_at: new Date() }).where(eq(mixing_batches.id, id)).returning();
+    const [u] = await db.update(mixing_batches).set({ status }).where(eq(mixing_batches.id, id)).returning();
     return u;
   }
 

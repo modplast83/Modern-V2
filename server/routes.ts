@@ -10000,13 +10000,24 @@ Do not include quotes or explanations.`;
         }
       }
 
-      const { batch_number, formula_id, roll_id, ...cleanBatchData } = batch;
+      const { batch_number, formula_id, roll_id, started_at, ...cleanBatchData } = batch;
+
+      const allBatches = await storage.getAllMixingBatches();
+      let maxNum = 0;
+      for (const b of allBatches) {
+        const match = (b.batch_number || '').match(/MIX-(\d+)/);
+        if (match) {
+          const num = parseInt(match[1]);
+          if (num > maxNum) maxNum = num;
+        }
+      }
+      const generatedBatchNumber = `MIX-${String(maxNum + 1).padStart(5, '0')}`;
 
       const batchData = {
         ...cleanBatchData,
+        batch_number: generatedBatchNumber,
         operator_id: req.user!.id,
         status: "in_progress",
-        started_at: new Date(),
       };
 
       const newBatch = await storage.createMixingBatch(batchData, ingredients);
