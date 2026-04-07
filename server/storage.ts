@@ -486,6 +486,7 @@ export interface IStorage {
   createOrder(order: InsertNewOrder): Promise<NewOrder>;
   updateOrder(id: number, order: Partial<NewOrder>): Promise<NewOrder>;
   updateOrderStatus(id: number, status: string): Promise<NewOrder>;
+  updateOrderStatusWithPrevious(id: number, status: string, previousStatus: string | null): Promise<NewOrder>;
   getOrderById(id: number): Promise<NewOrder | undefined>;
   deleteOrder(id: number): Promise<void>;
   getOrdersForProduction(): Promise<any[]>;
@@ -507,6 +508,7 @@ export interface IStorage {
     id: number,
     productionOrder: Partial<ProductionOrder>,
   ): Promise<ProductionOrder>;
+  updateProductionOrderStatusWithPrevious(id: number, status: string, previousStatus: string | null): Promise<void>;
   deleteProductionOrder(id: number): Promise<void>;
   getProductionOrdersForPrintingQueue(): Promise<any[]>;
   getProductionOrdersForCuttingQueue(): Promise<any[]>;
@@ -1072,6 +1074,21 @@ export class DatabaseStorage implements IStorage {
     );
   }
 
+  async updateOrderStatusWithPrevious(id: number, status: string, previousStatus: string | null): Promise<NewOrder> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const [updatedOrder] = await db
+          .update(orders)
+          .set({ status, previous_status: previousStatus })
+          .where(eq(orders.id, id))
+          .returning();
+        return updatedOrder;
+      },
+      "updateOrderStatusWithPrevious",
+      `تحديث حالة الطلب ${id} مع حفظ الحالة السابقة`,
+    );
+  }
+
   async getOrderById(id: number): Promise<NewOrder | undefined> {
     return withDatabaseErrorHandling(
       async () => {
@@ -1181,6 +1198,7 @@ export class DatabaseStorage implements IStorage {
             is_final_roll_created: production_orders.is_final_roll_created,
             warehouse_received_kg: production_orders.warehouse_received_kg,
             status: production_orders.status,
+            previous_status: production_orders.previous_status,
             order_number: orders.order_number,
             customer_id: customers.id,
             customer_name: customers.name,
@@ -1379,6 +1397,14 @@ export class DatabaseStorage implements IStorage {
       .update(production_orders)
       .set({ status: toStatus, updated_at: new Date() } as any)
       .where(and(eq(production_orders.order_id, orderId), inArray(production_orders.status, fromStatuses)));
+    invalidateProductionCache();
+  }
+
+  async updateProductionOrderStatusWithPrevious(id: number, status: string, previousStatus: string | null): Promise<void> {
+    await db
+      .update(production_orders)
+      .set({ status, previous_status: previousStatus } as any)
+      .where(eq(production_orders.id, id));
     invalidateProductionCache();
   }
 

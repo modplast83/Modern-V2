@@ -342,6 +342,7 @@ export const orders = pgTable(
       .references(() => customers.id, { onDelete: "restrict" }), // ON DELETE RESTRICT
     delivery_days: integer("delivery_days"), // Must be > 0 if specified
     status: varchar("status", { length: 30 }).notNull().default("waiting"), // ENUM: waiting / in_production / paused / cancelled / completed
+    previous_status: varchar("previous_status", { length: 30 }),
     notes: text("notes"),
     created_by: integer("created_by").references(() => users.id, {
       onDelete: "set null",
@@ -464,6 +465,7 @@ export const production_orders = pgTable(
       .default("0"),
 
     status: varchar("status", { length: 30 }).notNull().default("pending"),
+    previous_status: varchar("previous_status", { length: 30 }),
     created_at: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => ({

@@ -6279,7 +6279,7 @@ Do not include quotes or explanations.`;
           paused: ["in_production", "cancelled", "archived"],
           completed: ["archived"],
           cancelled: ["archived"],
-          archived: ["completed"],
+          archived: ["waiting", "in_production", "paused", "completed", "cancelled"],
         };
 
         // Check if transition is allowed
@@ -6337,19 +6337,38 @@ Do not include quotes or explanations.`;
         }
 
         // STEP 4: Perform atomic status update with validation
-        const order = await storage.updateOrderStatus(orderId, newStatus);
+        if (newStatus === "archived") {
+          await storage.updateOrderStatusWithPrevious(orderId, "archived", currentStatus);
+        } else if (currentStatus === "archived") {
+          await storage.updateOrderStatusWithPrevious(orderId, newStatus, null);
+        } else {
+          await storage.updateOrderStatus(orderId, newStatus);
+        }
+
+        const order = await storage.getOrderById(orderId);
 
         // STEP 5: Sync production orders status based on the new order status
         if (newStatus === "in_production") {
-          // Activate all pending production orders when order moves to production
           await storage.updateProductionOrdersStatusByOrder(orderId, ["pending"], "active");
         } else if (newStatus === "paused") {
-          // Suspend active production orders when order is paused
           await storage.updateProductionOrdersStatusByOrder(orderId, ["active"], "pending");
         } else if (newStatus === "cancelled") {
           await storage.updateProductionOrdersStatusByOrder(orderId, ["pending", "active"], "cancelled");
         } else if (newStatus === "archived") {
-          await storage.updateProductionOrdersStatusByOrder(orderId, ["pending", "active", "completed", "cancelled"], "archived");
+          const allProdOrders = await storage.getAllProductionOrders();
+          const orderProdOrders = allProdOrders.filter((po: any) => po.order_id === orderId);
+          for (const po of orderProdOrders) {
+            if (["pending", "active", "completed", "cancelled"].includes(po.status)) {
+              await storage.updateProductionOrderStatusWithPrevious(po.id, "archived", po.status);
+            }
+          }
+        } else if (currentStatus === "archived") {
+          const allProdOrders = await storage.getAllProductionOrders();
+          const orderProdOrders = allProdOrders.filter((po: any) => po.order_id === orderId && po.status === "archived");
+          for (const po of orderProdOrders) {
+            const poRestoreStatus = po.previous_status || "completed";
+            await storage.updateProductionOrderStatusWithPrevious(po.id, poRestoreStatus, null);
+          }
         }
 
         res.json({
@@ -6402,13 +6421,15 @@ Do not include quotes or explanations.`;
               continue;
             }
 
-            await storage.updateOrderStatus(orderId, "archived");
+            await storage.updateOrderStatusWithPrevious(orderId, "archived", order.status);
 
-            await storage.updateProductionOrdersStatusByOrder(
-              orderId,
-              ["pending", "active", "completed", "cancelled"],
-              "archived"
-            );
+            const allProdOrders = await storage.getAllProductionOrders();
+            const orderProdOrders = allProdOrders.filter((po: any) => po.order_id === orderId);
+            for (const po of orderProdOrders) {
+              if (["pending", "active", "completed", "cancelled"].includes(po.status)) {
+                await storage.updateProductionOrderStatusWithPrevious(po.id, "archived", po.status);
+              }
+            }
 
             results.push({ orderId, success: true });
           } catch (err: any) {
@@ -6466,13 +6487,15 @@ Do not include quotes or explanations.`;
               continue;
             }
 
-            await storage.updateOrderStatus(orderId, "completed");
+            const restoreStatus = order.previous_status || "completed";
+            await storage.updateOrderStatusWithPrevious(orderId, restoreStatus, null);
 
-            await storage.updateProductionOrdersStatusByOrder(
-              orderId,
-              ["archived"],
-              "completed"
-            );
+            const allProdOrders = await storage.getAllProductionOrders();
+            const orderProdOrders = allProdOrders.filter((po: any) => po.order_id === orderId && po.status === "archived");
+            for (const po of orderProdOrders) {
+              const poRestoreStatus = po.previous_status || "completed";
+              await storage.updateProductionOrderStatusWithPrevious(po.id, poRestoreStatus, null);
+            }
 
             results.push({ orderId, success: true });
           } catch (err: any) {
