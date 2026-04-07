@@ -47,7 +47,6 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import ExcelJS from "exceljs";
 import { useToast } from "../hooks/use-toast";
 
 const COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
@@ -130,58 +129,34 @@ export default function ProductionReports() {
     setActiveFilters(defaultFilters);
   };
 
-  const exportToExcel = async () => {
+  const [isExporting, setIsExporting] = useState<string | null>(null);
+
+  const exportReport = async (exportFormat: "excel" | "pdf") => {
+    setIsExporting(exportFormat);
     try {
-      const workbook = new ExcelJS.Workbook();
+      const response = await fetch("/api/reports/production/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          format: exportFormat,
+          dateFrom: activeFilters.dateFrom,
+          dateTo: activeFilters.dateTo,
+          filters: activeFilters,
+        }),
+      });
 
-      if (summary?.data) {
-        const summarySheet = workbook.addWorksheet("Summary");
-        summarySheet.addRows([
-          [t('production.reports.totalOrders'), summary.data.totalOrders],
-          [t('production.reports.activeOrders'), summary.data.activeOrders],
-          [t('production.statuses.completed'), summary.data.completedOrders],
-          [t('production.reports.producedRolls'), summary.data.totalRolls],
-          [t('production.reports.totalWeight'), summary.data.totalWeight],
-          [t('production.reports.avgProductionTime') + " (" + t('production.reports.hour') + ")", summary.data.avgProductionTime?.toFixed(2)],
-          [t('production.reports.wastePercentage') + " %", summary.data.wastePercentage?.toFixed(2)],
-          [t('production.reports.completionRate') + " %", summary.data.completionRate?.toFixed(2)],
-        ]);
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || t('production.reports.exportError'));
       }
 
-      if (productionByDate?.data && productionByDate.data.length > 0) {
-        const dateSheet = workbook.addWorksheet("Daily Production");
-        const headers = Object.keys(productionByDate.data[0]);
-        dateSheet.addRow(headers);
-        productionByDate.data.forEach((row: any) => dateSheet.addRow(Object.values(row)));
-      }
-
-      if (productionByProduct?.data && productionByProduct.data.length > 0) {
-        const productSheet = workbook.addWorksheet("By Product");
-        const headers = Object.keys(productionByProduct.data[0]);
-        productSheet.addRow(headers);
-        productionByProduct.data.forEach((row: any) => productSheet.addRow(Object.values(row)));
-      }
-
-      if (machinePerformance?.data && machinePerformance.data.length > 0) {
-        const machineSheet = workbook.addWorksheet("Machine Performance");
-        const headers = Object.keys(machinePerformance.data[0]);
-        machineSheet.addRow(headers);
-        machinePerformance.data.forEach((row: any) => machineSheet.addRow(Object.values(row)));
-      }
-
-      if (operatorPerformance?.data && operatorPerformance.data.length > 0) {
-        const operatorSheet = workbook.addWorksheet("Operator Performance");
-        const headers = Object.keys(operatorPerformance.data[0]);
-        operatorSheet.addRow(headers);
-        operatorPerformance.data.forEach((row: any) => operatorSheet.addRow(Object.values(row)));
-      }
-
-      const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const blob = await response.blob();
+      const ext = exportFormat === "excel" ? "xlsx" : "pdf";
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = `Production_Report_${format(new Date(), "yyyy-MM-dd")}.xlsx`;
+      a.download = `Production_Report_${format(new Date(), "yyyy-MM-dd")}.${ext}`;
       a.click();
       URL.revokeObjectURL(url);
 
@@ -189,18 +164,16 @@ export default function ProductionReports() {
         title: t('production.reports.exportSuccess'),
         description: t('production.reports.exportSuccessDesc'),
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Export error:", error);
       toast({
         title: t('production.reports.exportError'),
-        description: t('production.reports.exportErrorDesc'),
+        description: error.message || t('production.reports.exportErrorDesc'),
         variant: "destructive",
       });
+    } finally {
+      setIsExporting(null);
     }
-  };
-
-  const exportToPDF = () => {
-    window.print();
   };
 
   const getStatusColor = (value: number, metric: string) => {
@@ -222,13 +195,21 @@ export default function ProductionReports() {
           <p className="text-muted-foreground">{t('production.reports.description')}</p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={exportToExcel} variant="outline" data-testid="button-export-excel">
-            <FileSpreadsheet className="mr-2 h-4 w-4" />
+          <Button onClick={() => exportReport("excel")} variant="outline" disabled={isExporting === "excel"} data-testid="button-export-excel">
+            {isExporting === "excel" ? (
+              <RotateCcw className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <FileSpreadsheet className="mr-2 h-4 w-4" />
+            )}
             {t('production.reports.exportExcel')}
           </Button>
-          <Button onClick={exportToPDF} variant="outline" data-testid="button-export-pdf">
-            <FileText className="mr-2 h-4 w-4" />
-            {t('production.reports.printPdf')}
+          <Button onClick={() => exportReport("pdf")} variant="outline" disabled={isExporting === "pdf"} data-testid="button-export-pdf">
+            {isExporting === "pdf" ? (
+              <RotateCcw className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <FileText className="mr-2 h-4 w-4" />
+            )}
+            {t('production.reports.exportPdf')}
           </Button>
         </div>
       </div>

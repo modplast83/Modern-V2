@@ -533,6 +533,7 @@
       "title": "تقارير الإنتاج الشاملة",
       "description": "تحليل شامل لأداء الإنتاج مع رسوم بيانية تفاعلية",
       "exportExcel": "تصدير Excel",
+      "exportPdf": "تصدير PDF",
       "printPdf": "طباعة PDF",
       "filters": "فلاتر التقرير",
       "filtersDescription": "اختر المعايير لتخصيص التقرير",

@@ -537,6 +537,7 @@
       "title": "Comprehensive Production Reports",
       "description": "Comprehensive production performance analysis with interactive charts",
       "exportExcel": "Export Excel",
+      "exportPdf": "Export PDF",
       "printPdf": "Print PDF",
       "filters": "Report Filters",
       "filtersDescription": "Choose criteria to customize the report",

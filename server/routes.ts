@@ -3155,6 +3155,325 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
     }
   });
 
+  app.post("/api/reports/production/export", requireAuth, async (req, res) => {
+    try {
+      const { format: exportFormat, dateFrom, dateTo, filters: reportFilters } = req.body;
+
+      if (!exportFormat || !["pdf", "excel"].includes(exportFormat)) {
+        return res.status(400).json({ message: "صيغة التصدير غير صالحة (pdf أو excel)", success: false });
+      }
+
+      const baseFilters = {
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+        customerId: reportFilters?.customerId,
+        productId: reportFilters?.productId,
+        status: reportFilters?.status,
+        sectionId: reportFilters?.sectionId,
+        machineId: reportFilters?.machineId,
+        operatorId: reportFilters?.operatorId ? parseInt(reportFilters.operatorId) : undefined,
+      };
+
+      const [summaryData, dateData, productData, wasteData, machineData, operatorData] = await Promise.all([
+        storage.getProductionSummary(baseFilters).catch(() => null),
+        storage.getProductionByDate(baseFilters).catch(() => []),
+        storage.getProductionByProduct(baseFilters).catch(() => []),
+        storage.getWasteAnalysis(baseFilters).catch(() => []),
+        storage.getMachinePerformance(baseFilters).catch(() => []),
+        storage.getOperatorPerformance(baseFilters).catch(() => []),
+      ]);
+
+      const periodText = dateFrom && dateTo ? `${dateFrom} — ${dateTo}` : new Date().toLocaleDateString("en-US");
+
+      if (exportFormat === "excel") {
+        const ExcelJS = (await import("exceljs")).default;
+        const workbook = new ExcelJS.Workbook();
+        workbook.creator = "MPBF Manufacturing System";
+        workbook.created = new Date();
+
+        const headerStyle: Partial<ExcelJS.Style> = {
+          font: { bold: true, color: { argb: "FFFFFFFF" }, size: 11 },
+          fill: { type: "pattern", pattern: "solid", fgColor: { argb: "FF2563EB" } },
+          alignment: { horizontal: "center", vertical: "middle" },
+          border: {
+            top: { style: "thin" }, bottom: { style: "thin" },
+            left: { style: "thin" }, right: { style: "thin" },
+          },
+        };
+
+        const dataStyle: Partial<ExcelJS.Style> = {
+          border: {
+            top: { style: "thin", color: { argb: "FFE5E7EB" } },
+            bottom: { style: "thin", color: { argb: "FFE5E7EB" } },
+            left: { style: "thin", color: { argb: "FFE5E7EB" } },
+            right: { style: "thin", color: { argb: "FFE5E7EB" } },
+          },
+          alignment: { vertical: "middle" },
+        };
+
+        const addSheetWithData = (name: string, headers: { key: string; label: string; width?: number }[], data: any[]) => {
+          const sheet = workbook.addWorksheet(name, { views: [{ rightToLeft: true }] });
+          
+          sheet.mergeCells(1, 1, 1, headers.length);
+          const titleCell = sheet.getCell(1, 1);
+          titleCell.value = `تقرير الإنتاج - ${name}`;
+          titleCell.font = { bold: true, size: 14 };
+          titleCell.alignment = { horizontal: "center" };
+
+          sheet.mergeCells(2, 1, 2, headers.length);
+          const periodCell = sheet.getCell(2, 1);
+          periodCell.value = `الفترة: ${periodText}`;
+          periodCell.font = { size: 10, color: { argb: "FF666666" } };
+          periodCell.alignment = { horizontal: "center" };
+
+          const headerRow = sheet.getRow(4);
+          headers.forEach((h, i) => {
+            const cell = headerRow.getCell(i + 1);
+            cell.value = h.label;
+            cell.style = headerStyle;
+            sheet.getColumn(i + 1).width = h.width || 18;
+          });
+
+          data.forEach((item, rowIdx) => {
+            const row = sheet.getRow(rowIdx + 5);
+            headers.forEach((h, colIdx) => {
+              const cell = row.getCell(colIdx + 1);
+              let val = item[h.key];
+              if (val === null || val === undefined) val = "";
+              if (typeof val === "number") val = parseFloat(val.toFixed(2));
+              cell.value = val;
+              cell.style = {
+                ...dataStyle,
+                fill: rowIdx % 2 === 0 
+                  ? { type: "pattern", pattern: "solid", fgColor: { argb: "FFF9FAFB" } }
+                  : undefined,
+              } as Partial<ExcelJS.Style>;
+            });
+          });
+
+          return sheet;
+        };
+
+        if (summaryData) {
+          const summarySheet = workbook.addWorksheet("الملخص", { views: [{ rightToLeft: true }] });
+          summarySheet.mergeCells("A1:B1");
+          const t = summarySheet.getCell("A1");
+          t.value = "ملخص تقرير الإنتاج";
+          t.font = { bold: true, size: 16 };
+          t.alignment = { horizontal: "center" };
+
+          summarySheet.mergeCells("A2:B2");
+          const p = summarySheet.getCell("A2");
+          p.value = `الفترة: ${periodText}`;
+          p.font = { size: 10, color: { argb: "FF666666" } };
+          p.alignment = { horizontal: "center" };
+
+          const summaryRows = [
+            ["إجمالي الطلبات", summaryData.totalOrders || 0],
+            ["الطلبات النشطة", summaryData.activeOrders || 0],
+            ["الطلبات المكتملة", summaryData.completedOrders || 0],
+            ["إجمالي الرولات", summaryData.totalRolls || 0],
+            ["إجمالي الوزن (كجم)", summaryData.totalWeight ? parseFloat(summaryData.totalWeight).toFixed(2) : "0"],
+            ["متوسط وقت الإنتاج (ساعة)", summaryData.avgProductionTime ? parseFloat(summaryData.avgProductionTime).toFixed(2) : "0"],
+            ["نسبة الهدر %", summaryData.wastePercentage ? parseFloat(summaryData.wastePercentage).toFixed(2) : "0"],
+            ["نسبة الإنجاز %", summaryData.completionRate ? parseFloat(summaryData.completionRate).toFixed(1) : "0"],
+          ];
+          summaryRows.forEach(([label, value], i) => {
+            const row = summarySheet.getRow(i + 4);
+            const labelCell = row.getCell(1);
+            labelCell.value = label;
+            labelCell.font = { bold: true, size: 11 };
+            labelCell.border = dataStyle.border;
+            const valCell = row.getCell(2);
+            valCell.value = value;
+            valCell.font = { size: 11 };
+            valCell.border = dataStyle.border;
+            valCell.alignment = { horizontal: "center" };
+            if (i % 2 === 0) {
+              labelCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0F9FF" } };
+              valCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0F9FF" } };
+            }
+          });
+          summarySheet.getColumn(1).width = 30;
+          summarySheet.getColumn(2).width = 20;
+        }
+
+        if (Array.isArray(dateData) && dateData.length > 0) {
+          addSheetWithData("الإنتاج اليومي", [
+            { key: "date", label: "التاريخ", width: 15 },
+            { key: "total_orders", label: "عدد الطلبات", width: 14 },
+            { key: "total_rolls", label: "عدد الرولات", width: 14 },
+            { key: "total_weight", label: "الوزن (كجم)", width: 14 },
+            { key: "total_waste", label: "الهدر (كجم)", width: 14 },
+            { key: "waste_percentage", label: "نسبة الهدر %", width: 14 },
+          ], dateData);
+        }
+
+        if (Array.isArray(productData) && productData.length > 0) {
+          const productHeaders = Object.keys(productData[0]).map(k => ({
+            key: k,
+            label: k,
+            width: 18,
+          }));
+          addSheetWithData("حسب المنتج", productHeaders, productData);
+        }
+
+        if (Array.isArray(wasteData) && wasteData.length > 0) {
+          const wasteHeaders = Object.keys(wasteData[0]).map(k => ({
+            key: k,
+            label: k,
+            width: 18,
+          }));
+          addSheetWithData("تحليل الهدر", wasteHeaders, wasteData);
+        }
+
+        if (Array.isArray(machineData) && machineData.length > 0) {
+          const machineHeaders = Object.keys(machineData[0]).map(k => ({
+            key: k,
+            label: k,
+            width: 18,
+          }));
+          addSheetWithData("أداء المكائن", machineHeaders, machineData);
+        }
+
+        if (Array.isArray(operatorData) && operatorData.length > 0) {
+          const operatorHeaders = Object.keys(operatorData[0]).map(k => ({
+            key: k,
+            label: k,
+            width: 18,
+          }));
+          addSheetWithData("أداء المشغلين", operatorHeaders, operatorData);
+        }
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const filename = `Production_Report_${dateFrom || "all"}_${dateTo || "all"}.xlsx`;
+        res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+        return res.send(Buffer.from(buffer as ArrayBuffer));
+      }
+
+      if (exportFormat === "pdf") {
+        const PDFDocument = (await import("pdfkit")).default;
+        const doc = new PDFDocument({ size: "A4", layout: "landscape", margin: 40 });
+        const chunks: Buffer[] = [];
+        doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+        const pdfReady = new Promise<Buffer>((resolve) => {
+          doc.on("end", () => resolve(Buffer.concat(chunks)));
+        });
+
+        const drawTableHeader = (headers: string[], colWidths: number[], startX: number) => {
+          let y = doc.y;
+          doc.rect(startX, y, colWidths.reduce((a, b) => a + b, 0), 18).fill("#2563EB");
+          doc.fillColor("#FFFFFF").font("Helvetica-Bold").fontSize(8);
+          let x = startX;
+          headers.forEach((h, i) => {
+            doc.text(h, x + 2, y + 4, { width: colWidths[i] - 4, align: "center", lineBreak: false });
+            x += colWidths[i];
+          });
+          doc.fillColor("#000000");
+          doc.y = y + 20;
+        };
+
+        const drawTableRow = (values: string[], colWidths: number[], startX: number, isAlt: boolean) => {
+          let y = doc.y;
+          if (y > doc.page.height - 50) {
+            doc.addPage();
+            y = 40;
+          }
+          if (isAlt) {
+            doc.rect(startX, y, colWidths.reduce((a, b) => a + b, 0), 14).fill("#F3F4F6");
+            doc.fillColor("#000000");
+          }
+          doc.font("Helvetica").fontSize(7);
+          let x = startX;
+          values.forEach((v, i) => {
+            doc.text(String(v ?? ""), x + 2, y + 3, { width: colWidths[i] - 4, align: "center", lineBreak: false });
+            x += colWidths[i];
+          });
+          doc.y = y + 15;
+        };
+
+        doc.fontSize(18).font("Helvetica-Bold").text("Production Report", { align: "center" });
+        doc.moveDown(0.3);
+        doc.fontSize(10).font("Helvetica").text(`Period: ${periodText}`, { align: "center" });
+        doc.fontSize(8).text(`Generated: ${new Date().toLocaleString("en-US")}`, { align: "center" });
+        doc.moveDown(1);
+
+        if (summaryData) {
+          doc.fontSize(12).font("Helvetica-Bold").text("Summary", { align: "left" });
+          doc.moveDown(0.3);
+          const summaryItems = [
+            ["Total Orders", String(summaryData.totalOrders || 0)],
+            ["Active Orders", String(summaryData.activeOrders || 0)],
+            ["Completed Orders", String(summaryData.completedOrders || 0)],
+            ["Total Rolls", String(summaryData.totalRolls || 0)],
+            ["Total Weight (kg)", summaryData.totalWeight ? parseFloat(summaryData.totalWeight).toFixed(2) : "0"],
+            ["Avg Production Time (hr)", summaryData.avgProductionTime ? parseFloat(summaryData.avgProductionTime).toFixed(2) : "0"],
+            ["Waste %", summaryData.wastePercentage ? parseFloat(summaryData.wastePercentage).toFixed(2) + "%" : "0%"],
+            ["Completion Rate", summaryData.completionRate ? parseFloat(summaryData.completionRate).toFixed(1) + "%" : "0%"],
+          ];
+          doc.font("Helvetica").fontSize(9);
+          summaryItems.forEach(([label, val]) => {
+            doc.text(`${label}: ${val}`, 40, doc.y, { continued: false });
+          });
+          doc.moveDown(1);
+        }
+
+        const addDataTable = (title: string, data: any[]) => {
+          if (!Array.isArray(data) || data.length === 0) return;
+          if (doc.y > doc.page.height - 120) doc.addPage();
+          doc.fontSize(12).font("Helvetica-Bold").text(title, { align: "left" });
+          doc.moveDown(0.3);
+          const headers = Object.keys(data[0]);
+          const tableWidth = doc.page.width - 80;
+          const colWidths = headers.map(() => tableWidth / headers.length);
+          drawTableHeader(headers, colWidths, 40);
+          data.forEach((item, idx) => {
+            const values = headers.map(h => {
+              const v = item[h];
+              if (v === null || v === undefined) return "";
+              if (typeof v === "number") return v.toFixed(2);
+              return String(v);
+            });
+            drawTableRow(values, colWidths, 40, idx % 2 === 1);
+          });
+          doc.moveDown(0.5);
+        };
+
+        addDataTable("Daily Production", dateData as any[]);
+        addDataTable("Production by Product", productData as any[]);
+        addDataTable("Waste Analysis", wasteData as any[]);
+        addDataTable("Machine Performance", machineData as any[]);
+        addDataTable("Operator Performance", operatorData as any[]);
+
+        const totalPages = doc.bufferedPageRange().count;
+        for (let i = 0; i < totalPages; i++) {
+          doc.switchToPage(i);
+          doc.fontSize(7).font("Helvetica").fillColor("#999999");
+          doc.text(
+            `Page ${i + 1} of ${totalPages} | MPBF Manufacturing System`,
+            40,
+            doc.page.height - 25,
+            { align: "center", width: doc.page.width - 80 }
+          );
+          doc.fillColor("#000000");
+        }
+
+        doc.end();
+        const pdfBuffer = await pdfReady;
+        const filename = `Production_Report_${dateFrom || "all"}_${dateTo || "all"}.pdf`;
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+        return res.send(pdfBuffer);
+      }
+
+      res.status(400).json({ message: "صيغة غير مدعومة", success: false });
+    } catch (error: any) {
+      console.error("Production report export error:", error);
+      res.status(500).json({ message: "خطأ في تصدير تقرير الإنتاج", success: false });
+    }
+  });
+
   // Export Report with real PDF/Excel generation
   app.post("/api/reports/export", requireAuth, async (req, res) => {
     try {
