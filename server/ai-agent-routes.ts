@@ -3559,7 +3559,7 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
 }
 
 export function registerAiAgentRoutes(app: Express): void {
-  app.get("/api/ai-agent/download/:filename", requireAuth, (req: Request, res: Response) => {
+  app.get("/api/ai-agent/download/:filename", (req: Request, res: Response) => {
     const filename = req.params.filename;
     if (!filename || filename.includes("..") || filename.includes("/") || filename.includes("\0")) {
       return res.status(400).json({ error: "اسم ملف غير صالح" });
