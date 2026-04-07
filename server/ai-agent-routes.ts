@@ -3335,6 +3335,17 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
         const excludeDays = (args.exclude_days as number[]) || [5, 6];
         const shiftType = (args.shift_type as string) || "صباحي";
 
+        const existingUsers = await db.execute(sql`SELECT id FROM users WHERE id = ANY(${userIds})`);
+        const existingUserIds = new Set((existingUsers.rows as any[]).map((r: any) => r.id));
+        const invalidIds = userIds.filter(id => !existingUserIds.has(id));
+        if (invalidIds.length > 0) {
+          return JSON.stringify({
+            error: `المستخدمون التالية أرقامهم غير موجودين في النظام: ${invalidIds.join(", ")}. يرجى التحقق من أرقام المستخدمين أولاً باستخدام execute_database_query للاستعلام عن جدول users.`,
+            invalid_user_ids: invalidIds,
+            valid_user_ids: Array.from(existingUserIds)
+          });
+        }
+
         let totalRecords = 0;
         let absentRecords = 0;
         let presentRecords = 0;
