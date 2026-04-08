@@ -1057,7 +1057,8 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
           logger.warn("Taqnyat webhook received without signature header");
           return res.status(401).json({ error: "Missing webhook signature" });
         }
-        const expectedSignature = crypto.createHmac("sha256", webhookSecret).update(JSON.stringify(req.body)).digest("hex");
+        const taqRawBody = (req as any).rawBody || Buffer.from(JSON.stringify(req.body));
+        const expectedSignature = crypto.createHmac("sha256", webhookSecret).update(taqRawBody).digest("hex");
         try {
           if (!crypto.timingSafeEqual(Buffer.from(String(signature)), Buffer.from(expectedSignature))) {
             logger.warn("Taqnyat webhook signature mismatch");
@@ -1209,7 +1210,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
           logger.warn("Meta webhook received without signature header");
           return res.status(401).send("Missing signature");
         }
-        const rawBody = JSON.stringify(req.body);
+        const rawBody = (req as any).rawBody || Buffer.from(JSON.stringify(req.body));
         const expectedSignature = "sha256=" + crypto.createHmac("sha256", appSecret).update(rawBody).digest("hex");
         try {
           if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) {
