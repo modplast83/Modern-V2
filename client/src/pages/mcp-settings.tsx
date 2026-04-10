@@ -168,6 +168,7 @@ export default function McpSettings() {
                 <Shield className="h-4 w-4 text-blue-600" />
                 {isAr ? "الأدوات المتاحة لـ ChatGPT" : "Available Tools for ChatGPT"}
               </h4>
+              <h5 className="text-xs font-medium text-muted-foreground mt-1 mb-1">{isAr ? "📖 أدوات القراءة" : "📖 Read Tools"}</h5>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                 {[
                   { name: "get_dashboard_stats", desc: isAr ? "إحصائيات المصنع" : "Factory stats" },
@@ -178,8 +179,32 @@ export default function McpSettings() {
                   { name: "get_maintenance_requests", desc: isAr ? "طلبات الصيانة" : "Maintenance requests" },
                   { name: "get_attendance_summary", desc: isAr ? "ملخص الحضور" : "Attendance summary" },
                   { name: "get_customers", desc: isAr ? "العملاء" : "Customers" },
+                  { name: "get_customer_products", desc: isAr ? "منتجات العملاء" : "Customer products" },
+                  { name: "get_categories", desc: isAr ? "الأصناف" : "Categories" },
                   { name: "get_quality_issues", desc: isAr ? "مشاكل الجودة" : "Quality issues" },
                   { name: "search_rolls", desc: isAr ? "بحث الرولات" : "Search rolls" },
+                ].map((tool) => (
+                  <div key={tool.name} className="text-xs py-1 flex items-center gap-2">
+                    <Badge variant="outline" className="font-mono text-[10px]">{tool.name}</Badge>
+                    <span className="text-muted-foreground">{tool.desc}</span>
+                  </div>
+                ))}
+              </div>
+              <h5 className="text-xs font-medium text-muted-foreground mt-3 mb-1">{isAr ? "✏️ أدوات الإنشاء والتعديل" : "✏️ Create & Update Tools"}</h5>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                {[
+                  { name: "create_customer", desc: isAr ? "إنشاء عميل جديد" : "Create customer" },
+                  { name: "update_customer", desc: isAr ? "تعديل بيانات عميل" : "Update customer" },
+                  { name: "create_category", desc: isAr ? "إنشاء صنف جديد" : "Create category" },
+                  { name: "create_item", desc: isAr ? "إنشاء مادة جديدة" : "Create item" },
+                  { name: "create_customer_product", desc: isAr ? "إنشاء منتج عميل" : "Create customer product" },
+                  { name: "update_customer_product", desc: isAr ? "تعديل منتج عميل" : "Update customer product" },
+                  { name: "create_order", desc: isAr ? "إنشاء طلب جديد" : "Create order" },
+                  { name: "update_order", desc: isAr ? "تعديل طلب" : "Update order" },
+                  { name: "update_order_status", desc: isAr ? "تغيير حالة طلب" : "Change order status" },
+                  { name: "create_production_order", desc: isAr ? "إنشاء أمر إنتاج" : "Create production order" },
+                  { name: "update_production_order", desc: isAr ? "تعديل أمر إنتاج" : "Update production order" },
+                  { name: "update_production_order_status", desc: isAr ? "تغيير حالة أمر إنتاج" : "Change production status" },
                 ].map((tool) => (
                   <div key={tool.name} className="text-xs py-1 flex items-center gap-2">
                     <Badge variant="outline" className="font-mono text-[10px]">{tool.name}</Badge>
