@@ -221,7 +221,7 @@ app.use((req, res, next) => {
   }
 
   // MCP endpoint: allow any origin (protected by API key auth)
-  const isMcpRoute = req.path === "/mcp";
+  const isMcpRoute = req.path === "/mcp" || req.path.startsWith("/oauth/") || req.path === "/.well-known/oauth-authorization-server";
 
   if (isMcpRoute && origin) {
     res.header("Access-Control-Allow-Origin", origin);
@@ -313,8 +313,8 @@ app.use(performanceMonitor);
 
 // Session extension middleware - extends session on any API call with enhanced reliability
 app.use((req, res, next) => {
-  // Skip session extension for MCP route (uses API key auth)
-  if (req.path === "/mcp") return next();
+  // Skip session extension for MCP/OAuth routes (uses API key auth)
+  if (req.path === "/mcp" || req.path.startsWith("/oauth/") || req.path === "/.well-known/oauth-authorization-server") return next();
   // For API requests, extend the session if it exists
   if (req.path.startsWith("/api") && req.session) {
     // Check if session has userId (authenticated session)

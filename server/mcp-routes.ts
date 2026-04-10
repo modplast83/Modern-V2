@@ -7,6 +7,7 @@ import { db } from "./db";
 import { mcp_api_keys } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { requireAuth, requireAdmin, type AuthRequest } from "./middleware/auth";
+import { validateOAuthToken } from "./mcp-oauth";
 
 function hashApiKey(key: string): string {
   return crypto.createHash("sha256").update(key).digest("hex");
@@ -37,6 +38,13 @@ async function validateApiKey(key: string): Promise<boolean> {
     console.error("Error validating MCP API key:", error);
     return false;
   }
+}
+
+async function validateBearerToken(token: string): Promise<boolean> {
+  if (token.startsWith("mpbf_")) {
+    return validateApiKey(token);
+  }
+  return validateOAuthToken(token);
 }
 
 function extractAndValidateBearer(req: Request): string | null {
@@ -87,7 +95,7 @@ export function registerMcpRoutes(app: Express) {
         return;
       }
 
-      const isValid = await validateApiKey(apiKey);
+      const isValid = await validateBearerToken(apiKey);
       if (!isValid) {
         recordAuthFailure(clientIp);
         res.status(403).json({ error: "Invalid or inactive API key" });
@@ -136,7 +144,7 @@ export function registerMcpRoutes(app: Express) {
         return;
       }
 
-      const isValid = await validateApiKey(apiKey);
+      const isValid = await validateBearerToken(apiKey);
       if (!isValid) {
         res.status(403).json({ error: "Invalid or inactive API key" });
         return;
@@ -166,7 +174,7 @@ export function registerMcpRoutes(app: Express) {
         return;
       }
 
-      const isValid = await validateApiKey(apiKey);
+      const isValid = await validateBearerToken(apiKey);
       if (!isValid) {
         res.status(403).json({ error: "Invalid or inactive API key" });
         return;

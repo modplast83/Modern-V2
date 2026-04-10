@@ -121,43 +121,46 @@ export default function McpSettings() {
               <ol className="text-sm space-y-2 list-decimal ps-5">
                 <li>
                   {isAr
-                    ? "أنشئ مفتاح API من القسم أدناه"
-                    : "Create an API key from the section below"}
+                    ? "أنشئ مفتاح API من القسم أدناه واحفظه"
+                    : "Create an API key from the section below and save it"}
                 </li>
                 <li>
                   {isAr
-                    ? 'افتح ChatGPT وانتقل إلى الإعدادات → "تطبيق جديد"'
-                    : 'Open ChatGPT and go to Settings → "New App"'}
+                    ? 'افتح ChatGPT وانتقل إلى الإعدادات → Connected Apps أو MCP'
+                    : 'Open ChatGPT and go to Settings → Connected Apps or MCP'}
                 </li>
                 <li>
-                  {isAr ? "أدخل البيانات التالية:" : "Enter the following details:"}
+                  {isAr ? 'اضغط "Add Connection" وأدخل الرابط التالي:' : 'Click "Add Connection" and enter the following URL:'}
                   <div className="mt-2 space-y-2">
                     <div className="flex items-center gap-2 bg-background p-2 rounded border">
                       <span className="text-xs font-medium text-muted-foreground min-w-[120px]">
-                        {isAr ? "عنوان URL الخادم MCP:" : "MCP Server URL:"}
+                        {isAr ? "رابط خادم MCP:" : "MCP Server URL:"}
                       </span>
                       <code className="text-xs flex-1 break-all">{mcpUrl}</code>
                       <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => copyToClipboard(mcpUrl)}>
                         <Copy className="h-3 w-3" />
                       </Button>
                     </div>
-                    <div className="flex items-center gap-2 bg-background p-2 rounded border">
-                      <span className="text-xs font-medium text-muted-foreground min-w-[120px]">
-                        {isAr ? "المصادقة:" : "Authentication:"}
-                      </span>
-                      <code className="text-xs">API Key (Bearer Token)</code>
-                    </div>
                   </div>
                 </li>
                 <li>
                   {isAr
-                    ? 'في الإعدادات المتقدمة، اختر "API Key" وأدخل المفتاح الذي أنشأته'
-                    : 'In advanced settings, choose "API Key" and enter the key you created'}
+                    ? "عند ظهور صفحة المصادقة (OAuth)، أدخل مفتاح API الذي أنشأته وسيتم الربط تلقائياً"
+                    : "When the authentication page (OAuth) appears, enter the API key you created and the connection will be established automatically"}
                 </li>
                 <li>
-                  {isAr ? 'اضغط "إنشاء" لحفظ التطبيق' : 'Click "Create" to save the app'}
+                  {isAr
+                    ? "بعد المصادقة، يمكنك سؤال ChatGPT عن بيانات المصنع مباشرة"
+                    : "After authentication, you can ask ChatGPT about factory data directly"}
                 </li>
               </ol>
+              <div className="mt-3 p-2 bg-amber-50 dark:bg-amber-950/30 rounded border border-amber-200 dark:border-amber-800">
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  {isAr
+                    ? "💡 ملاحظة: ChatGPT يستخدم بروتوكول OAuth 2.1 للمصادقة. عند الاتصال، ستظهر لك صفحة لإدخال مفتاح API. النظام يدعم المصادقة التلقائية."
+                    : "💡 Note: ChatGPT uses OAuth 2.1 protocol for authentication. When connecting, you'll see a page to enter your API key. The system supports automatic authentication."}
+                </p>
+              </div>
             </div>
 
             <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4">

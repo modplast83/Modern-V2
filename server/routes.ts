@@ -269,6 +269,10 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   // Register AI Agent routes
   registerAiAgentRoutes(app);
 
+  // Register MCP OAuth 2.1 routes (must be before MCP routes)
+  const { registerMcpOAuthRoutes } = await import("./mcp-oauth");
+  registerMcpOAuthRoutes(app);
+
   // Register MCP server routes
   const { registerMcpRoutes } = await import("./mcp-routes");
   registerMcpRoutes(app);
