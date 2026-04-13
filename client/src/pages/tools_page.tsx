@@ -1699,7 +1699,7 @@ function BarcodeGenerator(): JSX.Element {
 
 // ===================== 11) أداة الخلطات التجريبية =====================
 
-const MATERIAL_TYPES = ["HDPE", "LDPE", "LLDPE", "Filler", "Filler CLEAR", "Process Aid", "COLOR", "Removal"] as const;
+const MATERIAL_TYPES = ["HDPE", "LDPE", "LLDPE", "Filler", "Filler CLEAR", "Process Aid", "COLOR", "Removal", "Recycle"] as const;
 
 interface BlendItem {
   id: string;
@@ -1720,6 +1720,9 @@ interface BlendFormData {
   heater1_b: string;
   heater2_b: string;
   heater3_b: string;
+  heater_filter: string;
+  heater_mold: string;
+  heater_mold_head: string;
   film_size_cm: string;
   thickness_u: string;
 }
@@ -1739,6 +1742,7 @@ function BlendsTool(): JSX.Element {
     notes: "",
     motor_speed_a: "", heater1_a: "", heater2_a: "", heater3_a: "",
     motor_speed_b: "", heater1_b: "", heater2_b: "", heater3_b: "",
+    heater_filter: "", heater_mold: "", heater_mold_head: "",
     film_size_cm: "", thickness_u: "",
   });
 
@@ -1813,6 +1817,7 @@ function BlendsTool(): JSX.Element {
       machine_id: "", screw_type: "A", notes: "",
       motor_speed_a: "", heater1_a: "", heater2_a: "", heater3_a: "",
       motor_speed_b: "", heater1_b: "", heater2_b: "", heater3_b: "",
+      heater_filter: "", heater_mold: "", heater_mold_head: "",
       film_size_cm: "", thickness_u: "",
     });
     setItems([]);
@@ -1832,6 +1837,9 @@ function BlendsTool(): JSX.Element {
       heater1_b: blend.heater1_b || "",
       heater2_b: blend.heater2_b || "",
       heater3_b: blend.heater3_b || "",
+      heater_filter: blend.heater_filter || "",
+      heater_mold: blend.heater_mold || "",
+      heater_mold_head: blend.heater_mold_head || "",
       film_size_cm: blend.film_size_cm || "",
       thickness_u: blend.thickness_u || "",
     });
@@ -1893,6 +1901,9 @@ function BlendsTool(): JSX.Element {
       heater1_b: form.heater1_b || null,
       heater2_b: form.heater2_b || null,
       heater3_b: form.heater3_b || null,
+      heater_filter: form.heater_filter || null,
+      heater_mold: form.heater_mold || null,
+      heater_mold_head: form.heater_mold_head || null,
       film_size_cm: form.film_size_cm || null,
       thickness_u: form.thickness_u || null,
       items: itemsPayload,
@@ -1982,7 +1993,7 @@ ${filled ? materialRows(bItems, "B") : `<tr><td>B</td><td></td><td></td><td></td
 
 <div class="section-title">${t("tools.blends.evaluationCriteria")} - ${t("tools.blends.screwA")}</div>
 <table class="eval-table">
-${evalRowFilled(t("tools.blends.motorSpeed"), filled && blend?.motor_speed_a)}
+${evalRowFilled(t("tools.blends.motorSpeed") + " (RPM)", filled && blend?.motor_speed_a)}
 ${evalRowFilled(t("tools.blends.heater1"), filled && blend?.heater1_a)}
 ${evalRowFilled(t("tools.blends.heater2"), filled && blend?.heater2_a)}
 ${evalRowFilled(t("tools.blends.heater3"), filled && blend?.heater3_a)}
@@ -1990,7 +2001,7 @@ ${evalRowFilled(t("tools.blends.heater3"), filled && blend?.heater3_a)}
 
 <div class="section-title">${t("tools.blends.evaluationCriteria")} - ${t("tools.blends.screwB")}</div>
 <table class="eval-table">
-${evalRowFilled(t("tools.blends.motorSpeed"), filled && blend?.motor_speed_b)}
+${evalRowFilled(t("tools.blends.motorSpeed") + " (RPM)", filled && blend?.motor_speed_b)}
 ${evalRowFilled(t("tools.blends.heater1"), filled && blend?.heater1_b)}
 ${evalRowFilled(t("tools.blends.heater2"), filled && blend?.heater2_b)}
 ${evalRowFilled(t("tools.blends.heater3"), filled && blend?.heater3_b)}
@@ -1998,6 +2009,9 @@ ${evalRowFilled(t("tools.blends.heater3"), filled && blend?.heater3_b)}
 
 <div class="section-title">${t("tools.blends.overallSettings")}</div>
 <table class="eval-table">
+${evalRowFilled(t("tools.blends.heaterFilter"), filled && blend?.heater_filter)}
+${evalRowFilled(t("tools.blends.heaterMold"), filled && blend?.heater_mold)}
+${evalRowFilled(t("tools.blends.heaterMoldHead"), filled && blend?.heater_mold_head)}
 ${evalRowFilled(t("tools.blends.filmSize"), filled && blend?.film_size_cm)}
 ${evalRowFilled(t("tools.blends.thickness"), filled && blend?.thickness_u)}
 </table>
@@ -2169,7 +2183,7 @@ ${evalRowFilled(t("tools.blends.thickness"), filled && blend?.thickness_u)}
           <div>
             <h4 className="font-semibold mb-2">{t("tools.blends.screwSettings")} - {t("tools.blends.screwA")}</h4>
             <div className="grid grid-cols-2 gap-2 text-sm">
-              <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded"><span className="text-muted-foreground">{t("tools.blends.motorSpeed")}:</span> <span className="font-medium">{blend.motor_speed_a || "-"}</span></div>
+              <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded"><span className="text-muted-foreground">{t("tools.blends.motorSpeed")} (RPM):</span> <span className="font-medium">{blend.motor_speed_a || "-"}</span></div>
               <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded"><span className="text-muted-foreground">{t("tools.blends.heater1")}:</span> <span className="font-medium">{blend.heater1_a || "-"}</span></div>
               <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded"><span className="text-muted-foreground">{t("tools.blends.heater2")}:</span> <span className="font-medium">{blend.heater2_a || "-"}</span></div>
               <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded"><span className="text-muted-foreground">{t("tools.blends.heater3")}:</span> <span className="font-medium">{blend.heater3_a || "-"}</span></div>
@@ -2178,7 +2192,7 @@ ${evalRowFilled(t("tools.blends.thickness"), filled && blend?.thickness_u)}
           <div>
             <h4 className="font-semibold mb-2">{t("tools.blends.screwSettings")} - {t("tools.blends.screwB")}</h4>
             <div className="grid grid-cols-2 gap-2 text-sm">
-              <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded"><span className="text-muted-foreground">{t("tools.blends.motorSpeed")}:</span> <span className="font-medium">{blend.motor_speed_b || "-"}</span></div>
+              <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded"><span className="text-muted-foreground">{t("tools.blends.motorSpeed")} (RPM):</span> <span className="font-medium">{blend.motor_speed_b || "-"}</span></div>
               <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded"><span className="text-muted-foreground">{t("tools.blends.heater1")}:</span> <span className="font-medium">{blend.heater1_b || "-"}</span></div>
               <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded"><span className="text-muted-foreground">{t("tools.blends.heater2")}:</span> <span className="font-medium">{blend.heater2_b || "-"}</span></div>
               <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded"><span className="text-muted-foreground">{t("tools.blends.heater3")}:</span> <span className="font-medium">{blend.heater3_b || "-"}</span></div>
@@ -2188,7 +2202,10 @@ ${evalRowFilled(t("tools.blends.thickness"), filled && blend?.thickness_u)}
 
         <div>
           <h4 className="font-semibold mb-2">{t("tools.blends.overallSettings")}</h4>
-          <div className="grid grid-cols-2 gap-2 text-sm">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm">
+            <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded"><span className="text-muted-foreground">{t("tools.blends.heaterFilter")}:</span> <span className="font-medium">{blend.heater_filter || "-"}</span></div>
+            <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded"><span className="text-muted-foreground">{t("tools.blends.heaterMold")}:</span> <span className="font-medium">{blend.heater_mold || "-"}</span></div>
+            <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded"><span className="text-muted-foreground">{t("tools.blends.heaterMoldHead")}:</span> <span className="font-medium">{blend.heater_mold_head || "-"}</span></div>
             <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded"><span className="text-muted-foreground">{t("tools.blends.filmSize")}:</span> <span className="font-medium">{blend.film_size_cm || "-"}</span></div>
             <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded"><span className="text-muted-foreground">{t("tools.blends.thickness")}:</span> <span className="font-medium">{blend.thickness_u || "-"}</span></div>
           </div>
@@ -2239,7 +2256,7 @@ ${evalRowFilled(t("tools.blends.thickness"), filled && blend?.thickness_u)}
                 </SelectTrigger>
                 <SelectContent>
                   {extruders.map((m: any) => (
-                    <SelectItem key={m.id} value={m.id}>{m.name_ar || m.name} ({m.screw_type || "A"})</SelectItem>
+                    <SelectItem key={m.id} value={m.id}>{m.name_ar || m.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -2248,93 +2265,129 @@ ${evalRowFilled(t("tools.blends.thickness"), filled && blend?.thickness_u)}
 
           <Separator />
 
-          {renderMaterialSection("A", screwAItems, totalA)}
-
-          {(isABA || screwBItems.length > 0) && (
-            <>
-              <Separator />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="border rounded-lg p-3">
+              {renderMaterialSection("A", screwAItems, totalA)}
+            </div>
+            <div className="border rounded-lg p-3">
               {renderMaterialSection("B", screwBItems, totalB)}
-            </>
-          )}
-
-          {!isABA && screwBItems.length === 0 && (
-            <Button variant="ghost" size="sm" onClick={() => addItem("B")} className="text-muted-foreground">
-              <Plus className="h-3 w-3 ml-1" />
-              {t("tools.blends.addMaterial")} - {t("tools.blends.screwB")}
-            </Button>
-          )}
+            </div>
+          </div>
 
           {totalAll > 0 && (
-            <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
-              <h4 className="font-bold text-sm mb-2">{t("tools.blends.overallSummary")}</h4>
-              <div className="grid grid-cols-3 gap-3 text-sm">
-                <div>
-                  <p className="text-muted-foreground">{t("tools.blends.screwA")}</p>
-                  <p className="font-bold">{totalA.toFixed(2)} ({getPercentage(totalA, totalAll)}%)</p>
-                </div>
-                {totalB > 0 && (
-                  <div>
-                    <p className="text-muted-foreground">{t("tools.blends.screwB")}</p>
-                    <p className="font-bold">{totalB.toFixed(2)} ({getPercentage(totalB, totalAll)}%)</p>
-                  </div>
-                )}
-                <div>
-                  <p className="text-muted-foreground">{t("tools.blends.totalQuantity")}</p>
-                  <p className="font-bold text-primary">{totalAll.toFixed(2)}</p>
-                </div>
-              </div>
+            <div className="border rounded-lg p-4">
+              <h4 className="font-bold text-sm mb-3">{t("tools.blends.combinedMaterials")}</h4>
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-primary text-primary-foreground">
+                    <th className="p-2 border">{t("tools.blends.material")}</th>
+                    <th className="p-2 border">{t("tools.blends.screwA")}</th>
+                    <th className="p-2 border">{t("tools.blends.screwB")}</th>
+                    <th className="p-2 border">{t("tools.blends.totalQuantity")}</th>
+                    <th className="p-2 border">{t("tools.blends.overallPercentage")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    const allMaterials = new Map<string, { a: number; b: number }>();
+                    screwAItems.forEach(i => {
+                      const cur = allMaterials.get(i.material_type) || { a: 0, b: 0 };
+                      cur.a += toNumber(i.quantity);
+                      allMaterials.set(i.material_type, cur);
+                    });
+                    screwBItems.forEach(i => {
+                      const cur = allMaterials.get(i.material_type) || { a: 0, b: 0 };
+                      cur.b += toNumber(i.quantity);
+                      allMaterials.set(i.material_type, cur);
+                    });
+                    return Array.from(allMaterials.entries()).map(([mat, vals]) => {
+                      const matTotal = vals.a + vals.b;
+                      return (
+                        <tr key={mat} className="even:bg-slate-50 dark:even:bg-slate-800">
+                          <td className="p-2 border text-center font-medium">{mat}</td>
+                          <td className="p-2 border text-center">{vals.a > 0 ? vals.a.toFixed(2) : "—"}</td>
+                          <td className="p-2 border text-center">{vals.b > 0 ? vals.b.toFixed(2) : "—"}</td>
+                          <td className="p-2 border text-center font-semibold">{matTotal.toFixed(2)}</td>
+                          <td className="p-2 border text-center">{getPercentage(matTotal, totalAll)}%</td>
+                        </tr>
+                      );
+                    });
+                  })()}
+                  <tr className="bg-primary/10 font-bold">
+                    <td className="p-2 border text-center">{t("tools.blends.overallSummary")}</td>
+                    <td className="p-2 border text-center">{totalA.toFixed(2)}</td>
+                    <td className="p-2 border text-center">{totalB > 0 ? totalB.toFixed(2) : "—"}</td>
+                    <td className="p-2 border text-center text-primary">{totalAll.toFixed(2)}</td>
+                    <td className="p-2 border text-center">100%</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           )}
 
           <Separator />
 
-          <div className="space-y-3">
-            <h4 className="font-semibold text-sm">{t("tools.blends.evaluationCriteria")} - {t("tools.blends.screwA")}</h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">{t("tools.blends.motorSpeed")}</Label>
-                <Input value={form.motor_speed_a} onChange={(e) => setForm(p => ({ ...p, motor_speed_a: e.target.value }))} />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">{t("tools.blends.heater1")}</Label>
-                <Input value={form.heater1_a} onChange={(e) => setForm(p => ({ ...p, heater1_a: e.target.value }))} />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">{t("tools.blends.heater2")}</Label>
-                <Input value={form.heater2_a} onChange={(e) => setForm(p => ({ ...p, heater2_a: e.target.value }))} />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">{t("tools.blends.heater3")}</Label>
-                <Input value={form.heater3_a} onChange={(e) => setForm(p => ({ ...p, heater3_a: e.target.value }))} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-3 border rounded-lg p-3">
+              <h4 className="font-semibold text-sm">{t("tools.blends.evaluationCriteria")} - {t("tools.blends.screwA")}</h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">{t("tools.blends.motorSpeed")} (RPM 0-50)</Label>
+                  <Input type="number" min="0" max="50" step="0.1" value={form.motor_speed_a} onChange={(e) => setForm(p => ({ ...p, motor_speed_a: e.target.value }))} placeholder="0-50 RPM" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">{t("tools.blends.heater1")}</Label>
+                  <Input value={form.heater1_a} onChange={(e) => setForm(p => ({ ...p, heater1_a: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">{t("tools.blends.heater2")}</Label>
+                  <Input value={form.heater2_a} onChange={(e) => setForm(p => ({ ...p, heater2_a: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">{t("tools.blends.heater3")}</Label>
+                  <Input value={form.heater3_a} onChange={(e) => setForm(p => ({ ...p, heater3_a: e.target.value }))} />
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="space-y-3">
-            <h4 className="font-semibold text-sm">{t("tools.blends.evaluationCriteria")} - {t("tools.blends.screwB")}</h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">{t("tools.blends.motorSpeed")}</Label>
-                <Input value={form.motor_speed_b} onChange={(e) => setForm(p => ({ ...p, motor_speed_b: e.target.value }))} />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">{t("tools.blends.heater1")}</Label>
-                <Input value={form.heater1_b} onChange={(e) => setForm(p => ({ ...p, heater1_b: e.target.value }))} />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">{t("tools.blends.heater2")}</Label>
-                <Input value={form.heater2_b} onChange={(e) => setForm(p => ({ ...p, heater2_b: e.target.value }))} />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">{t("tools.blends.heater3")}</Label>
-                <Input value={form.heater3_b} onChange={(e) => setForm(p => ({ ...p, heater3_b: e.target.value }))} />
+            <div className="space-y-3 border rounded-lg p-3">
+              <h4 className="font-semibold text-sm">{t("tools.blends.evaluationCriteria")} - {t("tools.blends.screwB")}</h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">{t("tools.blends.motorSpeed")} (RPM 0-50)</Label>
+                  <Input type="number" min="0" max="50" step="0.1" value={form.motor_speed_b} onChange={(e) => setForm(p => ({ ...p, motor_speed_b: e.target.value }))} placeholder="0-50 RPM" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">{t("tools.blends.heater1")}</Label>
+                  <Input value={form.heater1_b} onChange={(e) => setForm(p => ({ ...p, heater1_b: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">{t("tools.blends.heater2")}</Label>
+                  <Input value={form.heater2_b} onChange={(e) => setForm(p => ({ ...p, heater2_b: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">{t("tools.blends.heater3")}</Label>
+                  <Input value={form.heater3_b} onChange={(e) => setForm(p => ({ ...p, heater3_b: e.target.value }))} />
+                </div>
               </div>
             </div>
           </div>
 
           <div className="space-y-3">
             <h4 className="font-semibold text-sm">{t("tools.blends.overallSettings")}</h4>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">{t("tools.blends.heaterFilter")}</Label>
+                <Input value={form.heater_filter} onChange={(e) => setForm(p => ({ ...p, heater_filter: e.target.value }))} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">{t("tools.blends.heaterMold")}</Label>
+                <Input value={form.heater_mold} onChange={(e) => setForm(p => ({ ...p, heater_mold: e.target.value }))} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">{t("tools.blends.heaterMoldHead")}</Label>
+                <Input value={form.heater_mold_head} onChange={(e) => setForm(p => ({ ...p, heater_mold_head: e.target.value }))} />
+              </div>
               <div className="space-y-1">
                 <Label className="text-xs">{t("tools.blends.filmSize")}</Label>
                 <Input value={form.film_size_cm} onChange={(e) => setForm(p => ({ ...p, film_size_cm: e.target.value }))} />
@@ -2374,6 +2427,7 @@ ${evalRowFilled(t("tools.blends.thickness"), filled && blend?.thickness_u)}
                   heater1_a: form.heater1_a, heater2_a: form.heater2_a, heater3_a: form.heater3_a,
                   motor_speed_b: form.motor_speed_b,
                   heater1_b: form.heater1_b, heater2_b: form.heater2_b, heater3_b: form.heater3_b,
+                  heater_filter: form.heater_filter, heater_mold: form.heater_mold, heater_mold_head: form.heater_mold_head,
                   film_size_cm: form.film_size_cm, thickness_u: form.thickness_u,
                   items: items.filter(i => i.material_type && i.quantity > 0).map(i => ({
                     screw: i.screw, material_type: i.material_type, quantity: i.quantity.toString(),

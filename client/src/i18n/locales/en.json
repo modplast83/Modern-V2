@@ -3032,6 +3032,10 @@
       "overallPercentage": "Overall %",
       "filterByMachine": "Filter by machine",
       "allMachines": "All machines",
+      "heaterFilter": "Filter Heater",
+      "heaterMold": "Mold Heater",
+      "heaterMoldHead": "Mold Head Heater",
+      "combinedMaterials": "Combined Materials Table",
       "materials": {
         "HDPE": "HDPE",
         "LDPE": "LDPE",
@@ -3040,7 +3044,8 @@
         "Filler CLEAR": "Filler CLEAR",
         "Process Aid": "Process Aid",
         "COLOR": "COLOR",
-        "Removal": "Removal"
+        "Removal": "Removal",
+        "Recycle": "Recycle"
       }
     }
   },

@@ -12,6 +12,9 @@ CREATE TABLE IF NOT EXISTS "experimental_blends" (
   "heater1_b" numeric(8, 2),
   "heater2_b" numeric(8, 2),
   "heater3_b" numeric(8, 2),
+  "heater_filter" numeric(8, 2),
+  "heater_mold" numeric(8, 2),
+  "heater_mold_head" numeric(8, 2),
   "film_size_cm" numeric(8, 2),
   "thickness_u" numeric(8, 2),
   "created_at" timestamp DEFAULT now() NOT NULL

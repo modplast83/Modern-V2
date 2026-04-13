@@ -3550,6 +3550,10 @@
       "overallPercentage": "النسبة الكلية %",
       "filterByMachine": "تصفية حسب الماكينة",
       "allMachines": "جميع الماكينات",
+      "heaterFilter": "هيتر الفلتر",
+      "heaterMold": "هيتر القالب",
+      "heaterMoldHead": "هيتر راس القالب",
+      "combinedMaterials": "جدول المواد الكلي",
       "materials": {
         "HDPE": "HDPE",
         "LDPE": "LDPE",
@@ -3558,7 +3562,8 @@
         "Filler CLEAR": "Filler CLEAR",
         "Process Aid": "Process Aid",
         "COLOR": "COLOR",
-        "Removal": "Removal"
+        "Removal": "Removal",
+        "Recycle": "Recycle"
       }
     }
   },
