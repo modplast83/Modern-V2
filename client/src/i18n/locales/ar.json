@@ -3547,6 +3547,9 @@
       "searchBlends": "بحث في الخلطات...",
       "blendUpdated": "تم تحديث الخلطة بنجاح",
       "editBlend": "تعديل الخلطة",
+      "overallPercentage": "النسبة الكلية %",
+      "filterByMachine": "تصفية حسب الماكينة",
+      "allMachines": "جميع الماكينات",
       "materials": {
         "HDPE": "HDPE",
         "LDPE": "LDPE",

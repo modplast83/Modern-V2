@@ -3029,6 +3029,9 @@
       "searchBlends": "Search blends...",
       "blendUpdated": "Blend updated successfully",
       "editBlend": "Edit Blend",
+      "overallPercentage": "Overall %",
+      "filterByMachine": "Filter by machine",
+      "allMachines": "All machines",
       "materials": {
         "HDPE": "HDPE",
         "LDPE": "LDPE",

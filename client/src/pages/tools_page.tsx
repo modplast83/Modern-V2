@@ -1731,6 +1731,7 @@ function BlendsTool(): JSX.Element {
   const [selectedBlendId, setSelectedBlendId] = useState<number | null>(null);
   const [editingBlendId, setEditingBlendId] = useState<number | null>(null);
   const [archiveSearch, setArchiveSearch] = useState("");
+  const [archiveMachineFilter, setArchiveMachineFilter] = useState<string>("all");
 
   const [form, setForm] = useState<BlendFormData>({
     machine_id: "",
@@ -2110,42 +2111,54 @@ ${evalRowFilled(t("tools.blends.thickness"), filled && blend?.thickness_u)}
                 <th className="p-2 border">{t("tools.blends.material")}</th>
                 <th className="p-2 border">{t("tools.blends.quantity")}</th>
                 <th className="p-2 border">{t("tools.blends.percentage")}</th>
+                <th className="p-2 border">{t("tools.blends.overallPercentage")}</th>
               </tr>
             </thead>
             <tbody>
-              {aItems.map((i: any, idx: number) => (
-                <tr key={idx} className="even:bg-slate-50 dark:even:bg-slate-800">
-                  <td className="p-2 border text-center">A</td>
-                  <td className="p-2 border text-center">{i.material_type}</td>
-                  <td className="p-2 border text-center">{parseFloat(i.quantity).toFixed(2)}</td>
-                  <td className="p-2 border text-center">{tA > 0 ? ((parseFloat(i.quantity) / tA) * 100).toFixed(1) : 0}%</td>
-                </tr>
-              ))}
+              {aItems.map((i: any, idx: number) => {
+                const qty = parseFloat(i.quantity);
+                return (
+                  <tr key={idx} className="even:bg-slate-50 dark:even:bg-slate-800">
+                    <td className="p-2 border text-center">A</td>
+                    <td className="p-2 border text-center">{i.material_type}</td>
+                    <td className="p-2 border text-center">{qty.toFixed(2)}</td>
+                    <td className="p-2 border text-center">{tA > 0 ? ((qty / tA) * 100).toFixed(1) : 0}%</td>
+                    <td className="p-2 border text-center">{(tA + tB) > 0 ? ((qty / (tA + tB)) * 100).toFixed(1) : 0}%</td>
+                  </tr>
+                );
+              })}
               {aItems.length > 0 && (
                 <tr className="bg-slate-200 dark:bg-slate-700 font-bold">
                   <td className="p-2 border text-center" colSpan={2}>{t("tools.blends.screwASummary")}</td>
                   <td className="p-2 border text-center">{tA.toFixed(2)}</td>
                   <td className="p-2 border text-center">100%</td>
+                  <td className="p-2 border text-center">{(tA + tB) > 0 ? ((tA / (tA + tB)) * 100).toFixed(1) : 0}%</td>
                 </tr>
               )}
-              {bItems.map((i: any, idx: number) => (
-                <tr key={idx} className="even:bg-slate-50 dark:even:bg-slate-800">
-                  <td className="p-2 border text-center">B</td>
-                  <td className="p-2 border text-center">{i.material_type}</td>
-                  <td className="p-2 border text-center">{parseFloat(i.quantity).toFixed(2)}</td>
-                  <td className="p-2 border text-center">{tB > 0 ? ((parseFloat(i.quantity) / tB) * 100).toFixed(1) : 0}%</td>
-                </tr>
-              ))}
+              {bItems.map((i: any, idx: number) => {
+                const qty = parseFloat(i.quantity);
+                return (
+                  <tr key={idx} className="even:bg-slate-50 dark:even:bg-slate-800">
+                    <td className="p-2 border text-center">B</td>
+                    <td className="p-2 border text-center">{i.material_type}</td>
+                    <td className="p-2 border text-center">{qty.toFixed(2)}</td>
+                    <td className="p-2 border text-center">{tB > 0 ? ((qty / tB) * 100).toFixed(1) : 0}%</td>
+                    <td className="p-2 border text-center">{(tA + tB) > 0 ? ((qty / (tA + tB)) * 100).toFixed(1) : 0}%</td>
+                  </tr>
+                );
+              })}
               {bItems.length > 0 && (
                 <tr className="bg-slate-200 dark:bg-slate-700 font-bold">
                   <td className="p-2 border text-center" colSpan={2}>{t("tools.blends.screwBSummary")}</td>
                   <td className="p-2 border text-center">{tB.toFixed(2)}</td>
                   <td className="p-2 border text-center">100%</td>
+                  <td className="p-2 border text-center">{(tA + tB) > 0 ? ((tB / (tA + tB)) * 100).toFixed(1) : 0}%</td>
                 </tr>
               )}
               <tr className="bg-primary/10 font-bold">
                 <td className="p-2 border text-center" colSpan={2}>{t("tools.blends.overallSummary")}</td>
                 <td className="p-2 border text-center">{(tA + tB).toFixed(2)}</td>
+                <td className="p-2 border text-center">—</td>
                 <td className="p-2 border text-center">100%</td>
               </tr>
             </tbody>
@@ -2378,14 +2391,27 @@ ${evalRowFilled(t("tools.blends.thickness"), filled && blend?.thickness_u)}
 
       {view === "archive" && (
         <div className="space-y-3">
-          <div className="relative">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={t("tools.blends.searchBlends")}
-              value={archiveSearch}
-              onChange={(e) => setArchiveSearch(e.target.value)}
-              className="pr-9"
-            />
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={t("tools.blends.searchBlends")}
+                value={archiveSearch}
+                onChange={(e) => setArchiveSearch(e.target.value)}
+                className="pr-9"
+              />
+            </div>
+            <Select value={archiveMachineFilter} onValueChange={setArchiveMachineFilter}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder={t("tools.blends.filterByMachine")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("tools.blends.allMachines")}</SelectItem>
+                {extruders.map((m: any) => (
+                  <SelectItem key={m.id} value={m.id}>{m.name_ar || m.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           {blendsLoading && <p className="text-center text-muted-foreground">{t("common.loading")}</p>}
           {!blendsLoading && (!blendsData || blendsData.length === 0) && (
@@ -2393,6 +2419,7 @@ ${evalRowFilled(t("tools.blends.thickness"), filled && blend?.thickness_u)}
           )}
           {(blendsData || [])
             .filter((blend: any) => {
+              if (archiveMachineFilter !== "all" && blend.machine_id !== archiveMachineFilter) return false;
               if (!archiveSearch.trim()) return true;
               const q = archiveSearch.toLowerCase();
               const machName = extruders.find((m: any) => m.id === blend.machine_id)?.name_ar || extruders.find((m: any) => m.id === blend.machine_id)?.name || "";
