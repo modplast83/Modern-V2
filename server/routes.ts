@@ -12038,7 +12038,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.get("/api/display/slides/active", async (req, res) => {
+  app.get("/api/display/slides/active", requireAuth, async (req, res) => {
     try {
       const slides = await storage.getActiveDisplaySlides();
       res.json(slides);
@@ -12109,7 +12109,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.get("/api/display/live/recent-production", async (req, res) => {
+  app.get("/api/display/live/recent-production", requireAuth, async (req, res) => {
     try {
       const result = await db.execute(sql`
         SELECT po.id, po.production_order_number, po.status, po.quantity_kg, po.produced_quantity_kg,
@@ -12129,7 +12129,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.get("/api/display/live/latest-rolls", async (req, res) => {
+  app.get("/api/display/live/latest-rolls", requireAuth, async (req, res) => {
     try {
       const result = await db.execute(sql`
         SELECT r.id, r.roll_number, r.weight_kg, r.status, r.created_at,
@@ -12149,7 +12149,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.get("/api/display/live/production-stats", async (req, res) => {
+  app.get("/api/display/live/production-stats", requireAuth, async (req, res) => {
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -12169,7 +12169,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.get("/api/display/live/attendance", async (req, res) => {
+  app.get("/api/display/live/attendance", requireAuth, async (req, res) => {
     try {
       const dateParam = req.query.date as string || new Date().toISOString().split('T')[0];
       const result = await db.execute(sql`
@@ -12190,7 +12190,7 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.get("/api/display/live/top-producers", async (req, res) => {
+  app.get("/api/display/live/top-producers", requireAuth, async (req, res) => {
     try {
       const period = (req.query.period as string) || "today";
       const stage = (req.query.stage as string) || "all";

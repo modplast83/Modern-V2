@@ -320,7 +320,9 @@ function AppRoutes() {
         </Route>
 
         <Route path="/display-screen">
-          <DisplayScreen />
+          <ProtectedRoute path="/display-screen">
+            <DisplayScreen />
+          </ProtectedRoute>
         </Route>
 
         <Route path="/display-control">

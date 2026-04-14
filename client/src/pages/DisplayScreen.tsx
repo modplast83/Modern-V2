@@ -611,7 +611,7 @@ export default function DisplayScreen() {
   const { data: topProducersData } = useQuery<TopProducersData>({
     queryKey: ["/api/display/live/top-producers", topProducersPeriod, topProducersStage],
     queryFn: async () => {
-      const res = await fetch(`/api/display/live/top-producers?period=${topProducersPeriod}&stage=${topProducersStage}`);
+      const res = await fetch(`/api/display/live/top-producers?period=${topProducersPeriod}&stage=${topProducersStage}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch top producers");
       return res.json();
     },
