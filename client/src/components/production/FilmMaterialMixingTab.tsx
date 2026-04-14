@@ -31,7 +31,7 @@ import {
   DialogTitle,
 } from "../ui/dialog";
 import { useToast } from "../../hooks/use-toast";
-import { Beaker, Plus, Trash2, Eye, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Beaker, Plus, Trash2, Eye, AlertTriangle, CheckCircle2, Printer } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Skeleton } from "../ui/skeleton";
 import { useAuth } from "../../hooks/use-auth";
@@ -593,8 +593,45 @@ export default function FilmMaterialMixingTab() {
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>{t("production.mixing.batchesLog")}</CardTitle>
+          {batches.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="print:hidden"
+              onClick={() => {
+                const printArea = document.getElementById("mixing-batches-print-area");
+                if (!printArea) return;
+                const printWindow = window.open("", "_blank");
+                if (!printWindow) return;
+                printWindow.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>سجل الخلطات</title><style>
+                  @page { size: A4 landscape; margin: 10mm; }
+                  * { box-sizing: border-box; margin: 0; padding: 0; }
+                  body { font-family: 'Cairo','Segoe UI',Tahoma,sans-serif; direction: rtl; font-size: 11px; color: #000; }
+                  .print-container { width: 277mm; padding: 5mm; }
+                  .print-title { text-align: center; font-size: 18px; font-weight: 900; margin-bottom: 8px; }
+                  .print-date { text-align: center; font-size: 11px; color: #666; margin-bottom: 12px; }
+                  .tables-wrapper { display: flex; gap: 8mm; width: 100%; }
+                  .screw-section { flex: 1; min-width: 0; }
+                  .screw-title { text-align: center; font-size: 14px; font-weight: 800; padding: 4px 0; margin-bottom: 4px; border: 2px solid #333; background: #f0f0f0; }
+                  table { width: 100%; border-collapse: collapse; font-size: 10px; }
+                  th { background: #e8e8e8; font-weight: 700; padding: 3px 4px; border: 1px solid #999; text-align: right; white-space: nowrap; }
+                  td { padding: 2px 4px; border: 1px solid #ccc; text-align: right; vertical-align: top; }
+                  tr:nth-child(even) { background: #f8f8f8; }
+                  .comp-item { font-size: 9px; line-height: 1.3; }
+                  .total-row { font-weight: 800; background: #e0e0e0 !important; font-size: 11px; }
+                </style></head><body>`);
+                printWindow.document.write(printArea.innerHTML);
+                printWindow.document.write("</body></html>");
+                printWindow.document.close();
+                printWindow.onload = () => { printWindow.print(); };
+              }}
+            >
+              <Printer className="h-4 w-4 ml-2" />
+              طباعة
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           {batchesLoading ? (
@@ -608,79 +645,238 @@ export default function FilmMaterialMixingTab() {
               {t("production.mixing.noBatches")}
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-right">{t("production.mixing.batchNumber")}</TableHead>
-                    <TableHead className="text-right">{t("production.mixing.productionOrder")}</TableHead>
-                    <TableHead className="text-right">{t("production.mixing.machine")}</TableHead>
-                    <TableHead className="text-right">{t("production.mixing.screw")}</TableHead>
-                    <TableHead className="text-right">{t("production.mixing.totalWeightLabel")}</TableHead>
-                    <TableHead className="text-right">{t("production.mixing.date")}</TableHead>
-                    <TableHead className="text-right">{t("production.mixing.operator")}</TableHead>
-                    <TableHead className="text-right">{t("production.mixing.composition")}</TableHead>
-                    <TableHead className="text-right">{t("production.mixing.actions")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {batches.map((batch) => {
-                    const operator = users.find((u: any) => u.id === batch.operator_id);
-                    return (
-                      <TableRow
-                        key={batch.id}
-                        className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
-                        data-testid={`row-batch-${batch.id}`}
-                      >
-                        <TableCell className="font-medium">
-                          {batch.batch_number}
-                        </TableCell>
-                        <TableCell>
-                          {batch.production_order_number || `PO-${batch.production_order_id}`}
-                        </TableCell>
-                        <TableCell>
-                          {batch.machine_name_ar || batch.machine_name || batch.machine_id}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{batch.screw_assignment}</Badge>
-                        </TableCell>
-                        <TableCell>{parseFloat(batch.total_weight_kg).toFixed(2)} {t("production.mixing.kg")}</TableCell>
-                        <TableCell>
-                          {new Date(batch.created_at).toLocaleDateString("en-US")}
-                        </TableCell>
-                        <TableCell>
-                          {operator?.display_name_ar || operator?.display_name || "-"}
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm space-y-0.5">
-                            {batch.composition && batch.composition.length > 0 ? (
-                              batch.composition.map((comp: any, idx: number) => (
-                                <div key={idx} className="text-xs">
-                                  <span className="font-medium">{comp.material_name_ar || comp.material_name}</span>
-                                  <span className="text-muted-foreground"> ({comp.percentage})</span>
-                                </div>
-                              ))
-                            ) : (
-                              <span className="text-muted-foreground">-</span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => viewBatchDetails(batch)}
-                            data-testid={`button-view-${batch.id}`}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+            <>
+              <div id="mixing-batches-print-area" style={{ display: "none" }}>
+                <div className="print-container">
+                  <div className="print-title">سجل الخلطات</div>
+                  <div className="print-date">تاريخ الطباعة: {new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" })}</div>
+                  <div className="tables-wrapper">
+                    <div className="screw-section">
+                      <div className="screw-title">سكرو A</div>
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>رقم الخلطة</th>
+                            <th>أمر الإنتاج</th>
+                            <th>الماكينة</th>
+                            <th>الوزن (كغ)</th>
+                            <th>التاريخ</th>
+                            <th>المشغل</th>
+                            <th>التركيبة</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {batches.filter(b => b.screw_assignment === "A").map((batch) => {
+                            const operator = users.find((u: any) => u.id === batch.operator_id);
+                            return (
+                              <tr key={batch.id}>
+                                <td>{batch.batch_number}</td>
+                                <td>{batch.production_order_number || `PO-${batch.production_order_id}`}</td>
+                                <td>{batch.machine_name_ar || batch.machine_name || batch.machine_id}</td>
+                                <td>{parseFloat(batch.total_weight_kg).toFixed(2)}</td>
+                                <td>{new Date(batch.created_at).toLocaleDateString("en-US")}</td>
+                                <td>{operator?.display_name_ar || operator?.display_name || "-"}</td>
+                                <td>
+                                  {batch.composition && batch.composition.length > 0
+                                    ? batch.composition.map((comp: any, idx: number) => (
+                                        <div key={idx} className="comp-item">{comp.material_name_ar || comp.material_name} ({comp.percentage})</div>
+                                      ))
+                                    : "-"}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          <tr className="total-row">
+                            <td colSpan={3}>المجموع</td>
+                            <td>{batches.filter(b => b.screw_assignment === "A").reduce((s, b) => s + parseFloat(b.total_weight_kg), 0).toFixed(2)} كغ</td>
+                            <td colSpan={3}></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="screw-section">
+                      <div className="screw-title">سكرو B</div>
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>رقم الخلطة</th>
+                            <th>أمر الإنتاج</th>
+                            <th>الماكينة</th>
+                            <th>الوزن (كغ)</th>
+                            <th>التاريخ</th>
+                            <th>المشغل</th>
+                            <th>التركيبة</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {batches.filter(b => b.screw_assignment === "B").map((batch) => {
+                            const operator = users.find((u: any) => u.id === batch.operator_id);
+                            return (
+                              <tr key={batch.id}>
+                                <td>{batch.batch_number}</td>
+                                <td>{batch.production_order_number || `PO-${batch.production_order_id}`}</td>
+                                <td>{batch.machine_name_ar || batch.machine_name || batch.machine_id}</td>
+                                <td>{parseFloat(batch.total_weight_kg).toFixed(2)}</td>
+                                <td>{new Date(batch.created_at).toLocaleDateString("en-US")}</td>
+                                <td>{operator?.display_name_ar || operator?.display_name || "-"}</td>
+                                <td>
+                                  {batch.composition && batch.composition.length > 0
+                                    ? batch.composition.map((comp: any, idx: number) => (
+                                        <div key={idx} className="comp-item">{comp.material_name_ar || comp.material_name} ({comp.percentage})</div>
+                                      ))
+                                    : "-"}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          <tr className="total-row">
+                            <td colSpan={3}>المجموع</td>
+                            <td>{batches.filter(b => b.screw_assignment === "B").reduce((s, b) => s + parseFloat(b.total_weight_kg), 0).toFixed(2)} كغ</td>
+                            <td colSpan={3}></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div>
+                  <h3 className="text-center font-bold text-lg mb-2 p-2 bg-blue-50 dark:bg-blue-950 border-2 border-blue-300 dark:border-blue-700 rounded">سكرو A</h3>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-right">{t("production.mixing.batchNumber")}</TableHead>
+                          <TableHead className="text-right">{t("production.mixing.productionOrder")}</TableHead>
+                          <TableHead className="text-right">{t("production.mixing.machine")}</TableHead>
+                          <TableHead className="text-right">{t("production.mixing.totalWeightLabel")}</TableHead>
+                          <TableHead className="text-right">{t("production.mixing.date")}</TableHead>
+                          <TableHead className="text-right">{t("production.mixing.operator")}</TableHead>
+                          <TableHead className="text-right">{t("production.mixing.composition")}</TableHead>
+                          <TableHead className="text-right print:hidden">{t("production.mixing.actions")}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {batches.filter(b => b.screw_assignment === "A").length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={8} className="text-center text-muted-foreground py-4">لا توجد خلطات للسكرو A</TableCell>
+                          </TableRow>
+                        ) : (
+                          <>
+                            {batches.filter(b => b.screw_assignment === "A").map((batch) => {
+                              const operator = users.find((u: any) => u.id === batch.operator_id);
+                              return (
+                                <TableRow key={batch.id} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800" data-testid={`row-batch-${batch.id}`}>
+                                  <TableCell className="font-medium">{batch.batch_number}</TableCell>
+                                  <TableCell>{batch.production_order_number || `PO-${batch.production_order_id}`}</TableCell>
+                                  <TableCell>{batch.machine_name_ar || batch.machine_name || batch.machine_id}</TableCell>
+                                  <TableCell>{parseFloat(batch.total_weight_kg).toFixed(2)} {t("production.mixing.kg")}</TableCell>
+                                  <TableCell>{new Date(batch.created_at).toLocaleDateString("en-US")}</TableCell>
+                                  <TableCell>{operator?.display_name_ar || operator?.display_name || "-"}</TableCell>
+                                  <TableCell>
+                                    <div className="text-sm space-y-0.5">
+                                      {batch.composition && batch.composition.length > 0 ? (
+                                        batch.composition.map((comp: any, idx: number) => (
+                                          <div key={idx} className="text-xs">
+                                            <span className="font-medium">{comp.material_name_ar || comp.material_name}</span>
+                                            <span className="text-muted-foreground"> ({comp.percentage})</span>
+                                          </div>
+                                        ))
+                                      ) : (
+                                        <span className="text-muted-foreground">-</span>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="print:hidden">
+                                    <Button variant="ghost" size="sm" onClick={() => viewBatchDetails(batch)} data-testid={`button-view-${batch.id}`}>
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                            <TableRow className="bg-blue-50 dark:bg-blue-950 font-bold">
+                              <TableCell colSpan={3} className="text-right font-bold">المجموع</TableCell>
+                              <TableCell className="font-bold">{batches.filter(b => b.screw_assignment === "A").reduce((s, b) => s + parseFloat(b.total_weight_kg), 0).toFixed(2)} {t("production.mixing.kg")}</TableCell>
+                              <TableCell colSpan={4}></TableCell>
+                            </TableRow>
+                          </>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-center font-bold text-lg mb-2 p-2 bg-green-50 dark:bg-green-950 border-2 border-green-300 dark:border-green-700 rounded">سكرو B</h3>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-right">{t("production.mixing.batchNumber")}</TableHead>
+                          <TableHead className="text-right">{t("production.mixing.productionOrder")}</TableHead>
+                          <TableHead className="text-right">{t("production.mixing.machine")}</TableHead>
+                          <TableHead className="text-right">{t("production.mixing.totalWeightLabel")}</TableHead>
+                          <TableHead className="text-right">{t("production.mixing.date")}</TableHead>
+                          <TableHead className="text-right">{t("production.mixing.operator")}</TableHead>
+                          <TableHead className="text-right">{t("production.mixing.composition")}</TableHead>
+                          <TableHead className="text-right print:hidden">{t("production.mixing.actions")}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {batches.filter(b => b.screw_assignment === "B").length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={8} className="text-center text-muted-foreground py-4">لا توجد خلطات للسكرو B</TableCell>
+                          </TableRow>
+                        ) : (
+                          <>
+                            {batches.filter(b => b.screw_assignment === "B").map((batch) => {
+                              const operator = users.find((u: any) => u.id === batch.operator_id);
+                              return (
+                                <TableRow key={batch.id} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800" data-testid={`row-batch-${batch.id}`}>
+                                  <TableCell className="font-medium">{batch.batch_number}</TableCell>
+                                  <TableCell>{batch.production_order_number || `PO-${batch.production_order_id}`}</TableCell>
+                                  <TableCell>{batch.machine_name_ar || batch.machine_name || batch.machine_id}</TableCell>
+                                  <TableCell>{parseFloat(batch.total_weight_kg).toFixed(2)} {t("production.mixing.kg")}</TableCell>
+                                  <TableCell>{new Date(batch.created_at).toLocaleDateString("en-US")}</TableCell>
+                                  <TableCell>{operator?.display_name_ar || operator?.display_name || "-"}</TableCell>
+                                  <TableCell>
+                                    <div className="text-sm space-y-0.5">
+                                      {batch.composition && batch.composition.length > 0 ? (
+                                        batch.composition.map((comp: any, idx: number) => (
+                                          <div key={idx} className="text-xs">
+                                            <span className="font-medium">{comp.material_name_ar || comp.material_name}</span>
+                                            <span className="text-muted-foreground"> ({comp.percentage})</span>
+                                          </div>
+                                        ))
+                                      ) : (
+                                        <span className="text-muted-foreground">-</span>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="print:hidden">
+                                    <Button variant="ghost" size="sm" onClick={() => viewBatchDetails(batch)} data-testid={`button-view-${batch.id}`}>
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                            <TableRow className="bg-green-50 dark:bg-green-950 font-bold">
+                              <TableCell colSpan={3} className="text-right font-bold">المجموع</TableCell>
+                              <TableCell className="font-bold">{batches.filter(b => b.screw_assignment === "B").reduce((s, b) => s + parseFloat(b.total_weight_kg), 0).toFixed(2)} {t("production.mixing.kg")}</TableCell>
+                              <TableCell colSpan={4}></TableCell>
+                            </TableRow>
+                          </>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
