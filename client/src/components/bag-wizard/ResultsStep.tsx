@@ -53,6 +53,7 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
         printSide: config.printSide,
         printColorsCount: config.printColorsCount,
         printColors: config.printColors,
+        printColorShades: config.printColorShades,
       },
       validation: {
         isValid: validation.isValid,

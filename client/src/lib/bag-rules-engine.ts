@@ -16,6 +16,7 @@ export interface BagConfiguration {
   printSide: 'front' | 'back' | 'both';
   printColorsCount: number;
   printColors: string[];
+  printColorShades: Record<string, string>;
   printDesign?: {
     logoUrl?: string;
     logoFile?: File;
@@ -58,6 +59,7 @@ export const DEFAULT_CONFIG: BagConfiguration = {
   printSide: "front",
   printColorsCount: 1,
   printColors: ["black"],
+  printColorShades: {},
   printDesign: {
     texts: [],
     scale: 1,
@@ -95,14 +97,25 @@ export function getAllowedColors(bagType: string): BagColorInfo[] {
     .filter(Boolean);
 }
 
-export function getDimensionLimits(bagType: string, isPrinted: boolean) {
+export function getDimensionLimits(bagType: string, isPrinted: boolean, currentWidth?: number) {
   const rules = getBagTypeRules(bagType);
   if (!rules) return null;
+
+  const widthLimits = isPrinted && rules.width_printed ? rules.width_printed : rules.width;
+
+  let sideGussetMax = rules.side_gusset.max;
+  if (rules.side_gusset_supported && currentWidth && currentWidth > 0) {
+    const halfWidth = Math.floor(currentWidth / 2) - 1;
+    sideGussetMax = Math.min(rules.side_gusset.max, Math.max(rules.side_gusset.min, halfWidth));
+  }
+
   return {
     thickness: rules.thickness,
-    width: rules.width,
+    width: widthLimits,
     length: isPrinted ? rules.length_printed : rules.length_plain,
-    sideGusset: rules.side_gusset_supported ? rules.side_gusset : { min: 0, max: 0, unit: "سم" },
+    sideGusset: rules.side_gusset_supported
+      ? { ...rules.side_gusset, max: sideGussetMax }
+      : { min: 0, max: 0, unit: "سم" },
     sideGussetSupported: rules.side_gusset_supported,
   };
 }
@@ -142,10 +155,9 @@ export function getSuggestedThickness(config: BagConfiguration): number | null {
 
   let suggested = rules.thickness.min;
 
-  if (config.width > 50) suggested = Math.max(suggested, 18);
-  if (config.width > 70) suggested = Math.max(suggested, 25);
-  if (config.length > 100) suggested = Math.max(suggested, 20);
-  if (config.length > 150) suggested = Math.max(suggested, 40);
+  if (config.width > 50) suggested = Math.max(suggested, 40);
+  if (config.width > 70) suggested = Math.max(suggested, 50);
+  if (config.length > 80) suggested = Math.max(suggested, 45);
 
   const material = MATERIALS[config.material];
   if (material) {
@@ -193,12 +205,13 @@ export function validateConfiguration(config: BagConfiguration): ValidationResul
     }
   }
 
+  const widthLimits = config.isPrinted && rules.width_printed ? rules.width_printed : rules.width;
   if (config.width > 0) {
-    if (config.width < rules.width.min) {
-      errors.push({ field: "width", message: `العرض أقل من الحد الأدنى (${rules.width.min} ${rules.width.unit})` });
+    if (config.width < widthLimits.min) {
+      errors.push({ field: "width", message: `العرض أقل من الحد الأدنى (${widthLimits.min} ${widthLimits.unit})` });
     }
-    if (config.width > rules.width.max) {
-      errors.push({ field: "width", message: `العرض أعلى من الحد الأقصى (${rules.width.max} ${rules.width.unit})` });
+    if (config.width > widthLimits.max) {
+      errors.push({ field: "width", message: `العرض أعلى من الحد الأقصى (${widthLimits.max} ${widthLimits.unit})` });
     }
   }
 
@@ -219,7 +232,10 @@ export function validateConfiguration(config: BagConfiguration): ValidationResul
     if (config.sideGusset < rules.side_gusset.min) {
       errors.push({ field: "sideGusset", message: `الدخلة الجانبية أقل من الحد الأدنى (${rules.side_gusset.min} ${rules.side_gusset.unit})` });
     }
-    if (config.sideGusset > rules.side_gusset.max) {
+    const maxGusset = config.width > 0 ? Math.floor(config.width / 2) - 1 : rules.side_gusset.max;
+    if (config.sideGusset >= Math.floor(config.width / 2) && config.width > 0) {
+      errors.push({ field: "sideGusset", message: "الدخلة الجانبية يجب أن تكون أقل من نصف العرض" });
+    } else if (config.sideGusset > rules.side_gusset.max) {
       errors.push({ field: "sideGusset", message: `الدخلة الجانبية أعلى من الحد الأقصى (${rules.side_gusset.max} ${rules.side_gusset.unit})` });
     }
     if (config.width > 0 && config.sideGusset > config.width * 0.4) {
@@ -249,37 +265,40 @@ export function validateConfiguration(config: BagConfiguration): ValidationResul
       errors.push({ field: "isPrinted", message: "الطباعة غير مدعومة لهذا النوع من الأكياس" });
     }
     if (config.printColorsCount < rules.print_colors.min) {
-      errors.push({ field: "printColorsCount", message: `عدد ألوان الطباعة أقل من الحد الأدنى (${rules.print_colors.min})` });
+      errors.push({ field: "printColors", message: `يجب اختيار ${rules.print_colors.min} لون على الأقل` });
     }
     if (config.printColorsCount > rules.print_colors.max) {
-      errors.push({ field: "printColorsCount", message: `عدد ألوان الطباعة أعلى من الحد الأقصى (${rules.print_colors.max})` });
+      errors.push({ field: "printColors", message: `أقصى عدد للألوان ${rules.print_colors.max}` });
+    }
+    if (config.printColors.length !== config.printColorsCount) {
+      errors.push({ field: "printColors", message: `يجب اختيار ${config.printColorsCount} لون بالضبط` });
     }
   }
 
-  for (const rule of rules.compatibility_rules) {
-    const conditionMet = Object.entries(rule.if).every(([key, val]) => {
-      if (key === "width_gt") return config.width > val;
-      if (key === "width_lt") return config.width < val;
-      if (key === "length_gt") return config.length > val;
-      if (key === "thickness_lt") return config.thickness < val;
-      return false;
-    });
-
-    if (conditionMet) {
-      const thresholdMet = Object.entries(rule.then).every(([key, val]) => {
-        if (key === "thickness_min") return config.thickness >= val;
-        return true;
-      });
-
-      if (!thresholdMet) {
-        if (rule.type === "error") {
-          errors.push({ field: "compatibility", message: rule.message_ar });
-        } else if (rule.type === "warning") {
-          warnings.push({ field: "compatibility", message: rule.message_ar });
-        } else {
-          const sugVal = Object.entries(rule.then).find(([k]) => k === "thickness_min");
-          if (sugVal) {
-            suggestions.push({ field: "thickness", suggestedValue: sugVal[1], message: rule.message_ar });
+  if (rules.compatibility_rules) {
+    for (const rule of rules.compatibility_rules) {
+      let conditionMet = true;
+      for (const [key, val] of Object.entries(rule.if)) {
+        if (key === "width_gt" && config.width <= val) conditionMet = false;
+        if (key === "width_lt" && config.width >= val) conditionMet = false;
+        if (key === "length_gt" && config.length <= val) conditionMet = false;
+        if (key === "thickness_lt" && config.thickness >= val) conditionMet = false;
+      }
+      if (conditionMet) {
+        let actionViolated = false;
+        for (const [key, val] of Object.entries(rule.then)) {
+          if (key === "thickness_min" && config.thickness > 0 && config.thickness < val) actionViolated = true;
+        }
+        if (actionViolated) {
+          if (rule.type === "error") {
+            errors.push({ field: "compatibility", message: rule.message_ar });
+          } else if (rule.type === "warning") {
+            warnings.push({ field: "compatibility", message: rule.message_ar });
+          } else {
+            const sugVal = Object.entries(rule.then).find(([k]) => k === "thickness_min");
+            if (sugVal) {
+              suggestions.push({ field: "thickness", suggestedValue: sugVal[1], message: rule.message_ar });
+            }
           }
         }
       }
@@ -290,7 +309,9 @@ export function validateConfiguration(config: BagConfiguration): ValidationResul
     for (const pc of config.printColors) {
       const colorEntry = PRINT_COLORS.find((c) => c.id === pc);
       if (colorEntry) {
-        const contrast = checkPrintContrast(config.bagColor, colorEntry.hex);
+        const shade = config.printColorShades?.[pc];
+        const colorHex = shade || colorEntry.hex;
+        const contrast = checkPrintContrast(config.bagColor, colorHex);
         if (!contrast.good) {
           warnings.push({ field: "printColors", message: `${colorEntry.label_ar}: ${contrast.message}` });
         }
@@ -305,17 +326,19 @@ export function getDefaultsForBagType(bagType: string, isPrinted: boolean): Part
   const rules = getBagTypeRules(bagType);
   if (!rules) return {};
 
+  const widthLimits = isPrinted && rules.width_printed ? rules.width_printed : rules.width;
   const lengthLimits = isPrinted ? rules.length_printed : rules.length_plain;
 
   return {
     material: rules.material_allowed[0] || "",
-    width: Math.round((rules.width.min + rules.width.max) / 2),
+    width: Math.round((widthLimits.min + widthLimits.max) / 2),
     length: Math.round((lengthLimits.min + lengthLimits.max) / 2),
     thickness: Math.round((rules.thickness.min + rules.thickness.max) / 2),
     sideGusset: rules.side_gusset_supported ? rules.side_gusset.min : 0,
     handle: rules.handle_allowed[0] || "none",
     bagColor: rules.bag_colors[0] || "white",
     printColorsCount: isPrinted ? rules.print_colors.min : 0,
+    printColorShades: {},
   };
 }
 
@@ -346,4 +369,10 @@ const PRINT_COLORS = [
   { id: "gold", label_ar: "ذهبي", hex: "#CA8A04" },
   { id: "silver", label_ar: "فضي", hex: "#9CA3AF" },
   { id: "pink", label_ar: "وردي", hex: "#EC4899" },
+  { id: "maroon", label_ar: "مارون", hex: "#800000" },
+  { id: "turquoise", label_ar: "تركواز", hex: "#40E0D0" },
+  { id: "skyblue", label_ar: "سماوي", hex: "#38BDF8" },
+  { id: "olive", label_ar: "زيتي", hex: "#6B8E23" },
+  { id: "beige", label_ar: "بيج", hex: "#D2B48C" },
+  { id: "gray", label_ar: "رمادي", hex: "#6B7280" },
 ];

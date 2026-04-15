@@ -7,12 +7,12 @@ interface BagPreviewProps {
   size?: "sm" | "md" | "lg";
 }
 
-export function BagPreview({ config, size = "md" }: BagPreviewProps) {
+export function BagPreview({ config, size = "lg" }: BagPreviewProps) {
   const uid = useId().replace(/:/g, "_");
 
   if (!config.bagType) {
     return (
-      <div className="flex items-center justify-center h-64 bg-gray-50 rounded-xl">
+      <div className="flex items-center justify-center h-72 bg-gray-50 rounded-xl">
         <p className="text-gray-400 text-sm">اختر نوع الكيس لعرض المعاينة</p>
       </div>
     );
@@ -24,11 +24,14 @@ export function BagPreview({ config, size = "md" }: BagPreviewProps) {
   const bagColor = BAG_COLORS[config.bagColor] || BAG_COLORS.white;
   const material = MATERIALS[config.material];
 
-  const svgWidth = size === "lg" ? 400 : size === "md" ? 300 : 200;
-  const svgHeight = size === "lg" ? 500 : size === "md" ? 400 : 280;
+  const svgWidth = size === "lg" ? 420 : size === "md" ? 320 : 220;
+  const svgHeight = size === "lg" ? 520 : size === "md" ? 420 : 300;
 
-  const widthRatio = config.width > 0 ? Math.max(0.4, Math.min(1, config.width / rules.width.max)) : 0.7;
-  const lengthRatio = config.length > 0 ? Math.max(0.4, Math.min(1, config.length / (config.isPrinted ? rules.length_printed.max : rules.length_plain.max))) : 0.7;
+  const widthMax = config.isPrinted && rules.width_printed ? rules.width_printed.max : rules.width.max;
+  const lengthMax = config.isPrinted ? rules.length_printed.max : rules.length_plain.max;
+
+  const widthRatio = config.width > 0 ? Math.max(0.4, Math.min(1, config.width / widthMax)) : 0.7;
+  const lengthRatio = config.length > 0 ? Math.max(0.4, Math.min(1, config.length / lengthMax)) : 0.7;
 
   const bagW = svgWidth * 0.6 * widthRatio;
   const bagH = svgHeight * 0.6 * lengthRatio;
@@ -50,7 +53,7 @@ export function BagPreview({ config, size = "md" }: BagPreviewProps) {
 
   return (
     <div className="flex flex-col items-center">
-      <svg width={svgWidth} height={svgHeight} viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="drop-shadow-lg">
+      <svg width="100%" viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="drop-shadow-lg max-h-[420px]">
         <defs>
           <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor={fillColor} stopOpacity={fillOpacity * 0.85} />
@@ -148,27 +151,40 @@ function renderHandle(config: BagConfiguration, x: number, y: number, w: number,
   const stroke = darkenColor(color, 30);
 
   switch (config.handle) {
-    case "tshirt": {
-      const earH = h * 0.12;
-      const earW = w * 0.25;
-      const gapW = w * 0.2;
+    case "hanger": {
+      const earH = h * 0.15;
+      const earW = w * 0.22;
+      const gapW = w * 0.18;
       return (
         <g>
           <path
-            d={`M${x + w / 2 - gapW / 2},${y} L${x + w * 0.15},${y} L${x + w * 0.1},${y - earH} Q${x + w * 0.15},${y - earH - 5} ${x + w * 0.2},${y - earH} L${x + w * 0.35},${y}`}
+            d={`M${x},${y} L${x},${y - earH * 0.3} Q${x},${y - earH} ${x + earW * 0.5},${y - earH}
+                L${x + w / 2 - gapW / 2},${y - earH}
+                L${x + w / 2 - gapW / 2},${y}`}
             fill={color} fillOpacity={opacity * 0.9} stroke={stroke} strokeWidth="1"
           />
           <path
-            d={`M${x + w / 2 + gapW / 2},${y} L${x + w * 0.65},${y} L${x + w * 0.8},${y - earH} Q${x + w * 0.85},${y - earH - 5} ${x + w * 0.9},${y - earH} L${x + w * 0.85},${y}`}
+            d={`M${x + w / 2 + gapW / 2},${y} L${x + w / 2 + gapW / 2},${y - earH}
+                L${x + w - earW * 0.5},${y - earH} Q${x + w},${y - earH} ${x + w},${y - earH * 0.3}
+                L${x + w},${y}`}
             fill={color} fillOpacity={opacity * 0.9} stroke={stroke} strokeWidth="1"
           />
-          <ellipse cx={x + w * 0.25} cy={y - earH * 0.4} rx={earW * 0.3} ry={earH * 0.35} fill="none" stroke={stroke} strokeWidth="1" />
-          <ellipse cx={x + w * 0.75} cy={y - earH * 0.4} rx={earW * 0.3} ry={earH * 0.35} fill="none" stroke={stroke} strokeWidth="1" />
+          <rect
+            x={x + w / 2 - gapW / 2} y={y - earH}
+            width={gapW} height={earH}
+            fill="white" fillOpacity={0.9}
+            stroke={stroke} strokeWidth="0.5" rx="2"
+          />
+          <line
+            x1={x + w / 2 - gapW / 2 + 2} y1={y - earH + 2}
+            x2={x + w / 2 + gapW / 2 - 2} y2={y - earH + 2}
+            stroke={stroke} strokeWidth="0.3" opacity="0.5"
+          />
         </g>
       );
     }
     case "die_cut": {
-      const holeW = w * 0.25;
+      const holeW = w * 0.3;
       const holeH = h * 0.06;
       return (
         <ellipse cx={x + w / 2} cy={y + h * 0.06} rx={holeW / 2} ry={holeH / 2} fill="white" stroke={stroke} strokeWidth="1" />
@@ -181,13 +197,6 @@ function renderHandle(config: BagConfiguration, x: number, y: number, w: number,
           <rect x={x + w * 0.15} y={y} width={w * 0.7} height={patchH} fill={darkenColor(color, 15)} fillOpacity={opacity} stroke={stroke} strokeWidth="0.5" rx="2" />
           <ellipse cx={x + w / 2} cy={y + patchH * 0.5} rx={w * 0.12} ry={patchH * 0.35} fill="white" stroke={stroke} strokeWidth="0.8" />
         </g>
-      );
-    }
-    case "custom_cut": {
-      const cutW = w * 0.3;
-      const cutH = h * 0.05;
-      return (
-        <rect x={x + (w - cutW) / 2} y={y + h * 0.03} width={cutW} height={cutH} rx={cutH / 2} fill="white" stroke={stroke} strokeWidth="0.8" />
       );
     }
     default:
@@ -235,6 +244,7 @@ function renderPrintDesign(config: BagConfiguration, bagX: number, bagY: number,
 
       {design.texts.map((text, i) => {
         const colorInfo = PRINT_COLORS_PALETTE.find(c => c.id === text.color);
+        const shade = config.printColorShades?.[text.color];
         const textY = design.logoUrl
           ? centerY + (printAreaH * 0.25 * design.scale) + (i * 20)
           : centerY + (i * 22) - ((design.texts.length - 1) * 11);
@@ -245,7 +255,7 @@ function renderPrintDesign(config: BagConfiguration, bagX: number, bagY: number,
             x={centerX}
             y={textY}
             textAnchor="middle"
-            fill={colorInfo?.hex || "#000"}
+            fill={shade || colorInfo?.hex || "#000"}
             fontSize={Math.max(10, Math.min(24, text.size * design.scale * 0.6))}
             fontFamily="Arial, sans-serif"
             fontWeight="bold"

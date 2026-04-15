@@ -86,7 +86,8 @@ export default function BagConfigurator() {
       case "dimensions": {
         if (!rules || config.width <= 0 || config.length <= 0 || config.thickness <= 0) return false;
         const lengthLimits = config.isPrinted ? rules.length_printed : rules.length_plain;
-        const widthOk = config.width >= rules.width.min && config.width <= rules.width.max;
+        const widthLimits = config.isPrinted && rules.width_printed ? rules.width_printed : rules.width;
+        const widthOk = config.width >= widthLimits.min && config.width <= widthLimits.max;
         const lengthOk = config.length >= lengthLimits.min && config.length <= lengthLimits.max;
         const thicknessOk = config.thickness >= rules.thickness.min && config.thickness <= rules.thickness.max;
         return widthOk && lengthOk && thicknessOk;

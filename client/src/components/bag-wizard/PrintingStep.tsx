@@ -2,6 +2,7 @@ import { type BagConfiguration, getBagTypeRules, checkPrintContrast } from "../.
 import { PRINT_COLORS_PALETTE, BAG_COLORS } from "../../lib/bag-rules";
 import { Slider } from "../ui/slider";
 import { Label } from "../ui/label";
+import { Input } from "../ui/input";
 
 interface PrintingStepProps {
   config: BagConfiguration;
@@ -22,7 +23,9 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
     if (idx >= 0) {
       if (current.length > 1) {
         current.splice(idx, 1);
-        onChange({ printColors: current, printColorsCount: current.length });
+        const newShades = { ...config.printColorShades };
+        delete newShades[colorId];
+        onChange({ printColors: current, printColorsCount: current.length, printColorShades: newShades });
       }
     } else if (current.length < maxColors) {
       current.push(colorId);
@@ -30,12 +33,18 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
     }
   };
 
+  const handleShadeChange = (colorId: string, shade: string) => {
+    onChange({
+      printColorShades: { ...config.printColorShades, [colorId]: shade },
+    });
+  };
+
   const bagColor = BAG_COLORS[config.bagColor];
 
   return (
     <div>
       <h2 className="text-xl font-bold text-gray-900 mb-2">إعداد الطباعة</h2>
-      <p className="text-gray-500 text-sm mb-6">حدد إعدادات الطباعة على الكيس</p>
+      <p className="text-gray-500 text-sm mb-6">حدد إعدادات الطباعة على الكيس (1-4 ألوان لكل وجه)</p>
 
       <div className="space-y-6">
         <div>
@@ -62,7 +71,7 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
 
         <div>
           <div className="flex items-center justify-between mb-3">
-            <Label className="font-semibold text-gray-700">عدد ألوان الطباعة</Label>
+            <Label className="font-semibold text-gray-700">عدد ألوان الطباعة لكل وجه</Label>
             <span className="text-sm text-gray-500">{config.printColorsCount} من {maxColors}</span>
           </div>
           <Slider
@@ -80,6 +89,13 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
               onChange({ printColorsCount: v, printColors: newColors });
             }}
           />
+          <div className="flex justify-between mt-1">
+            {Array.from({ length: maxColors }, (_, i) => (
+              <span key={i} className={`text-xs ${i + 1 <= config.printColorsCount ? 'text-blue-600 font-semibold' : 'text-gray-300'}`}>
+                {i + 1}
+              </span>
+            ))}
+          </div>
         </div>
 
         <div>
@@ -107,7 +123,7 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
                 >
                   <div
                     className="w-6 h-6 rounded-full border shadow-sm flex-shrink-0"
-                    style={{ backgroundColor: color.hex, borderColor: color.hex === "#FFFFFF" ? "#d1d5db" : color.hex }}
+                    style={{ backgroundColor: config.printColorShades?.[color.id] || color.hex, borderColor: color.hex === "#FFFFFF" ? "#d1d5db" : color.hex }}
                   />
                   <span className="text-gray-700 truncate">{color.label_ar}</span>
                   {isSelected && !contrast.good && <span className="text-amber-500 text-xs">⚠️</span>}
@@ -117,10 +133,49 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
           </div>
         </div>
 
+        {config.printColors.length > 0 && (
+          <div>
+            <Label className="font-semibold text-gray-700 mb-3 block">ضبط درجة اللون</Label>
+            <div className="space-y-3">
+              {config.printColors.map((pc) => {
+                const colorEntry = PRINT_COLORS_PALETTE.find(c => c.id === pc);
+                if (!colorEntry) return null;
+                const currentShade = config.printColorShades?.[pc] || colorEntry.hex;
+
+                return (
+                  <div key={pc} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <div
+                      className="w-8 h-8 rounded-full border-2 shadow-sm flex-shrink-0"
+                      style={{ backgroundColor: currentShade, borderColor: currentShade === "#FFFFFF" ? "#d1d5db" : currentShade }}
+                    />
+                    <span className="text-sm font-medium text-gray-700 min-w-[60px]">{colorEntry.label_ar}</span>
+                    <Input
+                      type="color"
+                      value={currentShade}
+                      onChange={(e) => handleShadeChange(pc, e.target.value)}
+                      className="w-10 h-8 p-0 border-0 cursor-pointer"
+                    />
+                    <span className="text-xs text-gray-400 font-mono">{currentShade}</span>
+                    {currentShade !== colorEntry.hex && (
+                      <button
+                        onClick={() => handleShadeChange(pc, colorEntry.hex)}
+                        className="text-xs text-blue-500 hover:text-blue-700 mr-auto"
+                      >
+                        إعادة تعيين
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {config.printColors.map((pc) => {
           const colorEntry = PRINT_COLORS_PALETTE.find(c => c.id === pc);
           if (!colorEntry) return null;
-          const contrast = checkPrintContrast(config.bagColor, colorEntry.hex);
+          const shade = config.printColorShades?.[pc] || colorEntry.hex;
+          const contrast = checkPrintContrast(config.bagColor, shade);
           if (contrast.good) return null;
           return (
             <div key={pc} className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">

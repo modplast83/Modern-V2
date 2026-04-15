@@ -66,7 +66,7 @@ function DimensionField({
 }
 
 export function DimensionsStep({ config, onChange }: DimensionsStepProps) {
-  const limits = getDimensionLimits(config.bagType, config.isPrinted);
+  const limits = getDimensionLimits(config.bagType, config.isPrinted, config.width);
   if (!limits) return null;
 
   const suggestedThickness = getSuggestedThickness(config);
@@ -83,7 +83,16 @@ export function DimensionsStep({ config, onChange }: DimensionsStepProps) {
           value={config.width}
           min={limits.width.min}
           max={limits.width.max}
-          onChange={(v) => onChange({ width: v })}
+          onChange={(v) => {
+            const updates: Partial<BagConfiguration> = { width: v };
+            if (limits.sideGussetSupported && config.sideGusset > 0) {
+              const maxGusset = Math.floor(v / 2) - 1;
+              if (config.sideGusset > maxGusset && maxGusset > 0) {
+                updates.sideGusset = maxGusset;
+              }
+            }
+            onChange(updates);
+          }}
         />
 
         <DimensionField
@@ -125,6 +134,10 @@ export function DimensionsStep({ config, onChange }: DimensionsStepProps) {
 
         {!limits.sideGussetSupported && (
           <p className="text-xs text-gray-400 -mt-2 mr-2">الدخلات الجانبية غير مدعومة لهذا النوع من الأكياس</p>
+        )}
+
+        {limits.sideGussetSupported && config.width > 0 && (
+          <p className="text-xs text-gray-400 -mt-2 mr-2">أقصى دخلة جانبية: أقل من نصف العرض ({Math.floor(config.width / 2) - 1} سم)</p>
         )}
       </div>
     </div>
