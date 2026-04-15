@@ -193,49 +193,109 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
     }
 
     const specsHtml = specs.map(s =>
-      `<tr><td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;font-weight:600;color:#374151;text-align:right;width:40%">${s.label}</td><td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;color:#6b7280;text-align:right">${s.value}</td></tr>`
+      `<tr><td class="spec-label">${s.label}</td><td class="spec-value">${s.value}</td></tr>`
     ).join("");
 
-    const validationHtml = validation.isValid
-      ? '<div style="background:#dcfce7;color:#166534;padding:16px;border-radius:12px;margin:20px 0;text-align:center;font-weight:bold;font-size:16px">✅ صالح للتصنيع</div>'
-      : '<div style="background:#fee2e2;color:#991b1b;padding:16px;border-radius:12px;margin:20px 0;text-align:center;font-weight:bold;font-size:16px">❌ غير صالح للتصنيع</div>';
+    const errorsHtml = validation.errors.map(e => `<li>${e.message}</li>`).join("");
+    const warningsHtml = validation.warnings.map(w => `<li>${w.message}</li>`).join("");
 
-    const errorsHtml = validation.errors.map(e => `<li style="color:#dc2626;margin:6px 0;line-height:1.5">${e.message}</li>`).join("");
-    const warningsHtml = validation.warnings.map(w => `<li style="color:#d97706;margin:6px 0;line-height:1.5">${w.message}</li>`).join("");
+    const dateStr = new Date().toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" });
+    const timeStr = new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });
 
-    const imageSection = imageDataUrl
-      ? `<div style="text-align:center;margin:24px 0;page-break-inside:avoid">
-           <h3 style="color:#374151;margin-bottom:12px;font-size:14px">معاينة الكيس المصمم</h3>
-           <img src="${imageDataUrl}" style="max-width:350px;max-height:450px;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08)" />
-         </div>`
-      : "";
+    const html = `<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<title>بطاقة مواصفات - ${rules?.label_ar || "كيس"}</title>
+<style>
+  @page { size: A4 portrait; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+    width: 210mm; min-height: 297mm; max-height: 297mm;
+    margin: 0 auto; padding: 0; color: #1f2937;
+    overflow: hidden; position: relative;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .header {
+    background: linear-gradient(135deg, #1e3a5f 0%, #1e40af 50%, #2563eb 100%);
+    color: white; padding: 16px 28px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .header-right h1 { font-size: 18px; font-weight: 700; margin-bottom: 2px; }
+  .header-right p { font-size: 10px; opacity: 0.75; }
+  .header-left { text-align: left; }
+  .header-left .date { font-size: 9px; opacity: 0.7; }
+  .header-left .doc-num { font-size: 10px; font-weight: 600; background: rgba(255,255,255,0.2); padding: 3px 10px; border-radius: 4px; margin-top: 4px; display: inline-block; }
+  .status-bar {
+    padding: 10px 28px; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700;
+  }
+  .status-valid { background: #dcfce7; color: #166534; }
+  .status-invalid { background: #fee2e2; color: #991b1b; }
+  .content { display: flex; gap: 16px; padding: 14px 28px 10px; align-items: flex-start; }
+  .specs-col { flex: 1; min-width: 0; }
+  .preview-col { width: 200px; flex-shrink: 0; text-align: center; }
+  .preview-col img { max-width: 190px; max-height: 240px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fafafa; }
+  .preview-label { font-size: 9px; color: #9ca3af; margin-top: 6px; }
+  .section-title { font-size: 11px; font-weight: 700; color: #1e40af; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 2px solid #dbeafe; text-transform: uppercase; letter-spacing: 0.5px; }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .spec-label { padding: 5px 8px; font-weight: 600; color: #374151; border-bottom: 1px solid #f3f4f6; width: 38%; text-align: right; }
+  .spec-value { padding: 5px 8px; color: #6b7280; border-bottom: 1px solid #f3f4f6; text-align: right; }
+  tr:nth-child(even) { background: #f9fafb; }
+  .issues-section { padding: 4px 28px; }
+  .issues-section h3 { font-size: 10px; font-weight: 700; margin-bottom: 3px; }
+  .issues-section ul { padding-right: 16px; font-size: 10px; line-height: 1.6; }
+  .errors-box { color: #dc2626; }
+  .warnings-box { color: #b45309; }
+  .footer {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: #f8fafc; border-top: 1px solid #e5e7eb; padding: 8px 28px;
+    display: flex; justify-content: space-between; align-items: center; font-size: 8px; color: #9ca3af;
+  }
+  .footer-brand { font-weight: 600; color: #6b7280; }
+  @media print {
+    body { width: 210mm; height: 297mm; }
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-right">
+      <h1>بطاقة مواصفات المنتج</h1>
+      <p>Product Specification Sheet — MPBF</p>
+    </div>
+    <div class="header-left">
+      <div class="date">${dateStr} — ${timeStr}</div>
+      <div class="doc-num">DOC-${Date.now().toString(36).toUpperCase().slice(-6)}</div>
+    </div>
+  </div>
 
-    const html = `
-      <!DOCTYPE html>
-      <html dir="rtl" lang="ar">
-      <head>
-        <meta charset="UTF-8">
-        <title>مواصفات الكيس - ${rules?.label_ar || ""}</title>
-        <style>
-          @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-          body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; max-width:800px; margin:0 auto; padding:40px; color:#1f2937; }
-        </style>
-      </head>
-      <body>
-        <div style="text-align:center;border-bottom:3px solid #1e40af;padding-bottom:20px;margin-bottom:24px">
-          <h1 style="color:#1e40af;margin:0 0 6px 0;font-size:22px">بطاقة مواصفات المنتج</h1>
-          <p style="color:#9ca3af;margin:0;font-size:13px">معالج تصميم الأكياس البلاستيكية | MPBF</p>
-        </div>
-        ${validationHtml}
-        ${imageSection}
-        <table style="width:100%;border-collapse:collapse;margin:24px 0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">${specsHtml}</table>
-        ${errorsHtml ? `<div style="margin:16px 0"><h3 style="color:#dc2626;font-size:14px">الأخطاء</h3><ul style="margin:8px 0;padding-right:20px">${errorsHtml}</ul></div>` : ""}
-        ${warningsHtml ? `<div style="margin:16px 0"><h3 style="color:#d97706;font-size:14px">التحذيرات</h3><ul style="margin:8px 0;padding-right:20px">${warningsHtml}</ul></div>` : ""}
-        <div style="text-align:center;color:#9ca3af;margin-top:32px;font-size:11px;border-top:1px solid #e5e7eb;padding-top:16px">
-          <p>تاريخ التصدير: ${new Date().toLocaleDateString("ar-SA")} | ${new Date().toLocaleTimeString("ar-SA")}</p>
-        </div>
-      </body></html>
-    `;
+  <div class="status-bar ${validation.isValid ? "status-valid" : "status-invalid"}">
+    <span>${validation.isValid ? "✅" : "❌"}</span>
+    <span>${validation.isValid ? "صالح للتصنيع — يمكن المباشرة بالإنتاج" : "غير صالح للتصنيع — يرجى مراجعة الأخطاء"}</span>
+  </div>
+
+  <div class="content">
+    <div class="specs-col">
+      <div class="section-title">المواصفات الفنية</div>
+      <table>${specsHtml}</table>
+    </div>
+    ${imageDataUrl ? `
+    <div class="preview-col">
+      <div class="section-title">المعاينة</div>
+      <img src="${imageDataUrl}" alt="معاينة الكيس" />
+      <div class="preview-label">${rules?.label_ar || ""} — ${config.width}×${config.length} سم</div>
+    </div>` : ""}
+  </div>
+
+  ${errorsHtml ? `<div class="issues-section"><h3 class="errors-box">⛔ الأخطاء</h3><ul class="errors-box">${errorsHtml}</ul></div>` : ""}
+  ${warningsHtml ? `<div class="issues-section" style="margin-top:4px"><h3 class="warnings-box">⚠️ التحذيرات</h3><ul class="warnings-box">${warningsHtml}</ul></div>` : ""}
+
+  <div class="footer">
+    <span class="footer-brand">MPBF — معالج تصميم الأكياس البلاستيكية</span>
+    <span>هذا المستند تم إنشاؤه آلياً — صفحة 1 من 1</span>
+  </div>
+</body>
+</html>`;
 
     const printWindow = window.open("", "_blank");
     if (printWindow) {
