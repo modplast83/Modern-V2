@@ -1874,9 +1874,12 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       const { customer_product_id, quantity_kg, overrun_percentage } = req.body;
 
       // Get customer product info for intelligent calculation
+      const parsedCustomerProductId = parseIntSafe(String(customer_product_id), "customer_product_id", { min: 1 });
+      const parsedQuantityKg = parseFloatSafe(String(quantity_kg), "quantity_kg", { min: 0.01 });
+
       const customerProductsResult = await storage.getCustomerProducts();
       const customerProduct = customerProductsResult.data.find(
-        (cp: any) => cp.id === parseInt(customer_product_id),
+        (cp: any) => cp.id === parsedCustomerProductId,
       );
 
       if (!customerProduct) {
@@ -1888,7 +1891,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
 
       // Calculate final quantity using server-side logic (ignore client-provided value)
       const quantityCalculation = calculateProductionQuantities(
-        parseFloat(quantity_kg),
+        parsedQuantityKg,
         customerProduct.punching,
       );
 
@@ -1931,8 +1934,23 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
 
       for (const order of orders) {
         const { customer_product_id, quantity_kg, overrun_percentage } = order;
+
+        let parsedCpId: number;
+        let parsedQtyKg: number;
+        try {
+          parsedCpId = parseIntSafe(String(customer_product_id), "customer_product_id", { min: 1 });
+          parsedQtyKg = parseFloatSafe(String(quantity_kg), "quantity_kg", { min: 0.01 });
+        } catch (e: any) {
+          processedOrders.push({
+            success: false,
+            error: e.message || "بيانات غير صحيحة",
+            order,
+          });
+          continue;
+        }
+
         const customerProduct = customerProductsResult.data.find(
-          (cp: any) => cp.id === parseInt(customer_product_id),
+          (cp: any) => cp.id === parsedCpId,
         );
 
         if (!customerProduct) {
@@ -1945,7 +1963,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         }
 
         const quantityCalculation = calculateProductionQuantities(
-          parseFloat(quantity_kg),
+          parsedQtyKg,
           customerProduct.punching,
         );
 
@@ -2019,13 +2037,16 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
           const customer_product_id = req.body.customer_product_id !== undefined ? req.body.customer_product_id : existingOrder.customer_product_id;
           const quantity_kg = req.body.quantity_kg !== undefined ? req.body.quantity_kg : existingOrder.quantity_kg;
           
+          const parsedCpIdForUpdate = parseIntSafe(String(customer_product_id), "customer_product_id", { min: 1 });
+          const parsedQtyKgForUpdate = parseFloatSafe(String(quantity_kg), "quantity_kg", { min: 0.01 });
+
           const customerProduct = customerProductsResult.data.find(
-            (cp: any) => cp.id === parseInt(customer_product_id),
+            (cp: any) => cp.id === parsedCpIdForUpdate,
           );
           
           if (customerProduct) {
             const quantityCalculation = calculateProductionQuantities(
-              parseFloat(quantity_kg),
+              parsedQtyKgForUpdate,
               customerProduct.punching,
             );
             
@@ -2593,7 +2614,8 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
             safeUpdates.printed_by = userId;
             safeUpdates.printed_at = new Date();
             if (printing_machine_id) {
-              safeUpdates.printing_machine_id = printing_machine_id;
+              const parsedMachineId = parseIntSafe(String(printing_machine_id), "printing_machine_id", { min: 1 });
+              safeUpdates.printing_machine_id = parsedMachineId;
             }
           } else if (stage === "cutting") {
             safeUpdates.cut_by = userId;
@@ -2604,11 +2626,28 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         }
       }
 
-      // Allow specific safe fields only (whitelist approach)
-      if (weight_kg !== undefined) safeUpdates.weight_kg = weight_kg;
-      if (waste_kg !== undefined) safeUpdates.waste_kg = waste_kg;
-      if (cut_weight_total_kg !== undefined)
-        safeUpdates.cut_weight_total_kg = cut_weight_total_kg;
+      // Allow specific safe fields only (whitelist approach) with numeric validation
+      if (weight_kg !== undefined) {
+        const parsedWeight = parseFloat(String(weight_kg));
+        if (isNaN(parsedWeight) || parsedWeight < 0) {
+          return res.status(400).json({ message: "وزن الرول يجب أن يكون رقماً غير سالب" });
+        }
+        safeUpdates.weight_kg = parsedWeight;
+      }
+      if (waste_kg !== undefined) {
+        const parsedWaste = parseFloat(String(waste_kg));
+        if (isNaN(parsedWaste) || parsedWaste < 0) {
+          return res.status(400).json({ message: "كمية الهدر يجب أن تكون رقماً غير سالب" });
+        }
+        safeUpdates.waste_kg = parsedWaste;
+      }
+      if (cut_weight_total_kg !== undefined) {
+        const parsedCutWeight = parseFloat(String(cut_weight_total_kg));
+        if (isNaN(parsedCutWeight) || parsedCutWeight < 0) {
+          return res.status(400).json({ message: "وزن القص يجب أن يكون رقماً غير سالب" });
+        }
+        safeUpdates.cut_weight_total_kg = parsedCutWeight;
+      }
 
       if (Object.keys(safeUpdates).length === 0) {
         return res.status(400).json({ message: "لا توجد بيانات للتحديث" });
@@ -4297,7 +4336,11 @@ Do not include quotes or explanations.`;
 
   app.get("/api/master-batch-colors/:id", requireAuth, async (req, res) => {
     try {
-      const color = await storage.getMasterBatchColorById(req.params.id);
+      const id = req.params.id?.trim();
+      if (!id) {
+        return res.status(400).json({ message: "معرف اللون مطلوب" });
+      }
+      const color = await storage.getMasterBatchColorById(id);
       if (!color) {
         return res.status(404).json({ message: "اللون غير موجود" });
       }
@@ -4322,14 +4365,17 @@ Do not include quotes or explanations.`;
     } catch (error) {
       console.error("Error creating master batch color:", error);
       res.status(500).json({ 
-        message: "خطأ في إنشاء لون الماستر باتش",
-        error: "خطأ داخلي"
+        message: "خطأ في إنشاء لون الماستر باتش"
       });
     }
   });
 
   app.put("/api/master-batch-colors/:id", requireAuth, requirePermission('manage_master_batch', 'manage_definitions'), async (req, res) => {
     try {
+      const id = req.params.id?.trim();
+      if (!id) {
+        return res.status(400).json({ message: "معرف اللون مطلوب" });
+      }
       const parseResult = insertMasterBatchColorSchema.partial().safeParse(req.body);
       if (!parseResult.success) {
         return res.status(400).json({ 
@@ -4337,26 +4383,28 @@ Do not include quotes or explanations.`;
           errors: parseResult.error.errors 
         });
       }
-      const color = await storage.updateMasterBatchColor(req.params.id, parseResult.data);
+      const color = await storage.updateMasterBatchColor(id, parseResult.data);
       res.json(color);
     } catch (error) {
       console.error("Error updating master batch color:", error);
       res.status(500).json({ 
-        message: "خطأ في تحديث لون الماستر باتش",
-        error: "خطأ داخلي"
+        message: "خطأ في تحديث لون الماستر باتش"
       });
     }
   });
 
   app.delete("/api/master-batch-colors/:id", requireAuth, requirePermission('manage_master_batch', 'manage_definitions'), async (req, res) => {
     try {
-      await storage.deleteMasterBatchColor(req.params.id);
+      const id = req.params.id?.trim();
+      if (!id) {
+        return res.status(400).json({ message: "معرف اللون مطلوب" });
+      }
+      await storage.deleteMasterBatchColor(id);
       res.json({ message: "تم حذف اللون بنجاح" });
     } catch (error) {
       console.error("Error deleting master batch color:", error);
       res.status(500).json({ 
-        message: "خطأ في حذف لون الماستر باتش",
-        error: "خطأ داخلي"
+        message: "خطأ في حذف لون الماستر باتش"
       });
     }
   });

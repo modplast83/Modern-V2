@@ -11,7 +11,7 @@ import type { AuthUser } from "@/types";
 interface AuthContextType {
   user: AuthUser | null;
   login: (username: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isLoading: boolean;
   isAuthenticated: boolean;
 }
