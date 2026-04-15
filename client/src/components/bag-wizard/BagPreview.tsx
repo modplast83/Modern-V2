@@ -88,7 +88,7 @@ export function BagPreview({ config, size = "lg" }: BagPreviewProps) {
           <rect x={bagX} y={bagY} width={bagW} height={bagH} rx="3" fill={`url(#${patternId})`} />
         )}
 
-        {sideWidth > 0 && (
+        {sideWidth > 0 && config.handle !== "hanger" && (
           <polygon
             points={`${bagX + bagW},${bagY} ${bagX + bagW + sideWidth},${bagY + perspectiveOffset} ${bagX + bagW + sideWidth},${bagY + bagH + perspectiveOffset} ${bagX + bagW},${bagY + bagH}`}
             fill={`url(#${sideGradId})`}
@@ -155,44 +155,59 @@ function renderHandle(config: BagConfiguration, x: number, y: number, w: number,
     case "hanger": {
       const hangerCm = getHangerHeight(config);
       const totalLength = config.length > 0 ? config.length : 60;
-      const hangerRatio = Math.max(0.1, Math.min(0.35, hangerCm / totalLength));
+      const hangerRatio = Math.max(0.12, Math.min(0.4, hangerCm / totalLength));
       const earH = h * hangerRatio;
 
-      const handleWidthRatio = 0.55;
-      const handleW = w * handleWidthRatio;
-      const handleX = x + (w - handleW) / 2;
+      const cutoutW = w * 0.28;
+      const cutoutDepth = earH * 0.75;
+      const cutoutCX = x + w / 2;
+      const cutoutTopY = y - earH;
+      const cutoutBottomY = cutoutTopY + cutoutDepth;
+      const cutoutR = cutoutW * 0.35;
 
-      const cutoutW = handleW * 0.45;
-      const cutoutH = earH * 0.55;
-      const cutoutX = handleX + (handleW - cutoutW) / 2;
-      const cutoutY = y - earH + (earH - cutoutH) * 0.45;
-      const cornerR = Math.min(earH * 0.2, handleW * 0.08);
-      const cutoutR = Math.min(cutoutH * 0.4, cutoutW * 0.15);
+      const sideGussetW = config.sideGusset > 0
+        ? Math.max(w * 0.08, Math.min(w * 0.18, (config.sideGusset / (config.width || 50)) * w))
+        : 0;
 
       return (
         <g>
           <path
-            d={`M${handleX + cornerR},${y - earH}
-                Q${handleX},${y - earH} ${handleX},${y - earH + cornerR}
-                L${handleX},${y}
-                L${handleX + handleW},${y}
-                L${handleX + handleW},${y - earH + cornerR}
-                Q${handleX + handleW},${y - earH} ${handleX + handleW - cornerR},${y - earH}
+            d={`M${x},${y}
+                L${x},${cutoutTopY + 2}
+                Q${x},${cutoutTopY} ${x + 2},${cutoutTopY}
+                L${cutoutCX - cutoutW / 2},${cutoutTopY}
+                L${cutoutCX - cutoutW / 2},${cutoutBottomY - cutoutR}
+                Q${cutoutCX - cutoutW / 2},${cutoutBottomY} ${cutoutCX - cutoutW / 2 + cutoutR},${cutoutBottomY}
+                L${cutoutCX + cutoutW / 2 - cutoutR},${cutoutBottomY}
+                Q${cutoutCX + cutoutW / 2},${cutoutBottomY} ${cutoutCX + cutoutW / 2},${cutoutBottomY - cutoutR}
+                L${cutoutCX + cutoutW / 2},${cutoutTopY}
+                L${x + w - 2},${cutoutTopY}
+                Q${x + w},${cutoutTopY} ${x + w},${cutoutTopY + 2}
+                L${x + w},${y}
                 Z`}
-            fill={color} fillOpacity={opacity * 0.9} stroke={stroke} strokeWidth="1"
+            fill={color} fillOpacity={opacity * 0.9}
+            stroke={stroke} strokeWidth="1"
           />
-          <rect
-            x={cutoutX} y={cutoutY}
-            width={cutoutW} height={cutoutH}
-            rx={cutoutR}
-            fill="white" fillOpacity={0.92}
-            stroke={stroke} strokeWidth="0.6"
-          />
-          <line
-            x1={handleX} y1={y}
-            x2={handleX + handleW} y2={y}
-            stroke={stroke} strokeWidth="0.3" opacity="0.3"
-          />
+          {sideGussetW > 0 && (
+            <>
+              <rect
+                x={x + 1} y={cutoutTopY + 1}
+                width={sideGussetW} height={earH + h - 2}
+                fill={color} fillOpacity={opacity * 0.35}
+                rx="1"
+              />
+              <rect
+                x={x + w - sideGussetW - 1} y={cutoutTopY + 1}
+                width={sideGussetW} height={earH + h - 2}
+                fill={color} fillOpacity={opacity * 0.35}
+                rx="1"
+              />
+              <line x1={x + sideGussetW + 1} y1={cutoutTopY} x2={x + sideGussetW + 1} y2={y + h}
+                stroke={stroke} strokeWidth="0.4" opacity="0.15" strokeDasharray="4,4" />
+              <line x1={x + w - sideGussetW - 1} y1={cutoutTopY} x2={x + w - sideGussetW - 1} y2={y + h}
+                stroke={stroke} strokeWidth="0.4" opacity="0.15" strokeDasharray="4,4" />
+            </>
+          )}
         </g>
       );
     }
