@@ -1,7 +1,8 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Card, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { ChevronRight, ChevronLeft, RotateCcw, Home, CheckCircle2 } from "lucide-react";
+import { MATERIALS, BAG_COLORS, HANDLES } from "../lib/bag-rules";
 import { Link } from "wouter";
 import { BagTypeStep } from "../components/bag-wizard/BagTypeStep";
 import { PrintStatusStep } from "../components/bag-wizard/PrintStatusStep";
@@ -125,6 +126,19 @@ export default function BagConfigurator() {
   const currentStepId = visibleSteps[visibleIndex]?.id;
   const progress = ((visibleIndex) / (visibleSteps.length - 1)) * 100;
 
+  const quickSummary = useMemo(() => {
+    const items: Array<{ label: string; value: string }> = [];
+    const rules = config.bagType ? getBagTypeRules(config.bagType) : null;
+    if (rules) items.push({ label: "النوع", value: rules.label_ar });
+    if (config.material && MATERIALS[config.material]) items.push({ label: "المادة", value: MATERIALS[config.material].label_ar });
+    if (config.width > 0 && config.length > 0) items.push({ label: "الأبعاد", value: `${config.width}×${config.length} سم` });
+    if (config.thickness > 0) items.push({ label: "السماكة", value: `${config.thickness} µm` });
+    if (config.handle && HANDLES[config.handle]) items.push({ label: "المقبض", value: HANDLES[config.handle].label_ar });
+    if (config.bagColor && BAG_COLORS[config.bagColor]) items.push({ label: "اللون", value: BAG_COLORS[config.bagColor].label_ar });
+    if (config.isPrinted && config.printColors.length > 0) items.push({ label: "طباعة", value: `${config.printColors.length} ألوان` });
+    return items;
+  }, [config]);
+
   const renderStep = () => {
     switch (currentStepId) {
       case "bagType":
@@ -225,7 +239,7 @@ export default function BagConfigurator() {
           <div className="lg:col-span-7 xl:col-span-8">
             <Card className="shadow-sm border border-gray-100 rounded-2xl overflow-hidden">
               <CardContent className="p-5 sm:p-6">
-                <div className="min-h-[380px] max-h-[70vh] overflow-y-auto">
+                <div className="min-h-[380px] max-h-[70vh] overflow-y-auto animate-in fade-in duration-300">
                   {renderStep()}
                 </div>
 
@@ -265,6 +279,24 @@ export default function BagConfigurator() {
                   <BagPreview config={config} />
                 </CardContent>
               </Card>
+
+              {quickSummary.length > 0 && currentStepId !== "results" && (
+                <Card className="shadow-sm border border-gray-100 rounded-2xl overflow-hidden">
+                  <div className="bg-gradient-to-l from-blue-50 to-white px-4 py-2.5 border-b border-gray-100">
+                    <h3 className="text-xs font-semibold text-blue-600 text-center">ملخص الاختيارات</h3>
+                  </div>
+                  <CardContent className="p-3">
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                      {quickSummary.map((item, i) => (
+                        <div key={i} className="flex justify-between items-center">
+                          <span className="text-[11px] text-gray-400">{item.label}</span>
+                          <span className="text-[11px] font-medium text-gray-700">{item.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {validation && (validation.warnings.length > 0 || validation.errors.length > 0) && currentStepId !== "results" && (
                 <Card className="shadow-sm border border-gray-100 rounded-2xl overflow-hidden">

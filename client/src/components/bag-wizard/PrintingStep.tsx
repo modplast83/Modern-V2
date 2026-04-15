@@ -9,6 +9,7 @@ import { Slider } from "../ui/slider";
 import {
   Upload, Type, Trash2, ImageIcon, Loader2,
   Palette, X, Plus, Eraser, ScanSearch,
+  Move, ChevronDown, ChevronUp,
 } from "lucide-react";
 
 interface PrintingStepProps {
@@ -28,6 +29,7 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
   const [isExtractingColors, setIsExtractingColors] = useState(false);
   const [extractedColors, setExtractedColors] = useState<ExtractedColor[]>([]);
   const [bgThreshold, setBgThreshold] = useState(30);
+  const [expandedTextIdx, setExpandedTextIdx] = useState<number | null>(null);
 
   const design = config.printDesign || { texts: [], scale: 1, rotation: 0, offsetX: 0, offsetY: 0 };
   const prevLogoUrlRef = useRef<string | undefined>(undefined);
@@ -146,31 +148,28 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
 
   const addText = () => {
     if (!newText.trim()) return;
+    const yOffset = 30 + design.texts.length * 15;
     const texts = [...design.texts, {
       value: newText.trim(),
       x: 50,
-      y: 50,
+      y: Math.min(yOffset, 85),
       size: 24,
       color: selectedTextColor,
     }];
     updateDesign({ texts });
     setNewText("");
+    setExpandedTextIdx(texts.length - 1);
   };
 
   const removeText = (index: number) => {
     const texts = design.texts.filter((_, i) => i !== index);
     updateDesign({ texts });
+    if (expandedTextIdx === index) setExpandedTextIdx(null);
   };
 
-  const updateTextColor = (index: number, colorId: string) => {
+  const updateTextProp = (index: number, prop: string, value: string | number) => {
     const texts = [...design.texts];
-    texts[index] = { ...texts[index], color: colorId };
-    updateDesign({ texts });
-  };
-
-  const updateTextSize = (index: number, size: number) => {
-    const texts = [...design.texts];
-    texts[index] = { ...texts[index], size };
+    texts[index] = { ...texts[index], [prop]: value };
     updateDesign({ texts });
   };
 
@@ -186,7 +185,6 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
       <p className="text-gray-500 text-sm mb-6">حدد ألوان الطباعة وأضف النصوص والتصميم</p>
 
       <div className="space-y-8">
-        {/* Section 1: Print Side */}
         <div>
           <Label className="font-semibold text-gray-700 mb-3 block">جهة الطباعة</Label>
           <div className="flex gap-3">
@@ -209,7 +207,6 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
           </div>
         </div>
 
-        {/* Section 2: Color Selection */}
         <div>
           <div className="flex items-center justify-between mb-3">
             <Label className="font-semibold text-gray-700">
@@ -315,7 +312,6 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
           })}
         </div>
 
-        {/* Section 3: Text Elements */}
         <div>
           <Label className="font-semibold text-gray-700 mb-3 block">
             <Type className="h-4 w-4 inline ml-1.5" />
@@ -356,38 +352,65 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
               {design.texts.map((text, i) => {
                 const colorInfo = PRINT_COLORS_PALETTE.find(c => c.id === text.color);
                 const shade = config.printColorShades?.[text.color] || colorInfo?.hex || "#000";
+                const isExpanded = expandedTextIdx === i;
                 return (
-                  <div key={i} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                    <div className="w-5 h-5 rounded-full border flex-shrink-0" style={{ backgroundColor: shade }} />
-                    <span className="font-medium text-gray-800 flex-1 truncate">{text.value}</span>
+                  <div key={i} className="bg-gray-50 rounded-lg border border-gray-100 overflow-hidden">
+                    <div className="flex items-center gap-3 p-3">
+                      <div className="w-5 h-5 rounded-full border flex-shrink-0" style={{ backgroundColor: shade }} />
+                      <span className="font-medium text-gray-800 flex-1 truncate">{text.value}</span>
 
-                    <div className="flex items-center gap-1">
-                      {availableTextColors.map((c) => c && (
-                        <button
-                          key={c.id}
-                          onClick={() => updateTextColor(i, c.id)}
-                          className={`w-5 h-5 rounded-full border-2 transition-all flex-shrink-0 ${
-                            text.color === c.id ? "border-blue-500 scale-110" : "border-gray-200 opacity-60"
-                          }`}
-                          style={{ backgroundColor: config.printColorShades?.[c.id] || c.hex }}
-                          title={c.label_ar}
-                        />
-                      ))}
+                      <div className="flex items-center gap-1">
+                        {availableTextColors.map((c) => c && (
+                          <button
+                            key={c.id}
+                            onClick={() => updateTextProp(i, "color", c.id)}
+                            className={`w-5 h-5 rounded-full border-2 transition-all flex-shrink-0 ${
+                              text.color === c.id ? "border-blue-500 scale-110" : "border-gray-200 opacity-60"
+                            }`}
+                            style={{ backgroundColor: config.printColorShades?.[c.id] || c.hex }}
+                            title={c.label_ar}
+                          />
+                        ))}
+                      </div>
+
+                      <button
+                        onClick={() => setExpandedTextIdx(isExpanded ? null : i)}
+                        className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
+                        title="تحريك وتحجيم"
+                      >
+                        {isExpanded ? <ChevronUp className="h-4 w-4" /> : <Move className="h-4 w-4" />}
+                      </button>
+
+                      <Button size="sm" variant="ghost" className="text-red-400 h-7 w-7 p-0" onClick={() => removeText(i)}>
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
 
-                    <select
-                      value={text.size}
-                      onChange={(e) => updateTextSize(i, Number(e.target.value))}
-                      className="border rounded px-1.5 py-0.5 text-xs w-16"
-                    >
-                      {[12, 16, 20, 24, 28, 32, 36, 40, 48].map(s => (
-                        <option key={s} value={s}>{s}px</option>
-                      ))}
-                    </select>
-
-                    <Button size="sm" variant="ghost" className="text-red-400 h-7 w-7 p-0" onClick={() => removeText(i)}>
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
+                    {isExpanded && (
+                      <div className="px-3 pb-3 space-y-3 border-t border-gray-200 pt-3 bg-white/50">
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <Label className="text-xs text-gray-500">الموضع الأفقي</Label>
+                            <span className="text-xs text-gray-400">{text.x}%</span>
+                          </div>
+                          <Slider min={5} max={95} step={1} value={[text.x]} onValueChange={([v]) => updateTextProp(i, "x", v)} />
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <Label className="text-xs text-gray-500">الموضع الرأسي</Label>
+                            <span className="text-xs text-gray-400">{text.y}%</span>
+                          </div>
+                          <Slider min={5} max={95} step={1} value={[text.y]} onValueChange={([v]) => updateTextProp(i, "y", v)} />
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <Label className="text-xs text-gray-500">حجم الخط</Label>
+                            <span className="text-xs text-gray-400">{text.size}px</span>
+                          </div>
+                          <Slider min={10} max={60} step={2} value={[text.size]} onValueChange={([v]) => updateTextProp(i, "size", v)} />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -395,7 +418,6 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
           )}
         </div>
 
-        {/* Section 4: Design Image */}
         <div>
           <Label className="font-semibold text-gray-700 mb-3 block">
             <ImageIcon className="h-4 w-4 inline ml-1.5" />
@@ -506,10 +528,9 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
           )}
         </div>
 
-        {/* Section 5: Design positioning */}
         {(design.logoUrl || design.texts.length > 0) && (
           <div>
-            <Label className="font-semibold text-gray-700 mb-3 block">ضبط موضع التصميم</Label>
+            <Label className="font-semibold text-gray-700 mb-3 block">ضبط موضع التصميم العام</Label>
             <div className="space-y-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
               <div>
                 <div className="flex items-center justify-between mb-1.5">

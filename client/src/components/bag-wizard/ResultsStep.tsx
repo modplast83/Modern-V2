@@ -1,9 +1,9 @@
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useState } from "react";
 import { type BagConfiguration, type ValidationResult, getBagTypeRules, getHangerHeight } from "../../lib/bag-rules-engine";
-import { MATERIALS, BAG_COLORS, HANDLES } from "../../lib/bag-rules";
+import { MATERIALS, BAG_COLORS, HANDLES, PRINT_COLORS_PALETTE } from "../../lib/bag-rules";
 import { BagPreview } from "./BagPreview";
 import { Button } from "../ui/button";
-import { Download, FileJson, Image, RotateCcw, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
+import { Download, FileJson, Image, RotateCcw, CheckCircle, XCircle, AlertTriangle, Loader2 } from "lucide-react";
 
 interface ResultsStepProps {
   config: BagConfiguration;
@@ -11,12 +11,80 @@ interface ResultsStepProps {
   onRestart: () => void;
 }
 
+async function inlineBlobImages(svgClone: SVGSVGElement): Promise<void> {
+  const images = svgClone.querySelectorAll("image");
+  const promises = Array.from(images).map(async (imgEl) => {
+    const href = imgEl.getAttribute("href") || imgEl.getAttributeNS("http://www.w3.org/1999/xlink", "href");
+    if (!href || !href.startsWith("blob:")) return;
+    try {
+      const resp = await fetch(href);
+      const blob = await resp.blob();
+      const reader = new FileReader();
+      const dataUrl = await new Promise<string>((res, rej) => {
+        reader.onload = () => res(reader.result as string);
+        reader.onerror = rej;
+        reader.readAsDataURL(blob);
+      });
+      imgEl.setAttribute("href", dataUrl);
+      imgEl.removeAttributeNS("http://www.w3.org/1999/xlink", "href");
+    } catch {
+      imgEl.removeAttribute("href");
+      imgEl.removeAttributeNS("http://www.w3.org/1999/xlink", "href");
+    }
+  });
+  await Promise.all(promises);
+}
+
+function svgToDataUrl(svgEl: SVGSVGElement): Promise<string> {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const clone = svgEl.cloneNode(true) as SVGSVGElement;
+      await inlineBlobImages(clone);
+
+      const svgData = new XMLSerializer().serializeToString(clone);
+      const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(svgBlob);
+
+      const img = new window.Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 800;
+        canvas.height = 1000;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { reject(new Error("Canvas not supported")); return; }
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+        const x = (canvas.width - img.width * scale) / 2;
+        const y = (canvas.height - img.height * scale) / 2;
+        ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+
+        resolve(canvas.toDataURL("image/png"));
+        URL.revokeObjectURL(url);
+      };
+      img.onerror = () => { reject(new Error("Image load failed")); URL.revokeObjectURL(url); };
+      img.src = url;
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
 export function ResultsStep({ config, validation, onRestart }: ResultsStepProps) {
   const previewRef = useRef<HTMLDivElement>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const rules = getBagTypeRules(config.bagType);
   const material = MATERIALS[config.material];
   const bagColor = BAG_COLORS[config.bagColor];
   const handle = HANDLES[config.handle];
+
+  const printColorNames = config.isPrinted
+    ? config.printColors.map(id => {
+        const c = PRINT_COLORS_PALETTE.find(p => p.id === id);
+        return c?.label_ar || id;
+      }).join("، ")
+    : "";
 
   const specs = [
     { label: "نوع الكيس", value: rules?.label_ar || "-" },
@@ -31,6 +99,10 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
     ...(config.isPrinted ? [
       { label: "جهة الطباعة", value: config.printSide === "both" ? "وجهين" : "وجه واحد" },
       { label: "عدد ألوان الطباعة", value: `${config.printColors.length}` },
+      { label: "ألوان الطباعة", value: printColorNames },
+    ] : []),
+    ...(config.isPrinted && config.printDesign?.texts?.length ? [
+      { label: "نصوص الطباعة", value: config.printDesign.texts.map(t => t.value).join("، ") },
     ] : []),
   ];
 
@@ -52,11 +124,10 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
         bagColorLabel: bagColor?.label_ar,
         isPrinted: config.isPrinted,
         printSide: config.printSide,
-        printColorsCount: config.printColorsCount,
         printColors: config.printColors,
         printColorShades: config.printColorShades,
         hasDesignImage: !!config.printDesign?.logoUrl,
-        designTexts: config.printDesign?.texts?.map(t => ({ text: t.value, color: t.color, size: t.size })) || [],
+        designTexts: config.printDesign?.texts?.map(t => ({ text: t.value, color: t.color, size: t.size, x: t.x, y: t.y })) || [],
       },
       validation: {
         isValid: validation.isValid,
@@ -109,27 +180,60 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
   }, []);
 
   const exportPDF = useCallback(async () => {
-    const specsHtml = specs.map(s => `<tr><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;color:#374151">${s.label}</td><td style="padding:8px;border-bottom:1px solid #eee;color:#6b7280">${s.value}</td></tr>`).join("");
+    setIsExportingPdf(true);
+
+    let imageDataUrl = "";
+    try {
+      const svgEl = previewRef.current?.querySelector("svg");
+      if (svgEl) {
+        imageDataUrl = await svgToDataUrl(svgEl as SVGSVGElement);
+      }
+    } catch {
+      // continue without image
+    }
+
+    const specsHtml = specs.map(s =>
+      `<tr><td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;font-weight:600;color:#374151;text-align:right;width:40%">${s.label}</td><td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;color:#6b7280;text-align:right">${s.value}</td></tr>`
+    ).join("");
 
     const validationHtml = validation.isValid
-      ? '<div style="background:#dcfce7;color:#166534;padding:12px;border-radius:8px;margin:16px 0">✅ صالح للتصنيع</div>'
-      : '<div style="background:#fee2e2;color:#991b1b;padding:12px;border-radius:8px;margin:16px 0">❌ غير صالح للتصنيع</div>';
+      ? '<div style="background:#dcfce7;color:#166534;padding:16px;border-radius:12px;margin:20px 0;text-align:center;font-weight:bold;font-size:16px">✅ صالح للتصنيع</div>'
+      : '<div style="background:#fee2e2;color:#991b1b;padding:16px;border-radius:12px;margin:20px 0;text-align:center;font-weight:bold;font-size:16px">❌ غير صالح للتصنيع</div>';
 
-    const errorsHtml = validation.errors.map(e => `<li style="color:#dc2626;margin:4px 0">${e.message}</li>`).join("");
-    const warningsHtml = validation.warnings.map(w => `<li style="color:#d97706;margin:4px 0">${w.message}</li>`).join("");
+    const errorsHtml = validation.errors.map(e => `<li style="color:#dc2626;margin:6px 0;line-height:1.5">${e.message}</li>`).join("");
+    const warningsHtml = validation.warnings.map(w => `<li style="color:#d97706;margin:6px 0;line-height:1.5">${w.message}</li>`).join("");
+
+    const imageSection = imageDataUrl
+      ? `<div style="text-align:center;margin:24px 0;page-break-inside:avoid">
+           <h3 style="color:#374151;margin-bottom:12px;font-size:14px">معاينة الكيس المصمم</h3>
+           <img src="${imageDataUrl}" style="max-width:350px;max-height:450px;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08)" />
+         </div>`
+      : "";
 
     const html = `
       <!DOCTYPE html>
       <html dir="rtl" lang="ar">
-      <head><meta charset="UTF-8"><title>مواصفات الكيس</title></head>
-      <body style="font-family:Arial,sans-serif;max-width:800px;margin:0 auto;padding:40px">
-        <h1 style="text-align:center;color:#1e40af;margin-bottom:8px">بطاقة مواصفات المنتج</h1>
-        <p style="text-align:center;color:#9ca3af;margin-bottom:32px">معالج تصميم الأكياس البلاستيكية</p>
+      <head>
+        <meta charset="UTF-8">
+        <title>مواصفات الكيس - ${rules?.label_ar || ""}</title>
+        <style>
+          @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+          body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; max-width:800px; margin:0 auto; padding:40px; color:#1f2937; }
+        </style>
+      </head>
+      <body>
+        <div style="text-align:center;border-bottom:3px solid #1e40af;padding-bottom:20px;margin-bottom:24px">
+          <h1 style="color:#1e40af;margin:0 0 6px 0;font-size:22px">بطاقة مواصفات المنتج</h1>
+          <p style="color:#9ca3af;margin:0;font-size:13px">معالج تصميم الأكياس البلاستيكية | MPBF</p>
+        </div>
         ${validationHtml}
-        <table style="width:100%;border-collapse:collapse;margin:24px 0">${specsHtml}</table>
-        ${errorsHtml ? `<h3 style="color:#dc2626">الأخطاء</h3><ul>${errorsHtml}</ul>` : ""}
-        ${warningsHtml ? `<h3 style="color:#d97706">التحذيرات</h3><ul>${warningsHtml}</ul>` : ""}
-        <p style="text-align:center;color:#9ca3af;margin-top:32px;font-size:12px">تاريخ التصدير: ${new Date().toLocaleDateString("ar-SA")}</p>
+        ${imageSection}
+        <table style="width:100%;border-collapse:collapse;margin:24px 0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">${specsHtml}</table>
+        ${errorsHtml ? `<div style="margin:16px 0"><h3 style="color:#dc2626;font-size:14px">الأخطاء</h3><ul style="margin:8px 0;padding-right:20px">${errorsHtml}</ul></div>` : ""}
+        ${warningsHtml ? `<div style="margin:16px 0"><h3 style="color:#d97706;font-size:14px">التحذيرات</h3><ul style="margin:8px 0;padding-right:20px">${warningsHtml}</ul></div>` : ""}
+        <div style="text-align:center;color:#9ca3af;margin-top:32px;font-size:11px;border-top:1px solid #e5e7eb;padding-top:16px">
+          <p>تاريخ التصدير: ${new Date().toLocaleDateString("ar-SA")} | ${new Date().toLocaleTimeString("ar-SA")}</p>
+        </div>
       </body></html>
     `;
 
@@ -137,9 +241,11 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
     if (printWindow) {
       printWindow.document.write(html);
       printWindow.document.close();
-      setTimeout(() => printWindow.print(), 500);
+      setTimeout(() => { printWindow.print(); setIsExportingPdf(false); }, 800);
+    } else {
+      setIsExportingPdf(false);
     }
-  }, [specs, validation]);
+  }, [specs, validation, rules]);
 
   return (
     <div>
@@ -192,7 +298,7 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
 
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 p-4 bg-gray-50 rounded-xl mb-6">
         {specs.map((spec, i) => (
-          <div key={i} className="flex justify-between items-center py-1 border-b border-gray-200 last:border-0">
+          <div key={i} className="flex justify-between items-center py-1.5 border-b border-gray-200 last:border-0">
             <span className="text-sm font-medium text-gray-600">{spec.label}</span>
             <span className="text-sm text-gray-900">{spec.value}</span>
           </div>
@@ -204,8 +310,8 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <Button onClick={exportPDF} variant="outline" className="gap-2 h-12">
-          <Download className="h-4 w-4" />
+        <Button onClick={exportPDF} variant="outline" className="gap-2 h-12" disabled={isExportingPdf}>
+          {isExportingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
           <span className="text-xs">تنزيل PDF</span>
         </Button>
         <Button onClick={exportImage} variant="outline" className="gap-2 h-12">

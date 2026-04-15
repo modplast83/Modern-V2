@@ -157,27 +157,41 @@ function renderHandle(config: BagConfiguration, x: number, y: number, w: number,
       const totalLength = config.length > 0 ? config.length : 60;
       const hangerRatio = Math.max(0.1, Math.min(0.35, hangerCm / totalLength));
       const earH = h * hangerRatio;
-      const gapW = w * 0.2;
-      const cornerR = Math.min(earH * 0.3, w * 0.08);
+
+      const handleWidthRatio = 0.55;
+      const handleW = w * handleWidthRatio;
+      const handleX = x + (w - handleW) / 2;
+
+      const cutoutW = handleW * 0.45;
+      const cutoutH = earH * 0.55;
+      const cutoutX = handleX + (handleW - cutoutW) / 2;
+      const cutoutY = y - earH + (earH - cutoutH) * 0.45;
+      const cornerR = Math.min(earH * 0.2, handleW * 0.08);
+      const cutoutR = Math.min(cutoutH * 0.4, cutoutW * 0.15);
+
       return (
         <g>
           <path
-            d={`M${x},${y} L${x},${y - earH + cornerR} Q${x},${y - earH} ${x + cornerR},${y - earH}
-                L${x + w / 2 - gapW / 2},${y - earH}
-                L${x + w / 2 - gapW / 2},${y}`}
-            fill={color} fillOpacity={opacity * 0.9} stroke={stroke} strokeWidth="1"
-          />
-          <path
-            d={`M${x + w / 2 + gapW / 2},${y} L${x + w / 2 + gapW / 2},${y - earH}
-                L${x + w - cornerR},${y - earH} Q${x + w},${y - earH} ${x + w},${y - earH + cornerR}
-                L${x + w},${y}`}
+            d={`M${handleX + cornerR},${y - earH}
+                Q${handleX},${y - earH} ${handleX},${y - earH + cornerR}
+                L${handleX},${y}
+                L${handleX + handleW},${y}
+                L${handleX + handleW},${y - earH + cornerR}
+                Q${handleX + handleW},${y - earH} ${handleX + handleW - cornerR},${y - earH}
+                Z`}
             fill={color} fillOpacity={opacity * 0.9} stroke={stroke} strokeWidth="1"
           />
           <rect
-            x={x + w / 2 - gapW / 2} y={y - earH}
-            width={gapW} height={earH}
-            fill="white" fillOpacity={0.9}
-            stroke={stroke} strokeWidth="0.5" rx="2"
+            x={cutoutX} y={cutoutY}
+            width={cutoutW} height={cutoutH}
+            rx={cutoutR}
+            fill="white" fillOpacity={0.92}
+            stroke={stroke} strokeWidth="0.6"
+          />
+          <line
+            x1={handleX} y1={y}
+            x2={handleX + handleW} y2={y}
+            stroke={stroke} strokeWidth="0.3" opacity="0.3"
           />
         </g>
       );
@@ -215,11 +229,11 @@ function renderPrintDesign(config: BagConfiguration, bagX: number, bagY: number,
   const printAreaW = bagW * (pa.width / 100);
   const printAreaH = bagH * (pa.height / 100);
 
-  const offsetX = (design.offsetX / 100) * printAreaW;
-  const offsetY = (design.offsetY / 100) * printAreaH;
+  const globalOffsetX = (design.offsetX / 100) * printAreaW;
+  const globalOffsetY = (design.offsetY / 100) * printAreaH;
 
-  const centerX = printAreaX + printAreaW / 2 + offsetX;
-  const centerY = printAreaY + printAreaH / 2 + offsetY;
+  const centerX = printAreaX + printAreaW / 2 + globalOffsetX;
+  const centerY = printAreaY + printAreaH / 2 + globalOffsetY;
 
   return (
     <g clipPath={`url(#${clipId})`}>
@@ -244,18 +258,19 @@ function renderPrintDesign(config: BagConfiguration, bagX: number, bagY: number,
       {design.texts.map((text, i) => {
         const colorInfo = PRINT_COLORS_PALETTE.find(c => c.id === text.color);
         const shade = config.printColorShades?.[text.color];
-        const textY = design.logoUrl
-          ? centerY + (printAreaH * 0.25 * design.scale) + (i * 20)
-          : centerY + (i * 22) - ((design.texts.length - 1) * 11);
+
+        const textX = printAreaX + (text.x / 100) * printAreaW + globalOffsetX;
+        const textY = printAreaY + (text.y / 100) * printAreaH + globalOffsetY;
 
         return (
           <text
             key={i}
-            x={centerX}
+            x={textX}
             y={textY}
             textAnchor="middle"
+            dominantBaseline="central"
             fill={shade || colorInfo?.hex || "#000"}
-            fontSize={Math.max(10, Math.min(24, text.size * design.scale * 0.6))}
+            fontSize={Math.max(8, Math.min(28, text.size * design.scale * 0.55))}
             fontFamily="Arial, sans-serif"
             fontWeight="bold"
             opacity={0.9}
