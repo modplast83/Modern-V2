@@ -1,13 +1,14 @@
 import { useId } from "react";
-import { type BagConfiguration, getBagTypeRules, getHangerHeight } from "../../lib/bag-rules-engine";
+import { type BagConfiguration, getBagTypeRules, getHangerHeight, getBagsPerKg, getBagWeightGrams } from "../../lib/bag-rules-engine";
 import { BAG_COLORS, MATERIALS, PRINT_COLORS_PALETTE } from "../../lib/bag-rules";
 
 interface BagPreviewProps {
   config: BagConfiguration;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
+  showDimensions?: boolean;
 }
 
-export function BagPreview({ config, size = "lg" }: BagPreviewProps) {
+export function BagPreview({ config, size = "lg", showDimensions = false }: BagPreviewProps) {
   const uid = useId().replace(/:/g, "_");
 
   if (!config.bagType) {
@@ -24,8 +25,8 @@ export function BagPreview({ config, size = "lg" }: BagPreviewProps) {
   const bagColor = BAG_COLORS[config.bagColor] || BAG_COLORS.white;
   const material = MATERIALS[config.material];
 
-  const svgWidth = size === "lg" ? 420 : size === "md" ? 320 : 220;
-  const svgHeight = size === "lg" ? 520 : size === "md" ? 420 : 300;
+  const svgWidth = size === "xl" ? 560 : size === "lg" ? 480 : size === "md" ? 340 : 220;
+  const svgHeight = size === "xl" ? 700 : size === "lg" ? 600 : size === "md" ? 440 : 300;
 
   const widthMax = config.isPrinted && rules.width_printed ? rules.width_printed.max : rules.width.max;
   const lengthMax = config.isPrinted ? rules.length_printed.max : rules.length_plain.max;
@@ -53,7 +54,7 @@ export function BagPreview({ config, size = "lg" }: BagPreviewProps) {
 
   return (
     <div className="flex flex-col items-center">
-      <svg width="100%" viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="drop-shadow-lg max-h-[420px]">
+      <svg width="100%" viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="drop-shadow-lg" style={{ maxHeight: size === "xl" ? 600 : size === "lg" ? 540 : 420 }}>
         <defs>
           <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor={fillColor} stopOpacity={fillOpacity * 0.85} />
@@ -82,13 +83,20 @@ export function BagPreview({ config, size = "lg" }: BagPreviewProps) {
           <clipPath id={clipId}>
             <rect x={bagX} y={bagY} width={bagW} height={bagH} rx="3" />
           </clipPath>
+
+          <marker id="arrL" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 Z" fill="#1e40af" />
+          </marker>
+          <marker id="arrR" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0,0 L10,5 L0,10 Z" fill="#1e40af" />
+          </marker>
         </defs>
 
         {isTransparent && (
           <rect x={bagX} y={bagY} width={bagW} height={bagH} rx="3" fill={`url(#${patternId})`} />
         )}
 
-        {sideWidth > 0 && config.handle !== "hanger" && (
+        {sideWidth > 0 && config.handle !== "hanger" && config.handle !== "hanger_hook" && config.handle !== "external_strap" && (
           <polygon
             points={`${bagX + bagW},${bagY} ${bagX + bagW + sideWidth},${bagY + perspectiveOffset} ${bagX + bagW + sideWidth},${bagY + bagH + perspectiveOffset} ${bagX + bagW},${bagY + bagH}`}
             fill={`url(#${sideGradId})`}
@@ -123,6 +131,8 @@ export function BagPreview({ config, size = "lg" }: BagPreviewProps) {
 
         {config.isPrinted && config.printDesign && renderPrintDesign(config, bagX, bagY, bagW, bagH, clipId)}
 
+        {showDimensions && config.width > 0 && config.length > 0 && renderDimensionLines(config, bagX, bagY, bagW, bagH)}
+
         {material && (
           <>
             <line x1={bagX + 8} y1={bagY + bagH * 0.1} x2={bagX + 8} y2={bagY + bagH * 0.9}
@@ -136,15 +146,55 @@ export function BagPreview({ config, size = "lg" }: BagPreviewProps) {
       <div className="mt-3 text-center space-y-1">
         <div className="text-sm font-semibold text-gray-700">{rules.label_ar}</div>
         {config.width > 0 && config.length > 0 && (
-          <div className="text-xs text-gray-400">
+          <div className="text-xs text-gray-500">
             {config.width} × {config.length} سم
             {config.sideGusset > 0 && ` | دخلة ${config.sideGusset} سم`}
             {config.thickness > 0 && ` | ${config.thickness} ميكرون`}
             {config.handle === "hanger" && ` | يد ${getHangerHeight(config)} سم`}
           </div>
         )}
+        {(() => {
+          const bpk = getBagsPerKg(config);
+          const wg = getBagWeightGrams(config);
+          if (!bpk || !wg) return null;
+          return (
+            <div className="text-xs text-blue-600 font-semibold bg-blue-50 px-3 py-1.5 rounded-lg inline-block mt-1">
+              ≈ {bpk.toLocaleString("ar-EG")} كيس/كجم · وزن الكيس {wg.toFixed(2)} غم
+            </div>
+          );
+        })()}
       </div>
     </div>
+  );
+}
+
+function renderDimensionLines(config: BagConfiguration, x: number, y: number, w: number, h: number) {
+  const arrowColor = "#1e40af";
+  const offset = 14;
+  return (
+    <g fontFamily="Arial, sans-serif" fontSize="11" fill={arrowColor}>
+      {/* Width dimension (bottom) */}
+      <line x1={x} y1={y + h + offset} x2={x + w} y2={y + h + offset} stroke={arrowColor} strokeWidth="0.8" markerStart="url(#arrL)" markerEnd="url(#arrR)" />
+      <line x1={x} y1={y + h + offset - 4} x2={x} y2={y + h + offset + 4} stroke={arrowColor} strokeWidth="0.8" />
+      <line x1={x + w} y1={y + h + offset - 4} x2={x + w} y2={y + h + offset + 4} stroke={arrowColor} strokeWidth="0.8" />
+      <rect x={x + w / 2 - 22} y={y + h + offset + 4} width="44" height="14" fill="white" stroke={arrowColor} strokeWidth="0.5" rx="2" />
+      <text x={x + w / 2} y={y + h + offset + 14} textAnchor="middle" fontWeight="700">{config.width} سم</text>
+
+      {/* Length dimension (right) */}
+      <line x1={x + w + offset} y1={y} x2={x + w + offset} y2={y + h} stroke={arrowColor} strokeWidth="0.8" />
+      <line x1={x + w + offset - 4} y1={y} x2={x + w + offset + 4} y2={y} stroke={arrowColor} strokeWidth="0.8" />
+      <line x1={x + w + offset - 4} y1={y + h} x2={x + w + offset + 4} y2={y + h} stroke={arrowColor} strokeWidth="0.8" />
+      <rect x={x + w + offset + 4} y={y + h / 2 - 7} width="44" height="14" fill="white" stroke={arrowColor} strokeWidth="0.5" rx="2" />
+      <text x={x + w + offset + 26} y={y + h / 2 + 3} textAnchor="middle" fontWeight="700">{config.length} سم</text>
+
+      {/* Thickness label */}
+      {config.thickness > 0 && (
+        <>
+          <rect x={x + 4} y={y + h - 18} width="78" height="14" fill="white" stroke={arrowColor} strokeWidth="0.5" rx="2" opacity="0.9" />
+          <text x={x + 43} y={y + h - 8} textAnchor="middle" fontWeight="600" fontSize="10">{config.thickness} ميكرون</text>
+        </>
+      )}
+    </g>
   );
 }
 
@@ -211,11 +261,97 @@ function renderHandle(config: BagConfiguration, x: number, y: number, w: number,
         </g>
       );
     }
+    case "hanger_hook": {
+      // Hanger ears + central hook hole (for hanging on shop hooks)
+      const earH = h * 0.18;
+      const earCutW = w * 0.18;
+      const cutoutCX = x + w / 2;
+      const earTopY = y - earH;
+      const earBottomY = earTopY + earH * 0.7;
+      const r = earCutW * 0.35;
+      const hookR = Math.min(w, h) * 0.04;
+      const hookCY = earTopY + earH * 0.4;
+      return (
+        <g>
+          <path
+            d={`M${x},${y}
+                L${x},${earTopY + 2}
+                Q${x},${earTopY} ${x + 2},${earTopY}
+                L${cutoutCX - earCutW / 2},${earTopY}
+                L${cutoutCX - earCutW / 2},${earBottomY - r}
+                Q${cutoutCX - earCutW / 2},${earBottomY} ${cutoutCX - earCutW / 2 + r},${earBottomY}
+                L${cutoutCX + earCutW / 2 - r},${earBottomY}
+                Q${cutoutCX + earCutW / 2},${earBottomY} ${cutoutCX + earCutW / 2},${earBottomY - r}
+                L${cutoutCX + earCutW / 2},${earTopY}
+                L${x + w - 2},${earTopY}
+                Q${x + w},${earTopY} ${x + w},${earTopY + 2}
+                L${x + w},${y} Z`}
+            fill={color} fillOpacity={opacity * 0.9}
+            stroke={stroke} strokeWidth="1"
+          />
+          {/* Hook hole punched in middle of ear */}
+          <circle cx={cutoutCX} cy={hookCY} r={hookR} fill="white" stroke={stroke} strokeWidth="1.2" />
+          <circle cx={cutoutCX} cy={hookCY} r={hookR * 0.55} fill="none" stroke={stroke} strokeWidth="0.6" opacity="0.4" />
+        </g>
+      );
+    }
+    case "external_strap": {
+      // Two external loop straps glued/welded on top
+      const strapH = h * 0.16;
+      const strapW = w * 0.04;
+      const loopGap = w * 0.34;
+      const loopCX1 = x + w / 2 - loopGap / 2;
+      const loopCX2 = x + w / 2 + loopGap / 2;
+      const baseY = y;
+      const topY = y - strapH;
+      return (
+        <g>
+          {/* Reinforcement strip across top */}
+          <rect x={x + w * 0.1} y={y - 2} width={w * 0.8} height={4} fill={darkenColor(color, 25)} fillOpacity={opacity * 0.8} rx="1.5" />
+          {/* Left loop */}
+          <path
+            d={`M${loopCX1 - loopGap / 2 + strapW / 2},${baseY}
+                C${loopCX1 - loopGap / 2 + strapW / 2},${topY - strapH * 0.3} ${loopCX1 + loopGap / 2 - strapW / 2},${topY - strapH * 0.3} ${loopCX1 + loopGap / 2 - strapW / 2},${baseY}`}
+            fill="none" stroke={darkenColor(color, 35)} strokeWidth={strapW} strokeLinecap="round" opacity={opacity * 0.95}
+          />
+          {/* Right loop */}
+          <path
+            d={`M${loopCX2 - loopGap / 2 + strapW / 2},${baseY}
+                C${loopCX2 - loopGap / 2 + strapW / 2},${topY - strapH * 0.3} ${loopCX2 + loopGap / 2 - strapW / 2},${topY - strapH * 0.3} ${loopCX2 + loopGap / 2 - strapW / 2},${baseY}`}
+            fill="none" stroke={darkenColor(color, 35)} strokeWidth={strapW} strokeLinecap="round" opacity={opacity * 0.95}
+          />
+        </g>
+      );
+    }
     case "die_cut": {
       const holeW = w * 0.3;
       const holeH = h * 0.06;
       return (
         <ellipse cx={x + w / 2} cy={y + h * 0.06} rx={holeW / 2} ry={holeH / 2} fill="white" stroke={stroke} strokeWidth="1" />
+      );
+    }
+    case "banana_9cm":
+    case "banana_6cm": {
+      // Banana-shaped die-cut handle. Width is fixed in cm; convert to SVG units via bag width.
+      const cm = config.handle === "banana_9cm" ? 9 : 6;
+      const actualWidthCm = config.width > 0 ? config.width : 30;
+      const cutoutWidthRatio = Math.max(0.18, Math.min(0.7, cm / actualWidthCm));
+      const holeW = w * cutoutWidthRatio;
+      const holeH = h * 0.045;
+      const cx = x + w / 2;
+      const cy = y + h * 0.07;
+      return (
+        <g>
+          <path
+            d={`M${cx - holeW / 2},${cy}
+                Q${cx},${cy + holeH * 1.8} ${cx + holeW / 2},${cy}
+                Q${cx},${cy - holeH * 0.4} ${cx - holeW / 2},${cy} Z`}
+            fill="white" stroke={stroke} strokeWidth="1.1"
+          />
+          <text x={cx} y={cy - holeH * 1.2} textAnchor="middle" fontSize="9" fill={stroke} fontWeight="600" opacity="0.6">
+            {cm} سم
+          </text>
+        </g>
       );
     }
     case "reinforced": {

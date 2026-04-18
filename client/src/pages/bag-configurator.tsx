@@ -1,7 +1,11 @@
 import { useState, useCallback, useMemo } from "react";
 import { Card, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
-import { ChevronRight, ChevronLeft, RotateCcw, Home, CheckCircle2 } from "lucide-react";
+import {
+  ChevronRight, ChevronLeft, RotateCcw, Home, CheckCircle2,
+  Tag, Printer, Beaker, Ruler, Hand, Palette, Image as ImageIcon, ClipboardList, Factory,
+  Ban, AlertTriangle, ShieldAlert,
+} from "lucide-react";
 import { MATERIALS, BAG_COLORS, HANDLES } from "../lib/bag-rules";
 import { Link } from "wouter";
 import { BagTypeStep } from "../components/bag-wizard/BagTypeStep";
@@ -22,14 +26,14 @@ import {
 } from "../lib/bag-rules-engine";
 
 const STEPS = [
-  { id: "bagType", label: "نوع الكيس", icon: "🏷️" },
-  { id: "printStatus", label: "الطباعة", icon: "🖨️" },
-  { id: "material", label: "المادة", icon: "🧪" },
-  { id: "dimensions", label: "الأبعاد", icon: "📐" },
-  { id: "handle", label: "المقبض", icon: "✋" },
-  { id: "color", label: "اللون", icon: "🎨" },
-  { id: "printing", label: "إعداد الطباعة", icon: "🖼️" },
-  { id: "results", label: "النتيجة", icon: "📋" },
+  { id: "bagType", label: "نوع الكيس", Icon: Tag },
+  { id: "printStatus", label: "الطباعة", Icon: Printer },
+  { id: "material", label: "المادة", Icon: Beaker },
+  { id: "dimensions", label: "الأبعاد", Icon: Ruler },
+  { id: "handle", label: "المقبض", Icon: Hand },
+  { id: "color", label: "اللون", Icon: Palette },
+  { id: "printing", label: "إعداد الطباعة", Icon: ImageIcon },
+  { id: "results", label: "النتيجة", Icon: ClipboardList },
 ];
 
 export default function BagConfigurator() {
@@ -168,7 +172,7 @@ export default function BagConfigurator() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-lg shadow-blue-200">
-              <span className="text-white text-lg">🏭</span>
+              <Factory className="text-white h-5 w-5" />
             </div>
             <div>
               <h1 className="text-lg sm:text-xl font-bold text-gray-900">معالج تصميم الأكياس</h1>
@@ -226,7 +230,7 @@ export default function BagConfigurator() {
                 {isCompleted ? (
                   <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                 ) : (
-                  <span className="text-base leading-none">{step.icon}</span>
+                  <step.Icon className="h-4 w-4" />
                 )}
                 <span className="hidden sm:inline">{step.label}</span>
                 <span className="sm:hidden text-xs">{i + 1}</span>
@@ -236,7 +240,7 @@ export default function BagConfigurator() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
-          <div className="lg:col-span-7 xl:col-span-8">
+          <div className="lg:col-span-6 xl:col-span-7">
             <Card className="shadow-sm border border-gray-100 rounded-2xl overflow-hidden">
               <CardContent className="p-5 sm:p-6">
                 <div className="min-h-[380px] max-h-[70vh] overflow-y-auto animate-in fade-in duration-300">
@@ -269,14 +273,14 @@ export default function BagConfigurator() {
             </Card>
           </div>
 
-          <div className="lg:col-span-5 xl:col-span-4">
+          <div className="lg:col-span-6 xl:col-span-5">
             <div className="sticky top-[130px] space-y-4">
               <Card className="shadow-sm border border-gray-100 rounded-2xl overflow-hidden">
                 <div className="bg-gradient-to-l from-gray-50 to-white px-4 py-3 border-b border-gray-100">
                   <h3 className="text-sm font-semibold text-gray-600 text-center">المعاينة المباشرة</h3>
                 </div>
                 <CardContent className="p-4">
-                  <BagPreview config={config} />
+                  <BagPreview config={config} size="xl" showDimensions />
                 </CardContent>
               </Card>
 
@@ -303,13 +307,13 @@ export default function BagConfigurator() {
                   <CardContent className="p-4 space-y-2">
                     {validation.errors.map((e, i) => (
                       <div key={`e-${i}`} className="flex items-start gap-2.5 bg-red-50 text-red-700 text-sm p-2.5 rounded-lg border border-red-100">
-                        <span className="text-red-500 mt-0.5 shrink-0">⛔</span>
+                        <ShieldAlert className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
                         <span>{e.message}</span>
                       </div>
                     ))}
                     {validation.warnings.map((w, i) => (
                       <div key={`w-${i}`} className="flex items-start gap-2.5 bg-amber-50 text-amber-700 text-sm p-2.5 rounded-lg border border-amber-100">
-                        <span className="text-amber-500 mt-0.5 shrink-0">⚠️</span>
+                        <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
                         <span>{w.message}</span>
                       </div>
                     ))}

@@ -1,4 +1,5 @@
 import { BAG_TYPES } from "../../lib/bag-rules";
+import { BagIcon } from "./IconResolver";
 
 interface BagTypeStepProps {
   value: string;
@@ -24,7 +25,9 @@ export function BagTypeStep({ value, onChange }: BagTypeStepProps) {
                 : "border-gray-200 hover:border-blue-300 hover:bg-gray-50"
             }`}
           >
-            <span className="text-2xl mt-0.5">{type.icon}</span>
+            <span className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+              <BagIcon name={type.icon} className="h-5 w-5" />
+            </span>
             <div>
               <div className="font-semibold text-gray-900">{type.label_ar}</div>
               <div className="text-xs text-gray-500 mt-1">{type.description_ar}</div>

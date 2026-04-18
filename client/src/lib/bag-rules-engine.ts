@@ -120,6 +120,33 @@ export function getDimensionLimits(bagType: string, isPrinted: boolean, currentW
   };
 }
 
+export function getBagWeightGrams(config: BagConfiguration): number | null {
+  if (config.width <= 0 || config.length <= 0 || config.thickness <= 0) return null;
+  const material = MATERIALS[config.material];
+  if (!material) return null;
+
+  // Two-layer film bag area (front + back) plus side gussets if present
+  const widthCm = config.width;
+  const lengthCm = config.length;
+  const thicknessCm = config.thickness / 10000; // microns -> cm
+  const gussetCm = config.sideGusset > 0 ? config.sideGusset : 0;
+
+  // Effective film area in cm^2
+  const filmArea = 2 * lengthCm * (widthCm + gussetCm);
+
+  // Volume = area * thickness; mass = volume * density (g/cm^3)
+  const grams = filmArea * thicknessCm * material.density;
+
+  // Add ~5% extra for handles/seals/scrap
+  return grams * 1.05;
+}
+
+export function getBagsPerKg(config: BagConfiguration): number | null {
+  const w = getBagWeightGrams(config);
+  if (!w || w <= 0) return null;
+  return Math.round(1000 / w);
+}
+
 export function getHangerHeight(config: BagConfiguration): number {
   const rules = getBagTypeRules(config.bagType);
   if (!rules || config.handle !== "hanger") return 0;

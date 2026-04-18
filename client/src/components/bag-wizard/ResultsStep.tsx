@@ -1,5 +1,5 @@
 import { useRef, useCallback, useState } from "react";
-import { type BagConfiguration, type ValidationResult, getBagTypeRules, getHangerHeight } from "../../lib/bag-rules-engine";
+import { type BagConfiguration, type ValidationResult, getBagTypeRules, getHangerHeight, getBagsPerKg, getBagWeightGrams } from "../../lib/bag-rules-engine";
 import { MATERIALS, BAG_COLORS, HANDLES, PRINT_COLORS_PALETTE } from "../../lib/bag-rules";
 import { BagPreview } from "./BagPreview";
 import { Button } from "../ui/button";
@@ -73,6 +73,7 @@ function svgToDataUrl(svgEl: SVGSVGElement): Promise<string> {
 
 export function ResultsStep({ config, validation, onRestart }: ResultsStepProps) {
   const previewRef = useRef<HTMLDivElement>(null);
+  const exportPreviewRef = useRef<HTMLDivElement>(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const rules = getBagTypeRules(config.bagType);
   const material = MATERIALS[config.material];
@@ -86,6 +87,9 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
       }).join("، ")
     : "";
 
+  const bagsPerKg = getBagsPerKg(config);
+  const bagWeight = getBagWeightGrams(config);
+
   const specs = [
     { label: "نوع الكيس", value: rules?.label_ar || "-" },
     { label: "المادة", value: material ? `${material.label_ar} (${material.label_en})` : "-" },
@@ -96,6 +100,8 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
     { label: "المقبض", value: config.handle === "hanger" ? `${handle?.label_ar} (ارتفاع ${getHangerHeight(config)} سم)` : (handle?.label_ar || "بدون") },
     { label: "لون الكيس", value: bagColor?.label_ar || "-" },
     { label: "الطباعة", value: config.isPrinted ? "مطبوع" : "سادة" },
+    ...(bagWeight ? [{ label: "وزن الكيس التقديري", value: `${bagWeight.toFixed(2)} غم` }] : []),
+    ...(bagsPerKg ? [{ label: "عدد الأكياس / كجم", value: `≈ ${bagsPerKg.toLocaleString("ar-EG")} كيس` }] : []),
     ...(config.isPrinted ? [
       { label: "جهة الطباعة", value: config.printSide === "both" ? "وجهين" : "وجه واحد" },
       { label: "عدد ألوان الطباعة", value: `${config.printColors.length}` },
@@ -184,7 +190,7 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
 
     let imageDataUrl = "";
     try {
-      const svgEl = previewRef.current?.querySelector("svg");
+      const svgEl = exportPreviewRef.current?.querySelector("svg") || previewRef.current?.querySelector("svg");
       if (svgEl) {
         imageDataUrl = await svgToDataUrl(svgEl as SVGSVGElement);
       }
@@ -212,9 +218,9 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
-    width: 210mm; min-height: 297mm; max-height: 297mm;
+    width: 210mm; min-height: 297mm;
     margin: 0 auto; padding: 0; color: #1f2937;
-    overflow: hidden; position: relative;
+    position: relative;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
   .header {
@@ -231,11 +237,15 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
   }
   .status-valid { background: #dcfce7; color: #166534; }
   .status-invalid { background: #fee2e2; color: #991b1b; }
-  .content { display: flex; gap: 16px; padding: 14px 28px 10px; align-items: flex-start; }
+  .content { display: flex; gap: 18px; padding: 14px 22px 10px; align-items: flex-start; }
   .specs-col { flex: 1; min-width: 0; }
-  .preview-col { width: 200px; flex-shrink: 0; text-align: center; }
-  .preview-col img { max-width: 190px; max-height: 240px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fafafa; }
-  .preview-label { font-size: 9px; color: #9ca3af; margin-top: 6px; }
+  /* Image area = 30% of page width = ~63mm */
+  .preview-col { width: 63mm; flex-shrink: 0; text-align: center; }
+  .preview-col .img-frame { width: 63mm; height: 80mm; border: 1.5px solid #1e40af; border-radius: 8px; background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%); padding: 6px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(30,64,175,0.08); }
+  .preview-col img { max-width: 100%; max-height: 100%; }
+  .preview-label { font-size: 10px; color: #1e40af; font-weight: 700; margin-top: 8px; }
+  .preview-sub { font-size: 9px; color: #6b7280; margin-top: 2px; }
+  .preview-bpk { font-size: 10px; color: #166534; background: #dcfce7; padding: 4px 8px; border-radius: 6px; margin-top: 6px; font-weight: 700; display: inline-block; }
   .section-title { font-size: 11px; font-weight: 700; color: #1e40af; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 2px solid #dbeafe; text-transform: uppercase; letter-spacing: 0.5px; }
   table { width: 100%; border-collapse: collapse; font-size: 11px; }
   .spec-label { padding: 5px 8px; font-weight: 600; color: #374151; border-bottom: 1px solid #f3f4f6; width: 38%; text-align: right; }
@@ -281,9 +291,11 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
     </div>
     ${imageDataUrl ? `
     <div class="preview-col">
-      <div class="section-title">المعاينة</div>
-      <img src="${imageDataUrl}" alt="معاينة الكيس" />
-      <div class="preview-label">${rules?.label_ar || ""} — ${config.width}×${config.length} سم</div>
+      <div class="section-title">المعاينة (مع الأبعاد)</div>
+      <div class="img-frame"><img src="${imageDataUrl}" alt="معاينة الكيس" /></div>
+      <div class="preview-label">${rules?.label_ar || ""}</div>
+      <div class="preview-sub">${config.width} × ${config.length} سم · ${config.thickness} ميكرون</div>
+      ${bagsPerKg ? `<div class="preview-bpk">≈ ${bagsPerKg.toLocaleString("ar-EG")} كيس / كجم</div>` : ""}
     </div>` : ""}
   </div>
 
@@ -366,7 +378,12 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
       </div>
 
       <div ref={previewRef} className="flex justify-center mb-6">
-        <BagPreview config={config} size="lg" />
+        <BagPreview config={config} size="lg" showDimensions />
+      </div>
+
+      {/* Hidden, dimension-annotated preview used as the source for PDF/PNG export */}
+      <div ref={exportPreviewRef} aria-hidden="true" style={{ position: "absolute", left: "-10000px", top: "-10000px", width: "560px", pointerEvents: "none" }}>
+        <BagPreview config={config} size="xl" showDimensions />
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">

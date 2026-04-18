@@ -1,4 +1,5 @@
 import { getAllowedHandles, type BagConfiguration, getBagTypeRules } from "../../lib/bag-rules-engine";
+import { BagIcon } from "./IconResolver";
 
 interface HandleStepProps {
   config: BagConfiguration;
@@ -35,7 +36,9 @@ export function HandleStep({ config, onChange }: HandleStepProps) {
                   : "border-gray-200 hover:border-blue-300 hover:bg-gray-50"
               }`}
             >
-              <span className="text-2xl">{handle.icon}</span>
+              <span className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <BagIcon name={handle.icon} className="h-5 w-5" />
+              </span>
               <div>
                 <div className="font-semibold text-gray-900">{handle.label_ar}</div>
                 <div className="text-xs text-gray-400">{handle.label_en}</div>

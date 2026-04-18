@@ -60,6 +60,7 @@ export interface MaterialInfo {
   transparency: 'transparent' | 'semi_transparent' | 'opaque';
   surface: string;
   flexibility: string;
+  density: number;
 }
 
 export interface BagColorInfo {
@@ -89,6 +90,7 @@ export const MATERIALS: Record<string, MaterialInfo> = {
     transparency: "semi_transparent",
     surface: "خشن قليلاً",
     flexibility: "متوسط",
+    density: 0.96,
   },
   LDPE: {
     id: "LDPE",
@@ -100,6 +102,7 @@ export const MATERIALS: Record<string, MaterialInfo> = {
     transparency: "transparent",
     surface: "ناعم ولامع",
     flexibility: "عالي",
+    density: 0.92,
   },
 };
 
@@ -125,10 +128,14 @@ export const BAG_COLORS: Record<string, BagColorInfo> = {
 };
 
 export const HANDLES: Record<string, HandleInfo> = {
-  none: { id: "none", label_ar: "بدون مقبض", label_en: "None", icon: "⊘" },
-  hanger: { id: "hanger", label_ar: "علاقي", label_en: "Hanger", icon: "🛒" },
-  die_cut: { id: "die_cut", label_ar: "فتحة يد", label_en: "Die Cut", icon: "🖐" },
-  reinforced: { id: "reinforced", label_ar: "مقبض مقوى", label_en: "Reinforced", icon: "💪" },
+  none: { id: "none", label_ar: "بدون مقبض", label_en: "None", icon: "Ban" },
+  hanger: { id: "hanger", label_ar: "علاقي", label_en: "Hanger", icon: "ShoppingBag" },
+  hanger_hook: { id: "hanger_hook", label_ar: "علاقي مع هوك", label_en: "Hanger with Hook", icon: "Anchor" },
+  external_strap: { id: "external_strap", label_ar: "مقبض خارجي شريطي", label_en: "External Strap", icon: "Link" },
+  die_cut: { id: "die_cut", label_ar: "فتحة يد", label_en: "Die Cut", icon: "Hand" },
+  banana_9cm: { id: "banana_9cm", label_ar: "بنانة 9 سم", label_en: "Banana 9cm", icon: "Smile" },
+  banana_6cm: { id: "banana_6cm", label_ar: "بنانة 6 سم", label_en: "Banana 6cm", icon: "Smile" },
+  reinforced: { id: "reinforced", label_ar: "مقبض مقوى", label_en: "Reinforced", icon: "ShieldCheck" },
 };
 
 const ALL_BAG_COLORS = [
@@ -143,9 +150,9 @@ export const BAG_TYPES: Record<string, BagTypeRules> = {
     label_ar: "كيس علاقي",
     label_en: "Hanger Bag",
     description_ar: "كيس بمقبض علاقي، مناسب للبقالة والتسوق",
-    icon: "🛒",
+    icon: "ShoppingBag",
     material_allowed: ["HDPE", "LDPE"],
-    handle_allowed: ["hanger"],
+    handle_allowed: ["hanger", "hanger_hook", "external_strap"],
     handle_rules: {},
     thickness: { min: 35, max: 150, unit: "ميكرون" },
     width: { min: 20, max: 100, unit: "سم" },
@@ -170,7 +177,7 @@ export const BAG_TYPES: Record<string, BagTypeRules> = {
     label_ar: "كيس بدون يد",
     label_en: "No Handle Bag",
     description_ar: "كيس بدون مقبض، مناسب للتغليف والشحن",
-    icon: "📦",
+    icon: "Package",
     material_allowed: ["HDPE", "LDPE"],
     handle_allowed: ["none"],
     handle_rules: {},
@@ -195,11 +202,12 @@ export const BAG_TYPES: Record<string, BagTypeRules> = {
     label_ar: "كيس بنانة",
     label_en: "Banana Bag",
     description_ar: "كيس بفتحة يد مقصوصة على شكل بنانة",
-    icon: "🍌",
+    icon: "Smile",
     material_allowed: ["HDPE", "LDPE"],
-    handle_allowed: ["die_cut"],
+    handle_allowed: ["banana_9cm", "banana_6cm"],
     handle_rules: {
-      die_cut: { min_width: 20, min_thickness: 35 },
+      banana_9cm: { min_width: 20, min_thickness: 35 },
+      banana_6cm: { min_width: 15, min_thickness: 35 },
     },
     thickness: { min: 35, max: 150, unit: "ميكرون" },
     width: { min: 20, max: 100, unit: "سم" },
@@ -222,7 +230,7 @@ export const BAG_TYPES: Record<string, BagTypeRules> = {
     label_ar: "كيس نفايات",
     label_en: "Garbage Bag",
     description_ar: "كيس قوي ومتين مخصص للنفايات",
-    icon: "🗑️",
+    icon: "Trash2",
     material_allowed: ["HDPE", "LDPE"],
     handle_allowed: ["none", "hanger"],
     handle_rules: {
@@ -249,7 +257,7 @@ export const BAG_TYPES: Record<string, BagTypeRules> = {
     label_ar: "كيس نايلون",
     label_en: "Nylon Bag",
     description_ar: "كيس نايلون متعدد الاستخدامات، مناسب للتغليف",
-    icon: "📄",
+    icon: "FileText",
     material_allowed: ["HDPE", "LDPE"],
     handle_allowed: ["none", "die_cut", "reinforced"],
     handle_rules: {
