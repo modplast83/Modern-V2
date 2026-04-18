@@ -38,6 +38,10 @@ import LocationMapPicker from "../components/LocationMapPicker";
 import TableImportDialog from "../components/settings/TableImportDialog";
 import { canAccessSettingsTab } from "../utils/roleUtils";
 import { useCompanyLogo } from "../hooks/use-company-logo";
+import { Plug, Gauge, Sparkles } from "lucide-react";
+import { McpSettingsContent } from "./mcp-settings";
+import { SystemMonitoringContent } from "./system-monitoring";
+import { AiAgentSettingsContent } from "./ai-agent-settings";
 
 const SECTIONS = [
   { id: "system", icon: SettingsIcon, label: "النظام" },
@@ -47,6 +51,9 @@ const SECTIONS = [
   { id: "roles", icon: Shield, label: "الأدوار والصلاحيات" },
   { id: "notifications", icon: Bell, label: "الإشعارات" },
   { id: "location", icon: MapPin, label: "المواقع" },
+  { id: "ai-agent", icon: Sparkles, label: "إعدادات الوكيل الذكي" },
+  { id: "system-monitoring", icon: Gauge, label: "مراقبة النظام" },
+  { id: "mcp", icon: Plug, label: "إعدادات MCP" },
 ] as const;
 
 type SectionId = (typeof SECTIONS)[number]["id"];
@@ -56,7 +63,13 @@ export default function Settings() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeSection, setActiveSection] = useState<SectionId>("system");
+  const initialSection = (() => {
+    const search = typeof window !== "undefined" ? window.location.search : "";
+    const params = new URLSearchParams(search);
+    const s = params.get("section") as SectionId | null;
+    return s && SECTIONS.find((x) => x.id === s) ? s : "system";
+  })();
+  const [activeSection, setActiveSection] = useState<SectionId>(initialSection);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const visibleSections = SECTIONS.filter((s) =>
@@ -68,6 +81,15 @@ export default function Settings() {
       setActiveSection(visibleSections[0].id);
     }
   }, [visibleSections, activeSection]);
+
+  const handleSectionChange = (id: SectionId) => {
+    setActiveSection(id);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("section", id);
+      window.history.replaceState({}, "", url.toString());
+    }
+  };
 
   return (
     <PageLayout title="الإعدادات" description="إدارة إعدادات النظام والتكامل">
@@ -90,7 +112,7 @@ export default function Settings() {
                   return (
                     <button
                       key={section.id}
-                      onClick={() => setActiveSection(section.id)}
+                      onClick={() => handleSectionChange(section.id)}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors ${
                         isActive
                           ? "bg-primary text-primary-foreground"
@@ -115,6 +137,42 @@ export default function Settings() {
           {activeSection === "roles" && <RolesSection />}
           {activeSection === "notifications" && <NotificationsSection />}
           {activeSection === "location" && <LocationSection />}
+          {activeSection === "ai-agent" && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-3 mb-2">
+                <Sparkles className="h-6 w-6 text-primary" />
+                <div>
+                  <h2 className="text-xl font-bold">إعدادات الوكيل الذكي</h2>
+                  <p className="text-sm text-muted-foreground">إدارة المعرفة، التعليمات والقوالب الخاصة بالوكيل الذكي</p>
+                </div>
+              </div>
+              <AiAgentSettingsContent />
+            </div>
+          )}
+          {activeSection === "system-monitoring" && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-3 mb-2">
+                <Gauge className="h-6 w-6 text-blue-600" />
+                <div>
+                  <h2 className="text-xl font-bold">مراقبة النظام</h2>
+                  <p className="text-sm text-muted-foreground">قياسات الأداء، الذاكرة، قاعدة البيانات وحلقة الأحداث</p>
+                </div>
+              </div>
+              <SystemMonitoringContent />
+            </div>
+          )}
+          {activeSection === "mcp" && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-3 mb-2">
+                <Plug className="h-6 w-6 text-emerald-600" />
+                <div>
+                  <h2 className="text-xl font-bold">إعدادات MCP</h2>
+                  <p className="text-sm text-muted-foreground">ربط النظام مع ChatGPT وإدارة مفاتيح API</p>
+                </div>
+              </div>
+              <McpSettingsContent />
+            </div>
+          )}
         </main>
       </div>
     </PageLayout>

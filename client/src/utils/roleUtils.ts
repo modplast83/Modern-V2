@@ -82,7 +82,7 @@ export function canAccessRoute(
   route: string
 ): boolean {
   // Public pages allowed for everyone
-  if (route === '/' || route === '/bag-configurator') return true;
+  if (route === '/') return true;
   
   if (!user) return false;
   
@@ -95,7 +95,16 @@ export function canAccessRoute(
     return false;
   }
   
-  return hasPermission(user.permissions, requiredPermissions, false);
+  if (hasPermission(user.permissions, requiredPermissions, false)) return true;
+
+  // Special case: /settings can be accessed by anyone with any settings tab permission
+  if (route === '/settings') {
+    return Object.values(SETTINGS_TAB_PERMISSIONS).some(
+      (perms) => perms.length > 0 && hasPermission(user.permissions, perms, false)
+    );
+  }
+
+  return false;
 }
 
 // Check if user can access a settings tab

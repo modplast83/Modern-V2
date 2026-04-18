@@ -62,6 +62,18 @@ interface QuoteTemplate {
 
 export default function AiAgentSettings() {
   const { t } = useTranslation();
+  return (
+    <PageLayout
+      title={t("aiAgent.pageTitle")}
+      description={t("aiAgent.pageDescription")}
+    >
+      <AiAgentSettingsContent />
+    </PageLayout>
+  );
+}
+
+export function AiAgentSettingsContent() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [editingSetting, setEditingSetting] = useState<{ key: string; value: string; description: string } | null>(null);
@@ -232,10 +244,7 @@ export default function AiAgentSettings() {
   ];
 
   return (
-    <PageLayout
-      title={t("aiAgent.pageTitle")}
-      description={t("aiAgent.pageDescription")}
-    >
+    <>
       <div className="max-w-5xl mx-auto p-6 space-y-6">
         <div className="flex items-center gap-3 mb-6">
           <Sparkles className="h-8 w-8 text-primary" />
@@ -933,6 +942,6 @@ export default function AiAgentSettings() {
           </TabsContent>
         </Tabs>
       </div>
-    </PageLayout>
+    </>
   );
 }

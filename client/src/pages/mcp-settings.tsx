@@ -30,6 +30,16 @@ interface ApiKey {
 }
 
 export default function McpSettings() {
+  const { i18n } = useTranslation();
+  const isAr = i18n.language === "ar";
+  return (
+    <PageLayout title={isAr ? "إعدادات MCP" : "MCP Settings"}>
+      <McpSettingsContent embedded={false} />
+    </PageLayout>
+  );
+}
+
+export function McpSettingsContent({ embedded = true }: { embedded?: boolean }) {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === "ar";
   const { toast } = useToast();
@@ -98,8 +108,8 @@ export default function McpSettings() {
   };
 
   return (
-    <PageLayout title={isAr ? "إعدادات MCP" : "MCP Settings"}>
-      <div className="space-y-6 max-w-4xl mx-auto p-4">
+    <>
+      <div className={embedded ? "space-y-6" : "space-y-6 max-w-4xl mx-auto p-4"}>
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -359,6 +369,6 @@ export default function McpSettings() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </PageLayout>
+    </>
   );
 }

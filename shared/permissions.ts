@@ -83,6 +83,10 @@ export type PermissionKey =
   | 'view_display_screen'
   | 'manage_display_screen'
   | 'view_my_orders'
+  | 'view_bag_configurator'
+  | 'view_mcp_settings'
+  | 'view_system_monitoring_tab'
+  | 'view_ai_agent_settings'
   | 'admin'; // Super admin permission
 
 export interface Permission {
@@ -669,6 +673,38 @@ export const PERMISSIONS: Permission[] = [
     description: 'Control and manage display screen slides and settings'
   },
 
+  // Bag Configurator
+  {
+    id: 'view_bag_configurator',
+    name: 'View Bag Configurator',
+    name_ar: 'عرض معالج تصميم الأكياس',
+    category: 'الإنتاج',
+    description: 'Access to bag configuration wizard'
+  },
+
+  // System (settings tabs)
+  {
+    id: 'view_mcp_settings',
+    name: 'View MCP Settings',
+    name_ar: 'عرض إعدادات MCP',
+    category: 'النظام',
+    description: 'Access to MCP integration settings tab'
+  },
+  {
+    id: 'view_system_monitoring_tab',
+    name: 'View System Monitoring (Settings)',
+    name_ar: 'عرض مراقبة النظام (الإعدادات)',
+    category: 'النظام',
+    description: 'Access to system monitoring tab inside settings'
+  },
+  {
+    id: 'view_ai_agent_settings',
+    name: 'View AI Agent Settings',
+    name_ar: 'عرض إعدادات الوكيل الذكي',
+    category: 'الوكيل الذكي',
+    description: 'Access to AI agent settings tab inside settings'
+  },
+
   // Admin
   { 
     id: 'admin', 
@@ -749,6 +785,16 @@ export const ROUTE_PERMISSIONS: Record<string, PermissionKey[]> = {
 
   // My Orders (sales reps)
   '/my-orders': ['view_my_orders', 'manage_orders', 'admin'],
+
+  // Bag Configurator
+  '/bag-configurator': ['view_bag_configurator', 'manage_orders', 'admin'],
+
+  // Mobile views (mirror their desktop counterparts)
+  '/warehouse-mobile': ['view_warehouse', 'manage_warehouse'],
+  '/production-mobile': ['view_production', 'manage_production'],
+  '/user-dashboard-mobile': ['view_user_dashboard'],
+  '/orders-mobile': ['view_orders', 'manage_orders'],
+  '/production-dashboard-mobile': ['view_production', 'manage_production', 'view_film_dashboard', 'view_printing_dashboard', 'view_cutting_dashboard'],
 };
 
 // Settings tabs permissions
@@ -773,6 +819,9 @@ export const SETTINGS_TAB_PERMISSIONS: Record<string, PermissionKey[]> = {
   'whatsapp-webhooks': ['manage_whatsapp', 'admin'],
   'notification-events': ['manage_settings', 'admin'],
   'sms': ['manage_settings', 'manage_whatsapp', 'admin'],
+  'mcp': ['view_mcp_settings', 'manage_settings', 'admin'],
+  'system-monitoring': ['view_system_monitoring_tab', 'view_system_monitoring', 'view_system_health', 'admin'],
+  'ai-agent': ['view_ai_agent_settings', 'manage_ai_agent', 'admin'],
   'user': [],
 };
 

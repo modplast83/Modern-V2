@@ -128,6 +128,10 @@ function TrendArrow({ direction }: { direction: string }) {
 }
 
 export default function SystemMonitoring() {
+  return <SystemMonitoringContent showBackButton />;
+}
+
+export function SystemMonitoringContent({ showBackButton = false }: { showBackButton?: boolean }) {
   const [, setLocation] = useLocation();
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(new Date());
@@ -200,9 +204,11 @@ export default function SystemMonitoring() {
     <div className="container mx-auto p-4 md:p-6 space-y-6" dir="rtl">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
-          <Button onClick={() => setLocation('/')} variant="ghost" size="icon">
-            <ArrowRight className="h-5 w-5" />
-          </Button>
+          {showBackButton && (
+            <Button onClick={() => setLocation('/')} variant="ghost" size="icon">
+              <ArrowRight className="h-5 w-5" />
+            </Button>
+          )}
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl md:text-3xl font-bold">مراقبة النظام</h1>

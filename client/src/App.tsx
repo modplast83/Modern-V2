@@ -96,7 +96,9 @@ function AppRoutes() {
         </Route>
 
         <Route path="/bag-configurator">
-          <BagConfigurator />
+          <ProtectedRoute path="/bag-configurator">
+            <BagConfigurator />
+          </ProtectedRoute>
         </Route>
 
         <Route path="/setup">
@@ -301,9 +303,7 @@ function AppRoutes() {
         </Route>
 
         <Route path="/system-monitoring">
-          <ProtectedRoute path="/system-monitoring">
-            <SystemMonitoring />
-          </ProtectedRoute>
+          <Redirect to="/settings?section=system-monitoring" />
         </Route>
 
         <Route path="/ai-agent">
@@ -313,9 +313,7 @@ function AppRoutes() {
         </Route>
 
         <Route path="/ai-agent-settings">
-          <ProtectedRoute path="/ai-agent-settings">
-            <AiAgentSettings />
-          </ProtectedRoute>
+          <Redirect to="/settings?section=ai-agent" />
         </Route>
 
         <Route path="/factory-simulation">
@@ -379,9 +377,7 @@ function AppRoutes() {
         </Route>
 
         <Route path="/mcp-settings">
-          <ProtectedRoute path="/mcp-settings">
-            <McpSettings />
-          </ProtectedRoute>
+          <Redirect to="/settings?section=mcp" />
         </Route>
 
         <Route>
