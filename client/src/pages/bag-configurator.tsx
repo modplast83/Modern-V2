@@ -239,89 +239,83 @@ export default function BagConfigurator() {
           })}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
-          <div className="lg:col-span-6 xl:col-span-7">
-            <Card className="shadow-sm border border-gray-100 rounded-2xl overflow-hidden">
-              <CardContent className="p-5 sm:p-6">
-                <div className="min-h-[380px] max-h-[70vh] overflow-y-auto animate-in fade-in duration-300">
-                  {renderStep()}
+        <div className="max-w-4xl mx-auto space-y-4 lg:space-y-6">
+          <Card className="shadow-sm border border-gray-100 rounded-2xl overflow-hidden">
+            <div className="bg-gradient-to-l from-gray-50 to-white px-4 py-3 border-b border-gray-100">
+              <h3 className="text-sm font-semibold text-gray-600 text-center">المعاينة المباشرة</h3>
+            </div>
+            <CardContent className="p-4">
+              <BagPreview config={config} size="xl" showDimensions />
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm border border-gray-100 rounded-2xl overflow-hidden">
+            <CardContent className="p-5 sm:p-6">
+              <div className="min-h-[380px] animate-in fade-in duration-300">
+                {renderStep()}
+              </div>
+
+              {currentStepId !== "results" && (
+                <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100">
+                  <Button
+                    variant="ghost"
+                    onClick={goBack}
+                    disabled={visibleIndex === 0}
+                    className="gap-2 text-gray-500 hover:text-gray-700"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                    السابق
+                  </Button>
+
+                  <Button
+                    onClick={goNext}
+                    disabled={!canGoNext()}
+                    className="gap-2 bg-gradient-to-l from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md shadow-blue-200 px-6 rounded-xl disabled:opacity-50 disabled:shadow-none"
+                  >
+                    {visibleIndex === visibleSteps.length - 2 ? "عرض النتيجة" : "التالي"}
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
                 </div>
+              )}
+            </CardContent>
+          </Card>
 
-                {currentStepId !== "results" && (
-                  <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100">
-                    <Button
-                      variant="ghost"
-                      onClick={goBack}
-                      disabled={visibleIndex === 0}
-                      className="gap-2 text-gray-500 hover:text-gray-700"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                      السابق
-                    </Button>
-
-                    <Button
-                      onClick={goNext}
-                      disabled={!canGoNext()}
-                      className="gap-2 bg-gradient-to-l from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md shadow-blue-200 px-6 rounded-xl disabled:opacity-50 disabled:shadow-none"
-                    >
-                      {visibleIndex === visibleSteps.length - 2 ? "عرض النتيجة" : "التالي"}
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
+          {quickSummary.length > 0 && currentStepId !== "results" && (
+            <Card className="shadow-sm border border-gray-100 rounded-2xl overflow-hidden">
+              <div className="bg-gradient-to-l from-blue-50 to-white px-4 py-2.5 border-b border-gray-100">
+                <h3 className="text-xs font-semibold text-blue-600 text-center">ملخص الاختيارات</h3>
+              </div>
+              <CardContent className="p-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5">
+                  {quickSummary.map((item, i) => (
+                    <div key={i} className="flex justify-between items-center">
+                      <span className="text-[11px] text-gray-400">{item.label}</span>
+                      <span className="text-[11px] font-medium text-gray-700">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
-          </div>
+          )}
 
-          <div className="lg:col-span-6 xl:col-span-5">
-            <div className="sticky top-[130px] space-y-4">
-              <Card className="shadow-sm border border-gray-100 rounded-2xl overflow-hidden">
-                <div className="bg-gradient-to-l from-gray-50 to-white px-4 py-3 border-b border-gray-100">
-                  <h3 className="text-sm font-semibold text-gray-600 text-center">المعاينة المباشرة</h3>
-                </div>
-                <CardContent className="p-4">
-                  <BagPreview config={config} size="xl" showDimensions />
-                </CardContent>
-              </Card>
-
-              {quickSummary.length > 0 && currentStepId !== "results" && (
-                <Card className="shadow-sm border border-gray-100 rounded-2xl overflow-hidden">
-                  <div className="bg-gradient-to-l from-blue-50 to-white px-4 py-2.5 border-b border-gray-100">
-                    <h3 className="text-xs font-semibold text-blue-600 text-center">ملخص الاختيارات</h3>
+          {validation && (validation.warnings.length > 0 || validation.errors.length > 0) && currentStepId !== "results" && (
+            <Card className="shadow-sm border border-gray-100 rounded-2xl overflow-hidden">
+              <CardContent className="p-4 space-y-2">
+                {validation.errors.map((e, i) => (
+                  <div key={`e-${i}`} className="flex items-start gap-2.5 bg-red-50 text-red-700 text-sm p-2.5 rounded-lg border border-red-100">
+                    <ShieldAlert className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
+                    <span>{e.message}</span>
                   </div>
-                  <CardContent className="p-3">
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                      {quickSummary.map((item, i) => (
-                        <div key={i} className="flex justify-between items-center">
-                          <span className="text-[11px] text-gray-400">{item.label}</span>
-                          <span className="text-[11px] font-medium text-gray-700">{item.value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {validation && (validation.warnings.length > 0 || validation.errors.length > 0) && currentStepId !== "results" && (
-                <Card className="shadow-sm border border-gray-100 rounded-2xl overflow-hidden">
-                  <CardContent className="p-4 space-y-2">
-                    {validation.errors.map((e, i) => (
-                      <div key={`e-${i}`} className="flex items-start gap-2.5 bg-red-50 text-red-700 text-sm p-2.5 rounded-lg border border-red-100">
-                        <ShieldAlert className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
-                        <span>{e.message}</span>
-                      </div>
-                    ))}
-                    {validation.warnings.map((w, i) => (
-                      <div key={`w-${i}`} className="flex items-start gap-2.5 bg-amber-50 text-amber-700 text-sm p-2.5 rounded-lg border border-amber-100">
-                        <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
-                        <span>{w.message}</span>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          </div>
+                ))}
+                {validation.warnings.map((w, i) => (
+                  <div key={`w-${i}`} className="flex items-start gap-2.5 bg-amber-50 text-amber-700 text-sm p-2.5 rounded-lg border border-amber-100">
+                    <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                    <span>{w.message}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>
