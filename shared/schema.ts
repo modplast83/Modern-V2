@@ -2141,6 +2141,19 @@ export const insertViolationSchema = createInsertSchema(violations).omit({
 export const updateViolationSchema = insertViolationSchema.partial();
 export type InsertViolation = z.infer<typeof insertViolationSchema>;
 
+export const createUserApiSchema = z.object({
+  username: z.string().min(1).max(50),
+  password: z.string().min(6).max(200).optional(),
+  display_name: z.string().min(1).max(100),
+  display_name_ar: z.string().max(100).optional().nullable(),
+  full_name: z.string().max(100).optional().nullable(),
+  phone: z.string().max(30).optional().nullable(),
+  email: z.string().email().max(120).optional().nullable(),
+  status: z.enum(["active", "inactive", "suspended"]).optional(),
+  role_id: z.union([z.number().int().positive(), z.null()]).optional(),
+  section_id: z.union([z.number().int().positive(), z.null()]).optional(),
+}).strict();
+
 export const updateUserSchema = z.object({
   username: z.string().min(1).max(50).optional(),
   display_name: z.string().min(1).max(100).optional(),

@@ -651,6 +651,8 @@ export interface IStorage {
   // Maintenance Components
   getSpareParts(): Promise<SparePart[]>;
   createSparePart(part: InsertSparePart): Promise<SparePart>;
+  updateSparePart(id: number, data: Partial<InsertSparePart>): Promise<SparePart>;
+  deleteSparePart(id: number): Promise<void>;
   getConsumableParts(): Promise<ConsumablePart[]>;
   createConsumablePart(part: InsertConsumablePart): Promise<ConsumablePart>;
   getConsumablePartTransactions(partId: number): Promise<ConsumablePartTransaction[]>;
@@ -1059,8 +1061,12 @@ export class DatabaseStorage implements IStorage {
   async getAllOrders(opts?: { limit?: number; offset?: number }): Promise<NewOrder[]> {
     return withDatabaseErrorHandling(
       async () => {
-        const limit = Math.max(1, Math.min(opts?.limit ?? 50, 500));
-        const offset = Math.max(0, opts?.offset ?? 0);
+        // Pagination is opt-in: legacy callers (no opts) still get the full list.
+        if (!opts) {
+          return await db.select().from(orders).orderBy(desc(orders.id));
+        }
+        const limit = Math.max(1, Math.min(opts.limit ?? 50, 500));
+        const offset = Math.max(0, opts.offset ?? 0);
         return await db.select().from(orders).orderBy(desc(orders.id)).limit(limit).offset(offset);
       },
       "getAllOrders",
@@ -1517,8 +1523,11 @@ export class DatabaseStorage implements IStorage {
   async getAllRolls(opts?: { limit?: number; offset?: number }): Promise<Roll[]> {
     return withDatabaseErrorHandling(
       async () => {
-        const limit = Math.max(1, Math.min(opts?.limit ?? 50, 500));
-        const offset = Math.max(0, opts?.offset ?? 0);
+        if (!opts) {
+          return await db.select().from(rolls).orderBy(desc(rolls.id));
+        }
+        const limit = Math.max(1, Math.min(opts.limit ?? 50, 500));
+        const offset = Math.max(0, opts.offset ?? 0);
         return await db.select().from(rolls).orderBy(desc(rolls.id)).limit(limit).offset(offset);
       },
       "getAllRolls",
@@ -1617,8 +1626,13 @@ export class DatabaseStorage implements IStorage {
   async getAllCustomers(opts?: { limit?: number; offset?: number }): Promise<Customer[]> {
     return withDatabaseErrorHandling(
       async () => {
-        const limit = Math.max(1, Math.min(opts?.limit ?? 100, 500));
-        const offset = Math.max(0, opts?.offset ?? 0);
+        // Pagination is opt-in. ?all=true and other legacy callers must still
+        // receive the full list, so return everything when no opts is passed.
+        if (!opts) {
+          return await db.select().from(customers).orderBy(customers.name);
+        }
+        const limit = Math.max(1, Math.min(opts.limit ?? 50, 500));
+        const offset = Math.max(0, opts.offset ?? 0);
         return await db.select().from(customers).orderBy(customers.name).limit(limit).offset(offset);
       },
       "getAllCustomers",
@@ -3999,7 +4013,7 @@ export class DatabaseStorage implements IStorage {
     return this.getSpareParts();
   }
 
-  async updateSparePart(id: number, data: Partial<SparePart>): Promise<SparePart> {
+  async updateSparePart(id: number, data: Partial<InsertSparePart>): Promise<SparePart> {
     const [u] = await db.update(spare_parts).set(data).where(eq(spare_parts.id, id)).returning();
     return u;
   }
@@ -4314,8 +4328,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAttendance(opts?: { limit?: number; offset?: number }): Promise<Attendance[]> {
-    const limit = Math.max(1, Math.min(opts?.limit ?? 50, 500));
-    const offset = Math.max(0, opts?.offset ?? 0);
+    if (!opts) {
+      return await db.select().from(attendance).orderBy(desc(attendance.date));
+    }
+    const limit = Math.max(1, Math.min(opts.limit ?? 50, 500));
+    const offset = Math.max(0, opts.offset ?? 0);
     return await db.select().from(attendance).orderBy(desc(attendance.date)).limit(limit).offset(offset);
   }
 
