@@ -15,6 +15,13 @@
       "when": 1744555200000,
       "tag": "0001_experimental_blends",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776636400000,
+      "tag": "0002_bag_weight_records",
+      "breakpoints": true
     }
   ]
 }

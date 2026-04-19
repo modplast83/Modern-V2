@@ -3865,3 +3865,37 @@ export type ExperimentalBlendItem = typeof experimental_blend_items.$inferSelect
 export type InsertExperimentalBlendItem = typeof experimental_blend_items.$inferInsert;
 export const insertExperimentalBlendSchema = createInsertSchema(experimental_blends).omit({ id: true, created_at: true });
 export const insertExperimentalBlendItemSchema = createInsertSchema(experimental_blend_items).omit({ id: true });
+
+// 🧮 سجلات حاسبة وزن الكيس
+export const bag_weight_records = pgTable(
+  "bag_weight_records",
+  {
+    id: serial("id").primaryKey(),
+    user_id: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    bag_type: varchar("bag_type", { length: 30 }).notNull(),
+    width_cm: decimal("width_cm", { precision: 8, scale: 2 }).notNull(),
+    length_cm: decimal("length_cm", { precision: 8, scale: 2 }).notNull(),
+    side_gusset_cm: decimal("side_gusset_cm", { precision: 8, scale: 2 }).notNull().default("0"),
+    thickness_micron: decimal("thickness_micron", { precision: 8, scale: 2 }).notNull(),
+    layers: integer("layers").notNull().default(1),
+    density: decimal("density", { precision: 6, scale: 3 }).notNull(),
+    grams_per_bag: decimal("grams_per_bag", { precision: 12, scale: 4 }).notNull(),
+    bags_per_kg: decimal("bags_per_kg", { precision: 12, scale: 2 }).notNull(),
+    area_m2: decimal("area_m2", { precision: 12, scale: 4 }).notNull(),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("idx_bag_weight_records_user_id").on(table.user_id),
+    index("idx_bag_weight_records_created_at").on(table.created_at),
+  ],
+);
+
+export type BagWeightRecord = typeof bag_weight_records.$inferSelect;
+export type InsertBagWeightRecord = typeof bag_weight_records.$inferInsert;
+export const insertBagWeightRecordSchema = createInsertSchema(bag_weight_records).omit({
+  id: true,
+  user_id: true,
+  created_at: true,
+});

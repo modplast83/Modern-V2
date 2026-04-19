@@ -300,7 +300,7 @@ function migrateLegacyBagType(t: unknown): BagType {
 }
 
 interface BagWeightRecord {
-  id: string;
+  id: number;
   createdAt: string;
   bagType: BagType;
   widthCm: number;
@@ -314,42 +314,106 @@ interface BagWeightRecord {
   areaM2: number;
 }
 
-const BAG_HISTORY_KEY = "mpbf_bag_weight_history";
+interface ApiBagWeightRecord {
+  id: number;
+  user_id: number;
+  bag_type: string;
+  width_cm: string;
+  length_cm: string;
+  side_gusset_cm: string;
+  thickness_micron: string;
+  layers: number;
+  density: string;
+  grams_per_bag: string;
+  bags_per_kg: string;
+  area_m2: string;
+  created_at: string;
+}
+
+function mapApiBagWeightRecord(r: ApiBagWeightRecord): BagWeightRecord {
+  const num = (v: string | number) => (typeof v === "number" ? v : parseFloat(v));
+  return {
+    id: r.id,
+    createdAt: new Date(r.created_at).toLocaleString("en-US"),
+    bagType: migrateLegacyBagType(r.bag_type as BagType),
+    widthCm: num(r.width_cm),
+    lengthCm: num(r.length_cm),
+    sideGussetCm: num(r.side_gusset_cm),
+    thicknessMicron: num(r.thickness_micron),
+    layers: r.layers,
+    density: num(r.density),
+    gramsPerBag: num(r.grams_per_bag),
+    bagsPerKg: num(r.bags_per_kg),
+    areaM2: num(r.area_m2),
+  };
+}
 
 function useBagWeightHistory() {
-  const [history, setHistory] = useState<BagWeightRecord[]>(() => {
-    try {
-      const saved = localStorage.getItem(BAG_HISTORY_KEY);
-      const parsed = saved ? JSON.parse(saved) : [];
-      return Array.isArray(parsed)
-        ? parsed.map((r: BagWeightRecord) => ({ ...r, bagType: migrateLegacyBagType(r.bagType) }))
-        : [];
-    } catch { return []; }
+  const { toast } = useToast();
+  const { data: rawData = [] } = useQuery<ApiBagWeightRecord[]>({
+    queryKey: ["/api/bag-weight-records"],
+  });
+  const history = useMemo(() => rawData.map(mapApiBagWeightRecord), [rawData]);
+
+  const addMutation = useMutation({
+    mutationFn: async (record: Omit<BagWeightRecord, "id" | "createdAt">) => {
+      const payload = {
+        bag_type: record.bagType,
+        width_cm: String(record.widthCm),
+        length_cm: String(record.lengthCm),
+        side_gusset_cm: String(record.sideGussetCm),
+        thickness_micron: String(record.thicknessMicron),
+        layers: record.layers,
+        density: String(record.density),
+        grams_per_bag: String(record.gramsPerBag),
+        bags_per_kg: String(record.bagsPerKg),
+        area_m2: String(record.areaM2),
+      };
+      const res = await apiRequest("/api/bag-weight-records", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bag-weight-records"] });
+    },
+    onError: (err: any) => {
+      toast({ title: "خطأ في الحفظ", description: err?.message || "تعذر حفظ السجل", variant: "destructive" });
+    },
   });
 
-  const addRecord = (record: Omit<BagWeightRecord, "id" | "createdAt">) => {
-    const newRecord: BagWeightRecord = {
-      ...record,
-      id: Date.now().toString(),
-      createdAt: new Date().toLocaleString("en-US"),
-    };
-    const updated = [newRecord, ...history].slice(0, 10);
-    setHistory(updated);
-    try { localStorage.setItem(BAG_HISTORY_KEY, JSON.stringify(updated)); } catch {}
-  };
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest(`/api/bag-weight-records/${id}`, { method: "DELETE" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bag-weight-records"] });
+    },
+    onError: (err: any) => {
+      toast({ title: "خطأ في الحذف", description: err?.message || "تعذر حذف السجل", variant: "destructive" });
+    },
+  });
 
-  const clearHistory = () => {
-    setHistory([]);
-    try { localStorage.removeItem(BAG_HISTORY_KEY); } catch {}
-  };
+  const clearMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("/api/bag-weight-records", { method: "DELETE" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bag-weight-records"] });
+    },
+    onError: (err: any) => {
+      toast({ title: "خطأ", description: err?.message || "تعذر مسح السجلات", variant: "destructive" });
+    },
+  });
 
-  const deleteRecord = (id: string) => {
-    const updated = history.filter(r => r.id !== id);
-    setHistory(updated);
-    try { localStorage.setItem(BAG_HISTORY_KEY, JSON.stringify(updated)); } catch {}
+  return {
+    history,
+    addRecord: (record: Omit<BagWeightRecord, "id" | "createdAt">) => addMutation.mutate(record),
+    clearHistory: () => clearMutation.mutate(),
+    deleteRecord: (id: number) => deleteMutation.mutate(id),
+    isSaving: addMutation.isPending,
   };
-
-  return { history, addRecord, clearHistory, deleteRecord };
 }
 
 function bagTypeUsesGusset(type: BagType): boolean {
@@ -610,7 +674,7 @@ function BagWeightCalculator({ onBagWeight, onDims, onPrintRef }: BagWeightCalcu
   const [density, setDensity] = useState<number>(0.95);
   const [sideGussetCm, setSideGussetCm] = useState<number>(0);
   const { history, addRecord, clearHistory, deleteRecord } = useBagWeightHistory();
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   const usesGusset = bagTypeUsesGusset(bagType);
   const isTableCover = bagType === "table-cover";
@@ -653,7 +717,7 @@ function BagWeightCalculator({ onBagWeight, onDims, onPrintRef }: BagWeightCalcu
     });
   };
 
-  const toggleSelect = (id: string) => {
+  const toggleSelect = (id: number) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -753,7 +817,7 @@ function BagWeightCalculator({ onBagWeight, onDims, onPrintRef }: BagWeightCalcu
 
   const handlePrintCurrent = () => {
     const currentRecord: BagWeightRecord = {
-      id: "current",
+      id: 0,
       createdAt: new Date().toLocaleString("en-US"),
       bagType,
       widthCm,

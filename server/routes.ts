@@ -137,6 +137,7 @@ import {
   createUserApiSchema,
   updateUserSchema,
   insertMixingRecipeSchema,
+  insertBagWeightRecordSchema,
 } from "@shared/schema";
 import { eq, sql, and, gte, lte, gt, desc, inArray } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -12984,6 +12985,63 @@ Do not include quotes or explanations.`;
     } catch (error) {
       console.error("Error deleting experimental blend:", error);
       res.status(500).json({ message: "خطأ في حذف الخلطة" });
+    }
+  });
+
+  // ==================== Bag Weight Records (Tools page) ====================
+
+  app.get("/api/bag-weight-records", requireAuth, async (req: any, res) => {
+    try {
+      const userId = getAuthUserId(req);
+      if (!userId) return res.status(401).json({ message: "Unauthorized" });
+      const records = await storage.getBagWeightRecordsByUser(userId);
+      res.json(records);
+    } catch (error) {
+      console.error("Error fetching bag weight records:", error);
+      res.status(500).json({ message: "خطأ في جلب سجلات حاسبة وزن الكيس" });
+    }
+  });
+
+  app.post("/api/bag-weight-records", requireAuth, async (req: any, res) => {
+    try {
+      const userId = getAuthUserId(req);
+      if (!userId) return res.status(401).json({ message: "Unauthorized" });
+      const parsed = insertBagWeightRecordSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "بيانات غير صالحة", errors: parsed.error.errors });
+      }
+      const created = await storage.createBagWeightRecord(userId, parsed.data);
+      res.json(created);
+    } catch (error) {
+      console.error("Error creating bag weight record:", error);
+      res.status(500).json({ message: "خطأ في حفظ سجل حاسبة وزن الكيس" });
+    }
+  });
+
+  app.delete("/api/bag-weight-records/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = getAuthUserId(req);
+      if (!userId) return res.status(401).json({ message: "Unauthorized" });
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "معرف غير صالح" });
+      const deleted = await storage.deleteBagWeightRecord(id, userId);
+      if (!deleted) return res.status(404).json({ message: "السجل غير موجود" });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting bag weight record:", error);
+      res.status(500).json({ message: "خطأ في حذف السجل" });
+    }
+  });
+
+  app.delete("/api/bag-weight-records", requireAuth, async (req: any, res) => {
+    try {
+      const userId = getAuthUserId(req);
+      if (!userId) return res.status(401).json({ message: "Unauthorized" });
+      await storage.clearBagWeightRecords(userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error clearing bag weight records:", error);
+      res.status(500).json({ message: "خطأ في مسح السجلات" });
     }
   });
 

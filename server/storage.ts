@@ -231,6 +231,11 @@ import {
   type InsertExperimentalBlend,
   type ExperimentalBlendItem,
   type InsertExperimentalBlendItem,
+
+  // Bag Weight Records
+  bag_weight_records,
+  type BagWeightRecord,
+  type InsertBagWeightRecord,
 } from "@shared/schema";
 
 import { db, pool } from "./db";
@@ -808,6 +813,12 @@ export interface IStorage {
   deleteExperimentalBlend(id: number): Promise<void>;
   getExperimentalBlendItems(blendId: number): Promise<ExperimentalBlendItem[]>;
   createExperimentalBlendItems(items: InsertExperimentalBlendItem[]): Promise<ExperimentalBlendItem[]>;
+
+  // Bag Weight Records
+  getBagWeightRecordsByUser(userId: number): Promise<BagWeightRecord[]>;
+  createBagWeightRecord(userId: number, record: Omit<InsertBagWeightRecord, "id" | "user_id" | "created_at">): Promise<BagWeightRecord>;
+  deleteBagWeightRecord(id: number, userId: number): Promise<boolean>;
+  clearBagWeightRecords(userId: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -6031,6 +6042,35 @@ export class DatabaseStorage implements IStorage {
   async createExperimentalBlendItems(items: InsertExperimentalBlendItem[]): Promise<ExperimentalBlendItem[]> {
     if (items.length === 0) return [];
     return db.insert(experimental_blend_items).values(items).returning();
+  }
+
+  // ==================== Bag Weight Records ====================
+  async getBagWeightRecordsByUser(userId: number): Promise<BagWeightRecord[]> {
+    return db
+      .select()
+      .from(bag_weight_records)
+      .where(eq(bag_weight_records.user_id, userId))
+      .orderBy(desc(bag_weight_records.created_at));
+  }
+
+  async createBagWeightRecord(userId: number, record: Omit<InsertBagWeightRecord, "id" | "user_id" | "created_at">): Promise<BagWeightRecord> {
+    const [created] = await db
+      .insert(bag_weight_records)
+      .values({ ...record, user_id: userId })
+      .returning();
+    return created;
+  }
+
+  async deleteBagWeightRecord(id: number, userId: number): Promise<boolean> {
+    const deleted = await db
+      .delete(bag_weight_records)
+      .where(and(eq(bag_weight_records.id, id), eq(bag_weight_records.user_id, userId)))
+      .returning({ id: bag_weight_records.id });
+    return deleted.length > 0;
+  }
+
+  async clearBagWeightRecords(userId: number): Promise<void> {
+    await db.delete(bag_weight_records).where(eq(bag_weight_records.user_id, userId));
   }
 }
 
