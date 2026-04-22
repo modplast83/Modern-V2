@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+
 import FactoryLogoPath from "../../../attached_assets/MPBF11_1769101097739.png";
 
 export function useCompanyLogo() {

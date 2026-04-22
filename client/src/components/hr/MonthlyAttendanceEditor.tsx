@@ -1,12 +1,19 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "../ui/card";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Badge } from "../ui/badge";
+
 import { useToast } from "../../hooks/use-toast";
 import { apiRequest } from "../../lib/queryClient";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardDescription,
+} from "../ui/card";
+import { Input } from "../ui/input";
 
 const escapeHtml = (text: string | null | undefined): string => {
   if (!text) return "";
@@ -32,8 +39,9 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
-import { 
-  Calendar as CalendarIcon, 
+
+import {
+  Calendar as CalendarIcon,
   Save,
   Printer,
   User,
@@ -46,7 +54,15 @@ import {
   AlertTriangle,
   FileEdit,
 } from "lucide-react";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths } from "date-fns";
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  getDay,
+  addMonths,
+  subMonths,
+} from "date-fns";
 import { ar } from "date-fns/locale";
 
 interface AttendanceRecord {
@@ -88,14 +104,46 @@ interface EmployeeMonthlyData {
   };
 }
 
-const dayNames = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+const dayNames = [
+  "الأحد",
+  "الاثنين",
+  "الثلاثاء",
+  "الأربعاء",
+  "الخميس",
+  "الجمعة",
+  "السبت",
+];
 const statusOptions = [
-  { value: "حاضر", labelKey: "hr.monthlyEditor.statusPresent", color: "bg-green-100 text-green-800" },
-  { value: "غائب", labelKey: "hr.monthlyEditor.statusAbsent", color: "bg-red-100 text-red-800" },
-  { value: "إجازة", labelKey: "hr.monthlyEditor.statusLeave", color: "bg-blue-100 text-blue-800" },
-  { value: "مغادر", labelKey: "hr.monthlyEditor.statusEarlyLeave", color: "bg-yellow-100 text-yellow-800" },
-  { value: "متأخر", labelKey: "hr.monthlyEditor.statusLate", color: "bg-orange-100 text-orange-800" },
-  { value: "عطلة", labelKey: "hr.monthlyEditor.statusHoliday", color: "bg-purple-100 text-purple-800" },
+  {
+    value: "حاضر",
+    labelKey: "hr.monthlyEditor.statusPresent",
+    color: "bg-green-100 text-green-800",
+  },
+  {
+    value: "غائب",
+    labelKey: "hr.monthlyEditor.statusAbsent",
+    color: "bg-red-100 text-red-800",
+  },
+  {
+    value: "إجازة",
+    labelKey: "hr.monthlyEditor.statusLeave",
+    color: "bg-blue-100 text-blue-800",
+  },
+  {
+    value: "مغادر",
+    labelKey: "hr.monthlyEditor.statusEarlyLeave",
+    color: "bg-yellow-100 text-yellow-800",
+  },
+  {
+    value: "متأخر",
+    labelKey: "hr.monthlyEditor.statusLate",
+    color: "bg-orange-100 text-orange-800",
+  },
+  {
+    value: "عطلة",
+    labelKey: "hr.monthlyEditor.statusHoliday",
+    color: "bg-purple-100 text-purple-800",
+  },
 ];
 
 export default function MonthlyAttendanceEditor() {
@@ -103,24 +151,38 @@ export default function MonthlyAttendanceEditor() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const printRef = useRef<HTMLDivElement>(null);
-  
-  const [selectedMonth, setSelectedMonth] = useState<Date>(startOfMonth(new Date()));
+
+  const [selectedMonth, setSelectedMonth] = useState<Date>(
+    startOfMonth(new Date()),
+  );
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
-  const [modifiedRecords, setModifiedRecords] = useState<Map<string, ModifiedRecord>>(new Map());
+  const [modifiedRecords, setModifiedRecords] = useState<
+    Map<string, ModifiedRecord>
+  >(new Map());
   const [hasChanges, setHasChanges] = useState(false);
 
-  const { data: usersData, isLoading: usersLoading } = useQuery<any[] | { data: any[] }>({
+  const { data: usersData, isLoading: usersLoading } = useQuery<
+    any[] | { data: any[] }
+  >({
     queryKey: ["/api/users"],
   });
 
   const monthStart = format(selectedMonth, "yyyy-MM-dd");
   const monthEnd = format(endOfMonth(selectedMonth), "yyyy-MM-dd");
 
-  const { data: attendanceData, isLoading: attendanceLoading, refetch } = useQuery<{ success: boolean; data: EmployeeMonthlyData }>({
-    queryKey: ["/api/attendance/monthly-editor", selectedEmployeeId, monthStart],
+  const {
+    data: attendanceData,
+    isLoading: attendanceLoading,
+    refetch,
+  } = useQuery<{ success: boolean; data: EmployeeMonthlyData }>({
+    queryKey: [
+      "/api/attendance/monthly-editor",
+      selectedEmployeeId,
+      monthStart,
+    ],
     queryFn: async () => {
       const response = await fetch(
-        `/api/attendance/monthly-editor/${selectedEmployeeId}?startDate=${monthStart}&endDate=${monthEnd}`
+        `/api/attendance/monthly-editor/${selectedEmployeeId}?startDate=${monthStart}&endDate=${monthEnd}`,
       );
       if (!response.ok) throw new Error(t("hr.monthlyEditor.fetchError"));
       return response.json();
@@ -132,21 +194,25 @@ export default function MonthlyAttendanceEditor() {
     mutationFn: async (records: ModifiedRecord[]) => {
       const response = await apiRequest("/api/attendance/monthly-editor/save", {
         method: "POST",
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           userId: parseInt(selectedEmployeeId),
-          records 
+          records,
         }),
       });
       return response.json();
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/attendance/monthly-editor"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/attendance/monthly-editor"],
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
       setModifiedRecords(new Map());
       setHasChanges(false);
       toast({
         title: t("hr.monthlyEditor.saveSuccess"),
-        description: data.message || t("hr.monthlyEditor.savedRecords", { count: data.savedCount || 0 }),
+        description:
+          data.message ||
+          t("hr.monthlyEditor.savedRecords", { count: data.savedCount || 0 }),
       });
       refetch();
     },
@@ -177,7 +243,11 @@ export default function MonthlyAttendanceEditor() {
     setHasChanges(false);
   };
 
-  const getRecordValue = (date: string, field: keyof ModifiedRecord, originalValue: any) => {
+  const getRecordValue = (
+    date: string,
+    field: keyof ModifiedRecord,
+    originalValue: any,
+  ) => {
     const modified = modifiedRecords.get(date);
     if (modified && field in modified) {
       return modified[field];
@@ -185,7 +255,12 @@ export default function MonthlyAttendanceEditor() {
     return originalValue;
   };
 
-  const handleFieldChange = (date: string, field: keyof ModifiedRecord, value: any, originalRecord: AttendanceRecord) => {
+  const handleFieldChange = (
+    date: string,
+    field: keyof ModifiedRecord,
+    value: any,
+    originalRecord: AttendanceRecord,
+  ) => {
     const newModified = new Map(modifiedRecords);
     const existing = newModified.get(date) || {
       date,
@@ -194,7 +269,7 @@ export default function MonthlyAttendanceEditor() {
       check_out_time: originalRecord.check_out_time,
       notes: originalRecord.notes || "",
     };
-    
+
     (existing as any)[field] = value;
     newModified.set(date, existing);
     setModifiedRecords(newModified);
@@ -211,26 +286,40 @@ export default function MonthlyAttendanceEditor() {
 
   const handlePrint = () => {
     if (!printRef.current || !attendanceData?.data) return;
-    
+
     const employee = attendanceData.data.employee;
     const records = attendanceData.data.records;
     const summary = attendanceData.data.summary;
-    
+
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
-      toast({ title: t("hr.monthlyEditor.printError"), variant: "destructive" });
+      toast({
+        title: t("hr.monthlyEditor.printError"),
+        variant: "destructive",
+      });
       return;
     }
 
-    const recordRows = records.map(record => {
-      const modifiedRecord = modifiedRecords.get(record.date);
-      const status = escapeHtml(modifiedRecord?.status || record.status) || "-";
-      const checkIn = escapeHtml(modifiedRecord?.check_in_time || record.check_in_time) || "-";
-      const checkOut = escapeHtml(modifiedRecord?.check_out_time || record.check_out_time) || "-";
-      const notes = escapeHtml(modifiedRecord?.notes || record.notes) || "";
-      const statusClass = status === 'حاضر' ? 'present' : status === 'غائب' ? 'absent' : 'other';
-      
-      return `
+    const recordRows = records
+      .map((record) => {
+        const modifiedRecord = modifiedRecords.get(record.date);
+        const status =
+          escapeHtml(modifiedRecord?.status || record.status) || "-";
+        const checkIn =
+          escapeHtml(modifiedRecord?.check_in_time || record.check_in_time) ||
+          "-";
+        const checkOut =
+          escapeHtml(modifiedRecord?.check_out_time || record.check_out_time) ||
+          "-";
+        const notes = escapeHtml(modifiedRecord?.notes || record.notes) || "";
+        const statusClass =
+          status === "حاضر"
+            ? "present"
+            : status === "غائب"
+              ? "absent"
+              : "other";
+
+        return `
         <tr>
           <td>${format(new Date(record.date), "dd/MM/yyyy")}</td>
           <td>${escapeHtml(record.dayName)}</td>
@@ -241,7 +330,8 @@ export default function MonthlyAttendanceEditor() {
           <td>${notes}</td>
         </tr>
       `;
-    }).join("");
+      })
+      .join("");
 
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -424,7 +514,7 @@ export default function MonthlyAttendanceEditor() {
   };
 
   const getStatusBadge = (status: string) => {
-    const statusConfig = statusOptions.find(s => s.value === status);
+    const statusConfig = statusOptions.find((s) => s.value === status);
     return (
       <Badge className={statusConfig?.color || "bg-gray-100 text-gray-800"}>
         {status || "-"}
@@ -432,7 +522,9 @@ export default function MonthlyAttendanceEditor() {
     );
   };
 
-  const employees = Array.isArray(usersData) ? usersData : (usersData?.data || []);
+  const employees = Array.isArray(usersData)
+    ? usersData
+    : usersData?.data || [];
   const records = attendanceData?.data?.records || [];
   const employee = attendanceData?.data?.employee;
   const summary = attendanceData?.data?.summary;
@@ -457,15 +549,26 @@ export default function MonthlyAttendanceEditor() {
         <CardContent>
           <div className="flex flex-wrap gap-4 mb-6 items-end">
             <div className="flex-1 min-w-[200px]">
-              <label className="block text-sm font-medium mb-1">{t("hr.monthlyEditor.selectEmployee")}</label>
-              <Select value={selectedEmployeeId} onValueChange={handleEmployeeChange}>
+              <label className="block text-sm font-medium mb-1">
+                {t("hr.monthlyEditor.selectEmployee")}
+              </label>
+              <Select
+                value={selectedEmployeeId}
+                onValueChange={handleEmployeeChange}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder={t("hr.monthlyEditor.selectEmployeePlaceholder")} />
+                  <SelectValue
+                    placeholder={t(
+                      "hr.monthlyEditor.selectEmployeePlaceholder",
+                    )}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {employees.map((user: any) => (
                     <SelectItem key={user.id} value={user.id.toString()}>
-                      {user.display_name_ar || user.display_name || user.username}
+                      {user.display_name_ar ||
+                        user.display_name ||
+                        user.username}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -488,8 +591,8 @@ export default function MonthlyAttendanceEditor() {
             </div>
 
             <div className="flex gap-2">
-              <Button 
-                onClick={handleSave} 
+              <Button
+                onClick={handleSave}
                 disabled={!hasChanges || saveMutation.isPending}
                 className="gap-2"
               >
@@ -500,8 +603,8 @@ export default function MonthlyAttendanceEditor() {
                 )}
                 {t("hr.monthlyEditor.saveChanges")}
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={handlePrint}
                 disabled={!selectedEmployeeId || !attendanceData?.data}
                 className="gap-2"
@@ -527,19 +630,29 @@ export default function MonthlyAttendanceEditor() {
               {employee && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                   <div>
-                    <span className="text-sm text-gray-500">{t("hr.monthlyEditor.employeeName")}:</span>
+                    <span className="text-sm text-gray-500">
+                      {t("hr.monthlyEditor.employeeName")}:
+                    </span>
                     <p className="font-medium">{employee.name}</p>
                   </div>
                   <div>
-                    <span className="text-sm text-gray-500">{t("hr.monthlyEditor.employeeNumber")}:</span>
-                    <p className="font-medium">{employee.employeeNumber || "-"}</p>
+                    <span className="text-sm text-gray-500">
+                      {t("hr.monthlyEditor.employeeNumber")}:
+                    </span>
+                    <p className="font-medium">
+                      {employee.employeeNumber || "-"}
+                    </p>
                   </div>
                   <div>
-                    <span className="text-sm text-gray-500">{t("hr.monthlyEditor.department")}:</span>
+                    <span className="text-sm text-gray-500">
+                      {t("hr.monthlyEditor.department")}:
+                    </span>
                     <p className="font-medium">{employee.department || "-"}</p>
                   </div>
                   <div>
-                    <span className="text-sm text-gray-500">{t("hr.monthlyEditor.jobTitle")}:</span>
+                    <span className="text-sm text-gray-500">
+                      {t("hr.monthlyEditor.jobTitle")}:
+                    </span>
                     <p className="font-medium">{employee.position || "-"}</p>
                   </div>
                 </div>
@@ -549,33 +662,57 @@ export default function MonthlyAttendanceEditor() {
                 <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mb-4">
                   <div className="bg-green-50 dark:bg-green-950 border border-green-200 rounded-lg p-3 text-center">
                     <CheckCircle className="h-4 w-4 text-green-600 mx-auto mb-1" />
-                    <div className="text-xl font-bold text-green-700">{summary.presentDays}</div>
-                    <div className="text-xs text-green-600">{t("hr.monthlyEditor.present")}</div>
+                    <div className="text-xl font-bold text-green-700">
+                      {summary.presentDays}
+                    </div>
+                    <div className="text-xs text-green-600">
+                      {t("hr.monthlyEditor.present")}
+                    </div>
                   </div>
                   <div className="bg-red-50 dark:bg-red-950 border border-red-200 rounded-lg p-3 text-center">
                     <XCircle className="h-4 w-4 text-red-600 mx-auto mb-1" />
-                    <div className="text-xl font-bold text-red-700">{summary.absentDays}</div>
-                    <div className="text-xs text-red-600">{t("hr.monthlyEditor.absent")}</div>
+                    <div className="text-xl font-bold text-red-700">
+                      {summary.absentDays}
+                    </div>
+                    <div className="text-xs text-red-600">
+                      {t("hr.monthlyEditor.absent")}
+                    </div>
                   </div>
                   <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 rounded-lg p-3 text-center">
                     <CalendarIcon className="h-4 w-4 text-blue-600 mx-auto mb-1" />
-                    <div className="text-xl font-bold text-blue-700">{summary.leaveDays}</div>
-                    <div className="text-xs text-blue-600">{t("hr.monthlyEditor.leave")}</div>
+                    <div className="text-xl font-bold text-blue-700">
+                      {summary.leaveDays}
+                    </div>
+                    <div className="text-xs text-blue-600">
+                      {t("hr.monthlyEditor.leave")}
+                    </div>
                   </div>
                   <div className="bg-orange-50 dark:bg-orange-950 border border-orange-200 rounded-lg p-3 text-center">
                     <AlertTriangle className="h-4 w-4 text-orange-600 mx-auto mb-1" />
-                    <div className="text-xl font-bold text-orange-700">{summary.lateDays}</div>
-                    <div className="text-xs text-orange-600">{t("hr.monthlyEditor.late")}</div>
+                    <div className="text-xl font-bold text-orange-700">
+                      {summary.lateDays}
+                    </div>
+                    <div className="text-xs text-orange-600">
+                      {t("hr.monthlyEditor.late")}
+                    </div>
                   </div>
                   <div className="bg-purple-50 dark:bg-purple-950 border border-purple-200 rounded-lg p-3 text-center">
                     <Clock className="h-4 w-4 text-purple-600 mx-auto mb-1" />
-                    <div className="text-xl font-bold text-purple-700">{summary.totalWorkHours.toFixed(1)}</div>
-                    <div className="text-xs text-purple-600">{t("hr.workHours")}</div>
+                    <div className="text-xl font-bold text-purple-700">
+                      {summary.totalWorkHours.toFixed(1)}
+                    </div>
+                    <div className="text-xs text-purple-600">
+                      {t("hr.workHours")}
+                    </div>
                   </div>
                   <div className="bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 rounded-lg p-3 text-center">
                     <Clock className="h-4 w-4 text-indigo-600 mx-auto mb-1" />
-                    <div className="text-xl font-bold text-indigo-700">{summary.totalOvertimeHours.toFixed(1)}</div>
-                    <div className="text-xs text-indigo-600">{t("hr.overtime")}</div>
+                    <div className="text-xl font-bold text-indigo-700">
+                      {summary.totalOvertimeHours.toFixed(1)}
+                    </div>
+                    <div className="text-xs text-indigo-600">
+                      {t("hr.overtime")}
+                    </div>
                   </div>
                 </div>
               )}
@@ -585,19 +722,36 @@ export default function MonthlyAttendanceEditor() {
                   <Table className="text-xs">
                     <TableHeader className="sticky top-0 z-10">
                       <TableRow className="bg-gray-50 dark:bg-gray-800">
-                        <TableHead className="text-right py-1 px-2 w-[70px]">{t("hr.monthlyEditor.date")}</TableHead>
-                        <TableHead className="text-right py-1 px-2 w-[60px]">{t("hr.monthlyEditor.day")}</TableHead>
-                        <TableHead className="text-center py-1 px-2 w-[100px]">{t("common.status")}</TableHead>
-                        <TableHead className="text-center py-1 px-2 w-[80px]">{t("hr.monthlyEditor.present")}</TableHead>
-                        <TableHead className="text-center py-1 px-2 w-[80px]">{t("hr.monthlyEditor.departure")}</TableHead>
-                        <TableHead className="text-center py-1 px-2 w-[50px]">{t("hr.monthlyEditor.hours")}</TableHead>
-                        <TableHead className="text-right py-1 px-2">{t("hr.monthlyEditor.notes")}</TableHead>
+                        <TableHead className="text-right py-1 px-2 w-[70px]">
+                          {t("hr.monthlyEditor.date")}
+                        </TableHead>
+                        <TableHead className="text-right py-1 px-2 w-[60px]">
+                          {t("hr.monthlyEditor.day")}
+                        </TableHead>
+                        <TableHead className="text-center py-1 px-2 w-[100px]">
+                          {t("common.status")}
+                        </TableHead>
+                        <TableHead className="text-center py-1 px-2 w-[80px]">
+                          {t("hr.monthlyEditor.present")}
+                        </TableHead>
+                        <TableHead className="text-center py-1 px-2 w-[80px]">
+                          {t("hr.monthlyEditor.departure")}
+                        </TableHead>
+                        <TableHead className="text-center py-1 px-2 w-[50px]">
+                          {t("hr.monthlyEditor.hours")}
+                        </TableHead>
+                        <TableHead className="text-right py-1 px-2">
+                          {t("hr.monthlyEditor.notes")}
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {records.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                          <TableCell
+                            colSpan={7}
+                            className="text-center py-8 text-gray-500"
+                          >
                             {t("hr.monthlyEditor.noData")}
                           </TableCell>
                         </TableRow>
@@ -605,33 +759,51 @@ export default function MonthlyAttendanceEditor() {
                         records.map((record) => {
                           const isModified = modifiedRecords.has(record.date);
                           const isFriday = record.dayName === "الجمعة";
-                          
+
                           return (
-                            <TableRow 
-                              key={record.date} 
+                            <TableRow
+                              key={record.date}
                               className={`
-                                ${isModified ? 'bg-yellow-50 dark:bg-yellow-950' : ''} 
-                                ${isFriday ? 'bg-gray-100 dark:bg-gray-800' : ''}
+                                ${isModified ? "bg-yellow-50 dark:bg-yellow-950" : ""} 
+                                ${isFriday ? "bg-gray-100 dark:bg-gray-800" : ""}
                                 hover:bg-gray-50 dark:hover:bg-gray-800
                               `}
                             >
                               <TableCell className="font-medium py-1 px-2">
                                 {format(new Date(record.date), "dd/MM")}
                               </TableCell>
-                              <TableCell className={`py-1 px-2 ${isFriday ? "font-bold text-red-600" : ""}`}>
+                              <TableCell
+                                className={`py-1 px-2 ${isFriday ? "font-bold text-red-600" : ""}`}
+                              >
                                 {record.dayName}
                               </TableCell>
                               <TableCell className="text-center py-1 px-2">
                                 <Select
-                                  value={getRecordValue(record.date, 'status', record.status) || "غائب"}
-                                  onValueChange={(value) => handleFieldChange(record.date, 'status', value, record)}
+                                  value={
+                                    getRecordValue(
+                                      record.date,
+                                      "status",
+                                      record.status,
+                                    ) || "غائب"
+                                  }
+                                  onValueChange={(value) =>
+                                    handleFieldChange(
+                                      record.date,
+                                      "status",
+                                      value,
+                                      record,
+                                    )
+                                  }
                                 >
                                   <SelectTrigger className="h-6 w-[90px] text-xs">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
                                     {statusOptions.map((option) => (
-                                      <SelectItem key={option.value} value={option.value}>
+                                      <SelectItem
+                                        key={option.value}
+                                        value={option.value}
+                                      >
                                         {t(option.labelKey)}
                                       </SelectItem>
                                     ))}
@@ -641,27 +813,70 @@ export default function MonthlyAttendanceEditor() {
                               <TableCell className="text-center py-1 px-2">
                                 <Input
                                   type="time"
-                                  value={getRecordValue(record.date, 'check_in_time', record.check_in_time) || ""}
-                                  onChange={(e) => handleFieldChange(record.date, 'check_in_time', e.target.value || null, record)}
+                                  value={
+                                    getRecordValue(
+                                      record.date,
+                                      "check_in_time",
+                                      record.check_in_time,
+                                    ) || ""
+                                  }
+                                  onChange={(e) =>
+                                    handleFieldChange(
+                                      record.date,
+                                      "check_in_time",
+                                      e.target.value || null,
+                                      record,
+                                    )
+                                  }
                                   className="h-6 w-[75px] text-center text-xs px-1"
                                 />
                               </TableCell>
                               <TableCell className="text-center py-1 px-2">
                                 <Input
                                   type="time"
-                                  value={getRecordValue(record.date, 'check_out_time', record.check_out_time) || ""}
-                                  onChange={(e) => handleFieldChange(record.date, 'check_out_time', e.target.value || null, record)}
+                                  value={
+                                    getRecordValue(
+                                      record.date,
+                                      "check_out_time",
+                                      record.check_out_time,
+                                    ) || ""
+                                  }
+                                  onChange={(e) =>
+                                    handleFieldChange(
+                                      record.date,
+                                      "check_out_time",
+                                      e.target.value || null,
+                                      record,
+                                    )
+                                  }
                                   className="h-6 w-[75px] text-center text-xs px-1"
                                 />
                               </TableCell>
                               <TableCell className="text-center font-mono py-1 px-2">
-                                {record.work_hours ? record.work_hours.toFixed(1) : "-"}
+                                {record.work_hours
+                                  ? record.work_hours.toFixed(1)
+                                  : "-"}
                               </TableCell>
                               <TableCell className="py-1 px-2">
                                 <Input
-                                  value={getRecordValue(record.date, 'notes', record.notes) || ""}
-                                  onChange={(e) => handleFieldChange(record.date, 'notes', e.target.value, record)}
-                                  placeholder={t("hr.monthlyEditor.notesPlaceholder")}
+                                  value={
+                                    getRecordValue(
+                                      record.date,
+                                      "notes",
+                                      record.notes,
+                                    ) || ""
+                                  }
+                                  onChange={(e) =>
+                                    handleFieldChange(
+                                      record.date,
+                                      "notes",
+                                      e.target.value,
+                                      record,
+                                    )
+                                  }
+                                  placeholder={t(
+                                    "hr.monthlyEditor.notesPlaceholder",
+                                  )}
                                   className="h-6 text-xs"
                                 />
                               </TableCell>
@@ -677,9 +892,15 @@ export default function MonthlyAttendanceEditor() {
               {hasChanges && (
                 <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 rounded-lg flex items-center justify-between">
                   <span className="text-yellow-800 dark:text-yellow-200">
-                    {t("hr.monthlyEditor.unsavedChanges", { count: modifiedRecords.size })}
+                    {t("hr.monthlyEditor.unsavedChanges", {
+                      count: modifiedRecords.size,
+                    })}
                   </span>
-                  <Button onClick={handleSave} disabled={saveMutation.isPending} size="sm">
+                  <Button
+                    onClick={handleSave}
+                    disabled={saveMutation.isPending}
+                    size="sm"
+                  >
                     {saveMutation.isPending ? (
                       <Loader2 className="h-4 w-4 animate-spin ml-2" />
                     ) : (

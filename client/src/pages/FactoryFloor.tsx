@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
-import PageLayout from "../components/layout/PageLayout";
+
 import FactoryFloorMap from "../components/factory/FactoryFloorMap";
+import PageLayout from "../components/layout/PageLayout";
 
 export default function FactoryFloor() {
   const { t } = useTranslation();
@@ -8,7 +9,10 @@ export default function FactoryFloor() {
   return (
     <PageLayout
       title={t("factory.title", "خريطة المصنع")}
-      description={t("factory.description", "عرض تفاعلي لأرضية المصنع وحالة الماكينات")}
+      description={t(
+        "factory.description",
+        "عرض تفاعلي لأرضية المصنع وحالة الماكينات",
+      )}
     >
       <FactoryFloorMap />
     </PageLayout>

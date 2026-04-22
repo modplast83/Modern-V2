@@ -43,7 +43,9 @@ export class TaqnyatSMSService {
     };
 
     if (!this.config.apiKey) {
-      console.warn("⚠️ Taqnyat SMS API key not configured. SMS messaging will be disabled.");
+      console.warn(
+        "⚠️ Taqnyat SMS API key not configured. SMS messaging will be disabled.",
+      );
     } else {
       console.log("✅ Taqnyat SMS service initialized successfully");
     }
@@ -77,15 +79,21 @@ export class TaqnyatSMSService {
       context_id?: string;
       scheduled?: string;
       senderName?: string;
-    }
+    },
   ): Promise<TaqnyatSendResult> {
     try {
       if (!this.isConfigured()) {
-        throw new Error("خدمة تقنيات للرسائل النصية غير مُعدة - يرجى إضافة مفتاح API");
+        throw new Error(
+          "خدمة تقنيات للرسائل النصية غير مُعدة - يرجى إضافة مفتاح API",
+        );
       }
 
-      const recipientList = Array.isArray(recipients) ? recipients : [recipients];
-      const formattedRecipients = recipientList.map((r) => this.formatPhoneNumber(r));
+      const recipientList = Array.isArray(recipients)
+        ? recipients
+        : [recipients];
+      const formattedRecipients = recipientList.map((r) =>
+        this.formatPhoneNumber(r),
+      );
 
       const requestBody: any = {
         body: message,
@@ -127,11 +135,14 @@ export class TaqnyatSMSService {
         try {
           await this.storage.createNotification(notificationData);
         } catch (dbError) {
-          console.error("Failed to save SMS notification to database:", dbError);
+          console.error(
+            "Failed to save SMS notification to database:",
+            dbError,
+          );
         }
 
         console.log(
-          `📱 تم إرسال رسالة نصية إلى ${formattedRecipients.join(", ")} عبر تقنيات`
+          `📱 تم إرسال رسالة نصية إلى ${formattedRecipients.join(", ")} عبر تقنيات`,
         );
 
         return {
@@ -144,7 +155,8 @@ export class TaqnyatSMSService {
           rejected: data.rejected,
         };
       } else {
-        const errorMsg = data.message || `HTTP ${response.status}: ${response.statusText}`;
+        const errorMsg =
+          data.message || `HTTP ${response.status}: ${response.statusText}`;
 
         const notificationData = {
           title: options?.title || "رسالة نصية SMS",
@@ -216,18 +228,25 @@ export class TaqnyatSMSService {
     }
   }
 
-  async getSenders(): Promise<{ success: boolean; senders?: any[]; error?: string }> {
+  async getSenders(): Promise<{
+    success: boolean;
+    senders?: any[];
+    error?: string;
+  }> {
     try {
       if (!this.isConfigured()) {
         throw new Error("خدمة تقنيات غير مُعدة");
       }
 
-      const response = await fetch(`${this.config.baseUrl}/v1/messages/senders`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${this.config.apiKey}`,
+      const response = await fetch(
+        `${this.config.baseUrl}/v1/messages/senders`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${this.config.apiKey}`,
+          },
         },
-      });
+      );
 
       const data = await response.json();
 
@@ -251,7 +270,11 @@ export class TaqnyatSMSService {
     }
   }
 
-  async checkStatus(): Promise<{ success: boolean; status?: string; error?: string }> {
+  async checkStatus(): Promise<{
+    success: boolean;
+    status?: string;
+    error?: string;
+  }> {
     try {
       const response = await fetch(`${this.config.baseUrl}/system/status`, {
         method: "GET",

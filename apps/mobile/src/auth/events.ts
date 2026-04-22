@@ -13,7 +13,11 @@ class AuthEventEmitter {
 
   emit() {
     for (const l of this.listeners) {
-      try { l(); } catch { /* swallow */ }
+      try {
+        l();
+      } catch {
+        /* swallow */
+      }
     }
   }
 }

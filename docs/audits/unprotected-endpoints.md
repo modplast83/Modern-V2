@@ -6,20 +6,20 @@ one with multi-line context, only the following routes truly have no
 are intentional and have their own access controls. No code changes are
 required in Phase 1.
 
-| Line  | Method | Path                                              | Why public is OK                                          |
-| ----- | ------ | ------------------------------------------------- | --------------------------------------------------------- |
-|  335  | POST   | /api/login                                        | Login endpoint — credentials checked inside.              |
-|  474  | GET    | /api/me                                           | Returns 401 itself when no session.                       |
-|  567  | POST   | /api/logout                                       | Idempotent; safe without auth.                            |
-| 2812  | GET    | /api/health                                       | Liveness probe.                                           |
-| 3874  | GET    | /api (catch-all 404)                              | Returns 404 only.                                         |
-| 6962  | GET    | /api/setup/status                                 | Bootstrap check used before any user exists.              |
-| 6974  | POST   | /api/setup/initialize                             | First-run setup; guarded by `setup_completed` flag.       |
-| 7191  | GET    | /api/company/logo                                 | Public branding asset.                                    |
-| 11939 | GET    | /api/factory-3d/snapshots/share/:token            | Token-based share link.                                   |
-| 12359 | POST   | /api/mobile/login                                 | Mobile login — credentials checked inside.                |
-| 12460 | POST   | /api/mobile/refresh-token                         | Refresh-token rotation; token validated inside.           |
-| 12850 | GET    | /api/mobile/status                                | Mobile liveness probe.                                    |
+| Line  | Method | Path                                   | Why public is OK                                    |
+| ----- | ------ | -------------------------------------- | --------------------------------------------------- |
+| 335   | POST   | /api/login                             | Login endpoint — credentials checked inside.        |
+| 474   | GET    | /api/me                                | Returns 401 itself when no session.                 |
+| 567   | POST   | /api/logout                            | Idempotent; safe without auth.                      |
+| 2812  | GET    | /api/health                            | Liveness probe.                                     |
+| 3874  | GET    | /api (catch-all 404)                   | Returns 404 only.                                   |
+| 6962  | GET    | /api/setup/status                      | Bootstrap check used before any user exists.        |
+| 6974  | POST   | /api/setup/initialize                  | First-run setup; guarded by `setup_completed` flag. |
+| 7191  | GET    | /api/company/logo                      | Public branding asset.                              |
+| 11939 | GET    | /api/factory-3d/snapshots/share/:token | Token-based share link.                             |
+| 12359 | POST   | /api/mobile/login                      | Mobile login — credentials checked inside.          |
+| 12460 | POST   | /api/mobile/refresh-token              | Refresh-token rotation; token validated inside.     |
+| 12850 | GET    | /api/mobile/status                     | Mobile liveness probe.                              |
 
 The destructive admin endpoints (`/api/database/cleanup`, `/api/database/restore`,
 `/api/database/import/*`, `/api/database/backup/download/*`) ARE protected by

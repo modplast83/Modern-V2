@@ -1,32 +1,60 @@
+import { useMutation } from "@tanstack/react-query";
+import {
+  Upload,
+  FileSpreadsheet,
+  ArrowLeftRight,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  Loader2,
+  FileText,
+  RotateCcw,
+} from "lucide-react";
+import Papa from "papaparse";
 import { useState, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "../../lib/queryClient";
+import * as XLSX from "xlsx";
+
 import { useToast } from "../../hooks/use-toast";
+import { apiRequest } from "../../lib/queryClient";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from "../ui/dialog";
-import { Button } from "../ui/button";
-import { Label } from "../ui/label";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../ui/alert-dialog";
 import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "../ui/dialog";
+import { Label } from "../ui/label";
 import { Progress } from "../ui/progress";
 import { ScrollArea } from "../ui/scroll-area";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "../ui/select";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "../ui/table";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "../ui/alert-dialog";
-import {
-  Upload, FileSpreadsheet, ArrowLeftRight, CheckCircle2, XCircle,
-  AlertTriangle, Loader2, FileText, RotateCcw,
-} from "lucide-react";
-import Papa from "papaparse";
-import * as XLSX from "xlsx";
 
 interface TableColumn {
   name: string;
@@ -48,21 +76,21 @@ type ImportStep = "upload" | "mapping" | "preview" | "importing" | "result";
 
 const dataTypeLabels: Record<string, string> = {
   "character varying": "نص",
-  "varchar": "نص",
-  "text": "نص",
-  "integer": "عدد صحيح",
-  "bigint": "عدد كبير",
-  "serial": "تسلسلي",
-  "numeric": "رقم عشري",
-  "decimal": "رقم عشري",
+  varchar: "نص",
+  text: "نص",
+  integer: "عدد صحيح",
+  bigint: "عدد كبير",
+  serial: "تسلسلي",
+  numeric: "رقم عشري",
+  decimal: "رقم عشري",
   "double precision": "رقم عشري",
-  "boolean": "منطقي",
+  boolean: "منطقي",
   "timestamp without time zone": "تاريخ ووقت",
   "timestamp with time zone": "تاريخ ووقت",
-  "date": "تاريخ",
-  "json": "JSON",
-  "jsonb": "JSON",
-  "ARRAY": "مصفوفة",
+  date: "تاريخ",
+  json: "JSON",
+  jsonb: "JSON",
+  ARRAY: "مصفوفة",
 };
 
 interface Props {
@@ -73,7 +101,13 @@ interface Props {
   onImportComplete?: () => void;
 }
 
-export default function TableImportDialog({ open, onOpenChange, tableOptions, tableLabels, onImportComplete }: Props) {
+export default function TableImportDialog({
+  open,
+  onOpenChange,
+  tableOptions,
+  tableLabels,
+  onImportComplete,
+}: Props) {
   const { t } = useTranslation();
   const { toast } = useToast();
 
@@ -83,7 +117,9 @@ export default function TableImportDialog({ open, onOpenChange, tableOptions, ta
   const [fileData, setFileData] = useState<Record<string, any>[]>([]);
   const [fileHeaders, setFileHeaders] = useState<string[]>([]);
   const [fileName, setFileName] = useState("");
-  const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
+  const [columnMapping, setColumnMapping] = useState<Record<string, string>>(
+    {},
+  );
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
@@ -113,7 +149,9 @@ export default function TableImportDialog({ open, onOpenChange, tableOptions, ta
   const fetchTableSchema = async (tableName: string) => {
     setLoadingSchema(true);
     try {
-      const res = await fetch(`/api/database/table-schema/${tableName}`, { credentials: "include" });
+      const res = await fetch(`/api/database/table-schema/${tableName}`, {
+        credentials: "include",
+      });
       if (!res.ok) throw new Error("فشل جلب بنية الجدول");
       const data = await res.json();
       setTableColumns(data.columns || []);
@@ -148,7 +186,8 @@ export default function TableImportDialog({ open, onOpenChange, tableOptions, ta
             toast({ title: "الملف فارغ", variant: "destructive" });
             return;
           }
-          const headers = results.meta.fields || Object.keys(results.data[0] as any);
+          const headers =
+            results.meta.fields || Object.keys(results.data[0] as any);
           setFileHeaders(headers);
           setFileData(results.data as Record<string, any>[]);
           autoMapColumns(headers);
@@ -166,7 +205,10 @@ export default function TableImportDialog({ open, onOpenChange, tableOptions, ta
           const workbook = XLSX.read(data, { type: "array" });
           const sheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[sheetName];
-          const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet, { defval: null });
+          const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(
+            worksheet,
+            { defval: null },
+          );
           if (jsonData.length === 0) {
             toast({ title: "الملف فارغ", variant: "destructive" });
             return;
@@ -189,7 +231,10 @@ export default function TableImportDialog({ open, onOpenChange, tableOptions, ta
           if (!Array.isArray(parsed)) {
             if (parsed.data && Array.isArray(parsed.data)) parsed = parsed.data;
             else {
-              toast({ title: "ملف JSON يجب أن يحتوي على مصفوفة من السجلات", variant: "destructive" });
+              toast({
+                title: "ملف JSON يجب أن يحتوي على مصفوفة من السجلات",
+                variant: "destructive",
+              });
               return;
             }
           }
@@ -208,22 +253,27 @@ export default function TableImportDialog({ open, onOpenChange, tableOptions, ta
       };
       reader.readAsText(file);
     } else {
-      toast({ title: "صيغة الملف غير مدعومة. استخدم CSV أو Excel أو JSON", variant: "destructive" });
+      toast({
+        title: "صيغة الملف غير مدعومة. استخدم CSV أو Excel أو JSON",
+        variant: "destructive",
+      });
     }
   };
 
   const autoMapColumns = (headers: string[]) => {
     const mapping: Record<string, string> = {};
-    const dbColNames = tableColumns.map(c => c.name);
+    const dbColNames = tableColumns.map((c) => c.name);
 
     for (const header of headers) {
       const normalized = header.trim().toLowerCase().replace(/[\s-]/g, "_");
-      const exact = dbColNames.find(c => c === normalized);
+      const exact = dbColNames.find((c) => c === normalized);
       if (exact) {
         mapping[header] = exact;
         continue;
       }
-      const partial = dbColNames.find(c => c.includes(normalized) || normalized.includes(c));
+      const partial = dbColNames.find(
+        (c) => c.includes(normalized) || normalized.includes(c),
+      );
       if (partial) {
         mapping[header] = partial;
       }
@@ -232,7 +282,7 @@ export default function TableImportDialog({ open, onOpenChange, tableOptions, ta
   };
 
   const handleMappingChange = (fileCol: string, dbCol: string) => {
-    setColumnMapping(prev => {
+    setColumnMapping((prev) => {
       const next = { ...prev };
       if (dbCol === "__skip__") {
         delete next[fileCol];
@@ -244,58 +294,87 @@ export default function TableImportDialog({ open, onOpenChange, tableOptions, ta
   };
 
   const getMappedData = (): Record<string, any>[] => {
-    return fileData.map(row => {
-      const mapped: Record<string, any> = {};
-      for (const [fileCol, dbCol] of Object.entries(columnMapping)) {
-        if (dbCol && row[fileCol] !== undefined && row[fileCol] !== null && row[fileCol] !== "") {
-          mapped[dbCol] = row[fileCol];
+    return fileData
+      .map((row) => {
+        const mapped: Record<string, any> = {};
+        for (const [fileCol, dbCol] of Object.entries(columnMapping)) {
+          if (
+            dbCol &&
+            row[fileCol] !== undefined &&
+            row[fileCol] !== null &&
+            row[fileCol] !== ""
+          ) {
+            mapped[dbCol] = row[fileCol];
+          }
         }
-      }
-      return mapped;
-    }).filter(row => Object.keys(row).length > 0);
+        return mapped;
+      })
+      .filter((row) => Object.keys(row).length > 0);
   };
 
   const getValidationIssues = () => {
     const issues: { text: string; severity: "error" | "warning" }[] = [];
-    const requiredCols = tableColumns.filter(c => c.notNull && !c.hasDefault && !c.isAutoGenerated);
+    const requiredCols = tableColumns.filter(
+      (c) => c.notNull && !c.hasDefault && !c.isAutoGenerated,
+    );
     const mappedDbCols = new Set(Object.values(columnMapping));
 
     for (const col of requiredCols) {
       if (!mappedDbCols.has(col.name)) {
-        issues.push({ text: `العمود "${col.name}" مطلوب ولم يتم ربطه`, severity: "warning" });
+        issues.push({
+          text: `العمود "${col.name}" مطلوب ولم يتم ربطه`,
+          severity: "warning",
+        });
       }
     }
 
     const mappedValues = Object.values(columnMapping);
-    const duplicates = mappedValues.filter((v, i) => v && mappedValues.indexOf(v) !== i);
+    const duplicates = mappedValues.filter(
+      (v, i) => v && mappedValues.indexOf(v) !== i,
+    );
     if (duplicates.length > 0) {
-      issues.push({ text: `أعمدة مكررة في الربط: ${[...new Set(duplicates)].join("، ")}`, severity: "error" });
+      issues.push({
+        text: `أعمدة مكررة في الربط: ${[...new Set(duplicates)].join("، ")}`,
+        severity: "error",
+      });
     }
 
     return issues;
   };
 
   const hasBlockingErrors = () => {
-    return getValidationIssues().some(i => i.severity === "error");
+    return getValidationIssues().some((i) => i.severity === "error");
   };
 
   const importMutation = useMutation({
     mutationFn: async (data: Record<string, any>[]) => {
       const BATCH_SIZE = 50;
       const totalBatches = Math.ceil(data.length / BATCH_SIZE);
-      const result: ImportResult = { successful: 0, failed: 0, errors: [], warnings: [] };
+      const result: ImportResult = {
+        successful: 0,
+        failed: 0,
+        errors: [],
+        warnings: [],
+      };
 
       for (let i = 0; i < totalBatches; i++) {
         const batch = data.slice(i * BATCH_SIZE, (i + 1) * BATCH_SIZE);
         setImportProgress(Math.round(((i + 1) / totalBatches) * 100));
 
-        const res = await apiRequest(`/api/database/import/${selectedTable}/batch`, {
-          method: "POST",
-          body: JSON.stringify({
-            data: batch,
-            options: { continueOnError: true, batchNumber: i + 1, totalBatches },
-          }),
-        });
+        const res = await apiRequest(
+          `/api/database/import/${selectedTable}/batch`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              data: batch,
+              options: {
+                continueOnError: true,
+                batchNumber: i + 1,
+                totalBatches,
+              },
+            }),
+          },
+        );
         const batchResult = await res.json();
         result.successful += batchResult.successful || 0;
         result.failed += batchResult.failed || 0;
@@ -334,35 +413,74 @@ export default function TableImportDialog({ open, onOpenChange, tableOptions, ta
   };
 
   const mappedCount = Object.values(columnMapping).filter(Boolean).length;
-  const validationIssues = step === "mapping" || step === "preview" ? getValidationIssues() : [];
+  const validationIssues =
+    step === "mapping" || step === "preview" ? getValidationIssues() : [];
   const previewData = step === "preview" ? getMappedData().slice(0, 5) : [];
 
   return (
     <>
-      <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" dir="rtl">
+      <Dialog
+        open={open}
+        onOpenChange={(v) => {
+          if (!v) handleClose();
+        }}
+      >
+        <DialogContent
+          className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+          dir="rtl"
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Upload className="h-5 w-5 text-green-600" />
               استيراد بيانات من ملف
             </DialogTitle>
             <DialogDescription>
-              استيراد بيانات من ملف CSV أو Excel أو JSON إلى جدول في قاعدة البيانات
+              استيراد بيانات من ملف CSV أو Excel أو JSON إلى جدول في قاعدة
+              البيانات
             </DialogDescription>
           </DialogHeader>
 
           <div className="flex items-center gap-2 mb-4">
-            {(["upload", "mapping", "preview", "importing", "result"] as ImportStep[]).map((s, i) => {
-              const labels = ["رفع الملف", "ربط الأعمدة", "معاينة", "استيراد", "النتيجة"];
+            {(
+              [
+                "upload",
+                "mapping",
+                "preview",
+                "importing",
+                "result",
+              ] as ImportStep[]
+            ).map((s, i) => {
+              const labels = [
+                "رفع الملف",
+                "ربط الأعمدة",
+                "معاينة",
+                "استيراد",
+                "النتيجة",
+              ];
               const isActive = s === step;
-              const isDone = (["upload", "mapping", "preview", "importing", "result"] as ImportStep[]).indexOf(step) > i;
+              const isDone =
+                (
+                  [
+                    "upload",
+                    "mapping",
+                    "preview",
+                    "importing",
+                    "result",
+                  ] as ImportStep[]
+                ).indexOf(step) > i;
               return (
                 <div key={s} className="flex items-center gap-1">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold
-                    ${isActive ? "bg-primary text-primary-foreground" : isDone ? "bg-green-600 text-white" : "bg-muted text-muted-foreground"}`}>
+                  <div
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold
+                    ${isActive ? "bg-primary text-primary-foreground" : isDone ? "bg-green-600 text-white" : "bg-muted text-muted-foreground"}`}
+                  >
                     {isDone ? "✓" : i + 1}
                   </div>
-                  <span className={`text-xs ${isActive ? "font-bold" : "text-muted-foreground"}`}>{labels[i]}</span>
+                  <span
+                    className={`text-xs ${isActive ? "font-bold" : "text-muted-foreground"}`}
+                  >
+                    {labels[i]}
+                  </span>
                   {i < 4 && <div className="w-6 h-px bg-border mx-1" />}
                 </div>
               );
@@ -374,13 +492,18 @@ export default function TableImportDialog({ open, onOpenChange, tableOptions, ta
               <div className="space-y-4 p-1">
                 <div className="space-y-2">
                   <Label>اختر الجدول المراد الاستيراد إليه</Label>
-                  <Select value={selectedTable} onValueChange={handleTableSelect}>
+                  <Select
+                    value={selectedTable}
+                    onValueChange={handleTableSelect}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="اختر جدول..." />
                     </SelectTrigger>
                     <SelectContent className="max-h-[300px]">
-                      {tableOptions.map(t => (
-                        <SelectItem key={t} value={t}>{tableLabels[t] || t}</SelectItem>
+                      {tableOptions.map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {tableLabels[t] || t}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -396,18 +519,26 @@ export default function TableImportDialog({ open, onOpenChange, tableOptions, ta
                 {selectedTable && tableColumns.length > 0 && (
                   <>
                     <div className="rounded-lg border p-3 bg-muted/50">
-                      <p className="text-sm font-medium mb-2">أعمدة الجدول ({tableColumns.length}):</p>
+                      <p className="text-sm font-medium mb-2">
+                        أعمدة الجدول ({tableColumns.length}):
+                      </p>
                       <div className="flex flex-wrap gap-1.5">
-                        {tableColumns.map(col => (
+                        {tableColumns.map((col) => (
                           <Badge
                             key={col.name}
-                            variant={col.notNull && !col.hasDefault ? "default" : "secondary"}
+                            variant={
+                              col.notNull && !col.hasDefault
+                                ? "default"
+                                : "secondary"
+                            }
                             className="text-xs"
                           >
                             {col.name}
-                            {col.notNull && !col.hasDefault && !col.isAutoGenerated && (
-                              <span className="text-red-300 mr-0.5">*</span>
-                            )}
+                            {col.notNull &&
+                              !col.hasDefault &&
+                              !col.isAutoGenerated && (
+                                <span className="text-red-300 mr-0.5">*</span>
+                              )}
                             <span className="opacity-60 mr-1">
                               ({dataTypeLabels[col.dataType] || col.dataType})
                             </span>
@@ -427,7 +558,9 @@ export default function TableImportDialog({ open, onOpenChange, tableOptions, ta
                       >
                         <FileSpreadsheet className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
                         <p className="font-medium">اضغط لاختيار ملف</p>
-                        <p className="text-sm text-muted-foreground mt-1">CSV, Excel (.xlsx), أو JSON</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          CSV, Excel (.xlsx), أو JSON
+                        </p>
                       </div>
                       <input
                         ref={fileInputRef}
@@ -461,21 +594,30 @@ export default function TableImportDialog({ open, onOpenChange, tableOptions, ta
                 </div>
 
                 {validationIssues.length > 0 && (
-                  <div className={`rounded-lg border p-3 ${
-                    hasBlockingErrors() ? "border-red-300 bg-red-50 dark:bg-red-950/20" : "border-yellow-300 bg-yellow-50 dark:bg-yellow-950/20"
-                  }`}>
+                  <div
+                    className={`rounded-lg border p-3 ${
+                      hasBlockingErrors()
+                        ? "border-red-300 bg-red-50 dark:bg-red-950/20"
+                        : "border-yellow-300 bg-yellow-50 dark:bg-yellow-950/20"
+                    }`}
+                  >
                     <div className="flex items-center gap-2 mb-1">
                       {hasBlockingErrors() ? (
                         <XCircle className="h-4 w-4 text-red-600" />
                       ) : (
                         <AlertTriangle className="h-4 w-4 text-yellow-600" />
                       )}
-                      <span className={`text-sm font-medium ${hasBlockingErrors() ? "text-red-700 dark:text-red-400" : "text-yellow-700 dark:text-yellow-400"}`}>
+                      <span
+                        className={`text-sm font-medium ${hasBlockingErrors() ? "text-red-700 dark:text-red-400" : "text-yellow-700 dark:text-yellow-400"}`}
+                      >
                         {hasBlockingErrors() ? "أخطاء يجب إصلاحها" : "تنبيهات"}
                       </span>
                     </div>
                     {validationIssues.map((issue, i) => (
-                      <p key={i} className={`text-xs mr-6 ${issue.severity === "error" ? "text-red-600 dark:text-red-400 font-medium" : "text-yellow-600 dark:text-yellow-400"}`}>
+                      <p
+                        key={i}
+                        className={`text-xs mr-6 ${issue.severity === "error" ? "text-red-600 dark:text-red-400 font-medium" : "text-yellow-600 dark:text-yellow-400"}`}
+                      >
                         {issue.text}
                       </p>
                     ))}
@@ -486,19 +628,31 @@ export default function TableImportDialog({ open, onOpenChange, tableOptions, ta
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-right w-[35%]">عمود الملف</TableHead>
-                        <TableHead className="text-center w-[10%]"><ArrowLeftRight className="h-4 w-4 mx-auto" /></TableHead>
-                        <TableHead className="text-right w-[40%]">عمود قاعدة البيانات</TableHead>
-                        <TableHead className="text-right w-[15%]">النوع</TableHead>
+                        <TableHead className="text-right w-[35%]">
+                          عمود الملف
+                        </TableHead>
+                        <TableHead className="text-center w-[10%]">
+                          <ArrowLeftRight className="h-4 w-4 mx-auto" />
+                        </TableHead>
+                        <TableHead className="text-right w-[40%]">
+                          عمود قاعدة البيانات
+                        </TableHead>
+                        <TableHead className="text-right w-[15%]">
+                          النوع
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {fileHeaders.map(header => {
+                      {fileHeaders.map((header) => {
                         const mappedTo = columnMapping[header];
-                        const dbCol = tableColumns.find(c => c.name === mappedTo);
+                        const dbCol = tableColumns.find(
+                          (c) => c.name === mappedTo,
+                        );
                         return (
                           <TableRow key={header}>
-                            <TableCell className="font-mono text-sm">{header}</TableCell>
+                            <TableCell className="font-mono text-sm">
+                              {header}
+                            </TableCell>
                             <TableCell className="text-center">
                               {mappedTo ? (
                                 <CheckCircle2 className="h-4 w-4 text-green-600 mx-auto" />
@@ -509,23 +663,34 @@ export default function TableImportDialog({ open, onOpenChange, tableOptions, ta
                             <TableCell>
                               <Select
                                 value={mappedTo || "__skip__"}
-                                onValueChange={(v) => handleMappingChange(header, v)}
+                                onValueChange={(v) =>
+                                  handleMappingChange(header, v)
+                                }
                               >
                                 <SelectTrigger className="h-8 text-sm">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="max-h-[250px]">
                                   <SelectItem value="__skip__">
-                                    <span className="text-muted-foreground">— تخطي هذا العمود —</span>
+                                    <span className="text-muted-foreground">
+                                      — تخطي هذا العمود —
+                                    </span>
                                   </SelectItem>
                                   {tableColumns
-                                    .filter(c => !c.isAutoGenerated || c.isPrimary)
-                                    .map(col => (
-                                      <SelectItem key={col.name} value={col.name}>
+                                    .filter(
+                                      (c) => !c.isAutoGenerated || c.isPrimary,
+                                    )
+                                    .map((col) => (
+                                      <SelectItem
+                                        key={col.name}
+                                        value={col.name}
+                                      >
                                         <span className="flex items-center gap-1">
                                           {col.name}
                                           {col.notNull && !col.hasDefault && (
-                                            <span className="text-red-500 text-xs">*</span>
+                                            <span className="text-red-500 text-xs">
+                                              *
+                                            </span>
                                           )}
                                         </span>
                                       </SelectItem>
@@ -534,7 +699,10 @@ export default function TableImportDialog({ open, onOpenChange, tableOptions, ta
                               </Select>
                             </TableCell>
                             <TableCell className="text-xs text-muted-foreground">
-                              {dbCol ? (dataTypeLabels[dbCol.dataType] || dbCol.dataType) : "—"}
+                              {dbCol
+                                ? dataTypeLabels[dbCol.dataType] ||
+                                  dbCol.dataType
+                                : "—"}
                             </TableCell>
                           </TableRow>
                         );
@@ -548,26 +716,41 @@ export default function TableImportDialog({ open, onOpenChange, tableOptions, ta
             {step === "preview" && (
               <div className="space-y-4 p-1">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-sm font-medium">معاينة البيانات بعد الربط</span>
-                  <Badge variant="outline">أول 5 سجلات من {fileData.length}</Badge>
+                  <span className="text-sm font-medium">
+                    معاينة البيانات بعد الربط
+                  </span>
+                  <Badge variant="outline">
+                    أول 5 سجلات من {fileData.length}
+                  </Badge>
                 </div>
 
                 {validationIssues.length > 0 && (
-                  <div className={`rounded-lg border p-3 ${
-                    hasBlockingErrors() ? "border-red-300 bg-red-50 dark:bg-red-950/20" : "border-yellow-300 bg-yellow-50 dark:bg-yellow-950/20"
-                  }`}>
+                  <div
+                    className={`rounded-lg border p-3 ${
+                      hasBlockingErrors()
+                        ? "border-red-300 bg-red-50 dark:bg-red-950/20"
+                        : "border-yellow-300 bg-yellow-50 dark:bg-yellow-950/20"
+                    }`}
+                  >
                     <div className="flex items-center gap-2 mb-1">
                       {hasBlockingErrors() ? (
                         <XCircle className="h-4 w-4 text-red-600" />
                       ) : (
                         <AlertTriangle className="h-4 w-4 text-yellow-600" />
                       )}
-                      <span className={`text-sm font-medium ${hasBlockingErrors() ? "text-red-700" : "text-yellow-700"}`}>
-                        {hasBlockingErrors() ? "أخطاء يجب إصلاحها" : "تنبيهات — الاستيراد قد يفشل جزئياً"}
+                      <span
+                        className={`text-sm font-medium ${hasBlockingErrors() ? "text-red-700" : "text-yellow-700"}`}
+                      >
+                        {hasBlockingErrors()
+                          ? "أخطاء يجب إصلاحها"
+                          : "تنبيهات — الاستيراد قد يفشل جزئياً"}
                       </span>
                     </div>
                     {validationIssues.map((issue, i) => (
-                      <p key={i} className={`text-xs mr-6 ${issue.severity === "error" ? "text-red-600 font-medium" : "text-yellow-600"}`}>
+                      <p
+                        key={i}
+                        className={`text-xs mr-6 ${issue.severity === "error" ? "text-red-600 font-medium" : "text-yellow-600"}`}
+                      >
                         {issue.text}
                       </p>
                     ))}
@@ -579,20 +762,40 @@ export default function TableImportDialog({ open, onOpenChange, tableOptions, ta
                     <TableHeader>
                       <TableRow>
                         <TableHead className="text-right w-12">#</TableHead>
-                        {Object.values(columnMapping).filter(Boolean).map(col => (
-                          <TableHead key={col} className="text-right whitespace-nowrap">{col}</TableHead>
-                        ))}
+                        {Object.values(columnMapping)
+                          .filter(Boolean)
+                          .map((col) => (
+                            <TableHead
+                              key={col}
+                              className="text-right whitespace-nowrap"
+                            >
+                              {col}
+                            </TableHead>
+                          ))}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {previewData.map((row, i) => (
                         <TableRow key={i}>
-                          <TableCell className="text-muted-foreground">{i + 1}</TableCell>
-                          {Object.values(columnMapping).filter(Boolean).map(col => (
-                            <TableCell key={col} className="text-sm max-w-[200px] truncate">
-                              {row[col] !== null && row[col] !== undefined ? String(row[col]) : <span className="text-muted-foreground">—</span>}
-                            </TableCell>
-                          ))}
+                          <TableCell className="text-muted-foreground">
+                            {i + 1}
+                          </TableCell>
+                          {Object.values(columnMapping)
+                            .filter(Boolean)
+                            .map((col) => (
+                              <TableCell
+                                key={col}
+                                className="text-sm max-w-[200px] truncate"
+                              >
+                                {row[col] !== null && row[col] !== undefined ? (
+                                  String(row[col])
+                                ) : (
+                                  <span className="text-muted-foreground">
+                                    —
+                                  </span>
+                                )}
+                              </TableCell>
+                            ))}
                         </TableRow>
                       ))}
                     </TableBody>
@@ -600,9 +803,18 @@ export default function TableImportDialog({ open, onOpenChange, tableOptions, ta
                 </div>
 
                 <div className="rounded-lg bg-muted/50 p-3 text-sm">
-                  <p>إجمالي السجلات: <strong>{fileData.length}</strong></p>
-                  <p>الأعمدة المربوطة: <strong>{mappedCount}</strong></p>
-                  <p>الجدول: <strong>{tableLabels[selectedTable] || selectedTable}</strong></p>
+                  <p>
+                    إجمالي السجلات: <strong>{fileData.length}</strong>
+                  </p>
+                  <p>
+                    الأعمدة المربوطة: <strong>{mappedCount}</strong>
+                  </p>
+                  <p>
+                    الجدول:{" "}
+                    <strong>
+                      {tableLabels[selectedTable] || selectedTable}
+                    </strong>
+                  </p>
                 </div>
               </div>
             )}
@@ -611,25 +823,33 @@ export default function TableImportDialog({ open, onOpenChange, tableOptions, ta
               <div className="space-y-6 p-1 py-8">
                 <div className="text-center">
                   <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary mb-4" />
-                  <p className="text-lg font-medium">جاري استيراد البيانات...</p>
+                  <p className="text-lg font-medium">
+                    جاري استيراد البيانات...
+                  </p>
                   <p className="text-sm text-muted-foreground mt-1">
                     يرجى عدم إغلاق هذه النافذة
                   </p>
                 </div>
                 <div className="space-y-2 max-w-md mx-auto">
                   <Progress value={importProgress} className="h-3" />
-                  <p className="text-center text-sm text-muted-foreground">{importProgress}%</p>
+                  <p className="text-center text-sm text-muted-foreground">
+                    {importProgress}%
+                  </p>
                 </div>
               </div>
             )}
 
             {step === "result" && importResult && (
               <div className="space-y-4 p-1">
-                <div className={`rounded-lg border p-6 text-center ${
-                  importResult.failed === 0 ? "border-green-300 bg-green-50 dark:bg-green-950/20" :
-                  importResult.successful === 0 ? "border-red-300 bg-red-50 dark:bg-red-950/20" :
-                  "border-yellow-300 bg-yellow-50 dark:bg-yellow-950/20"
-                }`}>
+                <div
+                  className={`rounded-lg border p-6 text-center ${
+                    importResult.failed === 0
+                      ? "border-green-300 bg-green-50 dark:bg-green-950/20"
+                      : importResult.successful === 0
+                        ? "border-red-300 bg-red-50 dark:bg-red-950/20"
+                        : "border-yellow-300 bg-yellow-50 dark:bg-yellow-950/20"
+                  }`}
+                >
                   {importResult.failed === 0 ? (
                     <CheckCircle2 className="h-12 w-12 text-green-600 mx-auto mb-3" />
                   ) : importResult.successful === 0 ? (
@@ -639,18 +859,24 @@ export default function TableImportDialog({ open, onOpenChange, tableOptions, ta
                   )}
 
                   <h3 className="text-lg font-bold mb-1">
-                    {importResult.failed === 0 ? "تم الاستيراد بنجاح" :
-                     importResult.successful === 0 ? "فشل الاستيراد" :
-                     "تم الاستيراد جزئياً"}
+                    {importResult.failed === 0
+                      ? "تم الاستيراد بنجاح"
+                      : importResult.successful === 0
+                        ? "فشل الاستيراد"
+                        : "تم الاستيراد جزئياً"}
                   </h3>
 
                   <div className="flex items-center justify-center gap-6 mt-3">
                     <div className="text-center">
-                      <p className="text-2xl font-bold text-green-600">{importResult.successful}</p>
+                      <p className="text-2xl font-bold text-green-600">
+                        {importResult.successful}
+                      </p>
                       <p className="text-xs text-muted-foreground">نجح</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-2xl font-bold text-red-600">{importResult.failed}</p>
+                      <p className="text-2xl font-bold text-red-600">
+                        {importResult.failed}
+                      </p>
                       <p className="text-xs text-muted-foreground">فشل</p>
                     </div>
                   </div>
@@ -658,10 +884,17 @@ export default function TableImportDialog({ open, onOpenChange, tableOptions, ta
 
                 {importResult.errors.length > 0 && (
                   <div className="rounded-lg border border-red-200 p-3">
-                    <p className="text-sm font-medium text-red-700 mb-2">الأخطاء ({importResult.errors.length}):</p>
+                    <p className="text-sm font-medium text-red-700 mb-2">
+                      الأخطاء ({importResult.errors.length}):
+                    </p>
                     <ScrollArea className="max-h-[150px]">
                       {importResult.errors.map((err, i) => (
-                        <p key={i} className="text-xs text-red-600 mb-1 font-mono">{err}</p>
+                        <p
+                          key={i}
+                          className="text-xs text-red-600 mb-1 font-mono"
+                        >
+                          {err}
+                        </p>
                       ))}
                     </ScrollArea>
                   </div>
@@ -669,9 +902,13 @@ export default function TableImportDialog({ open, onOpenChange, tableOptions, ta
 
                 {importResult.warnings.length > 0 && (
                   <div className="rounded-lg border border-yellow-200 p-3">
-                    <p className="text-sm font-medium text-yellow-700 mb-2">تنبيهات:</p>
+                    <p className="text-sm font-medium text-yellow-700 mb-2">
+                      تنبيهات:
+                    </p>
                     {importResult.warnings.map((w, i) => (
-                      <p key={i} className="text-xs text-yellow-600 mb-1">{w}</p>
+                      <p key={i} className="text-xs text-yellow-600 mb-1">
+                        {w}
+                      </p>
                     ))}
                   </div>
                 )}
@@ -681,12 +918,23 @@ export default function TableImportDialog({ open, onOpenChange, tableOptions, ta
 
           <DialogFooter className="flex justify-between gap-2 pt-4 border-t">
             {step === "upload" && (
-              <Button variant="outline" onClick={handleClose}>إلغاء</Button>
+              <Button variant="outline" onClick={handleClose}>
+                إلغاء
+              </Button>
             )}
 
             {step === "mapping" && (
               <>
-                <Button variant="outline" onClick={() => { setStep("upload"); setFileData([]); setFileHeaders([]); setFileName(""); setColumnMapping({}); }}>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setStep("upload");
+                    setFileData([]);
+                    setFileHeaders([]);
+                    setFileName("");
+                    setColumnMapping({});
+                  }}
+                >
                   <RotateCcw className="h-4 w-4 ml-1" />
                   رجوع
                 </Button>
@@ -741,16 +989,26 @@ export default function TableImportDialog({ open, onOpenChange, tableOptions, ta
           <AlertDialogHeader>
             <AlertDialogTitle>تأكيد الاستيراد</AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
-              <p>سيتم استيراد <strong>{fileData.length}</strong> سجل إلى جدول <strong>{tableLabels[selectedTable] || selectedTable}</strong>.</p>
-              <p className="text-yellow-600 font-medium">تأكد من صحة ربط الأعمدة قبل المتابعة.</p>
+              <p>
+                سيتم استيراد <strong>{fileData.length}</strong> سجل إلى جدول{" "}
+                <strong>{tableLabels[selectedTable] || selectedTable}</strong>.
+              </p>
+              <p className="text-yellow-600 font-medium">
+                تأكد من صحة ربط الأعمدة قبل المتابعة.
+              </p>
               {validationIssues.length > 0 && (
-                <p className="text-red-600">يوجد {validationIssues.length} تنبيه — قد يفشل بعض السجلات.</p>
+                <p className="text-red-600">
+                  يوجد {validationIssues.length} تنبيه — قد يفشل بعض السجلات.
+                </p>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>إلغاء</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmImport} className="bg-green-600 hover:bg-green-700">
+            <AlertDialogAction
+              onClick={confirmImport}
+              className="bg-green-600 hover:bg-green-700"
+            >
               تأكيد الاستيراد
             </AlertDialogAction>
           </AlertDialogFooter>

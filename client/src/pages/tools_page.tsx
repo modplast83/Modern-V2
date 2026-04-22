@@ -1,25 +1,55 @@
+import { useQuery, useMutation } from "@tanstack/react-query";
+import JsBarcode from "jsbarcode";
+import {
+  Scale,
+  Palette,
+  Droplets,
+  Calculator,
+  FileSpreadsheet,
+  Ruler,
+  Clock,
+  Printer,
+  ChevronLeft,
+  ChevronRight,
+  Package,
+  PaintBucket,
+  Barcode,
+  FlaskConical,
+  Plus,
+  Trash2,
+  Eye,
+  Archive,
+  FileText,
+  Pencil,
+  Search,
+} from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useQuery, useMutation } from "@tanstack/react-query";
+
 import PageLayout from "../components/layout/PageLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
-import { Tabs } from "../components/ui/tabs";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 import { Separator } from "../components/ui/separator";
+import { Tabs } from "../components/ui/tabs";
 import { Textarea } from "../components/ui/textarea";
 import { useToast } from "../hooks/use-toast";
-import { apiRequest, queryClient } from "../lib/queryClient";
 import { getHangerHeightCm } from "../lib/bag-rules-engine";
-import { 
-  Scale, Palette, Droplets, Calculator, FileSpreadsheet, 
-  Ruler, Clock, Printer, ChevronLeft, ChevronRight,
-  Package, PaintBucket, Barcode, FlaskConical, Plus, Trash2, Eye, Archive, FileText, Pencil, Search
-} from "lucide-react";
-import JsBarcode from "jsbarcode";
+import { apiRequest, queryClient } from "../lib/queryClient";
 
 type TabId =
   | "bag-weight"
@@ -34,25 +64,80 @@ type TabId =
   | "barcode"
   | "blends";
 
-interface TabDef { 
-  id: TabId; 
-  labelKey: string; 
+interface TabDef {
+  id: TabId;
+  labelKey: string;
   descriptionKey: string;
   icon: typeof Scale;
 }
 
 const tabDefs: TabDef[] = [
-  { id: "bag-weight", labelKey: "tools.tabs.bagWeight", descriptionKey: "tools.tabs.bagWeightDesc", icon: Scale },
-  { id: "colors", labelKey: "tools.tabs.colors", descriptionKey: "tools.tabs.colorsDesc", icon: Palette },
-  { id: "color-mix", labelKey: "tools.tabs.colorMix", descriptionKey: "tools.tabs.colorMixDesc", icon: PaintBucket },
-  { id: "ink-usage", labelKey: "tools.tabs.inkUsage", descriptionKey: "tools.tabs.inkUsageDesc", icon: Droplets },
-  { id: "order-cost", labelKey: "tools.tabs.orderCost", descriptionKey: "tools.tabs.orderCostDesc", icon: Calculator },
-  { id: "order-cost-advanced", labelKey: "tools.tabs.orderCostAdvanced", descriptionKey: "tools.tabs.orderCostAdvancedDesc", icon: FileSpreadsheet },
-  { id: "roll", labelKey: "tools.tabs.roll", descriptionKey: "tools.tabs.rollDesc", icon: Package },
-  { id: "thickness", labelKey: "tools.tabs.thickness", descriptionKey: "tools.tabs.thicknessDesc", icon: Ruler },
-  { id: "job-time", labelKey: "tools.tabs.jobTime", descriptionKey: "tools.tabs.jobTimeDesc", icon: Clock },
-  { id: "barcode", labelKey: "tools.tabs.barcode", descriptionKey: "tools.tabs.barcodeDesc", icon: Barcode },
-  { id: "blends", labelKey: "tools.tabs.blends", descriptionKey: "tools.tabs.blendsDesc", icon: FlaskConical },
+  {
+    id: "bag-weight",
+    labelKey: "tools.tabs.bagWeight",
+    descriptionKey: "tools.tabs.bagWeightDesc",
+    icon: Scale,
+  },
+  {
+    id: "colors",
+    labelKey: "tools.tabs.colors",
+    descriptionKey: "tools.tabs.colorsDesc",
+    icon: Palette,
+  },
+  {
+    id: "color-mix",
+    labelKey: "tools.tabs.colorMix",
+    descriptionKey: "tools.tabs.colorMixDesc",
+    icon: PaintBucket,
+  },
+  {
+    id: "ink-usage",
+    labelKey: "tools.tabs.inkUsage",
+    descriptionKey: "tools.tabs.inkUsageDesc",
+    icon: Droplets,
+  },
+  {
+    id: "order-cost",
+    labelKey: "tools.tabs.orderCost",
+    descriptionKey: "tools.tabs.orderCostDesc",
+    icon: Calculator,
+  },
+  {
+    id: "order-cost-advanced",
+    labelKey: "tools.tabs.orderCostAdvanced",
+    descriptionKey: "tools.tabs.orderCostAdvancedDesc",
+    icon: FileSpreadsheet,
+  },
+  {
+    id: "roll",
+    labelKey: "tools.tabs.roll",
+    descriptionKey: "tools.tabs.rollDesc",
+    icon: Package,
+  },
+  {
+    id: "thickness",
+    labelKey: "tools.tabs.thickness",
+    descriptionKey: "tools.tabs.thicknessDesc",
+    icon: Ruler,
+  },
+  {
+    id: "job-time",
+    labelKey: "tools.tabs.jobTime",
+    descriptionKey: "tools.tabs.jobTimeDesc",
+    icon: Clock,
+  },
+  {
+    id: "barcode",
+    labelKey: "tools.tabs.barcode",
+    descriptionKey: "tools.tabs.barcodeDesc",
+    icon: Barcode,
+  },
+  {
+    id: "blends",
+    labelKey: "tools.tabs.blends",
+    descriptionKey: "tools.tabs.blendsDesc",
+    icon: FlaskConical,
+  },
 ];
 
 export default function ToolsPage(): JSX.Element {
@@ -68,29 +153,35 @@ function ToolsContent(): JSX.Element {
   const { t } = useTranslation();
   const STORAGE_KEY = "mpbf_tools_active_tab";
   const [active, setActive] = useState<TabId>(() => {
-    const saved = (typeof window !== "undefined" && window.localStorage.getItem(STORAGE_KEY)) as TabId | null;
+    const saved = (typeof window !== "undefined" &&
+      window.localStorage.getItem(STORAGE_KEY)) as TabId | null;
     return saved ?? "bag-weight";
   });
   const [sharedBagWeightG, setSharedBagWeightG] = useState<number>(0);
-  const [sharedBagDims, setSharedBagDims] = useState<{ widthCm: number; lengthCm: number } | null>(null);
+  const [sharedBagDims, setSharedBagDims] = useState<{
+    widthCm: number;
+    lengthCm: number;
+  } | null>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
   const bagWeightPrintRef = useRef<(() => void) | null>(null);
 
-  useEffect(() => { 
-    try { window.localStorage.setItem(STORAGE_KEY, active); } catch {} 
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, active);
+    } catch {}
   }, [active]);
 
-  const scrollTabs = (direction: 'left' | 'right') => {
+  const scrollTabs = (direction: "left" | "right") => {
     if (tabsRef.current) {
       const scrollAmount = 200;
       tabsRef.current.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth'
+        left: direction === "left" ? -scrollAmount : scrollAmount,
+        behavior: "smooth",
       });
     }
   };
 
-  const activeTab = tabDefs.find(tab => tab.id === active);
+  const activeTab = tabDefs.find((tab) => tab.id === active);
   const ActiveIcon = activeTab?.icon || Scale;
 
   return (
@@ -101,7 +192,7 @@ function ToolsContent(): JSX.Element {
           variant="ghost"
           size="icon"
           className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/80 dark:bg-slate-900/80 shadow-md rounded-full h-8 w-8 md:hidden"
-          onClick={() => scrollTabs('right')}
+          onClick={() => scrollTabs("right")}
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
@@ -109,15 +200,15 @@ function ToolsContent(): JSX.Element {
           variant="ghost"
           size="icon"
           className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/80 dark:bg-slate-900/80 shadow-md rounded-full h-8 w-8 md:hidden"
-          onClick={() => scrollTabs('left')}
+          onClick={() => scrollTabs("left")}
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        
-        <div 
+
+        <div
           ref={tabsRef}
           className="flex gap-2 overflow-x-auto scrollbar-hide px-8 md:px-0 pb-2 md:flex-wrap md:overflow-visible"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {tabDefs.map((tab) => {
             const Icon = tab.icon;
@@ -129,9 +220,10 @@ function ToolsContent(): JSX.Element {
                 className={`
                   flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium
                   whitespace-nowrap transition-all duration-200 flex-shrink-0
-                  ${isActive 
-                    ? 'bg-primary text-primary-foreground shadow-lg scale-105' 
-                    : 'bg-white dark:bg-slate-800 text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+                  ${
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-lg scale-105"
+                      : "bg-white dark:bg-slate-800 text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
                   }
                 `}
               >
@@ -150,16 +242,25 @@ function ToolsContent(): JSX.Element {
             <ActiveIcon className="h-6 w-6" />
           </div>
           <div>
-            <h2 className="text-lg font-bold">{activeTab ? t(activeTab.labelKey) : ""}</h2>
-            <p className="text-sm text-muted-foreground">{activeTab ? t(activeTab.descriptionKey) : ""}</p>
+            <h2 className="text-lg font-bold">
+              {activeTab ? t(activeTab.labelKey) : ""}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {activeTab ? t(activeTab.descriptionKey) : ""}
+            </p>
           </div>
-          <Button variant="outline" size="sm" className="mr-auto" onClick={() => {
-            if (active === "bag-weight" && bagWeightPrintRef.current) {
-              bagWeightPrintRef.current();
-            } else {
-              window.print();
-            }
-          }}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mr-auto"
+            onClick={() => {
+              if (active === "bag-weight" && bagWeightPrintRef.current) {
+                bagWeightPrintRef.current();
+              } else {
+                window.print();
+              }
+            }}
+          >
             <Printer className="h-4 w-4 ml-2" />
             {t("common.print")}
           </Button>
@@ -173,14 +274,22 @@ function ToolsContent(): JSX.Element {
             <BagWeightCalculator
               onBagWeight={(g) => setSharedBagWeightG(g)}
               onDims={(d) => setSharedBagDims(d)}
-              onPrintRef={(fn) => { bagWeightPrintRef.current = fn; }}
+              onPrintRef={(fn) => {
+                bagWeightPrintRef.current = fn;
+              }}
             />
           )}
           {active === "colors" && <ColorTools />}
           {active === "color-mix" && <ColorMixTools />}
-          {active === "ink-usage" && <InkUsageCalculator sharedDims={sharedBagDims} />}
-          {active === "order-cost" && <OrderCostCalculator sharedBagWeightG={sharedBagWeightG} />}
-          {active === "order-cost-advanced" && <OrderCostAdvanced sharedBagWeightG={sharedBagWeightG} />}
+          {active === "ink-usage" && (
+            <InkUsageCalculator sharedDims={sharedBagDims} />
+          )}
+          {active === "order-cost" && (
+            <OrderCostCalculator sharedBagWeightG={sharedBagWeightG} />
+          )}
+          {active === "order-cost-advanced" && (
+            <OrderCostAdvanced sharedBagWeightG={sharedBagWeightG} />
+          )}
           {active === "roll" && <RollTools />}
           {active === "thickness" && <ThicknessConverter />}
           {active === "job-time" && <JobTimePlanner />}
@@ -203,7 +312,14 @@ interface InputFieldProps {
   hint?: string;
 }
 
-function InputField({ label, value, onChange, step = 0.1, suffix, hint }: InputFieldProps): JSX.Element {
+function InputField({
+  label,
+  value,
+  onChange,
+  step = 0.1,
+  suffix,
+  hint,
+}: InputFieldProps): JSX.Element {
   return (
     <div className="space-y-1.5">
       <Label className="text-sm font-medium">{label}</Label>
@@ -233,7 +349,12 @@ interface TextFieldProps {
   placeholder?: string;
 }
 
-function TextField({ label, value, onChange, placeholder }: TextFieldProps): JSX.Element {
+function TextField({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: TextFieldProps): JSX.Element {
   return (
     <div className="space-y-1.5">
       <Label className="text-sm font-medium">{label}</Label>
@@ -255,7 +376,13 @@ interface SelectFieldProps {
   hint?: string;
 }
 
-function SelectField({ label, value, onChange, options, hint }: SelectFieldProps): JSX.Element {
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+  hint,
+}: SelectFieldProps): JSX.Element {
   return (
     <div className="space-y-1.5">
       <Label className="text-sm font-medium">{label}</Label>
@@ -265,7 +392,9 @@ function SelectField({ label, value, onChange, options, hint }: SelectFieldProps
         </SelectTrigger>
         <SelectContent>
           {options.map((opt) => (
-            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            <SelectItem key={opt.value} value={opt.value}>
+              {opt.label}
+            </SelectItem>
           ))}
         </SelectContent>
       </Select>
@@ -282,9 +411,13 @@ interface ResultCardProps {
 
 function ResultCard({ label, value, highlight }: ResultCardProps): JSX.Element {
   return (
-    <div className={`p-3 rounded-lg ${highlight ? 'bg-primary/10 border-2 border-primary' : 'bg-slate-50 dark:bg-slate-800'}`}>
+    <div
+      className={`p-3 rounded-lg ${highlight ? "bg-primary/10 border-2 border-primary" : "bg-slate-50 dark:bg-slate-800"}`}
+    >
       <p className="text-xs text-muted-foreground mb-1">{label}</p>
-      <p className={`text-lg font-bold ${highlight ? 'text-primary' : ''}`}>{value}</p>
+      <p className={`text-lg font-bold ${highlight ? "text-primary" : ""}`}>
+        {value}
+      </p>
     </div>
   );
 }
@@ -294,7 +427,13 @@ function ResultCard({ label, value, highlight }: ResultCardProps): JSX.Element {
 type BagType = "hanger" | "banana" | "no-handle" | "table-cover";
 
 function migrateLegacyBagType(t: unknown): BagType {
-  if (t === "hanger" || t === "banana" || t === "no-handle" || t === "table-cover") return t;
+  if (
+    t === "hanger" ||
+    t === "banana" ||
+    t === "no-handle" ||
+    t === "table-cover"
+  )
+    return t;
   if (t === "side-gusset" || t === "flat") return "no-handle";
   return "no-handle";
 }
@@ -331,7 +470,8 @@ interface ApiBagWeightRecord {
 }
 
 function mapApiBagWeightRecord(r: ApiBagWeightRecord): BagWeightRecord {
-  const num = (v: string | number) => (typeof v === "number" ? v : parseFloat(v));
+  const num = (v: string | number) =>
+    typeof v === "number" ? v : parseFloat(v);
   return {
     id: r.id,
     createdAt: new Date(r.created_at).toLocaleString("en-US"),
@@ -386,7 +526,9 @@ function useBagWeightHistory() {
       return;
     }
     if (!raw) {
-      try { window.localStorage.setItem(BAG_HISTORY_MIGRATED_KEY, "1"); } catch {}
+      try {
+        window.localStorage.setItem(BAG_HISTORY_MIGRATED_KEY, "1");
+      } catch {}
       return;
     }
     let parsed: LegacyBagWeightRecord[] = [];
@@ -436,7 +578,10 @@ function useBagWeightHistory() {
           if (idx >= 0) remaining.splice(idx, 1);
           try {
             if (remaining.length > 0) {
-              window.localStorage.setItem(BAG_HISTORY_KEY, JSON.stringify(remaining));
+              window.localStorage.setItem(
+                BAG_HISTORY_KEY,
+                JSON.stringify(remaining),
+              );
             } else {
               window.localStorage.removeItem(BAG_HISTORY_KEY);
             }
@@ -446,7 +591,9 @@ function useBagWeightHistory() {
           window.localStorage.removeItem(BAG_HISTORY_KEY);
           window.localStorage.setItem(BAG_HISTORY_MIGRATED_KEY, "1");
         } catch {}
-        queryClient.invalidateQueries({ queryKey: ["/api/bag-weight-records"] });
+        queryClient.invalidateQueries({
+          queryKey: ["/api/bag-weight-records"],
+        });
         if (migratedCount > 0) {
           toast({
             title: "تم نقل السجلات",
@@ -454,9 +601,15 @@ function useBagWeightHistory() {
           });
         }
       } catch (err) {
-        console.warn("[bag-weight migration] partial failure", { migratedCount, totalCount, err });
+        console.warn("[bag-weight migration] partial failure", {
+          migratedCount,
+          totalCount,
+          err,
+        });
         if (migratedCount > 0) {
-          queryClient.invalidateQueries({ queryKey: ["/api/bag-weight-records"] });
+          queryClient.invalidateQueries({
+            queryKey: ["/api/bag-weight-records"],
+          });
         }
         migrationRan.current = false;
       }
@@ -487,7 +640,11 @@ function useBagWeightHistory() {
       queryClient.invalidateQueries({ queryKey: ["/api/bag-weight-records"] });
     },
     onError: (err: any) => {
-      toast({ title: "خطأ في الحفظ", description: err?.message || "تعذر حفظ السجل", variant: "destructive" });
+      toast({
+        title: "خطأ في الحفظ",
+        description: err?.message || "تعذر حفظ السجل",
+        variant: "destructive",
+      });
     },
   });
 
@@ -499,7 +656,11 @@ function useBagWeightHistory() {
       queryClient.invalidateQueries({ queryKey: ["/api/bag-weight-records"] });
     },
     onError: (err: any) => {
-      toast({ title: "خطأ في الحذف", description: err?.message || "تعذر حذف السجل", variant: "destructive" });
+      toast({
+        title: "خطأ في الحذف",
+        description: err?.message || "تعذر حذف السجل",
+        variant: "destructive",
+      });
     },
   });
 
@@ -511,13 +672,18 @@ function useBagWeightHistory() {
       queryClient.invalidateQueries({ queryKey: ["/api/bag-weight-records"] });
     },
     onError: (err: any) => {
-      toast({ title: "خطأ", description: err?.message || "تعذر مسح السجلات", variant: "destructive" });
+      toast({
+        title: "خطأ",
+        description: err?.message || "تعذر مسح السجلات",
+        variant: "destructive",
+      });
     },
   });
 
   return {
     history,
-    addRecord: (record: Omit<BagWeightRecord, "id" | "createdAt">) => addMutation.mutate(record),
+    addRecord: (record: Omit<BagWeightRecord, "id" | "createdAt">) =>
+      addMutation.mutate(record),
     clearHistory: () => clearMutation.mutate(),
     deleteRecord: (id: number) => deleteMutation.mutate(id),
     isSaving: addMutation.isPending,
@@ -536,7 +702,13 @@ interface BagShapeSvgProps {
   className?: string;
 }
 
-function BagShapeSvg({ type, widthCm, lengthCm, sideGussetCm, className }: BagShapeSvgProps): JSX.Element {
+function BagShapeSvg({
+  type,
+  widthCm,
+  lengthCm,
+  sideGussetCm,
+  className,
+}: BagShapeSvgProps): JSX.Element {
   const uid = useId().replace(/:/g, "_");
   const gradId = `bagBodyGrad_${uid}`;
   const shadowId = `bagShadow_${uid}`;
@@ -549,21 +721,31 @@ function BagShapeSvg({ type, widthCm, lengthCm, sideGussetCm, className }: BagSh
   const widthRef = isTableCover ? 100 : 60;
   const lengthRef = isTableCover ? 70 : 80;
 
-  const wr = widthCm > 0 ? Math.max(0.35, Math.min(1, widthCm / widthRef)) : 0.7;
-  const lr = lengthCm > 0 ? Math.max(0.35, Math.min(1, lengthCm / lengthRef)) : 0.7;
+  const wr =
+    widthCm > 0 ? Math.max(0.35, Math.min(1, widthCm / widthRef)) : 0.7;
+  const lr =
+    lengthCm > 0 ? Math.max(0.35, Math.min(1, lengthCm / lengthRef)) : 0.7;
 
   const bagW = Math.round(svgW * 0.7 * wr);
   const hangerCm = type === "hanger" ? getHangerHeightCm(widthCm, lengthCm) : 0;
   const totalLenForRatio = type === "hanger" ? lengthCm + hangerCm : lengthCm;
   const totalLengthRefMax = type === "hanger" ? lengthRef + 25 : lengthRef;
-  const totalLr = totalLenForRatio > 0
-    ? Math.max(0.35, Math.min(1, totalLenForRatio / totalLengthRefMax))
-    : lr;
+  const totalLr =
+    totalLenForRatio > 0
+      ? Math.max(0.35, Math.min(1, totalLenForRatio / totalLengthRefMax))
+      : lr;
   const bagH = Math.round(svgH * 0.7 * totalLr);
 
-  const earH = type === "hanger" && lengthCm > 0
-    ? Math.max(14, Math.min(bagH * 0.4, bagH * (hangerCm / Math.max(1, lengthCm + hangerCm))))
-    : 0;
+  const earH =
+    type === "hanger" && lengthCm > 0
+      ? Math.max(
+          14,
+          Math.min(
+            bagH * 0.4,
+            bagH * (hangerCm / Math.max(1, lengthCm + hangerCm)),
+          ),
+        )
+      : 0;
 
   const bagX = Math.round((svgW - bagW) / 2);
   const bagY = Math.round((svgH - bagH - earH) / 2 + earH);
@@ -572,9 +754,16 @@ function BagShapeSvg({ type, widthCm, lengthCm, sideGussetCm, className }: BagSh
   const stroke = isTableCover ? "#db2777" : "#2563eb";
   const accent = isTableCover ? "#be185d" : "#1d4ed8";
 
-  const sideGussetW = sideGussetCm > 0 && bagTypeUsesGusset(type)
-    ? Math.max(bagW * 0.06, Math.min(bagW * 0.2, (sideGussetCm / Math.max(1, widthCm || widthRef)) * bagW))
-    : 0;
+  const sideGussetW =
+    sideGussetCm > 0 && bagTypeUsesGusset(type)
+      ? Math.max(
+          bagW * 0.06,
+          Math.min(
+            bagW * 0.2,
+            (sideGussetCm / Math.max(1, widthCm || widthRef)) * bagW,
+          ),
+        )
+      : 0;
 
   return (
     <svg
@@ -595,16 +784,18 @@ function BagShapeSvg({ type, widthCm, lengthCm, sideGussetCm, className }: BagSh
       </defs>
 
       {/* Hanger ear (above body) */}
-      {type === "hanger" && earH > 0 && (() => {
-        const cutoutW = bagW * 0.3;
-        const cutoutDepth = earH * 0.7;
-        const cutoutCX = bagX + bagW / 2;
-        const earTopY = bagY - earH;
-        const cutoutBottomY = earTopY + cutoutDepth;
-        const r = cutoutW * 0.35;
-        return (
-          <path
-            d={`M${bagX},${bagY}
+      {type === "hanger" &&
+        earH > 0 &&
+        (() => {
+          const cutoutW = bagW * 0.3;
+          const cutoutDepth = earH * 0.7;
+          const cutoutCX = bagX + bagW / 2;
+          const earTopY = bagY - earH;
+          const cutoutBottomY = earTopY + cutoutDepth;
+          const r = cutoutW * 0.35;
+          return (
+            <path
+              d={`M${bagX},${bagY}
                 L${bagX},${earTopY + 2}
                 Q${bagX},${earTopY} ${bagX + 2},${earTopY}
                 L${cutoutCX - cutoutW / 2},${earTopY}
@@ -616,12 +807,12 @@ function BagShapeSvg({ type, widthCm, lengthCm, sideGussetCm, className }: BagSh
                 L${bagX + bagW - 2},${earTopY}
                 Q${bagX + bagW},${earTopY} ${bagX + bagW},${earTopY + 2}
                 L${bagX + bagW},${bagY} Z`}
-            fill={`url(#${gradId})`}
-            stroke={stroke}
-            strokeWidth="1.2"
-          />
-        );
-      })()}
+              fill={`url(#${gradId})`}
+              stroke={stroke}
+              strokeWidth="1.2"
+            />
+          );
+        })()}
 
       {/* Bag body */}
       <rect
@@ -679,39 +870,40 @@ function BagShapeSvg({ type, widthCm, lengthCm, sideGussetCm, className }: BagSh
       )}
 
       {/* Banana handle die-cut: fixed 8cm wide × 2cm tall */}
-      {type === "banana" && (() => {
-        const w8 = widthCm > 0 ? widthCm : 30;
-        const cutoutWidthRatio = Math.min(0.7, 8 / w8);
-        const lForH = lengthCm > 0 ? lengthCm : 40;
-        const cutoutHeightRatio = Math.min(0.12, 2 / lForH);
-        const holeW = bagW * cutoutWidthRatio;
-        const holeH = bagH * cutoutHeightRatio;
-        const cx = bagX + bagW / 2;
-        const cy = bagY + Math.max(holeH * 1.6, bagH * 0.07);
-        return (
-          <g>
-            <path
-              d={`M${cx - holeW / 2},${cy}
+      {type === "banana" &&
+        (() => {
+          const w8 = widthCm > 0 ? widthCm : 30;
+          const cutoutWidthRatio = Math.min(0.7, 8 / w8);
+          const lForH = lengthCm > 0 ? lengthCm : 40;
+          const cutoutHeightRatio = Math.min(0.12, 2 / lForH);
+          const holeW = bagW * cutoutWidthRatio;
+          const holeH = bagH * cutoutHeightRatio;
+          const cx = bagX + bagW / 2;
+          const cy = bagY + Math.max(holeH * 1.6, bagH * 0.07);
+          return (
+            <g>
+              <path
+                d={`M${cx - holeW / 2},${cy}
                   Q${cx},${cy + holeH * 1.7} ${cx + holeW / 2},${cy}
                   Q${cx},${cy - holeH * 0.4} ${cx - holeW / 2},${cy} Z`}
-              fill="#ffffff"
-              stroke={accent}
-              strokeWidth="1.1"
-            />
-            <text
-              x={cx}
-              y={cy - holeH * 1.4}
-              textAnchor="middle"
-              fontSize="9"
-              fill={accent}
-              fontWeight="600"
-              opacity="0.75"
-            >
-              8 × 2 سم
-            </text>
-          </g>
-        );
-      })()}
+                fill="#ffffff"
+                stroke={accent}
+                strokeWidth="1.1"
+              />
+              <text
+                x={cx}
+                y={cy - holeH * 1.4}
+                textAnchor="middle"
+                fontSize="9"
+                fill={accent}
+                fontWeight="600"
+                opacity="0.75"
+              >
+                8 × 2 سم
+              </text>
+            </g>
+          );
+        })()}
 
       {/* Table cover decorative pattern */}
       {isTableCover && (
@@ -772,7 +964,11 @@ interface BagWeightCalculatorProps {
   onDims?: (d: { widthCm: number; lengthCm: number }) => void;
 }
 
-function BagWeightCalculator({ onBagWeight, onDims, onPrintRef }: BagWeightCalculatorProps): JSX.Element {
+function BagWeightCalculator({
+  onBagWeight,
+  onDims,
+  onPrintRef,
+}: BagWeightCalculatorProps): JSX.Element {
   const { t } = useTranslation();
   const [bagType, setBagType] = useState<BagType>("hanger");
   const [widthCm, setWidthCm] = useState<number>(30);
@@ -781,16 +977,22 @@ function BagWeightCalculator({ onBagWeight, onDims, onPrintRef }: BagWeightCalcu
   const [layers, setLayers] = useState<number>(2);
   const [density, setDensity] = useState<number>(0.95);
   const [sideGussetCm, setSideGussetCm] = useState<number>(0);
-  const { history, addRecord, clearHistory, deleteRecord } = useBagWeightHistory();
+  const { history, addRecord, clearHistory, deleteRecord } =
+    useBagWeightHistory();
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   const usesGusset = bagTypeUsesGusset(bagType);
   const isTableCover = bagType === "table-cover";
 
-  useEffect(() => { onDims?.({ widthCm, lengthCm }); }, [widthCm, lengthCm, onDims]);
+  useEffect(() => {
+    onDims?.({ widthCm, lengthCm });
+  }, [widthCm, lengthCm, onDims]);
 
   const hangerCm = useMemo(
-    () => (bagType === "hanger" ? getHangerHeightCm(toNumber(widthCm), toNumber(lengthCm)) : 0),
+    () =>
+      bagType === "hanger"
+        ? getHangerHeightCm(toNumber(widthCm), toNumber(lengthCm))
+        : 0,
     [bagType, widthCm, lengthCm],
   );
 
@@ -800,15 +1002,31 @@ function BagWeightCalculator({ onBagWeight, onDims, onPrintRef }: BagWeightCalcu
     const l = toNumber(lengthCm);
     const g = toNumber(sideGussetCm);
     const effWidth = usesGusset ? w + 2 * g : w;
-    const effLength = (bagType === "hanger" && l > 0 && w > 0) ? l + hangerCm : l;
+    const effLength = bagType === "hanger" && l > 0 && w > 0 ? l + hangerCm : l;
     const layersUsed = isTableCover ? 1 : Math.max(1, toNumber(layers));
-    const gramsPerBag = Math.max(0, effWidth * effLength * layersUsed * t_cm * toNumber(density));
+    const gramsPerBag = Math.max(
+      0,
+      effWidth * effLength * layersUsed * t_cm * toNumber(density),
+    );
     const bagsPerKg = gramsPerBag > 0 ? 1000 / gramsPerBag : 0;
     const areaM2 = (effWidth / 100) * (effLength / 100);
     return { gramsPerBag, bagsPerKg, areaM2 } as const;
-  }, [bagType, widthCm, lengthCm, thicknessMicron, layers, density, sideGussetCm, usesGusset, isTableCover, hangerCm]);
+  }, [
+    bagType,
+    widthCm,
+    lengthCm,
+    thicknessMicron,
+    layers,
+    density,
+    sideGussetCm,
+    usesGusset,
+    isTableCover,
+    hangerCm,
+  ]);
 
-  useEffect(() => { onBagWeight?.(result.gramsPerBag || 0); }, [result.gramsPerBag, onBagWeight]);
+  useEffect(() => {
+    onBagWeight?.(result.gramsPerBag || 0);
+  }, [result.gramsPerBag, onBagWeight]);
 
   const handleSaveRecord = () => {
     addRecord({
@@ -826,7 +1044,7 @@ function BagWeightCalculator({ onBagWeight, onDims, onPrintRef }: BagWeightCalcu
   };
 
   const toggleSelect = (id: number) => {
-    setSelectedIds(prev => {
+    setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -836,17 +1054,22 @@ function BagWeightCalculator({ onBagWeight, onDims, onPrintRef }: BagWeightCalcu
 
   const toggleSelectAll = () => {
     if (selectedIds.size === history.length) setSelectedIds(new Set());
-    else setSelectedIds(new Set(history.map(r => r.id)));
+    else setSelectedIds(new Set(history.map((r) => r.id)));
   };
 
-  const selectedRecords = history.filter(r => selectedIds.has(r.id));
+  const selectedRecords = history.filter((r) => selectedIds.has(r.id));
   const getBagTypeLabel = (type: BagType) => {
     switch (type) {
-      case "hanger": return t("tools.bagWeight.hanger");
-      case "banana": return t("tools.bagWeight.banana");
-      case "no-handle": return t("tools.bagWeight.noHandle");
-      case "table-cover": return t("tools.bagWeight.tableCover");
-      default: return type;
+      case "hanger":
+        return t("tools.bagWeight.hanger");
+      case "banana":
+        return t("tools.bagWeight.banana");
+      case "no-handle":
+        return t("tools.bagWeight.noHandle");
+      case "table-cover":
+        return t("tools.bagWeight.tableCover");
+      default:
+        return type;
     }
   };
 
@@ -854,7 +1077,9 @@ function BagWeightCalculator({ onBagWeight, onDims, onPrintRef }: BagWeightCalcu
     if (records.length === 0) return;
     const isAr = document.documentElement.dir === "rtl";
     const dir = isAr ? "rtl" : "ltr";
-    const rows = records.map(r => `
+    const rows = records
+      .map(
+        (r) => `
       <tr>
         <td>${getBagTypeLabel(r.bagType)}</td>
         <td>${r.widthCm} × ${r.lengthCm}</td>
@@ -867,7 +1092,9 @@ function BagWeightCalculator({ onBagWeight, onDims, onPrintRef }: BagWeightCalcu
         <td>${fmtFixed(r.areaM2, 4)}</td>
         <td style="font-size:11px;color:#888">${r.createdAt || ""}</td>
       </tr>
-    `).join("");
+    `,
+      )
+      .join("");
 
     const html = `<!DOCTYPE html>
 <html dir="${dir}" lang="${isAr ? "ar" : "en"}">
@@ -889,7 +1116,7 @@ function BagWeightCalculator({ onBagWeight, onDims, onPrintRef }: BagWeightCalcu
 </head>
 <body>
   <h1>${t("tools.bagWeight.printTitle")}</h1>
-  <p class="subtitle">${new Date().toLocaleDateString("en-US", { year:"numeric", month:"long", day:"numeric" })} — ${records.length > 1 ? records.length + " " + t("tools.bagWeight.records") : ""}</p>
+  <p class="subtitle">${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })} — ${records.length > 1 ? records.length + " " + t("tools.bagWeight.records") : ""}</p>
   <table>
     <thead>
       <tr>
@@ -941,7 +1168,9 @@ function BagWeightCalculator({ onBagWeight, onDims, onPrintRef }: BagWeightCalcu
     directPrint([currentRecord]);
   };
 
-  useEffect(() => { onPrintRef?.(handlePrintCurrent); });
+  useEffect(() => {
+    onPrintRef?.(handlePrintCurrent);
+  });
 
   return (
     <div className="space-y-6">
@@ -957,12 +1186,25 @@ function BagWeightCalculator({ onBagWeight, onDims, onPrintRef }: BagWeightCalcu
                   { value: "hanger", label: t("tools.bagWeight.hanger") },
                   { value: "banana", label: t("tools.bagWeight.banana") },
                   { value: "no-handle", label: t("tools.bagWeight.noHandle") },
-                  { value: "table-cover", label: t("tools.bagWeight.tableCover") },
+                  {
+                    value: "table-cover",
+                    label: t("tools.bagWeight.tableCover"),
+                  },
                 ]}
               />
               <div className="grid grid-cols-2 gap-3">
-                <InputField label={t("tools.bagWeight.width")} value={widthCm} onChange={setWidthCm} suffix={t("tools.common.cm")} />
-                <InputField label={t("tools.bagWeight.length")} value={lengthCm} onChange={setLengthCm} suffix={t("tools.common.cm")} />
+                <InputField
+                  label={t("tools.bagWeight.width")}
+                  value={widthCm}
+                  onChange={setWidthCm}
+                  suffix={t("tools.common.cm")}
+                />
+                <InputField
+                  label={t("tools.bagWeight.length")}
+                  value={lengthCm}
+                  onChange={setLengthCm}
+                  suffix={t("tools.common.cm")}
+                />
               </div>
               {usesGusset ? (
                 <div className="grid grid-cols-2 gap-3">
@@ -973,16 +1215,37 @@ function BagWeightCalculator({ onBagWeight, onDims, onPrintRef }: BagWeightCalcu
                     suffix={t("tools.common.cm")}
                     hint={t("tools.bagWeight.perSide")}
                   />
-                  <InputField label={t("tools.bagWeight.thickness")} value={thicknessMicron} onChange={setThicknessMicron} suffix="μm" />
+                  <InputField
+                    label={t("tools.bagWeight.thickness")}
+                    value={thicknessMicron}
+                    onChange={setThicknessMicron}
+                    suffix="μm"
+                  />
                 </div>
               ) : (
-                <InputField label={t("tools.bagWeight.thickness")} value={thicknessMicron} onChange={setThicknessMicron} suffix="μm" />
+                <InputField
+                  label={t("tools.bagWeight.thickness")}
+                  value={thicknessMicron}
+                  onChange={setThicknessMicron}
+                  suffix="μm"
+                />
               )}
               <div className="grid grid-cols-2 gap-3">
                 {!isTableCover && (
-                  <InputField label={t("tools.bagWeight.layers")} value={layers} onChange={setLayers} step={1} />
+                  <InputField
+                    label={t("tools.bagWeight.layers")}
+                    value={layers}
+                    onChange={setLayers}
+                    step={1}
+                  />
                 )}
-                <InputField label={t("tools.bagWeight.density")} value={density} onChange={setDensity} step={0.01} suffix="g/cm³" />
+                <InputField
+                  label={t("tools.bagWeight.density")}
+                  value={density}
+                  onChange={setDensity}
+                  step={0.01}
+                  suffix="g/cm³"
+                />
               </div>
               {bagType === "hanger" && (
                 <div className="text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900 rounded-lg px-3 py-2">
@@ -1023,9 +1286,19 @@ function BagWeightCalculator({ onBagWeight, onDims, onPrintRef }: BagWeightCalcu
             {t("tools.bagWeight.results")}
           </h3>
           <div className="grid gap-3">
-            <ResultCard label={t("tools.bagWeight.weightPerBag")} value={`${fmtFixed(result.gramsPerBag, 3)} ${t("tools.common.gram")}`} highlight />
-            <ResultCard label={t("tools.bagWeight.bagsPerKg")} value={`${fmtFixed(result.bagsPerKg, 1)} ${t("tools.common.bag")}`} />
-            <ResultCard label={t("tools.bagWeight.area")} value={`${fmtFixed(result.areaM2, 4)} ${t("tools.common.sqm")}`} />
+            <ResultCard
+              label={t("tools.bagWeight.weightPerBag")}
+              value={`${fmtFixed(result.gramsPerBag, 3)} ${t("tools.common.gram")}`}
+              highlight
+            />
+            <ResultCard
+              label={t("tools.bagWeight.bagsPerKg")}
+              value={`${fmtFixed(result.bagsPerKg, 1)} ${t("tools.common.bag")}`}
+            />
+            <ResultCard
+              label={t("tools.bagWeight.area")}
+              value={`${fmtFixed(result.areaM2, 4)} ${t("tools.common.sqm")}`}
+            />
           </div>
           <Button onClick={handleSaveRecord} className="w-full">
             <Scale className="h-4 w-4 ml-2" />
@@ -1038,15 +1311,26 @@ function BagWeightCalculator({ onBagWeight, onDims, onPrintRef }: BagWeightCalcu
         <Card className="print:hidden">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base">{t("tools.bagWeight.history")} ({history.length})</CardTitle>
+              <CardTitle className="text-base">
+                {t("tools.bagWeight.history")} ({history.length})
+              </CardTitle>
               <div className="flex gap-2">
                 {selectedIds.size > 0 && (
-                  <Button variant="outline" size="sm" onClick={handlePrintSelected}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePrintSelected}
+                  >
                     <Printer className="h-4 w-4 ml-1" />
                     {t("tools.bagWeight.printSelected")} ({selectedIds.size})
                   </Button>
                 )}
-                <Button variant="ghost" size="sm" onClick={clearHistory} className="text-destructive">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearHistory}
+                  className="text-destructive"
+                >
                   {t("tools.bagWeight.clearHistory")}
                 </Button>
               </div>
@@ -1058,15 +1342,19 @@ function BagWeightCalculator({ onBagWeight, onDims, onPrintRef }: BagWeightCalcu
                 <input
                   type="checkbox"
                   className="rounded"
-                  checked={selectedIds.size === history.length && history.length > 0}
+                  checked={
+                    selectedIds.size === history.length && history.length > 0
+                  }
                   onChange={toggleSelectAll}
                 />
-                <span className="font-medium">{t("tools.bagWeight.selectAll")}</span>
+                <span className="font-medium">
+                  {t("tools.bagWeight.selectAll")}
+                </span>
               </label>
               {history.map((record) => (
                 <div
                   key={record.id}
-                  className={`p-3 rounded-lg border transition-colors ${selectedIds.has(record.id) ? 'bg-primary/5 border-primary' : 'bg-slate-50 dark:bg-slate-800 border-transparent'}`}
+                  className={`p-3 rounded-lg border transition-colors ${selectedIds.has(record.id) ? "bg-primary/5 border-primary" : "bg-slate-50 dark:bg-slate-800 border-transparent"}`}
                 >
                   <div className="flex items-start gap-3">
                     <input
@@ -1077,35 +1365,60 @@ function BagWeightCalculator({ onBagWeight, onDims, onPrintRef }: BagWeightCalcu
                     />
                     <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
                       <div>
-                        <span className="text-muted-foreground">{t("tools.bagWeight.type")}:</span>
-                        <span className="mr-1 font-medium">{getBagTypeLabel(record.bagType)}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">{t("tools.bagWeight.dimensions")}:</span>
-                        <span className="mr-1">
-                          {record.widthCm}×{record.lengthCm} {t("tools.common.cm")}
-                          {record.sideGussetCm > 0 && ` + ${t("tools.bagWeight.gusset").replace(/\s*\(.*\)/, "")} ${record.sideGussetCm}`}
+                        <span className="text-muted-foreground">
+                          {t("tools.bagWeight.type")}:
+                        </span>
+                        <span className="mr-1 font-medium">
+                          {getBagTypeLabel(record.bagType)}
                         </span>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">{t("tools.bagWeight.weight")}:</span>
-                        <span className="mr-1 font-bold text-primary">{fmtFixed(record.gramsPerBag, 3)} {t("tools.common.gram")}</span>
+                        <span className="text-muted-foreground">
+                          {t("tools.bagWeight.dimensions")}:
+                        </span>
+                        <span className="mr-1">
+                          {record.widthCm}×{record.lengthCm}{" "}
+                          {t("tools.common.cm")}
+                          {record.sideGussetCm > 0 &&
+                            ` + ${t("tools.bagWeight.gusset").replace(/\s*\(.*\)/, "")} ${record.sideGussetCm}`}
+                        </span>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">{t("tools.bagWeight.bagsPerKg")}:</span>
-                        <span className="mr-1">{fmtFixed(record.bagsPerKg, 1)}</span>
+                        <span className="text-muted-foreground">
+                          {t("tools.bagWeight.weight")}:
+                        </span>
+                        <span className="mr-1 font-bold text-primary">
+                          {fmtFixed(record.gramsPerBag, 3)}{" "}
+                          {t("tools.common.gram")}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">
+                          {t("tools.bagWeight.bagsPerKg")}:
+                        </span>
+                        <span className="mr-1">
+                          {fmtFixed(record.bagsPerKg, 1)}
+                        </span>
                       </div>
                     </div>
-                    <Button variant="ghost" size="sm" className="text-destructive" onClick={() => deleteRecord(record.id)}>×</Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive"
+                      onClick={() => deleteRecord(record.id)}
+                    >
+                      ×
+                    </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1 mr-6">{record.createdAt}</p>
+                  <p className="text-xs text-muted-foreground mt-1 mr-6">
+                    {record.createdAt}
+                  </p>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
       )}
-
     </div>
   );
 }
@@ -1129,16 +1442,49 @@ function ColorTools(): JSX.Element {
           {t("tools.colors.cmykToRgb")}
         </h3>
         <div className="grid grid-cols-2 gap-3">
-          <InputField label="Cyan %" value={c} onChange={setC} step={1} suffix="%" />
-          <InputField label="Magenta %" value={m} onChange={setM} step={1} suffix="%" />
-          <InputField label="Yellow %" value={y} onChange={setY} step={1} suffix="%" />
-          <InputField label="Key %" value={k} onChange={setK} step={1} suffix="%" />
+          <InputField
+            label="Cyan %"
+            value={c}
+            onChange={setC}
+            step={1}
+            suffix="%"
+          />
+          <InputField
+            label="Magenta %"
+            value={m}
+            onChange={setM}
+            step={1}
+            suffix="%"
+          />
+          <InputField
+            label="Yellow %"
+            value={y}
+            onChange={setY}
+            step={1}
+            suffix="%"
+          />
+          <InputField
+            label="Key %"
+            value={k}
+            onChange={setK}
+            step={1}
+            suffix="%"
+          />
         </div>
         <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
-          <div className="w-20 h-20 rounded-xl border-2 shadow-inner" style={{ backgroundColor: hex }} />
+          <div
+            className="w-20 h-20 rounded-xl border-2 shadow-inner"
+            style={{ backgroundColor: hex }}
+          />
           <div className="space-y-1">
-            <p className="text-sm"><span className="text-muted-foreground">RGB:</span> {rgb.r}, {rgb.g}, {rgb.b}</p>
-            <p className="text-sm"><span className="text-muted-foreground">HEX:</span> <Badge variant="outline">{hex}</Badge></p>
+            <p className="text-sm">
+              <span className="text-muted-foreground">RGB:</span> {rgb.r},{" "}
+              {rgb.g}, {rgb.b}
+            </p>
+            <p className="text-sm">
+              <span className="text-muted-foreground">HEX:</span>{" "}
+              <Badge variant="outline">{hex}</Badge>
+            </p>
           </div>
         </div>
       </div>
@@ -1168,10 +1514,19 @@ function RgbToCmykWidget(): JSX.Element {
         <InputField label="B" value={b} onChange={setB} step={1} />
       </div>
       <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
-        <div className="w-20 h-20 rounded-xl border-2 shadow-inner" style={{ backgroundColor: hex }} />
+        <div
+          className="w-20 h-20 rounded-xl border-2 shadow-inner"
+          style={{ backgroundColor: hex }}
+        />
         <div className="space-y-1">
-          <p className="text-sm"><span className="text-muted-foreground">HEX:</span> <Badge variant="outline">{hex}</Badge></p>
-          <p className="text-sm"><span className="text-muted-foreground">CMYK:</span> {cmyk.c}% / {cmyk.m}% / {cmyk.y}% / {cmyk.k}%</p>
+          <p className="text-sm">
+            <span className="text-muted-foreground">HEX:</span>{" "}
+            <Badge variant="outline">{hex}</Badge>
+          </p>
+          <p className="text-sm">
+            <span className="text-muted-foreground">CMYK:</span> {cmyk.c}% /{" "}
+            {cmyk.m}% / {cmyk.y}% / {cmyk.k}%
+          </p>
         </div>
       </div>
     </div>
@@ -1201,18 +1556,26 @@ function ColorMixTools(): JSX.Element {
       const cvs = canvasRef.current ?? document.createElement("canvas");
       const ctx = cvs.getContext("2d");
       if (!ctx) return;
-      const W = 240, H = Math.max(120, Math.floor((img.height / img.width) * 240));
-      cvs.width = W; cvs.height = H;
+      const W = 240,
+        H = Math.max(120, Math.floor((img.height / img.width) * 240));
+      cvs.width = W;
+      cvs.height = H;
       ctx.drawImage(img, 0, 0, W, H);
       const data = ctx.getImageData(0, 0, W, H).data;
       const buckets: Record<string, number> = {};
       for (let i = 0; i < data.length; i += 16) {
-        const r = data[i], g = data[i + 1], b = data[i + 2];
-        const R = r >> 5, G = g >> 5, B = b >> 5;
+        const r = data[i],
+          g = data[i + 1],
+          b = data[i + 2];
+        const R = r >> 5,
+          G = g >> 5,
+          B = b >> 5;
         const key = `${R}-${G}-${B}`;
         buckets[key] = (buckets[key] || 0) + 1;
       }
-      const entries = Object.entries(buckets).sort((a, b) => b[1] - a[1]).slice(0, 6);
+      const entries = Object.entries(buckets)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6);
       const pal = entries.map(([k]) => {
         const [R, G, B] = k.split("-").map((n) => Number(n));
         return rgbToHex(R * 32 + 16, G * 32 + 16, B * 32 + 16);
@@ -1237,21 +1600,59 @@ function ColorMixTools(): JSX.Element {
   return (
     <div className="grid md:grid-cols-2 gap-6">
       <div className="space-y-4">
-        <TextField label={t("tools.colorMix.hexCode")} value={hex} onChange={onHexChange} placeholder="#RRGGBB" />
+        <TextField
+          label={t("tools.colorMix.hexCode")}
+          value={hex}
+          onChange={onHexChange}
+          placeholder="#RRGGBB"
+        />
         <div className="grid grid-cols-2 gap-3">
-          <InputField label="C %" value={cmyk.c} onChange={(v) => setCmyk({ ...cmyk, c: v })} step={1} />
-          <InputField label="M %" value={cmyk.m} onChange={(v) => setCmyk({ ...cmyk, m: v })} step={1} />
-          <InputField label="Y %" value={cmyk.y} onChange={(v) => setCmyk({ ...cmyk, y: v })} step={1} />
-          <InputField label="K %" value={cmyk.k} onChange={(v) => setCmyk({ ...cmyk, k: v })} step={1} />
+          <InputField
+            label="C %"
+            value={cmyk.c}
+            onChange={(v) => setCmyk({ ...cmyk, c: v })}
+            step={1}
+          />
+          <InputField
+            label="M %"
+            value={cmyk.m}
+            onChange={(v) => setCmyk({ ...cmyk, m: v })}
+            step={1}
+          />
+          <InputField
+            label="Y %"
+            value={cmyk.y}
+            onChange={(v) => setCmyk({ ...cmyk, y: v })}
+            step={1}
+          />
+          <InputField
+            label="K %"
+            value={cmyk.k}
+            onChange={(v) => setCmyk({ ...cmyk, k: v })}
+            step={1}
+          />
         </div>
-        <InputField label={t("tools.colorMix.mixTotal")} value={totalInkPct} onChange={setTotalInkPct} step={1} suffix="%" />
-        
+        <InputField
+          label={t("tools.colorMix.mixTotal")}
+          value={totalInkPct}
+          onChange={setTotalInkPct}
+          step={1}
+          suffix="%"
+        />
+
         <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl space-y-3">
           <div className="flex items-center gap-3">
-            <div className="w-16 h-16 rounded-xl border-2" style={{ backgroundColor: hex }} />
+            <div
+              className="w-16 h-16 rounded-xl border-2"
+              style={{ backgroundColor: hex }}
+            />
             <div>
-              <p className="font-semibold">{t("tools.colorMix.suggestedMix")}</p>
-              <p className="text-sm text-muted-foreground">{t("tools.colorMix.fromTotal")} {totalInkPct}%</p>
+              <p className="font-semibold">
+                {t("tools.colorMix.suggestedMix")}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {t("tools.colorMix.fromTotal")} {totalInkPct}%
+              </p>
             </div>
           </div>
           <div className="grid grid-cols-4 gap-2">
@@ -1269,19 +1670,25 @@ function ColorMixTools(): JSX.Element {
           <input
             type="file"
             accept="image/*"
-            onChange={(e) => e.target.files && handleImageUpload(e.target.files[0])}
+            onChange={(e) =>
+              e.target.files && handleImageUpload(e.target.files[0])
+            }
             className="hidden"
             id="image-upload"
           />
           <label htmlFor="image-upload" className="cursor-pointer">
             <PaintBucket className="h-10 w-10 mx-auto mb-2 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">{t("tools.colorMix.clickToUpload")}</p>
+            <p className="text-sm text-muted-foreground">
+              {t("tools.colorMix.clickToUpload")}
+            </p>
           </label>
         </div>
         <canvas ref={canvasRef} className="hidden" />
         {palette.length > 0 && (
           <div className="space-y-2">
-            <p className="text-sm font-medium">{t("tools.colorMix.extractedColors")}</p>
+            <p className="text-sm font-medium">
+              {t("tools.colorMix.extractedColors")}
+            </p>
             <div className="grid grid-cols-6 gap-2">
               {palette.map((p) => (
                 <button
@@ -1302,7 +1709,11 @@ function ColorMixTools(): JSX.Element {
 
 // ===================== 4) استهلاك الحبر =====================
 
-function InkUsageCalculator({ sharedDims }: { sharedDims: { widthCm: number; lengthCm: number } | null }): JSX.Element {
+function InkUsageCalculator({
+  sharedDims,
+}: {
+  sharedDims: { widthCm: number; lengthCm: number } | null;
+}): JSX.Element {
   const { t } = useTranslation();
   const [widthCm, setWidthCm] = useState<number>(sharedDims?.widthCm ?? 30);
   const [lengthCm, setLengthCm] = useState<number>(sharedDims?.lengthCm ?? 40);
@@ -1311,16 +1722,17 @@ function InkUsageCalculator({ sharedDims }: { sharedDims: { widthCm: number; len
   const [inkLaydownGsm, setInkLaydownGsm] = useState<number>(1.2);
   const [qty, setQty] = useState<number>(10000);
 
-  useEffect(() => { 
-    if (sharedDims) { 
-      setWidthCm(sharedDims.widthCm); 
-      setLengthCm(sharedDims.lengthCm); 
-    } 
+  useEffect(() => {
+    if (sharedDims) {
+      setWidthCm(sharedDims.widthCm);
+      setLengthCm(sharedDims.lengthCm);
+    }
   }, [sharedDims]);
 
   const result = useMemo(() => {
     const area_m2 = (toNumber(widthCm) / 100) * (toNumber(lengthCm) / 100);
-    const printed_m2_per_bag = area_m2 * (toNumber(coveragePct) / 100) * Number(printSides);
+    const printed_m2_per_bag =
+      area_m2 * (toNumber(coveragePct) / 100) * Number(printSides);
     const total_printed_m2 = printed_m2_per_bag * toNumber(qty);
     const ink_grams = total_printed_m2 * toNumber(inkLaydownGsm);
     const ink_kg = ink_grams / 1000;
@@ -1331,8 +1743,18 @@ function InkUsageCalculator({ sharedDims }: { sharedDims: { widthCm: number; len
     <div className="grid md:grid-cols-2 gap-6">
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          <InputField label={t("tools.bagWeight.width")} value={widthCm} onChange={setWidthCm} suffix={t("tools.common.cm")} />
-          <InputField label={t("tools.bagWeight.length")} value={lengthCm} onChange={setLengthCm} suffix={t("tools.common.cm")} />
+          <InputField
+            label={t("tools.bagWeight.width")}
+            value={widthCm}
+            onChange={setWidthCm}
+            suffix={t("tools.common.cm")}
+          />
+          <InputField
+            label={t("tools.bagWeight.length")}
+            value={lengthCm}
+            onChange={setLengthCm}
+            suffix={t("tools.common.cm")}
+          />
         </div>
         <SelectField
           label={t("tools.inkUsage.printSides")}
@@ -1344,10 +1766,27 @@ function InkUsageCalculator({ sharedDims }: { sharedDims: { widthCm: number; len
           ]}
         />
         <div className="grid grid-cols-2 gap-3">
-          <InputField label={t("tools.inkUsage.coverage")} value={coveragePct} onChange={setCoveragePct} step={1} suffix="%" />
-          <InputField label={t("tools.inkUsage.inkLaydown")} value={inkLaydownGsm} onChange={setInkLaydownGsm} suffix="g/m²" />
+          <InputField
+            label={t("tools.inkUsage.coverage")}
+            value={coveragePct}
+            onChange={setCoveragePct}
+            step={1}
+            suffix="%"
+          />
+          <InputField
+            label={t("tools.inkUsage.inkLaydown")}
+            value={inkLaydownGsm}
+            onChange={setInkLaydownGsm}
+            suffix="g/m²"
+          />
         </div>
-        <InputField label={t("tools.inkUsage.quantity")} value={qty} onChange={setQty} step={500} suffix={t("tools.common.piece")} />
+        <InputField
+          label={t("tools.inkUsage.quantity")}
+          value={qty}
+          onChange={setQty}
+          step={500}
+          suffix={t("tools.common.piece")}
+        />
       </div>
       <div className="space-y-4">
         <h3 className="font-semibold flex items-center gap-2">
@@ -1355,9 +1794,19 @@ function InkUsageCalculator({ sharedDims }: { sharedDims: { widthCm: number; len
           {t("tools.inkUsage.results")}
         </h3>
         <div className="grid gap-3">
-          <ResultCard label={t("tools.inkUsage.printedAreaPerBag")} value={`${fmtFixed(result.printed_m2_per_bag, 4)} ${t("tools.common.sqm")}`} />
-          <ResultCard label={t("tools.inkUsage.totalArea")} value={`${fmtFixed(result.total_printed_m2, 2)} ${t("tools.common.sqm")}`} />
-          <ResultCard label={t("tools.inkUsage.inkRequired")} value={`${fmtFixed(result.ink_kg, 2)} ${t("tools.common.kg")}`} highlight />
+          <ResultCard
+            label={t("tools.inkUsage.printedAreaPerBag")}
+            value={`${fmtFixed(result.printed_m2_per_bag, 4)} ${t("tools.common.sqm")}`}
+          />
+          <ResultCard
+            label={t("tools.inkUsage.totalArea")}
+            value={`${fmtFixed(result.total_printed_m2, 2)} ${t("tools.common.sqm")}`}
+          />
+          <ResultCard
+            label={t("tools.inkUsage.inkRequired")}
+            value={`${fmtFixed(result.ink_kg, 2)} ${t("tools.common.kg")}`}
+            highlight
+          />
         </div>
       </div>
     </div>
@@ -1366,20 +1815,29 @@ function InkUsageCalculator({ sharedDims }: { sharedDims: { widthCm: number; len
 
 // ===================== 5) تكلفة سريعة =====================
 
-function OrderCostCalculator({ sharedBagWeightG = 0 }: { sharedBagWeightG?: number }): JSX.Element {
+function OrderCostCalculator({
+  sharedBagWeightG = 0,
+}: {
+  sharedBagWeightG?: number;
+}): JSX.Element {
   const { t } = useTranslation();
   const [qty, setQty] = useState<number>(10000);
   const [bagWeightG, setBagWeightG] = useState<number>(sharedBagWeightG || 5);
-  const [useShared, setUseShared] = useState<boolean>(Boolean(sharedBagWeightG));
+  const [useShared, setUseShared] = useState<boolean>(
+    Boolean(sharedBagWeightG),
+  );
   const [materialPricePerKg, setMaterialPricePerKg] = useState<number>(7.0);
   const [wastePct, setWastePct] = useState<number>(4);
   const [extrusionCostPerKg, setExtrusionCostPerKg] = useState<number>(1.0);
   const [cuttingCostPer1000, setCuttingCostPer1000] = useState<number>(6.0);
   const [colors, setColors] = useState<number>(0);
-  const [printCostPerColorPer1000, setPrintCostPerColorPer1000] = useState<number>(5.0);
+  const [printCostPerColorPer1000, setPrintCostPerColorPer1000] =
+    useState<number>(5.0);
   const [marginPct, setMarginPct] = useState<number>(10);
 
-  useEffect(() => { if (useShared) setBagWeightG(sharedBagWeightG || 0); }, [sharedBagWeightG, useShared]);
+  useEffect(() => {
+    if (useShared) setBagWeightG(sharedBagWeightG || 0);
+  }, [sharedBagWeightG, useShared]);
 
   const result = useMemo(() => {
     const weightPerBagG = toNumber(bagWeightG);
@@ -1388,17 +1846,36 @@ function OrderCostCalculator({ sharedBagWeightG = 0 }: { sharedBagWeightG?: numb
     const materialCost = materialKg * toNumber(materialPricePerKg);
     const extrusionCost = materialKg * toNumber(extrusionCostPerKg);
     const cuttingCost = (toNumber(qty) / 1000) * toNumber(cuttingCostPer1000);
-    const printingCost = (toNumber(qty) / 1000) * toNumber(colors) * toNumber(printCostPerColorPer1000);
+    const printingCost =
+      (toNumber(qty) / 1000) *
+      toNumber(colors) *
+      toNumber(printCostPerColorPer1000);
     const subtotal = materialCost + extrusionCost + cuttingCost + printingCost;
     const margin = subtotal * (toNumber(marginPct) / 100);
     const total = subtotal + margin;
     return {
-      materialKg, materialCost, extrusionCost, cuttingCost, printingCost,
-      subtotal, margin, total,
+      materialKg,
+      materialCost,
+      extrusionCost,
+      cuttingCost,
+      printingCost,
+      subtotal,
+      margin,
+      total,
       unitPrice: total / Math.max(1, toNumber(qty)),
-      pricePerKg: total / Math.max(0.000001, materialKg)
+      pricePerKg: total / Math.max(0.000001, materialKg),
     } as const;
-  }, [qty, bagWeightG, wastePct, materialPricePerKg, extrusionCostPerKg, cuttingCostPer1000, colors, printCostPerColorPer1000, marginPct]);
+  }, [
+    qty,
+    bagWeightG,
+    wastePct,
+    materialPricePerKg,
+    extrusionCostPerKg,
+    cuttingCostPer1000,
+    colors,
+    printCostPerColorPer1000,
+    marginPct,
+  ]);
 
   return (
     <div className="grid lg:grid-cols-2 gap-6">
@@ -1410,50 +1887,132 @@ function OrderCostCalculator({ sharedBagWeightG = 0 }: { sharedBagWeightG?: numb
             checked={useShared}
             onChange={(e) => setUseShared(e.target.checked)}
           />
-          {t("tools.orderCost.useBagWeight")} ({fmtFixed(sharedBagWeightG, 3)} {t("tools.common.gram")})
+          {t("tools.orderCost.useBagWeight")} ({fmtFixed(sharedBagWeightG, 3)}{" "}
+          {t("tools.common.gram")})
         </label>
-        {!useShared && <InputField label={t("tools.orderCost.bagWeight")} value={bagWeightG} onChange={setBagWeightG} suffix={t("tools.common.gram")} />}
-        <InputField label={t("tools.orderCost.quantity")} value={qty} onChange={setQty} step={500} suffix={t("tools.common.piece")} />
-        
+        {!useShared && (
+          <InputField
+            label={t("tools.orderCost.bagWeight")}
+            value={bagWeightG}
+            onChange={setBagWeightG}
+            suffix={t("tools.common.gram")}
+          />
+        )}
+        <InputField
+          label={t("tools.orderCost.quantity")}
+          value={qty}
+          onChange={setQty}
+          step={500}
+          suffix={t("tools.common.piece")}
+        />
+
         <Separator />
-        
+
         <div className="grid grid-cols-2 gap-3">
-          <InputField label={t("tools.orderCost.materialPrice")} value={materialPricePerKg} onChange={setMaterialPricePerKg} suffix={t("tools.common.sarPerKg")} />
-          <InputField label={t("tools.orderCost.wastePct")} value={wastePct} onChange={setWastePct} suffix="%" />
+          <InputField
+            label={t("tools.orderCost.materialPrice")}
+            value={materialPricePerKg}
+            onChange={setMaterialPricePerKg}
+            suffix={t("tools.common.sarPerKg")}
+          />
+          <InputField
+            label={t("tools.orderCost.wastePct")}
+            value={wastePct}
+            onChange={setWastePct}
+            suffix="%"
+          />
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <InputField label={t("tools.orderCost.extrusionCost")} value={extrusionCostPerKg} onChange={setExtrusionCostPerKg} suffix={t("tools.common.sarPerKg")} />
-          <InputField label={t("tools.orderCost.cuttingCost")} value={cuttingCostPer1000} onChange={setCuttingCostPer1000} suffix={t("tools.orderCostAdvanced.per1000")} />
+          <InputField
+            label={t("tools.orderCost.extrusionCost")}
+            value={extrusionCostPerKg}
+            onChange={setExtrusionCostPerKg}
+            suffix={t("tools.common.sarPerKg")}
+          />
+          <InputField
+            label={t("tools.orderCost.cuttingCost")}
+            value={cuttingCostPer1000}
+            onChange={setCuttingCostPer1000}
+            suffix={t("tools.orderCostAdvanced.per1000")}
+          />
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <InputField label={t("tools.orderCost.colorsCount")} value={colors} onChange={setColors} step={1} />
-          <InputField label={t("tools.orderCost.printingCost")} value={printCostPerColorPer1000} onChange={setPrintCostPerColorPer1000} suffix={t("tools.common.sarPerColor")} />
+          <InputField
+            label={t("tools.orderCost.colorsCount")}
+            value={colors}
+            onChange={setColors}
+            step={1}
+          />
+          <InputField
+            label={t("tools.orderCost.printingCost")}
+            value={printCostPerColorPer1000}
+            onChange={setPrintCostPerColorPer1000}
+            suffix={t("tools.common.sarPerColor")}
+          />
         </div>
-        <InputField label={t("tools.orderCost.profitMargin")} value={marginPct} onChange={setMarginPct} suffix="%" />
+        <InputField
+          label={t("tools.orderCost.profitMargin")}
+          value={marginPct}
+          onChange={setMarginPct}
+          suffix="%"
+        />
       </div>
-      
+
       <div className="space-y-4">
         <h3 className="font-semibold flex items-center gap-2">
           <Calculator className="h-5 w-5 text-primary" />
           {t("tools.orderCost.results")}
         </h3>
         <div className="grid gap-2">
-          <ResultCard label={t("tools.orderCost.materialWeight")} value={`${fmtFixed(result.materialKg, 2)} ${t("tools.common.kg")}`} />
-          <ResultCard label={t("tools.orderCost.materialCostResult")} value={`${fmtFixed(result.materialCost, 2)} ${t("tools.common.sar")}`} />
-          <ResultCard label={t("tools.orderCost.extrusionCostResult")} value={`${fmtFixed(result.extrusionCost, 2)} ${t("tools.common.sar")}`} />
-          <ResultCard label={t("tools.orderCost.cuttingCostResult")} value={`${fmtFixed(result.cuttingCost, 2)} ${t("tools.common.sar")}`} />
-          {colors > 0 && <ResultCard label={t("tools.orderCost.printingCostResult")} value={`${fmtFixed(result.printingCost, 2)} ${t("tools.common.sar")}`} />}
+          <ResultCard
+            label={t("tools.orderCost.materialWeight")}
+            value={`${fmtFixed(result.materialKg, 2)} ${t("tools.common.kg")}`}
+          />
+          <ResultCard
+            label={t("tools.orderCost.materialCostResult")}
+            value={`${fmtFixed(result.materialCost, 2)} ${t("tools.common.sar")}`}
+          />
+          <ResultCard
+            label={t("tools.orderCost.extrusionCostResult")}
+            value={`${fmtFixed(result.extrusionCost, 2)} ${t("tools.common.sar")}`}
+          />
+          <ResultCard
+            label={t("tools.orderCost.cuttingCostResult")}
+            value={`${fmtFixed(result.cuttingCost, 2)} ${t("tools.common.sar")}`}
+          />
+          {colors > 0 && (
+            <ResultCard
+              label={t("tools.orderCost.printingCostResult")}
+              value={`${fmtFixed(result.printingCost, 2)} ${t("tools.common.sar")}`}
+            />
+          )}
         </div>
         <Separator />
         <div className="grid gap-2">
-          <ResultCard label={t("tools.orderCost.subtotal")} value={`${fmtFixed(result.subtotal, 2)} ${t("tools.common.sar")}`} />
-          <ResultCard label={t("tools.orderCost.profit")} value={`${fmtFixed(result.margin, 2)} ${t("tools.common.sar")}`} />
-          <ResultCard label={t("tools.orderCost.total")} value={`${fmtFixed(result.total, 2)} ${t("tools.common.sar")}`} highlight />
+          <ResultCard
+            label={t("tools.orderCost.subtotal")}
+            value={`${fmtFixed(result.subtotal, 2)} ${t("tools.common.sar")}`}
+          />
+          <ResultCard
+            label={t("tools.orderCost.profit")}
+            value={`${fmtFixed(result.margin, 2)} ${t("tools.common.sar")}`}
+          />
+          <ResultCard
+            label={t("tools.orderCost.total")}
+            value={`${fmtFixed(result.total, 2)} ${t("tools.common.sar")}`}
+            highlight
+          />
         </div>
         <Separator />
         <div className="grid grid-cols-2 gap-2">
-          <ResultCard label={t("tools.orderCost.unitPrice")} value={`${fmtFixed(result.unitPrice, 2)} ${t("tools.common.sar")}`} />
-          <ResultCard label={t("tools.orderCost.pricePerKg")} value={`${fmtFixed(result.pricePerKg, 2)} ${t("tools.common.sar")}`} />
+          <ResultCard
+            label={t("tools.orderCost.unitPrice")}
+            value={`${fmtFixed(result.unitPrice, 2)} ${t("tools.common.sar")}`}
+          />
+          <ResultCard
+            label={t("tools.orderCost.pricePerKg")}
+            value={`${fmtFixed(result.pricePerKg, 2)} ${t("tools.common.sar")}`}
+          />
         </div>
       </div>
     </div>
@@ -1462,14 +2021,28 @@ function OrderCostCalculator({ sharedBagWeightG = 0 }: { sharedBagWeightG?: numb
 
 // ===================== 6) تكلفة متقدمة =====================
 
-interface BomItem { name: string; pct: number; pricePerKg: number; }
-interface OtherCost { name: string; type: "perKg" | "per1000" | "fixed"; value: number; }
+interface BomItem {
+  name: string;
+  pct: number;
+  pricePerKg: number;
+}
+interface OtherCost {
+  name: string;
+  type: "perKg" | "per1000" | "fixed";
+  value: number;
+}
 
-function OrderCostAdvanced({ sharedBagWeightG = 0 }: { sharedBagWeightG?: number }): JSX.Element {
+function OrderCostAdvanced({
+  sharedBagWeightG = 0,
+}: {
+  sharedBagWeightG?: number;
+}): JSX.Element {
   const { t } = useTranslation();
   const [qty, setQty] = useState<number>(10000);
   const [bagWeightG, setBagWeightG] = useState<number>(sharedBagWeightG || 5);
-  const [useShared, setUseShared] = useState<boolean>(Boolean(sharedBagWeightG));
+  const [useShared, setUseShared] = useState<boolean>(
+    Boolean(sharedBagWeightG),
+  );
   const [bom, setBom] = useState<BomItem[]>([
     { name: "HDPE Base", pct: 90, pricePerKg: 7.0 },
     { name: "Masterbatch", pct: 8, pricePerKg: 12.0 },
@@ -1482,15 +2055,24 @@ function OrderCostAdvanced({ sharedBagWeightG = 0 }: { sharedBagWeightG?: number
   ]);
   const [wastePct, setWastePct] = useState<number>(4);
   const [colors, setColors] = useState<number>(0);
-  const [printCostPerColorPer1000, setPrintCostPerColorPer1000] = useState<number>(5.0);
+  const [printCostPerColorPer1000, setPrintCostPerColorPer1000] =
+    useState<number>(5.0);
   const [marginPct, setMarginPct] = useState<number>(10);
 
-  useEffect(() => { if (useShared) setBagWeightG(sharedBagWeightG || 0); }, [sharedBagWeightG, useShared]);
+  useEffect(() => {
+    if (useShared) setBagWeightG(sharedBagWeightG || 0);
+  }, [sharedBagWeightG, useShared]);
 
   const blend = useMemo(() => {
-    const totalPct = Math.max(1, bom.reduce((s, r) => s + toNumber(r.pct), 0));
+    const totalPct = Math.max(
+      1,
+      bom.reduce((s, r) => s + toNumber(r.pct), 0),
+    );
     const norm = bom.map((r) => ({ ...r, weight: r.pct / totalPct }));
-    const pricePerKg = norm.reduce((sum, r) => sum + r.weight * toNumber(r.pricePerKg), 0);
+    const pricePerKg = norm.reduce(
+      (sum, r) => sum + r.weight * toNumber(r.pricePerKg),
+      0,
+    );
     return { pricePerKg } as const;
   }, [bom]);
 
@@ -1499,53 +2081,117 @@ function OrderCostAdvanced({ sharedBagWeightG = 0 }: { sharedBagWeightG?: number
     const totalWeightKg = (toNumber(qty) * weightPerBagG) / 1_000_000;
     const materialKg = totalWeightKg * (1 + toNumber(wastePct) / 100);
     const materialCost = materialKg * blend.pricePerKg;
-    const others = otherCosts.reduce((acc, c) => {
-      if (c.type === "perKg") acc.sum += materialKg * toNumber(c.value);
-      else if (c.type === "per1000") acc.sum += (toNumber(qty) / 1000) * toNumber(c.value);
-      else acc.sum += toNumber(c.value);
-      return acc;
-    }, { sum: 0 }).sum;
-    const printingCost = (toNumber(qty) / 1000) * toNumber(colors) * toNumber(printCostPerColorPer1000);
+    const others = otherCosts.reduce(
+      (acc, c) => {
+        if (c.type === "perKg") acc.sum += materialKg * toNumber(c.value);
+        else if (c.type === "per1000")
+          acc.sum += (toNumber(qty) / 1000) * toNumber(c.value);
+        else acc.sum += toNumber(c.value);
+        return acc;
+      },
+      { sum: 0 },
+    ).sum;
+    const printingCost =
+      (toNumber(qty) / 1000) *
+      toNumber(colors) *
+      toNumber(printCostPerColorPer1000);
     const subtotal = materialCost + others + printingCost;
     const margin = subtotal * (toNumber(marginPct) / 100);
     const total = subtotal + margin;
     return {
-      materialKg, blendPrice: blend.pricePerKg, materialCost, otherCosts: others,
-      printingCost, subtotal, margin, total,
+      materialKg,
+      blendPrice: blend.pricePerKg,
+      materialCost,
+      otherCosts: others,
+      printingCost,
+      subtotal,
+      margin,
+      total,
       unitPrice: total / Math.max(1, toNumber(qty)),
       pricePerKg: total / Math.max(0.000001, materialKg),
     } as const;
-  }, [qty, bagWeightG, wastePct, blend.pricePerKg, otherCosts, colors, printCostPerColorPer1000, marginPct]);
+  }, [
+    qty,
+    bagWeightG,
+    wastePct,
+    blend.pricePerKg,
+    otherCosts,
+    colors,
+    printCostPerColorPer1000,
+    marginPct,
+  ]);
 
   return (
     <div className="space-y-6">
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-4">
           <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <input type="checkbox" className="rounded" checked={useShared} onChange={(e) => setUseShared(e.target.checked)} />
+            <input
+              type="checkbox"
+              className="rounded"
+              checked={useShared}
+              onChange={(e) => setUseShared(e.target.checked)}
+            />
             {t("tools.orderCost.useBagWeight")}
           </label>
-          {!useShared && <InputField label={t("tools.orderCost.bagWeight")} value={bagWeightG} onChange={setBagWeightG} suffix={t("tools.common.gram")} />}
-          <InputField label={t("tools.orderCost.quantity")} value={qty} onChange={setQty} step={500} suffix={t("tools.common.piece")} />
-          <InputField label={t("tools.orderCost.wastePct")} value={wastePct} onChange={setWastePct} suffix="%" />
-          
+          {!useShared && (
+            <InputField
+              label={t("tools.orderCost.bagWeight")}
+              value={bagWeightG}
+              onChange={setBagWeightG}
+              suffix={t("tools.common.gram")}
+            />
+          )}
+          <InputField
+            label={t("tools.orderCost.quantity")}
+            value={qty}
+            onChange={setQty}
+            step={500}
+            suffix={t("tools.common.piece")}
+          />
+          <InputField
+            label={t("tools.orderCost.wastePct")}
+            value={wastePct}
+            onChange={setWastePct}
+            suffix="%"
+          />
+
           <Separator />
-          
-          <h4 className="font-semibold">{t("tools.orderCostAdvanced.bomComponents")}</h4>
+
+          <h4 className="font-semibold">
+            {t("tools.orderCostAdvanced.bomComponents")}
+          </h4>
           <BomTable rows={bom} setRows={setBom} />
         </div>
-        
+
         <div className="space-y-4">
-          <h4 className="font-semibold">{t("tools.orderCostAdvanced.otherCosts")}</h4>
+          <h4 className="font-semibold">
+            {t("tools.orderCostAdvanced.otherCosts")}
+          </h4>
           <OtherCostsTable rows={otherCosts} setRows={setOtherCosts} />
-          
+
           <Separator />
-          
+
           <div className="grid grid-cols-2 gap-3">
-            <InputField label={t("tools.orderCost.colorsCount")} value={colors} onChange={setColors} step={1} />
-            <InputField label={t("tools.orderCost.printingCost")} value={printCostPerColorPer1000} onChange={setPrintCostPerColorPer1000} suffix={t("tools.common.sarPerColor")} />
+            <InputField
+              label={t("tools.orderCost.colorsCount")}
+              value={colors}
+              onChange={setColors}
+              step={1}
+            />
+            <InputField
+              label={t("tools.orderCost.printingCost")}
+              value={printCostPerColorPer1000}
+              onChange={setPrintCostPerColorPer1000}
+              suffix={t("tools.common.sarPerColor")}
+            />
           </div>
-          <InputField label={t("tools.orderCost.profitMargin")} value={marginPct} onChange={setMarginPct} suffix="%" />
+          <InputField
+            label={t("tools.orderCost.profitMargin")}
+            value={marginPct}
+            onChange={setMarginPct}
+            suffix="%"
+          />
         </div>
       </div>
 
@@ -1555,72 +2201,182 @@ function OrderCostAdvanced({ sharedBagWeightG = 0 }: { sharedBagWeightG?: number
           {t("tools.orderCostAdvanced.costResults")}
         </h4>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <ResultCard label={t("tools.orderCostAdvanced.blendPrice")} value={`${fmtFixed(result.blendPrice, 2)} ${t("tools.common.sarPerKg")}`} />
-          <ResultCard label={t("tools.orderCostAdvanced.materialWeight")} value={`${fmtFixed(result.materialKg, 2)} ${t("tools.common.kg")}`} />
-          <ResultCard label={t("tools.orderCostAdvanced.materialCost")} value={`${fmtFixed(result.materialCost, 2)} ${t("tools.common.sar")}`} />
-          <ResultCard label={t("tools.orderCostAdvanced.otherCostsResult")} value={`${fmtFixed(result.otherCosts, 2)} ${t("tools.common.sar")}`} />
+          <ResultCard
+            label={t("tools.orderCostAdvanced.blendPrice")}
+            value={`${fmtFixed(result.blendPrice, 2)} ${t("tools.common.sarPerKg")}`}
+          />
+          <ResultCard
+            label={t("tools.orderCostAdvanced.materialWeight")}
+            value={`${fmtFixed(result.materialKg, 2)} ${t("tools.common.kg")}`}
+          />
+          <ResultCard
+            label={t("tools.orderCostAdvanced.materialCost")}
+            value={`${fmtFixed(result.materialCost, 2)} ${t("tools.common.sar")}`}
+          />
+          <ResultCard
+            label={t("tools.orderCostAdvanced.otherCostsResult")}
+            value={`${fmtFixed(result.otherCosts, 2)} ${t("tools.common.sar")}`}
+          />
         </div>
         <Separator className="my-4" />
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <ResultCard label={t("tools.orderCost.subtotal")} value={`${fmtFixed(result.subtotal, 2)} ${t("tools.common.sar")}`} />
-          <ResultCard label={t("tools.orderCost.profit")} value={`${fmtFixed(result.margin, 2)} ${t("tools.common.sar")}`} />
-          <ResultCard label={t("tools.orderCost.total")} value={`${fmtFixed(result.total, 2)} ${t("tools.common.sar")}`} highlight />
-          <ResultCard label={t("tools.orderCost.unitPrice")} value={`${fmtFixed(result.unitPrice, 2)} ${t("tools.common.sar")}`} />
+          <ResultCard
+            label={t("tools.orderCost.subtotal")}
+            value={`${fmtFixed(result.subtotal, 2)} ${t("tools.common.sar")}`}
+          />
+          <ResultCard
+            label={t("tools.orderCost.profit")}
+            value={`${fmtFixed(result.margin, 2)} ${t("tools.common.sar")}`}
+          />
+          <ResultCard
+            label={t("tools.orderCost.total")}
+            value={`${fmtFixed(result.total, 2)} ${t("tools.common.sar")}`}
+            highlight
+          />
+          <ResultCard
+            label={t("tools.orderCost.unitPrice")}
+            value={`${fmtFixed(result.unitPrice, 2)} ${t("tools.common.sar")}`}
+          />
         </div>
       </div>
     </div>
   );
 }
 
-function BomTable({ rows, setRows }: { rows: BomItem[]; setRows: (r: BomItem[]) => void }): JSX.Element {
+function BomTable({
+  rows,
+  setRows,
+}: {
+  rows: BomItem[];
+  setRows: (r: BomItem[]) => void;
+}): JSX.Element {
   const { t } = useTranslation();
   const updateRow = (idx: number, patch: Partial<BomItem>) => {
     setRows(rows.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
   };
-  const addRow = () => setRows([...rows, { name: t("tools.orderCostAdvanced.newComponent"), pct: 0, pricePerKg: 0 }]);
+  const addRow = () =>
+    setRows([
+      ...rows,
+      {
+        name: t("tools.orderCostAdvanced.newComponent"),
+        pct: 0,
+        pricePerKg: 0,
+      },
+    ]);
   const delRow = (idx: number) => setRows(rows.filter((_, i) => i !== idx));
 
   return (
     <div className="space-y-2">
       {rows.map((r, i) => (
         <div key={i} className="grid grid-cols-12 gap-2 items-center">
-          <Input className="col-span-5" value={r.name} onChange={(e) => updateRow(i, { name: e.target.value })} placeholder={t("tools.orderCostAdvanced.name")} />
-          <Input type="number" className="col-span-2" value={r.pct} step={0.1} onChange={(e) => updateRow(i, { pct: Number(e.target.value) })} placeholder="%" />
-          <Input type="number" className="col-span-3" value={r.pricePerKg} step={0.1} onChange={(e) => updateRow(i, { pricePerKg: Number(e.target.value) })} placeholder={t("tools.orderCostAdvanced.price")} />
-          <Button variant="ghost" size="sm" className="col-span-2 text-destructive" onClick={() => delRow(i)}>{t("tools.orderCostAdvanced.delete")}</Button>
+          <Input
+            className="col-span-5"
+            value={r.name}
+            onChange={(e) => updateRow(i, { name: e.target.value })}
+            placeholder={t("tools.orderCostAdvanced.name")}
+          />
+          <Input
+            type="number"
+            className="col-span-2"
+            value={r.pct}
+            step={0.1}
+            onChange={(e) => updateRow(i, { pct: Number(e.target.value) })}
+            placeholder="%"
+          />
+          <Input
+            type="number"
+            className="col-span-3"
+            value={r.pricePerKg}
+            step={0.1}
+            onChange={(e) =>
+              updateRow(i, { pricePerKg: Number(e.target.value) })
+            }
+            placeholder={t("tools.orderCostAdvanced.price")}
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="col-span-2 text-destructive"
+            onClick={() => delRow(i)}
+          >
+            {t("tools.orderCostAdvanced.delete")}
+          </Button>
         </div>
       ))}
-      <Button variant="outline" size="sm" onClick={addRow}>{t("tools.orderCostAdvanced.addComponent")}</Button>
+      <Button variant="outline" size="sm" onClick={addRow}>
+        {t("tools.orderCostAdvanced.addComponent")}
+      </Button>
     </div>
   );
 }
 
-function OtherCostsTable({ rows, setRows }: { rows: OtherCost[]; setRows: (r: OtherCost[]) => void }): JSX.Element {
+function OtherCostsTable({
+  rows,
+  setRows,
+}: {
+  rows: OtherCost[];
+  setRows: (r: OtherCost[]) => void;
+}): JSX.Element {
   const { t } = useTranslation();
-  const updateRow = (idx: number, patch: Partial<OtherCost>) => setRows(rows.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
-  const addRow = () => setRows([...rows, { name: t("tools.orderCostAdvanced.newCost"), type: "fixed", value: 0 }]);
+  const updateRow = (idx: number, patch: Partial<OtherCost>) =>
+    setRows(rows.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
+  const addRow = () =>
+    setRows([
+      ...rows,
+      { name: t("tools.orderCostAdvanced.newCost"), type: "fixed", value: 0 },
+    ]);
   const delRow = (idx: number) => setRows(rows.filter((_, i) => i !== idx));
 
   return (
     <div className="space-y-2">
       {rows.map((r, i) => (
         <div key={i} className="grid grid-cols-12 gap-2 items-center">
-          <Input className="col-span-4" value={r.name} onChange={(e) => updateRow(i, { name: e.target.value })} />
-          <Select value={r.type} onValueChange={(v) => updateRow(i, { type: v as OtherCost["type"] })}>
+          <Input
+            className="col-span-4"
+            value={r.name}
+            onChange={(e) => updateRow(i, { name: e.target.value })}
+          />
+          <Select
+            value={r.type}
+            onValueChange={(v) =>
+              updateRow(i, { type: v as OtherCost["type"] })
+            }
+          >
             <SelectTrigger className="col-span-3">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="perKg">{t("tools.orderCostAdvanced.perKg")}</SelectItem>
-              <SelectItem value="per1000">{t("tools.orderCostAdvanced.per1000")}</SelectItem>
-              <SelectItem value="fixed">{t("tools.orderCostAdvanced.fixed")}</SelectItem>
+              <SelectItem value="perKg">
+                {t("tools.orderCostAdvanced.perKg")}
+              </SelectItem>
+              <SelectItem value="per1000">
+                {t("tools.orderCostAdvanced.per1000")}
+              </SelectItem>
+              <SelectItem value="fixed">
+                {t("tools.orderCostAdvanced.fixed")}
+              </SelectItem>
             </SelectContent>
           </Select>
-          <Input type="number" className="col-span-3" value={r.value} step={0.1} onChange={(e) => updateRow(i, { value: Number(e.target.value) })} />
-          <Button variant="ghost" size="sm" className="col-span-2 text-destructive" onClick={() => delRow(i)}>{t("tools.orderCostAdvanced.delete")}</Button>
+          <Input
+            type="number"
+            className="col-span-3"
+            value={r.value}
+            step={0.1}
+            onChange={(e) => updateRow(i, { value: Number(e.target.value) })}
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="col-span-2 text-destructive"
+            onClick={() => delRow(i)}
+          >
+            {t("tools.orderCostAdvanced.delete")}
+          </Button>
         </div>
       ))}
-      <Button variant="outline" size="sm" onClick={addRow}>{t("tools.orderCostAdvanced.addCost")}</Button>
+      <Button variant="outline" size="sm" onClick={addRow}>
+        {t("tools.orderCostAdvanced.addCost")}
+      </Button>
     </div>
   );
 }
@@ -1635,11 +2391,13 @@ function RollTools(): JSX.Element {
   const [rollThicknessMicron, setRollThicknessMicron] = useState<number>(18);
   const [rollDensity, setRollDensity] = useState<number>(0.95);
 
-  const netRollWeightG = Math.max(0, toNumber(rollWeightKg) - toNumber(coreWeightKg)) * 1000;
+  const netRollWeightG =
+    Math.max(0, toNumber(rollWeightKg) - toNumber(coreWeightKg)) * 1000;
   const thicknessCm = toNumber(rollThicknessMicron) * 1e-4;
 
   const lengthM = useMemo(() => {
-    const denom = toNumber(rollWidthCm) * thicknessCm * toNumber(rollDensity) * 100;
+    const denom =
+      toNumber(rollWidthCm) * thicknessCm * toNumber(rollDensity) * 100;
     if (denom <= 0) return 0;
     return netRollWeightG / denom;
   }, [netRollWeightG, rollWidthCm, thicknessCm, rollDensity]);
@@ -1651,7 +2409,12 @@ function RollTools(): JSX.Element {
   const tThicknessCm = toNumber(tThicknessMicron) * 1e-4;
 
   const neededWeightKg = useMemo(() => {
-    const grams = toNumber(tWidthCm) * tThicknessCm * toNumber(targetLengthM) * 100 * toNumber(tDensity);
+    const grams =
+      toNumber(tWidthCm) *
+      tThicknessCm *
+      toNumber(targetLengthM) *
+      100 *
+      toNumber(tDensity);
     return grams / 1000;
   }, [targetLengthM, tWidthCm, tThicknessCm, tDensity]);
 
@@ -1663,29 +2426,82 @@ function RollTools(): JSX.Element {
           {t("tools.roll.weightToLength")}
         </h4>
         <div className="grid grid-cols-2 gap-3">
-          <InputField label={t("tools.roll.rollWeight")} value={rollWeightKg} onChange={setRollWeightKg} suffix={t("tools.common.kg")} />
-          <InputField label={t("tools.roll.coreWeight")} value={coreWeightKg} onChange={setCoreWeightKg} suffix={t("tools.common.kg")} />
+          <InputField
+            label={t("tools.roll.rollWeight")}
+            value={rollWeightKg}
+            onChange={setRollWeightKg}
+            suffix={t("tools.common.kg")}
+          />
+          <InputField
+            label={t("tools.roll.coreWeight")}
+            value={coreWeightKg}
+            onChange={setCoreWeightKg}
+            suffix={t("tools.common.kg")}
+          />
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <InputField label={t("tools.roll.width")} value={rollWidthCm} onChange={setRollWidthCm} suffix={t("tools.common.cm")} />
-          <InputField label={t("tools.roll.thickness")} value={rollThicknessMicron} onChange={setRollThicknessMicron} suffix="μm" />
+          <InputField
+            label={t("tools.roll.width")}
+            value={rollWidthCm}
+            onChange={setRollWidthCm}
+            suffix={t("tools.common.cm")}
+          />
+          <InputField
+            label={t("tools.roll.thickness")}
+            value={rollThicknessMicron}
+            onChange={setRollThicknessMicron}
+            suffix="μm"
+          />
         </div>
-        <InputField label={t("tools.roll.density")} value={rollDensity} onChange={setRollDensity} suffix="g/cm³" />
-        <ResultCard label={t("tools.roll.estimatedLength")} value={`${fmtFixed(lengthM, 1)} ${t("tools.common.meter")}`} highlight />
+        <InputField
+          label={t("tools.roll.density")}
+          value={rollDensity}
+          onChange={setRollDensity}
+          suffix="g/cm³"
+        />
+        <ResultCard
+          label={t("tools.roll.estimatedLength")}
+          value={`${fmtFixed(lengthM, 1)} ${t("tools.common.meter")}`}
+          highlight
+        />
       </div>
-      
+
       <div className="space-y-4">
         <h4 className="font-semibold flex items-center gap-2">
           <Package className="h-5 w-5 text-primary" />
           {t("tools.roll.lengthToWeight")}
         </h4>
-        <InputField label={t("tools.roll.targetLength")} value={targetLengthM} onChange={setTargetLengthM} suffix={t("tools.common.meter")} />
+        <InputField
+          label={t("tools.roll.targetLength")}
+          value={targetLengthM}
+          onChange={setTargetLengthM}
+          suffix={t("tools.common.meter")}
+        />
         <div className="grid grid-cols-2 gap-3">
-          <InputField label={t("tools.roll.width")} value={tWidthCm} onChange={setTWidthCm} suffix={t("tools.common.cm")} />
-          <InputField label={t("tools.roll.thickness")} value={tThicknessMicron} onChange={setTThicknessMicron} suffix="μm" />
+          <InputField
+            label={t("tools.roll.width")}
+            value={tWidthCm}
+            onChange={setTWidthCm}
+            suffix={t("tools.common.cm")}
+          />
+          <InputField
+            label={t("tools.roll.thickness")}
+            value={tThicknessMicron}
+            onChange={setTThicknessMicron}
+            suffix="μm"
+          />
         </div>
-        <InputField label={t("tools.roll.density")} value={tDensity} onChange={setTDensity} suffix="g/cm³" />
-        <ResultCard label={t("tools.roll.requiredWeight")} value={`${fmtFixed(neededWeightKg, 2)} ${t("tools.common.kg")}`} highlight />
+        <InputField
+          label={t("tools.roll.density")}
+          value={tDensity}
+          onChange={setTDensity}
+          suffix="g/cm³"
+        />
+        <ResultCard
+          label={t("tools.roll.requiredWeight")}
+          value={`${fmtFixed(neededWeightKg, 2)} ${t("tools.common.kg")}`}
+          highlight
+        />
       </div>
     </div>
   );
@@ -1714,34 +2530,65 @@ function ThicknessConverter(): JSX.Element {
           <Ruler className="h-5 w-5 text-primary" />
           {t("tools.thickness.fromMicron")}
         </h4>
-        <InputField label={t("tools.thickness.micron")} value={micron} onChange={setMicron} suffix="μm" />
+        <InputField
+          label={t("tools.thickness.micron")}
+          value={micron}
+          onChange={setMicron}
+          suffix="μm"
+        />
         <div className="grid gap-2">
           <ResultCard label={t("tools.thickness.mm")} value={fmtFixed(mm, 4)} />
-          <ResultCard label={t("tools.thickness.gauge")} value={fmtFixed(gauge, 1)} />
+          <ResultCard
+            label={t("tools.thickness.gauge")}
+            value={fmtFixed(gauge, 1)}
+          />
         </div>
       </div>
-      
+
       <div className="space-y-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
         <h4 className="font-semibold flex items-center gap-2">
           <Ruler className="h-5 w-5 text-primary" />
           {t("tools.thickness.fromMm")}
         </h4>
-        <InputField label={t("tools.thickness.mm")} value={mmIn} onChange={setMmIn} step={0.001} suffix="mm" />
+        <InputField
+          label={t("tools.thickness.mm")}
+          value={mmIn}
+          onChange={setMmIn}
+          step={0.001}
+          suffix="mm"
+        />
         <div className="grid gap-2">
-          <ResultCard label={t("tools.thickness.micron")} value={fmtFixed(micronFromMm, 1)} />
-          <ResultCard label={t("tools.thickness.gauge")} value={fmtFixed(gaugeFromMm, 1)} />
+          <ResultCard
+            label={t("tools.thickness.micron")}
+            value={fmtFixed(micronFromMm, 1)}
+          />
+          <ResultCard
+            label={t("tools.thickness.gauge")}
+            value={fmtFixed(gaugeFromMm, 1)}
+          />
         </div>
       </div>
-      
+
       <div className="space-y-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
         <h4 className="font-semibold flex items-center gap-2">
           <Ruler className="h-5 w-5 text-primary" />
           {t("tools.thickness.fromGauge")}
         </h4>
-        <InputField label={t("tools.thickness.gauge")} value={gaugeIn} onChange={setGaugeIn} step={1} />
+        <InputField
+          label={t("tools.thickness.gauge")}
+          value={gaugeIn}
+          onChange={setGaugeIn}
+          step={1}
+        />
         <div className="grid gap-2">
-          <ResultCard label={t("tools.thickness.micron")} value={fmtFixed(micronFromGauge, 1)} />
-          <ResultCard label={t("tools.thickness.mm")} value={fmtFixed(mmFromGauge, 4)} />
+          <ResultCard
+            label={t("tools.thickness.micron")}
+            value={fmtFixed(micronFromGauge, 1)}
+          />
+          <ResultCard
+            label={t("tools.thickness.mm")}
+            value={fmtFixed(mmFromGauge, 4)}
+          />
         </div>
       </div>
     </div>
@@ -1766,48 +2613,132 @@ function JobTimePlanner(): JSX.Element {
 
   const result = useMemo(() => {
     const totalKg = (toNumber(qty) * toNumber(bagWeightG)) / 1000 / 1000;
-    const extrusionHours = totalKg / Math.max(1e-6, toNumber(extrusionKgPerHr)) + toNumber(setupExtruderHr);
-    const totalMeters = (toNumber(qty) * (toNumber(bagLengthCm) / 100));
+    const extrusionHours =
+      totalKg / Math.max(1e-6, toNumber(extrusionKgPerHr)) +
+      toNumber(setupExtruderHr);
+    const totalMeters = toNumber(qty) * (toNumber(bagLengthCm) / 100);
     const printCore = totalMeters / Math.max(1e-6, toNumber(printMPerMin)) / 60;
-    const printChangeovers = (toNumber(colors) > 0 ? (toNumber(colors) - 1) * (toNumber(changeoverPerColorMin) / 60) : 0);
+    const printChangeovers =
+      toNumber(colors) > 0
+        ? (toNumber(colors) - 1) * (toNumber(changeoverPerColorMin) / 60)
+        : 0;
     const printHours = printCore + printChangeovers + toNumber(setupPrinterHr);
-    const cutCore = (toNumber(qty) / Math.max(1e-6, toNumber(cutBagsPerMin))) / 60;
+    const cutCore =
+      toNumber(qty) / Math.max(1e-6, toNumber(cutBagsPerMin)) / 60;
     const cutHours = cutCore + toNumber(setupCutterHr);
     const totalHours = extrusionHours + printHours + cutHours;
-    return { totalKg, extrusionHours, printHours, cutHours, totalHours } as const;
-  }, [qty, bagWeightG, extrusionKgPerHr, cutBagsPerMin, printMPerMin, bagLengthCm, setupExtruderHr, setupCutterHr, setupPrinterHr, colors, changeoverPerColorMin]);
+    return {
+      totalKg,
+      extrusionHours,
+      printHours,
+      cutHours,
+      totalHours,
+    } as const;
+  }, [
+    qty,
+    bagWeightG,
+    extrusionKgPerHr,
+    cutBagsPerMin,
+    printMPerMin,
+    bagLengthCm,
+    setupExtruderHr,
+    setupCutterHr,
+    setupPrinterHr,
+    colors,
+    changeoverPerColorMin,
+  ]);
 
   return (
     <div className="grid lg:grid-cols-2 gap-6">
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          <InputField label={t("tools.jobTime.quantity")} value={qty} onChange={setQty} step={500} suffix={t("tools.common.piece")} />
-          <InputField label={t("tools.jobTime.bagWeight")} value={bagWeightG} onChange={setBagWeightG} suffix={t("tools.common.gram")} />
+          <InputField
+            label={t("tools.jobTime.quantity")}
+            value={qty}
+            onChange={setQty}
+            step={500}
+            suffix={t("tools.common.piece")}
+          />
+          <InputField
+            label={t("tools.jobTime.bagWeight")}
+            value={bagWeightG}
+            onChange={setBagWeightG}
+            suffix={t("tools.common.gram")}
+          />
         </div>
-        
+
         <Separator />
-        <h4 className="font-semibold text-sm text-muted-foreground">{t("tools.jobTime.productionSpeeds")}</h4>
-        
+        <h4 className="font-semibold text-sm text-muted-foreground">
+          {t("tools.jobTime.productionSpeeds")}
+        </h4>
+
         <div className="grid grid-cols-2 gap-3">
-          <InputField label={t("tools.jobTime.extrusionSpeed")} value={extrusionKgPerHr} onChange={setExtrusionKgPerHr} suffix={t("tools.common.kgPerHour")} />
-          <InputField label={t("tools.jobTime.cuttingSpeed")} value={cutBagsPerMin} onChange={setCutBagsPerMin} suffix={t("tools.common.piecesPerMin")} />
+          <InputField
+            label={t("tools.jobTime.extrusionSpeed")}
+            value={extrusionKgPerHr}
+            onChange={setExtrusionKgPerHr}
+            suffix={t("tools.common.kgPerHour")}
+          />
+          <InputField
+            label={t("tools.jobTime.cuttingSpeed")}
+            value={cutBagsPerMin}
+            onChange={setCutBagsPerMin}
+            suffix={t("tools.common.piecesPerMin")}
+          />
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <InputField label={t("tools.jobTime.printingSpeed")} value={printMPerMin} onChange={setPrintMPerMin} suffix={t("tools.common.metersPerMin")} />
-          <InputField label={t("tools.jobTime.bagLength")} value={bagLengthCm} onChange={setBagLengthCm} suffix={t("tools.common.cm")} />
+          <InputField
+            label={t("tools.jobTime.printingSpeed")}
+            value={printMPerMin}
+            onChange={setPrintMPerMin}
+            suffix={t("tools.common.metersPerMin")}
+          />
+          <InputField
+            label={t("tools.jobTime.bagLength")}
+            value={bagLengthCm}
+            onChange={setBagLengthCm}
+            suffix={t("tools.common.cm")}
+          />
         </div>
-        
+
         <Separator />
-        <h4 className="font-semibold text-sm text-muted-foreground">{t("tools.jobTime.setupTimes")}</h4>
-        
+        <h4 className="font-semibold text-sm text-muted-foreground">
+          {t("tools.jobTime.setupTimes")}
+        </h4>
+
         <div className="grid grid-cols-3 gap-3">
-          <InputField label={t("tools.jobTime.extrusionSetup")} value={setupExtruderHr} onChange={setSetupExtruderHr} suffix={t("tools.common.hour")} />
-          <InputField label={t("tools.jobTime.cuttingSetup")} value={setupCutterHr} onChange={setSetupCutterHr} suffix={t("tools.common.hour")} />
-          <InputField label={t("tools.jobTime.printingSetup")} value={setupPrinterHr} onChange={setSetupPrinterHr} suffix={t("tools.common.hour")} />
+          <InputField
+            label={t("tools.jobTime.extrusionSetup")}
+            value={setupExtruderHr}
+            onChange={setSetupExtruderHr}
+            suffix={t("tools.common.hour")}
+          />
+          <InputField
+            label={t("tools.jobTime.cuttingSetup")}
+            value={setupCutterHr}
+            onChange={setSetupCutterHr}
+            suffix={t("tools.common.hour")}
+          />
+          <InputField
+            label={t("tools.jobTime.printingSetup")}
+            value={setupPrinterHr}
+            onChange={setSetupPrinterHr}
+            suffix={t("tools.common.hour")}
+          />
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <InputField label={t("tools.jobTime.colorsCount")} value={colors} onChange={setColors} step={1} />
-          <InputField label={t("tools.jobTime.colorChangeTime")} value={changeoverPerColorMin} onChange={setChangeoverPerColorMin} suffix={t("tools.common.minute")} />
+          <InputField
+            label={t("tools.jobTime.colorsCount")}
+            value={colors}
+            onChange={setColors}
+            step={1}
+          />
+          <InputField
+            label={t("tools.jobTime.colorChangeTime")}
+            value={changeoverPerColorMin}
+            onChange={setChangeoverPerColorMin}
+            suffix={t("tools.common.minute")}
+          />
         </div>
       </div>
 
@@ -1817,13 +2748,29 @@ function JobTimePlanner(): JSX.Element {
           {t("tools.jobTime.timeEstimate")}
         </h3>
         <div className="grid gap-3">
-          <ResultCard label={t("tools.jobTime.materialWeight")} value={`${fmtFixed(result.totalKg, 2)} ${t("tools.common.kg")}`} />
-          <ResultCard label={t("tools.jobTime.extrusionHours")} value={`${fmtFixed(result.extrusionHours, 2)} ${t("tools.common.hour")}`} />
-          <ResultCard label={t("tools.jobTime.printingHours")} value={`${fmtFixed(result.printHours, 2)} ${t("tools.common.hour")}`} />
-          <ResultCard label={t("tools.jobTime.cuttingHours")} value={`${fmtFixed(result.cutHours, 2)} ${t("tools.common.hour")}`} />
+          <ResultCard
+            label={t("tools.jobTime.materialWeight")}
+            value={`${fmtFixed(result.totalKg, 2)} ${t("tools.common.kg")}`}
+          />
+          <ResultCard
+            label={t("tools.jobTime.extrusionHours")}
+            value={`${fmtFixed(result.extrusionHours, 2)} ${t("tools.common.hour")}`}
+          />
+          <ResultCard
+            label={t("tools.jobTime.printingHours")}
+            value={`${fmtFixed(result.printHours, 2)} ${t("tools.common.hour")}`}
+          />
+          <ResultCard
+            label={t("tools.jobTime.cuttingHours")}
+            value={`${fmtFixed(result.cutHours, 2)} ${t("tools.common.hour")}`}
+          />
         </div>
         <Separator />
-        <ResultCard label={t("tools.jobTime.totalHours")} value={`${fmtFixed(result.totalHours, 2)} ${t("tools.common.hour")}`} highlight />
+        <ResultCard
+          label={t("tools.jobTime.totalHours")}
+          value={`${fmtFixed(result.totalHours, 2)} ${t("tools.common.hour")}`}
+          highlight
+        />
         <p className="text-xs text-muted-foreground bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
           {t("tools.jobTime.note")}
         </p>
@@ -1834,8 +2781,22 @@ function JobTimePlanner(): JSX.Element {
 
 // ===================== Barcode Generator =====================
 
-type BarcodeFormat = "CODE128" | "EAN13" | "EAN8" | "CODE39" | "ITF14" | "UPC" | "pharmacode";
-type BarcodeSize = "small" | "medium" | "large" | "xlarge" | "label50x25" | "label55x40" | "label100x150";
+type BarcodeFormat =
+  | "CODE128"
+  | "EAN13"
+  | "EAN8"
+  | "CODE39"
+  | "ITF14"
+  | "UPC"
+  | "pharmacode";
+type BarcodeSize =
+  | "small"
+  | "medium"
+  | "large"
+  | "xlarge"
+  | "label50x25"
+  | "label55x40"
+  | "label100x150";
 
 interface BarcodeSizeData {
   width: number;
@@ -1848,16 +2809,80 @@ interface BarcodeSizeData {
 }
 
 const barcodeSizeData: Record<BarcodeSize, BarcodeSizeData> = {
-  small: { width: 2, height: 30, fontSize: 10, displayWidth: 150, displayHeight: 50, printWidthMm: 38, printHeightMm: 13 },
-  medium: { width: 2.5, height: 50, fontSize: 12, displayWidth: 200, displayHeight: 70, printWidthMm: 50, printHeightMm: 25 },
-  large: { width: 3, height: 80, fontSize: 14, displayWidth: 280, displayHeight: 100, printWidthMm: 70, printHeightMm: 35 },
-  xlarge: { width: 4, height: 100, fontSize: 16, displayWidth: 350, displayHeight: 130, printWidthMm: 90, printHeightMm: 50 },
-  label50x25: { width: 2.5, height: 45, fontSize: 11, displayWidth: 189, displayHeight: 94, printWidthMm: 50, printHeightMm: 25 },
-  label55x40: { width: 3, height: 70, fontSize: 12, displayWidth: 208, displayHeight: 151, printWidthMm: 55, printHeightMm: 40 },
-  label100x150: { width: 4, height: 200, fontSize: 18, displayWidth: 378, displayHeight: 567, printWidthMm: 100, printHeightMm: 150 },
+  small: {
+    width: 2,
+    height: 30,
+    fontSize: 10,
+    displayWidth: 150,
+    displayHeight: 50,
+    printWidthMm: 38,
+    printHeightMm: 13,
+  },
+  medium: {
+    width: 2.5,
+    height: 50,
+    fontSize: 12,
+    displayWidth: 200,
+    displayHeight: 70,
+    printWidthMm: 50,
+    printHeightMm: 25,
+  },
+  large: {
+    width: 3,
+    height: 80,
+    fontSize: 14,
+    displayWidth: 280,
+    displayHeight: 100,
+    printWidthMm: 70,
+    printHeightMm: 35,
+  },
+  xlarge: {
+    width: 4,
+    height: 100,
+    fontSize: 16,
+    displayWidth: 350,
+    displayHeight: 130,
+    printWidthMm: 90,
+    printHeightMm: 50,
+  },
+  label50x25: {
+    width: 2.5,
+    height: 45,
+    fontSize: 11,
+    displayWidth: 189,
+    displayHeight: 94,
+    printWidthMm: 50,
+    printHeightMm: 25,
+  },
+  label55x40: {
+    width: 3,
+    height: 70,
+    fontSize: 12,
+    displayWidth: 208,
+    displayHeight: 151,
+    printWidthMm: 55,
+    printHeightMm: 40,
+  },
+  label100x150: {
+    width: 4,
+    height: 200,
+    fontSize: 18,
+    displayWidth: 378,
+    displayHeight: 567,
+    printWidthMm: 100,
+    printHeightMm: 150,
+  },
 };
 
-const barcodeFormatValues: BarcodeFormat[] = ["CODE128", "EAN13", "EAN8", "CODE39", "ITF14", "UPC", "pharmacode"];
+const barcodeFormatValues: BarcodeFormat[] = [
+  "CODE128",
+  "EAN13",
+  "EAN8",
+  "CODE39",
+  "ITF14",
+  "UPC",
+  "pharmacode",
+];
 
 const formatDefaultValues: Record<BarcodeFormat, string> = {
   CODE128: "1234567890",
@@ -1869,18 +2894,35 @@ const formatDefaultValues: Record<BarcodeFormat, string> = {
   pharmacode: "1234",
 };
 
-type BarcodeValidationKey = "ean13" | "ean8" | "itf14" | "upc" | "code39" | "pharmacode";
+type BarcodeValidationKey =
+  | "ean13"
+  | "ean8"
+  | "itf14"
+  | "upc"
+  | "code39"
+  | "pharmacode";
 
-const BARCODE_VALIDATION_RULES: Record<string, { test: (v: string) => boolean; key: BarcodeValidationKey }> = {
+const BARCODE_VALIDATION_RULES: Record<
+  string,
+  { test: (v: string) => boolean; key: BarcodeValidationKey }
+> = {
   EAN13: { test: (v) => /^\d{12,13}$/.test(v), key: "ean13" },
   EAN8: { test: (v) => /^\d{7,8}$/.test(v), key: "ean8" },
   ITF14: { test: (v) => /^\d{13,14}$/.test(v), key: "itf14" },
   UPC: { test: (v) => /^\d{11,12}$/.test(v), key: "upc" },
   CODE39: { test: (v) => /^[A-Z0-9\-. $/+%]+$/i.test(v), key: "code39" },
-  pharmacode: { test: (v) => /^\d+$/.test(v) && parseInt(v, 10) >= 3 && parseInt(v, 10) <= 131070, key: "pharmacode" },
+  pharmacode: {
+    test: (v) =>
+      /^\d+$/.test(v) && parseInt(v, 10) >= 3 && parseInt(v, 10) <= 131070,
+    key: "pharmacode",
+  },
 };
 
-function validateBarcodeInput(value: string, format: BarcodeFormat, t: (key: string) => string): string | null {
+function validateBarcodeInput(
+  value: string,
+  format: BarcodeFormat,
+  t: (key: string) => string,
+): string | null {
   if (!value) return null;
   const rule = BARCODE_VALIDATION_RULES[format];
   if (!rule) return null;
@@ -1936,21 +2978,25 @@ function BarcodeGenerator(): JSX.Element {
 
   const handlePrint = () => {
     if (!svgRef.current || error) return;
-    
+
     const svgData = new XMLSerializer().serializeToString(svgRef.current);
     const base64Svg = btoa(unescape(encodeURIComponent(svgData)));
     const dataUrl = `data:image/svg+xml;base64,${base64Svg}`;
-    
+
     const sizeConfig = barcodeSizeData[size];
     const labelWidthMm = sizeConfig.printWidthMm;
     const labelHeightMm = sizeConfig.printHeightMm;
-    
-    const barcodeItems = Array(quantity).fill(null).map(() => 
-      `<div class="barcode-item">
-        <img src="${dataUrl}" style="max-width:100%;max-height:${customText ? '75%' : '90%'};object-fit:contain;" />
-        ${customText ? `<div class="custom-text">${customText}</div>` : ''}
-      </div>`
-    ).join("");
+
+    const barcodeItems = Array(quantity)
+      .fill(null)
+      .map(
+        () =>
+          `<div class="barcode-item">
+        <img src="${dataUrl}" style="max-width:100%;max-height:${customText ? "75%" : "90%"};object-fit:contain;" />
+        ${customText ? `<div class="custom-text">${customText}</div>` : ""}
+      </div>`,
+      )
+      .join("");
 
     const printWindow = window.open("", "_blank");
     if (printWindow) {
@@ -2042,15 +3088,22 @@ function BarcodeGenerator(): JSX.Element {
 
           <div className="space-y-2">
             <Label>{t("tools.barcode.format")}</Label>
-            <Select value={format} onValueChange={(v) => handleFormatChange(v as BarcodeFormat)}>
+            <Select
+              value={format}
+              onValueChange={(v) => handleFormatChange(v as BarcodeFormat)}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {barcodeFormatValues.map((f) => (
                   <SelectItem key={f} value={f}>
-                    <span className="font-medium">{t(`tools.barcode.formats.${f}`)}</span>
-                    <span className="text-xs text-muted-foreground mr-2">({t(`tools.barcode.formats.${f}Hint`)})</span>
+                    <span className="font-medium">
+                      {t(`tools.barcode.formats.${f}`)}
+                    </span>
+                    <span className="text-xs text-muted-foreground mr-2">
+                      ({t(`tools.barcode.formats.${f}Hint`)})
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -2059,7 +3112,10 @@ function BarcodeGenerator(): JSX.Element {
 
           <div className="space-y-2">
             <Label>{t("tools.barcode.size")}</Label>
-            <Select value={size} onValueChange={(v) => setSize(v as BarcodeSize)}>
+            <Select
+              value={size}
+              onValueChange={(v) => setSize(v as BarcodeSize)}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -2104,11 +3160,19 @@ function BarcodeGenerator(): JSX.Element {
               min={1}
               max={100}
               value={quantity}
-              onChange={(e) => setQuantity(Math.min(100, Math.max(1, parseInt(e.target.value) || 1)))}
+              onChange={(e) =>
+                setQuantity(
+                  Math.min(100, Math.max(1, parseInt(e.target.value) || 1)),
+                )
+              }
             />
           </div>
 
-          <Button onClick={handlePrint} disabled={!!error || !barcodeValue} className="w-full">
+          <Button
+            onClick={handlePrint}
+            disabled={!!error || !barcodeValue}
+            className="w-full"
+          >
             <Printer className="h-4 w-4 ml-2" />
             {t("tools.barcode.print")} ({quantity} {t("tools.barcode.copies")})
           </Button>
@@ -2131,9 +3195,11 @@ function BarcodeGenerator(): JSX.Element {
               </div>
             )}
           </div>
-          
+
           <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
-            <h4 className="font-medium text-sm mb-2">{t("tools.barcode.tips")}</h4>
+            <h4 className="font-medium text-sm mb-2">
+              {t("tools.barcode.tips")}
+            </h4>
             <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
               <li>{t("tools.barcode.tip1")}</li>
               <li>{t("tools.barcode.tip2")}</li>
@@ -2148,7 +3214,17 @@ function BarcodeGenerator(): JSX.Element {
 
 // ===================== 11) أداة الخلطات التجريبية =====================
 
-const MATERIAL_TYPES = ["HDPE", "LDPE", "LLDPE", "Filler", "Filler CLEAR", "Process Aid", "COLOR", "Removal", "Recycle"] as const;
+const MATERIAL_TYPES = [
+  "HDPE",
+  "LDPE",
+  "LLDPE",
+  "Filler",
+  "Filler CLEAR",
+  "Process Aid",
+  "COLOR",
+  "Removal",
+  "Recycle",
+] as const;
 
 interface BlendItem {
   id: string;
@@ -2183,16 +3259,26 @@ function BlendsTool(): JSX.Element {
   const [selectedBlendId, setSelectedBlendId] = useState<number | null>(null);
   const [editingBlendId, setEditingBlendId] = useState<number | null>(null);
   const [archiveSearch, setArchiveSearch] = useState("");
-  const [archiveMachineFilter, setArchiveMachineFilter] = useState<string>("all");
+  const [archiveMachineFilter, setArchiveMachineFilter] =
+    useState<string>("all");
 
   const [form, setForm] = useState<BlendFormData>({
     machine_id: "",
     screw_type: "A",
     notes: "",
-    motor_speed_a: "", heater1_a: "", heater2_a: "", heater3_a: "",
-    motor_speed_b: "", heater1_b: "", heater2_b: "", heater3_b: "",
-    heater_filter: "", heater_mold: "", heater_mold_head: "",
-    film_size_cm: "", thickness_u: "",
+    motor_speed_a: "",
+    heater1_a: "",
+    heater2_a: "",
+    heater3_a: "",
+    motor_speed_b: "",
+    heater1_b: "",
+    heater2_b: "",
+    heater3_b: "",
+    heater_filter: "",
+    heater_mold: "",
+    heater_mold_head: "",
+    film_size_cm: "",
+    thickness_u: "",
   });
 
   const [items, setItems] = useState<BlendItem[]>([]);
@@ -2200,9 +3286,15 @@ function BlendsTool(): JSX.Element {
   const { data: machinesData } = useQuery<any[]>({
     queryKey: ["/api/machines"],
   });
-  const extruders = useMemo(() => (machinesData || []).filter((m: any) => m.type === "extruder"), [machinesData]);
+  const extruders = useMemo(
+    () => (machinesData || []).filter((m: any) => m.type === "extruder"),
+    [machinesData],
+  );
 
-  const selectedMachine = useMemo(() => extruders.find((m: any) => m.id === form.machine_id), [extruders, form.machine_id]);
+  const selectedMachine = useMemo(
+    () => extruders.find((m: any) => m.id === form.machine_id),
+    [extruders, form.machine_id],
+  );
   const derivedScrewType = selectedMachine?.screw_type === "ABA" ? "ABA" : "A";
   const isABA = derivedScrewType === "ABA";
 
@@ -2224,7 +3316,10 @@ function BlendsTool(): JSX.Element {
       resetForm();
     },
     onError: (error: any) => {
-      toast({ title: error.message || "خطأ في حفظ الخلطة", variant: "destructive" });
+      toast({
+        title: error.message || "خطأ في حفظ الخلطة",
+        variant: "destructive",
+      });
     },
   });
 
@@ -2238,7 +3333,10 @@ function BlendsTool(): JSX.Element {
       setSelectedBlendId(null);
     },
     onError: (error: any) => {
-      toast({ title: error.message || "خطأ في حذف الخلطة", variant: "destructive" });
+      toast({
+        title: error.message || "خطأ في حذف الخلطة",
+        variant: "destructive",
+      });
     },
   });
 
@@ -2257,17 +3355,31 @@ function BlendsTool(): JSX.Element {
       resetForm();
     },
     onError: (error: any) => {
-      toast({ title: error.message || "خطأ في تحديث الخلطة", variant: "destructive" });
+      toast({
+        title: error.message || "خطأ في تحديث الخلطة",
+        variant: "destructive",
+      });
     },
   });
 
   const resetForm = () => {
     setForm({
-      machine_id: "", screw_type: "A", notes: "",
-      motor_speed_a: "", heater1_a: "", heater2_a: "", heater3_a: "",
-      motor_speed_b: "", heater1_b: "", heater2_b: "", heater3_b: "",
-      heater_filter: "", heater_mold: "", heater_mold_head: "",
-      film_size_cm: "", thickness_u: "",
+      machine_id: "",
+      screw_type: "A",
+      notes: "",
+      motor_speed_a: "",
+      heater1_a: "",
+      heater2_a: "",
+      heater3_a: "",
+      motor_speed_b: "",
+      heater1_b: "",
+      heater2_b: "",
+      heater3_b: "",
+      heater_filter: "",
+      heater_mold: "",
+      heater_mold_head: "",
+      film_size_cm: "",
+      thickness_u: "",
     });
     setItems([]);
     setEditingBlendId(null);
@@ -2304,37 +3416,44 @@ function BlendsTool(): JSX.Element {
   };
 
   const addItem = (screw: "A" | "B") => {
-    setItems(prev => [...prev, { id: Date.now().toString(), screw, material_type: "", quantity: 0 }]);
+    setItems((prev) => [
+      ...prev,
+      { id: Date.now().toString(), screw, material_type: "", quantity: 0 },
+    ]);
   };
 
   const updateItem = (id: string, field: keyof BlendItem, value: any) => {
-    setItems(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
+    setItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)),
+    );
   };
 
   const removeItem = (id: string) => {
-    setItems(prev => prev.filter(item => item.id !== id));
+    setItems((prev) => prev.filter((item) => item.id !== id));
   };
 
-  const screwAItems = items.filter(i => i.screw === "A");
-  const screwBItems = items.filter(i => i.screw === "B");
+  const screwAItems = items.filter((i) => i.screw === "A");
+  const screwBItems = items.filter((i) => i.screw === "B");
   const totalA = screwAItems.reduce((sum, i) => sum + toNumber(i.quantity), 0);
   const totalB = screwBItems.reduce((sum, i) => sum + toNumber(i.quantity), 0);
   const totalAll = totalA + totalB;
 
-  const getPercentage = (qty: number, total: number) => total > 0 ? ((qty / total) * 100).toFixed(1) : "0.0";
+  const getPercentage = (qty: number, total: number) =>
+    total > 0 ? ((qty / total) * 100).toFixed(1) : "0.0";
 
   const handleSave = () => {
     if (!form.machine_id) return;
-    const validItems = items.filter(i => i.material_type && i.quantity > 0);
+    const validItems = items.filter((i) => i.material_type && i.quantity > 0);
     if (validItems.length === 0) return;
 
-    const itemsPayload = validItems.map(i => {
+    const itemsPayload = validItems.map((i) => {
       const screwTotal = i.screw === "A" ? totalA : totalB;
       return {
         screw: i.screw,
         material_type: i.material_type,
         quantity: i.quantity.toString(),
-        percentage: screwTotal > 0 ? ((i.quantity / screwTotal) * 100).toFixed(2) : "0",
+        percentage:
+          screwTotal > 0 ? ((i.quantity / screwTotal) * 100).toFixed(2) : "0",
       };
     });
 
@@ -2370,33 +3489,49 @@ function BlendsTool(): JSX.Element {
     const isAr = document.documentElement.dir === "rtl";
     const dir = isAr ? "rtl" : "ltr";
 
-    const machName = filled && blend ? (extruders.find((m: any) => m.id === blend.machine_id)?.name_ar || blend.machine_id) : "";
-    const blendItems = filled && blend ? (blend.items || []) : [];
+    const machName =
+      filled && blend
+        ? extruders.find((m: any) => m.id === blend.machine_id)?.name_ar ||
+          blend.machine_id
+        : "";
+    const blendItems = filled && blend ? blend.items || [] : [];
     const aItems = blendItems.filter((i: any) => i.screw === "A");
     const bItems = blendItems.filter((i: any) => i.screw === "B");
 
     const materialRows = (rowItems: any[], screwLabel: string) => {
       if (rowItems.length === 0) return "";
-      const tA = rowItems.reduce((s: number, i: any) => s + parseFloat(i.quantity || "0"), 0);
-      return rowItems.map((i: any) => `
+      const tA = rowItems.reduce(
+        (s: number, i: any) => s + parseFloat(i.quantity || "0"),
+        0,
+      );
+      return (
+        rowItems
+          .map(
+            (i: any) => `
         <tr>
           <td>${screwLabel}</td>
           <td>${i.material_type}</td>
           <td>${filled ? parseFloat(i.quantity || "0").toFixed(2) : ""}</td>
           <td>${filled && tA > 0 ? ((parseFloat(i.quantity || "0") / tA) * 100).toFixed(1) + "%" : ""}</td>
         </tr>
-      `).join("") + `
+      `,
+          )
+          .join("") +
+        `
         <tr style="background:#e2e8f0;font-weight:bold">
           <td colspan="2">${t("tools.blends.totalQuantity")} ${screwLabel}</td>
           <td>${filled ? tA.toFixed(2) : ""}</td>
           <td>100%</td>
-        </tr>`;
+        </tr>`
+      );
     };
 
     const evalRowFilled = (label: string, val: any) =>
-      `<tr><td style="width:40%;font-weight:600">${label}</td><td>${filled ? (val || "") : ""}</td></tr>`;
+      `<tr><td style="width:40%;font-weight:600">${label}</td><td>${filled ? val || "" : ""}</td></tr>`;
 
-    const title = filled ? t("tools.blends.evaluationForm") : t("tools.blends.emptyEvaluationForm");
+    const title = filled
+      ? t("tools.blends.evaluationForm")
+      : t("tools.blends.emptyEvaluationForm");
 
     const html = `<!DOCTYPE html>
 <html dir="${dir}" lang="${isAr ? "ar" : "en"}">
@@ -2423,7 +3558,7 @@ tbody tr:nth-child(even){background:#f5f7fa}
 </head>
 <body>
 <h1>${title}</h1>
-<p class="subtitle">${new Date().toLocaleDateString(isAr ? "ar-SA" : "en-US", { year:"numeric", month:"long", day:"numeric" })}${filled && blend ? " — " + blend.blend_number : ""}</p>
+<p class="subtitle">${new Date().toLocaleDateString(isAr ? "ar-SA" : "en-US", { year: "numeric", month: "long", day: "numeric" })}${filled && blend ? " — " + blend.blend_number : ""}</p>
 
 <div class="info-grid">
   <div class="info-item"><span class="info-label">${t("tools.blends.machine")}:</span><span>${filled ? machName : "________________"}</span></div>
@@ -2479,24 +3614,35 @@ ${evalRowFilled(t("tools.blends.thickness"), filled && blend?.thickness_u)}
     }
   };
 
-  const renderMaterialSection = (screw: "A" | "B", screwItems: BlendItem[], screwTotal: number) => (
+  const renderMaterialSection = (
+    screw: "A" | "B",
+    screwItems: BlendItem[],
+    screwTotal: number,
+  ) => (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h4 className="font-semibold text-sm">{screw === "A" ? t("tools.blends.screwA") : t("tools.blends.screwB")}</h4>
+        <h4 className="font-semibold text-sm">
+          {screw === "A" ? t("tools.blends.screwA") : t("tools.blends.screwB")}
+        </h4>
         <Button size="sm" variant="outline" onClick={() => addItem(screw)}>
           <Plus className="h-3 w-3 ml-1" />
           {t("tools.blends.addMaterial")}
         </Button>
       </div>
-      {screwItems.map(item => (
+      {screwItems.map((item) => (
         <div key={item.id} className="flex items-center gap-2">
-          <Select value={item.material_type} onValueChange={(v) => updateItem(item.id, "material_type", v)}>
+          <Select
+            value={item.material_type}
+            onValueChange={(v) => updateItem(item.id, "material_type", v)}
+          >
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder={t("tools.blends.material")} />
             </SelectTrigger>
             <SelectContent>
-              {MATERIAL_TYPES.map(mt => (
-                <SelectItem key={mt} value={mt}>{mt}</SelectItem>
+              {MATERIAL_TYPES.map((mt) => (
+                <SelectItem key={mt} value={mt}>
+                  {mt}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -2504,20 +3650,29 @@ ${evalRowFilled(t("tools.blends.thickness"), filled && blend?.thickness_u)}
             type="number"
             placeholder={t("tools.blends.quantity")}
             value={item.quantity || ""}
-            onChange={(e) => updateItem(item.id, "quantity", parseFloat(e.target.value) || 0)}
+            onChange={(e) =>
+              updateItem(item.id, "quantity", parseFloat(e.target.value) || 0)
+            }
             className="w-[100px]"
           />
           <Badge variant="secondary" className="min-w-[60px] justify-center">
             {getPercentage(item.quantity, screwTotal)}%
           </Badge>
-          <Button size="icon" variant="ghost" onClick={() => removeItem(item.id)} className="h-8 w-8 text-red-500">
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => removeItem(item.id)}
+            className="h-8 w-8 text-red-500"
+          >
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       ))}
       {screwItems.length > 0 && (
         <div className="flex items-center gap-2 pt-1 border-t">
-          <span className="text-sm font-semibold">{t("tools.blends.totalQuantity")}:</span>
+          <span className="text-sm font-semibold">
+            {t("tools.blends.totalQuantity")}:
+          </span>
           <Badge variant="default">{screwTotal.toFixed(2)}</Badge>
         </div>
       )}
@@ -2530,24 +3685,45 @@ ${evalRowFilled(t("tools.blends.thickness"), filled && blend?.thickness_u)}
     const blendItems = blend.items || [];
     const aItems = blendItems.filter((i: any) => i.screw === "A");
     const bItems = blendItems.filter((i: any) => i.screw === "B");
-    const tA = aItems.reduce((s: number, i: any) => s + parseFloat(i.quantity || "0"), 0);
-    const tB = bItems.reduce((s: number, i: any) => s + parseFloat(i.quantity || "0"), 0);
-    const machName = extruders.find((m: any) => m.id === blend.machine_id)?.name_ar || extruders.find((m: any) => m.id === blend.machine_id)?.name || blend.machine_id;
+    const tA = aItems.reduce(
+      (s: number, i: any) => s + parseFloat(i.quantity || "0"),
+      0,
+    );
+    const tB = bItems.reduce(
+      (s: number, i: any) => s + parseFloat(i.quantity || "0"),
+      0,
+    );
+    const machName =
+      extruders.find((m: any) => m.id === blend.machine_id)?.name_ar ||
+      extruders.find((m: any) => m.id === blend.machine_id)?.name ||
+      blend.machine_id;
 
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setSelectedBlendId(null)}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSelectedBlendId(null)}
+          >
             <ChevronRight className="h-4 w-4 ml-1" />
             {t("common.back")}
           </Button>
           <h3 className="font-bold text-lg">{blend.blend_number}</h3>
           <div className="mr-auto flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => printForm(false)}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => printForm(false)}
+            >
               <FileText className="h-4 w-4 ml-1" />
               {t("tools.blends.printEmpty")}
             </Button>
-            <Button size="sm" variant="default" onClick={() => printForm(true, blend)}>
+            <Button
+              size="sm"
+              variant="default"
+              onClick={() => printForm(true, blend)}
+            >
               <Printer className="h-4 w-4 ml-1" />
               {t("tools.blends.printFilled")}
             </Button>
@@ -2556,17 +3732,25 @@ ${evalRowFilled(t("tools.blends.thickness"), filled && blend?.thickness_u)}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800">
-            <p className="text-xs text-muted-foreground">{t("tools.blends.machine")}</p>
+            <p className="text-xs text-muted-foreground">
+              {t("tools.blends.machine")}
+            </p>
             <p className="font-semibold">{machName}</p>
           </div>
           <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800">
-            <p className="text-xs text-muted-foreground">{t("tools.blends.date")}</p>
-            <p className="font-semibold">{new Date(blend.created_at).toLocaleDateString()}</p>
+            <p className="text-xs text-muted-foreground">
+              {t("tools.blends.date")}
+            </p>
+            <p className="font-semibold">
+              {new Date(blend.created_at).toLocaleDateString()}
+            </p>
           </div>
         </div>
 
         <div className="space-y-2">
-          <h4 className="font-semibold">{t("tools.blends.materialComposition")}</h4>
+          <h4 className="font-semibold">
+            {t("tools.blends.materialComposition")}
+          </h4>
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="bg-primary text-primary-foreground">
@@ -2574,53 +3758,85 @@ ${evalRowFilled(t("tools.blends.thickness"), filled && blend?.thickness_u)}
                 <th className="p-2 border">{t("tools.blends.material")}</th>
                 <th className="p-2 border">{t("tools.blends.quantity")}</th>
                 <th className="p-2 border">{t("tools.blends.percentage")}</th>
-                <th className="p-2 border">{t("tools.blends.overallPercentage")}</th>
+                <th className="p-2 border">
+                  {t("tools.blends.overallPercentage")}
+                </th>
               </tr>
             </thead>
             <tbody>
               {aItems.map((i: any, idx: number) => {
                 const qty = parseFloat(i.quantity);
                 return (
-                  <tr key={idx} className="even:bg-slate-50 dark:even:bg-slate-800">
+                  <tr
+                    key={idx}
+                    className="even:bg-slate-50 dark:even:bg-slate-800"
+                  >
                     <td className="p-2 border text-center">A</td>
-                    <td className="p-2 border text-center">{i.material_type}</td>
+                    <td className="p-2 border text-center">
+                      {i.material_type}
+                    </td>
                     <td className="p-2 border text-center">{qty.toFixed(2)}</td>
-                    <td className="p-2 border text-center">{tA > 0 ? ((qty / tA) * 100).toFixed(1) : 0}%</td>
-                    <td className="p-2 border text-center">{(tA + tB) > 0 ? ((qty / (tA + tB)) * 100).toFixed(1) : 0}%</td>
+                    <td className="p-2 border text-center">
+                      {tA > 0 ? ((qty / tA) * 100).toFixed(1) : 0}%
+                    </td>
+                    <td className="p-2 border text-center">
+                      {tA + tB > 0 ? ((qty / (tA + tB)) * 100).toFixed(1) : 0}%
+                    </td>
                   </tr>
                 );
               })}
               {aItems.length > 0 && (
                 <tr className="bg-slate-200 dark:bg-slate-700 font-bold">
-                  <td className="p-2 border text-center" colSpan={2}>{t("tools.blends.screwASummary")}</td>
+                  <td className="p-2 border text-center" colSpan={2}>
+                    {t("tools.blends.screwASummary")}
+                  </td>
                   <td className="p-2 border text-center">{tA.toFixed(2)}</td>
                   <td className="p-2 border text-center">100%</td>
-                  <td className="p-2 border text-center">{(tA + tB) > 0 ? ((tA / (tA + tB)) * 100).toFixed(1) : 0}%</td>
+                  <td className="p-2 border text-center">
+                    {tA + tB > 0 ? ((tA / (tA + tB)) * 100).toFixed(1) : 0}%
+                  </td>
                 </tr>
               )}
               {bItems.map((i: any, idx: number) => {
                 const qty = parseFloat(i.quantity);
                 return (
-                  <tr key={idx} className="even:bg-slate-50 dark:even:bg-slate-800">
+                  <tr
+                    key={idx}
+                    className="even:bg-slate-50 dark:even:bg-slate-800"
+                  >
                     <td className="p-2 border text-center">B</td>
-                    <td className="p-2 border text-center">{i.material_type}</td>
+                    <td className="p-2 border text-center">
+                      {i.material_type}
+                    </td>
                     <td className="p-2 border text-center">{qty.toFixed(2)}</td>
-                    <td className="p-2 border text-center">{tB > 0 ? ((qty / tB) * 100).toFixed(1) : 0}%</td>
-                    <td className="p-2 border text-center">{(tA + tB) > 0 ? ((qty / (tA + tB)) * 100).toFixed(1) : 0}%</td>
+                    <td className="p-2 border text-center">
+                      {tB > 0 ? ((qty / tB) * 100).toFixed(1) : 0}%
+                    </td>
+                    <td className="p-2 border text-center">
+                      {tA + tB > 0 ? ((qty / (tA + tB)) * 100).toFixed(1) : 0}%
+                    </td>
                   </tr>
                 );
               })}
               {bItems.length > 0 && (
                 <tr className="bg-slate-200 dark:bg-slate-700 font-bold">
-                  <td className="p-2 border text-center" colSpan={2}>{t("tools.blends.screwBSummary")}</td>
+                  <td className="p-2 border text-center" colSpan={2}>
+                    {t("tools.blends.screwBSummary")}
+                  </td>
                   <td className="p-2 border text-center">{tB.toFixed(2)}</td>
                   <td className="p-2 border text-center">100%</td>
-                  <td className="p-2 border text-center">{(tA + tB) > 0 ? ((tB / (tA + tB)) * 100).toFixed(1) : 0}%</td>
+                  <td className="p-2 border text-center">
+                    {tA + tB > 0 ? ((tB / (tA + tB)) * 100).toFixed(1) : 0}%
+                  </td>
                 </tr>
               )}
               <tr className="bg-primary/10 font-bold">
-                <td className="p-2 border text-center" colSpan={2}>{t("tools.blends.overallSummary")}</td>
-                <td className="p-2 border text-center">{(tA + tB).toFixed(2)}</td>
+                <td className="p-2 border text-center" colSpan={2}>
+                  {t("tools.blends.overallSummary")}
+                </td>
+                <td className="p-2 border text-center">
+                  {(tA + tB).toFixed(2)}
+                </td>
                 <td className="p-2 border text-center">—</td>
                 <td className="p-2 border text-center">100%</td>
               </tr>
@@ -2630,40 +3846,119 @@ ${evalRowFilled(t("tools.blends.thickness"), filled && blend?.thickness_u)}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <h4 className="font-semibold mb-2">{t("tools.blends.screwSettings")} - {t("tools.blends.screwA")}</h4>
+            <h4 className="font-semibold mb-2">
+              {t("tools.blends.screwSettings")} - {t("tools.blends.screwA")}
+            </h4>
             <div className="grid grid-cols-2 gap-2 text-sm">
-              <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded"><span className="text-muted-foreground">{t("tools.blends.motorSpeed")} (RPM):</span> <span className="font-medium">{blend.motor_speed_a || "-"}</span></div>
-              <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded"><span className="text-muted-foreground">{t("tools.blends.heater1")}:</span> <span className="font-medium">{blend.heater1_a || "-"}</span></div>
-              <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded"><span className="text-muted-foreground">{t("tools.blends.heater2")}:</span> <span className="font-medium">{blend.heater2_a || "-"}</span></div>
-              <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded"><span className="text-muted-foreground">{t("tools.blends.heater3")}:</span> <span className="font-medium">{blend.heater3_a || "-"}</span></div>
+              <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded">
+                <span className="text-muted-foreground">
+                  {t("tools.blends.motorSpeed")} (RPM):
+                </span>{" "}
+                <span className="font-medium">
+                  {blend.motor_speed_a || "-"}
+                </span>
+              </div>
+              <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded">
+                <span className="text-muted-foreground">
+                  {t("tools.blends.heater1")}:
+                </span>{" "}
+                <span className="font-medium">{blend.heater1_a || "-"}</span>
+              </div>
+              <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded">
+                <span className="text-muted-foreground">
+                  {t("tools.blends.heater2")}:
+                </span>{" "}
+                <span className="font-medium">{blend.heater2_a || "-"}</span>
+              </div>
+              <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded">
+                <span className="text-muted-foreground">
+                  {t("tools.blends.heater3")}:
+                </span>{" "}
+                <span className="font-medium">{blend.heater3_a || "-"}</span>
+              </div>
             </div>
           </div>
           <div>
-            <h4 className="font-semibold mb-2">{t("tools.blends.screwSettings")} - {t("tools.blends.screwB")}</h4>
+            <h4 className="font-semibold mb-2">
+              {t("tools.blends.screwSettings")} - {t("tools.blends.screwB")}
+            </h4>
             <div className="grid grid-cols-2 gap-2 text-sm">
-              <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded"><span className="text-muted-foreground">{t("tools.blends.motorSpeed")} (RPM):</span> <span className="font-medium">{blend.motor_speed_b || "-"}</span></div>
-              <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded"><span className="text-muted-foreground">{t("tools.blends.heater1")}:</span> <span className="font-medium">{blend.heater1_b || "-"}</span></div>
-              <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded"><span className="text-muted-foreground">{t("tools.blends.heater2")}:</span> <span className="font-medium">{blend.heater2_b || "-"}</span></div>
-              <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded"><span className="text-muted-foreground">{t("tools.blends.heater3")}:</span> <span className="font-medium">{blend.heater3_b || "-"}</span></div>
+              <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded">
+                <span className="text-muted-foreground">
+                  {t("tools.blends.motorSpeed")} (RPM):
+                </span>{" "}
+                <span className="font-medium">
+                  {blend.motor_speed_b || "-"}
+                </span>
+              </div>
+              <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded">
+                <span className="text-muted-foreground">
+                  {t("tools.blends.heater1")}:
+                </span>{" "}
+                <span className="font-medium">{blend.heater1_b || "-"}</span>
+              </div>
+              <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded">
+                <span className="text-muted-foreground">
+                  {t("tools.blends.heater2")}:
+                </span>{" "}
+                <span className="font-medium">{blend.heater2_b || "-"}</span>
+              </div>
+              <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded">
+                <span className="text-muted-foreground">
+                  {t("tools.blends.heater3")}:
+                </span>{" "}
+                <span className="font-medium">{blend.heater3_b || "-"}</span>
+              </div>
             </div>
           </div>
         </div>
 
         <div>
-          <h4 className="font-semibold mb-2">{t("tools.blends.overallSettings")}</h4>
+          <h4 className="font-semibold mb-2">
+            {t("tools.blends.overallSettings")}
+          </h4>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm">
-            <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded"><span className="text-muted-foreground">{t("tools.blends.heaterFilter")}:</span> <span className="font-medium">{blend.heater_filter || "-"}</span></div>
-            <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded"><span className="text-muted-foreground">{t("tools.blends.heaterMold")}:</span> <span className="font-medium">{blend.heater_mold || "-"}</span></div>
-            <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded"><span className="text-muted-foreground">{t("tools.blends.heaterMoldHead")}:</span> <span className="font-medium">{blend.heater_mold_head || "-"}</span></div>
-            <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded"><span className="text-muted-foreground">{t("tools.blends.filmSize")}:</span> <span className="font-medium">{blend.film_size_cm || "-"}</span></div>
-            <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded"><span className="text-muted-foreground">{t("tools.blends.thickness")}:</span> <span className="font-medium">{blend.thickness_u || "-"}</span></div>
+            <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded">
+              <span className="text-muted-foreground">
+                {t("tools.blends.heaterFilter")}:
+              </span>{" "}
+              <span className="font-medium">{blend.heater_filter || "-"}</span>
+            </div>
+            <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded">
+              <span className="text-muted-foreground">
+                {t("tools.blends.heaterMold")}:
+              </span>{" "}
+              <span className="font-medium">{blend.heater_mold || "-"}</span>
+            </div>
+            <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded">
+              <span className="text-muted-foreground">
+                {t("tools.blends.heaterMoldHead")}:
+              </span>{" "}
+              <span className="font-medium">
+                {blend.heater_mold_head || "-"}
+              </span>
+            </div>
+            <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded">
+              <span className="text-muted-foreground">
+                {t("tools.blends.filmSize")}:
+              </span>{" "}
+              <span className="font-medium">{blend.film_size_cm || "-"}</span>
+            </div>
+            <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded">
+              <span className="text-muted-foreground">
+                {t("tools.blends.thickness")}:
+              </span>{" "}
+              <span className="font-medium">{blend.thickness_u || "-"}</span>
+            </div>
           </div>
         </div>
 
         {blend.notes && (
           <div>
             <h4 className="font-semibold mb-1">{t("tools.blends.notes")}</h4>
-            <p className="text-sm p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">{blend.notes}</p>
+            <p className="text-sm p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+              {blend.notes}
+            </p>
           </div>
         )}
       </div>
@@ -2689,7 +3984,9 @@ ${evalRowFilled(t("tools.blends.thickness"), filled && blend?.thickness_u)}
           <Archive className="h-4 w-4 ml-1" />
           {t("tools.blends.archive")}
           {blendsData && blendsData.length > 0 && (
-            <Badge variant="secondary" className="mr-1">{blendsData.length}</Badge>
+            <Badge variant="secondary" className="mr-1">
+              {blendsData.length}
+            </Badge>
           )}
         </Button>
       </div>
@@ -2698,14 +3995,23 @@ ${evalRowFilled(t("tools.blends.thickness"), filled && blend?.thickness_u)}
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium">{t("tools.blends.selectMachine")}</Label>
-              <Select value={form.machine_id} onValueChange={(v) => setForm(prev => ({ ...prev, machine_id: v }))}>
+              <Label className="text-sm font-medium">
+                {t("tools.blends.selectMachine")}
+              </Label>
+              <Select
+                value={form.machine_id}
+                onValueChange={(v) =>
+                  setForm((prev) => ({ ...prev, machine_id: v }))
+                }
+              >
                 <SelectTrigger>
                   <SelectValue placeholder={t("tools.blends.selectMachine")} />
                 </SelectTrigger>
                 <SelectContent>
                   {extruders.map((m: any) => (
-                    <SelectItem key={m.id} value={m.id}>{m.name_ar || m.name}</SelectItem>
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.name_ar || m.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -2725,48 +4031,86 @@ ${evalRowFilled(t("tools.blends.thickness"), filled && blend?.thickness_u)}
 
           {totalAll > 0 && (
             <div className="border rounded-lg p-4">
-              <h4 className="font-bold text-sm mb-3">{t("tools.blends.combinedMaterials")}</h4>
+              <h4 className="font-bold text-sm mb-3">
+                {t("tools.blends.combinedMaterials")}
+              </h4>
               <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr className="bg-primary text-primary-foreground">
                     <th className="p-2 border">{t("tools.blends.material")}</th>
                     <th className="p-2 border">{t("tools.blends.screwA")}</th>
                     <th className="p-2 border">{t("tools.blends.screwB")}</th>
-                    <th className="p-2 border">{t("tools.blends.totalQuantity")}</th>
-                    <th className="p-2 border">{t("tools.blends.overallPercentage")}</th>
+                    <th className="p-2 border">
+                      {t("tools.blends.totalQuantity")}
+                    </th>
+                    <th className="p-2 border">
+                      {t("tools.blends.overallPercentage")}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {(() => {
-                    const allMaterials = new Map<string, { a: number; b: number }>();
-                    screwAItems.forEach(i => {
-                      const cur = allMaterials.get(i.material_type) || { a: 0, b: 0 };
+                    const allMaterials = new Map<
+                      string,
+                      { a: number; b: number }
+                    >();
+                    screwAItems.forEach((i) => {
+                      const cur = allMaterials.get(i.material_type) || {
+                        a: 0,
+                        b: 0,
+                      };
                       cur.a += toNumber(i.quantity);
                       allMaterials.set(i.material_type, cur);
                     });
-                    screwBItems.forEach(i => {
-                      const cur = allMaterials.get(i.material_type) || { a: 0, b: 0 };
+                    screwBItems.forEach((i) => {
+                      const cur = allMaterials.get(i.material_type) || {
+                        a: 0,
+                        b: 0,
+                      };
                       cur.b += toNumber(i.quantity);
                       allMaterials.set(i.material_type, cur);
                     });
-                    return Array.from(allMaterials.entries()).map(([mat, vals]) => {
-                      const matTotal = vals.a + vals.b;
-                      return (
-                        <tr key={mat} className="even:bg-slate-50 dark:even:bg-slate-800">
-                          <td className="p-2 border text-center font-medium">{mat}</td>
-                          <td className="p-2 border text-center">{vals.a > 0 ? vals.a.toFixed(2) : "—"}</td>
-                          <td className="p-2 border text-center">{vals.b > 0 ? vals.b.toFixed(2) : "—"}</td>
-                          <td className="p-2 border text-center font-semibold">{matTotal.toFixed(2)}</td>
-                          <td className="p-2 border text-center">{getPercentage(matTotal, totalAll)}%</td>
-                        </tr>
-                      );
-                    });
+                    return Array.from(allMaterials.entries()).map(
+                      ([mat, vals]) => {
+                        const matTotal = vals.a + vals.b;
+                        return (
+                          <tr
+                            key={mat}
+                            className="even:bg-slate-50 dark:even:bg-slate-800"
+                          >
+                            <td className="p-2 border text-center font-medium">
+                              {mat}
+                            </td>
+                            <td className="p-2 border text-center">
+                              {vals.a > 0 ? vals.a.toFixed(2) : "—"}
+                            </td>
+                            <td className="p-2 border text-center">
+                              {vals.b > 0 ? vals.b.toFixed(2) : "—"}
+                            </td>
+                            <td className="p-2 border text-center font-semibold">
+                              {matTotal.toFixed(2)}
+                            </td>
+                            <td className="p-2 border text-center">
+                              {getPercentage(matTotal, totalAll)}%
+                            </td>
+                          </tr>
+                        );
+                      },
+                    );
                   })()}
                   <tr className="bg-primary/10 font-bold">
-                    <td className="p-2 border text-center">{t("tools.blends.overallSummary")}</td>
-                    <td className="p-2 border text-center">{totalA.toFixed(2)}</td>
-                    <td className="p-2 border text-center">{totalB > 0 ? totalB.toFixed(2) : "—"}</td>
-                    <td className="p-2 border text-center text-primary">{totalAll.toFixed(2)}</td>
+                    <td className="p-2 border text-center">
+                      {t("tools.blends.overallSummary")}
+                    </td>
+                    <td className="p-2 border text-center">
+                      {totalA.toFixed(2)}
+                    </td>
+                    <td className="p-2 border text-center">
+                      {totalB > 0 ? totalB.toFixed(2) : "—"}
+                    </td>
+                    <td className="p-2 border text-center text-primary">
+                      {totalAll.toFixed(2)}
+                    </td>
                     <td className="p-2 border text-center">100%</td>
                   </tr>
                 </tbody>
@@ -2778,112 +4122,237 @@ ${evalRowFilled(t("tools.blends.thickness"), filled && blend?.thickness_u)}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-3 border rounded-lg p-3">
-              <h4 className="font-semibold text-sm">{t("tools.blends.evaluationCriteria")} - {t("tools.blends.screwA")}</h4>
+              <h4 className="font-semibold text-sm">
+                {t("tools.blends.evaluationCriteria")} -{" "}
+                {t("tools.blends.screwA")}
+              </h4>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs">{t("tools.blends.motorSpeed")} (RPM 0-50)</Label>
-                  <Input type="number" min="0" max="50" step="0.1" value={form.motor_speed_a} onChange={(e) => setForm(p => ({ ...p, motor_speed_a: e.target.value }))} placeholder="0-50 RPM" />
+                  <Label className="text-xs">
+                    {t("tools.blends.motorSpeed")} (RPM 0-50)
+                  </Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="50"
+                    step="0.1"
+                    value={form.motor_speed_a}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, motor_speed_a: e.target.value }))
+                    }
+                    placeholder="0-50 RPM"
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">{t("tools.blends.heater1")}</Label>
-                  <Input value={form.heater1_a} onChange={(e) => setForm(p => ({ ...p, heater1_a: e.target.value }))} />
+                  <Input
+                    value={form.heater1_a}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, heater1_a: e.target.value }))
+                    }
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">{t("tools.blends.heater2")}</Label>
-                  <Input value={form.heater2_a} onChange={(e) => setForm(p => ({ ...p, heater2_a: e.target.value }))} />
+                  <Input
+                    value={form.heater2_a}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, heater2_a: e.target.value }))
+                    }
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">{t("tools.blends.heater3")}</Label>
-                  <Input value={form.heater3_a} onChange={(e) => setForm(p => ({ ...p, heater3_a: e.target.value }))} />
+                  <Input
+                    value={form.heater3_a}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, heater3_a: e.target.value }))
+                    }
+                  />
                 </div>
               </div>
             </div>
 
             <div className="space-y-3 border rounded-lg p-3">
-              <h4 className="font-semibold text-sm">{t("tools.blends.evaluationCriteria")} - {t("tools.blends.screwB")}</h4>
+              <h4 className="font-semibold text-sm">
+                {t("tools.blends.evaluationCriteria")} -{" "}
+                {t("tools.blends.screwB")}
+              </h4>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs">{t("tools.blends.motorSpeed")} (RPM 0-50)</Label>
-                  <Input type="number" min="0" max="50" step="0.1" value={form.motor_speed_b} onChange={(e) => setForm(p => ({ ...p, motor_speed_b: e.target.value }))} placeholder="0-50 RPM" />
+                  <Label className="text-xs">
+                    {t("tools.blends.motorSpeed")} (RPM 0-50)
+                  </Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="50"
+                    step="0.1"
+                    value={form.motor_speed_b}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, motor_speed_b: e.target.value }))
+                    }
+                    placeholder="0-50 RPM"
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">{t("tools.blends.heater1")}</Label>
-                  <Input value={form.heater1_b} onChange={(e) => setForm(p => ({ ...p, heater1_b: e.target.value }))} />
+                  <Input
+                    value={form.heater1_b}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, heater1_b: e.target.value }))
+                    }
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">{t("tools.blends.heater2")}</Label>
-                  <Input value={form.heater2_b} onChange={(e) => setForm(p => ({ ...p, heater2_b: e.target.value }))} />
+                  <Input
+                    value={form.heater2_b}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, heater2_b: e.target.value }))
+                    }
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">{t("tools.blends.heater3")}</Label>
-                  <Input value={form.heater3_b} onChange={(e) => setForm(p => ({ ...p, heater3_b: e.target.value }))} />
+                  <Input
+                    value={form.heater3_b}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, heater3_b: e.target.value }))
+                    }
+                  />
                 </div>
               </div>
             </div>
           </div>
 
           <div className="space-y-3">
-            <h4 className="font-semibold text-sm">{t("tools.blends.overallSettings")}</h4>
+            <h4 className="font-semibold text-sm">
+              {t("tools.blends.overallSettings")}
+            </h4>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs">{t("tools.blends.heaterFilter")}</Label>
-                <Input value={form.heater_filter} onChange={(e) => setForm(p => ({ ...p, heater_filter: e.target.value }))} />
+                <Label className="text-xs">
+                  {t("tools.blends.heaterFilter")}
+                </Label>
+                <Input
+                  value={form.heater_filter}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, heater_filter: e.target.value }))
+                  }
+                />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">{t("tools.blends.heaterMold")}</Label>
-                <Input value={form.heater_mold} onChange={(e) => setForm(p => ({ ...p, heater_mold: e.target.value }))} />
+                <Label className="text-xs">
+                  {t("tools.blends.heaterMold")}
+                </Label>
+                <Input
+                  value={form.heater_mold}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, heater_mold: e.target.value }))
+                  }
+                />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">{t("tools.blends.heaterMoldHead")}</Label>
-                <Input value={form.heater_mold_head} onChange={(e) => setForm(p => ({ ...p, heater_mold_head: e.target.value }))} />
+                <Label className="text-xs">
+                  {t("tools.blends.heaterMoldHead")}
+                </Label>
+                <Input
+                  value={form.heater_mold_head}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, heater_mold_head: e.target.value }))
+                  }
+                />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">{t("tools.blends.filmSize")}</Label>
-                <Input value={form.film_size_cm} onChange={(e) => setForm(p => ({ ...p, film_size_cm: e.target.value }))} />
+                <Input
+                  value={form.film_size_cm}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, film_size_cm: e.target.value }))
+                  }
+                />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">{t("tools.blends.thickness")}</Label>
-                <Input value={form.thickness_u} onChange={(e) => setForm(p => ({ ...p, thickness_u: e.target.value }))} />
+                <Input
+                  value={form.thickness_u}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, thickness_u: e.target.value }))
+                  }
+                />
               </div>
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-sm font-medium">{t("tools.blends.notes")}</Label>
+            <Label className="text-sm font-medium">
+              {t("tools.blends.notes")}
+            </Label>
             <Textarea
               value={form.notes}
-              onChange={(e) => setForm(p => ({ ...p, notes: e.target.value }))}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, notes: e.target.value }))
+              }
               rows={3}
               placeholder={t("tools.blends.notes")}
             />
           </div>
 
           <div className="flex gap-2 pt-2">
-            <Button onClick={handleSave} disabled={!form.machine_id || items.filter(i => i.material_type && i.quantity > 0).length === 0 || createMutation.isPending || updateMutation.isPending}>
-              {(createMutation.isPending || updateMutation.isPending) ? t("common.saving") : editingBlendId ? t("tools.blends.editBlend") : t("tools.blends.saveBlend")}
+            <Button
+              onClick={handleSave}
+              disabled={
+                !form.machine_id ||
+                items.filter((i) => i.material_type && i.quantity > 0)
+                  .length === 0 ||
+                createMutation.isPending ||
+                updateMutation.isPending
+              }
+            >
+              {createMutation.isPending || updateMutation.isPending
+                ? t("common.saving")
+                : editingBlendId
+                  ? t("tools.blends.editBlend")
+                  : t("tools.blends.saveBlend")}
             </Button>
             <Button variant="outline" onClick={() => printForm(false)}>
               <FileText className="h-4 w-4 ml-1" />
               {t("tools.blends.printEmpty")}
             </Button>
-            {items.filter(i => i.material_type && i.quantity > 0).length > 0 && (
-              <Button variant="outline" onClick={() => {
-                const currentBlend = {
-                  machine_id: form.machine_id,
-                  screw_type: form.screw_type,
-                  notes: form.notes,
-                  motor_speed_a: form.motor_speed_a,
-                  heater1_a: form.heater1_a, heater2_a: form.heater2_a, heater3_a: form.heater3_a,
-                  motor_speed_b: form.motor_speed_b,
-                  heater1_b: form.heater1_b, heater2_b: form.heater2_b, heater3_b: form.heater3_b,
-                  heater_filter: form.heater_filter, heater_mold: form.heater_mold, heater_mold_head: form.heater_mold_head,
-                  film_size_cm: form.film_size_cm, thickness_u: form.thickness_u,
-                  items: items.filter(i => i.material_type && i.quantity > 0).map(i => ({
-                    screw: i.screw, material_type: i.material_type, quantity: i.quantity.toString(),
-                  })),
-                };
-                printForm(true, currentBlend);
-              }}>
+            {items.filter((i) => i.material_type && i.quantity > 0).length >
+              0 && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const currentBlend = {
+                    machine_id: form.machine_id,
+                    screw_type: form.screw_type,
+                    notes: form.notes,
+                    motor_speed_a: form.motor_speed_a,
+                    heater1_a: form.heater1_a,
+                    heater2_a: form.heater2_a,
+                    heater3_a: form.heater3_a,
+                    motor_speed_b: form.motor_speed_b,
+                    heater1_b: form.heater1_b,
+                    heater2_b: form.heater2_b,
+                    heater3_b: form.heater3_b,
+                    heater_filter: form.heater_filter,
+                    heater_mold: form.heater_mold,
+                    heater_mold_head: form.heater_mold_head,
+                    film_size_cm: form.film_size_cm,
+                    thickness_u: form.thickness_u,
+                    items: items
+                      .filter((i) => i.material_type && i.quantity > 0)
+                      .map((i) => ({
+                        screw: i.screw,
+                        material_type: i.material_type,
+                        quantity: i.quantity.toString(),
+                      })),
+                  };
+                  printForm(true, currentBlend);
+                }}
+              >
                 <Printer className="h-4 w-4 ml-1" />
                 {t("tools.blends.printFilled")}
               </Button>
@@ -2904,28 +4373,49 @@ ${evalRowFilled(t("tools.blends.thickness"), filled && blend?.thickness_u)}
                 className="pr-9"
               />
             </div>
-            <Select value={archiveMachineFilter} onValueChange={setArchiveMachineFilter}>
+            <Select
+              value={archiveMachineFilter}
+              onValueChange={setArchiveMachineFilter}
+            >
               <SelectTrigger className="w-[200px]">
                 <SelectValue placeholder={t("tools.blends.filterByMachine")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{t("tools.blends.allMachines")}</SelectItem>
+                <SelectItem value="all">
+                  {t("tools.blends.allMachines")}
+                </SelectItem>
                 {extruders.map((m: any) => (
-                  <SelectItem key={m.id} value={m.id}>{m.name_ar || m.name}</SelectItem>
+                  <SelectItem key={m.id} value={m.id}>
+                    {m.name_ar || m.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          {blendsLoading && <p className="text-center text-muted-foreground">{t("common.loading")}</p>}
+          {blendsLoading && (
+            <p className="text-center text-muted-foreground">
+              {t("common.loading")}
+            </p>
+          )}
           {!blendsLoading && (!blendsData || blendsData.length === 0) && (
-            <p className="text-center text-muted-foreground py-8">{t("tools.blends.noBlends")}</p>
+            <p className="text-center text-muted-foreground py-8">
+              {t("tools.blends.noBlends")}
+            </p>
           )}
           {(blendsData || [])
             .filter((blend: any) => {
-              if (archiveMachineFilter !== "all" && blend.machine_id !== archiveMachineFilter) return false;
+              if (
+                archiveMachineFilter !== "all" &&
+                blend.machine_id !== archiveMachineFilter
+              )
+                return false;
               if (!archiveSearch.trim()) return true;
               const q = archiveSearch.toLowerCase();
-              const machName = extruders.find((m: any) => m.id === blend.machine_id)?.name_ar || extruders.find((m: any) => m.id === blend.machine_id)?.name || "";
+              const machName =
+                extruders.find((m: any) => m.id === blend.machine_id)
+                  ?.name_ar ||
+                extruders.find((m: any) => m.id === blend.machine_id)?.name ||
+                "";
               return (
                 (blend.blend_number || "").toLowerCase().includes(q) ||
                 machName.toLowerCase().includes(q) ||
@@ -2933,43 +4423,67 @@ ${evalRowFilled(t("tools.blends.thickness"), filled && blend?.thickness_u)}
               );
             })
             .map((blend: any) => {
-            const blendItems = blend.items || [];
-            const tTotal = blendItems.reduce((s: number, i: any) => s + parseFloat(i.quantity || "0"), 0);
-            const machName = extruders.find((m: any) => m.id === blend.machine_id)?.name_ar || extruders.find((m: any) => m.id === blend.machine_id)?.name || blend.machine_id;
+              const blendItems = blend.items || [];
+              const tTotal = blendItems.reduce(
+                (s: number, i: any) => s + parseFloat(i.quantity || "0"),
+                0,
+              );
+              const machName =
+                extruders.find((m: any) => m.id === blend.machine_id)
+                  ?.name_ar ||
+                extruders.find((m: any) => m.id === blend.machine_id)?.name ||
+                blend.machine_id;
 
-            return (
-              <div key={blend.id} className="flex items-center gap-3 p-3 rounded-lg border hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                <FlaskConical className="h-5 w-5 text-primary flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm">{blend.blend_number}</span>
-                    <Badge variant="outline" className="text-xs">{machName}</Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {new Date(blend.created_at).toLocaleDateString()} — {blendItems.length} {t("tools.blends.material")} — {tTotal.toFixed(1)} {t("common.kg")}
-                  </p>
-                </div>
-                <Button size="sm" variant="ghost" onClick={() => setSelectedBlendId(blend.id)}>
-                  <Eye className="h-4 w-4" />
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => loadBlendForEdit(blend)}>
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-red-500"
-                  onClick={() => {
-                    if (confirm(t("tools.blends.confirmDelete"))) {
-                      deleteMutation.mutate(blend.id);
-                    }
-                  }}
+              return (
+                <div
+                  key={blend.id}
+                  className="flex items-center gap-3 p-3 rounded-lg border hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                 >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            );
-          })}
+                  <FlaskConical className="h-5 w-5 text-primary flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm">
+                        {blend.blend_number}
+                      </span>
+                      <Badge variant="outline" className="text-xs">
+                        {machName}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {new Date(blend.created_at).toLocaleDateString()} —{" "}
+                      {blendItems.length} {t("tools.blends.material")} —{" "}
+                      {tTotal.toFixed(1)} {t("common.kg")}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setSelectedBlendId(blend.id)}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => loadBlendForEdit(blend)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-red-500"
+                    onClick={() => {
+                      if (confirm(t("tools.blends.confirmDelete"))) {
+                        deleteMutation.mutate(blend.id);
+                      }
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              );
+            })}
         </div>
       )}
     </div>
@@ -2992,10 +4506,23 @@ function fmtFixed(v: number, d: number): string {
   return toNumber(v).toFixed(d);
 }
 
-interface CMYK { c: number; m: number; y: number; k: number; }
+interface CMYK {
+  c: number;
+  m: number;
+  y: number;
+  k: number;
+}
 
-function cmykToRgb(c: number, m: number, y: number, k: number): { r: number; g: number; b: number } {
-  const C = toNumber(c) / 100, M = toNumber(m) / 100, Y = toNumber(y) / 100, K = toNumber(k) / 100;
+function cmykToRgb(
+  c: number,
+  m: number,
+  y: number,
+  k: number,
+): { r: number; g: number; b: number } {
+  const C = toNumber(c) / 100,
+    M = toNumber(m) / 100,
+    Y = toNumber(y) / 100,
+    K = toNumber(k) / 100;
   const r = Math.round(255 * (1 - C) * (1 - K));
   const g = Math.round(255 * (1 - M) * (1 - K));
   const b = Math.round(255 * (1 - Y) * (1 - K));
@@ -3003,17 +4530,27 @@ function cmykToRgb(c: number, m: number, y: number, k: number): { r: number; g: 
 }
 
 function rgbToCmyk(r: number, g: number, b: number): CMYK {
-  const R = toNumber(r) / 255, G = toNumber(g) / 255, B = toNumber(b) / 255;
+  const R = toNumber(r) / 255,
+    G = toNumber(g) / 255,
+    B = toNumber(b) / 255;
   const K = 1 - Math.max(R, G, B);
   if (K === 1) return { c: 0, m: 0, y: 0, k: 100 };
   const C = (1 - R - K) / (1 - K);
   const M = (1 - G - K) / (1 - K);
   const Y = (1 - B - K) / (1 - K);
-  return { c: Math.round(C * 100), m: Math.round(M * 100), y: Math.round(Y * 100), k: Math.round(K * 100) };
+  return {
+    c: Math.round(C * 100),
+    m: Math.round(M * 100),
+    y: Math.round(Y * 100),
+    k: Math.round(K * 100),
+  };
 }
 
 function rgbToHex(r: number, g: number, b: number): string {
-  const toHex = (n: number) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, "0");
+  const toHex = (n: number) =>
+    Math.max(0, Math.min(255, Math.round(n)))
+      .toString(16)
+      .padStart(2, "0");
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
 }
 

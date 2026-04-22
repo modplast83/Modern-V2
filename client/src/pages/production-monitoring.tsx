@@ -1,22 +1,64 @@
+import { useQuery } from "@tanstack/react-query";
+import {
+  Film,
+  Printer,
+  Scissors,
+  Users,
+  TrendingUp,
+  RefreshCw,
+  Package,
+  Activity,
+  Target,
+  CheckCircle2,
+  Factory,
+  Scale,
+  Award,
+  ChevronDown,
+  ChevronUp,
+  AlertTriangle,
+} from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocalizedName } from "../hooks/use-localized-name";
-import { useQuery } from "@tanstack/react-query";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts";
+
 import PageLayout from "../components/layout/PageLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 import { Input } from "../components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Progress } from "../components/ui/progress";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
-} from "recharts";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../components/ui/table";
 import {
-  Film, Printer, Scissors, Users, TrendingUp, RefreshCw, Package, Activity,
-  Target, CheckCircle2, Factory, Scale, Award, ChevronDown, ChevronUp, AlertTriangle,
-} from "lucide-react";
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../components/ui/tabs";
+import { useLocalizedName } from "../hooks/use-localized-name";
 
 const SECTION_COLORS = {
   film: "#3B82F6",
@@ -41,7 +83,11 @@ export default function ProductionMonitoring() {
     setDateTo(now.toISOString().split("T")[0]);
   }, []);
 
-  const { data: dashboardData, isLoading, refetch } = useQuery<{ success: boolean; data: any }>({
+  const {
+    data: dashboardData,
+    isLoading,
+    refetch,
+  } = useQuery<{ success: boolean; data: any }>({
     queryKey: ["/api/production/monitoring-dashboard", { dateFrom, dateTo }],
     enabled: !!dateFrom && !!dateTo,
   });
@@ -52,33 +98,62 @@ export default function ProductionMonitoring() {
   const workersList = dashboard?.workers || [];
   const productsList = dashboard?.products || [];
 
-  const formatNum = (n: number = 0) => new Intl.NumberFormat("en-US").format(Math.round(n));
-  const formatKg = (n: number = 0) => `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(n)} كجم`;
+  const formatNum = (n: number = 0) =>
+    new Intl.NumberFormat("en-US").format(Math.round(n));
+  const formatKg = (n: number = 0) =>
+    `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(n)} كجم`;
 
-  const sectionPieData = useMemo(() => [
-    { name: "فيلم", value: summary.film_kg || 0, color: SECTION_COLORS.film },
-    { name: "طباعة", value: summary.printing_kg || 0, color: SECTION_COLORS.printing },
-    { name: "تقطيع", value: summary.cutting_kg || 0, color: SECTION_COLORS.cutting },
-    { name: "مكتمل", value: summary.done_kg || 0, color: SECTION_COLORS.done },
-  ].filter(d => d.value > 0), [summary]);
+  const sectionPieData = useMemo(
+    () =>
+      [
+        {
+          name: "فيلم",
+          value: summary.film_kg || 0,
+          color: SECTION_COLORS.film,
+        },
+        {
+          name: "طباعة",
+          value: summary.printing_kg || 0,
+          color: SECTION_COLORS.printing,
+        },
+        {
+          name: "تقطيع",
+          value: summary.cutting_kg || 0,
+          color: SECTION_COLORS.cutting,
+        },
+        {
+          name: "مكتمل",
+          value: summary.done_kg || 0,
+          color: SECTION_COLORS.done,
+        },
+      ].filter((d) => d.value > 0),
+    [summary],
+  );
 
-  const machineChartData = useMemo(() =>
-    machinesList.slice(0, 10).map((m: any) => ({
-      name: ln(m.name_ar, m.name),
-      total: m.total_kg,
-    })),
-  [machinesList, ln]);
+  const machineChartData = useMemo(
+    () =>
+      machinesList.slice(0, 10).map((m: any) => ({
+        name: ln(m.name_ar, m.name),
+        total: m.total_kg,
+      })),
+    [machinesList, ln],
+  );
 
-  const workerChartData = useMemo(() =>
-    workersList.slice(0, 10).map((w: any) => ({
-      name: ln(w.name_ar, w.name),
-      total: w.total_kg,
-    })),
-  [workersList, ln]);
+  const workerChartData = useMemo(
+    () =>
+      workersList.slice(0, 10).map((w: any) => ({
+        name: ln(w.name_ar, w.name),
+        total: w.total_kg,
+      })),
+    [workersList, ln],
+  );
 
   if (isLoading && !dashboard) {
     return (
-      <PageLayout title="مراقبة الإنتاج" description="إحصائيات ومراقبة عمليات الإنتاج">
+      <PageLayout
+        title="مراقبة الإنتاج"
+        description="إحصائيات ومراقبة عمليات الإنتاج"
+      >
         <div className="flex items-center justify-center h-64">
           <div className="flex flex-col items-center gap-3">
             <Activity className="h-10 w-10 animate-pulse text-primary" />
@@ -90,14 +165,29 @@ export default function ProductionMonitoring() {
   }
 
   return (
-    <PageLayout title="مراقبة الإنتاج" description="إحصائيات ومراقبة عمليات الإنتاج">
+    <PageLayout
+      title="مراقبة الإنتاج"
+      description="إحصائيات ومراقبة عمليات الإنتاج"
+    >
       <div className="space-y-6" dir="rtl">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-muted-foreground">الفترة:</span>
-            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-40" />
+            <span className="text-sm font-medium text-muted-foreground">
+              الفترة:
+            </span>
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="w-40"
+            />
             <span className="text-sm text-muted-foreground">إلى</span>
-            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-40" />
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="w-40"
+            />
           </div>
           <Button variant="outline" size="sm" onClick={() => refetch()}>
             <RefreshCw className="w-4 h-4 ml-2" />
@@ -110,8 +200,12 @@ export default function ProductionMonitoring() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-muted-foreground">إجمالي الإنتاج</p>
-                  <p className="text-xl font-bold text-indigo-600">{formatKg(summary.total_kg)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    إجمالي الإنتاج
+                  </p>
+                  <p className="text-xl font-bold text-indigo-600">
+                    {formatKg(summary.total_kg)}
+                  </p>
                 </div>
                 <Target className="h-8 w-8 text-indigo-200" />
               </div>
@@ -123,7 +217,9 @@ export default function ProductionMonitoring() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground">عدد الرولات</p>
-                  <p className="text-xl font-bold">{formatNum(summary.total_rolls)}</p>
+                  <p className="text-xl font-bold">
+                    {formatNum(summary.total_rolls)}
+                  </p>
                 </div>
                 <Package className="h-8 w-8 text-slate-200" />
               </div>
@@ -135,8 +231,12 @@ export default function ProductionMonitoring() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground">فيلم</p>
-                  <p className="text-xl font-bold text-blue-600">{formatKg(summary.film_kg)}</p>
-                  <p className="text-xs text-muted-foreground">{summary.film_rolls} رول</p>
+                  <p className="text-xl font-bold text-blue-600">
+                    {formatKg(summary.film_kg)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {summary.film_rolls} رول
+                  </p>
                 </div>
                 <Film className="h-8 w-8 text-blue-200" />
               </div>
@@ -148,8 +248,12 @@ export default function ProductionMonitoring() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground">طباعة</p>
-                  <p className="text-xl font-bold text-purple-600">{formatKg(summary.printing_kg)}</p>
-                  <p className="text-xs text-muted-foreground">{summary.printing_rolls} رول</p>
+                  <p className="text-xl font-bold text-purple-600">
+                    {formatKg(summary.printing_kg)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {summary.printing_rolls} رول
+                  </p>
                 </div>
                 <Printer className="h-8 w-8 text-purple-200" />
               </div>
@@ -161,8 +265,12 @@ export default function ProductionMonitoring() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground">تقطيع</p>
-                  <p className="text-xl font-bold text-amber-600">{formatKg(summary.cutting_kg)}</p>
-                  <p className="text-xs text-muted-foreground">{summary.cutting_rolls} رول</p>
+                  <p className="text-xl font-bold text-amber-600">
+                    {formatKg(summary.cutting_kg)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {summary.cutting_rolls} رول
+                  </p>
                 </div>
                 <Scissors className="h-8 w-8 text-amber-200" />
               </div>
@@ -174,9 +282,17 @@ export default function ProductionMonitoring() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground">الهدر</p>
-                  <p className="text-xl font-bold text-red-500">{formatKg(summary.total_waste_kg)}</p>
+                  <p className="text-xl font-bold text-red-500">
+                    {formatKg(summary.total_waste_kg)}
+                  </p>
                   <p className="text-xs text-muted-foreground">
-                    {summary.total_kg > 0 ? ((summary.total_waste_kg / summary.total_kg) * 100).toFixed(1) : 0}%
+                    {summary.total_kg > 0
+                      ? (
+                          (summary.total_waste_kg / summary.total_kg) *
+                          100
+                        ).toFixed(1)
+                      : 0}
+                    %
                   </p>
                 </div>
                 <AlertTriangle className="h-8 w-8 text-red-200" />
@@ -226,7 +342,9 @@ export default function ProductionMonitoring() {
                           outerRadius={100}
                           paddingAngle={3}
                           dataKey="value"
-                          label={({ name, value }) => `${name}: ${formatKg(value)}`}
+                          label={({ name, value }) =>
+                            `${name}: ${formatKg(value)}`
+                          }
                         >
                           {sectionPieData.map((entry, i) => (
                             <Cell key={i} fill={entry.color} />
@@ -237,7 +355,9 @@ export default function ProductionMonitoring() {
                       </PieChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex items-center justify-center h-[280px] text-muted-foreground">لا توجد بيانات</div>
+                    <div className="flex items-center justify-center h-[280px] text-muted-foreground">
+                      لا توجد بيانات
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -252,16 +372,31 @@ export default function ProductionMonitoring() {
                 <CardContent>
                   {machineChartData.length > 0 ? (
                     <ResponsiveContainer width="100%" height={280}>
-                      <BarChart data={machineChartData} layout="vertical" margin={{ right: 80 }}>
+                      <BarChart
+                        data={machineChartData}
+                        layout="vertical"
+                        margin={{ right: 80 }}
+                      >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis type="number" />
-                        <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11 }} />
+                        <YAxis
+                          dataKey="name"
+                          type="category"
+                          width={100}
+                          tick={{ fontSize: 11 }}
+                        />
                         <Tooltip formatter={(v: number) => formatKg(v)} />
-                        <Bar dataKey="total" fill="#6366F1" radius={[0, 4, 4, 0]} />
+                        <Bar
+                          dataKey="total"
+                          fill="#6366F1"
+                          radius={[0, 4, 4, 0]}
+                        />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex items-center justify-center h-[280px] text-muted-foreground">لا توجد بيانات</div>
+                    <div className="flex items-center justify-center h-[280px] text-muted-foreground">
+                      لا توجد بيانات
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -276,16 +411,31 @@ export default function ProductionMonitoring() {
                 <CardContent>
                   {workerChartData.length > 0 ? (
                     <ResponsiveContainer width="100%" height={280}>
-                      <BarChart data={workerChartData} layout="vertical" margin={{ right: 80 }}>
+                      <BarChart
+                        data={workerChartData}
+                        layout="vertical"
+                        margin={{ right: 80 }}
+                      >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis type="number" />
-                        <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11 }} />
+                        <YAxis
+                          dataKey="name"
+                          type="category"
+                          width={100}
+                          tick={{ fontSize: 11 }}
+                        />
                         <Tooltip formatter={(v: number) => formatKg(v)} />
-                        <Bar dataKey="total" fill="#22C55E" radius={[0, 4, 4, 0]} />
+                        <Bar
+                          dataKey="total"
+                          fill="#22C55E"
+                          radius={[0, 4, 4, 0]}
+                        />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex items-center justify-center h-[280px] text-muted-foreground">لا توجد بيانات</div>
+                    <div className="flex items-center justify-center h-[280px] text-muted-foreground">
+                      لا توجد بيانات
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -307,11 +457,21 @@ export default function ProductionMonitoring() {
                           <div key={i} className="space-y-1">
                             <div className="flex items-center justify-between text-sm">
                               <div className="flex items-center gap-2">
-                                <Badge variant="outline" className="text-xs">{i + 1}</Badge>
-                                <span className="font-medium">{ln(p.item_name_ar, p.item_name) || p.size_caption || 'غير محدد'}</span>
-                                <span className="text-xs text-muted-foreground">({ln(p.customer_name_ar, p.customer_name)})</span>
+                                <Badge variant="outline" className="text-xs">
+                                  {i + 1}
+                                </Badge>
+                                <span className="font-medium">
+                                  {ln(p.item_name_ar, p.item_name) ||
+                                    p.size_caption ||
+                                    "غير محدد"}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  ({ln(p.customer_name_ar, p.customer_name)})
+                                </span>
                               </div>
-                              <span className="font-bold">{formatKg(p.total_kg)}</span>
+                              <span className="font-bold">
+                                {formatKg(p.total_kg)}
+                              </span>
                             </div>
                             <Progress value={percent} className="h-1.5" />
                           </div>
@@ -319,7 +479,9 @@ export default function ProductionMonitoring() {
                       })}
                     </div>
                   ) : (
-                    <div className="flex items-center justify-center h-[280px] text-muted-foreground">لا توجد بيانات</div>
+                    <div className="flex items-center justify-center h-[280px] text-muted-foreground">
+                      لا توجد بيانات
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -343,16 +505,27 @@ export default function ProductionMonitoring() {
                     <TableRow className="bg-muted/50">
                       <TableHead className="font-semibold">الماكينة</TableHead>
                       <TableHead className="font-semibold">النوع</TableHead>
-                      <TableHead className="font-semibold text-center">إجمالي الإنتاج</TableHead>
-                      <TableHead className="font-semibold text-center">عدد الرولات</TableHead>
-                      <TableHead className="font-semibold text-center">آخر إنتاج</TableHead>
-                      <TableHead className="font-semibold text-center">تفاصيل</TableHead>
+                      <TableHead className="font-semibold text-center">
+                        إجمالي الإنتاج
+                      </TableHead>
+                      <TableHead className="font-semibold text-center">
+                        عدد الرولات
+                      </TableHead>
+                      <TableHead className="font-semibold text-center">
+                        آخر إنتاج
+                      </TableHead>
+                      <TableHead className="font-semibold text-center">
+                        تفاصيل
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {machinesList.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                        <TableCell
+                          colSpan={6}
+                          className="text-center py-12 text-muted-foreground"
+                        >
                           <Factory className="h-10 w-10 mx-auto mb-2 opacity-30" />
                           لا توجد بيانات إنتاج للمكائن
                         </TableCell>
@@ -367,7 +540,9 @@ export default function ProductionMonitoring() {
                             machine={m}
                             maxKg={maxKg}
                             isExpanded={isExpanded}
-                            onToggle={() => setExpandedMachine(isExpanded ? null : m.id)}
+                            onToggle={() =>
+                              setExpandedMachine(isExpanded ? null : m.id)
+                            }
                             ln={ln}
                             formatKg={formatKg}
                             formatNum={formatNum}
@@ -397,15 +572,24 @@ export default function ProductionMonitoring() {
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead className="font-semibold">العامل</TableHead>
-                      <TableHead className="font-semibold text-center">إجمالي الإنتاج</TableHead>
-                      <TableHead className="font-semibold text-center">عدد الرولات</TableHead>
-                      <TableHead className="font-semibold text-center">تفاصيل</TableHead>
+                      <TableHead className="font-semibold text-center">
+                        إجمالي الإنتاج
+                      </TableHead>
+                      <TableHead className="font-semibold text-center">
+                        عدد الرولات
+                      </TableHead>
+                      <TableHead className="font-semibold text-center">
+                        تفاصيل
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {workersList.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center py-12 text-muted-foreground">
+                        <TableCell
+                          colSpan={4}
+                          className="text-center py-12 text-muted-foreground"
+                        >
                           <Users className="h-10 w-10 mx-auto mb-2 opacity-30" />
                           لا توجد بيانات إنتاج للعمال
                         </TableCell>
@@ -420,7 +604,9 @@ export default function ProductionMonitoring() {
                             worker={w}
                             maxKg={maxKg}
                             isExpanded={isExpanded}
-                            onToggle={() => setExpandedWorker(isExpanded ? null : w.id)}
+                            onToggle={() =>
+                              setExpandedWorker(isExpanded ? null : w.id)
+                            }
                             ln={ln}
                             formatKg={formatKg}
                             formatNum={formatNum}
@@ -447,19 +633,30 @@ export default function ProductionMonitoring() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
-                      <TableHead className="font-semibold w-12 text-center">#</TableHead>
+                      <TableHead className="font-semibold w-12 text-center">
+                        #
+                      </TableHead>
                       <TableHead className="font-semibold">المنتج</TableHead>
                       <TableHead className="font-semibold">العميل</TableHead>
                       <TableHead className="font-semibold">المقاس</TableHead>
-                      <TableHead className="font-semibold text-center">الإنتاج (كجم)</TableHead>
-                      <TableHead className="font-semibold text-center">عدد الرولات</TableHead>
-                      <TableHead className="font-semibold text-center">النسبة</TableHead>
+                      <TableHead className="font-semibold text-center">
+                        الإنتاج (كجم)
+                      </TableHead>
+                      <TableHead className="font-semibold text-center">
+                        عدد الرولات
+                      </TableHead>
+                      <TableHead className="font-semibold text-center">
+                        النسبة
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {productsList.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                        <TableCell
+                          colSpan={7}
+                          className="text-center py-12 text-muted-foreground"
+                        >
                           <Award className="h-10 w-10 mx-auto mb-2 opacity-30" />
                           لا توجد بيانات إنتاج
                         </TableCell>
@@ -472,18 +669,38 @@ export default function ProductionMonitoring() {
                           <TableRow key={i} className="hover:bg-muted/50">
                             <TableCell className="text-center">
                               {i < 3 ? (
-                                <Badge className={i === 0 ? "bg-yellow-500" : i === 1 ? "bg-gray-400" : "bg-amber-700"}>
+                                <Badge
+                                  className={
+                                    i === 0
+                                      ? "bg-yellow-500"
+                                      : i === 1
+                                        ? "bg-gray-400"
+                                        : "bg-amber-700"
+                                  }
+                                >
                                   {i + 1}
                                 </Badge>
                               ) : (
-                                <span className="text-muted-foreground">{i + 1}</span>
+                                <span className="text-muted-foreground">
+                                  {i + 1}
+                                </span>
                               )}
                             </TableCell>
-                            <TableCell className="font-medium">{ln(p.item_name_ar, p.item_name) || "غير محدد"}</TableCell>
-                            <TableCell>{ln(p.customer_name_ar, p.customer_name)}</TableCell>
-                            <TableCell className="text-sm">{p.size_caption || "-"}</TableCell>
-                            <TableCell className="text-center font-bold">{formatKg(p.total_kg)}</TableCell>
-                            <TableCell className="text-center">{formatNum(p.total_rolls)}</TableCell>
+                            <TableCell className="font-medium">
+                              {ln(p.item_name_ar, p.item_name) || "غير محدد"}
+                            </TableCell>
+                            <TableCell>
+                              {ln(p.customer_name_ar, p.customer_name)}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {p.size_caption || "-"}
+                            </TableCell>
+                            <TableCell className="text-center font-bold">
+                              {formatKg(p.total_kg)}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {formatNum(p.total_rolls)}
+                            </TableCell>
                             <TableCell className="text-center">
                               <div className="w-20 mx-auto">
                                 <Progress value={percent} className="h-2" />
@@ -504,7 +721,15 @@ export default function ProductionMonitoring() {
   );
 }
 
-function MachineRow({ machine: m, maxKg, isExpanded, onToggle, ln, formatKg, formatNum }: any) {
+function MachineRow({
+  machine: m,
+  maxKg,
+  isExpanded,
+  onToggle,
+  ln,
+  formatKg,
+  formatNum,
+}: any) {
   const typeLabels: Record<string, string> = {
     extruder: "إكسترودر",
     printer: "طابعة",
@@ -526,16 +751,26 @@ function MachineRow({ machine: m, maxKg, isExpanded, onToggle, ln, formatKg, for
         <TableCell className="text-center">
           <div className="space-y-1">
             <div className="font-bold">{formatKg(m.total_kg)}</div>
-            <div className="w-20 mx-auto"><Progress value={percent} className="h-1.5" /></div>
+            <div className="w-20 mx-auto">
+              <Progress value={percent} className="h-1.5" />
+            </div>
           </div>
         </TableCell>
-        <TableCell className="text-center font-semibold">{formatNum(m.total_rolls)}</TableCell>
+        <TableCell className="text-center font-semibold">
+          {formatNum(m.total_rolls)}
+        </TableCell>
         <TableCell className="text-center text-sm text-muted-foreground">
-          {m.last_production ? new Date(m.last_production).toLocaleDateString("en-US") : "-"}
+          {m.last_production
+            ? new Date(m.last_production).toLocaleDateString("en-US")
+            : "-"}
         </TableCell>
         <TableCell className="text-center">
           <Button variant="ghost" size="sm">
-            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            {isExpanded ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
           </Button>
         </TableCell>
       </TableRow>
@@ -546,20 +781,32 @@ function MachineRow({ machine: m, maxKg, isExpanded, onToggle, ln, formatKg, for
               <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-3 text-center border border-blue-200">
                 <Film className="h-5 w-5 mx-auto mb-1 text-blue-600" />
                 <div className="text-xs text-muted-foreground">فيلم</div>
-                <div className="text-lg font-bold text-blue-600">{formatKg(m.film_kg)}</div>
-                <div className="text-xs text-muted-foreground">{m.film_rolls} رول</div>
+                <div className="text-lg font-bold text-blue-600">
+                  {formatKg(m.film_kg)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {m.film_rolls} رول
+                </div>
               </div>
               <div className="bg-purple-50 dark:bg-purple-950 rounded-lg p-3 text-center border border-purple-200">
                 <Printer className="h-5 w-5 mx-auto mb-1 text-purple-600" />
                 <div className="text-xs text-muted-foreground">طباعة</div>
-                <div className="text-lg font-bold text-purple-600">{formatKg(m.printing_kg)}</div>
-                <div className="text-xs text-muted-foreground">{m.printing_rolls} رول</div>
+                <div className="text-lg font-bold text-purple-600">
+                  {formatKg(m.printing_kg)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {m.printing_rolls} رول
+                </div>
               </div>
               <div className="bg-amber-50 dark:bg-amber-950 rounded-lg p-3 text-center border border-amber-200">
                 <Scissors className="h-5 w-5 mx-auto mb-1 text-amber-600" />
                 <div className="text-xs text-muted-foreground">تقطيع</div>
-                <div className="text-lg font-bold text-amber-600">{formatKg(m.cutting_kg)}</div>
-                <div className="text-xs text-muted-foreground">{m.cutting_rolls} رول</div>
+                <div className="text-lg font-bold text-amber-600">
+                  {formatKg(m.cutting_kg)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {m.cutting_rolls} رول
+                </div>
               </div>
             </div>
           </TableCell>
@@ -569,7 +816,15 @@ function MachineRow({ machine: m, maxKg, isExpanded, onToggle, ln, formatKg, for
   );
 }
 
-function WorkerRow({ worker: w, maxKg, isExpanded, onToggle, ln, formatKg, formatNum }: any) {
+function WorkerRow({
+  worker: w,
+  maxKg,
+  isExpanded,
+  onToggle,
+  ln,
+  formatKg,
+  formatNum,
+}: any) {
   const percent = maxKg > 0 ? (w.total_kg / maxKg) * 100 : 0;
 
   return (
@@ -581,13 +836,21 @@ function WorkerRow({ worker: w, maxKg, isExpanded, onToggle, ln, formatKg, forma
         <TableCell className="text-center">
           <div className="space-y-1">
             <div className="font-bold">{formatKg(w.total_kg)}</div>
-            <div className="w-20 mx-auto"><Progress value={percent} className="h-1.5" /></div>
+            <div className="w-20 mx-auto">
+              <Progress value={percent} className="h-1.5" />
+            </div>
           </div>
         </TableCell>
-        <TableCell className="text-center font-semibold">{formatNum(w.total_rolls)}</TableCell>
+        <TableCell className="text-center font-semibold">
+          {formatNum(w.total_rolls)}
+        </TableCell>
         <TableCell className="text-center">
           <Button variant="ghost" size="sm">
-            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            {isExpanded ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
           </Button>
         </TableCell>
       </TableRow>
@@ -598,20 +861,32 @@ function WorkerRow({ worker: w, maxKg, isExpanded, onToggle, ln, formatKg, forma
               <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-3 text-center border border-blue-200">
                 <Film className="h-5 w-5 mx-auto mb-1 text-blue-600" />
                 <div className="text-xs text-muted-foreground">فيلم</div>
-                <div className="text-lg font-bold text-blue-600">{formatKg(w.film_kg)}</div>
-                <div className="text-xs text-muted-foreground">{w.film_rolls} رول</div>
+                <div className="text-lg font-bold text-blue-600">
+                  {formatKg(w.film_kg)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {w.film_rolls} رول
+                </div>
               </div>
               <div className="bg-purple-50 dark:bg-purple-950 rounded-lg p-3 text-center border border-purple-200">
                 <Printer className="h-5 w-5 mx-auto mb-1 text-purple-600" />
                 <div className="text-xs text-muted-foreground">طباعة</div>
-                <div className="text-lg font-bold text-purple-600">{formatKg(w.printing_kg)}</div>
-                <div className="text-xs text-muted-foreground">{w.printing_rolls} رول</div>
+                <div className="text-lg font-bold text-purple-600">
+                  {formatKg(w.printing_kg)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {w.printing_rolls} رول
+                </div>
               </div>
               <div className="bg-amber-50 dark:bg-amber-950 rounded-lg p-3 text-center border border-amber-200">
                 <Scissors className="h-5 w-5 mx-auto mb-1 text-amber-600" />
                 <div className="text-xs text-muted-foreground">تقطيع</div>
-                <div className="text-lg font-bold text-amber-600">{formatKg(w.cutting_kg)}</div>
-                <div className="text-xs text-muted-foreground">{w.cutting_rolls} رول</div>
+                <div className="text-lg font-bold text-amber-600">
+                  {formatKg(w.cutting_kg)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {w.cutting_rolls} رول
+                </div>
               </div>
             </div>
           </TableCell>

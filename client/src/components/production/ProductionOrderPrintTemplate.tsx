@@ -1,7 +1,8 @@
+import { format } from "date-fns";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+
 import { useLocalizedName } from "../../hooks/use-localized-name";
-import { format } from "date-fns";
 import "../../print.css";
 
 interface ProductionOrderPrintTemplateProps {
@@ -80,21 +81,21 @@ export default function ProductionOrderPrintTemplate({
 
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
-      case "completed": 
-      case "delivered": 
+      case "completed":
+      case "delivered":
         return "print-badge print-badge-success";
-      case "active": 
+      case "active":
       case "in_production":
       case "in_progress":
         return "print-badge print-badge-info";
       case "for_production":
         return "print-badge print-badge-primary";
-      case "cancelled": 
+      case "cancelled":
         return "print-badge print-badge-danger";
       case "paused":
       case "on_hold":
         return "print-badge print-badge-secondary";
-      default: 
+      default:
         return "print-badge print-badge-warning";
     }
   };
@@ -113,13 +114,13 @@ export default function ProductionOrderPrintTemplate({
   const completedRolls = rolls.filter((r: any) => r.stage === "done").length;
   const totalWeight = rolls.reduce(
     (sum: number, r: any) => sum + parseFloat(r.weight_kg || 0),
-    0
+    0,
   );
-  const targetQuantity = parseFloat(productionOrder.final_quantity_kg || 0) || parseFloat(productionOrder.quantity_kg || 0);
+  const targetQuantity =
+    parseFloat(productionOrder.final_quantity_kg || 0) ||
+    parseFloat(productionOrder.quantity_kg || 0);
   const progressPercentage =
-    targetQuantity > 0
-      ? (totalWeight / targetQuantity) * 100
-      : 0;
+    targetQuantity > 0 ? (totalWeight / targetQuantity) * 100 : 0;
 
   return (
     <div className="production-print-container">
@@ -163,15 +164,15 @@ export default function ProductionOrderPrintTemplate({
             <span>#{productionOrder.production_order_number}</span>
           </div>
           <div className="print-preview-toolbar-actions">
-            <button 
-              onClick={handlePrint} 
+            <button
+              onClick={handlePrint}
               className="print-preview-btn-print"
               data-testid="button-print-production-order"
             >
               {t("production.print.print")}
             </button>
-            <button 
-              onClick={onClose} 
+            <button
+              onClick={onClose}
               className="print-preview-btn-close"
               data-testid="button-close-print"
             >
@@ -202,7 +203,10 @@ export default function ProductionOrderPrintTemplate({
       </div>
 
       {/* المحتوى الفعلي للطباعة - مخفي على الشاشة ويظهر فقط عند الطباعة */}
-      <div className="production-print-area" style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+      <div
+        className="production-print-area"
+        style={{ position: "absolute", left: "-9999px", top: 0 }}
+      >
         <PrintContentInner
           productionOrder={productionOrder}
           order={order}
@@ -247,13 +251,21 @@ function PrintContentInner({
       {/* الترويسة */}
       <div className="print-header">
         <div className="print-header-right">
-          <h1 className="print-title">{t("production.print.productionOrder")}</h1>
-          <p className="print-subtitle">{t("production.print.productionOrderEn")}</p>
-          <div className="print-order-number">#{productionOrder.production_order_number}</div>
+          <h1 className="print-title">
+            {t("production.print.productionOrder")}
+          </h1>
+          <p className="print-subtitle">
+            {t("production.print.productionOrderEn")}
+          </p>
+          <div className="print-order-number">
+            #{productionOrder.production_order_number}
+          </div>
         </div>
         <div className="print-header-center">
           <h2 className="print-company">{t("production.print.companyName")}</h2>
-          <p className="print-subtitle">{t("production.print.companyNameEn")}</p>
+          <p className="print-subtitle">
+            {t("production.print.companyNameEn")}
+          </p>
         </div>
         <div className="print-header-left">
           {qrCodeUrl && (
@@ -265,15 +277,26 @@ function PrintContentInner({
       {/* معلومات أمر الإنتاج */}
       <div className="print-info-grid">
         <div className="print-info-box">
-          <div className="print-info-label">{t("production.print.orderNumber")}</div>
-          <div className="print-info-value">{order?.order_number || t("production.print.notSpecified")}</div>
+          <div className="print-info-label">
+            {t("production.print.orderNumber")}
+          </div>
+          <div className="print-info-value">
+            {order?.order_number || t("production.print.notSpecified")}
+          </div>
         </div>
         <div className="print-info-box">
-          <div className="print-info-label">{t("production.print.customer")}</div>
-          <div className="print-info-value">{ln(customer?.name_ar, customer?.name) || t("production.print.notSpecified")}</div>
+          <div className="print-info-label">
+            {t("production.print.customer")}
+          </div>
+          <div className="print-info-value">
+            {ln(customer?.name_ar, customer?.name) ||
+              t("production.print.notSpecified")}
+          </div>
         </div>
         <div className="print-info-box">
-          <div className="print-info-label">{t("production.print.statusLabel")}</div>
+          <div className="print-info-label">
+            {t("production.print.statusLabel")}
+          </div>
           <div className="print-info-value">
             <span className={getStatusBadgeClass(productionOrder.status)}>
               {getStatusText(productionOrder.status)}
@@ -281,7 +304,9 @@ function PrintContentInner({
           </div>
         </div>
         <div className="print-info-box">
-          <div className="print-info-label">{t("production.print.creationDate")}</div>
+          <div className="print-info-label">
+            {t("production.print.creationDate")}
+          </div>
           <div className="print-info-value">
             {productionOrder.created_at
               ? format(new Date(productionOrder.created_at), "dd/MM/yyyy")
@@ -289,65 +314,99 @@ function PrintContentInner({
           </div>
         </div>
         <div className="print-info-box highlight">
-          <div className="print-info-label">{t("production.print.requiredQuantity")}</div>
+          <div className="print-info-label">
+            {t("production.print.requiredQuantity")}
+          </div>
           <div className="print-info-value large">
-            {parseFloat(productionOrder.final_quantity_kg || productionOrder.quantity_kg || 0).toFixed(2)} {t("production.print.kg")}
+            {parseFloat(
+              productionOrder.final_quantity_kg ||
+                productionOrder.quantity_kg ||
+                0,
+            ).toFixed(2)}{" "}
+            {t("production.print.kg")}
             {parseFloat(productionOrder.overrun_percentage || 0) > 0 && (
-              <span style={{ fontSize: "12px", color: "#2563eb", marginRight: "4px" }}>
+              <span
+                style={{
+                  fontSize: "12px",
+                  color: "#2563eb",
+                  marginRight: "4px",
+                }}
+              >
                 (+{productionOrder.overrun_percentage}%)
               </span>
             )}
           </div>
         </div>
         <div className="print-info-box">
-          <div className="print-info-label">{t("production.print.completionRate")}</div>
-          <div className="print-info-value">{progressPercentage.toFixed(1)}%</div>
+          <div className="print-info-label">
+            {t("production.print.completionRate")}
+          </div>
+          <div className="print-info-value">
+            {progressPercentage.toFixed(1)}%
+          </div>
         </div>
       </div>
 
       {/* مواصفات المنتج */}
       <div className="print-section print-avoid-break">
-        <h3 className="print-section-title">{t("production.print.productSpecs")}</h3>
+        <h3 className="print-section-title">
+          {t("production.print.productSpecs")}
+        </h3>
         <div className="print-specs-grid">
           <div className="print-specs-item">
             <strong>{t("production.print.itemName")}:</strong>
-            {ln(item?.name_ar, item?.name) || t("production.print.notSpecified")}
+            {ln(item?.name_ar, item?.name) ||
+              t("production.print.notSpecified")}
           </div>
           <div className="print-specs-item">
             <strong>{t("production.print.size")}:</strong>
-            {customerProduct?.size_caption || t("production.print.notSpecified")}
+            {customerProduct?.size_caption ||
+              t("production.print.notSpecified")}
           </div>
           <div className="print-specs-item">
             <strong>{t("production.print.width")}:</strong>
-            {customerProduct?.width || t("production.print.notSpecified")} {t("production.print.cm")}
+            {customerProduct?.width || t("production.print.notSpecified")}{" "}
+            {t("production.print.cm")}
           </div>
           <div className="print-specs-item">
             <strong>{t("production.print.thickness")}:</strong>
-            {customerProduct?.thickness || t("production.print.notSpecified")} {t("production.print.micron")}
+            {customerProduct?.thickness ||
+              t("production.print.notSpecified")}{" "}
+            {t("production.print.micron")}
           </div>
           <div className="print-specs-item">
             <strong>{t("production.print.rightFacing")}:</strong>
-            {customerProduct?.right_facing || t("production.print.notSpecified")} {t("production.print.cm")}
+            {customerProduct?.right_facing ||
+              t("production.print.notSpecified")}{" "}
+            {t("production.print.cm")}
           </div>
           <div className="print-specs-item">
             <strong>{t("production.print.leftFacing")}:</strong>
-            {customerProduct?.left_facing || t("production.print.notSpecified")} {t("production.print.cm")}
+            {customerProduct?.left_facing ||
+              t("production.print.notSpecified")}{" "}
+            {t("production.print.cm")}
           </div>
           <div className="print-specs-item">
             <strong>{t("production.print.cuttingLength")}:</strong>
-            {customerProduct?.cutting_length_cm || t("production.print.notSpecified")} {t("production.print.cm")}
+            {customerProduct?.cutting_length_cm ||
+              t("production.print.notSpecified")}{" "}
+            {t("production.print.cm")}
           </div>
           <div className="print-specs-item">
             <strong>{t("production.print.rawMaterial")}:</strong>
-            {customerProduct?.raw_material || t("production.print.notSpecified")}
+            {customerProduct?.raw_material ||
+              t("production.print.notSpecified")}
           </div>
           <div className="print-specs-item">
             <strong>{t("production.print.printingCylinder")}:</strong>
-            {customerProduct?.printing_cylinder || t("production.print.notSpecified")}
+            {customerProduct?.printing_cylinder ||
+              t("production.print.notSpecified")}
           </div>
           <div className="print-specs-item">
             <strong>{t("production.print.printing")}:</strong>
-            {customerProduct?.is_printed ? t("production.print.yes") : t("production.print.no")}
+            {customerProduct?.is_printed
+              ? t("production.print.yes")
+              : t("production.print.no")}
           </div>
           <div className="print-specs-item">
             <strong>{t("production.print.punching")}:</strong>
@@ -355,30 +414,45 @@ function PrintContentInner({
           </div>
           <div className="print-specs-item">
             <strong>{t("production.print.cuttingUnit")}:</strong>
-            {customerProduct?.cutting_unit || t("production.print.notSpecified")}
+            {customerProduct?.cutting_unit ||
+              t("production.print.notSpecified")}
           </div>
         </div>
       </div>
 
       {/* إحصائيات الإنتاج */}
       <div className="print-section print-avoid-break">
-        <h3 className="print-section-title">{t("production.print.productionStats")}</h3>
+        <h3 className="print-section-title">
+          {t("production.print.productionStats")}
+        </h3>
         <div className="print-stats-row">
           <div className="print-stat-card">
-            <div className="print-stat-label">{t("production.print.totalRolls")}</div>
+            <div className="print-stat-label">
+              {t("production.print.totalRolls")}
+            </div>
             <div className="print-stat-value">{totalRolls}</div>
           </div>
           <div className="print-stat-card">
-            <div className="print-stat-label">{t("production.print.completedRolls")}</div>
+            <div className="print-stat-label">
+              {t("production.print.completedRolls")}
+            </div>
             <div className="print-stat-value">{completedRolls}</div>
           </div>
           <div className="print-stat-card">
-            <div className="print-stat-label">{t("production.print.producedWeight")}</div>
-            <div className="print-stat-value">{totalWeight.toFixed(2)} {t("production.print.kg")}</div>
+            <div className="print-stat-label">
+              {t("production.print.producedWeight")}
+            </div>
+            <div className="print-stat-value">
+              {totalWeight.toFixed(2)} {t("production.print.kg")}
+            </div>
           </div>
           <div className="print-stat-card">
-            <div className="print-stat-label">{t("production.print.completionPercentage")}</div>
-            <div className="print-stat-value">{progressPercentage.toFixed(1)}%</div>
+            <div className="print-stat-label">
+              {t("production.print.completionPercentage")}
+            </div>
+            <div className="print-stat-value">
+              {progressPercentage.toFixed(1)}%
+            </div>
           </div>
         </div>
 
@@ -395,7 +469,9 @@ function PrintContentInner({
       {/* جدول الرولات */}
       {rolls.length > 0 && (
         <div className="print-section print-avoid-break">
-          <h3 className="print-section-title">{t("production.print.productionLog")} ({totalRolls})</h3>
+          <h3 className="print-section-title">
+            {t("production.print.productionLog")} ({totalRolls})
+          </h3>
           <table className="print-table">
             <thead>
               <tr>
@@ -412,7 +488,9 @@ function PrintContentInner({
                 <tr key={roll.id}>
                   <td className="text-center">{index + 1}</td>
                   <td className="text-center font-bold">{roll.roll_number}</td>
-                  <td className="text-center">{parseFloat(roll.weight_kg || 0).toFixed(2)}</td>
+                  <td className="text-center">
+                    {parseFloat(roll.weight_kg || 0).toFixed(2)}
+                  </td>
                   <td className="text-center">
                     <span
                       className={
@@ -439,7 +517,9 @@ function PrintContentInner({
                   <strong>{t("production.print.total")}:</strong>
                 </td>
                 <td colSpan={4}>
-                  <strong>{totalWeight.toFixed(2)} {t("production.print.kg")}</strong>
+                  <strong>
+                    {totalWeight.toFixed(2)} {t("production.print.kg")}
+                  </strong>
                 </td>
               </tr>
             </tfoot>
@@ -449,9 +529,39 @@ function PrintContentInner({
 
       {/* ملاحظات */}
       {productionOrder.notes && (
-        <div className="print-notes print-avoid-break" style={{ border: "3px solid #dc2626", padding: "14px", marginBottom: "15px", borderRadius: "6px", background: "#fff5f5", textAlign: "center" }}>
-          <div className="print-notes-title" style={{ fontSize: "16px", fontWeight: 900, color: "#dc2626", marginBottom: "8px" }}>⚠️ {t("production.print.notes")} ⚠️</div>
-          <div className="print-notes-content" style={{ fontSize: "20px", fontWeight: 900, color: "#dc2626", lineHeight: 1.6 }}>{productionOrder.notes}</div>
+        <div
+          className="print-notes print-avoid-break"
+          style={{
+            border: "3px solid #dc2626",
+            padding: "14px",
+            marginBottom: "15px",
+            borderRadius: "6px",
+            background: "#fff5f5",
+            textAlign: "center",
+          }}
+        >
+          <div
+            className="print-notes-title"
+            style={{
+              fontSize: "16px",
+              fontWeight: 900,
+              color: "#dc2626",
+              marginBottom: "8px",
+            }}
+          >
+            ⚠️ {t("production.print.notes")} ⚠️
+          </div>
+          <div
+            className="print-notes-content"
+            style={{
+              fontSize: "20px",
+              fontWeight: 900,
+              color: "#dc2626",
+              lineHeight: 1.6,
+            }}
+          >
+            {productionOrder.notes}
+          </div>
         </div>
       )}
 
@@ -459,21 +569,30 @@ function PrintContentInner({
       <div className="print-signatures print-avoid-break">
         <div className="print-signature-box">
           <div className="print-signature-line"></div>
-          <div className="print-signature-label">{t("production.print.productionOfficer")}</div>
+          <div className="print-signature-label">
+            {t("production.print.productionOfficer")}
+          </div>
         </div>
         <div className="print-signature-box">
           <div className="print-signature-line"></div>
-          <div className="print-signature-label">{t("production.print.departmentSupervisor")}</div>
+          <div className="print-signature-label">
+            {t("production.print.departmentSupervisor")}
+          </div>
         </div>
         <div className="print-signature-box">
           <div className="print-signature-line"></div>
-          <div className="print-signature-label">{t("production.print.productionManager")}</div>
+          <div className="print-signature-label">
+            {t("production.print.productionManager")}
+          </div>
         </div>
       </div>
 
       {/* التذييل */}
       <div className="print-footer">
-        <p>{t("production.print.documentGenerated")} {format(new Date(), "dd/MM/yyyy - HH:mm")}</p>
+        <p>
+          {t("production.print.documentGenerated")}{" "}
+          {format(new Date(), "dd/MM/yyyy - HH:mm")}
+        </p>
         <p>{t("production.print.systemName")}</p>
       </div>
     </div>

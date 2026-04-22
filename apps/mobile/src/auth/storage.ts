@@ -53,7 +53,10 @@ async function loadBundle(): Promise<TokenBundle | null> {
   const legacyToken = await getItem(LEGACY_TOKEN_KEY);
   const legacyRefresh = await getItem(LEGACY_REFRESH_KEY);
   if (legacyToken && legacyRefresh) {
-    const bundle: TokenBundle = { token: legacyToken, refreshToken: legacyRefresh };
+    const bundle: TokenBundle = {
+      token: legacyToken,
+      refreshToken: legacyRefresh,
+    };
     await setItem(TOKENS_KEY, JSON.stringify(bundle));
     await deleteItem(LEGACY_TOKEN_KEY);
     await deleteItem(LEGACY_REFRESH_KEY);

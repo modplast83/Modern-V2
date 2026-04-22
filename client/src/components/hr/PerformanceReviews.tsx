@@ -1,11 +1,4 @@
-import { useState } from "react";
-import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
-import { Button } from "../ui/button";
-import { Badge } from "../ui/badge";
-import { Progress } from "../ui/progress";
-import { formatNumber, formatPercentage } from "../../lib/formatNumber";
 import {
   Target,
   Star,
@@ -16,6 +9,14 @@ import {
   BarChart3,
   Award,
 } from "lucide-react";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+
+import { formatNumber, formatPercentage } from "../../lib/formatNumber";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
+import { Progress } from "../ui/progress";
 
 interface PerformanceReview {
   id: number;
@@ -337,7 +338,9 @@ export default function PerformanceReviews() {
                   </CardTitle>
                   <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                     <User className="w-4 h-4" />
-                    <span>{t("hr.performance.employeeId")} {review.employee_id}</span>
+                    <span>
+                      {t("hr.performance.employeeId")} {review.employee_id}
+                    </span>
                   </div>
                 </div>
                 <Badge className={getStatusColor(review.status)}>
@@ -363,8 +366,12 @@ export default function PerformanceReviews() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-gray-600 dark:text-gray-400">{t("hr.performance.reviewer")}</p>
-                  <p className="font-medium">{t("hr.performance.managerId")} {review.reviewer_id}</p>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    {t("hr.performance.reviewer")}
+                  </p>
+                  <p className="font-medium">
+                    {t("hr.performance.managerId")} {review.reviewer_id}
+                  </p>
                 </div>
               </div>
 

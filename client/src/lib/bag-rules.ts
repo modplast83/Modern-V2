@@ -21,7 +21,7 @@ export interface CompatibilityRule {
   if: Record<string, number>;
   then: Record<string, number>;
   message_ar: string;
-  type: 'error' | 'warning' | 'suggestion';
+  type: "error" | "warning" | "suggestion";
 }
 
 export interface BagTypeRules {
@@ -57,7 +57,7 @@ export interface MaterialInfo {
   description_ar: string;
   min_thickness: number;
   max_thickness: number;
-  transparency: 'transparent' | 'semi_transparent' | 'opaque';
+  transparency: "transparent" | "semi_transparent" | "opaque";
   surface: string;
   flexibility: string;
   density: number;
@@ -107,41 +107,217 @@ export const MATERIALS: Record<string, MaterialInfo> = {
 };
 
 export const BAG_COLORS: Record<string, BagColorInfo> = {
-  white: { id: "white", label_ar: "أبيض", label_en: "White", hex: "#FFFFFF", opacity: 1, is_transparent: false },
-  transparent: { id: "transparent", label_ar: "شفاف", label_en: "Transparent", hex: "#E8F4F8", opacity: 0.3, is_transparent: true },
-  black: { id: "black", label_ar: "أسود", label_en: "Black", hex: "#1A1A1A", opacity: 1, is_transparent: false },
-  red: { id: "red", label_ar: "أحمر", label_en: "Red", hex: "#DC2626", opacity: 1, is_transparent: false },
-  blue: { id: "blue", label_ar: "أزرق", label_en: "Blue", hex: "#2563EB", opacity: 1, is_transparent: false },
-  green: { id: "green", label_ar: "أخضر", label_en: "Green", hex: "#16A34A", opacity: 1, is_transparent: false },
-  yellow: { id: "yellow", label_ar: "أصفر", label_en: "Yellow", hex: "#EAB308", opacity: 1, is_transparent: false },
-  gold: { id: "gold", label_ar: "ذهبي", label_en: "Gold", hex: "#CA8A04", opacity: 1, is_transparent: false },
-  skyblue: { id: "skyblue", label_ar: "سماوي", label_en: "Sky Blue", hex: "#38BDF8", opacity: 1, is_transparent: false },
-  silver: { id: "silver", label_ar: "سيلفر", label_en: "Silver", hex: "#C0C0C0", opacity: 1, is_transparent: false },
-  gray: { id: "gray", label_ar: "رمادي", label_en: "Gray", hex: "#6B7280", opacity: 1, is_transparent: false },
-  olive: { id: "olive", label_ar: "زيتي", label_en: "Olive", hex: "#6B8E23", opacity: 1, is_transparent: false },
-  maroon: { id: "maroon", label_ar: "مارون", label_en: "Maroon", hex: "#800000", opacity: 1, is_transparent: false },
-  turquoise: { id: "turquoise", label_ar: "تركواز", label_en: "Turquoise", hex: "#40E0D0", opacity: 1, is_transparent: false },
-  pink: { id: "pink", label_ar: "وردي", label_en: "Pink", hex: "#F472B6", opacity: 1, is_transparent: false },
-  beige: { id: "beige", label_ar: "بيج", label_en: "Beige", hex: "#D2B48C", opacity: 1, is_transparent: false },
-  brown: { id: "brown", label_ar: "بني", label_en: "Brown", hex: "#8B4513", opacity: 1, is_transparent: false },
-  orange: { id: "orange", label_ar: "برتقالي", label_en: "Orange", hex: "#EA580C", opacity: 1, is_transparent: false },
+  white: {
+    id: "white",
+    label_ar: "أبيض",
+    label_en: "White",
+    hex: "#FFFFFF",
+    opacity: 1,
+    is_transparent: false,
+  },
+  transparent: {
+    id: "transparent",
+    label_ar: "شفاف",
+    label_en: "Transparent",
+    hex: "#E8F4F8",
+    opacity: 0.3,
+    is_transparent: true,
+  },
+  black: {
+    id: "black",
+    label_ar: "أسود",
+    label_en: "Black",
+    hex: "#1A1A1A",
+    opacity: 1,
+    is_transparent: false,
+  },
+  red: {
+    id: "red",
+    label_ar: "أحمر",
+    label_en: "Red",
+    hex: "#DC2626",
+    opacity: 1,
+    is_transparent: false,
+  },
+  blue: {
+    id: "blue",
+    label_ar: "أزرق",
+    label_en: "Blue",
+    hex: "#2563EB",
+    opacity: 1,
+    is_transparent: false,
+  },
+  green: {
+    id: "green",
+    label_ar: "أخضر",
+    label_en: "Green",
+    hex: "#16A34A",
+    opacity: 1,
+    is_transparent: false,
+  },
+  yellow: {
+    id: "yellow",
+    label_ar: "أصفر",
+    label_en: "Yellow",
+    hex: "#EAB308",
+    opacity: 1,
+    is_transparent: false,
+  },
+  gold: {
+    id: "gold",
+    label_ar: "ذهبي",
+    label_en: "Gold",
+    hex: "#CA8A04",
+    opacity: 1,
+    is_transparent: false,
+  },
+  skyblue: {
+    id: "skyblue",
+    label_ar: "سماوي",
+    label_en: "Sky Blue",
+    hex: "#38BDF8",
+    opacity: 1,
+    is_transparent: false,
+  },
+  silver: {
+    id: "silver",
+    label_ar: "سيلفر",
+    label_en: "Silver",
+    hex: "#C0C0C0",
+    opacity: 1,
+    is_transparent: false,
+  },
+  gray: {
+    id: "gray",
+    label_ar: "رمادي",
+    label_en: "Gray",
+    hex: "#6B7280",
+    opacity: 1,
+    is_transparent: false,
+  },
+  olive: {
+    id: "olive",
+    label_ar: "زيتي",
+    label_en: "Olive",
+    hex: "#6B8E23",
+    opacity: 1,
+    is_transparent: false,
+  },
+  maroon: {
+    id: "maroon",
+    label_ar: "مارون",
+    label_en: "Maroon",
+    hex: "#800000",
+    opacity: 1,
+    is_transparent: false,
+  },
+  turquoise: {
+    id: "turquoise",
+    label_ar: "تركواز",
+    label_en: "Turquoise",
+    hex: "#40E0D0",
+    opacity: 1,
+    is_transparent: false,
+  },
+  pink: {
+    id: "pink",
+    label_ar: "وردي",
+    label_en: "Pink",
+    hex: "#F472B6",
+    opacity: 1,
+    is_transparent: false,
+  },
+  beige: {
+    id: "beige",
+    label_ar: "بيج",
+    label_en: "Beige",
+    hex: "#D2B48C",
+    opacity: 1,
+    is_transparent: false,
+  },
+  brown: {
+    id: "brown",
+    label_ar: "بني",
+    label_en: "Brown",
+    hex: "#8B4513",
+    opacity: 1,
+    is_transparent: false,
+  },
+  orange: {
+    id: "orange",
+    label_ar: "برتقالي",
+    label_en: "Orange",
+    hex: "#EA580C",
+    opacity: 1,
+    is_transparent: false,
+  },
 };
 
 export const HANDLES: Record<string, HandleInfo> = {
   none: { id: "none", label_ar: "بدون مقبض", label_en: "None", icon: "Ban" },
-  hanger: { id: "hanger", label_ar: "علاقي", label_en: "Hanger", icon: "ShoppingBag" },
-  hanger_hook: { id: "hanger_hook", label_ar: "علاقي مع هوك", label_en: "Hanger with Hook", icon: "Anchor" },
-  external_strap: { id: "external_strap", label_ar: "مقبض خارجي شريطي", label_en: "External Strap", icon: "Link" },
-  die_cut: { id: "die_cut", label_ar: "فتحة يد", label_en: "Die Cut", icon: "Hand" },
-  banana_9cm: { id: "banana_9cm", label_ar: "بنانة 9 سم", label_en: "Banana 9cm", icon: "Smile" },
-  banana_6cm: { id: "banana_6cm", label_ar: "بنانة 6 سم", label_en: "Banana 6cm", icon: "Smile" },
-  reinforced: { id: "reinforced", label_ar: "مقبض مقوى", label_en: "Reinforced", icon: "ShieldCheck" },
+  hanger: {
+    id: "hanger",
+    label_ar: "علاقي",
+    label_en: "Hanger",
+    icon: "ShoppingBag",
+  },
+  hanger_hook: {
+    id: "hanger_hook",
+    label_ar: "علاقي مع هوك",
+    label_en: "Hanger with Hook",
+    icon: "Anchor",
+  },
+  external_strap: {
+    id: "external_strap",
+    label_ar: "مقبض خارجي شريطي",
+    label_en: "External Strap",
+    icon: "Link",
+  },
+  die_cut: {
+    id: "die_cut",
+    label_ar: "فتحة يد",
+    label_en: "Die Cut",
+    icon: "Hand",
+  },
+  banana_9cm: {
+    id: "banana_9cm",
+    label_ar: "بنانة 9 سم",
+    label_en: "Banana 9cm",
+    icon: "Smile",
+  },
+  banana_6cm: {
+    id: "banana_6cm",
+    label_ar: "بنانة 6 سم",
+    label_en: "Banana 6cm",
+    icon: "Smile",
+  },
+  reinforced: {
+    id: "reinforced",
+    label_ar: "مقبض مقوى",
+    label_en: "Reinforced",
+    icon: "ShieldCheck",
+  },
 };
 
 const ALL_BAG_COLORS = [
-  "white", "transparent", "black", "red", "blue", "green", "yellow",
-  "gold", "skyblue", "silver", "gray", "olive", "maroon", "turquoise",
-  "pink", "beige", "brown", "orange",
+  "white",
+  "transparent",
+  "black",
+  "red",
+  "blue",
+  "green",
+  "yellow",
+  "gold",
+  "skyblue",
+  "silver",
+  "gray",
+  "olive",
+  "maroon",
+  "turquoise",
+  "pink",
+  "beige",
+  "brown",
+  "orange",
 ];
 
 export const BAG_TYPES: Record<string, BagTypeRules> = {
@@ -169,7 +345,13 @@ export const BAG_TYPES: Record<string, BagTypeRules> = {
       back: { x: 15, y: 25, width: 70, height: 40, unit: "percent" },
     },
     compatibility_rules: [
-      { if: { width_gt: 50 }, then: { thickness_min: 40 }, message_ar: "للعروض الكبيرة (أكثر من 50 سم) يُنصح برفع السماكة إلى 40 ميكرون على الأقل", type: "warning" },
+      {
+        if: { width_gt: 50 },
+        then: { thickness_min: 40 },
+        message_ar:
+          "للعروض الكبيرة (أكثر من 50 سم) يُنصح برفع السماكة إلى 40 ميكرون على الأقل",
+        type: "warning",
+      },
     ],
   },
   no_handle: {

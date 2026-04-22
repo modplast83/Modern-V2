@@ -1,27 +1,46 @@
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Settings2 } from "lucide-react";
 import { useState, lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import PageLayout from "../components/layout/PageLayout";
-import DashboardStats from "../components/dashboard/DashboardStats";
-import Shortcuts from "../components/dashboard/Shortcuts";
-import QuickNotes from "../components/dashboard/QuickNotes";
+
 import DashboardCustomizer from "../components/dashboard/DashboardCustomizer";
-import { useAuth } from "../hooks/use-auth";
+import DashboardStats from "../components/dashboard/DashboardStats";
+import QuickNotes from "../components/dashboard/QuickNotes";
+import Shortcuts from "../components/dashboard/Shortcuts";
+import PageLayout from "../components/layout/PageLayout";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
-import { Settings2 } from "lucide-react";
-import { apiRequest, queryClient } from "../lib/queryClient";
+import { useAuth } from "../hooks/use-auth";
 import { lazyWithRetry } from "../lib/lazyWithRetry";
+import { apiRequest, queryClient } from "../lib/queryClient";
 
-const MachineStatus = lazyWithRetry(() => import("../components/dashboard/MachineStatus"));
-const RecentRolls = lazyWithRetry(() => import("../components/dashboard/RecentRolls"));
-const AttendanceStats = lazyWithRetry(() => import("../components/dashboard/AttendanceStats"));
-const InventoryWidget = lazyWithRetry(() => import("../components/dashboard/widgets/InventoryWidget"));
-const QuotesWidget = lazyWithRetry(() => import("../components/dashboard/widgets/QuotesWidget"));
-const AttendanceWidget = lazyWithRetry(() => import("../components/dashboard/widgets/AttendanceWidget"));
-const RecentOrdersWidget = lazyWithRetry(() => import("../components/dashboard/widgets/RecentOrdersWidget"));
-const ProductionProgressWidget = lazyWithRetry(() => import("../components/dashboard/widgets/ProductionProgressWidget"));
-const MaintenanceWidget = lazyWithRetry(() => import("../components/dashboard/widgets/MaintenanceWidget"));
+const MachineStatus = lazyWithRetry(
+  () => import("../components/dashboard/MachineStatus"),
+);
+const RecentRolls = lazyWithRetry(
+  () => import("../components/dashboard/RecentRolls"),
+);
+const AttendanceStats = lazyWithRetry(
+  () => import("../components/dashboard/AttendanceStats"),
+);
+const InventoryWidget = lazyWithRetry(
+  () => import("../components/dashboard/widgets/InventoryWidget"),
+);
+const QuotesWidget = lazyWithRetry(
+  () => import("../components/dashboard/widgets/QuotesWidget"),
+);
+const AttendanceWidget = lazyWithRetry(
+  () => import("../components/dashboard/widgets/AttendanceWidget"),
+);
+const RecentOrdersWidget = lazyWithRetry(
+  () => import("../components/dashboard/widgets/RecentOrdersWidget"),
+);
+const ProductionProgressWidget = lazyWithRetry(
+  () => import("../components/dashboard/widgets/ProductionProgressWidget"),
+);
+const MaintenanceWidget = lazyWithRetry(
+  () => import("../components/dashboard/widgets/MaintenanceWidget"),
+);
 
 function WidgetSkeleton() {
   return (
@@ -65,14 +84,19 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [customizerOpen, setCustomizerOpen] = useState(false);
 
-  const { data: dashboardConfig, isLoading: configLoading } = useQuery<{ widgets: string[] }>({
+  const { data: dashboardConfig, isLoading: configLoading } = useQuery<{
+    widgets: string[];
+  }>({
     queryKey: ["/api/dashboard/config"],
     staleTime: 60000,
   });
 
   const saveConfigMutation = useMutation({
     mutationFn: async (widgets: string[]) => {
-      await apiRequest("/api/dashboard/config", { method: "PUT", body: JSON.stringify({ widgets }) });
+      await apiRequest("/api/dashboard/config", {
+        method: "PUT",
+        body: JSON.stringify({ widgets }),
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/config"] });
@@ -87,7 +111,10 @@ export default function Dashboard() {
 
   if (configLoading) {
     return (
-      <PageLayout title={t("dashboard.title")} description={t("dashboard.productionOverview")}>
+      <PageLayout
+        title={t("dashboard.title")}
+        description={t("dashboard.productionOverview")}
+      >
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[...Array(4)].map((_, i) => (

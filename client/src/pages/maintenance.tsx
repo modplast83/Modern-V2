@@ -1,7 +1,32 @@
-import React, { useState, useEffect } from "react";
-import { useTranslation } from 'react-i18next';
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  Wrench,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  Calendar,
+  Plus,
+  FileText,
+  AlertCircle,
+  Users,
+  Eye,
+  Printer,
+  Edit,
+  Trash2,
+} from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
+import { z } from "zod";
+
+import {
+  generateActionNumber,
+  generateMaintenanceReportNumber,
+  generateOperatorReportNumber,
+} from "../../../shared/id-generator";
 import PageLayout from "../components/layout/PageLayout";
+import ConsumablePartsTab from "../components/maintenance/ConsumablePartsTab";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import {
@@ -10,12 +35,6 @@ import {
   CardHeader,
   CardTitle,
 } from "../components/ui/card";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "../components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -34,7 +53,6 @@ import {
   FormDescription,
 } from "../components/ui/form";
 import { Input } from "../components/ui/input";
-import { Textarea } from "../components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -42,94 +60,139 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import type { TFunction } from 'i18next';
 import {
-  Wrench,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  Calendar,
-  Plus,
-  FileText,
-  AlertCircle,
-  Users,
-  Eye,
-  Printer,
-  Edit,
-  Trash2,
-} from "lucide-react";
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../components/ui/tabs";
+import { Textarea } from "../components/ui/textarea";
+import { useAuth } from "../hooks/use-auth";
 import { useToast } from "../hooks/use-toast";
 import { apiRequest } from "../lib/queryClient";
-import { useAuth } from "../hooks/use-auth";
-import {
-  generateActionNumber,
-  generateMaintenanceReportNumber,
-  generateOperatorReportNumber,
-} from "../../../shared/id-generator";
-import ConsumablePartsTab from "../components/maintenance/ConsumablePartsTab";
 import { userHasPermission } from "../utils/roleUtils";
+
 import type { PermissionKey } from "../../../shared/permissions";
+import type { TFunction } from "i18next";
 
-const createMaintenanceActionSchema = (t: TFunction) => z.object({
-  maintenance_request_id: z.number(),
-  action_type: z.string().min(1, t('maintenance.validation.actionTypeRequired')),
-  description: z.string().min(1, t('maintenance.validation.descriptionRequired')),
-  text_report: z.string().optional(),
-  spare_parts_request: z.string().optional(),
-  machining_request: z.string().optional(),
-  operator_negligence_report: z.string().optional(),
-  performed_by: z.string().min(1, t('maintenance.validation.performerRequired')),
-  requires_management_action: z.boolean().optional(),
-  management_notified: z.boolean().optional(),
-});
+const createMaintenanceActionSchema = (t: TFunction) =>
+  z.object({
+    maintenance_request_id: z.number(),
+    action_type: z
+      .string()
+      .min(1, t("maintenance.validation.actionTypeRequired")),
+    description: z
+      .string()
+      .min(1, t("maintenance.validation.descriptionRequired")),
+    text_report: z.string().optional(),
+    spare_parts_request: z.string().optional(),
+    machining_request: z.string().optional(),
+    operator_negligence_report: z.string().optional(),
+    performed_by: z
+      .string()
+      .min(1, t("maintenance.validation.performerRequired")),
+    requires_management_action: z.boolean().optional(),
+    management_notified: z.boolean().optional(),
+  });
 
-const createMaintenanceReportSchema = (t: TFunction) => z.object({
-  report_type: z.string().min(1, t('maintenance.validation.reportTypeRequired')),
-  title: z.string().min(1, t('maintenance.validation.titleRequired')),
-  description: z.string().min(1, t('maintenance.validation.descriptionRequired')),
-  machine_id: z.string().optional(),
-  severity: z.string().default("medium"),
-  priority: z.string().default("medium"),
-  spare_parts_needed: z.array(z.string()).optional(),
-  estimated_repair_time: z.number().optional(),
-});
+const createMaintenanceReportSchema = (t: TFunction) =>
+  z.object({
+    report_type: z
+      .string()
+      .min(1, t("maintenance.validation.reportTypeRequired")),
+    title: z.string().min(1, t("maintenance.validation.titleRequired")),
+    description: z
+      .string()
+      .min(1, t("maintenance.validation.descriptionRequired")),
+    machine_id: z.string().optional(),
+    severity: z.string().default("medium"),
+    priority: z.string().default("medium"),
+    spare_parts_needed: z.array(z.string()).optional(),
+    estimated_repair_time: z.number().optional(),
+  });
 
-const createOperatorNegligenceSchema = (t: TFunction) => z.object({
-  operator_id: z.string().min(1, t('maintenance.validation.operatorIdRequired')),
-  operator_name: z.string().min(1, t('maintenance.validation.operatorNameRequired')),
-  incident_date: z.string().min(1, t('maintenance.validation.incidentDateRequired')),
-  incident_type: z.string().min(1, t('maintenance.validation.incidentTypeRequired')),
-  description: z.string().min(1, t('maintenance.validation.descriptionRequired')),
-  severity: z.string().default("medium"),
-  witnesses: z.array(z.string()).optional(),
-  immediate_actions_taken: z.string().optional(),
-});
+const createOperatorNegligenceSchema = (t: TFunction) =>
+  z.object({
+    operator_id: z
+      .string()
+      .min(1, t("maintenance.validation.operatorIdRequired")),
+    operator_name: z
+      .string()
+      .min(1, t("maintenance.validation.operatorNameRequired")),
+    incident_date: z
+      .string()
+      .min(1, t("maintenance.validation.incidentDateRequired")),
+    incident_type: z
+      .string()
+      .min(1, t("maintenance.validation.incidentTypeRequired")),
+    description: z
+      .string()
+      .min(1, t("maintenance.validation.descriptionRequired")),
+    severity: z.string().default("medium"),
+    witnesses: z.array(z.string()).optional(),
+    immediate_actions_taken: z.string().optional(),
+  });
 
-const createMaintenanceRequestSchema = (t: TFunction) => z.object({
-  machine_id: z.string().min(1, t('maintenance.validation.equipmentRequired')),
-  issue_type: z.string().min(1, t('maintenance.validation.issueTypeRequired')),
-  urgency_level: z.string().default("normal"),
-  description: z.string().min(1, t('maintenance.validation.descriptionRequired')),
-  assigned_to: z.string().optional(),
-});
+const createMaintenanceRequestSchema = (t: TFunction) =>
+  z.object({
+    machine_id: z
+      .string()
+      .min(1, t("maintenance.validation.equipmentRequired")),
+    issue_type: z
+      .string()
+      .min(1, t("maintenance.validation.issueTypeRequired")),
+    urgency_level: z.string().default("normal"),
+    description: z
+      .string()
+      .min(1, t("maintenance.validation.descriptionRequired")),
+    assigned_to: z.string().optional(),
+  });
 
-const maintenanceTabPermissions: { tab: string; permissions: PermissionKey[] }[] = [
-  { tab: 'requests', permissions: ['view_maintenance_requests', 'view_maintenance', 'manage_maintenance'] },
-  { tab: 'actions', permissions: ['manage_maintenance_actions', 'manage_maintenance'] },
-  { tab: 'reports', permissions: ['view_maintenance_reports', 'view_maintenance', 'manage_maintenance'] },
-  { tab: 'negligence', permissions: ['manage_negligence', 'manage_maintenance'] },
-  { tab: 'spare-parts', permissions: ['manage_spare_parts', 'manage_maintenance'] },
-  { tab: 'consumable-parts', permissions: ['manage_consumable_parts', 'manage_maintenance'] },
+const maintenanceTabPermissions: {
+  tab: string;
+  permissions: PermissionKey[];
+}[] = [
+  {
+    tab: "requests",
+    permissions: [
+      "view_maintenance_requests",
+      "view_maintenance",
+      "manage_maintenance",
+    ],
+  },
+  {
+    tab: "actions",
+    permissions: ["manage_maintenance_actions", "manage_maintenance"],
+  },
+  {
+    tab: "reports",
+    permissions: [
+      "view_maintenance_reports",
+      "view_maintenance",
+      "manage_maintenance",
+    ],
+  },
+  {
+    tab: "negligence",
+    permissions: ["manage_negligence", "manage_maintenance"],
+  },
+  {
+    tab: "spare-parts",
+    permissions: ["manage_spare_parts", "manage_maintenance"],
+  },
+  {
+    tab: "consumable-parts",
+    permissions: ["manage_consumable_parts", "manage_maintenance"],
+  },
 ];
 
 export default function Maintenance() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [currentTab, setCurrentTab] = useState(
-    maintenanceTabPermissions.find(tp => userHasPermission(user, tp.permissions))?.tab || 'requests'
+    maintenanceTabPermissions.find((tp) =>
+      userHasPermission(user, tp.permissions),
+    )?.tab || "requests",
   );
   const [selectedRequestId, setSelectedRequestId] = useState<number | null>(
     null,
@@ -181,11 +244,14 @@ export default function Maintenance() {
     onSuccess: (result) => {
       console.log("Maintenance action created successfully:", result);
       queryClient.invalidateQueries({ queryKey: ["/api/maintenance-actions"] });
-      toast({ title: t('maintenance.toast.actionCreated') });
+      toast({ title: t("maintenance.toast.actionCreated") });
     },
     onError: (error) => {
       console.error("Failed to create maintenance action:", error);
-      toast({ title: t('maintenance.toast.actionCreateFailed'), variant: "destructive" });
+      toast({
+        title: t("maintenance.toast.actionCreateFailed"),
+        variant: "destructive",
+      });
     },
   });
 
@@ -197,10 +263,13 @@ export default function Maintenance() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/maintenance-reports"] });
-      toast({ title: t('maintenance.toast.reportCreated') });
+      toast({ title: t("maintenance.toast.reportCreated") });
     },
     onError: () => {
-      toast({ title: t('maintenance.toast.reportCreateFailed'), variant: "destructive" });
+      toast({
+        title: t("maintenance.toast.reportCreateFailed"),
+        variant: "destructive",
+      });
     },
   });
 
@@ -214,11 +283,11 @@ export default function Maintenance() {
       queryClient.invalidateQueries({
         queryKey: ["/api/operator-negligence-reports"],
       });
-      toast({ title: t('maintenance.toast.negligenceCreated') });
+      toast({ title: t("maintenance.toast.negligenceCreated") });
     },
     onError: () => {
       toast({
-        title: t('maintenance.toast.negligenceCreateFailed'),
+        title: t("maintenance.toast.negligenceCreateFailed"),
         variant: "destructive",
       });
     },
@@ -240,11 +309,14 @@ export default function Maintenance() {
         queryKey: ["/api/maintenance-requests"],
       });
       setIsRequestDialogOpen(false);
-      toast({ title: t('maintenance.toast.requestCreated') });
+      toast({ title: t("maintenance.toast.requestCreated") });
     },
     onError: (error) => {
       console.error("Error creating maintenance request:", error);
-      toast({ title: t('maintenance.toast.requestCreateFailed'), variant: "destructive" });
+      toast({
+        title: t("maintenance.toast.requestCreateFailed"),
+        variant: "destructive",
+      });
     },
   });
 
@@ -266,13 +338,13 @@ export default function Maintenance() {
   const getStatusText = (status: string) => {
     switch (status) {
       case "pending":
-        return t('maintenance.status.pending');
+        return t("maintenance.status.pending");
       case "in_progress":
-        return t('maintenance.status.inProgress');
+        return t("maintenance.status.inProgress");
       case "completed":
-        return t('maintenance.status.completed');
+        return t("maintenance.status.completed");
       case "cancelled":
-        return t('maintenance.status.cancelled');
+        return t("maintenance.status.cancelled");
       default:
         return status;
     }
@@ -294,360 +366,374 @@ export default function Maintenance() {
   const getPriorityText = (priority: string) => {
     switch (priority) {
       case "high":
-        return t('maintenance.priority.high');
+        return t("maintenance.priority.high");
       case "medium":
-        return t('maintenance.priority.medium');
+        return t("maintenance.priority.medium");
       case "low":
-        return t('maintenance.priority.low');
+        return t("maintenance.priority.low");
       default:
         return priority;
     }
   };
 
   return (
-    <PageLayout title={t('maintenance.title')} description={t('maintenance.maintenanceType')}>
+    <PageLayout
+      title={t("maintenance.title")}
+      description={t("maintenance.maintenanceType")}
+    >
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">
-                      {t('maintenance.totalRequests')}
-                    </p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {Array.isArray(maintenanceRequests)
-                        ? maintenanceRequests.length
-                        : 0}
-                    </p>
-                  </div>
-                  <Wrench className="w-8 h-8 text-blue-500" />
-                </div>
-              </CardContent>
-            </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">
+                  {t("maintenance.totalRequests")}
+                </p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {Array.isArray(maintenanceRequests)
+                    ? maintenanceRequests.length
+                    : 0}
+                </p>
+              </div>
+              <Wrench className="w-8 h-8 text-blue-500" />
+            </div>
+          </CardContent>
+        </Card>
 
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">
-                      {t('maintenance.status.pending')}
-                    </p>
-                    <p className="text-2xl font-bold text-yellow-600">
-                      {Array.isArray(maintenanceRequests)
-                        ? maintenanceRequests.filter(
-                            (r: any) => r.status === "pending",
-                          ).length
-                        : 0}
-                    </p>
-                  </div>
-                  <Clock className="w-8 h-8 text-yellow-500" />
-                </div>
-              </CardContent>
-            </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">
+                  {t("maintenance.status.pending")}
+                </p>
+                <p className="text-2xl font-bold text-yellow-600">
+                  {Array.isArray(maintenanceRequests)
+                    ? maintenanceRequests.filter(
+                        (r: any) => r.status === "pending",
+                      ).length
+                    : 0}
+                </p>
+              </div>
+              <Clock className="w-8 h-8 text-yellow-500" />
+            </div>
+          </CardContent>
+        </Card>
 
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">
-                      {t('maintenance.status.inProgress')}
-                    </p>
-                    <p className="text-2xl font-bold text-blue-600">
-                      {Array.isArray(maintenanceRequests)
-                        ? maintenanceRequests.filter(
-                            (r: any) => r.status === "in_progress",
-                          ).length
-                        : 0}
-                    </p>
-                  </div>
-                  <AlertTriangle className="w-8 h-8 text-blue-500" />
-                </div>
-              </CardContent>
-            </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">
+                  {t("maintenance.status.inProgress")}
+                </p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {Array.isArray(maintenanceRequests)
+                    ? maintenanceRequests.filter(
+                        (r: any) => r.status === "in_progress",
+                      ).length
+                    : 0}
+                </p>
+              </div>
+              <AlertTriangle className="w-8 h-8 text-blue-500" />
+            </div>
+          </CardContent>
+        </Card>
 
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">{t('maintenance.status.completedFeminine')}</p>
-                    <p className="text-2xl font-bold text-green-600">
-                      {Array.isArray(maintenanceRequests)
-                        ? maintenanceRequests.filter(
-                            (r: any) => r.status === "completed",
-                          ).length
-                        : 0}
-                    </p>
-                  </div>
-                  <CheckCircle className="w-8 h-8 text-green-500" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">
+                  {t("maintenance.status.completedFeminine")}
+                </p>
+                <p className="text-2xl font-bold text-green-600">
+                  {Array.isArray(maintenanceRequests)
+                    ? maintenanceRequests.filter(
+                        (r: any) => r.status === "completed",
+                      ).length
+                    : 0}
+                </p>
+              </div>
+              <CheckCircle className="w-8 h-8 text-green-500" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-          <Tabs
-            value={currentTab}
-            onValueChange={setCurrentTab}
-            className="w-full"
-          >
-            <TabsList className="flex flex-wrap gap-1 h-auto mb-6">
-              {userHasPermission(user, ['view_maintenance_requests', 'view_maintenance', 'manage_maintenance']) && (
-                <TabsTrigger value="requests" className="flex items-center gap-2">
-                  <Wrench className="h-4 w-4" />
-                  {t('maintenance.tabs.requests')}
-                </TabsTrigger>
-              )}
-              {userHasPermission(user, ['manage_maintenance_actions', 'manage_maintenance']) && (
-                <TabsTrigger value="actions" className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4" />
-                  {t('maintenance.tabs.actions')}
-                </TabsTrigger>
-              )}
-              {userHasPermission(user, ['view_maintenance_reports', 'view_maintenance', 'manage_maintenance']) && (
-                <TabsTrigger value="reports" className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  {t('maintenance.tabs.reports')}
-                </TabsTrigger>
-              )}
-              {userHasPermission(user, ['manage_negligence', 'manage_maintenance']) && (
-                <TabsTrigger
-                  value="negligence"
-                  className="flex items-center gap-2"
+      <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
+        <TabsList className="flex flex-wrap gap-1 h-auto mb-6">
+          {userHasPermission(user, [
+            "view_maintenance_requests",
+            "view_maintenance",
+            "manage_maintenance",
+          ]) && (
+            <TabsTrigger value="requests" className="flex items-center gap-2">
+              <Wrench className="h-4 w-4" />
+              {t("maintenance.tabs.requests")}
+            </TabsTrigger>
+          )}
+          {userHasPermission(user, [
+            "manage_maintenance_actions",
+            "manage_maintenance",
+          ]) && (
+            <TabsTrigger value="actions" className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4" />
+              {t("maintenance.tabs.actions")}
+            </TabsTrigger>
+          )}
+          {userHasPermission(user, [
+            "view_maintenance_reports",
+            "view_maintenance",
+            "manage_maintenance",
+          ]) && (
+            <TabsTrigger value="reports" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              {t("maintenance.tabs.reports")}
+            </TabsTrigger>
+          )}
+          {userHasPermission(user, [
+            "manage_negligence",
+            "manage_maintenance",
+          ]) && (
+            <TabsTrigger value="negligence" className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4" />
+              {t("maintenance.tabs.negligence")}
+            </TabsTrigger>
+          )}
+          {userHasPermission(user, [
+            "manage_spare_parts",
+            "manage_maintenance",
+          ]) && (
+            <TabsTrigger
+              value="spare-parts"
+              className="flex items-center gap-2"
+            >
+              <Users className="h-4 w-4" />
+              {t("maintenance.tabs.spareParts")}
+            </TabsTrigger>
+          )}
+          {userHasPermission(user, [
+            "manage_consumable_parts",
+            "manage_maintenance",
+          ]) && (
+            <TabsTrigger
+              value="consumable-parts"
+              className="flex items-center gap-2"
+            >
+              <Wrench className="h-4 w-4" />
+              {t("maintenance.tabs.consumableParts")}
+            </TabsTrigger>
+          )}
+        </TabsList>
+
+        <TabsContent value="requests">
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle>{t("maintenance.tabs.requests")}</CardTitle>
+                <Dialog
+                  open={isRequestDialogOpen}
+                  onOpenChange={setIsRequestDialogOpen}
                 >
-                  <AlertCircle className="h-4 w-4" />
-                  {t('maintenance.tabs.negligence')}
-                </TabsTrigger>
-              )}
-              {userHasPermission(user, ['manage_spare_parts', 'manage_maintenance']) && (
-                <TabsTrigger
-                  value="spare-parts"
-                  className="flex items-center gap-2"
-                >
-                  <Users className="h-4 w-4" />
-                  {t('maintenance.tabs.spareParts')}
-                </TabsTrigger>
-              )}
-              {userHasPermission(user, ['manage_consumable_parts', 'manage_maintenance']) && (
-                <TabsTrigger
-                  value="consumable-parts"
-                  className="flex items-center gap-2"
-                >
-                  <Wrench className="h-4 w-4" />
-                  {t('maintenance.tabs.consumableParts')}
-                </TabsTrigger>
-              )}
-            </TabsList>
+                  <DialogTrigger asChild>
+                    <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                      <Plus className="h-4 w-4 mr-2" />
+                      {t("maintenance.newRequest")}
+                    </Button>
+                  </DialogTrigger>
+                  <MaintenanceRequestDialog
+                    machines={machines}
+                    users={users}
+                    onSubmit={createRequestMutation.mutate}
+                    isLoading={createRequestMutation.isPending}
+                  />
+                </Dialog>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loadingRequests ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {t("common.loading")}
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                          {t("maintenance.requestNumber")}
+                        </th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                          {t("maintenance.machineName")}
+                        </th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                          {t("maintenance.maintenanceType")}
+                        </th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                          {t("maintenance.urgencyLevel")}
+                        </th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                          {t("common.status")}
+                        </th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                          {t("maintenance.issueDescription")}
+                        </th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                          {t("maintenance.technician")}
+                        </th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                          {t("common.date")}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {Array.isArray(maintenanceRequests) &&
+                      maintenanceRequests.length > 0 ? (
+                        maintenanceRequests.map((request: any) => {
+                          const machine = Array.isArray(machines)
+                            ? machines.find(
+                                (m: any) => m.id === request.machine_id,
+                              )
+                            : null;
+                          const machineName = machine
+                            ? machine.name_ar || machine.name
+                            : request.machine_id;
 
-            <TabsContent value="requests">
-              <Card>
-                <CardHeader>
-                  <div className="flex justify-between items-center">
-                    <CardTitle>{t('maintenance.tabs.requests')}</CardTitle>
-                    <Dialog
-                      open={isRequestDialogOpen}
-                      onOpenChange={setIsRequestDialogOpen}
-                    >
-                      <DialogTrigger asChild>
-                        <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                          <Plus className="h-4 w-4 mr-2" />
-                          {t('maintenance.newRequest')}
-                        </Button>
-                      </DialogTrigger>
-                      <MaintenanceRequestDialog
-                        machines={machines}
-                        users={users}
-                        onSubmit={createRequestMutation.mutate}
-                        isLoading={createRequestMutation.isPending}
-                      />
-                    </Dialog>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {loadingRequests ? (
-                    <div className="text-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        {t('common.loading')}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                              {t('maintenance.requestNumber')}
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                              {t('maintenance.machineName')}
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                              {t('maintenance.maintenanceType')}
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                              {t('maintenance.urgencyLevel')}
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                              {t('common.status')}
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                              {t('maintenance.issueDescription')}
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                              {t('maintenance.technician')}
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                              {t('common.date')}
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {Array.isArray(maintenanceRequests) &&
-                          maintenanceRequests.length > 0 ? (
-                            maintenanceRequests.map((request: any) => {
-                              const machine = Array.isArray(machines)
-                                ? machines.find(
-                                    (m: any) => m.id === request.machine_id,
-                                  )
-                                : null;
-                              const machineName = machine
-                                ? machine.name_ar || machine.name
-                                : request.machine_id;
+                          const assignedUser =
+                            Array.isArray(users) && request.assigned_to
+                              ? users.find(
+                                  (u: any) =>
+                                    u.id.toString() ===
+                                    request.assigned_to.toString(),
+                                )
+                              : null;
+                          const assignedName = assignedUser
+                            ? assignedUser.full_name || assignedUser.username
+                            : t("maintenance.notAssigned");
 
-                              const assignedUser =
-                                Array.isArray(users) && request.assigned_to
-                                  ? users.find(
-                                      (u: any) =>
-                                        u.id.toString() ===
-                                        request.assigned_to.toString(),
-                                    )
-                                  : null;
-                              const assignedName = assignedUser
-                                ? assignedUser.full_name ||
-                                  assignedUser.username
-                                : t('maintenance.notAssigned');
-
-                              return (
-                                <tr
-                                  key={request.id}
-                                  className="hover:bg-gray-50"
+                          return (
+                            <tr key={request.id} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-center">
+                                {request.request_number}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                {machineName}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                {request.issue_type === "mechanical"
+                                  ? t("maintenance.issueType.mechanical")
+                                  : request.issue_type === "electrical"
+                                    ? t("maintenance.issueType.electrical")
+                                    : t("maintenance.issueType.other")}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-center">
+                                <Badge
+                                  variant={
+                                    request.urgency_level === "urgent"
+                                      ? "destructive"
+                                      : request.urgency_level === "medium"
+                                        ? "default"
+                                        : "secondary"
+                                  }
                                 >
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-center">
-                                    {request.request_number}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                    {machineName}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                    {request.issue_type === "mechanical"
-                                      ? t('maintenance.issueType.mechanical')
-                                      : request.issue_type === "electrical"
-                                        ? t('maintenance.issueType.electrical')
-                                        : t('maintenance.issueType.other')}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-center">
-                                    <Badge
-                                      variant={
-                                        request.urgency_level === "urgent"
-                                          ? "destructive"
-                                          : request.urgency_level === "medium"
-                                            ? "default"
-                                            : "secondary"
-                                      }
-                                    >
-                                      {request.urgency_level === "urgent"
-                                        ? t('maintenance.urgency.urgent')
-                                        : request.urgency_level === "medium"
-                                          ? t('maintenance.urgency.medium')
-                                          : t('maintenance.urgency.normal')}
-                                    </Badge>
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-center">
-                                    <span
-                                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}
-                                    >
-                                      {getStatusText(request.status)}
-                                    </span>
-                                  </td>
-                                  <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate text-center">
-                                    {request.description}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                    {assignedName}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                    {new Date(
-                                      request.date_reported,
-                                    ).toLocaleDateString("en-US", {
-                                      year: "numeric",
-                                      month: "2-digit",
-                                      day: "2-digit",
-                                    })}
-                                  </td>
-                                </tr>
-                              );
-                            })
-                          ) : (
-                            <tr>
-                              <td
-                                colSpan={8}
-                                className="px-6 py-4 text-center text-gray-500"
-                              >
-                                {t('maintenance.noRequests')}
+                                  {request.urgency_level === "urgent"
+                                    ? t("maintenance.urgency.urgent")
+                                    : request.urgency_level === "medium"
+                                      ? t("maintenance.urgency.medium")
+                                      : t("maintenance.urgency.normal")}
+                                </Badge>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-center">
+                                <span
+                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}
+                                >
+                                  {getStatusText(request.status)}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate text-center">
+                                {request.description}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                {assignedName}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                {new Date(
+                                  request.date_reported,
+                                ).toLocaleDateString("en-US", {
+                                  year: "numeric",
+                                  month: "2-digit",
+                                  day: "2-digit",
+                                })}
                               </td>
                             </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td
+                            colSpan={8}
+                            className="px-6 py-4 text-center text-gray-500"
+                          >
+                            {t("maintenance.noRequests")}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-            <TabsContent value="actions">
-              <MaintenanceActionsTab
-                actions={maintenanceActions}
-                requests={maintenanceRequests}
-                users={users}
-                isLoading={loadingActions}
-                onCreateAction={createActionMutation.mutate}
-                onViewAction={(action: any) => {
-                  setSelectedAction(action);
-                  setIsActionViewDialogOpen(true);
-                }}
-              />
-            </TabsContent>
+        <TabsContent value="actions">
+          <MaintenanceActionsTab
+            actions={maintenanceActions}
+            requests={maintenanceRequests}
+            users={users}
+            isLoading={loadingActions}
+            onCreateAction={createActionMutation.mutate}
+            onViewAction={(action: any) => {
+              setSelectedAction(action);
+              setIsActionViewDialogOpen(true);
+            }}
+          />
+        </TabsContent>
 
-            <TabsContent value="reports">
-              <MaintenanceReportsTab
-                reports={maintenanceReports}
-                machines={machines}
-                users={users}
-                isLoading={loadingReports}
-                onCreateReport={createReportMutation.mutate}
-              />
-            </TabsContent>
+        <TabsContent value="reports">
+          <MaintenanceReportsTab
+            reports={maintenanceReports}
+            machines={machines}
+            users={users}
+            isLoading={loadingReports}
+            onCreateReport={createReportMutation.mutate}
+          />
+        </TabsContent>
 
-            <TabsContent value="negligence">
-              <OperatorNegligenceTab
-                reports={operatorReports}
-                users={users}
-                isLoading={loadingOperatorReports}
-                onCreateReport={createOperatorReportMutation.mutate}
-              />
-            </TabsContent>
+        <TabsContent value="negligence">
+          <OperatorNegligenceTab
+            reports={operatorReports}
+            users={users}
+            isLoading={loadingOperatorReports}
+            onCreateReport={createOperatorReportMutation.mutate}
+          />
+        </TabsContent>
 
-            <TabsContent value="spare-parts">
-              <SparePartsTab
-                spareParts={Array.isArray(spareParts) ? spareParts : []}
-                isLoading={false}
-              />
-            </TabsContent>
+        <TabsContent value="spare-parts">
+          <SparePartsTab
+            spareParts={Array.isArray(spareParts) ? spareParts : []}
+            isLoading={false}
+          />
+        </TabsContent>
 
-            <TabsContent value="consumable-parts">
-              <ConsumablePartsTab />
-            </TabsContent>
-          </Tabs>
+        <TabsContent value="consumable-parts">
+          <ConsumablePartsTab />
+        </TabsContent>
+      </Tabs>
 
       <Dialog
         open={isActionViewDialogOpen}
@@ -655,9 +741,9 @@ export default function Maintenance() {
       >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{t('maintenance.actionDetails')}</DialogTitle>
+            <DialogTitle>{t("maintenance.actionDetails")}</DialogTitle>
             <DialogDescription>
-              {t('maintenance.actionDetailsDescription')}
+              {t("maintenance.actionDetailsDescription")}
             </DialogDescription>
           </DialogHeader>
           {selectedAction &&
@@ -678,7 +764,7 @@ export default function Maintenance() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm font-medium text-gray-700">
-                        {t('maintenance.actionNumber')}
+                        {t("maintenance.actionNumber")}
                       </label>
                       <p className="text-sm text-gray-900 mt-1 font-mono bg-gray-50 p-2 rounded">
                         {selectedAction.action_number}
@@ -686,7 +772,7 @@ export default function Maintenance() {
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-700">
-                        {t('maintenance.maintenanceRequestNumber')}
+                        {t("maintenance.maintenanceRequestNumber")}
                       </label>
                       <p className="text-sm text-gray-900 mt-1 font-mono bg-gray-50 p-2 rounded">
                         {maintenanceRequest?.request_number ||
@@ -698,7 +784,7 @@ export default function Maintenance() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm font-medium text-gray-700">
-                        {t('maintenance.actionType')}
+                        {t("maintenance.actionType")}
                       </label>
                       <div className="mt-1">
                         <Badge variant="outline" className="text-sm">
@@ -708,7 +794,7 @@ export default function Maintenance() {
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-700">
-                        {t('maintenance.performer')}
+                        {t("maintenance.performer")}
                       </label>
                       <p className="text-sm text-gray-900 mt-1 bg-gray-50 p-2 rounded">
                         {performedByUser
@@ -722,17 +808,18 @@ export default function Maintenance() {
 
                   <div>
                     <label className="text-sm font-medium text-gray-700">
-                      {t('maintenance.actionDescription')}
+                      {t("maintenance.actionDescription")}
                     </label>
                     <p className="text-sm text-gray-900 mt-1 bg-gray-50 p-3 rounded min-h-[60px]">
-                      {selectedAction.description || t('maintenance.noDescription')}
+                      {selectedAction.description ||
+                        t("maintenance.noDescription")}
                     </p>
                   </div>
 
                   {selectedAction.text_report && (
                     <div>
                       <label className="text-sm font-medium text-gray-700">
-                        {t('maintenance.textReport')}
+                        {t("maintenance.textReport")}
                       </label>
                       <p className="text-sm text-gray-900 mt-1 bg-blue-50 p-3 rounded min-h-[60px] border border-blue-200">
                         {selectedAction.text_report}
@@ -743,18 +830,20 @@ export default function Maintenance() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm font-medium text-gray-700">
-                        {t('maintenance.sparePartsRequest')}
+                        {t("maintenance.sparePartsRequest")}
                       </label>
                       <p className="text-sm text-gray-900 mt-1 bg-gray-50 p-2 rounded">
-                        {selectedAction.spare_parts_request || t('maintenance.none')}
+                        {selectedAction.spare_parts_request ||
+                          t("maintenance.none")}
                       </p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-700">
-                        {t('maintenance.machiningRequest')}
+                        {t("maintenance.machiningRequest")}
                       </label>
                       <p className="text-sm text-gray-900 mt-1 bg-gray-50 p-2 rounded">
-                        {selectedAction.machining_request || t('maintenance.none')}
+                        {selectedAction.machining_request ||
+                          t("maintenance.none")}
                       </p>
                     </div>
                   </div>
@@ -762,7 +851,7 @@ export default function Maintenance() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm font-medium text-gray-700">
-                        {t('maintenance.requiresManagementAction')}
+                        {t("maintenance.requiresManagementAction")}
                       </label>
                       <div className="mt-1">
                         <Badge
@@ -773,14 +862,14 @@ export default function Maintenance() {
                           }
                         >
                           {selectedAction.requires_management_action
-                            ? t('maintenance.yes')
-                            : t('maintenance.no')}
+                            ? t("maintenance.yes")
+                            : t("maintenance.no")}
                         </Badge>
                       </div>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-700">
-                        {t('maintenance.managementNotified')}
+                        {t("maintenance.managementNotified")}
                       </label>
                       <div className="mt-1">
                         <Badge
@@ -790,7 +879,9 @@ export default function Maintenance() {
                               : "secondary"
                           }
                         >
-                          {selectedAction.management_notified ? t('maintenance.yes') : t('maintenance.no')}
+                          {selectedAction.management_notified
+                            ? t("maintenance.yes")
+                            : t("maintenance.no")}
                         </Badge>
                       </div>
                     </div>
@@ -799,26 +890,26 @@ export default function Maintenance() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm font-medium text-gray-700">
-                        {t('maintenance.executionDate')}
+                        {t("maintenance.executionDate")}
                       </label>
                       <p className="text-sm text-gray-900 mt-1 bg-gray-50 p-2 rounded">
                         {selectedAction.performed_at
                           ? new Date(
                               selectedAction.performed_at,
                             ).toLocaleDateString("en-US")
-                          : t('maintenance.notAssigned')}
+                          : t("maintenance.notAssigned")}
                       </p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-700">
-                        {t('maintenance.creationDate')}
+                        {t("maintenance.creationDate")}
                       </label>
                       <p className="text-sm text-gray-900 mt-1 bg-gray-50 p-2 rounded">
                         {selectedAction.created_at
                           ? new Date(
                               selectedAction.created_at,
                             ).toLocaleDateString("en-US")
-                          : t('maintenance.notAssigned')}
+                          : t("maintenance.notAssigned")}
                       </p>
                     </div>
                   </div>
@@ -826,19 +917,19 @@ export default function Maintenance() {
                   {maintenanceRequest && (
                     <div>
                       <label className="text-sm font-medium text-gray-700">
-                        {t('maintenance.machineInfo')}
+                        {t("maintenance.machineInfo")}
                       </label>
                       <div className="mt-1 bg-blue-50 p-3 rounded border border-blue-200">
                         <p className="text-sm">
-                          <strong>{t('maintenance.machineId')}:</strong>{" "}
+                          <strong>{t("maintenance.machineId")}:</strong>{" "}
                           {maintenanceRequest.machine_id}
                         </p>
                         <p className="text-sm">
-                          <strong>{t('maintenance.issueTypeLabel')}:</strong>{" "}
+                          <strong>{t("maintenance.issueTypeLabel")}:</strong>{" "}
                           {maintenanceRequest.issue_type}
                         </p>
                         <p className="text-sm">
-                          <strong>{t('maintenance.priorityLevel')}:</strong>{" "}
+                          <strong>{t("maintenance.priorityLevel")}:</strong>{" "}
                           {maintenanceRequest.urgency_level}
                         </p>
                       </div>
@@ -918,19 +1009,21 @@ function MaintenanceActionsTab({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span>{t('maintenance.tabs.actions')}</span>
+          <span>{t("maintenance.tabs.actions")}</span>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4 ml-2" />
-                {t('maintenance.addNewAction')}
+                {t("maintenance.addNewAction")}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-4xl">
               <DialogHeader>
-                <DialogTitle>{t('maintenance.addActionDialogTitle')}</DialogTitle>
+                <DialogTitle>
+                  {t("maintenance.addActionDialogTitle")}
+                </DialogTitle>
                 <DialogDescription>
-                  {t('maintenance.addActionDialogDescription')}
+                  {t("maintenance.addActionDialogDescription")}
                 </DialogDescription>
               </DialogHeader>
               <Form {...form}>
@@ -944,7 +1037,9 @@ function MaintenanceActionsTab({
                       name="maintenance_request_id"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('maintenance.maintenanceRequest')}</FormLabel>
+                          <FormLabel>
+                            {t("maintenance.maintenanceRequest")}
+                          </FormLabel>
                           <Select
                             onValueChange={(value) =>
                               field.onChange(parseInt(value))
@@ -952,7 +1047,11 @@ function MaintenanceActionsTab({
                           >
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder={t('maintenance.selectMaintenanceRequest')} />
+                                <SelectValue
+                                  placeholder={t(
+                                    "maintenance.selectMaintenanceRequest",
+                                  )}
+                                />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -978,28 +1077,32 @@ function MaintenanceActionsTab({
                       name="action_type"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('maintenance.actionType')}</FormLabel>
+                          <FormLabel>{t("maintenance.actionType")}</FormLabel>
                           <Select onValueChange={field.onChange}>
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder={t('maintenance.selectActionType')} />
+                                <SelectValue
+                                  placeholder={t(
+                                    "maintenance.selectActionType",
+                                  )}
+                                />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
                               <SelectItem value="فحص مبدئي">
-                                {t('maintenance.actionTypes.initialInspection')}
+                                {t("maintenance.actionTypes.initialInspection")}
                               </SelectItem>
                               <SelectItem value="تغيير قطعة غيار">
-                                {t('maintenance.actionTypes.sparePartChange')}
+                                {t("maintenance.actionTypes.sparePartChange")}
                               </SelectItem>
                               <SelectItem value="إصلاح مكانيكي">
-                                {t('maintenance.actionTypes.mechanicalRepair')}
+                                {t("maintenance.actionTypes.mechanicalRepair")}
                               </SelectItem>
                               <SelectItem value="إصلاح كهربائي">
-                                {t('maintenance.actionTypes.electricalRepair')}
+                                {t("maintenance.actionTypes.electricalRepair")}
                               </SelectItem>
                               <SelectItem value="إيقاف الماكينة">
-                                {t('maintenance.actionTypes.machineShutdown')}
+                                {t("maintenance.actionTypes.machineShutdown")}
                               </SelectItem>
                             </SelectContent>
                           </Select>
@@ -1014,7 +1117,7 @@ function MaintenanceActionsTab({
                     name="performed_by"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('maintenance.performer')}</FormLabel>
+                        <FormLabel>{t("maintenance.performer")}</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
@@ -1027,10 +1130,10 @@ function MaintenanceActionsTab({
                           <div className="font-medium text-sm">
                             {user
                               ? `${user.display_name || user.username} (${user.id})`
-                              : t('common.loading')}
+                              : t("common.loading")}
                           </div>
                           <div className="text-xs text-gray-600 dark:text-gray-400">
-                            {t('maintenance.actionRegisteredAsCurrentUser')}
+                            {t("maintenance.actionRegisteredAsCurrentUser")}
                           </div>
                         </div>
                         <FormMessage />
@@ -1043,11 +1146,15 @@ function MaintenanceActionsTab({
                     name="description"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('maintenance.actionDescription')}</FormLabel>
+                        <FormLabel>
+                          {t("maintenance.actionDescription")}
+                        </FormLabel>
                         <FormControl>
                           <Textarea
                             {...field}
-                            placeholder={t('maintenance.actionDescriptionPlaceholder')}
+                            placeholder={t(
+                              "maintenance.actionDescriptionPlaceholder",
+                            )}
                           />
                         </FormControl>
                         <FormMessage />
@@ -1061,11 +1168,13 @@ function MaintenanceActionsTab({
                       name="text_report"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('maintenance.textReport')}</FormLabel>
+                          <FormLabel>{t("maintenance.textReport")}</FormLabel>
                           <FormControl>
                             <Textarea
                               {...field}
-                              placeholder={t('maintenance.textReportPlaceholder')}
+                              placeholder={t(
+                                "maintenance.textReportPlaceholder",
+                              )}
                             />
                           </FormControl>
                           <FormMessage />
@@ -1078,14 +1187,18 @@ function MaintenanceActionsTab({
                       name="spare_parts_request"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('maintenance.sparePartsRequest')}</FormLabel>
+                          <FormLabel>
+                            {t("maintenance.sparePartsRequest")}
+                          </FormLabel>
                           <FormControl>
                             <Select
                               value={field.value}
                               onValueChange={field.onChange}
                             >
                               <SelectTrigger>
-                                <SelectValue placeholder={t('maintenance.selectSparePart')} />
+                                <SelectValue
+                                  placeholder={t("maintenance.selectSparePart")}
+                                />
                               </SelectTrigger>
                               <SelectContent>
                                 {Array.isArray(spareParts) &&
@@ -1108,7 +1221,7 @@ function MaintenanceActionsTab({
                                     ))
                                 ) : (
                                   <SelectItem value="no_parts">
-                                    {t('maintenance.noSparePartsAvailable')}
+                                    {t("maintenance.noSparePartsAvailable")}
                                   </SelectItem>
                                 )}
                               </SelectContent>
@@ -1126,11 +1239,15 @@ function MaintenanceActionsTab({
                       name="machining_request"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('maintenance.machiningRequest')}</FormLabel>
+                          <FormLabel>
+                            {t("maintenance.machiningRequest")}
+                          </FormLabel>
                           <FormControl>
                             <Textarea
                               {...field}
-                              placeholder={t('maintenance.machiningRequestPlaceholder')}
+                              placeholder={t(
+                                "maintenance.machiningRequestPlaceholder",
+                              )}
                             />
                           </FormControl>
                           <FormMessage />
@@ -1143,11 +1260,15 @@ function MaintenanceActionsTab({
                       name="operator_negligence_report"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('maintenance.operatorNegligenceReport')}</FormLabel>
+                          <FormLabel>
+                            {t("maintenance.operatorNegligenceReport")}
+                          </FormLabel>
                           <FormControl>
                             <Textarea
                               {...field}
-                              placeholder={t('maintenance.operatorNegligencePlaceholder')}
+                              placeholder={t(
+                                "maintenance.operatorNegligencePlaceholder",
+                              )}
                             />
                           </FormControl>
                           <FormMessage />
@@ -1171,7 +1292,9 @@ function MaintenanceActionsTab({
                             />
                           </FormControl>
                           <div className="space-y-1 leading-none">
-                            <FormLabel>{t('maintenance.needsManagementApproval')}</FormLabel>
+                            <FormLabel>
+                              {t("maintenance.needsManagementApproval")}
+                            </FormLabel>
                           </div>
                         </FormItem>
                       )}
@@ -1191,7 +1314,9 @@ function MaintenanceActionsTab({
                             />
                           </FormControl>
                           <div className="space-y-1 leading-none">
-                            <FormLabel>{t('maintenance.managementNotifiedLabel')}</FormLabel>
+                            <FormLabel>
+                              {t("maintenance.managementNotifiedLabel")}
+                            </FormLabel>
                           </div>
                         </FormItem>
                       )}
@@ -1204,9 +1329,9 @@ function MaintenanceActionsTab({
                       variant="outline"
                       onClick={() => setIsDialogOpen(false)}
                     >
-                      {t('common.cancel')}
+                      {t("common.cancel")}
                     </Button>
-                    <Button type="submit">{t('maintenance.saveAction')}</Button>
+                    <Button type="submit">{t("maintenance.saveAction")}</Button>
                   </div>
                 </form>
               </Form>
@@ -1219,7 +1344,7 @@ function MaintenanceActionsTab({
           <div className="text-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
             <p className="mt-2 text-sm text-muted-foreground">
-              {t('common.loading')}
+              {t("common.loading")}
             </p>
           </div>
         ) : Array.isArray(actions) && actions.length > 0 ? (
@@ -1228,34 +1353,34 @@ function MaintenanceActionsTab({
               <thead className="bg-gray-50">
                 <tr>
                   <th className="border border-gray-300 px-4 py-2 text-center font-semibold">
-                    {t('maintenance.actionNumber')}
+                    {t("maintenance.actionNumber")}
                   </th>
                   <th className="border border-gray-300 px-4 py-2 text-center font-semibold">
-                    {t('maintenance.maintenanceRequestNumber')}
+                    {t("maintenance.maintenanceRequestNumber")}
                   </th>
                   <th className="border border-gray-300 px-4 py-2 text-center font-semibold">
-                    {t('maintenance.actionType')}
+                    {t("maintenance.actionType")}
                   </th>
                   <th className="border border-gray-300 px-4 py-2 text-center font-semibold">
-                    {t('maintenance.description')}
+                    {t("maintenance.description")}
                   </th>
                   <th className="border border-gray-300 px-4 py-2 text-center font-semibold">
-                    {t('maintenance.performer')}
+                    {t("maintenance.performer")}
                   </th>
                   <th className="border border-gray-300 px-4 py-2 text-center font-semibold">
-                    {t('maintenance.sparePartsRequest')}
+                    {t("maintenance.sparePartsRequest")}
                   </th>
                   <th className="border border-gray-300 px-4 py-2 text-center font-semibold">
-                    {t('maintenance.machiningRequest')}
+                    {t("maintenance.machiningRequest")}
                   </th>
                   <th className="border border-gray-300 px-4 py-2 text-center font-semibold">
-                    {t('maintenance.managementApproval')}
+                    {t("maintenance.managementApproval")}
                   </th>
                   <th className="border border-gray-300 px-4 py-2 text-center font-semibold">
-                    {t('maintenance.executionDate')}
+                    {t("maintenance.executionDate")}
                   </th>
                   <th className="border border-gray-300 px-4 py-2 text-center font-semibold">
-                    {t('common.actions')}
+                    {t("common.actions")}
                   </th>
                 </tr>
               </thead>
@@ -1280,20 +1405,20 @@ function MaintenanceActionsTab({
                     const printContent = `
                       <div style="font-family: Arial; direction: rtl; text-align: right; padding: 20px;">
                         <h2 style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px;">
-                          ${t('maintenance.printActionTitle')}: ${action.action_number}
+                          ${t("maintenance.printActionTitle")}: ${action.action_number}
                         </h2>
                         <div style="margin: 20px 0;">
-                          <p><strong>${t('maintenance.maintenanceRequestNumber')}:</strong> ${maintenanceRequest?.request_number || action.maintenance_request_id}</p>
-                          <p><strong>${t('maintenance.actionType')}:</strong> ${action.action_type}</p>
-                          <p><strong>${t('maintenance.description')}:</strong> ${action.description || "-"}</p>
-                          <p><strong>${t('maintenance.performer')}:</strong> ${performedByUser ? performedByUser.full_name || performedByUser.username : action.performed_by}</p>
-                          <p><strong>${t('maintenance.sparePartsRequest')}:</strong> ${action.spare_parts_request || "-"}</p>
-                          <p><strong>${t('maintenance.machiningRequest')}:</strong> ${action.machining_request || "-"}</p>
-                          <p><strong>${t('maintenance.operatorNegligenceReport')}:</strong> ${action.operator_negligence_report || "-"}</p>
-                          <p><strong>${t('maintenance.textReport')}:</strong> ${action.text_report || "-"}</p>
-                          <p><strong>${t('maintenance.managementApprovalRequired')}:</strong> ${action.requires_management_action ? t('maintenance.yes') : t('maintenance.no')}</p>
-                          <p><strong>${t('maintenance.executionDate')}:</strong> ${new Date(action.action_date).toLocaleDateString("en-US")}</p>
-                          <p><strong>${t('maintenance.executionTime')}:</strong> ${new Date(action.action_date).toLocaleTimeString("en-US")}</p>
+                          <p><strong>${t("maintenance.maintenanceRequestNumber")}:</strong> ${maintenanceRequest?.request_number || action.maintenance_request_id}</p>
+                          <p><strong>${t("maintenance.actionType")}:</strong> ${action.action_type}</p>
+                          <p><strong>${t("maintenance.description")}:</strong> ${action.description || "-"}</p>
+                          <p><strong>${t("maintenance.performer")}:</strong> ${performedByUser ? performedByUser.full_name || performedByUser.username : action.performed_by}</p>
+                          <p><strong>${t("maintenance.sparePartsRequest")}:</strong> ${action.spare_parts_request || "-"}</p>
+                          <p><strong>${t("maintenance.machiningRequest")}:</strong> ${action.machining_request || "-"}</p>
+                          <p><strong>${t("maintenance.operatorNegligenceReport")}:</strong> ${action.operator_negligence_report || "-"}</p>
+                          <p><strong>${t("maintenance.textReport")}:</strong> ${action.text_report || "-"}</p>
+                          <p><strong>${t("maintenance.managementApprovalRequired")}:</strong> ${action.requires_management_action ? t("maintenance.yes") : t("maintenance.no")}</p>
+                          <p><strong>${t("maintenance.executionDate")}:</strong> ${new Date(action.action_date).toLocaleDateString("en-US")}</p>
+                          <p><strong>${t("maintenance.executionTime")}:</strong> ${new Date(action.action_date).toLocaleTimeString("en-US")}</p>
                         </div>
                       </div>
                     `;
@@ -1307,32 +1432,46 @@ function MaintenanceActionsTab({
                   const handleDelete = async () => {
                     if (
                       confirm(
-                        t('maintenance.confirmDeleteAction', { number: action.action_number }),
+                        t("maintenance.confirmDeleteAction", {
+                          number: action.action_number,
+                        }),
                       )
                     ) {
                       try {
-                        const response = await fetch(`/api/maintenance-actions/${action.id}`, {
-                          method: "DELETE",
-                        });
-                        
+                        const response = await fetch(
+                          `/api/maintenance-actions/${action.id}`,
+                          {
+                            method: "DELETE",
+                          },
+                        );
+
                         if (!response.ok) {
-                          const errorData = await response.json().catch(() => null);
-                          const errorMessage = errorData?.message || t('maintenance.deleteActionError');
+                          const errorData = await response
+                            .json()
+                            .catch(() => null);
+                          const errorMessage =
+                            errorData?.message ||
+                            t("maintenance.deleteActionError");
                           alert(errorMessage);
                           return;
                         }
-                        
+
                         window.location.reload();
                       } catch (error) {
-                        console.error("Error deleting maintenance action:", error);
-                        alert(t('maintenance.connectionError'));
+                        console.error(
+                          "Error deleting maintenance action:",
+                          error,
+                        );
+                        alert(t("maintenance.connectionError"));
                       }
                     }
                   };
 
                   const handleEdit = () => {
                     alert(
-                      t('maintenance.editActionComingSoon', { number: action.action_number }),
+                      t("maintenance.editActionComingSoon", {
+                        number: action.action_number,
+                      }),
                     );
                   };
 
@@ -1370,9 +1509,13 @@ function MaintenanceActionsTab({
                       </td>
                       <td className="border border-gray-300 px-4 py-2 text-center">
                         {action.requires_management_action ? (
-                          <Badge variant="destructive">{t('maintenance.required')}</Badge>
+                          <Badge variant="destructive">
+                            {t("maintenance.required")}
+                          </Badge>
                         ) : (
-                          <Badge variant="secondary">{t('maintenance.notRequired')}</Badge>
+                          <Badge variant="secondary">
+                            {t("maintenance.notRequired")}
+                          </Badge>
                         )}
                       </td>
                       <td className="border border-gray-300 px-4 py-2 text-center">
@@ -1403,7 +1546,7 @@ function MaintenanceActionsTab({
                             variant="outline"
                             className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200 h-8 w-8 p-0"
                             onClick={handleView}
-                            title={t('maintenance.view')}
+                            title={t("maintenance.view")}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -1412,7 +1555,7 @@ function MaintenanceActionsTab({
                             variant="outline"
                             className="bg-green-50 text-green-600 hover:bg-green-100 border-green-200 h-8 w-8 p-0"
                             onClick={handlePrint}
-                            title={t('maintenance.print')}
+                            title={t("maintenance.print")}
                           >
                             <Printer className="h-4 w-4" />
                           </Button>
@@ -1421,7 +1564,7 @@ function MaintenanceActionsTab({
                             variant="outline"
                             className="bg-yellow-50 text-yellow-600 hover:bg-yellow-100 border-yellow-200 h-8 w-8 p-0"
                             onClick={handleEdit}
-                            title={t('maintenance.edit')}
+                            title={t("maintenance.edit")}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -1430,7 +1573,7 @@ function MaintenanceActionsTab({
                             variant="outline"
                             className="bg-red-50 text-red-600 hover:bg-red-100 border-red-200 h-8 w-8 p-0"
                             onClick={handleDelete}
-                            title={t('maintenance.delete')}
+                            title={t("maintenance.delete")}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -1445,7 +1588,7 @@ function MaintenanceActionsTab({
         ) : (
           <div className="text-center py-8 text-gray-500">
             <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>{t('maintenance.noActions')}</p>
+            <p>{t("maintenance.noActions")}</p>
           </div>
         )}
       </CardContent>
@@ -1484,8 +1627,8 @@ function MaintenanceReportsTab({
   const onSubmit = async (data: any) => {
     if (!user?.id) {
       toast({
-        title: t('maintenance.error'),
-        description: t('maintenance.loginRequiredForReport'),
+        title: t("maintenance.error"),
+        description: t("maintenance.loginRequiredForReport"),
         variant: "destructive",
       });
       return;
@@ -1513,18 +1656,22 @@ function MaintenanceReportsTab({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span>{t('maintenance.tabs.reports')}</span>
+          <span>{t("maintenance.tabs.reports")}</span>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4 ml-2" />
-                {t('maintenance.addNewReport')}
+                {t("maintenance.addNewReport")}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-4xl">
               <DialogHeader>
-                <DialogTitle>{t('maintenance.addReportDialogTitle')}</DialogTitle>
-                <DialogDescription className="sr-only">{t('maintenance.addReportDialogDescription')}</DialogDescription>
+                <DialogTitle>
+                  {t("maintenance.addReportDialogTitle")}
+                </DialogTitle>
+                <DialogDescription className="sr-only">
+                  {t("maintenance.addReportDialogDescription")}
+                </DialogDescription>
               </DialogHeader>
               <Form {...form}>
                 <form
@@ -1537,29 +1684,35 @@ function MaintenanceReportsTab({
                       name="report_type"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('maintenance.reportType')}</FormLabel>
+                          <FormLabel>{t("maintenance.reportType")}</FormLabel>
                           <Select onValueChange={field.onChange}>
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder={t('maintenance.selectReportType')} />
+                                <SelectValue
+                                  placeholder={t(
+                                    "maintenance.selectReportType",
+                                  )}
+                                />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
                               <SelectItem value="breakdown">
-                                {t('maintenance.reportTypes.breakdown')}
+                                {t("maintenance.reportTypes.breakdown")}
                               </SelectItem>
                               <SelectItem value="malfunction">
-                                {t('maintenance.reportTypes.malfunction')}
+                                {t("maintenance.reportTypes.malfunction")}
                               </SelectItem>
-                              <SelectItem value="safety">{t('maintenance.reportTypes.safety')}</SelectItem>
+                              <SelectItem value="safety">
+                                {t("maintenance.reportTypes.safety")}
+                              </SelectItem>
                               <SelectItem value="quality">
-                                {t('maintenance.reportTypes.quality')}
+                                {t("maintenance.reportTypes.quality")}
                               </SelectItem>
                               <SelectItem value="preventive">
-                                {t('maintenance.reportTypes.preventive')}
+                                {t("maintenance.reportTypes.preventive")}
                               </SelectItem>
                               <SelectItem value="spare_parts">
-                                {t('maintenance.reportTypes.spareParts')}
+                                {t("maintenance.reportTypes.spareParts")}
                               </SelectItem>
                             </SelectContent>
                           </Select>
@@ -1573,18 +1726,28 @@ function MaintenanceReportsTab({
                       name="severity"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('maintenance.severity')}</FormLabel>
+                          <FormLabel>{t("maintenance.severity")}</FormLabel>
                           <Select onValueChange={field.onChange}>
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder={t('maintenance.selectSeverity')} />
+                                <SelectValue
+                                  placeholder={t("maintenance.selectSeverity")}
+                                />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="low">{t('maintenance.severity.low')}</SelectItem>
-                              <SelectItem value="medium">{t('maintenance.severity.medium')}</SelectItem>
-                              <SelectItem value="high">{t('maintenance.severity.high')}</SelectItem>
-                              <SelectItem value="critical">{t('maintenance.severity.critical')}</SelectItem>
+                              <SelectItem value="low">
+                                {t("maintenance.severity.low")}
+                              </SelectItem>
+                              <SelectItem value="medium">
+                                {t("maintenance.severity.medium")}
+                              </SelectItem>
+                              <SelectItem value="high">
+                                {t("maintenance.severity.high")}
+                              </SelectItem>
+                              <SelectItem value="critical">
+                                {t("maintenance.severity.critical")}
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -1598,9 +1761,14 @@ function MaintenanceReportsTab({
                     name="title"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('maintenance.reportTitle')}</FormLabel>
+                        <FormLabel>{t("maintenance.reportTitle")}</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder={t('maintenance.reportTitlePlaceholder')} />
+                          <Input
+                            {...field}
+                            placeholder={t(
+                              "maintenance.reportTitlePlaceholder",
+                            )}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1612,11 +1780,15 @@ function MaintenanceReportsTab({
                     name="description"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('maintenance.issueDescription')}</FormLabel>
+                        <FormLabel>
+                          {t("maintenance.issueDescription")}
+                        </FormLabel>
                         <FormControl>
                           <Textarea
                             {...field}
-                            placeholder={t('maintenance.issueDescriptionPlaceholder')}
+                            placeholder={t(
+                              "maintenance.issueDescriptionPlaceholder",
+                            )}
                           />
                         </FormControl>
                         <FormMessage />
@@ -1630,11 +1802,15 @@ function MaintenanceReportsTab({
                       name="machine_id"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('maintenance.machineOptional')}</FormLabel>
+                          <FormLabel>
+                            {t("maintenance.machineOptional")}
+                          </FormLabel>
                           <FormControl>
                             <Input
                               {...field}
-                              placeholder={t('maintenance.machineIdPlaceholder')}
+                              placeholder={t(
+                                "maintenance.machineIdPlaceholder",
+                              )}
                             />
                           </FormControl>
                           <FormMessage />
@@ -1647,7 +1823,9 @@ function MaintenanceReportsTab({
                       name="estimated_repair_time"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('maintenance.estimatedRepairTime')}</FormLabel>
+                          <FormLabel>
+                            {t("maintenance.estimatedRepairTime")}
+                          </FormLabel>
                           <FormControl>
                             <Input
                               type="number"
@@ -1670,9 +1848,11 @@ function MaintenanceReportsTab({
                       variant="outline"
                       onClick={() => setIsDialogOpen(false)}
                     >
-                      {t('common.cancel')}
+                      {t("common.cancel")}
                     </Button>
-                    <Button type="submit">{t('maintenance.submitReport')}</Button>
+                    <Button type="submit">
+                      {t("maintenance.submitReport")}
+                    </Button>
                   </div>
                 </form>
               </Form>
@@ -1685,7 +1865,7 @@ function MaintenanceReportsTab({
           <div className="text-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
             <p className="mt-2 text-sm text-muted-foreground">
-              {t('common.loading')}
+              {t("common.loading")}
             </p>
           </div>
         ) : Array.isArray(reports) && reports.length > 0 ? (
@@ -1714,11 +1894,15 @@ function MaintenanceReportsTab({
                 </p>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="font-medium">{t('maintenance.reportType')}: </span>
+                    <span className="font-medium">
+                      {t("maintenance.reportType")}:{" "}
+                    </span>
                     {report.report_type}
                   </div>
                   <div>
-                    <span className="font-medium">{t('maintenance.reportDate')}: </span>
+                    <span className="font-medium">
+                      {t("maintenance.reportDate")}:{" "}
+                    </span>
                     {new Date(report.created_at).toLocaleDateString("en-US", {
                       year: "numeric",
                       month: "2-digit",
@@ -1732,7 +1916,7 @@ function MaintenanceReportsTab({
         ) : (
           <div className="text-center py-8 text-gray-500">
             <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>{t('maintenance.noReports')}</p>
+            <p>{t("maintenance.noReports")}</p>
           </div>
         )}
       </CardContent>
@@ -1770,8 +1954,8 @@ function OperatorNegligenceTab({
   const onSubmit = async (data: any) => {
     if (!user?.id) {
       toast({
-        title: t('maintenance.error'),
-        description: t('maintenance.loginRequiredForNegligence'),
+        title: t("maintenance.error"),
+        description: t("maintenance.loginRequiredForNegligence"),
         variant: "destructive",
       });
       return;
@@ -1801,18 +1985,22 @@ function OperatorNegligenceTab({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span>{t('maintenance.tabs.negligence')}</span>
+          <span>{t("maintenance.tabs.negligence")}</span>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4 ml-2" />
-                {t('maintenance.addNegligenceReport')}
+                {t("maintenance.addNegligenceReport")}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-4xl">
               <DialogHeader>
-                <DialogTitle>{t('maintenance.addNegligenceDialogTitle')}</DialogTitle>
-                <DialogDescription className="sr-only">{t('maintenance.addNegligenceDialogDescription')}</DialogDescription>
+                <DialogTitle>
+                  {t("maintenance.addNegligenceDialogTitle")}
+                </DialogTitle>
+                <DialogDescription className="sr-only">
+                  {t("maintenance.addNegligenceDialogDescription")}
+                </DialogDescription>
               </DialogHeader>
               <Form {...form}>
                 <form
@@ -1825,11 +2013,13 @@ function OperatorNegligenceTab({
                       name="operator_id"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('maintenance.operatorId')}</FormLabel>
+                          <FormLabel>{t("maintenance.operatorId")}</FormLabel>
                           <FormControl>
                             <Input
                               {...field}
-                              placeholder={t('maintenance.operatorIdPlaceholder')}
+                              placeholder={t(
+                                "maintenance.operatorIdPlaceholder",
+                              )}
                             />
                           </FormControl>
                           <FormMessage />
@@ -1842,11 +2032,13 @@ function OperatorNegligenceTab({
                       name="operator_name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('maintenance.operatorName')}</FormLabel>
+                          <FormLabel>{t("maintenance.operatorName")}</FormLabel>
                           <FormControl>
                             <Input
                               {...field}
-                              placeholder={t('maintenance.operatorNamePlaceholder')}
+                              placeholder={t(
+                                "maintenance.operatorNamePlaceholder",
+                              )}
                             />
                           </FormControl>
                           <FormMessage />
@@ -1861,7 +2053,7 @@ function OperatorNegligenceTab({
                       name="incident_date"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('maintenance.incidentDate')}</FormLabel>
+                          <FormLabel>{t("maintenance.incidentDate")}</FormLabel>
                           <FormControl>
                             <Input type="date" {...field} />
                           </FormControl>
@@ -1875,31 +2067,47 @@ function OperatorNegligenceTab({
                       name="incident_type"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('maintenance.negligenceType')}</FormLabel>
+                          <FormLabel>
+                            {t("maintenance.negligenceType")}
+                          </FormLabel>
                           <Select onValueChange={field.onChange}>
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder={t('maintenance.selectNegligenceType')} />
+                                <SelectValue
+                                  placeholder={t(
+                                    "maintenance.selectNegligenceType",
+                                  )}
+                                />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
                               <SelectItem value="safety_violation">
-                                {t('maintenance.negligenceTypes.safetyViolation')}
+                                {t(
+                                  "maintenance.negligenceTypes.safetyViolation",
+                                )}
                               </SelectItem>
                               <SelectItem value="equipment_misuse">
-                                {t('maintenance.negligenceTypes.equipmentMisuse')}
+                                {t(
+                                  "maintenance.negligenceTypes.equipmentMisuse",
+                                )}
                               </SelectItem>
                               <SelectItem value="procedure_violation">
-                                {t('maintenance.negligenceTypes.procedureViolation')}
+                                {t(
+                                  "maintenance.negligenceTypes.procedureViolation",
+                                )}
                               </SelectItem>
                               <SelectItem value="quality_negligence">
-                                {t('maintenance.negligenceTypes.qualityNegligence')}
+                                {t(
+                                  "maintenance.negligenceTypes.qualityNegligence",
+                                )}
                               </SelectItem>
                               <SelectItem value="time_violation">
-                                {t('maintenance.negligenceTypes.timeViolation')}
+                                {t("maintenance.negligenceTypes.timeViolation")}
                               </SelectItem>
                               <SelectItem value="maintenance_neglect">
-                                {t('maintenance.negligenceTypes.maintenanceNeglect')}
+                                {t(
+                                  "maintenance.negligenceTypes.maintenanceNeglect",
+                                )}
                               </SelectItem>
                             </SelectContent>
                           </Select>
@@ -1914,11 +2122,15 @@ function OperatorNegligenceTab({
                     name="description"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('maintenance.incidentDescription')}</FormLabel>
+                        <FormLabel>
+                          {t("maintenance.incidentDescription")}
+                        </FormLabel>
                         <FormControl>
                           <Textarea
                             {...field}
-                            placeholder={t('maintenance.incidentDescriptionPlaceholder')}
+                            placeholder={t(
+                              "maintenance.incidentDescriptionPlaceholder",
+                            )}
                           />
                         </FormControl>
                         <FormMessage />
@@ -1932,18 +2144,30 @@ function OperatorNegligenceTab({
                       name="severity"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('maintenance.negligenceSeverity')}</FormLabel>
+                          <FormLabel>
+                            {t("maintenance.negligenceSeverity")}
+                          </FormLabel>
                           <Select onValueChange={field.onChange}>
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder={t('maintenance.selectSeverity')} />
+                                <SelectValue
+                                  placeholder={t("maintenance.selectSeverity")}
+                                />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="low">{t('maintenance.severity.low')}</SelectItem>
-                              <SelectItem value="medium">{t('maintenance.severity.medium')}</SelectItem>
-                              <SelectItem value="high">{t('maintenance.severity.high')}</SelectItem>
-                              <SelectItem value="critical">{t('maintenance.severity.critical')}</SelectItem>
+                              <SelectItem value="low">
+                                {t("maintenance.severity.low")}
+                              </SelectItem>
+                              <SelectItem value="medium">
+                                {t("maintenance.severity.medium")}
+                              </SelectItem>
+                              <SelectItem value="high">
+                                {t("maintenance.severity.high")}
+                              </SelectItem>
+                              <SelectItem value="critical">
+                                {t("maintenance.severity.critical")}
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -1956,11 +2180,15 @@ function OperatorNegligenceTab({
                       name="immediate_actions_taken"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('maintenance.immediateActions')}</FormLabel>
+                          <FormLabel>
+                            {t("maintenance.immediateActions")}
+                          </FormLabel>
                           <FormControl>
                             <Textarea
                               {...field}
-                              placeholder={t('maintenance.immediateActionsPlaceholder')}
+                              placeholder={t(
+                                "maintenance.immediateActionsPlaceholder",
+                              )}
                             />
                           </FormControl>
                           <FormMessage />
@@ -1975,9 +2203,11 @@ function OperatorNegligenceTab({
                       variant="outline"
                       onClick={() => setIsDialogOpen(false)}
                     >
-                      {t('common.cancel')}
+                      {t("common.cancel")}
                     </Button>
-                    <Button type="submit">{t('maintenance.submitReport')}</Button>
+                    <Button type="submit">
+                      {t("maintenance.submitReport")}
+                    </Button>
                   </div>
                 </form>
               </Form>
@@ -1990,7 +2220,7 @@ function OperatorNegligenceTab({
           <div className="text-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
             <p className="mt-2 text-sm text-muted-foreground">
-              {t('common.loading')}
+              {t("common.loading")}
             </p>
           </div>
         ) : Array.isArray(reports) && reports.length > 0 ? (
@@ -2019,11 +2249,15 @@ function OperatorNegligenceTab({
                 </p>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="font-medium">{t('maintenance.negligenceType')}: </span>
+                    <span className="font-medium">
+                      {t("maintenance.negligenceType")}:{" "}
+                    </span>
                     {report.incident_type}
                   </div>
                   <div>
-                    <span className="font-medium">{t('maintenance.incidentDate')}: </span>
+                    <span className="font-medium">
+                      {t("maintenance.incidentDate")}:{" "}
+                    </span>
                     {new Date(report.incident_date).toLocaleDateString("en-US")}
                   </div>
                 </div>
@@ -2033,7 +2267,7 @@ function OperatorNegligenceTab({
         ) : (
           <div className="text-center py-8 text-gray-500">
             <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>{t('maintenance.noNegligenceReports')}</p>
+            <p>{t("maintenance.noNegligenceReports")}</p>
           </div>
         )}
       </CardContent>
@@ -2071,13 +2305,11 @@ function MaintenanceRequestDialog({
   };
 
   return (
-    <DialogContent
-      className="sm:max-w-[600px]"
-    >
+    <DialogContent className="sm:max-w-[600px]">
       <DialogHeader>
-        <DialogTitle>{t('maintenance.newRequest')}</DialogTitle>
+        <DialogTitle>{t("maintenance.newRequest")}</DialogTitle>
         <DialogDescription className="text-sm text-gray-600">
-          {t('maintenance.newRequestDescription')}
+          {t("maintenance.newRequestDescription")}
         </DialogDescription>
       </DialogHeader>
 
@@ -2089,14 +2321,16 @@ function MaintenanceRequestDialog({
               name="machine_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t('maintenance.equipment')}</FormLabel>
+                  <FormLabel>{t("maintenance.equipment")}</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     value={field.value || ""}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder={t('maintenance.selectEquipment')} />
+                        <SelectValue
+                          placeholder={t("maintenance.selectEquipment")}
+                        />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -2129,20 +2363,28 @@ function MaintenanceRequestDialog({
               name="issue_type"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t('maintenance.issueTypeLabel')}</FormLabel>
+                  <FormLabel>{t("maintenance.issueTypeLabel")}</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     value={field.value || ""}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder={t('maintenance.selectIssueType')} />
+                        <SelectValue
+                          placeholder={t("maintenance.selectIssueType")}
+                        />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="mechanical">{t('maintenance.issueType.mechanical')}</SelectItem>
-                      <SelectItem value="electrical">{t('maintenance.issueType.electrical')}</SelectItem>
-                      <SelectItem value="other">{t('maintenance.issueType.other')}</SelectItem>
+                      <SelectItem value="mechanical">
+                        {t("maintenance.issueType.mechanical")}
+                      </SelectItem>
+                      <SelectItem value="electrical">
+                        {t("maintenance.issueType.electrical")}
+                      </SelectItem>
+                      <SelectItem value="other">
+                        {t("maintenance.issueType.other")}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -2157,20 +2399,28 @@ function MaintenanceRequestDialog({
               name="urgency_level"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t('maintenance.urgencyLevel')}</FormLabel>
+                  <FormLabel>{t("maintenance.urgencyLevel")}</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     value={field.value || ""}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder={t('maintenance.selectUrgencyLevel')} />
+                        <SelectValue
+                          placeholder={t("maintenance.selectUrgencyLevel")}
+                        />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="normal">{t('maintenance.urgency.normal')}</SelectItem>
-                      <SelectItem value="medium">{t('maintenance.urgency.medium')}</SelectItem>
-                      <SelectItem value="urgent">{t('maintenance.urgency.urgent')}</SelectItem>
+                      <SelectItem value="normal">
+                        {t("maintenance.urgency.normal")}
+                      </SelectItem>
+                      <SelectItem value="medium">
+                        {t("maintenance.urgency.medium")}
+                      </SelectItem>
+                      <SelectItem value="urgent">
+                        {t("maintenance.urgency.urgent")}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -2184,18 +2434,22 @@ function MaintenanceRequestDialog({
             name="assigned_to"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{t('maintenance.assignedToOptional')}</FormLabel>
+                <FormLabel>{t("maintenance.assignedToOptional")}</FormLabel>
                 <Select
                   onValueChange={field.onChange}
                   value={field.value || ""}
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder={t('maintenance.selectTechnician')} />
+                      <SelectValue
+                        placeholder={t("maintenance.selectTechnician")}
+                      />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="none">{t('maintenance.noAssignment')}</SelectItem>
+                    <SelectItem value="none">
+                      {t("maintenance.noAssignment")}
+                    </SelectItem>
                     {Array.isArray(users) &&
                       users
                         .filter((user: any) => user.role === "technician")
@@ -2216,10 +2470,12 @@ function MaintenanceRequestDialog({
             name="description"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{t('maintenance.issueDescription')}</FormLabel>
+                <FormLabel>{t("maintenance.issueDescription")}</FormLabel>
                 <FormControl>
                   <Textarea
-                    placeholder={t('maintenance.issueDescriptionDetailPlaceholder')}
+                    placeholder={t(
+                      "maintenance.issueDescriptionDetailPlaceholder",
+                    )}
                     className="min-h-[100px]"
                     {...field}
                   />
@@ -2235,7 +2491,9 @@ function MaintenanceRequestDialog({
               disabled={isLoading}
               className="bg-blue-600 hover:bg-blue-700 text-white"
             >
-              {isLoading ? t('maintenance.creating') : t('maintenance.createRequest')}
+              {isLoading
+                ? t("maintenance.creating")
+                : t("maintenance.createRequest")}
             </Button>
           </div>
         </form>
@@ -2268,11 +2526,14 @@ function SparePartsTab({
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/spare-parts"] });
-      toast({ title: t('maintenance.toast.sparePartCreated') });
+      toast({ title: t("maintenance.toast.sparePartCreated") });
       setIsCreateDialogOpen(false);
     },
     onError: () => {
-      toast({ title: t('maintenance.toast.sparePartCreateFailed'), variant: "destructive" });
+      toast({
+        title: t("maintenance.toast.sparePartCreateFailed"),
+        variant: "destructive",
+      });
     },
   });
 
@@ -2284,12 +2545,15 @@ function SparePartsTab({
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/spare-parts"] });
-      toast({ title: t('maintenance.toast.sparePartUpdated') });
+      toast({ title: t("maintenance.toast.sparePartUpdated") });
       setIsEditDialogOpen(false);
       setSelectedPart(null);
     },
     onError: () => {
-      toast({ title: t('maintenance.toast.sparePartUpdateFailed'), variant: "destructive" });
+      toast({
+        title: t("maintenance.toast.sparePartUpdateFailed"),
+        variant: "destructive",
+      });
     },
   });
 
@@ -2300,11 +2564,14 @@ function SparePartsTab({
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/spare-parts"] });
-      toast({ title: t('maintenance.toast.sparePartDeleted') });
+      toast({ title: t("maintenance.toast.sparePartDeleted") });
       setPartToDelete(null);
     },
     onError: () => {
-      toast({ title: t('maintenance.toast.sparePartDeleteFailed'), variant: "destructive" });
+      toast({
+        title: t("maintenance.toast.sparePartDeleteFailed"),
+        variant: "destructive",
+      });
     },
   });
 
@@ -2332,22 +2599,20 @@ function SparePartsTab({
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold text-gray-900">
-          {t('maintenance.sparePartsManagement')}
+          {t("maintenance.sparePartsManagement")}
         </h3>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button className="bg-blue-600 hover:bg-blue-700 text-white">
               <Plus className="h-4 w-4 ml-2" />
-              {t('maintenance.addNewSparePart')}
+              {t("maintenance.addNewSparePart")}
             </Button>
           </DialogTrigger>
-          <DialogContent
-            className="max-w-md"
-          >
+          <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>{t('maintenance.addNewSparePart')}</DialogTitle>
+              <DialogTitle>{t("maintenance.addNewSparePart")}</DialogTitle>
               <DialogDescription className="text-sm text-gray-600">
-                {t('maintenance.addSparePartDescription')}
+                {t("maintenance.addSparePartDescription")}
               </DialogDescription>
             </DialogHeader>
             <SparePartForm
@@ -2363,7 +2628,7 @@ function SparePartsTab({
           {isLoading ? (
             <div className="p-8 text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-2 text-gray-500">{t('common.loading')}</p>
+              <p className="mt-2 text-gray-500">{t("common.loading")}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -2371,25 +2636,25 @@ function SparePartsTab({
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                      {t('maintenance.partNumber')}
+                      {t("maintenance.partNumber")}
                     </th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                      {t('maintenance.machineName')}
+                      {t("maintenance.machineName")}
                     </th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                      {t('maintenance.partName')}
+                      {t("maintenance.partName")}
                     </th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                      {t('maintenance.code')}
+                      {t("maintenance.code")}
                     </th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                      {t('maintenance.serialNumber')}
+                      {t("maintenance.serialNumber")}
                     </th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                      {t('maintenance.specifications')}
+                      {t("maintenance.specifications")}
                     </th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                      {t('common.actions')}
+                      {t("common.actions")}
                     </th>
                   </tr>
                 </thead>
@@ -2451,7 +2716,7 @@ function SparePartsTab({
                         colSpan={7}
                         className="px-6 py-4 text-center text-gray-500"
                       >
-                        {t('maintenance.noSpareParts')}
+                        {t("maintenance.noSpareParts")}
                       </td>
                     </tr>
                   )}
@@ -2463,13 +2728,11 @@ function SparePartsTab({
       </Card>
 
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent
-          className="max-w-md"
-        >
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{t('maintenance.sparePartDetails')}</DialogTitle>
+            <DialogTitle>{t("maintenance.sparePartDetails")}</DialogTitle>
             <DialogDescription className="text-sm text-gray-600">
-              {t('maintenance.sparePartDetailsDescription')}
+              {t("maintenance.sparePartDetailsDescription")}
             </DialogDescription>
           </DialogHeader>
           {selectedPart && (
@@ -2477,7 +2740,7 @@ function SparePartsTab({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-700">
-                    {t('maintenance.partNumber')}
+                    {t("maintenance.partNumber")}
                   </label>
                   <p className="text-sm text-gray-900 mt-1">
                     {selectedPart.part_id}
@@ -2485,7 +2748,7 @@ function SparePartsTab({
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">
-                    {t('maintenance.code')}
+                    {t("maintenance.code")}
                   </label>
                   <p className="text-sm text-gray-900 mt-1">
                     {selectedPart.code}
@@ -2494,7 +2757,7 @@ function SparePartsTab({
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">
-                  {t('maintenance.machineName')}
+                  {t("maintenance.machineName")}
                 </label>
                 <p className="text-sm text-gray-900 mt-1">
                   {selectedPart.machine_name}
@@ -2503,7 +2766,7 @@ function SparePartsTab({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-700">
-                    {t('maintenance.partName')}
+                    {t("maintenance.partName")}
                   </label>
                   <p className="text-sm text-gray-900 mt-1">
                     {selectedPart.part_name}
@@ -2511,7 +2774,7 @@ function SparePartsTab({
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">
-                    {t('maintenance.serialNumber')}
+                    {t("maintenance.serialNumber")}
                   </label>
                   <p className="text-sm text-gray-900 mt-1">
                     {selectedPart.serial_number}
@@ -2520,7 +2783,7 @@ function SparePartsTab({
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">
-                  {t('maintenance.specifications')}
+                  {t("maintenance.specifications")}
                 </label>
                 <p className="text-sm text-gray-900 mt-1">
                   {selectedPart.specifications}
@@ -2532,13 +2795,11 @@ function SparePartsTab({
       </Dialog>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent
-          className="max-w-md"
-        >
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{t('maintenance.editSparePart')}</DialogTitle>
+            <DialogTitle>{t("maintenance.editSparePart")}</DialogTitle>
             <DialogDescription className="text-sm text-gray-600">
-              {t('maintenance.editSparePartDescription')}
+              {t("maintenance.editSparePartDescription")}
             </DialogDescription>
           </DialogHeader>
           {selectedPart && (
@@ -2554,30 +2815,33 @@ function SparePartsTab({
       </Dialog>
 
       <Dialog open={!!partToDelete} onOpenChange={() => setPartToDelete(null)}>
-        <DialogContent
-          className="max-w-md"
-        >
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{t('maintenance.confirmDeleteTitle')}</DialogTitle>
+            <DialogTitle>{t("maintenance.confirmDeleteTitle")}</DialogTitle>
             <DialogDescription className="text-sm text-gray-600">
-              {t('maintenance.confirmDeleteSparePartMessage')}
+              {t("maintenance.confirmDeleteSparePartMessage")}
             </DialogDescription>
           </DialogHeader>
           {partToDelete && (
             <div className="space-y-4">
               <p className="text-sm text-gray-700">
-                {t('maintenance.deleteSparePartWarning', { id: partToDelete.part_id, name: partToDelete.part_name })}
+                {t("maintenance.deleteSparePartWarning", {
+                  id: partToDelete.part_id,
+                  name: partToDelete.part_name,
+                })}
               </p>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setPartToDelete(null)}>
-                  {t('common.cancel')}
+                  {t("common.cancel")}
                 </Button>
                 <Button
                   variant="destructive"
                   onClick={confirmDelete}
                   disabled={deleteSparePartMutation.isPending}
                 >
-                  {deleteSparePartMutation.isPending ? t('maintenance.deleting') : t('maintenance.delete')}
+                  {deleteSparePartMutation.isPending
+                    ? t("maintenance.deleting")
+                    : t("maintenance.delete")}
                 </Button>
               </div>
             </div>
@@ -2646,7 +2910,7 @@ function SparePartForm({
             name="part_id"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{t('maintenance.partNumberAuto')}</FormLabel>
+                <FormLabel>{t("maintenance.partNumberAuto")}</FormLabel>
                 <FormControl>
                   <Input {...field} disabled className="bg-gray-100" />
                 </FormControl>
@@ -2660,7 +2924,7 @@ function SparePartForm({
             name="code"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{t('maintenance.code')}</FormLabel>
+                <FormLabel>{t("maintenance.code")}</FormLabel>
                 <FormControl>
                   <Input placeholder="A8908" {...field} />
                 </FormControl>
@@ -2675,28 +2939,26 @@ function SparePartForm({
           name="machine_name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{t('maintenance.machineName')}</FormLabel>
+              <FormLabel>{t("maintenance.machineName")}</FormLabel>
               <FormControl>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <SelectTrigger>
-                    <SelectValue placeholder={t('maintenance.selectMachine')} />
+                    <SelectValue placeholder={t("maintenance.selectMachine")} />
                   </SelectTrigger>
                   <SelectContent>
                     {Array.isArray(machines) && machines.length > 0 ? (
                       machines.map((machine: any) => {
-                        const label = machine.name_ar || machine.name || `#${machine.id}`;
+                        const label =
+                          machine.name_ar || machine.name || `#${machine.id}`;
                         return (
-                          <SelectItem
-                            key={machine.id}
-                            value={label}
-                          >
+                          <SelectItem key={machine.id} value={label}>
                             {label} ({machine.id})
                           </SelectItem>
                         );
                       })
                     ) : (
                       <SelectItem value="no_machines">
-                        {t('maintenance.noMachinesAvailable')}
+                        {t("maintenance.noMachinesAvailable")}
                       </SelectItem>
                     )}
                   </SelectContent>
@@ -2713,9 +2975,12 @@ function SparePartForm({
             name="part_name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{t('maintenance.partName')}</FormLabel>
+                <FormLabel>{t("maintenance.partName")}</FormLabel>
                 <FormControl>
-                  <Input placeholder={t('maintenance.partNamePlaceholder')} {...field} />
+                  <Input
+                    placeholder={t("maintenance.partNamePlaceholder")}
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -2727,7 +2992,7 @@ function SparePartForm({
             name="serial_number"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{t('maintenance.serialNumber')}</FormLabel>
+                <FormLabel>{t("maintenance.serialNumber")}</FormLabel>
                 <FormControl>
                   <Input placeholder="E5SH973798" {...field} />
                 </FormControl>
@@ -2742,9 +3007,12 @@ function SparePartForm({
           name="specifications"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{t('maintenance.specifications')}</FormLabel>
+              <FormLabel>{t("maintenance.specifications")}</FormLabel>
               <FormControl>
-                <Textarea placeholder={t('maintenance.specificationsPlaceholder')} {...field} />
+                <Textarea
+                  placeholder={t("maintenance.specificationsPlaceholder")}
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -2757,7 +3025,7 @@ function SparePartForm({
             disabled={isLoading}
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
-            {isLoading ? t('maintenance.saving') : t('maintenance.save')}
+            {isLoading ? t("maintenance.saving") : t("maintenance.save")}
           </Button>
         </div>
       </form>
@@ -2801,7 +3069,7 @@ function SparePartEditForm({
             name="part_id"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{t('maintenance.partNumber')}</FormLabel>
+                <FormLabel>{t("maintenance.partNumber")}</FormLabel>
                 <FormControl>
                   <Input {...field} disabled className="bg-gray-100" />
                 </FormControl>
@@ -2815,7 +3083,7 @@ function SparePartEditForm({
             name="code"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{t('maintenance.code')}</FormLabel>
+                <FormLabel>{t("maintenance.code")}</FormLabel>
                 <FormControl>
                   <Input placeholder="A8908" {...field} />
                 </FormControl>
@@ -2830,28 +3098,26 @@ function SparePartEditForm({
           name="machine_name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{t('maintenance.machineName')}</FormLabel>
+              <FormLabel>{t("maintenance.machineName")}</FormLabel>
               <FormControl>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <SelectTrigger>
-                    <SelectValue placeholder={t('maintenance.selectMachine')} />
+                    <SelectValue placeholder={t("maintenance.selectMachine")} />
                   </SelectTrigger>
                   <SelectContent>
                     {Array.isArray(machines) && machines.length > 0 ? (
                       machines.map((machine: any) => {
-                        const label = machine.name_ar || machine.name || `#${machine.id}`;
+                        const label =
+                          machine.name_ar || machine.name || `#${machine.id}`;
                         return (
-                          <SelectItem
-                            key={machine.id}
-                            value={label}
-                          >
+                          <SelectItem key={machine.id} value={label}>
                             {label} ({machine.id})
                           </SelectItem>
                         );
                       })
                     ) : (
                       <SelectItem value="no_machines">
-                        {t('maintenance.noMachinesAvailable')}
+                        {t("maintenance.noMachinesAvailable")}
                       </SelectItem>
                     )}
                   </SelectContent>
@@ -2868,9 +3134,12 @@ function SparePartEditForm({
             name="part_name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{t('maintenance.partName')}</FormLabel>
+                <FormLabel>{t("maintenance.partName")}</FormLabel>
                 <FormControl>
-                  <Input placeholder={t('maintenance.partNamePlaceholder')} {...field} />
+                  <Input
+                    placeholder={t("maintenance.partNamePlaceholder")}
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -2882,7 +3151,7 @@ function SparePartEditForm({
             name="serial_number"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{t('maintenance.serialNumber')}</FormLabel>
+                <FormLabel>{t("maintenance.serialNumber")}</FormLabel>
                 <FormControl>
                   <Input placeholder="E5SH973798" {...field} />
                 </FormControl>
@@ -2897,9 +3166,12 @@ function SparePartEditForm({
           name="specifications"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{t('maintenance.specifications')}</FormLabel>
+              <FormLabel>{t("maintenance.specifications")}</FormLabel>
               <FormControl>
-                <Textarea placeholder={t('maintenance.specificationsPlaceholder')} {...field} />
+                <Textarea
+                  placeholder={t("maintenance.specificationsPlaceholder")}
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -2912,7 +3184,7 @@ function SparePartEditForm({
             disabled={isLoading}
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
-            {isLoading ? t('maintenance.updating') : t('maintenance.update')}
+            {isLoading ? t("maintenance.updating") : t("maintenance.update")}
           </Button>
         </div>
       </form>

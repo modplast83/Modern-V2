@@ -1,16 +1,4 @@
-import { useState } from "react";
-import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
-import { Alert } from "../components/ui/alert";
-import { Badge } from "../components/ui/badge";
-import { Button } from "../components/ui/button";
 import {
   CheckCircle,
   XCircle,
@@ -18,6 +6,19 @@ import {
   Settings,
   ExternalLink,
 } from "lucide-react";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+
+import { Alert } from "../components/ui/alert";
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 
 export default function WhatsAppTroubleshoot() {
   const { t } = useTranslation();
@@ -135,7 +136,9 @@ export default function WhatsAppTroubleshoot() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <h4 className="font-medium text-red-700">{t("whatsapp.troubleshoot.suggestedSolutions")}</h4>
+              <h4 className="font-medium text-red-700">
+                {t("whatsapp.troubleshoot.suggestedSolutions")}
+              </h4>
               <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
                 {error63016.solutions.map((solution, index) => (
                   <li key={index}>{solution}</li>
@@ -156,7 +159,9 @@ export default function WhatsAppTroubleshoot() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">{t("whatsapp.troubleshoot.whatsappNumber")}</span>
+                  <span className="text-sm text-gray-600">
+                    {t("whatsapp.troubleshoot.whatsappNumber")}
+                  </span>
                   <Badge variant="outline">+15557911537</Badge>
                 </div>
 
@@ -170,7 +175,9 @@ export default function WhatsAppTroubleshoot() {
                 </div>
 
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">{t("whatsapp.troubleshoot.twilioAccount")}</span>
+                  <span className="text-sm text-gray-600">
+                    {t("whatsapp.troubleshoot.twilioAccount")}
+                  </span>
                   <Badge variant="outline" className="text-xs">
                     ACe4ba2fd2e98be5b019c354539404cc29
                   </Badge>
@@ -179,12 +186,18 @@ export default function WhatsAppTroubleshoot() {
 
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">{t("whatsapp.troubleshoot.lastMessage")}</span>
-                  <Badge className="bg-red-100 text-red-800">{t("whatsapp.troubleshoot.undelivered")}</Badge>
+                  <span className="text-sm text-gray-600">
+                    {t("whatsapp.troubleshoot.lastMessage")}
+                  </span>
+                  <Badge className="bg-red-100 text-red-800">
+                    {t("whatsapp.troubleshoot.undelivered")}
+                  </Badge>
                 </div>
 
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">{t("whatsapp.troubleshoot.errorCode")}</span>
+                  <span className="text-sm text-gray-600">
+                    {t("whatsapp.troubleshoot.errorCode")}
+                  </span>
                   <Badge className="bg-red-100 text-red-800">63016</Badge>
                 </div>
 
@@ -273,7 +286,9 @@ export default function WhatsAppTroubleshoot() {
                   rel="noopener noreferrer"
                 >
                   <div className="text-left">
-                    <div className="font-medium">{t("whatsapp.troubleshoot.twilioWhatsappConsole")}</div>
+                    <div className="font-medium">
+                      {t("whatsapp.troubleshoot.twilioWhatsappConsole")}
+                    </div>
                     <div className="text-sm text-gray-500">
                       {t("whatsapp.troubleshoot.manageWhatsappNumbers")}
                     </div>
@@ -292,7 +307,9 @@ export default function WhatsAppTroubleshoot() {
                   rel="noopener noreferrer"
                 >
                   <div className="text-left">
-                    <div className="font-medium">{t("whatsapp.troubleshoot.metaBusinessManager")}</div>
+                    <div className="font-medium">
+                      {t("whatsapp.troubleshoot.metaBusinessManager")}
+                    </div>
                     <div className="text-sm text-gray-500">
                       {t("whatsapp.troubleshoot.manageWhatsappBusiness")}
                     </div>
@@ -311,7 +328,9 @@ export default function WhatsAppTroubleshoot() {
                   rel="noopener noreferrer"
                 >
                   <div className="text-left">
-                    <div className="font-medium">{t("whatsapp.troubleshoot.whatsappSandbox")}</div>
+                    <div className="font-medium">
+                      {t("whatsapp.troubleshoot.whatsappSandbox")}
+                    </div>
                     <div className="text-sm text-gray-500">
                       {t("whatsapp.troubleshoot.sandboxGuide")}
                     </div>
@@ -330,8 +349,12 @@ export default function WhatsAppTroubleshoot() {
                   rel="noopener noreferrer"
                 >
                   <div className="text-left">
-                    <div className="font-medium">{t("whatsapp.troubleshoot.error63016Details")}</div>
-                    <div className="text-sm text-gray-500">{t("whatsapp.troubleshoot.errorExplanation")}</div>
+                    <div className="font-medium">
+                      {t("whatsapp.troubleshoot.error63016Details")}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {t("whatsapp.troubleshoot.errorExplanation")}
+                    </div>
                   </div>
                 </a>
               </Button>
@@ -344,7 +367,8 @@ export default function WhatsAppTroubleshoot() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-red-700">
                 <AlertTriangle className="h-5 w-5" />
-                {t("whatsapp.troubleshoot.failedMessagesTitle")} ({failedMessages.length})
+                {t("whatsapp.troubleshoot.failedMessagesTitle")} (
+                {failedMessages.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -356,7 +380,8 @@ export default function WhatsAppTroubleshoot() {
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-medium text-red-700">
-                        {message.phone_number || t("whatsapp.troubleshoot.unknownNumber")}
+                        {message.phone_number ||
+                          t("whatsapp.troubleshoot.unknownNumber")}
                       </span>
                       <Badge className="bg-red-100 text-red-800">
                         {message.status}
@@ -367,7 +392,8 @@ export default function WhatsAppTroubleshoot() {
                     </p>
                     {message.error_message && (
                       <p className="text-xs text-red-600">
-                        {t("whatsapp.troubleshoot.errorLabel")} {message.error_message}
+                        {t("whatsapp.troubleshoot.errorLabel")}{" "}
+                        {message.error_message}
                       </p>
                     )}
                     <p className="text-xs text-gray-500">

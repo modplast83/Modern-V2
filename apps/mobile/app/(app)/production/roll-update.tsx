@@ -1,15 +1,15 @@
-import { useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Alert, StyleSheet, Text, View } from "react-native";
 
+import { useMarkPrinted, useUpdateRoll } from "@/api/hooks/useProduction";
 import { Screen } from "@/components/layout/Screen";
+import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
-import { useMarkPrinted, useUpdateRoll } from "@/api/hooks/useProduction";
-import { useTheme } from "@/utils/useTheme";
 import { FontSize, Spacing } from "@/constants/spacing";
+import { useTheme } from "@/utils/useTheme";
 
 export default function RollUpdate() {
   const { t } = useTranslation();
@@ -58,13 +58,33 @@ export default function RollUpdate() {
           {t("production.rollNumber")} #{id}
         </Text>
         <View style={{ height: Spacing.md }} />
-        <Input label={t("production.weight")} value={weight} onChangeText={setWeight} keyboardType="numeric" />
+        <Input
+          label={t("production.weight")}
+          value={weight}
+          onChangeText={setWeight}
+          keyboardType="numeric"
+        />
         <View style={{ height: Spacing.md }} />
-        <Input label={t("production.waste")} value={waste} onChangeText={setWaste} keyboardType="numeric" />
+        <Input
+          label={t("production.waste")}
+          value={waste}
+          onChangeText={setWaste}
+          keyboardType="numeric"
+        />
         <View style={{ height: Spacing.md }} />
-        <Input label={t("production.cutWeight")} value={cutWeight} onChangeText={setCutWeight} keyboardType="numeric" />
+        <Input
+          label={t("production.cutWeight")}
+          value={cutWeight}
+          onChangeText={setCutWeight}
+          keyboardType="numeric"
+        />
         <View style={{ height: Spacing.lg }} />
-        <Button title={t("production.submitWeight")} onPress={onSave} loading={update.isPending} fullWidth />
+        <Button
+          title={t("production.submitWeight")}
+          onPress={onSave}
+          loading={update.isPending}
+          fullWidth
+        />
         <View style={{ height: Spacing.sm }} />
         <Button
           title={t("production.markPrinted")}

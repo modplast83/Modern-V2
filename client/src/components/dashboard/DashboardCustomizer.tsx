@@ -1,5 +1,30 @@
+import {
+  BarChart3,
+  Cog,
+  ScrollText,
+  UserCheck,
+  StickyNote,
+  Zap,
+  Package,
+  FileText,
+  Clock,
+  ShoppingCart,
+  Activity,
+  Wrench,
+  GripVertical,
+  RotateCcw,
+} from "lucide-react";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+
+import {
+  WIDGET_REGISTRY,
+  getAvailableWidgets,
+  getDefaultDashboardConfig,
+  type WidgetMeta,
+} from "../../lib/dashboard-widgets";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
 import {
   Dialog,
   DialogContent,
@@ -7,24 +32,21 @@ import {
   DialogTitle,
   DialogFooter,
 } from "../ui/dialog";
-import { Button } from "../ui/button";
-import { Badge } from "../ui/badge";
 import { Switch } from "../ui/switch";
-import {
-  BarChart3, Cog, ScrollText, UserCheck, StickyNote, Zap,
-  Package, FileText, Clock, ShoppingCart, Activity, Wrench,
-  GripVertical, RotateCcw,
-} from "lucide-react";
-import {
-  WIDGET_REGISTRY,
-  getAvailableWidgets,
-  getDefaultDashboardConfig,
-  type WidgetMeta,
-} from "../../lib/dashboard-widgets";
 
 const ICON_MAP: Record<string, any> = {
-  BarChart3, Cog, ScrollText, UserCheck, StickyNote, Zap,
-  Package, FileText, Clock, ShoppingCart, Activity, Wrench,
+  BarChart3,
+  Cog,
+  ScrollText,
+  UserCheck,
+  StickyNote,
+  Zap,
+  Package,
+  FileText,
+  Clock,
+  ShoppingCart,
+  Activity,
+  Wrench,
 };
 
 interface Props {
@@ -46,7 +68,8 @@ export default function DashboardCustomizer({
 }: Props) {
   const { t, i18n } = useTranslation();
   const isArabic = i18n.language === "ar";
-  const [selectedWidgets, setSelectedWidgets] = useState<string[]>(currentWidgets);
+  const [selectedWidgets, setSelectedWidgets] =
+    useState<string[]>(currentWidgets);
 
   useEffect(() => {
     if (open) {
@@ -56,7 +79,9 @@ export default function DashboardCustomizer({
 
   const availableWidgets = getAvailableWidgets(userPermissions);
   const isAdmin = userPermissions?.includes("admin") || userRoleId === 1;
-  const allWidgets = isAdmin ? Object.values(WIDGET_REGISTRY) : availableWidgets;
+  const allWidgets = isAdmin
+    ? Object.values(WIDGET_REGISTRY)
+    : availableWidgets;
 
   const categories = Array.from(new Set(allWidgets.map((w) => w.category)));
 
@@ -64,7 +89,7 @@ export default function DashboardCustomizer({
     setSelectedWidgets((prev) =>
       prev.includes(widgetId)
         ? prev.filter((id) => id !== widgetId)
-        : [...prev, widgetId]
+        : [...prev, widgetId],
     );
   };
 
@@ -107,7 +132,12 @@ export default function DashboardCustomizer({
                 ? "اختر العناصر التي تريد عرضها في لوحة التحكم"
                 : "Choose which widgets to display on your dashboard"}
             </p>
-            <Button variant="outline" size="sm" onClick={resetToDefaults} className="gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={resetToDefaults}
+              className="gap-1"
+            >
               <RotateCcw className="w-3.5 h-3.5" />
               {isArabic ? "استعادة الافتراضي" : "Reset"}
             </Button>
@@ -116,7 +146,9 @@ export default function DashboardCustomizer({
           {selectedWidgets.length > 0 && (
             <div className="border rounded-lg p-3 bg-muted/30">
               <p className="text-xs font-medium text-muted-foreground mb-2">
-                {isArabic ? "الترتيب الحالي (اسحب لإعادة الترتيب)" : "Current Order"}
+                {isArabic
+                  ? "الترتيب الحالي (اسحب لإعادة الترتيب)"
+                  : "Current Order"}
               </p>
               <div className="space-y-1">
                 {selectedWidgets.map((wId, idx) => {
@@ -161,7 +193,9 @@ export default function DashboardCustomizer({
           )}
 
           {categories.map((category) => {
-            const categoryWidgets = allWidgets.filter((w) => w.category === category);
+            const categoryWidgets = allWidgets.filter(
+              (w) => w.category === category,
+            );
             const catAr = categoryWidgets[0]?.category_ar || category;
             return (
               <div key={category}>
@@ -184,7 +218,9 @@ export default function DashboardCustomizer({
                       >
                         <Icon
                           className={`w-5 h-5 flex-shrink-0 ${
-                            isSelected ? "text-primary" : "text-muted-foreground"
+                            isSelected
+                              ? "text-primary"
+                              : "text-muted-foreground"
                           }`}
                         />
                         <div className="flex-1 min-w-0">
@@ -192,7 +228,9 @@ export default function DashboardCustomizer({
                             {isArabic ? widget.name_ar : widget.name}
                           </p>
                           <p className="text-xs text-muted-foreground truncate">
-                            {isArabic ? widget.description_ar : widget.description}
+                            {isArabic
+                              ? widget.description_ar
+                              : widget.description}
                           </p>
                         </div>
                         <Switch
@@ -215,9 +253,7 @@ export default function DashboardCustomizer({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             {isArabic ? "إلغاء" : "Cancel"}
           </Button>
-          <Button onClick={handleSave}>
-            {isArabic ? "حفظ" : "Save"}
-          </Button>
+          <Button onClick={handleSave}>{isArabic ? "حفظ" : "Save"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

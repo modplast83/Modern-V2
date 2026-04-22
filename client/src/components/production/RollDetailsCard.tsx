@@ -1,14 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
-import { useLocalizedName } from "../../hooks/use-localized-name";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
-import { Button } from "../ui/button";
-import { Badge } from "../ui/badge";
-import { Skeleton } from "../ui/skeleton";
-import { Separator } from "../ui/separator";
-import { ScrollArea } from "../ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import { useToast } from "../../hooks/use-toast";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
 import {
@@ -35,6 +25,24 @@ import {
   Phone,
   History as HistoryIcon,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
+
+import { useLocalizedName } from "../../hooks/use-localized-name";
+import { useToast } from "../../hooks/use-toast";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../ui/card";
+import { ScrollArea } from "../ui/scroll-area";
+import { Separator } from "../ui/separator";
+import { Skeleton } from "../ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+
 import { printRollLabel } from "./RollLabelPrint";
 
 interface RollDetailsCardProps {
@@ -132,18 +140,24 @@ interface RollHistory {
   icon: string;
 }
 
-export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProps) {
+export default function RollDetailsCard({
+  rollId,
+  onClose,
+}: RollDetailsCardProps) {
   const { t } = useTranslation();
   const ln = useLocalizedName();
   const { toast } = useToast();
 
   // Fetch roll details
-  const { data: rollDetails, isLoading: isLoadingDetails } = useQuery<RollDetails>({
-    queryKey: ["/api/rolls", rollId, "full-details"],
-    enabled: !!rollId,
-  });
+  const { data: rollDetails, isLoading: isLoadingDetails } =
+    useQuery<RollDetails>({
+      queryKey: ["/api/rolls", rollId, "full-details"],
+      enabled: !!rollId,
+    });
 
-  const { data: rollHistory = [], isLoading: isLoadingHistory } = useQuery<RollHistory[]>({
+  const { data: rollHistory = [], isLoading: isLoadingHistory } = useQuery<
+    RollHistory[]
+  >({
     queryKey: ["/api/rolls", rollId, "history"],
     enabled: !!rollId,
   });
@@ -151,44 +165,64 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
   // Get stage name in Arabic
   const getStageNameAr = (stage?: string) => {
     switch (stage) {
-      case "film": return t('production.stages.film');
-      case "printing": return t('production.stages.printing');
-      case "cutting": return t('production.stages.cutting');
-      case "done": return t('production.stages.done');
-      default: return stage || "-";
+      case "film":
+        return t("production.stages.film");
+      case "printing":
+        return t("production.stages.printing");
+      case "cutting":
+        return t("production.stages.cutting");
+      case "done":
+        return t("production.stages.done");
+      default:
+        return stage || "-";
     }
   };
 
   // Get stage color
   const getStageColor = (stage?: string) => {
     switch (stage) {
-      case "film": return "default";
-      case "printing": return "secondary";
-      case "cutting": return "warning";
-      case "done": return "success";
-      default: return "default";
+      case "film":
+        return "default";
+      case "printing":
+        return "secondary";
+      case "cutting":
+        return "warning";
+      case "done":
+        return "success";
+      default:
+        return "default";
     }
   };
 
   // Get stage icon
   const getStageIcon = (stage?: string) => {
     switch (stage) {
-      case "film": return <Film className="h-4 w-4" />;
-      case "printing": return <PrintIcon className="h-4 w-4" />;
-      case "cutting": return <Scissors className="h-4 w-4" />;
-      case "done": return <CheckCircle className="h-4 w-4" />;
-      default: return <Package className="h-4 w-4" />;
+      case "film":
+        return <Film className="h-4 w-4" />;
+      case "printing":
+        return <PrintIcon className="h-4 w-4" />;
+      case "cutting":
+        return <Scissors className="h-4 w-4" />;
+      case "done":
+        return <CheckCircle className="h-4 w-4" />;
+      default:
+        return <Package className="h-4 w-4" />;
     }
   };
 
   // Get history icon component
   const getHistoryIcon = (iconName: string) => {
     switch (iconName) {
-      case "Film": return <Film className="h-4 w-4" />;
-      case "Printer": return <PrintIcon className="h-4 w-4" />;
-      case "Scissors": return <Scissors className="h-4 w-4" />;
-      case "Package": return <Package className="h-4 w-4" />;
-      default: return <Activity className="h-4 w-4" />;
+      case "Film":
+        return <Film className="h-4 w-4" />;
+      case "Printer":
+        return <PrintIcon className="h-4 w-4" />;
+      case "Scissors":
+        return <Scissors className="h-4 w-4" />;
+      case "Package":
+        return <Package className="h-4 w-4" />;
+      default:
+        return <Activity className="h-4 w-4" />;
     }
   };
 
@@ -210,7 +244,9 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
         printed_at: rollDetails.printed_at,
         cut_by_name: rollDetails.cut_by_name,
         cut_at: rollDetails.cut_completed_at,
-        cut_weight_total_kg: rollDetails.cut_weight_total_kg ? parseFloat(rollDetails.cut_weight_total_kg) : undefined,
+        cut_weight_total_kg: rollDetails.cut_weight_total_kg
+          ? parseFloat(rollDetails.cut_weight_total_kg)
+          : undefined,
         status: rollDetails.stage,
         film_machine_name: rollDetails.film_machine_name,
         printing_machine_name: rollDetails.printing_machine_name,
@@ -233,8 +269,8 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
     });
 
     toast({
-      title: t('production.printSent'),
-      description: t('production.printWindowOpening'),
+      title: t("production.printSent"),
+      description: t("production.printWindowOpening"),
     });
   };
 
@@ -268,7 +304,9 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
       <Card>
         <CardContent className="text-center py-8">
           <Package className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-          <p className="text-muted-foreground">{t('production.noDetailsAvailable')}</p>
+          <p className="text-muted-foreground">
+            {t("production.noDetailsAvailable")}
+          </p>
         </CardContent>
       </Card>
     );
@@ -293,7 +331,12 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
               {getStageNameAr(rollDetails.stage)}
             </Badge>
             {onClose && (
-              <Button variant="ghost" size="icon" onClick={onClose} data-testid="button-close-details">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onClose}
+                data-testid="button-close-details"
+              >
                 <X className="h-4 w-4" />
               </Button>
             )}
@@ -304,9 +347,15 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
       <CardContent>
         <Tabs defaultValue="details" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="details" data-testid="tab-details">{t('production.details')}</TabsTrigger>
-            <TabsTrigger value="history" data-testid="tab-history">{t('production.history')}</TabsTrigger>
-            <TabsTrigger value="cuts" data-testid="tab-cuts">{t('production.cuts')}</TabsTrigger>
+            <TabsTrigger value="details" data-testid="tab-details">
+              {t("production.details")}
+            </TabsTrigger>
+            <TabsTrigger value="history" data-testid="tab-history">
+              {t("production.history")}
+            </TabsTrigger>
+            <TabsTrigger value="cuts" data-testid="tab-cuts">
+              {t("production.cuts")}
+            </TabsTrigger>
           </TabsList>
 
           {/* Details Tab */}
@@ -315,60 +364,81 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
               {/* Basic Info */}
               <div className="space-y-4">
                 <div>
-                  <h3 className="font-semibold text-sm text-muted-foreground mb-3">{t('production.basicInfo')}</h3>
+                  <h3 className="font-semibold text-sm text-muted-foreground mb-3">
+                    {t("production.basicInfo")}
+                  </h3>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground flex items-center gap-1">
                         <Hash className="h-3 w-3" />
-                        {t('production.sequenceNumber')}
+                        {t("production.sequenceNumber")}
                       </span>
-                      <span className="font-medium">{rollDetails.roll_seq}</span>
+                      <span className="font-medium">
+                        {rollDetails.roll_seq}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        {t('production.creationDate')}
+                        {t("production.creationDate")}
                       </span>
                       <span className="font-medium">
-                        {format(new Date(rollDetails.created_at), "dd/MM/yyyy HH:mm", { locale: ar })}
+                        {format(
+                          new Date(rollDetails.created_at),
+                          "dd/MM/yyyy HH:mm",
+                          { locale: ar },
+                        )}
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground flex items-center gap-1">
                         <Weight className="h-3 w-3" />
-                        {t('production.originalWeight')}
+                        {t("production.originalWeight")}
                       </span>
-                      <span className="font-medium">{rollDetails.weight_kg} {t('production.units.kg')}</span>
+                      <span className="font-medium">
+                        {rollDetails.weight_kg} {t("production.units.kg")}
+                      </span>
                     </div>
-                    {rollDetails.cut_weight_total_kg && parseFloat(rollDetails.cut_weight_total_kg) > 0 && (
-                      <>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground flex items-center gap-1">
-                            <Weight className="h-3 w-3" />
-                            {t('production.cuttingWeight')}
-                          </span>
-                          <span className="font-medium">{rollDetails.cut_weight_total_kg} {t('production.units.kg')}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground flex items-center gap-1">
-                            <AlertTriangle className="h-3 w-3" />
-                            {t('production.waste')}
-                          </span>
-                          <span className="font-medium text-destructive">
-                            {rollDetails.waste_kg || "0"} {t('production.units.kg')} ({(parseFloat(rollDetails.waste_kg || "0") / parseFloat(rollDetails.weight_kg) * 100).toFixed(1)}%)
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground flex items-center gap-1">
-                            <TrendingUp className="h-3 w-3" />
-                            {t('production.efficiency')}
-                          </span>
-                          <span className="font-medium text-green-600">
-                            {calculateEfficiency()}%
-                          </span>
-                        </div>
-                      </>
-                    )}
+                    {rollDetails.cut_weight_total_kg &&
+                      parseFloat(rollDetails.cut_weight_total_kg) > 0 && (
+                        <>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground flex items-center gap-1">
+                              <Weight className="h-3 w-3" />
+                              {t("production.cuttingWeight")}
+                            </span>
+                            <span className="font-medium">
+                              {rollDetails.cut_weight_total_kg}{" "}
+                              {t("production.units.kg")}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground flex items-center gap-1">
+                              <AlertTriangle className="h-3 w-3" />
+                              {t("production.waste")}
+                            </span>
+                            <span className="font-medium text-destructive">
+                              {rollDetails.waste_kg || "0"}{" "}
+                              {t("production.units.kg")} (
+                              {(
+                                (parseFloat(rollDetails.waste_kg || "0") /
+                                  parseFloat(rollDetails.weight_kg)) *
+                                100
+                              ).toFixed(1)}
+                              %)
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground flex items-center gap-1">
+                              <TrendingUp className="h-3 w-3" />
+                              {t("production.efficiency")}
+                            </span>
+                            <span className="font-medium text-green-600">
+                              {calculateEfficiency()}%
+                            </span>
+                          </div>
+                        </>
+                      )}
                   </div>
                 </div>
 
@@ -376,11 +446,15 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
 
                 {/* Product Info */}
                 <div>
-                  <h3 className="font-semibold text-sm text-muted-foreground mb-3">{t('production.productInfo')}</h3>
+                  <h3 className="font-semibold text-sm text-muted-foreground mb-3">
+                    {t("production.productInfo")}
+                  </h3>
                   <div className="space-y-2">
                     {rollDetails.item_name && (
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">{t('production.product')}</span>
+                        <span className="text-muted-foreground">
+                          {t("production.product")}
+                        </span>
                         <span className="font-medium">
                           {ln(rollDetails.item_name_ar, rollDetails.item_name)}
                         </span>
@@ -388,32 +462,50 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
                     )}
                     {rollDetails.size_caption && (
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">{t('production.size')}</span>
-                        <span className="font-medium">{rollDetails.size_caption}</span>
+                        <span className="text-muted-foreground">
+                          {t("production.size")}
+                        </span>
+                        <span className="font-medium">
+                          {rollDetails.size_caption}
+                        </span>
                       </div>
                     )}
                     {rollDetails.raw_material && (
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">{t('production.rawMaterial')}</span>
-                        <span className="font-medium">{rollDetails.raw_material}</span>
+                        <span className="text-muted-foreground">
+                          {t("production.rawMaterial")}
+                        </span>
+                        <span className="font-medium">
+                          {rollDetails.raw_material}
+                        </span>
                       </div>
                     )}
                     {rollDetails.color && (
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">{t('production.color')}</span>
+                        <span className="text-muted-foreground">
+                          {t("production.color")}
+                        </span>
                         <span className="font-medium">{rollDetails.color}</span>
                       </div>
                     )}
                     {rollDetails.punching && (
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">{t('production.punching')}</span>
-                        <span className="font-medium">{rollDetails.punching}</span>
+                        <span className="text-muted-foreground">
+                          {t("production.punching")}
+                        </span>
+                        <span className="font-medium">
+                          {rollDetails.punching}
+                        </span>
                       </div>
                     )}
                     {rollDetails.thickness && (
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">{t('production.thickness')}</span>
-                        <span className="font-medium">{rollDetails.thickness}</span>
+                        <span className="text-muted-foreground">
+                          {t("production.thickness")}
+                        </span>
+                        <span className="font-medium">
+                          {rollDetails.thickness}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -423,24 +515,43 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
 
                 {/* Production Info */}
                 <div>
-                  <h3 className="font-semibold text-sm text-muted-foreground mb-3">{t('production.productionInfo')}</h3>
+                  <h3 className="font-semibold text-sm text-muted-foreground mb-3">
+                    {t("production.productionInfo")}
+                  </h3>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">{t('production.productionOrder')}</span>
-                      <span className="font-medium">{rollDetails.production_order_number}</span>
+                      <span className="text-muted-foreground">
+                        {t("production.productionOrder")}
+                      </span>
+                      <span className="font-medium">
+                        {rollDetails.production_order_number}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">{t('production.orderNumber')}</span>
-                      <span className="font-medium">{rollDetails.order_number}</span>
+                      <span className="text-muted-foreground">
+                        {t("production.orderNumber")}
+                      </span>
+                      <span className="font-medium">
+                        {rollDetails.order_number}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">{t('production.productionQuantity')}</span>
-                      <span className="font-medium">{rollDetails.production_quantity_kg} {t('production.units.kg')}</span>
+                      <span className="text-muted-foreground">
+                        {t("production.productionQuantity")}
+                      </span>
+                      <span className="font-medium">
+                        {rollDetails.production_quantity_kg}{" "}
+                        {t("production.units.kg")}
+                      </span>
                     </div>
                     {rollDetails.production_overrun_percentage && (
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">{t('production.overrunPercentage')}</span>
-                        <span className="font-medium">{rollDetails.production_overrun_percentage}%</span>
+                        <span className="text-muted-foreground">
+                          {t("production.overrunPercentage")}
+                        </span>
+                        <span className="font-medium">
+                          {rollDetails.production_overrun_percentage}%
+                        </span>
                       </div>
                     )}
                   </div>
@@ -450,30 +561,41 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
 
                 {/* Customer Info */}
                 <div>
-                  <h3 className="font-semibold text-sm text-muted-foreground mb-3">{t('production.customerInfo')}</h3>
+                  <h3 className="font-semibold text-sm text-muted-foreground mb-3">
+                    {t("production.customerInfo")}
+                  </h3>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">{t('production.name')}</span>
+                      <span className="text-muted-foreground">
+                        {t("production.name")}
+                      </span>
                       <span className="font-bold text-gray-900 dark:text-white">
-                        {ln(rollDetails.customer_name_ar, rollDetails.customer_name)}
+                        {ln(
+                          rollDetails.customer_name_ar,
+                          rollDetails.customer_name,
+                        )}
                       </span>
                     </div>
                     {rollDetails.customer_city && (
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground flex items-center gap-1">
                           <MapPin className="h-3 w-3" />
-                          {t('production.city')}
+                          {t("production.city")}
                         </span>
-                        <span className="font-medium">{rollDetails.customer_city}</span>
+                        <span className="font-medium">
+                          {rollDetails.customer_city}
+                        </span>
                       </div>
                     )}
                     {rollDetails.customer_phone && (
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground flex items-center gap-1">
                           <Phone className="h-3 w-3" />
-                          {t('production.phone')}
+                          {t("production.phone")}
                         </span>
-                        <span className="font-medium">{rollDetails.customer_phone}</span>
+                        <span className="font-medium">
+                          {rollDetails.customer_phone}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -483,23 +605,26 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
 
                 {/* Machines & Operators */}
                 <div>
-                  <h3 className="font-semibold text-sm text-muted-foreground mb-3">{t('production.machinesAndOperators')}</h3>
+                  <h3 className="font-semibold text-sm text-muted-foreground mb-3">
+                    {t("production.machinesAndOperators")}
+                  </h3>
                   <div className="space-y-2">
                     {/* Film */}
                     <div className="text-sm space-y-1">
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Film className="h-3 w-3" />
-                        <span>{t('production.stages.filmStage')}</span>
+                        <span>{t("production.stages.filmStage")}</span>
                       </div>
                       <div className="mr-5 space-y-1">
                         {rollDetails.film_machine_name && (
                           <div className="flex items-center justify-between">
                             <span className="text-muted-foreground flex items-center gap-1">
                               <Factory className="h-3 w-3" />
-                              {t('production.machine')}
+                              {t("production.machine")}
                             </span>
                             <span className="font-medium">
-                              {rollDetails.film_machine_name_ar || rollDetails.film_machine_name}
+                              {rollDetails.film_machine_name_ar ||
+                                rollDetails.film_machine_name}
                             </span>
                           </div>
                         )}
@@ -507,10 +632,11 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
                           <div className="flex items-center justify-between">
                             <span className="text-muted-foreground flex items-center gap-1">
                               <User className="h-3 w-3" />
-                              {t('production.operator')}
+                              {t("production.operator")}
                             </span>
                             <span className="font-medium">
-                              {rollDetails.created_by_name_ar || rollDetails.created_by_name}
+                              {rollDetails.created_by_name_ar ||
+                                rollDetails.created_by_name}
                             </span>
                           </div>
                         )}
@@ -522,17 +648,18 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
                       <div className="text-sm space-y-1">
                         <div className="flex items-center gap-2 text-muted-foreground">
                           <PrintIcon className="h-3 w-3" />
-                          <span>{t('production.stages.printingStage')}</span>
+                          <span>{t("production.stages.printingStage")}</span>
                         </div>
                         <div className="mr-5 space-y-1">
                           {rollDetails.printing_machine_name && (
                             <div className="flex items-center justify-between">
                               <span className="text-muted-foreground flex items-center gap-1">
                                 <Factory className="h-3 w-3" />
-                                {t('production.machine')}
+                                {t("production.machine")}
                               </span>
                               <span className="font-medium">
-                                {rollDetails.printing_machine_name_ar || rollDetails.printing_machine_name}
+                                {rollDetails.printing_machine_name_ar ||
+                                  rollDetails.printing_machine_name}
                               </span>
                             </div>
                           )}
@@ -540,20 +667,25 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
                             <div className="flex items-center justify-between">
                               <span className="text-muted-foreground flex items-center gap-1">
                                 <User className="h-3 w-3" />
-                                {t('production.operator')}
+                                {t("production.operator")}
                               </span>
                               <span className="font-medium">
-                                {rollDetails.printed_by_name_ar || rollDetails.printed_by_name}
+                                {rollDetails.printed_by_name_ar ||
+                                  rollDetails.printed_by_name}
                               </span>
                             </div>
                           )}
                           <div className="flex items-center justify-between">
                             <span className="text-muted-foreground flex items-center gap-1">
                               <Clock className="h-3 w-3" />
-                              {t('production.timing')}
+                              {t("production.timing")}
                             </span>
                             <span className="font-medium">
-                              {format(new Date(rollDetails.printed_at), "dd/MM/yyyy HH:mm", { locale: ar })}
+                              {format(
+                                new Date(rollDetails.printed_at),
+                                "dd/MM/yyyy HH:mm",
+                                { locale: ar },
+                              )}
                             </span>
                           </div>
                         </div>
@@ -565,17 +697,18 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
                       <div className="text-sm space-y-1">
                         <div className="flex items-center gap-2 text-muted-foreground">
                           <Scissors className="h-3 w-3" />
-                          <span>{t('production.stages.cuttingStage')}</span>
+                          <span>{t("production.stages.cuttingStage")}</span>
                         </div>
                         <div className="mr-5 space-y-1">
                           {rollDetails.cutting_machine_name && (
                             <div className="flex items-center justify-between">
                               <span className="text-muted-foreground flex items-center gap-1">
                                 <Factory className="h-3 w-3" />
-                                {t('production.machine')}
+                                {t("production.machine")}
                               </span>
                               <span className="font-medium">
-                                {rollDetails.cutting_machine_name_ar || rollDetails.cutting_machine_name}
+                                {rollDetails.cutting_machine_name_ar ||
+                                  rollDetails.cutting_machine_name}
                               </span>
                             </div>
                           )}
@@ -583,20 +716,25 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
                             <div className="flex items-center justify-between">
                               <span className="text-muted-foreground flex items-center gap-1">
                                 <User className="h-3 w-3" />
-                                {t('production.operator')}
+                                {t("production.operator")}
                               </span>
                               <span className="font-medium">
-                                {rollDetails.cut_by_name_ar || rollDetails.cut_by_name}
+                                {rollDetails.cut_by_name_ar ||
+                                  rollDetails.cut_by_name}
                               </span>
                             </div>
                           )}
                           <div className="flex items-center justify-between">
                             <span className="text-muted-foreground flex items-center gap-1">
                               <Clock className="h-3 w-3" />
-                              {t('production.timing')}
+                              {t("production.timing")}
                             </span>
                             <span className="font-medium">
-                              {format(new Date(rollDetails.cut_completed_at), "dd/MM/yyyy HH:mm", { locale: ar })}
+                              {format(
+                                new Date(rollDetails.cut_completed_at),
+                                "dd/MM/yyyy HH:mm",
+                                { locale: ar },
+                              )}
                             </span>
                           </div>
                         </div>
@@ -617,7 +755,7 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
                 data-testid="button-print-roll"
               >
                 <Printer className="h-4 w-4 ml-2" />
-                {t('production.print')}
+                {t("production.print")}
               </Button>
               {rollDetails.qr_png_base64 && (
                 <Button
@@ -633,7 +771,7 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
                   data-testid="button-download-qr"
                 >
                   <QrCode className="h-4 w-4 ml-2" />
-                  {t('production.downloadQR')}
+                  {t("production.downloadQR")}
                 </Button>
               )}
             </div>
@@ -655,9 +793,13 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
                     {rollHistory.map((event, idx) => (
                       <div key={idx} className="flex gap-4">
                         <div className="relative">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                            event.status === "completed" ? "bg-primary text-primary-foreground" : "bg-muted"
-                          }`}>
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                              event.status === "completed"
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted"
+                            }`}
+                          >
                             {getHistoryIcon(event.icon)}
                           </div>
                         </div>
@@ -665,15 +807,29 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
                           <Card className="p-3">
                             <div className="space-y-2">
                               <div className="flex items-center justify-between">
-                                <h4 className="font-semibold">{event.stage_ar}</h4>
-                                <Badge variant={event.status === "completed" ? "success" as any : "default"}>
-                                  {event.status === "completed" ? t('production.statuses.completed') : t('production.statuses.inProgress')}
+                                <h4 className="font-semibold">
+                                  {event.stage_ar}
+                                </h4>
+                                <Badge
+                                  variant={
+                                    event.status === "completed"
+                                      ? ("success" as any)
+                                      : "default"
+                                  }
+                                >
+                                  {event.status === "completed"
+                                    ? t("production.statuses.completed")
+                                    : t("production.statuses.inProgress")}
                                 </Badge>
                               </div>
                               <div className="text-sm space-y-1">
                                 <div className="flex items-center gap-2 text-muted-foreground">
                                   <Clock className="h-3 w-3" />
-                                  {format(new Date(event.timestamp), "dd/MM/yyyy HH:mm", { locale: ar })}
+                                  {format(
+                                    new Date(event.timestamp),
+                                    "dd/MM/yyyy HH:mm",
+                                    { locale: ar },
+                                  )}
                                 </div>
                                 {event.operator_name && (
                                   <div className="flex items-center gap-2 text-muted-foreground">
@@ -690,7 +846,7 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
                                 {event.weight_kg && (
                                   <div className="flex items-center gap-2 text-muted-foreground">
                                     <Weight className="h-3 w-3" />
-                                    {event.weight_kg} {t('production.units.kg')}
+                                    {event.weight_kg} {t("production.units.kg")}
                                   </div>
                                 )}
                                 {event.cut_number && (
@@ -702,7 +858,8 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
                                 {event.pkt_count && (
                                   <div className="flex items-center gap-2 text-muted-foreground">
                                     <Package className="h-3 w-3" />
-                                    {event.pkt_count} {t('production.units.bundle')}
+                                    {event.pkt_count}{" "}
+                                    {t("production.units.bundle")}
                                   </div>
                                 )}
                               </div>
@@ -717,7 +874,9 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
             ) : (
               <div className="text-center py-8">
                 <HistoryIcon className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                <p className="text-muted-foreground">{t('production.noHistoryRecords')}</p>
+                <p className="text-muted-foreground">
+                  {t("production.noHistoryRecords")}
+                </p>
               </div>
             )}
           </TabsContent>
@@ -730,22 +889,35 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
                 <div className="grid grid-cols-3 gap-3">
                   <Card className="p-3">
                     <div className="text-center">
-                      <p className="text-2xl font-bold">{rollDetails.cuts_count || 0}</p>
-                      <p className="text-sm text-muted-foreground">{t('production.cutsCount')}</p>
-                    </div>
-                  </Card>
-                  <Card className="p-3">
-                    <div className="text-center">
-                      <p className="text-2xl font-bold">{rollDetails.total_cuts_weight?.toFixed(2) || 0}</p>
-                      <p className="text-sm text-muted-foreground">{t('production.totalWeightKg')}</p>
+                      <p className="text-2xl font-bold">
+                        {rollDetails.cuts_count || 0}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {t("production.cutsCount")}
+                      </p>
                     </div>
                   </Card>
                   <Card className="p-3">
                     <div className="text-center">
                       <p className="text-2xl font-bold">
-                        {rollDetails.cuts.reduce((sum, cut) => sum + (cut.pkt_count || 0), 0)}
+                        {rollDetails.total_cuts_weight?.toFixed(2) || 0}
                       </p>
-                      <p className="text-sm text-muted-foreground">{t('production.totalBundles')}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {t("production.totalWeightKg")}
+                      </p>
+                    </div>
+                  </Card>
+                  <Card className="p-3">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold">
+                        {rollDetails.cuts.reduce(
+                          (sum, cut) => sum + (cut.pkt_count || 0),
+                          0,
+                        )}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {t("production.totalBundles")}
+                      </p>
                     </div>
                   </Card>
                 </div>
@@ -759,11 +931,19 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
                               <Package className="h-4 w-4 text-primary" />
-                              <span className="font-semibold">{cut.cut_number}</span>
+                              <span className="font-semibold">
+                                {cut.cut_number}
+                              </span>
                             </div>
                             <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                              <span>{cut.weight_kg} {t('production.units.kg')}</span>
-                              {cut.pkt_count && <span>{cut.pkt_count} {t('production.units.bundle')}</span>}
+                              <span>
+                                {cut.weight_kg} {t("production.units.kg")}
+                              </span>
+                              {cut.pkt_count && (
+                                <span>
+                                  {cut.pkt_count} {t("production.units.bundle")}
+                                </span>
+                              )}
                               {cut.created_by_name && (
                                 <span className="flex items-center gap-1">
                                   <User className="h-3 w-3" />
@@ -784,7 +964,9 @@ export default function RollDetailsCard({ rollId, onClose }: RollDetailsCardProp
             ) : (
               <div className="text-center py-8">
                 <Scissors className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                <p className="text-muted-foreground">{t('production.noCutsYet')}</p>
+                <p className="text-muted-foreground">
+                  {t("production.noCutsYet")}
+                </p>
               </div>
             )}
           </TabsContent>

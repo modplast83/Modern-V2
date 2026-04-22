@@ -1,7 +1,7 @@
 // تحديث routes/index.ts لإضافة routes التحذيرات الذكية
 
 import { Router } from "express";
-import type { IStorage } from "../storage";
+
 import {
   createAlertsRouter,
   createSystemHealthRouter,
@@ -9,6 +9,8 @@ import {
   createCorrectiveActionsRouter,
   createDataValidationRouter,
 } from "./alerts";
+
+import type { IStorage } from "../storage";
 
 // في النهاية، أضيف routes الجديدة
 export function setupAlertsRoutes(app: any, storage: IStorage) {

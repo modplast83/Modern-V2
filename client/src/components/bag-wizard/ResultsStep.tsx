@@ -1,9 +1,32 @@
+import {
+  Download,
+  FileJson,
+  Image,
+  RotateCcw,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  Loader2,
+} from "lucide-react";
 import { useRef, useCallback, useState } from "react";
-import { type BagConfiguration, type ValidationResult, getBagTypeRules, getHangerHeight, getBagsPerKg, getBagWeightGrams } from "../../lib/bag-rules-engine";
-import { MATERIALS, BAG_COLORS, HANDLES, PRINT_COLORS_PALETTE } from "../../lib/bag-rules";
-import { BagPreview } from "./BagPreview";
+
+import {
+  MATERIALS,
+  BAG_COLORS,
+  HANDLES,
+  PRINT_COLORS_PALETTE,
+} from "../../lib/bag-rules";
+import {
+  type BagConfiguration,
+  type ValidationResult,
+  getBagTypeRules,
+  getHangerHeight,
+  getBagsPerKg,
+  getBagWeightGrams,
+} from "../../lib/bag-rules-engine";
 import { Button } from "../ui/button";
-import { Download, FileJson, Image, RotateCcw, CheckCircle, XCircle, AlertTriangle, Loader2 } from "lucide-react";
+
+import { BagPreview } from "./BagPreview";
 
 interface ResultsStepProps {
   config: BagConfiguration;
@@ -14,7 +37,9 @@ interface ResultsStepProps {
 async function inlineBlobImages(svgClone: SVGSVGElement): Promise<void> {
   const images = svgClone.querySelectorAll("image");
   const promises = Array.from(images).map(async (imgEl) => {
-    const href = imgEl.getAttribute("href") || imgEl.getAttributeNS("http://www.w3.org/1999/xlink", "href");
+    const href =
+      imgEl.getAttribute("href") ||
+      imgEl.getAttributeNS("http://www.w3.org/1999/xlink", "href");
     if (!href || !href.startsWith("blob:")) return;
     try {
       const resp = await fetch(href);
@@ -42,7 +67,9 @@ function svgToDataUrl(svgEl: SVGSVGElement): Promise<string> {
       await inlineBlobImages(clone);
 
       const svgData = new XMLSerializer().serializeToString(clone);
-      const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+      const svgBlob = new Blob([svgData], {
+        type: "image/svg+xml;charset=utf-8",
+      });
       const url = URL.createObjectURL(svgBlob);
 
       const img = new window.Image();
@@ -51,11 +78,17 @@ function svgToDataUrl(svgEl: SVGSVGElement): Promise<string> {
         canvas.width = 800;
         canvas.height = 1000;
         const ctx = canvas.getContext("2d");
-        if (!ctx) { reject(new Error("Canvas not supported")); return; }
+        if (!ctx) {
+          reject(new Error("Canvas not supported"));
+          return;
+        }
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+        const scale = Math.min(
+          canvas.width / img.width,
+          canvas.height / img.height,
+        );
         const x = (canvas.width - img.width * scale) / 2;
         const y = (canvas.height - img.height * scale) / 2;
         ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
@@ -63,7 +96,10 @@ function svgToDataUrl(svgEl: SVGSVGElement): Promise<string> {
         resolve(canvas.toDataURL("image/png"));
         URL.revokeObjectURL(url);
       };
-      img.onerror = () => { reject(new Error("Image load failed")); URL.revokeObjectURL(url); };
+      img.onerror = () => {
+        reject(new Error("Image load failed"));
+        URL.revokeObjectURL(url);
+      };
       img.src = url;
     } catch (err) {
       reject(err);
@@ -71,7 +107,11 @@ function svgToDataUrl(svgEl: SVGSVGElement): Promise<string> {
   });
 }
 
-export function ResultsStep({ config, validation, onRestart }: ResultsStepProps) {
+export function ResultsStep({
+  config,
+  validation,
+  onRestart,
+}: ResultsStepProps) {
   const previewRef = useRef<HTMLDivElement>(null);
   const exportPreviewRef = useRef<HTMLDivElement>(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
@@ -81,10 +121,12 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
   const handle = HANDLES[config.handle];
 
   const printColorNames = config.isPrinted
-    ? config.printColors.map(id => {
-        const c = PRINT_COLORS_PALETTE.find(p => p.id === id);
-        return c?.label_ar || id;
-      }).join("، ")
+    ? config.printColors
+        .map((id) => {
+          const c = PRINT_COLORS_PALETTE.find((p) => p.id === id);
+          return c?.label_ar || id;
+        })
+        .join("، ")
     : "";
 
   const bagsPerKg = getBagsPerKg(config);
@@ -92,24 +134,55 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
 
   const specs = [
     { label: "نوع الكيس", value: rules?.label_ar || "-" },
-    { label: "المادة", value: material ? `${material.label_ar} (${material.label_en})` : "-" },
+    {
+      label: "المادة",
+      value: material ? `${material.label_ar} (${material.label_en})` : "-",
+    },
     { label: "العرض", value: `${config.width} سم` },
     { label: "الطول", value: `${config.length} سم` },
     { label: "السماكة", value: `${config.thickness} ميكرون` },
-    { label: "الدخلة الجانبية", value: config.sideGusset > 0 ? `${config.sideGusset} سم` : "لا يوجد" },
-    { label: "المقبض", value: config.handle === "hanger" ? `${handle?.label_ar} (ارتفاع ${getHangerHeight(config)} سم)` : (handle?.label_ar || "بدون") },
+    {
+      label: "الدخلة الجانبية",
+      value: config.sideGusset > 0 ? `${config.sideGusset} سم` : "لا يوجد",
+    },
+    {
+      label: "المقبض",
+      value:
+        config.handle === "hanger"
+          ? `${handle?.label_ar} (ارتفاع ${getHangerHeight(config)} سم)`
+          : handle?.label_ar || "بدون",
+    },
     { label: "لون الكيس", value: bagColor?.label_ar || "-" },
     { label: "الطباعة", value: config.isPrinted ? "مطبوع" : "سادة" },
-    ...(bagWeight ? [{ label: "وزن الكيس التقديري", value: `${bagWeight.toFixed(2)} غم` }] : []),
-    ...(bagsPerKg ? [{ label: "عدد الأكياس / كجم", value: `≈ ${bagsPerKg.toLocaleString("ar-EG")} كيس` }] : []),
-    ...(config.isPrinted ? [
-      { label: "جهة الطباعة", value: config.printSide === "both" ? "وجهين" : "وجه واحد" },
-      { label: "عدد ألوان الطباعة", value: `${config.printColors.length}` },
-      { label: "ألوان الطباعة", value: printColorNames },
-    ] : []),
-    ...(config.isPrinted && config.printDesign?.texts?.length ? [
-      { label: "نصوص الطباعة", value: config.printDesign.texts.map(t => t.value).join("، ") },
-    ] : []),
+    ...(bagWeight
+      ? [{ label: "وزن الكيس التقديري", value: `${bagWeight.toFixed(2)} غم` }]
+      : []),
+    ...(bagsPerKg
+      ? [
+          {
+            label: "عدد الأكياس / كجم",
+            value: `≈ ${bagsPerKg.toLocaleString("ar-EG")} كيس`,
+          },
+        ]
+      : []),
+    ...(config.isPrinted
+      ? [
+          {
+            label: "جهة الطباعة",
+            value: config.printSide === "both" ? "وجهين" : "وجه واحد",
+          },
+          { label: "عدد ألوان الطباعة", value: `${config.printColors.length}` },
+          { label: "ألوان الطباعة", value: printColorNames },
+        ]
+      : []),
+    ...(config.isPrinted && config.printDesign?.texts?.length
+      ? [
+          {
+            label: "نصوص الطباعة",
+            value: config.printDesign.texts.map((t) => t.value).join("، "),
+          },
+        ]
+      : []),
   ];
 
   const exportJSON = useCallback(() => {
@@ -125,7 +198,8 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
         sideGusset: config.sideGusset,
         handle: config.handle,
         handleLabel: handle?.label_ar,
-        handleHeight: config.handle === "hanger" ? getHangerHeight(config) : undefined,
+        handleHeight:
+          config.handle === "hanger" ? getHangerHeight(config) : undefined,
         bagColor: config.bagColor,
         bagColorLabel: bagColor?.label_ar,
         isPrinted: config.isPrinted,
@@ -133,7 +207,14 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
         printColors: config.printColors,
         printColorShades: config.printColorShades,
         hasDesignImage: !!config.printDesign?.logoUrl,
-        designTexts: config.printDesign?.texts?.map(t => ({ text: t.value, color: t.color, size: t.size, x: t.x, y: t.y })) || [],
+        designTexts:
+          config.printDesign?.texts?.map((t) => ({
+            text: t.value,
+            color: t.color,
+            size: t.size,
+            x: t.x,
+            y: t.y,
+          })) || [],
       },
       validation: {
         isValid: validation.isValid,
@@ -143,7 +224,9 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
       exportDate: new Date().toISOString(),
     };
 
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -157,7 +240,9 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
     if (!svgEl) return;
 
     const svgData = new XMLSerializer().serializeToString(svgEl);
-    const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+    const svgBlob = new Blob([svgData], {
+      type: "image/svg+xml;charset=utf-8",
+    });
     const url = URL.createObjectURL(svgBlob);
 
     const img = new window.Image();
@@ -190,7 +275,9 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
 
     let imageDataUrl = "";
     try {
-      const svgEl = exportPreviewRef.current?.querySelector("svg") || previewRef.current?.querySelector("svg");
+      const svgEl =
+        exportPreviewRef.current?.querySelector("svg") ||
+        previewRef.current?.querySelector("svg");
       if (svgEl) {
         imageDataUrl = await svgToDataUrl(svgEl as SVGSVGElement);
       }
@@ -198,15 +285,29 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
       // continue without image
     }
 
-    const specsHtml = specs.map(s =>
-      `<tr><td class="spec-label">${s.label}</td><td class="spec-value">${s.value}</td></tr>`
-    ).join("");
+    const specsHtml = specs
+      .map(
+        (s) =>
+          `<tr><td class="spec-label">${s.label}</td><td class="spec-value">${s.value}</td></tr>`,
+      )
+      .join("");
 
-    const errorsHtml = validation.errors.map(e => `<li>${e.message}</li>`).join("");
-    const warningsHtml = validation.warnings.map(w => `<li>${w.message}</li>`).join("");
+    const errorsHtml = validation.errors
+      .map((e) => `<li>${e.message}</li>`)
+      .join("");
+    const warningsHtml = validation.warnings
+      .map((w) => `<li>${w.message}</li>`)
+      .join("");
 
-    const dateStr = new Date().toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" });
-    const timeStr = new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });
+    const dateStr = new Date().toLocaleDateString("ar-SA", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    const timeStr = new Date().toLocaleTimeString("ar-SA", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
     const html = `<!DOCTYPE html>
 <html dir="rtl" lang="ar">
@@ -289,14 +390,18 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
       <div class="section-title">المواصفات الفنية</div>
       <table>${specsHtml}</table>
     </div>
-    ${imageDataUrl ? `
+    ${
+      imageDataUrl
+        ? `
     <div class="preview-col">
       <div class="section-title">المعاينة (مع الأبعاد)</div>
       <div class="img-frame"><img src="${imageDataUrl}" alt="معاينة الكيس" /></div>
       <div class="preview-label">${rules?.label_ar || ""}</div>
       <div class="preview-sub">${config.width} × ${config.length} سم · ${config.thickness} ميكرون</div>
       ${bagsPerKg ? `<div class="preview-bpk">≈ ${bagsPerKg.toLocaleString("ar-EG")} كيس / كجم</div>` : ""}
-    </div>` : ""}
+    </div>`
+        : ""
+    }
   </div>
 
   ${errorsHtml ? `<div class="issues-section"><h3 class="errors-box">⛔ الأخطاء</h3><ul class="errors-box">${errorsHtml}</ul></div>` : ""}
@@ -313,7 +418,10 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
     if (printWindow) {
       printWindow.document.write(html);
       printWindow.document.close();
-      setTimeout(() => { printWindow.print(); setIsExportingPdf(false); }, 800);
+      setTimeout(() => {
+        printWindow.print();
+        setIsExportingPdf(false);
+      }, 800);
     } else {
       setIsExportingPdf(false);
     }
@@ -324,18 +432,22 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
       <h2 className="text-xl font-bold text-gray-900 mb-2">النتيجة النهائية</h2>
       <p className="text-gray-500 text-sm mb-6">ملخص المواصفات وحالة التصنيع</p>
 
-      <div className={`p-4 rounded-xl mb-6 flex items-center gap-3 ${
-        validation.isValid
-          ? "bg-green-50 border border-green-200"
-          : "bg-red-50 border border-red-200"
-      }`}>
+      <div
+        className={`p-4 rounded-xl mb-6 flex items-center gap-3 ${
+          validation.isValid
+            ? "bg-green-50 border border-green-200"
+            : "bg-red-50 border border-red-200"
+        }`}
+      >
         {validation.isValid ? (
           <CheckCircle className="h-6 w-6 text-green-600 flex-shrink-0" />
         ) : (
           <XCircle className="h-6 w-6 text-red-600 flex-shrink-0" />
         )}
         <div>
-          <div className={`font-bold ${validation.isValid ? "text-green-700" : "text-red-700"}`}>
+          <div
+            className={`font-bold ${validation.isValid ? "text-green-700" : "text-red-700"}`}
+          >
             {validation.isValid ? "صالح للتصنيع ✓" : "غير صالح للتصنيع ✗"}
           </div>
           {!validation.isValid && (
@@ -349,7 +461,10 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
       {validation.errors.length > 0 && (
         <div className="mb-4 space-y-2">
           {validation.errors.map((e, i) => (
-            <div key={i} className="flex items-start gap-2 p-3 bg-red-50 rounded-lg text-sm text-red-700">
+            <div
+              key={i}
+              className="flex items-start gap-2 p-3 bg-red-50 rounded-lg text-sm text-red-700"
+            >
               <XCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
               <span>{e.message}</span>
             </div>
@@ -360,7 +475,10 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
       {validation.warnings.length > 0 && (
         <div className="mb-4 space-y-2">
           {validation.warnings.map((w, i) => (
-            <div key={i} className="flex items-start gap-2 p-3 bg-amber-50 rounded-lg text-sm text-amber-700">
+            <div
+              key={i}
+              className="flex items-start gap-2 p-3 bg-amber-50 rounded-lg text-sm text-amber-700"
+            >
               <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
               <span>{w.message}</span>
             </div>
@@ -370,8 +488,13 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
 
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 p-4 bg-gray-50 rounded-xl mb-6">
         {specs.map((spec, i) => (
-          <div key={i} className="flex justify-between items-center py-1.5 border-b border-gray-200 last:border-0">
-            <span className="text-sm font-medium text-gray-600">{spec.label}</span>
+          <div
+            key={i}
+            className="flex justify-between items-center py-1.5 border-b border-gray-200 last:border-0"
+          >
+            <span className="text-sm font-medium text-gray-600">
+              {spec.label}
+            </span>
             <span className="text-sm text-gray-900">{spec.value}</span>
           </div>
         ))}
@@ -382,13 +505,32 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
       </div>
 
       {/* Hidden, dimension-annotated preview used as the source for PDF/PNG export */}
-      <div ref={exportPreviewRef} aria-hidden="true" style={{ position: "absolute", left: "-10000px", top: "-10000px", width: "560px", pointerEvents: "none" }}>
+      <div
+        ref={exportPreviewRef}
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          left: "-10000px",
+          top: "-10000px",
+          width: "560px",
+          pointerEvents: "none",
+        }}
+      >
         <BagPreview config={config} size="xl" showDimensions />
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <Button onClick={exportPDF} variant="outline" className="gap-2 h-12" disabled={isExportingPdf}>
-          {isExportingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+        <Button
+          onClick={exportPDF}
+          variant="outline"
+          className="gap-2 h-12"
+          disabled={isExportingPdf}
+        >
+          {isExportingPdf ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4" />
+          )}
           <span className="text-xs">تنزيل PDF</span>
         </Button>
         <Button onClick={exportImage} variant="outline" className="gap-2 h-12">
@@ -399,7 +541,11 @@ export function ResultsStep({ config, validation, onRestart }: ResultsStepProps)
           <FileJson className="h-4 w-4" />
           <span className="text-xs">تصدير JSON</span>
         </Button>
-        <Button onClick={onRestart} variant="outline" className="gap-2 h-12 text-blue-600 border-blue-200">
+        <Button
+          onClick={onRestart}
+          variant="outline"
+          className="gap-2 h-12 text-blue-600 border-blue-200"
+        >
           <RotateCcw className="h-4 w-4" />
           <span className="text-xs">تصميم جديد</span>
         </Button>

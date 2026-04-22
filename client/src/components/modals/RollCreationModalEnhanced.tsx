@@ -1,6 +1,19 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { AlertTriangle, Clock, Package } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
+import { z } from "zod";
+
+import {
+  safeParseFloat,
+  formatNumberAr,
+} from "../../../../shared/number-utils";
+import { useToast } from "../../hooks/use-toast";
+import { apiRequest, queryClient } from "../../lib/queryClient";
+import { toastMessages } from "../../lib/toastMessages";
+import { Button } from "../ui/button";
 import {
   Dialog,
   DialogContent,
@@ -8,7 +21,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../ui/dialog";
-import { Button } from "../ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "../ui/form";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import {
@@ -18,24 +38,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "../ui/form";
 import { Checkbox } from "../ui/checkbox";
-import { useToast } from "../../hooks/use-toast";
-import { apiRequest, queryClient } from "../../lib/queryClient";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+
 import type { Machine } from "../../../../shared/schema";
-import { safeParseFloat, formatNumberAr } from "../../../../shared/number-utils";
-import { AlertTriangle, Clock, Package } from "lucide-react";
-import { toastMessages } from "../../lib/toastMessages";
 
 interface RollCreationModalEnhancedProps {
   isOpen: boolean;
@@ -68,7 +73,9 @@ export default function RollCreationModalEnhanced({
 }: RollCreationModalEnhancedProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const [lastProductionTime, setLastProductionTime] = useState<number | null>(null);
+  const [lastProductionTime, setLastProductionTime] = useState<number | null>(
+    null,
+  );
 
   const form = useForm<RollFormData>({
     resolver: zodResolver(rollFormSchema),
@@ -86,7 +93,9 @@ export default function RollCreationModalEnhanced({
   }, [isFinalRoll, form]);
 
   // Fetch machines
-  const { data: machines = [], isLoading: machinesLoading } = useQuery<Machine[]>({
+  const { data: machines = [], isLoading: machinesLoading } = useQuery<
+    Machine[]
+  >({
     queryKey: ["/api/machines"],
     enabled: isOpen,
     staleTime: 5 * 60 * 1000,
@@ -94,13 +103,19 @@ export default function RollCreationModalEnhanced({
 
   // Filter film machines only (section_id = "SEC03" for film section)
   const filmMachines = useMemo(() => {
-    return machines.filter(m => m.section_id === "SEC03" && m.status === "active");
+    return machines.filter(
+      (m) => m.section_id === "SEC03" && m.status === "active",
+    );
   }, [machines]);
 
   // Calculate remaining quantity
   const remainingQuantity = useMemo(() => {
     if (!productionOrderData) return 0;
-    const required = Number(productionOrderData.final_quantity_kg || productionOrderData.quantity_kg || 0);
+    const required = Number(
+      productionOrderData.final_quantity_kg ||
+        productionOrderData.quantity_kg ||
+        0,
+    );
     const produced = Number(productionOrderData.total_weight_produced || 0);
     return Math.max(0, required - produced);
   }, [productionOrderData]);
@@ -114,10 +129,15 @@ export default function RollCreationModalEnhanced({
 
   // Calculate average production time
   const averageProductionTime = useMemo(() => {
-    if (!productionOrderData?.production_start_time || !productionOrderData?.rolls_count) {
+    if (
+      !productionOrderData?.production_start_time ||
+      !productionOrderData?.rolls_count
+    ) {
       return null;
     }
-    const startTime = new Date(productionOrderData.production_start_time).getTime();
+    const startTime = new Date(
+      productionOrderData.production_start_time,
+    ).getTime();
     const currentTime = Date.now();
     const totalMinutes = Math.floor((currentTime - startTime) / (1000 * 60));
     return Math.floor(totalMinutes / productionOrderData.rolls_count);
@@ -134,12 +154,12 @@ export default function RollCreationModalEnhanced({
   const createRollMutation = useMutation({
     mutationFn: async (data: RollFormData) => {
       const weightParsed = Number.parseFloat(data.weight_kg.replace(",", "."));
-      
+
       // Choose endpoint based on whether it's a final roll
-      const endpoint = data.is_final_roll 
+      const endpoint = data.is_final_roll
         ? "/api/rolls/create-final"
         : "/api/rolls/create-with-timing";
-      
+
       const response = await apiRequest(endpoint, {
         method: "POST",
         body: JSON.stringify({
@@ -149,38 +169,45 @@ export default function RollCreationModalEnhanced({
           is_last_roll: data.is_final_roll,
         }),
       });
-      
+
       if (!response.ok) {
         const errData = await response.json();
-        throw new Error(errData.message || t('modals.rollCreationEnhanced.createFailed'));
+        throw new Error(
+          errData.message || t("modals.rollCreationEnhanced.createFailed"),
+        );
       }
       return response.json();
     },
     onSuccess: (data) => {
       const rollNumber = data.roll_number || "";
-      const message = data.is_last_roll 
+      const message = data.is_last_roll
         ? toastMessages.rolls.finalRollCreated(rollNumber)
         : toastMessages.rolls.created(rollNumber);
-        
-      toast({ 
-        title: message.title, 
+
+      toast({
+        title: message.title,
         description: message.description,
       });
-      
+
       // Invalidate queries
-      queryClient.invalidateQueries({ queryKey: ["/api/production-orders/active-for-operator"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/production-orders/active-for-operator"],
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/rolls"] });
       queryClient.invalidateQueries({ queryKey: ["/api/production-orders"] });
       queryClient.invalidateQueries({ queryKey: ["/api/production-queues"] });
-      
+
       onClose();
       form.reset();
     },
     onError: (error: unknown) => {
       console.error("Roll creation error:", error);
       toast({
-        title: t('modals.rollCreationEnhanced.createErrorTitle'),
-        description: error instanceof Error ? error.message : t('modals.rollCreationEnhanced.unexpectedError'),
+        title: t("modals.rollCreationEnhanced.createErrorTitle"),
+        description:
+          error instanceof Error
+            ? error.message
+            : t("modals.rollCreationEnhanced.unexpectedError"),
         variant: "destructive",
       });
     },
@@ -189,7 +216,11 @@ export default function RollCreationModalEnhanced({
   const handleSubmit = (data: RollFormData) => {
     // Warn if creating final roll with significant remaining quantity
     if (data.is_final_roll && remainingQuantity > 50) {
-      if (!confirm(`${t('modals.rollCreationEnhanced.remainingWarning', { quantity: formatNumberAr(remainingQuantity) })} ${t('modals.rollCreationEnhanced.confirmFinalRoll')}`)) {
+      if (
+        !confirm(
+          `${t("modals.rollCreationEnhanced.remainingWarning", { quantity: formatNumberAr(remainingQuantity) })} ${t("modals.rollCreationEnhanced.confirmFinalRoll")}`,
+        )
+      ) {
         return;
       }
     }
@@ -201,25 +232,40 @@ export default function RollCreationModalEnhanced({
       <DialogContent className="sm:max-w-[500px]" dir="rtl">
         <DialogHeader>
           <DialogTitle>
-            {isFinalRoll ? t('modals.rollCreationEnhanced.titleFinal') : t('modals.rollCreationEnhanced.title')}
+            {isFinalRoll
+              ? t("modals.rollCreationEnhanced.titleFinal")
+              : t("modals.rollCreationEnhanced.title")}
           </DialogTitle>
           <DialogDescription>
             {productionOrderData && (
               <div className="mt-2 space-y-1 text-sm">
-                <p>{t('modals.rollCreationEnhanced.productionOrder')}: {productionOrderData.production_order_number}</p>
-                <p>{t('modals.rollCreationEnhanced.product')}: {productionOrderData.product_name}</p>
-                <p>{t('modals.rollCreationEnhanced.customer')}: {productionOrderData.customer_name}</p>
+                <p>
+                  {t("modals.rollCreationEnhanced.productionOrder")}:{" "}
+                  {productionOrderData.production_order_number}
+                </p>
+                <p>
+                  {t("modals.rollCreationEnhanced.product")}:{" "}
+                  {productionOrderData.product_name}
+                </p>
+                <p>
+                  {t("modals.rollCreationEnhanced.customer")}:{" "}
+                  {productionOrderData.customer_name}
+                </p>
               </div>
             )}
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+          <form
+            onSubmit={form.handleSubmit(handleSubmit)}
+            className="space-y-4"
+          >
             {/* Suggested Roll Number */}
             <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
               <p className="text-sm text-blue-900 dark:text-blue-100">
-                {t('modals.rollCreationEnhanced.suggestedRollNumber')}: <strong>{suggestedRollNumber}</strong>
+                {t("modals.rollCreationEnhanced.suggestedRollNumber")}:{" "}
+                <strong>{suggestedRollNumber}</strong>
               </p>
             </div>
 
@@ -228,15 +274,18 @@ export default function RollCreationModalEnhanced({
               <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
                 <div className="flex items-center gap-2">
                   <Package className="h-4 w-4 text-gray-600" />
-                  <p className="text-xs text-gray-600 dark:text-gray-400">{t('modals.rollCreationEnhanced.remainingQuantity')}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    {t("modals.rollCreationEnhanced.remainingQuantity")}
+                  </p>
                 </div>
                 <p className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                  {formatNumberAr(remainingQuantity)} {t('modals.rollCreationEnhanced.kg')}
+                  {formatNumberAr(remainingQuantity)}{" "}
+                  {t("modals.rollCreationEnhanced.kg")}
                 </p>
                 {remainingQuantity < 50 && (
                   <p className="text-xs text-orange-600 dark:text-orange-400 mt-1 flex items-center gap-1">
                     <AlertTriangle className="h-3 w-3" />
-                    {t('modals.rollCreationEnhanced.nearCompletion')}
+                    {t("modals.rollCreationEnhanced.nearCompletion")}
                   </p>
                 )}
               </div>
@@ -244,10 +293,14 @@ export default function RollCreationModalEnhanced({
               <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-gray-600" />
-                  <p className="text-xs text-gray-600 dark:text-gray-400">{t('modals.rollCreationEnhanced.avgProductionTime')}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    {t("modals.rollCreationEnhanced.avgProductionTime")}
+                  </p>
                 </div>
                 <p className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                  {averageProductionTime ? `${averageProductionTime} ${t('modals.rollCreationEnhanced.minute')}` : t('modals.rollCreationEnhanced.notAvailable')}
+                  {averageProductionTime
+                    ? `${averageProductionTime} ${t("modals.rollCreationEnhanced.minute")}`
+                    : t("modals.rollCreationEnhanced.notAvailable")}
                 </p>
               </div>
             </div>
@@ -258,13 +311,15 @@ export default function RollCreationModalEnhanced({
               name="weight_kg"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t('modals.rollCreationEnhanced.weightKg')}</FormLabel>
+                  <FormLabel>
+                    {t("modals.rollCreationEnhanced.weightKg")}
+                  </FormLabel>
                   <FormControl>
                     <Input
                       {...field}
                       type="number"
                       step="0.01"
-                      placeholder={t('modals.rollCreationEnhanced.enterWeight')}
+                      placeholder={t("modals.rollCreationEnhanced.enterWeight")}
                       className="text-right"
                       data-testid="input-weight"
                     />
@@ -280,7 +335,9 @@ export default function RollCreationModalEnhanced({
               name="film_machine_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t('modals.rollCreationEnhanced.filmMachine')}</FormLabel>
+                  <FormLabel>
+                    {t("modals.rollCreationEnhanced.filmMachine")}
+                  </FormLabel>
                   <Select
                     value={field.value}
                     onValueChange={field.onChange}
@@ -288,7 +345,11 @@ export default function RollCreationModalEnhanced({
                   >
                     <FormControl>
                       <SelectTrigger data-testid="select-machine">
-                        <SelectValue placeholder={t('modals.rollCreationEnhanced.selectMachine')} />
+                        <SelectValue
+                          placeholder={t(
+                            "modals.rollCreationEnhanced.selectMachine",
+                          )}
+                        />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -320,10 +381,10 @@ export default function RollCreationModalEnhanced({
                     </FormControl>
                     <div className="space-y-1 leading-none mr-2">
                       <FormLabel className="cursor-pointer">
-                        {t('modals.rollCreationEnhanced.finalRollLabel')}
+                        {t("modals.rollCreationEnhanced.finalRollLabel")}
                       </FormLabel>
                       <p className="text-xs text-gray-600 dark:text-gray-400">
-                        {t('modals.rollCreationEnhanced.finalRollDescription')}
+                        {t("modals.rollCreationEnhanced.finalRollDescription")}
                       </p>
                     </div>
                   </FormItem>
@@ -337,12 +398,18 @@ export default function RollCreationModalEnhanced({
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5" />
                   <div className="text-sm text-amber-900 dark:text-amber-100">
-                    <p className="font-semibold">{t('modals.rollCreationEnhanced.warningFinalRoll')}</p>
-                    <p>{t('modals.rollCreationEnhanced.afterCreatingRoll')}</p>
+                    <p className="font-semibold">
+                      {t("modals.rollCreationEnhanced.warningFinalRoll")}
+                    </p>
+                    <p>{t("modals.rollCreationEnhanced.afterCreatingRoll")}</p>
                     <ul className="list-disc list-inside mt-1 space-y-1">
-                      <li>{t('modals.rollCreationEnhanced.filmStageWillClose')}</li>
-                      <li>{t('modals.rollCreationEnhanced.noMoreRolls')}</li>
-                      <li>{t('modals.rollCreationEnhanced.totalTimeCalculated')}</li>
+                      <li>
+                        {t("modals.rollCreationEnhanced.filmStageWillClose")}
+                      </li>
+                      <li>{t("modals.rollCreationEnhanced.noMoreRolls")}</li>
+                      <li>
+                        {t("modals.rollCreationEnhanced.totalTimeCalculated")}
+                      </li>
                     </ul>
                   </div>
                 </div>
@@ -357,21 +424,27 @@ export default function RollCreationModalEnhanced({
                 onClick={onClose}
                 disabled={createRollMutation.isPending}
               >
-                {t('modals.rollCreationEnhanced.cancel')}
+                {t("modals.rollCreationEnhanced.cancel")}
               </Button>
               <Button
                 type="submit"
                 disabled={createRollMutation.isPending}
                 data-testid="button-submit-roll"
-                variant={form.watch("is_final_roll") || isFinalRoll ? "destructive" : "default"}
+                variant={
+                  form.watch("is_final_roll") || isFinalRoll
+                    ? "destructive"
+                    : "default"
+                }
               >
                 {createRollMutation.isPending ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white ml-2"></div>
-                    {t('modals.rollCreationEnhanced.creating')}
+                    {t("modals.rollCreationEnhanced.creating")}
                   </>
+                ) : form.watch("is_final_roll") || isFinalRoll ? (
+                  t("modals.rollCreationEnhanced.createFinalRoll")
                 ) : (
-                  form.watch("is_final_roll") || isFinalRoll ? t('modals.rollCreationEnhanced.createFinalRoll') : t('modals.rollCreationEnhanced.createRoll')
+                  t("modals.rollCreationEnhanced.createRoll")
                 )}
               </Button>
             </div>

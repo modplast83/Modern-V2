@@ -1,6 +1,13 @@
-import { StyleSheet, Text, TextInput, View, type TextInputProps } from "react-native";
-import { useTheme } from "@/utils/useTheme";
+import {
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type TextInputProps,
+} from "react-native";
+
 import { FontSize, Radius, Spacing } from "@/constants/spacing";
+import { useTheme } from "@/utils/useTheme";
 
 interface Props extends TextInputProps {
   label?: string;
@@ -11,7 +18,9 @@ export function Input({ label, error, style, ...rest }: Props) {
   const { colors } = useTheme();
   return (
     <View style={{ width: "100%" }}>
-      {label ? <Text style={[styles.label, { color: colors.textMuted }]}>{label}</Text> : null}
+      {label ? (
+        <Text style={[styles.label, { color: colors.textMuted }]}>{label}</Text>
+      ) : null}
       <TextInput
         placeholderTextColor={colors.textMuted}
         style={[
@@ -25,13 +34,19 @@ export function Input({ label, error, style, ...rest }: Props) {
         ]}
         {...rest}
       />
-      {error ? <Text style={[styles.error, { color: colors.danger }]}>{error}</Text> : null}
+      {error ? (
+        <Text style={[styles.error, { color: colors.danger }]}>{error}</Text>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  label: { fontSize: FontSize.sm, marginBottom: Spacing.xs, textAlign: "right" },
+  label: {
+    fontSize: FontSize.sm,
+    marginBottom: Spacing.xs,
+    textAlign: "right",
+  },
   input: {
     minHeight: 48,
     paddingHorizontal: Spacing.lg,

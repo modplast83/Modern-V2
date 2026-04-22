@@ -4,7 +4,9 @@ export function lazyWithRetry(importFn: () => Promise<any>) {
   return lazy(() =>
     importFn().catch((error: any) => {
       const isChunkError =
-        error?.message?.includes("Failed to fetch dynamically imported module") ||
+        error?.message?.includes(
+          "Failed to fetch dynamically imported module",
+        ) ||
         error?.message?.includes("Loading chunk") ||
         error?.message?.includes("Loading CSS chunk") ||
         error?.name === "ChunkLoadError";
@@ -22,6 +24,6 @@ export function lazyWithRetry(importFn: () => Promise<any>) {
       }
 
       throw error;
-    })
+    }),
   );
 }

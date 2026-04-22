@@ -1,6 +1,8 @@
-import { useTranslation } from "react-i18next";
 import { Stack } from "expo-router";
+import { useTranslation } from "react-i18next";
+
 import { Screen } from "./Screen";
+
 import { EmptyState } from "@/components/ui/EmptyState";
 
 interface Props {

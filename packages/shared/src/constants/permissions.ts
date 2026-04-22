@@ -20,7 +20,7 @@ export const Permissions = {
   MANAGE_SETTINGS: "manage_settings",
 } as const;
 
-export type Permission = typeof Permissions[keyof typeof Permissions];
+export type Permission = (typeof Permissions)[keyof typeof Permissions];
 
 export function hasPermission(
   userPermissions: string[] | undefined,

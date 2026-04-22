@@ -57,7 +57,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             }`}
           >
             {t.title && <div className="font-semibold">{t.title}</div>}
-            {t.description && <div className="text-sm mt-1">{t.description}</div>}
+            {t.description && (
+              <div className="text-sm mt-1">{t.description}</div>
+            )}
           </div>
         ))}
       </div>

@@ -1,6 +1,13 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, type PressableProps } from "react-native";
-import { useTheme } from "@/utils/useTheme";
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  type PressableProps,
+} from "react-native";
+
 import { FontSize, Radius, Spacing } from "@/constants/spacing";
+import { useTheme } from "@/utils/useTheme";
 
 type Variant = "primary" | "secondary" | "danger" | "ghost";
 
@@ -11,7 +18,15 @@ interface Props extends Omit<PressableProps, "children"> {
   fullWidth?: boolean;
 }
 
-export function Button({ title, variant = "primary", loading, disabled, fullWidth, style, ...rest }: Props) {
+export function Button({
+  title,
+  variant = "primary",
+  loading,
+  disabled,
+  fullWidth,
+  style,
+  ...rest
+}: Props) {
   const { colors } = useTheme();
   const palette = variantColors(colors, variant);
 

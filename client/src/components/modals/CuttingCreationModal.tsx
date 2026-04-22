@@ -1,10 +1,18 @@
 // src/components/modals/CuttingCreationModal.tsx
-import React, { useEffect, useMemo } from "react";
-import { useTranslation } from "react-i18next";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { MachineSelect } from "@shared/MachineSelect";
+import NumberInput from "@shared/NumberInput";
+import { ProductionOrderSelect } from "@shared/ProductionOrderSelect";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import React, { useEffect, useMemo } from "react";
+import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
+import { z } from "zod";
+
+import { useToast } from "../../hooks/use-toast";
+import { useRemainingQuantity } from "../../hooks/useRemainingQuantity";
+import { apiRequest } from "../../lib/queryClient";
+import { Button } from "../ui/button";
 import {
   Dialog,
   DialogContent,
@@ -20,15 +28,9 @@ import {
   FormLabel,
   FormMessage,
 } from "../ui/form";
-import { Button } from "../ui/button";
 import { Label } from "../ui/label";
-import NumberInput from "@shared/NumberInput";
-import { ProductionOrderSelect } from "@shared/ProductionOrderSelect";
-import { MachineSelect } from "@shared/MachineSelect";
-import { useToast } from "../../hooks/use-toast";
-import { apiRequest } from "../../lib/queryClient";
+
 import type { ProductionOrder, Machine } from "../../../../shared/schema";
-import { useRemainingQuantity } from "../../hooks/useRemainingQuantity";
 
 const cuttingFormSchema = z.object({
   production_order_id: z.number().min(1, "يرجى اختيار أمر الإنتاج"),
@@ -51,7 +53,11 @@ interface Props {
   selectedProductionOrderId?: number;
 }
 
-export default function CuttingCreationModal({ isOpen, onClose, selectedProductionOrderId }: Props) {
+export default function CuttingCreationModal({
+  isOpen,
+  onClose,
+  selectedProductionOrderId,
+}: Props) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -67,11 +73,15 @@ export default function CuttingCreationModal({ isOpen, onClose, selectedProducti
     mode: "onChange",
   });
 
-  const { data: orders = [], isLoading: ordersLoading } = useQuery<ProductionOrder[]>({
+  const { data: orders = [], isLoading: ordersLoading } = useQuery<
+    ProductionOrder[]
+  >({
     queryKey: ["/api/production-orders"],
     enabled: isOpen,
   });
-  const { data: machines = [], isLoading: machinesLoading } = useQuery<Machine[]>({
+  const { data: machines = [], isLoading: machinesLoading } = useQuery<
+    Machine[]
+  >({
     queryKey: ["/api/machines"],
     enabled: isOpen,
     staleTime: 5 * 60 * 1000,
@@ -88,8 +98,13 @@ export default function CuttingCreationModal({ isOpen, onClose, selectedProducti
   });
 
   const selectedOrder = useMemo(
-    () => orders.find((o) => o.id === (selectedProductionOrderId ?? form.getValues("production_order_id"))) || null,
-    [orders, selectedProductionOrderId]
+    () =>
+      orders.find(
+        (o) =>
+          o.id ===
+          (selectedProductionOrderId ?? form.getValues("production_order_id")),
+      ) || null,
+    [orders, selectedProductionOrderId],
   );
 
   const remaining = useRemainingQuantity(selectedOrder as any, rolls);
@@ -97,9 +112,13 @@ export default function CuttingCreationModal({ isOpen, onClose, selectedProducti
   useEffect(() => {
     if (!isOpen) return;
     if (selectedProductionOrderId && selectedProductionOrderId > 0) {
-      form.setValue("production_order_id", selectedProductionOrderId, { shouldValidate: true });
+      form.setValue("production_order_id", selectedProductionOrderId, {
+        shouldValidate: true,
+      });
     } else if (!form.getValues("production_order_id") && orders.length > 0) {
-      form.setValue("production_order_id", orders[0].id, { shouldValidate: true });
+      form.setValue("production_order_id", orders[0].id, {
+        shouldValidate: true,
+      });
     }
     if (!form.getValues("weight_kg") && remaining > 0) {
       form.setValue("weight_kg", String(remaining));
@@ -116,27 +135,33 @@ export default function CuttingCreationModal({ isOpen, onClose, selectedProducti
       });
       if (!response.ok) {
         const err = await response.text();
-        throw new Error(err || t('modals.cuttingCreation.requestFailed'));
+        throw new Error(err || t("modals.cuttingCreation.requestFailed"));
       }
       return response.json();
     },
     onSuccess: () => {
-      ["/api/rolls", "/api/production-orders", "/api/production/cutting-queue", "/api/production/grouped-cutting-queue"].forEach((key) =>
-        queryClient.invalidateQueries({ queryKey: [key] })
-      );
-      toast({ title: t('modals.cuttingCreation.createSuccess'), description: t('modals.cuttingCreation.addedSuccessfully') });
+      [
+        "/api/rolls",
+        "/api/production-orders",
+        "/api/production/cutting-queue",
+        "/api/production/grouped-cutting-queue",
+      ].forEach((key) => queryClient.invalidateQueries({ queryKey: [key] }));
+      toast({
+        title: t("modals.cuttingCreation.createSuccess"),
+        description: t("modals.cuttingCreation.addedSuccessfully"),
+      });
       onClose();
       form.reset();
     },
     onError: (error: any) => {
       const msg = String(error?.message || "");
       toast({
-        title: t('modals.cuttingCreation.createErrorTitle'),
+        title: t("modals.cuttingCreation.createErrorTitle"),
         description: /REMAINING_QUANTITY_EXCEEDED/.test(msg)
-          ? t('modals.cuttingCreation.quantityExceeded')
+          ? t("modals.cuttingCreation.quantityExceeded")
           : /Network error|Failed to fetch/i.test(msg)
-          ? t('modals.cuttingCreation.networkError')
-          : msg,
+            ? t("modals.cuttingCreation.networkError")
+            : msg,
         variant: "destructive",
       });
     },
@@ -145,7 +170,11 @@ export default function CuttingCreationModal({ isOpen, onClose, selectedProducti
   const onSubmit = (data: CuttingFormData) => {
     const weightParsed = Number.parseFloat(data.weight_kg.replace(",", "."));
     if (remaining > 0 && weightParsed > remaining + 0.0001) {
-      toast({ title: t('modals.cuttingCreation.weightExceedsRemaining'), description: `${t('modals.cuttingCreation.remaining')}: ${remaining.toFixed(2)} ${t('modals.cuttingCreation.kg')}`, variant: "destructive" });
+      toast({
+        title: t("modals.cuttingCreation.weightExceedsRemaining"),
+        description: `${t("modals.cuttingCreation.remaining")}: ${remaining.toFixed(2)} ${t("modals.cuttingCreation.kg")}`,
+        variant: "destructive",
+      });
       return;
     }
     createMutation.mutate(data);
@@ -153,10 +182,15 @@ export default function CuttingCreationModal({ isOpen, onClose, selectedProducti
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-md" aria-describedby="cutting-creation-description">
+      <DialogContent
+        className="max-w-md"
+        aria-describedby="cutting-creation-description"
+      >
         <DialogHeader>
-          <DialogTitle>{t('modals.cuttingCreation.title')}</DialogTitle>
-          <DialogDescription id="cutting-creation-description">{t('modals.cuttingCreation.description')}</DialogDescription>
+          <DialogTitle>{t("modals.cuttingCreation.title")}</DialogTitle>
+          <DialogDescription id="cutting-creation-description">
+            {t("modals.cuttingCreation.description")}
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -167,8 +201,15 @@ export default function CuttingCreationModal({ isOpen, onClose, selectedProducti
                 name="production_order_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('modals.cuttingCreation.productionOrder')}</FormLabel>
-                    <ProductionOrderSelect value={field.value} onChange={field.onChange} loading={ordersLoading} orders={orders} />
+                    <FormLabel>
+                      {t("modals.cuttingCreation.productionOrder")}
+                    </FormLabel>
+                    <ProductionOrderSelect
+                      value={field.value}
+                      onChange={field.onChange}
+                      loading={ordersLoading}
+                      orders={orders}
+                    />
                     <FormMessage />
                   </FormItem>
                 )}
@@ -177,13 +218,16 @@ export default function CuttingCreationModal({ isOpen, onClose, selectedProducti
 
             {selectedProductionOrderId && (
               <div className="space-y-2">
-                <Label>{t('modals.cuttingCreation.selectedProductionOrder')}</Label>
+                <Label>
+                  {t("modals.cuttingCreation.selectedProductionOrder")}
+                </Label>
                 <div className="p-3 bg-gray-50 rounded-md border">
                   <p className="font-medium text-sm">
-                    {selectedOrder?.production_order_number || `PO-${selectedProductionOrderId}`}
+                    {selectedOrder?.production_order_number ||
+                      `PO-${selectedProductionOrderId}`}
                   </p>
                   <p className="text-xs text-gray-600">
-                    {`${(selectedOrder as any)?.customer_name_ar || (selectedOrder as any)?.customer_name || t('modals.cuttingCreation.notSpecified')} - ${(selectedOrder as any)?.item_name_ar || (selectedOrder as any)?.item_name || (selectedOrder as any)?.size_caption || t('modals.cuttingCreation.notSpecified')}`}
+                    {`${(selectedOrder as any)?.customer_name_ar || (selectedOrder as any)?.customer_name || t("modals.cuttingCreation.notSpecified")} - ${(selectedOrder as any)?.item_name_ar || (selectedOrder as any)?.item_name || (selectedOrder as any)?.size_caption || t("modals.cuttingCreation.notSpecified")}`}
                   </p>
                 </div>
               </div>
@@ -194,11 +238,22 @@ export default function CuttingCreationModal({ isOpen, onClose, selectedProducti
               name="weight_kg"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t('modals.cuttingCreation.weightKg')}</FormLabel>
+                  <FormLabel>{t("modals.cuttingCreation.weightKg")}</FormLabel>
                   <FormControl>
-                    <NumberInput value={field.value} onChange={field.onChange} placeholder="45.2" />
+                    <NumberInput
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="45.2"
+                    />
                   </FormControl>
-                  {selectedOrder && <p className="text-xs text-gray-600">{t('modals.cuttingCreation.remaining')}: <span className="font-medium">{remaining.toFixed(2)} {t('modals.cuttingCreation.kg')}</span></p>}
+                  {selectedOrder && (
+                    <p className="text-xs text-gray-600">
+                      {t("modals.cuttingCreation.remaining")}:{" "}
+                      <span className="font-medium">
+                        {remaining.toFixed(2)} {t("modals.cuttingCreation.kg")}
+                      </span>
+                    </p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
@@ -209,8 +264,15 @@ export default function CuttingCreationModal({ isOpen, onClose, selectedProducti
               name="machine_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t('modals.cuttingCreation.machine')}</FormLabel>
-                  <MachineSelect value={field.value} onChange={field.onChange} loading={machinesLoading} machines={machines} sections={sections} sectionKeyword="cutting" />
+                  <FormLabel>{t("modals.cuttingCreation.machine")}</FormLabel>
+                  <MachineSelect
+                    value={field.value}
+                    onChange={field.onChange}
+                    loading={machinesLoading}
+                    machines={machines}
+                    sections={sections}
+                    sectionKeyword="cutting"
+                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -221,17 +283,40 @@ export default function CuttingCreationModal({ isOpen, onClose, selectedProducti
               name="blade_setup_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t('modals.cuttingCreation.bladeSetup')}</FormLabel>
-                  <NumberInput value={String(field.value ?? "")} onChange={(v: string) => field.onChange(Number.parseInt(v || "0", 10))} placeholder={t('modals.cuttingCreation.enterBladeSetup')} />
+                  <FormLabel>
+                    {t("modals.cuttingCreation.bladeSetup")}
+                  </FormLabel>
+                  <NumberInput
+                    value={String(field.value ?? "")}
+                    onChange={(v: string) =>
+                      field.onChange(Number.parseInt(v || "0", 10))
+                    }
+                    placeholder={t("modals.cuttingCreation.enterBladeSetup")}
+                  />
                   <FormMessage />
                 </FormItem>
               )}
             />
 
             <div className="flex justify-end gap-3 pt-4 rtl:space-x-reverse">
-              <Button type="button" variant="outline" onClick={onClose} disabled={createMutation.isPending}>{t('modals.cuttingCreation.cancel')}</Button>
-              <Button type="submit" className="btn-primary" disabled={createMutation.isPending || remaining === 0}>
-                {createMutation.isPending ? t('modals.cuttingCreation.creating') : remaining === 0 ? t('modals.cuttingCreation.quantityComplete') : t('modals.cuttingCreation.createTask')}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                disabled={createMutation.isPending}
+              >
+                {t("modals.cuttingCreation.cancel")}
+              </Button>
+              <Button
+                type="submit"
+                className="btn-primary"
+                disabled={createMutation.isPending || remaining === 0}
+              >
+                {createMutation.isPending
+                  ? t("modals.cuttingCreation.creating")
+                  : remaining === 0
+                    ? t("modals.cuttingCreation.quantityComplete")
+                    : t("modals.cuttingCreation.createTask")}
               </Button>
             </div>
           </form>

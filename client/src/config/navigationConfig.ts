@@ -1,4 +1,25 @@
-import { LucideIcon, Home, LayoutDashboard, FileText, Activity, Monitor, ClipboardCheck, Wrench, Users, Warehouse, Database, BarChart3, Settings, Gauge, Bot, Box, Tv, ShoppingBag, Plug, Wand2 } from "lucide-react";
+import {
+  LucideIcon,
+  Home,
+  LayoutDashboard,
+  FileText,
+  Activity,
+  Monitor,
+  ClipboardCheck,
+  Wrench,
+  Users,
+  Warehouse,
+  Database,
+  BarChart3,
+  Settings,
+  Gauge,
+  Bot,
+  Box,
+  Tv,
+  ShoppingBag,
+  Plug,
+  Wand2,
+} from "lucide-react";
 
 export interface NavigationItem {
   name: string;
@@ -7,7 +28,7 @@ export interface NavigationItem {
   icon: LucideIcon;
   path: string;
   priority: number;
-  group: 'primary' | 'support' | 'admin';
+  group: "primary" | "support" | "admin";
 }
 
 export const navigationItems: NavigationItem[] = [
@@ -18,7 +39,7 @@ export const navigationItems: NavigationItem[] = [
     icon: Home,
     path: "/",
     priority: 1,
-    group: 'primary',
+    group: "primary",
   },
   {
     name: "لوحة التحكم",
@@ -27,7 +48,7 @@ export const navigationItems: NavigationItem[] = [
     icon: LayoutDashboard,
     path: "/user-dashboard",
     priority: 5,
-    group: 'primary',
+    group: "primary",
   },
   {
     name: "الطلبات والإنتاج",
@@ -36,7 +57,7 @@ export const navigationItems: NavigationItem[] = [
     icon: FileText,
     path: "/orders",
     priority: 2,
-    group: 'primary',
+    group: "primary",
   },
   {
     name: "طلباتي",
@@ -45,7 +66,7 @@ export const navigationItems: NavigationItem[] = [
     icon: ShoppingBag,
     path: "/my-orders",
     priority: 3,
-    group: 'primary',
+    group: "primary",
   },
   {
     name: "لوحة الإنتاج",
@@ -54,7 +75,7 @@ export const navigationItems: NavigationItem[] = [
     icon: Activity,
     path: "/production-dashboard",
     priority: 3,
-    group: 'primary',
+    group: "primary",
   },
   {
     name: "مراقبة الإنتاج",
@@ -63,7 +84,7 @@ export const navigationItems: NavigationItem[] = [
     icon: Monitor,
     path: "/production-monitoring",
     priority: 6,
-    group: 'primary',
+    group: "primary",
   },
   {
     name: "الجودة",
@@ -72,7 +93,7 @@ export const navigationItems: NavigationItem[] = [
     icon: ClipboardCheck,
     path: "/quality",
     priority: 7,
-    group: 'support',
+    group: "support",
   },
   {
     name: "الصيانة",
@@ -81,7 +102,7 @@ export const navigationItems: NavigationItem[] = [
     icon: Wrench,
     path: "/maintenance",
     priority: 8,
-    group: 'support',
+    group: "support",
   },
   {
     name: "الموارد البشرية",
@@ -90,7 +111,7 @@ export const navigationItems: NavigationItem[] = [
     icon: Users,
     path: "/hr",
     priority: 9,
-    group: 'support',
+    group: "support",
   },
   {
     name: "المستودع",
@@ -99,7 +120,7 @@ export const navigationItems: NavigationItem[] = [
     icon: Warehouse,
     path: "/warehouse",
     priority: 4,
-    group: 'primary',
+    group: "primary",
   },
   {
     name: "التعريفات",
@@ -108,7 +129,7 @@ export const navigationItems: NavigationItem[] = [
     icon: Database,
     path: "/definitions",
     priority: 10,
-    group: 'admin',
+    group: "admin",
   },
   {
     name: "التقارير",
@@ -117,7 +138,7 @@ export const navigationItems: NavigationItem[] = [
     icon: BarChart3,
     path: "/reports",
     priority: 11,
-    group: 'admin',
+    group: "admin",
   },
   {
     name: "الأدوات",
@@ -126,7 +147,7 @@ export const navigationItems: NavigationItem[] = [
     icon: Wrench,
     path: "/tools",
     priority: 12,
-    group: 'admin',
+    group: "admin",
   },
   {
     name: "الوكيل الذكي",
@@ -135,7 +156,7 @@ export const navigationItems: NavigationItem[] = [
     icon: Bot,
     path: "/ai-agent",
     priority: 5,
-    group: 'primary',
+    group: "primary",
   },
   {
     name: "الإعدادات",
@@ -144,7 +165,7 @@ export const navigationItems: NavigationItem[] = [
     icon: Settings,
     path: "/settings",
     priority: 13,
-    group: 'admin',
+    group: "admin",
   },
   {
     name: "معالج تصميم الأكياس",
@@ -153,7 +174,7 @@ export const navigationItems: NavigationItem[] = [
     icon: Wand2,
     path: "/bag-configurator",
     priority: 3,
-    group: 'primary',
+    group: "primary",
   },
   {
     name: "محاكاة المصنع",
@@ -162,7 +183,7 @@ export const navigationItems: NavigationItem[] = [
     icon: Box,
     path: "/factory-simulation",
     priority: 6,
-    group: 'primary',
+    group: "primary",
   },
   {
     name: "شاشة العرض",
@@ -171,22 +192,35 @@ export const navigationItems: NavigationItem[] = [
     icon: Tv,
     path: "/display-control",
     priority: 7,
-    group: 'primary',
+    group: "primary",
   },
 ];
 
-export const getLocalizedName = (item: NavigationItem, language: 'ar' | 'en'): string => {
-  return language === 'en' ? item.name_en : item.name_ar;
+export const getLocalizedName = (
+  item: NavigationItem,
+  language: "ar" | "en",
+): string => {
+  return language === "en" ? item.name_en : item.name_ar;
 };
 
-export const getQuickAccessItems = (items: NavigationItem[]): NavigationItem[] => {
-  return items.filter(item => item.priority <= 4).sort((a, b) => a.priority - b.priority);
+export const getQuickAccessItems = (
+  items: NavigationItem[],
+): NavigationItem[] => {
+  return items
+    .filter((item) => item.priority <= 4)
+    .sort((a, b) => a.priority - b.priority);
 };
 
 export const groupNavigationItems = (items: NavigationItem[]) => {
   return {
-    primary: items.filter(item => item.group === 'primary').sort((a, b) => a.priority - b.priority),
-    support: items.filter(item => item.group === 'support').sort((a, b) => a.priority - b.priority),
-    admin: items.filter(item => item.group === 'admin').sort((a, b) => a.priority - b.priority),
+    primary: items
+      .filter((item) => item.group === "primary")
+      .sort((a, b) => a.priority - b.priority),
+    support: items
+      .filter((item) => item.group === "support")
+      .sort((a, b) => a.priority - b.priority),
+    admin: items
+      .filter((item) => item.group === "admin")
+      .sort((a, b) => a.priority - b.priority),
   };
 };

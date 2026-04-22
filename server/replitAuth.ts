@@ -1,25 +1,25 @@
+import memoize from "memoizee";
 import * as client from "openid-client";
 import { Strategy, type VerifyFunction } from "openid-client/passport";
-
 import passport from "passport";
-import type { Express, RequestHandler } from "express";
-import memoize from "memoizee";
+
 import { storage } from "./storage";
+
+import type { Express, RequestHandler } from "express";
 
 const getOidcConfig = memoize(
   async () => {
     return await client.discovery(
       new URL(process.env.ISSUER_URL ?? "https://replit.com/oidc"),
-      process.env.REPL_ID!
+      process.env.REPL_ID!,
     );
   },
-  { maxAge: 3600 * 1000 }
+  { maxAge: 3600 * 1000 },
 );
-
 
 function updateUserSession(
   user: any,
-  tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers
+  tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
 ) {
   user.claims = tokens.claims();
   user.access_token = tokens.access_token;
@@ -27,9 +27,7 @@ function updateUserSession(
   user.expires_at = user.claims?.exp;
 }
 
-async function upsertUser(
-  claims: any,
-) {
+async function upsertUser(claims: any) {
   await storage.upsertUser({
     id: claims["sub"],
     email: claims["email"],
@@ -47,7 +45,7 @@ export async function setupAuth(app: Express) {
 
   const verify: VerifyFunction = async (
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
-    verified: passport.AuthenticateCallback
+    verified: passport.AuthenticateCallback,
   ) => {
     const user = {};
     updateUserSession(user, tokens);
@@ -89,51 +87,62 @@ export async function setupAuth(app: Express) {
 
   app.get("/api/callback", async (req, res, next) => {
     ensureStrategy(req.hostname);
-    passport.authenticate(`replitauth:${req.hostname}`, async (err: any, user: any, info: any) => {
-      if (err) {
-        return next(err);
-      }
-      if (!user) {
-        return res.redirect("/api/login-replit");
-      }
-      
-      // Log in the user (sets req.user)
-      req.logIn(user, async (err) => {
+    passport.authenticate(
+      `replitauth:${req.hostname}`,
+      async (err: any, user: any, info: any) => {
         if (err) {
           return next(err);
         }
-        
-        // Critical: Set req.session.userId for backward compatibility with existing middleware
-        // This allows requireAuth and other middleware to recognize Replit-authenticated users
-        try {
-          const replitUserId = user.claims?.sub;
-          if (replitUserId) {
-            const dbUser = await storage.getUserByReplitId(replitUserId);
-            if (dbUser) {
-              req.session.userId = dbUser.id;
-              
-              // Save session to ensure userId persists
-              req.session.save((saveErr: any) => {
-                if (saveErr) {
-                  console.error("Error saving session after Replit login:", saveErr);
-                }
-                // Redirect to home or original destination
+        if (!user) {
+          return res.redirect("/api/login-replit");
+        }
+
+        // Log in the user (sets req.user)
+        req.logIn(user, async (err) => {
+          if (err) {
+            return next(err);
+          }
+
+          // Critical: Set req.session.userId for backward compatibility with existing middleware
+          // This allows requireAuth and other middleware to recognize Replit-authenticated users
+          try {
+            const replitUserId = user.claims?.sub;
+            if (replitUserId) {
+              const dbUser = await storage.getUserByReplitId(replitUserId);
+              if (dbUser) {
+                req.session.userId = dbUser.id;
+
+                // Save session to ensure userId persists
+                req.session.save((saveErr: any) => {
+                  if (saveErr) {
+                    console.error(
+                      "Error saving session after Replit login:",
+                      saveErr,
+                    );
+                  }
+                  // Redirect to home or original destination
+                  res.redirect("/");
+                });
+              } else {
+                console.error(
+                  "Replit user authenticated but not found in database",
+                );
                 res.redirect("/");
-              });
+              }
             } else {
-              console.error("Replit user authenticated but not found in database");
+              console.error("No Replit user ID in claims");
               res.redirect("/");
             }
-          } else {
-            console.error("No Replit user ID in claims");
+          } catch (error) {
+            console.error(
+              "Error setting session userId after Replit login:",
+              error,
+            );
             res.redirect("/");
           }
-        } catch (error) {
-          console.error("Error setting session userId after Replit login:", error);
-          res.redirect("/");
-        }
-      });
-    })(req, res, next);
+        });
+      },
+    )(req, res, next);
   });
 
   app.get("/api/logout-replit", (req, res) => {
@@ -142,7 +151,7 @@ export async function setupAuth(app: Express) {
         client.buildEndSessionUrl(config, {
           client_id: process.env.REPL_ID!,
           post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
-        }).href
+        }).href,
       );
     });
   });

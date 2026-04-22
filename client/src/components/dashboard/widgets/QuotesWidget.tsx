@@ -1,10 +1,11 @@
-import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
-import { Badge } from "../../ui/badge";
-import { Skeleton } from "../../ui/skeleton";
 import { FileText, DollarSign, Clock, CheckCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
+
 import { formatNumber } from "../../../lib/formatNumber";
+import { Badge } from "../../ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
+import { Skeleton } from "../../ui/skeleton";
 
 interface Quote {
   id: number;
@@ -48,21 +49,41 @@ export default function QuotesWidget() {
 
   const quoteList = Array.isArray(quotes) ? quotes : [];
   const recentQuotes = quoteList.slice(0, 5);
-  const pendingQuotes = quoteList.filter((q) => q.status === "pending" || q.status === "draft");
-  const approvedQuotes = quoteList.filter((q) => q.status === "approved" || q.status === "accepted");
+  const pendingQuotes = quoteList.filter(
+    (q) => q.status === "pending" || q.status === "draft",
+  );
+  const approvedQuotes = quoteList.filter(
+    (q) => q.status === "approved" || q.status === "accepted",
+  );
 
   const getStatusBadge = (status?: string) => {
     switch (status) {
       case "approved":
       case "accepted":
-        return <Badge className="bg-green-100 text-green-800 text-xs">{t("dashboard.widgets.approved", "Approved")}</Badge>;
+        return (
+          <Badge className="bg-green-100 text-green-800 text-xs">
+            {t("dashboard.widgets.approved", "Approved")}
+          </Badge>
+        );
       case "pending":
       case "draft":
-        return <Badge className="bg-yellow-100 text-yellow-800 text-xs">{t("dashboard.widgets.pending", "Pending")}</Badge>;
+        return (
+          <Badge className="bg-yellow-100 text-yellow-800 text-xs">
+            {t("dashboard.widgets.pending", "Pending")}
+          </Badge>
+        );
       case "rejected":
-        return <Badge className="bg-red-100 text-red-800 text-xs">{t("dashboard.widgets.rejected", "Rejected")}</Badge>;
+        return (
+          <Badge className="bg-red-100 text-red-800 text-xs">
+            {t("dashboard.widgets.rejected", "Rejected")}
+          </Badge>
+        );
       default:
-        return <Badge variant="secondary" className="text-xs">{status || "-"}</Badge>;
+        return (
+          <Badge variant="secondary" className="text-xs">
+            {status || "-"}
+          </Badge>
+        );
     }
   };
 
@@ -75,7 +96,8 @@ export default function QuotesWidget() {
             {t("dashboard.widgets.quotes", "Quotes")}
           </CardTitle>
           <Badge variant="secondary" className="text-xs">
-            {formatNumber(quoteList.length)} {t("dashboard.widgets.total", "total")}
+            {formatNumber(quoteList.length)}{" "}
+            {t("dashboard.widgets.total", "total")}
           </Badge>
         </div>
       </CardHeader>

@@ -17,6 +17,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
 import { parseIntSafe, parseFloatSafe } from "./validation-utils";
 
 /**
@@ -119,30 +120,34 @@ export const sessions = pgTable(
 );
 
 // 🧑‍💼 جدول المستخدمين (supports both username/password and Replit Auth)
-export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
-  username: varchar("username", { length: 50 }).unique(),
-  password: varchar("password", { length: 100 }),
-  display_name: varchar("display_name", { length: 100 }),
-  display_name_ar: varchar("display_name_ar", { length: 100 }),
-  full_name: varchar("full_name", { length: 200 }),
-  phone: varchar("phone", { length: 20 }), // رقم الهاتف للواتس اب
-  email: varchar("email", { length: 100 }),
-  role_id: integer("role_id").references(() => roles.id),
-  section_id: integer("section_id"),
-  status: varchar("status", { length: 20 }).default("active"), // active / suspended / deleted
-  created_at: timestamp("created_at").defaultNow(),
-  
-  // Replit Auth fields (from integration blueprint)
-  replit_user_id: varchar("replit_user_id", { length: 255 }).unique(), // Replit user ID from OpenID Connect
-  first_name: varchar("first_name", { length: 100 }),
-  last_name: varchar("last_name", { length: 100 }),
-  profile_image_url: varchar("profile_image_url", { length: 500 }),
-  updated_at: timestamp("updated_at").defaultNow(),
-}, (table) => [
-  index("idx_users_role_id").on(table.role_id),
-  index("idx_users_status").on(table.status),
-]);
+export const users = pgTable(
+  "users",
+  {
+    id: serial("id").primaryKey(),
+    username: varchar("username", { length: 50 }).unique(),
+    password: varchar("password", { length: 100 }),
+    display_name: varchar("display_name", { length: 100 }),
+    display_name_ar: varchar("display_name_ar", { length: 100 }),
+    full_name: varchar("full_name", { length: 200 }),
+    phone: varchar("phone", { length: 20 }), // رقم الهاتف للواتس اب
+    email: varchar("email", { length: 100 }),
+    role_id: integer("role_id").references(() => roles.id),
+    section_id: integer("section_id"),
+    status: varchar("status", { length: 20 }).default("active"), // active / suspended / deleted
+    created_at: timestamp("created_at").defaultNow(),
+
+    // Replit Auth fields (from integration blueprint)
+    replit_user_id: varchar("replit_user_id", { length: 255 }).unique(), // Replit user ID from OpenID Connect
+    first_name: varchar("first_name", { length: 100 }),
+    last_name: varchar("last_name", { length: 100 }),
+    profile_image_url: varchar("profile_image_url", { length: 500 }),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_users_role_id").on(table.role_id),
+    index("idx_users_status").on(table.status),
+  ],
+);
 
 // 📋 جدول طلبات المستخدمين
 export const user_requests = pgTable("user_requests", {
@@ -164,68 +169,76 @@ export const user_requests = pgTable("user_requests", {
 });
 
 // 📋 جدول الحضور
-export const attendance = pgTable("attendance", {
-  id: serial("id").primaryKey(),
-  user_id: integer("user_id")
-    .notNull()
-    .references(() => users.id),
-  status: varchar("status", { length: 20 }).notNull().default("غائب"), // حاضر / غائب / استراحة غداء / مغادر / إجازة
-  check_in_time: timestamp("check_in_time"),
-  check_out_time: timestamp("check_out_time"),
-  lunch_start_time: timestamp("lunch_start_time"),
-  lunch_end_time: timestamp("lunch_end_time"),
-  break_start_time: timestamp("break_start_time"), // وقت بداية الاستراحة
-  break_end_time: timestamp("break_end_time"), // وقت نهاية الاستراحة
-  work_hours: doublePrecision("work_hours"), // ساعات العمل الفعلية (محسوبة تلقائياً)
-  overtime_hours: doublePrecision("overtime_hours"), // ساعات العمل الإضافي
-  shift_type: varchar("shift_type", { length: 20 }).default("صباحي"), // نوع الوردية: صباحي / مسائي / ليلي
-  late_minutes: integer("late_minutes").default(0), // دقائق التأخير
-  early_leave_minutes: integer("early_leave_minutes").default(0), // دقائق المغادرة المبكرة
-  location_accuracy: doublePrecision("location_accuracy"), // دقة الموقع GPS
-  distance_from_factory: doublePrecision("distance_from_factory"), // المسافة من المصنع بالأمتار
-  device_info: text("device_info"), // معلومات الجهاز
-  notes: text("notes"),
-  created_by: integer("created_by").references(() => users.id),
-  updated_by: integer("updated_by").references(() => users.id),
-  date: date("date")
-    .notNull()
-    .default(sql`CURRENT_DATE`),
-  created_at: timestamp("created_at").defaultNow(),
-  updated_at: timestamp("updated_at").defaultNow(),
-}, (table) => [
-  index("idx_attendance_user_id").on(table.user_id),
-  index("idx_attendance_date").on(table.date),
-  index("idx_attendance_user_date").on(table.user_id, table.date),
-]);
+export const attendance = pgTable(
+  "attendance",
+  {
+    id: serial("id").primaryKey(),
+    user_id: integer("user_id")
+      .notNull()
+      .references(() => users.id),
+    status: varchar("status", { length: 20 }).notNull().default("غائب"), // حاضر / غائب / استراحة غداء / مغادر / إجازة
+    check_in_time: timestamp("check_in_time"),
+    check_out_time: timestamp("check_out_time"),
+    lunch_start_time: timestamp("lunch_start_time"),
+    lunch_end_time: timestamp("lunch_end_time"),
+    break_start_time: timestamp("break_start_time"), // وقت بداية الاستراحة
+    break_end_time: timestamp("break_end_time"), // وقت نهاية الاستراحة
+    work_hours: doublePrecision("work_hours"), // ساعات العمل الفعلية (محسوبة تلقائياً)
+    overtime_hours: doublePrecision("overtime_hours"), // ساعات العمل الإضافي
+    shift_type: varchar("shift_type", { length: 20 }).default("صباحي"), // نوع الوردية: صباحي / مسائي / ليلي
+    late_minutes: integer("late_minutes").default(0), // دقائق التأخير
+    early_leave_minutes: integer("early_leave_minutes").default(0), // دقائق المغادرة المبكرة
+    location_accuracy: doublePrecision("location_accuracy"), // دقة الموقع GPS
+    distance_from_factory: doublePrecision("distance_from_factory"), // المسافة من المصنع بالأمتار
+    device_info: text("device_info"), // معلومات الجهاز
+    notes: text("notes"),
+    created_by: integer("created_by").references(() => users.id),
+    updated_by: integer("updated_by").references(() => users.id),
+    date: date("date")
+      .notNull()
+      .default(sql`CURRENT_DATE`),
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_attendance_user_id").on(table.user_id),
+    index("idx_attendance_date").on(table.date),
+    index("idx_attendance_user_date").on(table.user_id, table.date),
+  ],
+);
 
 // 🧾 جدول العملاء
-export const customers = pgTable("customers", {
-  id: varchar("id", { length: 20 }).primaryKey(), // Changed to varchar to match CID001 format
-  name: varchar("name", { length: 200 }).notNull(),
-  name_ar: varchar("name_ar", { length: 200 }),
-  code: varchar("code", { length: 20 }),
-  user_id: varchar("user_id", { length: 10 }),
-  plate_drawer_code: varchar("plate_drawer_code", { length: 20 }),
-  city: varchar("city", { length: 50 }),
-  address: text("address"),
-  tax_number: varchar("tax_number", { length: 14 }),
-  commercial_name: varchar("commercial_name", { length: 200 }),
-  unified_number: varchar("unified_number", { length: 10 }),
-  unique_customer_number: varchar("unique_customer_number", { length: 20 }),
-  is_active: boolean("is_active").default(true),
-  phone: varchar("phone", { length: 20 }),
-  sales_rep_id: integer("sales_rep_id").references(() => users.id),
-  created_at: timestamp("created_at").defaultNow(),
-}, (table) => ({
-  unifiedNumberFormat: check(
-    "unified_number_format",
-    sql`${table.unified_number} IS NULL OR ${table.unified_number} ~ '^7[0-9]{9}$'`,
-  ),
-  taxNumberLength: check(
-    "tax_number_length",
-    sql`${table.tax_number} IS NULL OR LENGTH(${table.tax_number}) = 14`,
-  ),
-}));
+export const customers = pgTable(
+  "customers",
+  {
+    id: varchar("id", { length: 20 }).primaryKey(), // Changed to varchar to match CID001 format
+    name: varchar("name", { length: 200 }).notNull(),
+    name_ar: varchar("name_ar", { length: 200 }),
+    code: varchar("code", { length: 20 }),
+    user_id: varchar("user_id", { length: 10 }),
+    plate_drawer_code: varchar("plate_drawer_code", { length: 20 }),
+    city: varchar("city", { length: 50 }),
+    address: text("address"),
+    tax_number: varchar("tax_number", { length: 14 }),
+    commercial_name: varchar("commercial_name", { length: 200 }),
+    unified_number: varchar("unified_number", { length: 10 }),
+    unique_customer_number: varchar("unique_customer_number", { length: 20 }),
+    is_active: boolean("is_active").default(true),
+    phone: varchar("phone", { length: 20 }),
+    sales_rep_id: integer("sales_rep_id").references(() => users.id),
+    created_at: timestamp("created_at").defaultNow(),
+  },
+  (table) => ({
+    unifiedNumberFormat: check(
+      "unified_number_format",
+      sql`${table.unified_number} IS NULL OR ${table.unified_number} ~ '^7[0-9]{9}$'`,
+    ),
+    taxNumberLength: check(
+      "tax_number_length",
+      sql`${table.tax_number} IS NULL OR LENGTH(${table.tax_number}) = 14`,
+    ),
+  }),
+);
 
 // 🗂️ جدول المجموعات
 export const categories = pgTable("categories", {
@@ -237,40 +250,44 @@ export const categories = pgTable("categories", {
 });
 
 // 🛒 جدول منتجات العملاء (User's Custom Data Integration)
-export const customer_products = pgTable("customer_products", {
-  id: serial("id").primaryKey(),
-  customer_id: varchar("customer_id", { length: 20 }).references(
-    () => customers.id,
-  ),
-  category_id: varchar("category_id", { length: 20 }).references(
-    () => categories.id,
-  ),
-  item_id: varchar("item_id", { length: 20 }).references(() => items.id),
-  size_caption: varchar("size_caption", { length: 50 }),
-  width: decimal("width", { precision: 8, scale: 2 }),
-  left_facing: decimal("left_facing", { precision: 8, scale: 2 }),
-  right_facing: decimal("right_facing", { precision: 8, scale: 2 }),
-  thickness: decimal("thickness", { precision: 6, scale: 3 }),
-  printing_cylinder: varchar("printing_cylinder", { length: 10 }), // 8" to 38" + 39"
-  cutting_length_cm: integer("cutting_length_cm"),
-  raw_material: varchar("raw_material", { length: 20 }), // HDPE-LDPE-Regrind
-  master_batch_id: varchar("master_batch_id", { length: 20 }), // CLEAR-WHITE-BLACK etc
-  is_printed: boolean("is_printed").default(false),
-  cutting_unit: varchar("cutting_unit", { length: 20 }), // KG-ROLL-PKT
-  punching: varchar("punching", { length: 20 }), // NON-T-Shirt-T-shirt\Hook-Banana
-  unit_weight_kg: decimal("unit_weight_kg", { precision: 8, scale: 3 }),
-  unit_quantity: integer("unit_quantity"),
-  package_weight_kg: decimal("package_weight_kg", { precision: 8, scale: 2 }),
-  cliche_front_design: text("cliche_front_design"), // Base64 encoded image data
-  cliche_back_design: text("cliche_back_design"), // Base64 encoded image data
-  notes: text("notes"),
-  status: varchar("status", { length: 20 }).default("active"),
-  created_at: timestamp("created_at").defaultNow(),
-}, (table) => [
-  index("idx_customer_products_customer_id").on(table.customer_id),
-  index("idx_customer_products_status").on(table.status),
-  index("idx_customer_products_created_at").on(table.created_at),
-]);
+export const customer_products = pgTable(
+  "customer_products",
+  {
+    id: serial("id").primaryKey(),
+    customer_id: varchar("customer_id", { length: 20 }).references(
+      () => customers.id,
+    ),
+    category_id: varchar("category_id", { length: 20 }).references(
+      () => categories.id,
+    ),
+    item_id: varchar("item_id", { length: 20 }).references(() => items.id),
+    size_caption: varchar("size_caption", { length: 50 }),
+    width: decimal("width", { precision: 8, scale: 2 }),
+    left_facing: decimal("left_facing", { precision: 8, scale: 2 }),
+    right_facing: decimal("right_facing", { precision: 8, scale: 2 }),
+    thickness: decimal("thickness", { precision: 6, scale: 3 }),
+    printing_cylinder: varchar("printing_cylinder", { length: 10 }), // 8" to 38" + 39"
+    cutting_length_cm: integer("cutting_length_cm"),
+    raw_material: varchar("raw_material", { length: 20 }), // HDPE-LDPE-Regrind
+    master_batch_id: varchar("master_batch_id", { length: 20 }), // CLEAR-WHITE-BLACK etc
+    is_printed: boolean("is_printed").default(false),
+    cutting_unit: varchar("cutting_unit", { length: 20 }), // KG-ROLL-PKT
+    punching: varchar("punching", { length: 20 }), // NON-T-Shirt-T-shirt\Hook-Banana
+    unit_weight_kg: decimal("unit_weight_kg", { precision: 8, scale: 3 }),
+    unit_quantity: integer("unit_quantity"),
+    package_weight_kg: decimal("package_weight_kg", { precision: 8, scale: 2 }),
+    cliche_front_design: text("cliche_front_design"), // Base64 encoded image data
+    cliche_back_design: text("cliche_back_design"), // Base64 encoded image data
+    notes: text("notes"),
+    status: varchar("status", { length: 20 }).default("active"),
+    created_at: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_customer_products_customer_id").on(table.customer_id),
+    index("idx_customer_products_status").on(table.status),
+    index("idx_customer_products_created_at").on(table.created_at),
+  ],
+);
 
 // 🏭 جدول المكائن - Machine Management with Operational Constraints
 // INVARIANT E: Only machines with status = 'active' can be used for production
@@ -288,7 +305,7 @@ export const machines = pgTable(
       { onDelete: "restrict" },
     ), // ON DELETE RESTRICT
     status: varchar("status", { length: 20 }).notNull().default("active"), // ENUM: active / maintenance / down
-    
+
     // قدرة الإنتاج بالكيلوجرام في الساعة حسب الحجم
     capacity_small_kg_per_hour: decimal("capacity_small_kg_per_hour", {
       precision: 8,
@@ -302,7 +319,7 @@ export const machines = pgTable(
       precision: 8,
       scale: 2,
     }), // قدرة الإنتاج للحجم الكبير
-    
+
     // نوع السكرو لمكائن الفيلم (A أو ABA فقط)
     screw_type: varchar("screw_type", { length: 10 }).default("A"), // 'A' للسكرو الواحد، 'ABA' لنظام السكروين
   },
@@ -439,16 +456,19 @@ export const production_orders = pgTable(
       .default("0"), // نسبة إكمال التقطيع
 
     // NEW: حقول تخصيص الماكينة والعامل
-    assigned_machine_id: varchar("assigned_machine_id", { length: 20 })
-      .references(() => machines.id, { onDelete: "set null" }), // تخصيص ماكينة الفيلم
-    assigned_operator_id: integer("assigned_operator_id")
-      .references(() => users.id, { onDelete: "set null" }), // تخصيص العامل المسؤول
-    
+    assigned_machine_id: varchar("assigned_machine_id", {
+      length: 20,
+    }).references(() => machines.id, { onDelete: "set null" }), // تخصيص ماكينة الفيلم
+    assigned_operator_id: integer("assigned_operator_id").references(
+      () => users.id,
+      { onDelete: "set null" },
+    ), // تخصيص العامل المسؤول
+
     // NEW: حقول أوقات الإنتاج
     production_start_time: timestamp("production_start_time"), // وقت بداية الإنتاج
     production_end_time: timestamp("production_end_time"), // وقت نهاية الإنتاج
     production_time_minutes: integer("production_time_minutes"), // المدة الإجمالية بالدقائق
-    
+
     // NEW: علامات اكتمال المراحل
     film_completed: boolean("film_completed").default(false), // علامة اكتمال مرحلة الفيلم
     printing_completed: boolean("printing_completed").default(false), // علامة اكتمال الطباعة
@@ -456,11 +476,17 @@ export const production_orders = pgTable(
     is_final_roll_created: boolean("is_final_roll_created").default(false), // علامة إنشاء آخر رول
 
     // الكمية المستلمة في المستودع من صالة الإنتاج
-    warehouse_received_kg: decimal("warehouse_received_kg", { precision: 10, scale: 2 })
+    warehouse_received_kg: decimal("warehouse_received_kg", {
+      precision: 10,
+      scale: 2,
+    })
       .notNull()
       .default("0"),
     // الكمية المسلّمة للعملاء من المستودع
-    warehouse_delivered_kg: decimal("warehouse_delivered_kg", { precision: 10, scale: 2 })
+    warehouse_delivered_kg: decimal("warehouse_delivered_kg", {
+      precision: 10,
+      scale: 2,
+    })
       .notNull()
       .default("0"),
 
@@ -519,10 +545,18 @@ export const production_orders = pgTable(
       sql`${table.cutting_completion_percentage} >= 0 AND ${table.cutting_completion_percentage} <= 100`,
     ),
     // Performance indexes for production_orders table
-    idx_production_orders_order_id: index("idx_production_orders_order_id").on(table.order_id),
-    idx_production_orders_status: index("idx_production_orders_status").on(table.status),
-    idx_production_orders_created_at: index("idx_production_orders_created_at").on(table.created_at),
-    idx_production_orders_assigned_machine_id: index("idx_production_orders_assigned_machine_id").on(table.assigned_machine_id),
+    idx_production_orders_order_id: index("idx_production_orders_order_id").on(
+      table.order_id,
+    ),
+    idx_production_orders_status: index("idx_production_orders_status").on(
+      table.status,
+    ),
+    idx_production_orders_created_at: index(
+      "idx_production_orders_created_at",
+    ).on(table.created_at),
+    idx_production_orders_assigned_machine_id: index(
+      "idx_production_orders_assigned_machine_id",
+    ).on(table.assigned_machine_id),
   }),
 );
 
@@ -561,10 +595,12 @@ export const rolls = pgTable(
     film_machine_id: varchar("film_machine_id", { length: 20 })
       .notNull()
       .references(() => machines.id, { onDelete: "restrict" }), // Machine used for film production
-    printing_machine_id: varchar("printing_machine_id", { length: 20 })
-      .references(() => machines.id, { onDelete: "restrict" }), // Machine used for printing (assigned in printing stage)
-    cutting_machine_id: varchar("cutting_machine_id", { length: 20 })
-      .references(() => machines.id, { onDelete: "restrict" }), // Machine used for cutting (assigned in cutting stage)
+    printing_machine_id: varchar("printing_machine_id", {
+      length: 20,
+    }).references(() => machines.id, { onDelete: "restrict" }), // Machine used for printing (assigned in printing stage)
+    cutting_machine_id: varchar("cutting_machine_id", {
+      length: 20,
+    }).references(() => machines.id, { onDelete: "restrict" }), // Machine used for cutting (assigned in cutting stage)
     machine_id: varchar("machine_id", { length: 20 }).references(
       () => machines.id,
       { onDelete: "restrict" },
@@ -581,12 +617,12 @@ export const rolls = pgTable(
     cut_by: integer("cut_by").references(() => users.id, {
       onDelete: "set null",
     }), // ON DELETE SET NULL - user who cut the roll
-    
+
     // NEW: حقول إضافية لتتبع الإنتاج
     is_last_roll: boolean("is_last_roll").default(false), // لتحديد آخر رول في أمر الإنتاج
     production_time_minutes: integer("production_time_minutes"), // وقت إنتاج الرول بالدقائق
     roll_created_at: timestamp("roll_created_at").defaultNow(), // وقت إنشاء الرول بدقة
-    
+
     qr_code: varchar("qr_code", { length: 255 }), // Legacy field
     created_at: timestamp("created_at").notNull().defaultNow(),
     completed_at: timestamp("completed_at"), // Set when stage = 'done'
@@ -627,10 +663,14 @@ export const rolls = pgTable(
     // INVARIANT E: Machine must be active for roll creation - enforced at application level
     machineActiveForCreation: check("machine_active_for_creation", sql`TRUE`), // Placeholder - enforced in application layer
     // Performance indexes for rolls table
-    idx_rolls_production_order_id: index("idx_rolls_production_order_id").on(table.production_order_id),
+    idx_rolls_production_order_id: index("idx_rolls_production_order_id").on(
+      table.production_order_id,
+    ),
     idx_rolls_stage: index("idx_rolls_stage").on(table.stage),
     idx_rolls_created_at: index("idx_rolls_created_at").on(table.created_at),
-    idx_rolls_film_machine_id: index("idx_rolls_film_machine_id").on(table.film_machine_id),
+    idx_rolls_film_machine_id: index("idx_rolls_film_machine_id").on(
+      table.film_machine_id,
+    ),
     idx_rolls_created_by: index("idx_rolls_created_by").on(table.created_by),
   }),
 );
@@ -677,8 +717,9 @@ export const machine_queues = pgTable("machine_queues", {
   queue_position: integer("queue_position").notNull(), // الترتيب في الطابور
   estimated_start_time: timestamp("estimated_start_time"), // الوقت التقديري للبدء
   assigned_at: timestamp("assigned_at").defaultNow(), // وقت التخصيص
-  assigned_by: integer("assigned_by")
-    .references(() => users.id, { onDelete: "set null" }), // المستخدم الذي خصص
+  assigned_by: integer("assigned_by").references(() => users.id, {
+    onDelete: "set null",
+  }), // المستخدم الذي خصص
   created_at: timestamp("created_at").defaultNow(),
 });
 
@@ -1438,79 +1479,88 @@ export const notification_templates = pgTable("notification_templates", {
 });
 
 // 🔔 جدول إعدادات أحداث الإشعارات - Notification Event Settings
-export const notification_event_settings = pgTable("notification_event_settings", {
-  id: serial("id").primaryKey(),
-  
-  // Event identification
-  event_key: varchar("event_key", { length: 100 }).notNull().unique(), // unique event identifier
-  event_name: varchar("event_name", { length: 200 }).notNull(),
-  event_name_ar: varchar("event_name_ar", { length: 200 }).notNull(),
-  event_description: text("event_description"),
-  event_description_ar: text("event_description_ar"),
-  event_category: varchar("event_category", { length: 50 }).notNull(), // orders, production, quality, maintenance, hr, system
-  
-  // Activation
-  is_enabled: boolean("is_enabled").default(true),
-  
-  // WhatsApp settings
-  whatsapp_enabled: boolean("whatsapp_enabled").default(false),
-  whatsapp_template_id: integer("whatsapp_template_id").references(() => notification_templates.id),
-  
-  // Message customization
-  message_template: text("message_template"), // Custom message template with variables
-  message_template_ar: text("message_template_ar"),
-  
-  // Recipients configuration
-  recipient_type: varchar("recipient_type", { length: 30 }).default("specific_users"), // all_admins, specific_users, specific_roles, customer
-  recipient_user_ids: json("recipient_user_ids").$type<number[]>(), // Array of user IDs
-  recipient_role_ids: json("recipient_role_ids").$type<number[]>(), // Array of role IDs
-  recipient_phone_numbers: json("recipient_phone_numbers").$type<string[]>(), // Array of direct phone numbers
-  notify_customer: boolean("notify_customer").default(false), // Send to customer associated with the event
-  
-  // Condition settings (for threshold-based events)
-  condition_enabled: boolean("condition_enabled").default(false),
-  condition_field: varchar("condition_field", { length: 100 }), // Field to check
-  condition_operator: varchar("condition_operator", { length: 20 }), // gt, lt, eq, gte, lte
-  condition_value: varchar("condition_value", { length: 100 }), // Threshold value
-  
-  // Priority and timing
-  priority: varchar("priority", { length: 20 }).default("normal"), // low, normal, high, urgent
-  delay_minutes: integer("delay_minutes").default(0), // Delay before sending
-  
-  // Audit
-  created_by: integer("created_by").references(() => users.id),
-  updated_by: integer("updated_by").references(() => users.id),
-  created_at: timestamp("created_at").defaultNow(),
-  updated_at: timestamp("updated_at").defaultNow(),
-});
+export const notification_event_settings = pgTable(
+  "notification_event_settings",
+  {
+    id: serial("id").primaryKey(),
+
+    // Event identification
+    event_key: varchar("event_key", { length: 100 }).notNull().unique(), // unique event identifier
+    event_name: varchar("event_name", { length: 200 }).notNull(),
+    event_name_ar: varchar("event_name_ar", { length: 200 }).notNull(),
+    event_description: text("event_description"),
+    event_description_ar: text("event_description_ar"),
+    event_category: varchar("event_category", { length: 50 }).notNull(), // orders, production, quality, maintenance, hr, system
+
+    // Activation
+    is_enabled: boolean("is_enabled").default(true),
+
+    // WhatsApp settings
+    whatsapp_enabled: boolean("whatsapp_enabled").default(false),
+    whatsapp_template_id: integer("whatsapp_template_id").references(
+      () => notification_templates.id,
+    ),
+
+    // Message customization
+    message_template: text("message_template"), // Custom message template with variables
+    message_template_ar: text("message_template_ar"),
+
+    // Recipients configuration
+    recipient_type: varchar("recipient_type", { length: 30 }).default(
+      "specific_users",
+    ), // all_admins, specific_users, specific_roles, customer
+    recipient_user_ids: json("recipient_user_ids").$type<number[]>(), // Array of user IDs
+    recipient_role_ids: json("recipient_role_ids").$type<number[]>(), // Array of role IDs
+    recipient_phone_numbers: json("recipient_phone_numbers").$type<string[]>(), // Array of direct phone numbers
+    notify_customer: boolean("notify_customer").default(false), // Send to customer associated with the event
+
+    // Condition settings (for threshold-based events)
+    condition_enabled: boolean("condition_enabled").default(false),
+    condition_field: varchar("condition_field", { length: 100 }), // Field to check
+    condition_operator: varchar("condition_operator", { length: 20 }), // gt, lt, eq, gte, lte
+    condition_value: varchar("condition_value", { length: 100 }), // Threshold value
+
+    // Priority and timing
+    priority: varchar("priority", { length: 20 }).default("normal"), // low, normal, high, urgent
+    delay_minutes: integer("delay_minutes").default(0), // Delay before sending
+
+    // Audit
+    created_by: integer("created_by").references(() => users.id),
+    updated_by: integer("updated_by").references(() => users.id),
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+);
 
 // 📝 جدول سجل الإشعارات المرسلة - Notification Event Logs
 export const notification_event_logs = pgTable("notification_event_logs", {
   id: serial("id").primaryKey(),
-  
+
   // Event reference
-  event_setting_id: integer("event_setting_id").references(() => notification_event_settings.id),
+  event_setting_id: integer("event_setting_id").references(
+    () => notification_event_settings.id,
+  ),
   event_key: varchar("event_key", { length: 100 }).notNull(),
-  
+
   // Trigger context
   trigger_context_type: varchar("trigger_context_type", { length: 50 }), // order, production_order, roll, maintenance, etc.
   trigger_context_id: varchar("trigger_context_id", { length: 50 }),
   trigger_data: json("trigger_data").$type<Record<string, any>>(), // Original event data
-  
+
   // Message sent
   message_sent: text("message_sent"),
   message_sent_ar: text("message_sent_ar"),
-  
+
   // Recipient info
   recipient_phone: varchar("recipient_phone", { length: 30 }),
   recipient_user_id: integer("recipient_user_id").references(() => users.id),
   recipient_name: varchar("recipient_name", { length: 200 }),
-  
+
   // Status
   status: varchar("status", { length: 30 }).default("pending"), // pending, sent, delivered, failed, read
   error_message: text("error_message"),
   external_message_id: varchar("external_message_id", { length: 100 }), // WhatsApp/Twilio message ID
-  
+
   // Timestamps
   triggered_at: timestamp("triggered_at").defaultNow(),
   sent_at: timestamp("sent_at"),
@@ -1518,20 +1568,29 @@ export const notification_event_logs = pgTable("notification_event_logs", {
 });
 
 // Insert schemas for new tables
-export const insertNotificationEventSettingSchema = createInsertSchema(notification_event_settings).omit({
+export const insertNotificationEventSettingSchema = createInsertSchema(
+  notification_event_settings,
+).omit({
   id: true,
   created_at: true,
   updated_at: true,
 });
 
-export const insertNotificationEventLogSchema = createInsertSchema(notification_event_logs).omit({
+export const insertNotificationEventLogSchema = createInsertSchema(
+  notification_event_logs,
+).omit({
   id: true,
   triggered_at: true,
 });
 
-export type InsertNotificationEventSetting = z.infer<typeof insertNotificationEventSettingSchema>;
-export type NotificationEventSetting = typeof notification_event_settings.$inferSelect;
-export type InsertNotificationEventLog = z.infer<typeof insertNotificationEventLogSchema>;
+export type InsertNotificationEventSetting = z.infer<
+  typeof insertNotificationEventSettingSchema
+>;
+export type NotificationEventSetting =
+  typeof notification_event_settings.$inferSelect;
+export type InsertNotificationEventLog = z.infer<
+  typeof insertNotificationEventLogSchema
+>;
 export type NotificationEventLog = typeof notification_event_logs.$inferSelect;
 
 // Relations
@@ -1785,33 +1844,41 @@ export const adminDecisionsRelations = relations(
 );
 
 // Insert schemas
-export const insertUserSchema = createInsertSchema(users).omit({
-  id: true,
-  created_at: true,
-}).extend({
-  role_id: z.union([
-    z.number().int().positive(),
-    z.string().transform((val) => {
-      if (!val || val === "none" || val === "") return null;
-      const match = val.match(/ROLE0*(\d+)/);
-      if (match) {
-        return parseInt(match[1], 10);
-      }
-      const num = parseInt(val, 10);
-      return isNaN(num) ? null : num;
-    }),
-    z.null(),
-  ]).nullable().optional(),
-  section_id: z.union([
-    z.number().int().positive(),
-    z.string().transform((val) => {
-      if (!val || val === "none" || val === "") return null;
-      const num = parseInt(val, 10);
-      return isNaN(num) ? null : num;
-    }),
-    z.null(),
-  ]).nullable().optional(),
-});
+export const insertUserSchema = createInsertSchema(users)
+  .omit({
+    id: true,
+    created_at: true,
+  })
+  .extend({
+    role_id: z
+      .union([
+        z.number().int().positive(),
+        z.string().transform((val) => {
+          if (!val || val === "none" || val === "") return null;
+          const match = val.match(/ROLE0*(\d+)/);
+          if (match) {
+            return parseInt(match[1], 10);
+          }
+          const num = parseInt(val, 10);
+          return isNaN(num) ? null : num;
+        }),
+        z.null(),
+      ])
+      .nullable()
+      .optional(),
+    section_id: z
+      .union([
+        z.number().int().positive(),
+        z.string().transform((val) => {
+          if (!val || val === "none" || val === "") return null;
+          const num = parseInt(val, 10);
+          return isNaN(num) ? null : num;
+        }),
+        z.null(),
+      ])
+      .nullable()
+      .optional(),
+  });
 
 // Order schema (legacy - will be phased out)
 
@@ -1940,7 +2007,10 @@ export const insertInventorySchema = createInsertSchema(inventory)
         if (val === null || val === undefined || val === "") return "0";
         return typeof val === "number" ? val.toString() : val;
       })
-      .refine((val) => parseFloat(val) >= 0, "المخزون الحالي يجب أن يكون صفر أو أكثر"),
+      .refine(
+        (val) => parseFloat(val) >= 0,
+        "المخزون الحالي يجب أن يكون صفر أو أكثر",
+      ),
     // min_stock validation
     min_stock: z
       .union([z.string(), z.number()])
@@ -1949,7 +2019,10 @@ export const insertInventorySchema = createInsertSchema(inventory)
         if (val === null || val === undefined || val === "") return "0";
         return typeof val === "number" ? val.toString() : val;
       })
-      .refine((val) => parseFloat(val) >= 0, "الحد الأدنى للمخزون يجب أن يكون صفر أو أكثر"),
+      .refine(
+        (val) => parseFloat(val) >= 0,
+        "الحد الأدنى للمخزون يجب أن يكون صفر أو أكثر",
+      ),
     // max_stock validation
     max_stock: z
       .union([z.string(), z.number()])
@@ -1958,7 +2031,10 @@ export const insertInventorySchema = createInsertSchema(inventory)
         if (val === null || val === undefined || val === "") return "0";
         return typeof val === "number" ? val.toString() : val;
       })
-      .refine((val) => parseFloat(val) >= 0, "الحد الأقصى للمخزون يجب أن يكون صفر أو أكثر"),
+      .refine(
+        (val) => parseFloat(val) >= 0,
+        "الحد الأقصى للمخزون يجب أن يكون صفر أو أكثر",
+      ),
     // cost_per_unit validation
     cost_per_unit: z
       .union([z.string(), z.number(), z.null()])
@@ -2113,69 +2189,79 @@ export type UpsertUser = {
   username?: string;
 };
 export type SparePart = typeof spare_parts.$inferSelect;
-export const insertSparePartSchema = createInsertSchema(spare_parts).omit({
-  id: true,
-  created_at: true,
-  updated_at: true,
-}).extend({
-  part_id: z.string().min(1).max(50),
-  machine_name: z.string().min(1).max(100),
-  part_name: z.string().min(1).max(100),
-  code: z.string().min(1).max(50),
-  serial_number: z.string().min(1).max(100),
-  specifications: z.string().optional().nullable(),
-});
+export const insertSparePartSchema = createInsertSchema(spare_parts)
+  .omit({
+    id: true,
+    created_at: true,
+    updated_at: true,
+  })
+  .extend({
+    part_id: z.string().min(1).max(50),
+    machine_name: z.string().min(1).max(100),
+    part_name: z.string().min(1).max(100),
+    code: z.string().min(1).max(50),
+    serial_number: z.string().min(1).max(100),
+    specifications: z.string().optional().nullable(),
+  });
 export const updateSparePartSchema = insertSparePartSchema.partial();
 export type InsertSparePart = z.infer<typeof insertSparePartSchema>;
 
-export const insertViolationSchema = createInsertSchema(violations).omit({
-  id: true,
-}).extend({
-  employee_id: z.coerce.number().int().positive(),
-  violation_type: z.string().min(1).max(50),
-  description: z.string().optional().nullable(),
-  date: z.coerce.date(),
-  action_taken: z.string().optional().nullable(),
-  reported_by: z.coerce.number().int().positive().optional().nullable(),
-});
+export const insertViolationSchema = createInsertSchema(violations)
+  .omit({
+    id: true,
+  })
+  .extend({
+    employee_id: z.coerce.number().int().positive(),
+    violation_type: z.string().min(1).max(50),
+    description: z.string().optional().nullable(),
+    date: z.coerce.date(),
+    action_taken: z.string().optional().nullable(),
+    reported_by: z.coerce.number().int().positive().optional().nullable(),
+  });
 export const updateViolationSchema = insertViolationSchema.partial();
 export type InsertViolation = z.infer<typeof insertViolationSchema>;
 
-export const createUserApiSchema = z.object({
-  username: z.string().min(1).max(50),
-  password: z.string().min(6).max(200).optional(),
-  display_name: z.string().min(1).max(100),
-  display_name_ar: z.string().max(100).optional().nullable(),
-  full_name: z.string().max(100).optional().nullable(),
-  phone: z.string().max(30).optional().nullable(),
-  email: z.string().email().max(120).optional().nullable(),
-  status: z.enum(["active", "inactive", "suspended"]).optional(),
-  role_id: z.union([z.number().int().positive(), z.null()]).optional(),
-  section_id: z.union([z.number().int().positive(), z.null()]).optional(),
-}).strict();
+export const createUserApiSchema = z
+  .object({
+    username: z.string().min(1).max(50),
+    password: z.string().min(6).max(200).optional(),
+    display_name: z.string().min(1).max(100),
+    display_name_ar: z.string().max(100).optional().nullable(),
+    full_name: z.string().max(100).optional().nullable(),
+    phone: z.string().max(30).optional().nullable(),
+    email: z.string().email().max(120).optional().nullable(),
+    status: z.enum(["active", "inactive", "suspended"]).optional(),
+    role_id: z.union([z.number().int().positive(), z.null()]).optional(),
+    section_id: z.union([z.number().int().positive(), z.null()]).optional(),
+  })
+  .strict();
 
-export const updateUserSchema = z.object({
-  username: z.string().min(1).max(50).optional(),
-  display_name: z.string().min(1).max(100).optional(),
-  display_name_ar: z.string().max(100).optional().nullable(),
-  full_name: z.string().max(100).optional().nullable(),
-  phone: z.string().max(30).optional().nullable(),
-  email: z.string().email().max(120).optional().nullable(),
-  status: z.enum(["active", "inactive", "suspended"]).optional(),
-  password: z.string().min(6).max(200).optional(),
-  role_id: z.union([z.number().int().positive(), z.null()]).optional(),
-  section_id: z.union([z.number().int().positive(), z.null()]).optional(),
-}).strict();
+export const updateUserSchema = z
+  .object({
+    username: z.string().min(1).max(50).optional(),
+    display_name: z.string().min(1).max(100).optional(),
+    display_name_ar: z.string().max(100).optional().nullable(),
+    full_name: z.string().max(100).optional().nullable(),
+    phone: z.string().max(30).optional().nullable(),
+    email: z.string().email().max(120).optional().nullable(),
+    status: z.enum(["active", "inactive", "suspended"]).optional(),
+    password: z.string().min(6).max(200).optional(),
+    role_id: z.union([z.number().int().positive(), z.null()]).optional(),
+    section_id: z.union([z.number().int().positive(), z.null()]).optional(),
+  })
+  .strict();
 
-export const insertMixingRecipeSchema = z.object({
-  name: z.string().min(1).max(200),
-  name_ar: z.string().max(200).optional().nullable(),
-  description: z.string().optional().nullable(),
-  ingredients: z.any().optional(),
-  total_weight: z.coerce.number().nonnegative().optional().nullable(),
-  notes: z.string().optional().nullable(),
-  is_active: z.boolean().optional(),
-}).strict();
+export const insertMixingRecipeSchema = z
+  .object({
+    name: z.string().min(1).max(200),
+    name_ar: z.string().max(200).optional().nullable(),
+    description: z.string().optional().nullable(),
+    ingredients: z.any().optional(),
+    total_weight: z.coerce.number().nonnegative().optional().nullable(),
+    notes: z.string().optional().nullable(),
+    is_active: z.boolean().optional(),
+  })
+  .strict();
 // Legacy order types - will be phased out
 export type Roll = typeof rolls.$inferSelect;
 export type InsertRoll = z.infer<typeof insertRollSchema>;
@@ -2278,11 +2364,13 @@ export const insertUserSettingSchema = createInsertSchema(user_settings).omit({
 });
 
 // Insert schema for machine_queues
-export const insertMachineQueueSchema = createInsertSchema(machine_queues).omit({
-  id: true,
-  created_at: true,
-  assigned_at: true,
-});
+export const insertMachineQueueSchema = createInsertSchema(machine_queues).omit(
+  {
+    id: true,
+    created_at: true,
+    assigned_at: true,
+  },
+);
 
 export type CustomerProduct = typeof customer_products.$inferSelect & {
   customer_name?: string;
@@ -2314,54 +2402,36 @@ export const insertCustomerProductSchema = createInsertSchema(customer_products)
   })
   .extend({
     // Transform decimal fields to handle both string and number inputs
-    width: z.preprocess(
-      (val): string | undefined => {
-        if (val === null || val === undefined || val === "") return undefined;
-        const num = typeof val === "string" ? parseFloat(val) : (val as number);
-        return isNaN(num) ? undefined : num.toString();
-      },
-      z.string().optional()
-    ),
-    left_facing: z.preprocess(
-      (val): string | undefined => {
-        if (val === null || val === undefined || val === "") return undefined;
-        const num = typeof val === "string" ? parseFloat(val) : (val as number);
-        return isNaN(num) ? undefined : num.toString();
-      },
-      z.string().optional()
-    ),
-    right_facing: z.preprocess(
-      (val): string | undefined => {
-        if (val === null || val === undefined || val === "") return undefined;
-        const num = typeof val === "string" ? parseFloat(val) : (val as number);
-        return isNaN(num) ? undefined : num.toString();
-      },
-      z.string().optional()
-    ),
-    thickness: z.preprocess(
-      (val): string | undefined => {
-        if (val === null || val === undefined || val === "") return undefined;
-        const num = typeof val === "string" ? parseFloat(val) : (val as number);
-        return isNaN(num) ? undefined : num.toString();
-      },
-      z.string().optional()
-    ),
-    unit_weight_kg: z.preprocess(
-      (val): string | undefined => {
-        if (val === null || val === undefined || val === "") return undefined;
-        const num = typeof val === "string" ? parseFloat(val) : (val as number);
-        return isNaN(num) ? undefined : num.toString();
-      },
-      z.string().optional()
-    ),
-    package_weight_kg: z.preprocess(
-      (val): string | undefined => {
-        if (val === null || val === undefined || val === "") return undefined;
-        const num = typeof val === "string" ? parseFloat(val) : (val as number);
-        return isNaN(num) ? undefined : num.toString();
-      },
-      z.string().optional()
-    ),
+    width: z.preprocess((val): string | undefined => {
+      if (val === null || val === undefined || val === "") return undefined;
+      const num = typeof val === "string" ? parseFloat(val) : (val as number);
+      return isNaN(num) ? undefined : num.toString();
+    }, z.string().optional()),
+    left_facing: z.preprocess((val): string | undefined => {
+      if (val === null || val === undefined || val === "") return undefined;
+      const num = typeof val === "string" ? parseFloat(val) : (val as number);
+      return isNaN(num) ? undefined : num.toString();
+    }, z.string().optional()),
+    right_facing: z.preprocess((val): string | undefined => {
+      if (val === null || val === undefined || val === "") return undefined;
+      const num = typeof val === "string" ? parseFloat(val) : (val as number);
+      return isNaN(num) ? undefined : num.toString();
+    }, z.string().optional()),
+    thickness: z.preprocess((val): string | undefined => {
+      if (val === null || val === undefined || val === "") return undefined;
+      const num = typeof val === "string" ? parseFloat(val) : (val as number);
+      return isNaN(num) ? undefined : num.toString();
+    }, z.string().optional()),
+    unit_weight_kg: z.preprocess((val): string | undefined => {
+      if (val === null || val === undefined || val === "") return undefined;
+      const num = typeof val === "string" ? parseFloat(val) : (val as number);
+      return isNaN(num) ? undefined : num.toString();
+    }, z.string().optional()),
+    package_weight_kg: z.preprocess((val): string | undefined => {
+      if (val === null || val === undefined || val === "") return undefined;
+      const num = typeof val === "string" ? parseFloat(val) : (val as number);
+      return isNaN(num) ? undefined : num.toString();
+    }, z.string().optional()),
     cutting_length_cm: z
       .union([z.string(), z.number()])
       .optional()
@@ -2387,20 +2457,31 @@ export const insertCustomerProductSchema = createInsertSchema(customer_products)
   });
 
 export const insertCategorySchema = createInsertSchema(categories);
-export const insertCustomerSchema = createInsertSchema(customers).omit({
-  created_at: true,
-}).extend({
-  tax_number: z.string()
-    .refine((val) => val === "" || val === null || val === undefined || val.length === 14, {
-      message: "الرقم الضريبي يجب أن يكون 14 خانة أو اتركه فارغاً",
-    })
-    .optional()
-    .nullable(),
-  unified_number: z.string().regex(/^7\d{9}$/, "الرقم الموحد يجب أن يكون 10 أرقام ويبدأ بـ 7").optional().or(z.literal("")),
-  unique_customer_number: z.string().optional().or(z.literal("")),
-  commercial_name: z.string().optional().or(z.literal("")),
-  is_active: z.boolean().default(true).optional(),
-});
+export const insertCustomerSchema = createInsertSchema(customers)
+  .omit({
+    created_at: true,
+  })
+  .extend({
+    tax_number: z
+      .string()
+      .refine(
+        (val) =>
+          val === "" || val === null || val === undefined || val.length === 14,
+        {
+          message: "الرقم الضريبي يجب أن يكون 14 خانة أو اتركه فارغاً",
+        },
+      )
+      .optional()
+      .nullable(),
+    unified_number: z
+      .string()
+      .regex(/^7\d{9}$/, "الرقم الموحد يجب أن يكون 10 أرقام ويبدأ بـ 7")
+      .optional()
+      .or(z.literal("")),
+    unique_customer_number: z.string().optional().or(z.literal("")),
+    commercial_name: z.string().optional().or(z.literal("")),
+    is_active: z.boolean().default(true).optional(),
+  });
 
 // HR System Schemas
 export const insertTrainingProgramSchema = createInsertSchema(
@@ -3009,12 +3090,15 @@ export const quickNotesRelations = relations(quick_notes, ({ one, many }) => ({
   attachments: many(note_attachments),
 }));
 
-export const noteAttachmentsRelations = relations(note_attachments, ({ one }) => ({
-  note: one(quick_notes, {
-    fields: [note_attachments.note_id],
-    references: [quick_notes.id],
+export const noteAttachmentsRelations = relations(
+  note_attachments,
+  ({ one }) => ({
+    note: one(quick_notes, {
+      fields: [note_attachments.note_id],
+      references: [quick_notes.id],
+    }),
   }),
-}));
+);
 
 // أنواع البيانات للملاحظات
 export type QuickNote = typeof quick_notes.$inferSelect;
@@ -3028,7 +3112,9 @@ export const insertQuickNoteSchema = createInsertSchema(quick_notes).omit({
   created_at: true,
   updated_at: true,
 });
-export const insertNoteAttachmentSchema = createInsertSchema(note_attachments).omit({
+export const insertNoteAttachmentSchema = createInsertSchema(
+  note_attachments,
+).omit({
   id: true,
   uploaded_at: true,
 });
@@ -3038,86 +3124,106 @@ export const insertNoteAttachmentSchema = createInsertSchema(note_attachments).o
 // =================================================================
 
 // 📦 جدول عمليات الخلط المباشرة (بدون وصفات مسبقة)
-export const mixing_batches = pgTable("mixing_batches", {
-  id: serial("id").primaryKey(),
-  batch_number: varchar("batch_number", { length: 50 }).notNull().unique(), // رقم الخلطة تلقائي
-  production_order_id: integer("production_order_id")
-    .notNull()
-    .references(() => production_orders.id), // أمر الإنتاج المرتبط
-  machine_id: varchar("machine_id", { length: 20 })
-    .notNull()
-    .references(() => machines.id), // ماكينة الفيلم
-  screw_assignment: varchar("screw_assignment", { length: 10 })
-    .notNull()
-    .default("A"), // A أو B (للماكينات ذات السكروين)
-  operator_id: integer("operator_id")
-    .notNull()
-    .references(() => users.id), // العامل الذي قام بالخلط
-  total_weight_kg: decimal("total_weight_kg", { precision: 10, scale: 2 }).notNull(), // الوزن الكلي للخلطة
-  status: varchar("status", { length: 30 }).notNull().default("completed"), // completed, cancelled
-  notes: text("notes"), // ملاحظات
-  created_at: timestamp("created_at").defaultNow().notNull(), // تاريخ ووقت الخلط
-}, (table) => ({
-  totalWeightPositive: check(
-    "total_weight_positive",
-    sql`${table.total_weight_kg} > 0`
-  ),
-  screwAssignmentValid: check(
-    "screw_assignment_valid",
-    sql`${table.screw_assignment} IN ('A', 'B')`
-  ),
-}));
+export const mixing_batches = pgTable(
+  "mixing_batches",
+  {
+    id: serial("id").primaryKey(),
+    batch_number: varchar("batch_number", { length: 50 }).notNull().unique(), // رقم الخلطة تلقائي
+    production_order_id: integer("production_order_id")
+      .notNull()
+      .references(() => production_orders.id), // أمر الإنتاج المرتبط
+    machine_id: varchar("machine_id", { length: 20 })
+      .notNull()
+      .references(() => machines.id), // ماكينة الفيلم
+    screw_assignment: varchar("screw_assignment", { length: 10 })
+      .notNull()
+      .default("A"), // A أو B (للماكينات ذات السكروين)
+    operator_id: integer("operator_id")
+      .notNull()
+      .references(() => users.id), // العامل الذي قام بالخلط
+    total_weight_kg: decimal("total_weight_kg", {
+      precision: 10,
+      scale: 2,
+    }).notNull(), // الوزن الكلي للخلطة
+    status: varchar("status", { length: 30 }).notNull().default("completed"), // completed, cancelled
+    notes: text("notes"), // ملاحظات
+    created_at: timestamp("created_at").defaultNow().notNull(), // تاريخ ووقت الخلط
+  },
+  (table) => ({
+    totalWeightPositive: check(
+      "total_weight_positive",
+      sql`${table.total_weight_kg} > 0`,
+    ),
+    screwAssignmentValid: check(
+      "screw_assignment_valid",
+      sql`${table.screw_assignment} IN ('A', 'B')`,
+    ),
+  }),
+);
 
 // 🧬 جدول المكونات المخلوطة (المواد الخام والكميات الفعلية)
-export const batch_ingredients = pgTable("batch_ingredients", {
-  id: serial("id").primaryKey(),
-  batch_id: integer("batch_id")
-    .notNull()
-    .references(() => mixing_batches.id, { onDelete: "cascade" }),
-  item_id: varchar("item_id", { length: 20 })
-    .notNull()
-    .references(() => items.id), // المادة الخام من جدول الأصناف
-  actual_weight_kg: decimal("actual_weight_kg", { precision: 10, scale: 2 }).notNull(), // الوزن الفعلي المخلوط
-  percentage: decimal("percentage", { precision: 5, scale: 2 }), // النسبة المئوية (محسوبة تلقائياً)
-  notes: text("notes"),
-}, (table) => ({
-  actualWeightPositive: check(
-    "actual_weight_positive",
-    sql`${table.actual_weight_kg} > 0`
-  ),
-  percentageValid: check(
-    "percentage_valid",
-    sql`${table.percentage} IS NULL OR (${table.percentage} > 0 AND ${table.percentage} <= 100)`
-  ),
-}));
+export const batch_ingredients = pgTable(
+  "batch_ingredients",
+  {
+    id: serial("id").primaryKey(),
+    batch_id: integer("batch_id")
+      .notNull()
+      .references(() => mixing_batches.id, { onDelete: "cascade" }),
+    item_id: varchar("item_id", { length: 20 })
+      .notNull()
+      .references(() => items.id), // المادة الخام من جدول الأصناف
+    actual_weight_kg: decimal("actual_weight_kg", {
+      precision: 10,
+      scale: 2,
+    }).notNull(), // الوزن الفعلي المخلوط
+    percentage: decimal("percentage", { precision: 5, scale: 2 }), // النسبة المئوية (محسوبة تلقائياً)
+    notes: text("notes"),
+  },
+  (table) => ({
+    actualWeightPositive: check(
+      "actual_weight_positive",
+      sql`${table.actual_weight_kg} > 0`,
+    ),
+    percentageValid: check(
+      "percentage_valid",
+      sql`${table.percentage} IS NULL OR (${table.percentage} > 0 AND ${table.percentage} <= 100)`,
+    ),
+  }),
+);
 
 // علاقات نظام الخلط المبسط
-export const mixingBatchesRelations = relations(mixing_batches, ({ one, many }) => ({
-  productionOrder: one(production_orders, {
-    fields: [mixing_batches.production_order_id],
-    references: [production_orders.id],
+export const mixingBatchesRelations = relations(
+  mixing_batches,
+  ({ one, many }) => ({
+    productionOrder: one(production_orders, {
+      fields: [mixing_batches.production_order_id],
+      references: [production_orders.id],
+    }),
+    machine: one(machines, {
+      fields: [mixing_batches.machine_id],
+      references: [machines.id],
+    }),
+    operator: one(users, {
+      fields: [mixing_batches.operator_id],
+      references: [users.id],
+    }),
+    ingredients: many(batch_ingredients),
   }),
-  machine: one(machines, {
-    fields: [mixing_batches.machine_id],
-    references: [machines.id],
-  }),
-  operator: one(users, {
-    fields: [mixing_batches.operator_id],
-    references: [users.id],
-  }),
-  ingredients: many(batch_ingredients),
-}));
+);
 
-export const batchIngredientsRelations = relations(batch_ingredients, ({ one }) => ({
-  batch: one(mixing_batches, {
-    fields: [batch_ingredients.batch_id],
-    references: [mixing_batches.id],
+export const batchIngredientsRelations = relations(
+  batch_ingredients,
+  ({ one }) => ({
+    batch: one(mixing_batches, {
+      fields: [batch_ingredients.batch_id],
+      references: [mixing_batches.id],
+    }),
+    item: one(items, {
+      fields: [batch_ingredients.item_id],
+      references: [items.id],
+    }),
   }),
-  item: one(items, {
-    fields: [batch_ingredients.item_id],
-    references: [items.id],
-  }),
-}));
+);
 
 // أنواع البيانات
 export type MixingBatch = typeof mixing_batches.$inferSelect;
@@ -3126,21 +3232,35 @@ export type BatchIngredient = typeof batch_ingredients.$inferSelect;
 export type InsertBatchIngredient = typeof batch_ingredients.$inferInsert;
 
 // مخططات التحقق من البيانات
-export const insertMixingBatchSchema = createInsertSchema(mixing_batches).omit({
-  id: true,
-  batch_number: true,
-  created_at: true,
-}).extend({
-  total_weight_kg: z.string().refine((val) => parseFloatSafe(val) > 0, "الوزن الكلي يجب أن يكون أكبر من صفر"),
-  screw_assignment: z.enum(["A", "B"]).default("A"),
-});
+export const insertMixingBatchSchema = createInsertSchema(mixing_batches)
+  .omit({
+    id: true,
+    batch_number: true,
+    created_at: true,
+  })
+  .extend({
+    total_weight_kg: z
+      .string()
+      .refine(
+        (val) => parseFloatSafe(val) > 0,
+        "الوزن الكلي يجب أن يكون أكبر من صفر",
+      ),
+    screw_assignment: z.enum(["A", "B"]).default("A"),
+  });
 
-export const insertBatchIngredientSchema = createInsertSchema(batch_ingredients).omit({
-  id: true,
-  percentage: true,
-}).extend({
-  actual_weight_kg: z.string().refine((val) => parseFloatSafe(val) > 0, "الوزن يجب أن يكون أكبر من صفر"),
-});
+export const insertBatchIngredientSchema = createInsertSchema(batch_ingredients)
+  .omit({
+    id: true,
+    percentage: true,
+  })
+  .extend({
+    actual_weight_kg: z
+      .string()
+      .refine(
+        (val) => parseFloatSafe(val) > 0,
+        "الوزن يجب أن يكون أكبر من صفر",
+      ),
+  });
 
 // Sanitized user type that excludes sensitive fields like password
 export type SafeUser = Omit<User, "password">;
@@ -3149,24 +3269,40 @@ export type SafeUser = Omit<User, "password">;
 
 export const quotes = pgTable("quotes", {
   id: serial("id").primaryKey(),
-  document_number: varchar("document_number", { length: 50 }).notNull().unique(),
+  document_number: varchar("document_number", { length: 50 })
+    .notNull()
+    .unique(),
   customer_name: varchar("customer_name", { length: 255 }).notNull(),
   tax_number: varchar("tax_number", { length: 14 }).notNull(),
-  quote_date: date("quote_date").notNull().default(sql`CURRENT_DATE`),
-  total_before_tax: decimal("total_before_tax", { precision: 12, scale: 2 }).notNull().default("0"),
-  tax_amount: decimal("tax_amount", { precision: 12, scale: 2 }).notNull().default("0"),
-  total_with_tax: decimal("total_with_tax", { precision: 12, scale: 2 }).notNull().default("0"),
+  quote_date: date("quote_date")
+    .notNull()
+    .default(sql`CURRENT_DATE`),
+  total_before_tax: decimal("total_before_tax", { precision: 12, scale: 2 })
+    .notNull()
+    .default("0"),
+  tax_amount: decimal("tax_amount", { precision: 12, scale: 2 })
+    .notNull()
+    .default("0"),
+  total_with_tax: decimal("total_with_tax", { precision: 12, scale: 2 })
+    .notNull()
+    .default("0"),
   status: varchar("status", { length: 20 }).notNull().default("draft"),
   created_by_name: varchar("created_by_name", { length: 255 }),
   created_by_phone: varchar("created_by_phone", { length: 20 }),
   notes: text("notes"),
-  created_at: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-  updated_at: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  created_at: timestamp("created_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  updated_at: timestamp("updated_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
 });
 
 export const quote_items = pgTable("quote_items", {
   id: serial("id").primaryKey(),
-  quote_id: integer("quote_id").notNull().references(() => quotes.id, { onDelete: "cascade" }),
+  quote_id: integer("quote_id")
+    .notNull()
+    .references(() => quotes.id, { onDelete: "cascade" }),
   line_number: integer("line_number").notNull(),
   item_name: varchar("item_name", { length: 255 }).notNull(),
   unit: varchar("unit", { length: 20 }).notNull(), // كيلو، قطعة، كرتون، بندل
@@ -3194,28 +3330,42 @@ export type QuoteItem = typeof quote_items.$inferSelect;
 export type InsertQuoteItem = typeof quote_items.$inferInsert;
 
 // مخططات التحقق لعروض الأسعار
-export const insertQuoteSchema = createInsertSchema(quotes).omit({
-  id: true,
-  document_number: true,
-  total_before_tax: true,
-  tax_amount: true,
-  total_with_tax: true,
-  created_at: true,
-  updated_at: true,
-}).extend({
-  customer_name: z.string().min(1, "اسم العميل مطلوب"),
-  tax_number: z.string().length(14, "الرقم الضريبي يجب أن يكون 14 رقم"),
-});
+export const insertQuoteSchema = createInsertSchema(quotes)
+  .omit({
+    id: true,
+    document_number: true,
+    total_before_tax: true,
+    tax_amount: true,
+    total_with_tax: true,
+    created_at: true,
+    updated_at: true,
+  })
+  .extend({
+    customer_name: z.string().min(1, "اسم العميل مطلوب"),
+    tax_number: z.string().length(14, "الرقم الضريبي يجب أن يكون 14 رقم"),
+  });
 
-export const insertQuoteItemSchema = createInsertSchema(quote_items).omit({
-  id: true,
-  line_total: true,
-}).extend({
-  item_name: z.string().min(1, "اسم الصنف مطلوب"),
-  unit: z.enum(["كيلو", "قطعة", "كرتون", "بندل"]),
-  unit_price: z.string().refine((val) => parseFloatSafe(val) > 0, "السعر يجب أن يكون أكبر من صفر"),
-  quantity: z.string().refine((val) => parseFloatSafe(val) > 0, "الكمية يجب أن تكون أكبر من صفر"),
-});
+export const insertQuoteItemSchema = createInsertSchema(quote_items)
+  .omit({
+    id: true,
+    line_total: true,
+  })
+  .extend({
+    item_name: z.string().min(1, "اسم الصنف مطلوب"),
+    unit: z.enum(["كيلو", "قطعة", "كرتون", "بندل"]),
+    unit_price: z
+      .string()
+      .refine(
+        (val) => parseFloatSafe(val) > 0,
+        "السعر يجب أن يكون أكبر من صفر",
+      ),
+    quantity: z
+      .string()
+      .refine(
+        (val) => parseFloatSafe(val) > 0,
+        "الكمية يجب أن تكون أكبر من صفر",
+      ),
+  });
 
 // ===== إعدادات الوكيل الذكي =====
 
@@ -3224,7 +3374,9 @@ export const ai_agent_settings = pgTable("ai_agent_settings", {
   key: varchar("key", { length: 100 }).notNull().unique(),
   value: text("value").notNull(),
   description: text("description"),
-  updated_at: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updated_at: timestamp("updated_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
   updated_by: integer("updated_by").references(() => users.id),
 });
 
@@ -3234,8 +3386,12 @@ export const ai_agent_knowledge = pgTable("ai_agent_knowledge", {
   content: text("content").notNull(),
   category: varchar("category", { length: 50 }).notNull().default("general"),
   is_active: boolean("is_active").default(true).notNull(),
-  created_at: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-  updated_at: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  created_at: timestamp("created_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  updated_at: timestamp("updated_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
   created_by: integer("created_by").references(() => users.id),
 });
 
@@ -3244,32 +3400,47 @@ export type InsertAiAgentSetting = typeof ai_agent_settings.$inferInsert;
 export type AiAgentKnowledge = typeof ai_agent_knowledge.$inferSelect;
 export type InsertAiAgentKnowledge = typeof ai_agent_knowledge.$inferInsert;
 
-export const insertAiAgentSettingSchema = createInsertSchema(ai_agent_settings).omit({
+export const insertAiAgentSettingSchema = createInsertSchema(
+  ai_agent_settings,
+).omit({
   id: true,
   updated_at: true,
 });
 
-export const insertAiAgentKnowledgeSchema = createInsertSchema(ai_agent_knowledge).omit({
+export const insertAiAgentKnowledgeSchema = createInsertSchema(
+  ai_agent_knowledge,
+).omit({
   id: true,
   created_at: true,
   updated_at: true,
 });
 
-export const ai_agent_feature_instructions = pgTable("ai_agent_feature_instructions", {
-  id: serial("id").primaryKey(),
-  feature_name: varchar("feature_name", { length: 255 }).notNull(),
-  instructions: text("instructions").notNull(),
-  is_active: boolean("is_active").default(true).notNull(),
-  priority: integer("priority").default(0).notNull(),
-  created_at: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-  updated_at: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-  created_by: integer("created_by").references(() => users.id),
-});
+export const ai_agent_feature_instructions = pgTable(
+  "ai_agent_feature_instructions",
+  {
+    id: serial("id").primaryKey(),
+    feature_name: varchar("feature_name", { length: 255 }).notNull(),
+    instructions: text("instructions").notNull(),
+    is_active: boolean("is_active").default(true).notNull(),
+    priority: integer("priority").default(0).notNull(),
+    created_at: timestamp("created_at")
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updated_at: timestamp("updated_at")
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    created_by: integer("created_by").references(() => users.id),
+  },
+);
 
-export type AiAgentFeatureInstruction = typeof ai_agent_feature_instructions.$inferSelect;
-export type InsertAiAgentFeatureInstruction = typeof ai_agent_feature_instructions.$inferInsert;
+export type AiAgentFeatureInstruction =
+  typeof ai_agent_feature_instructions.$inferSelect;
+export type InsertAiAgentFeatureInstruction =
+  typeof ai_agent_feature_instructions.$inferInsert;
 
-export const insertAiAgentFeatureInstructionSchema = createInsertSchema(ai_agent_feature_instructions).omit({
+export const insertAiAgentFeatureInstructionSchema = createInsertSchema(
+  ai_agent_feature_instructions,
+).omit({
   id: true,
   created_at: true,
   updated_at: true,
@@ -3289,15 +3460,21 @@ export const quote_templates = pgTable("quote_templates", {
   specifications: jsonb("specifications").$type<Record<string, string>>(),
   is_active: boolean("is_active").default(true).notNull(),
   category: varchar("category", { length: 100 }),
-  created_at: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-  updated_at: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  created_at: timestamp("created_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  updated_at: timestamp("updated_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
   created_by: integer("created_by").references(() => users.id),
 });
 
 export type QuoteTemplate = typeof quote_templates.$inferSelect;
 export type InsertQuoteTemplate = typeof quote_templates.$inferInsert;
 
-export const insertQuoteTemplateSchema = createInsertSchema(quote_templates).omit({
+export const insertQuoteTemplateSchema = createInsertSchema(
+  quote_templates,
+).omit({
   id: true,
   created_at: true,
   updated_at: true,
@@ -3310,26 +3487,36 @@ export const master_batch_colors = pgTable("master_batch_colors", {
   name: varchar("name", { length: 100 }).notNull(), // الاسم بالإنجليزية
   name_ar: varchar("name_ar", { length: 100 }).notNull(), // الاسم بالعربية
   color_hex: varchar("color_hex", { length: 20 }).notNull().default("#FFFFFF"), // كود اللون للعرض
-  text_color: varchar("text_color", { length: 20 }).notNull().default("#000000"), // لون النص للتباين
+  text_color: varchar("text_color", { length: 20 })
+    .notNull()
+    .default("#000000"), // لون النص للتباين
   brand: varchar("brand", { length: 100 }), // المورد مثل AL-KHlaiwi, PolyTEC
   aliases: text("aliases"), // أكواد بديلة مفصولة بفاصلة للتوافق مع البيانات القديمة
   is_active: boolean("is_active").default(true).notNull(),
   sort_order: integer("sort_order").default(0), // ترتيب العرض
-  created_at: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-  updated_at: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  created_at: timestamp("created_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  updated_at: timestamp("updated_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
 });
 
 export type MasterBatchColor = typeof master_batch_colors.$inferSelect;
 export type InsertMasterBatchColor = typeof master_batch_colors.$inferInsert;
 
-export const insertMasterBatchColorSchema = createInsertSchema(master_batch_colors).omit({
-  created_at: true,
-  updated_at: true,
-}).extend({
-  id: z.string().min(1, "كود اللون مطلوب"),
-  name: z.string().min(1, "الاسم بالإنجليزية مطلوب"),
-  name_ar: z.string().min(1, "الاسم بالعربية مطلوب"),
-});
+export const insertMasterBatchColorSchema = createInsertSchema(
+  master_batch_colors,
+)
+  .omit({
+    created_at: true,
+    updated_at: true,
+  })
+  .extend({
+    id: z.string().min(1, "كود اللون مطلوب"),
+    name: z.string().min(1, "الاسم بالإنجليزية مطلوب"),
+    name_ar: z.string().min(1, "الاسم بالعربية مطلوب"),
+  });
 
 // Chat models for OpenAI integration
 export * from "./models/chat";
@@ -3341,20 +3528,30 @@ export * from "./models/chat";
 export const raw_material_vouchers_in = pgTable("raw_material_vouchers_in", {
   id: serial("id").primaryKey(),
   voucher_number: varchar("voucher_number", { length: 50 }).notNull().unique(), // رقم السند التسلسلي RM-Rec.0001
-  voucher_type: varchar("voucher_type", { length: 30 }).notNull().default("purchase"), // purchase / opening_balance / return
+  voucher_type: varchar("voucher_type", { length: 30 })
+    .notNull()
+    .default("purchase"), // purchase / opening_balance / return
   supplier_id: integer("supplier_id").references(() => suppliers.id), // المورد (اختياري للرصيد الافتتاحي)
-  item_id: varchar("item_id", { length: 20 }).notNull().references(() => items.id), // الصنف
+  item_id: varchar("item_id", { length: 20 })
+    .notNull()
+    .references(() => items.id), // الصنف
   quantity: decimal("quantity", { precision: 12, scale: 3 }).notNull(), // الكمية
   unit: varchar("unit", { length: 20 }).notNull().default("كيلو"), // الوحدة
   unit_price: decimal("unit_price", { precision: 10, scale: 4 }), // سعر الوحدة (اختياري)
   total_price: decimal("total_price", { precision: 12, scale: 4 }), // السعر الإجمالي
   batch_number: varchar("batch_number", { length: 50 }), // رقم الدفعة
   barcode: varchar("barcode", { length: 100 }), // الباركود
-  location_id: varchar("location_id", { length: 20 }).references(() => locations.id), // موقع التخزين
+  location_id: varchar("location_id", { length: 20 }).references(
+    () => locations.id,
+  ), // موقع التخزين
   expiry_date: date("expiry_date"), // تاريخ الانتهاء
   notes: text("notes"), // ملاحظات
-  received_by: integer("received_by").notNull().references(() => users.id), // أمين المستودع المستلم
-  voucher_date: date("voucher_date").notNull().default(sql`CURRENT_DATE`), // تاريخ السند
+  received_by: integer("received_by")
+    .notNull()
+    .references(() => users.id), // أمين المستودع المستلم
+  voucher_date: date("voucher_date")
+    .notNull()
+    .default(sql`CURRENT_DATE`), // تاريخ السند
   status: varchar("status", { length: 20 }).notNull().default("completed"), // draft / completed / cancelled
   created_at: timestamp("created_at").defaultNow(),
   updated_at: timestamp("updated_at").defaultNow(),
@@ -3364,88 +3561,122 @@ export const raw_material_vouchers_in = pgTable("raw_material_vouchers_in", {
 export const raw_material_vouchers_out = pgTable("raw_material_vouchers_out", {
   id: serial("id").primaryKey(),
   voucher_number: varchar("voucher_number", { length: 50 }).notNull().unique(), // رقم السند التسلسلي RM-Del.0001
-  voucher_type: varchar("voucher_type", { length: 30 }).notNull().default("production_transfer"), // production_transfer / return_to_supplier / adjustment
-  production_order_id: integer("production_order_id").references(() => production_orders.id), // أمر الإنتاج المرتبط (اختياري)
-  item_id: varchar("item_id", { length: 20 }).notNull().references(() => items.id), // الصنف
+  voucher_type: varchar("voucher_type", { length: 30 })
+    .notNull()
+    .default("production_transfer"), // production_transfer / return_to_supplier / adjustment
+  production_order_id: integer("production_order_id").references(
+    () => production_orders.id,
+  ), // أمر الإنتاج المرتبط (اختياري)
+  item_id: varchar("item_id", { length: 20 })
+    .notNull()
+    .references(() => items.id), // الصنف
   quantity: decimal("quantity", { precision: 12, scale: 3 }).notNull(), // الكمية
   unit: varchar("unit", { length: 20 }).notNull().default("كيلو"), // الوحدة
   batch_number: varchar("batch_number", { length: 50 }), // رقم الدفعة
   barcode: varchar("barcode", { length: 100 }), // الباركود
-  from_location_id: varchar("from_location_id", { length: 20 }).references(() => locations.id), // موقع الإخراج
+  from_location_id: varchar("from_location_id", { length: 20 }).references(
+    () => locations.id,
+  ), // موقع الإخراج
   to_destination: varchar("to_destination", { length: 100 }), // الجهة المستلمة (صالة الإنتاج)
   issued_to: varchar("issued_to", { length: 100 }), // اسم المستلم في صالة الإنتاج
   notes: text("notes"), // ملاحظات
-  issued_by: integer("issued_by").notNull().references(() => users.id), // أمين المستودع المصدر
-  voucher_date: date("voucher_date").notNull().default(sql`CURRENT_DATE`), // تاريخ السند
+  issued_by: integer("issued_by")
+    .notNull()
+    .references(() => users.id), // أمين المستودع المصدر
+  voucher_date: date("voucher_date")
+    .notNull()
+    .default(sql`CURRENT_DATE`), // تاريخ السند
   status: varchar("status", { length: 20 }).notNull().default("completed"), // draft / completed / cancelled
   created_at: timestamp("created_at").defaultNow(),
   updated_at: timestamp("updated_at").defaultNow(),
 });
 
 // 📋 جدول سندات استلام المواد التامة (من صالة الإنتاج)
-export const finished_goods_vouchers_in = pgTable("finished_goods_vouchers_in", {
-  id: serial("id").primaryKey(),
-  voucher_number: varchar("voucher_number", { length: 50 }).notNull().unique(),
-  voucher_date: timestamp("voucher_date").default(sql`CURRENT_TIMESTAMP`),
-  receipt_time: timestamp("receipt_time").default(sql`CURRENT_TIMESTAMP`),
-  voucher_type: varchar("voucher_type", { length: 50 }).default("production_receipt"),
-  item_id: varchar("item_id", { length: 100 }),
-  quantity: decimal("quantity", { precision: 15, scale: 3 }).default("0"),
-  unit: varchar("unit", { length: 50 }).default("كيلو"),
-  barcode: varchar("barcode", { length: 100 }),
-  batch_number: varchar("batch_number", { length: 100 }),
-  customer_id: varchar("customer_id", { length: 100 }),
-  production_order_id: integer("production_order_id"),
-  weight_kg: decimal("weight_kg", { precision: 15, scale: 3 }),
-  pieces_count: integer("pieces_count"),
-  from_production_line: varchar("from_production_line", { length: 100 }),
-  delivered_by: varchar("delivered_by", { length: 255 }),
-  location_id: integer("location_id"),
-  notes: text("notes"),
-  items: text("items"),
-  status: varchar("status", { length: 50 }).default("completed"),
-  created_by: integer("created_by"),
-  created_at: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
-});
+export const finished_goods_vouchers_in = pgTable(
+  "finished_goods_vouchers_in",
+  {
+    id: serial("id").primaryKey(),
+    voucher_number: varchar("voucher_number", { length: 50 })
+      .notNull()
+      .unique(),
+    voucher_date: timestamp("voucher_date").default(sql`CURRENT_TIMESTAMP`),
+    receipt_time: timestamp("receipt_time").default(sql`CURRENT_TIMESTAMP`),
+    voucher_type: varchar("voucher_type", { length: 50 }).default(
+      "production_receipt",
+    ),
+    item_id: varchar("item_id", { length: 100 }),
+    quantity: decimal("quantity", { precision: 15, scale: 3 }).default("0"),
+    unit: varchar("unit", { length: 50 }).default("كيلو"),
+    barcode: varchar("barcode", { length: 100 }),
+    batch_number: varchar("batch_number", { length: 100 }),
+    customer_id: varchar("customer_id", { length: 100 }),
+    production_order_id: integer("production_order_id"),
+    weight_kg: decimal("weight_kg", { precision: 15, scale: 3 }),
+    pieces_count: integer("pieces_count"),
+    from_production_line: varchar("from_production_line", { length: 100 }),
+    delivered_by: varchar("delivered_by", { length: 255 }),
+    location_id: integer("location_id"),
+    notes: text("notes"),
+    items: text("items"),
+    status: varchar("status", { length: 50 }).default("completed"),
+    created_by: integer("created_by"),
+    created_at: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+  },
+);
 
 // 📋 جدول سندات إخراج المواد التامة (تسليم للعملاء)
-export const finished_goods_vouchers_out = pgTable("finished_goods_vouchers_out", {
-  id: serial("id").primaryKey(),
-  voucher_number: varchar("voucher_number", { length: 50 }).notNull().unique(),
-  voucher_date: timestamp("voucher_date").default(sql`CURRENT_TIMESTAMP`),
-  delivery_time: timestamp("delivery_time").default(sql`CURRENT_TIMESTAMP`),
-  voucher_type: varchar("voucher_type", { length: 50 }).default("customer_delivery"),
-  item_id: varchar("item_id", { length: 100 }),
-  quantity: decimal("quantity", { precision: 15, scale: 3 }).default("0"),
-  unit: varchar("unit", { length: 50 }).default("كيلو"),
-  barcode: varchar("barcode", { length: 100 }),
-  batch_number: varchar("batch_number", { length: 100 }),
-  customer_id: varchar("customer_id", { length: 100 }),
-  production_order_id: integer("production_order_id"),
-  driver_name: varchar("driver_name", { length: 255 }),
-  driver_phone: varchar("driver_phone", { length: 50 }),
-  vehicle_number: varchar("vehicle_number", { length: 100 }),
-  delivery_address: text("delivery_address"),
-  weight_kg: decimal("weight_kg", { precision: 15, scale: 3 }),
-  pieces_count: integer("pieces_count"),
-  location_id: integer("location_id"),
-  notes: text("notes"),
-  items: text("items"),
-  status: varchar("status", { length: 50 }).default("completed"),
-  created_by: integer("created_by"),
-  created_at: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
-});
+export const finished_goods_vouchers_out = pgTable(
+  "finished_goods_vouchers_out",
+  {
+    id: serial("id").primaryKey(),
+    voucher_number: varchar("voucher_number", { length: 50 })
+      .notNull()
+      .unique(),
+    voucher_date: timestamp("voucher_date").default(sql`CURRENT_TIMESTAMP`),
+    delivery_time: timestamp("delivery_time").default(sql`CURRENT_TIMESTAMP`),
+    voucher_type: varchar("voucher_type", { length: 50 }).default(
+      "customer_delivery",
+    ),
+    item_id: varchar("item_id", { length: 100 }),
+    quantity: decimal("quantity", { precision: 15, scale: 3 }).default("0"),
+    unit: varchar("unit", { length: 50 }).default("كيلو"),
+    barcode: varchar("barcode", { length: 100 }),
+    batch_number: varchar("batch_number", { length: 100 }),
+    customer_id: varchar("customer_id", { length: 100 }),
+    production_order_id: integer("production_order_id"),
+    driver_name: varchar("driver_name", { length: 255 }),
+    driver_phone: varchar("driver_phone", { length: 50 }),
+    vehicle_number: varchar("vehicle_number", { length: 100 }),
+    delivery_address: text("delivery_address"),
+    weight_kg: decimal("weight_kg", { precision: 15, scale: 3 }),
+    pieces_count: integer("pieces_count"),
+    location_id: integer("location_id"),
+    notes: text("notes"),
+    items: text("items"),
+    status: varchar("status", { length: 50 }).default("completed"),
+    created_by: integer("created_by"),
+    created_at: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+  },
+);
 
 // 📋 جدول الجرد
 export const inventory_counts = pgTable("inventory_counts", {
   id: serial("id").primaryKey(),
   count_number: varchar("count_number", { length: 50 }).notNull().unique(), // رقم الجرد IC-001
-  count_type: varchar("count_type", { length: 30 }).notNull().default("periodic"), // opening / periodic / annual / spot_check
-  count_date: date("count_date").notNull().default(sql`CURRENT_DATE`), // تاريخ الجرد
-  location_id: varchar("location_id", { length: 20 }).references(() => locations.id), // موقع الجرد
+  count_type: varchar("count_type", { length: 30 })
+    .notNull()
+    .default("periodic"), // opening / periodic / annual / spot_check
+  count_date: date("count_date")
+    .notNull()
+    .default(sql`CURRENT_DATE`), // تاريخ الجرد
+  location_id: varchar("location_id", { length: 20 }).references(
+    () => locations.id,
+  ), // موقع الجرد
   status: varchar("status", { length: 20 }).notNull().default("in_progress"), // draft / in_progress / completed / approved
   notes: text("notes"), // ملاحظات
-  counted_by: integer("counted_by").notNull().references(() => users.id), // من قام بالجرد
+  counted_by: integer("counted_by")
+    .notNull()
+    .references(() => users.id), // من قام بالجرد
   approved_by: integer("approved_by").references(() => users.id), // من وافق على الجرد
   approved_at: timestamp("approved_at"), // تاريخ الموافقة
   total_items_counted: integer("total_items_counted").default(0), // عدد الأصناف المجرودة
@@ -3457,14 +3688,26 @@ export const inventory_counts = pgTable("inventory_counts", {
 // 📋 جدول تفاصيل الجرد
 export const inventory_count_items = pgTable("inventory_count_items", {
   id: serial("id").primaryKey(),
-  count_id: integer("count_id").notNull().references(() => inventory_counts.id, { onDelete: "cascade" }), // رقم الجرد
-  item_id: varchar("item_id", { length: 20 }).notNull().references(() => items.id), // الصنف
+  count_id: integer("count_id")
+    .notNull()
+    .references(() => inventory_counts.id, { onDelete: "cascade" }), // رقم الجرد
+  item_id: varchar("item_id", { length: 20 })
+    .notNull()
+    .references(() => items.id), // الصنف
   barcode: varchar("barcode", { length: 100 }), // الباركود الممسوح
-  system_quantity: decimal("system_quantity", { precision: 12, scale: 3 }).notNull(), // الكمية في النظام
-  counted_quantity: decimal("counted_quantity", { precision: 12, scale: 3 }).notNull(), // الكمية المجرودة
+  system_quantity: decimal("system_quantity", {
+    precision: 12,
+    scale: 3,
+  }).notNull(), // الكمية في النظام
+  counted_quantity: decimal("counted_quantity", {
+    precision: 12,
+    scale: 3,
+  }).notNull(), // الكمية المجرودة
   difference: decimal("difference", { precision: 12, scale: 3 }).notNull(), // الفرق
   unit: varchar("unit", { length: 20 }).notNull().default("كيلو"), // الوحدة
-  location_id: varchar("location_id", { length: 20 }).references(() => locations.id), // الموقع
+  location_id: varchar("location_id", { length: 20 }).references(
+    () => locations.id,
+  ), // الموقع
   notes: text("notes"), // ملاحظات
   adjustment_created: boolean("adjustment_created").default(false), // هل تم إنشاء تسوية؟
   counted_at: timestamp("counted_at").defaultNow(), // وقت الجرد
@@ -3472,43 +3715,83 @@ export const inventory_count_items = pgTable("inventory_count_items", {
 
 // ===== مخططات التحقق للسندات =====
 
-export const insertRawMaterialVoucherInSchema = createInsertSchema(raw_material_vouchers_in).omit({
+export const insertRawMaterialVoucherInSchema = createInsertSchema(
+  raw_material_vouchers_in,
+)
+  .omit({
+    id: true,
+    created_at: true,
+    updated_at: true,
+  })
+  .extend({
+    quantity: z
+      .string()
+      .refine(
+        (val) => parseFloatSafe(val) > 0,
+        "الكمية يجب أن تكون أكبر من صفر",
+      ),
+  });
+
+export const insertRawMaterialVoucherOutSchema = createInsertSchema(
+  raw_material_vouchers_out,
+)
+  .omit({
+    id: true,
+    created_at: true,
+    updated_at: true,
+  })
+  .extend({
+    quantity: z
+      .string()
+      .refine(
+        (val) => parseFloatSafe(val) > 0,
+        "الكمية يجب أن تكون أكبر من صفر",
+      ),
+  });
+
+export const insertFinishedGoodsVoucherInSchema = createInsertSchema(
+  finished_goods_vouchers_in,
+)
+  .omit({
+    id: true,
+    created_at: true,
+  })
+  .extend({
+    quantity: z
+      .string()
+      .refine(
+        (val) => parseFloatSafe(val) > 0,
+        "الكمية يجب أن تكون أكبر من صفر",
+      ),
+  });
+
+export const insertFinishedGoodsVoucherOutSchema = createInsertSchema(
+  finished_goods_vouchers_out,
+)
+  .omit({
+    id: true,
+    created_at: true,
+  })
+  .extend({
+    quantity: z
+      .string()
+      .refine(
+        (val) => parseFloatSafe(val) > 0,
+        "الكمية يجب أن تكون أكبر من صفر",
+      ),
+  });
+
+export const insertInventoryCountSchema = createInsertSchema(
+  inventory_counts,
+).omit({
   id: true,
   created_at: true,
   updated_at: true,
-}).extend({
-  quantity: z.string().refine((val) => parseFloatSafe(val) > 0, "الكمية يجب أن تكون أكبر من صفر"),
 });
 
-export const insertRawMaterialVoucherOutSchema = createInsertSchema(raw_material_vouchers_out).omit({
-  id: true,
-  created_at: true,
-  updated_at: true,
-}).extend({
-  quantity: z.string().refine((val) => parseFloatSafe(val) > 0, "الكمية يجب أن تكون أكبر من صفر"),
-});
-
-export const insertFinishedGoodsVoucherInSchema = createInsertSchema(finished_goods_vouchers_in).omit({
-  id: true,
-  created_at: true,
-}).extend({
-  quantity: z.string().refine((val) => parseFloatSafe(val) > 0, "الكمية يجب أن تكون أكبر من صفر"),
-});
-
-export const insertFinishedGoodsVoucherOutSchema = createInsertSchema(finished_goods_vouchers_out).omit({
-  id: true,
-  created_at: true,
-}).extend({
-  quantity: z.string().refine((val) => parseFloatSafe(val) > 0, "الكمية يجب أن تكون أكبر من صفر"),
-});
-
-export const insertInventoryCountSchema = createInsertSchema(inventory_counts).omit({
-  id: true,
-  created_at: true,
-  updated_at: true,
-});
-
-export const insertInventoryCountItemSchema = createInsertSchema(inventory_count_items).omit({
+export const insertInventoryCountItemSchema = createInsertSchema(
+  inventory_count_items,
+).omit({
   id: true,
   counted_at: true,
 });
@@ -3516,106 +3799,137 @@ export const insertInventoryCountItemSchema = createInsertSchema(inventory_count
 // ===== أنواع TypeScript للسندات =====
 
 export type RawMaterialVoucherIn = typeof raw_material_vouchers_in.$inferSelect;
-export type InsertRawMaterialVoucherIn = z.infer<typeof insertRawMaterialVoucherInSchema>;
-export type RawMaterialVoucherOut = typeof raw_material_vouchers_out.$inferSelect;
-export type InsertRawMaterialVoucherOut = z.infer<typeof insertRawMaterialVoucherOutSchema>;
-export type FinishedGoodsVoucherIn = typeof finished_goods_vouchers_in.$inferSelect;
-export type InsertFinishedGoodsVoucherIn = z.infer<typeof insertFinishedGoodsVoucherInSchema>;
-export type FinishedGoodsVoucherOut = typeof finished_goods_vouchers_out.$inferSelect;
-export type InsertFinishedGoodsVoucherOut = z.infer<typeof insertFinishedGoodsVoucherOutSchema>;
+export type InsertRawMaterialVoucherIn = z.infer<
+  typeof insertRawMaterialVoucherInSchema
+>;
+export type RawMaterialVoucherOut =
+  typeof raw_material_vouchers_out.$inferSelect;
+export type InsertRawMaterialVoucherOut = z.infer<
+  typeof insertRawMaterialVoucherOutSchema
+>;
+export type FinishedGoodsVoucherIn =
+  typeof finished_goods_vouchers_in.$inferSelect;
+export type InsertFinishedGoodsVoucherIn = z.infer<
+  typeof insertFinishedGoodsVoucherInSchema
+>;
+export type FinishedGoodsVoucherOut =
+  typeof finished_goods_vouchers_out.$inferSelect;
+export type InsertFinishedGoodsVoucherOut = z.infer<
+  typeof insertFinishedGoodsVoucherOutSchema
+>;
 export type InventoryCount = typeof inventory_counts.$inferSelect;
 export type InsertInventoryCount = z.infer<typeof insertInventoryCountSchema>;
 export type InventoryCountItem = typeof inventory_count_items.$inferSelect;
-export type InsertInventoryCountItem = z.infer<typeof insertInventoryCountItemSchema>;
+export type InsertInventoryCountItem = z.infer<
+  typeof insertInventoryCountItemSchema
+>;
 
 // ===== علاقات السندات =====
 
-export const rawMaterialVouchersInRelations = relations(raw_material_vouchers_in, ({ one }) => ({
-  supplier: one(suppliers, {
-    fields: [raw_material_vouchers_in.supplier_id],
-    references: [suppliers.id],
+export const rawMaterialVouchersInRelations = relations(
+  raw_material_vouchers_in,
+  ({ one }) => ({
+    supplier: one(suppliers, {
+      fields: [raw_material_vouchers_in.supplier_id],
+      references: [suppliers.id],
+    }),
+    item: one(items, {
+      fields: [raw_material_vouchers_in.item_id],
+      references: [items.id],
+    }),
+    location: one(locations, {
+      fields: [raw_material_vouchers_in.location_id],
+      references: [locations.id],
+    }),
+    receivedByUser: one(users, {
+      fields: [raw_material_vouchers_in.received_by],
+      references: [users.id],
+    }),
   }),
-  item: one(items, {
-    fields: [raw_material_vouchers_in.item_id],
-    references: [items.id],
-  }),
-  location: one(locations, {
-    fields: [raw_material_vouchers_in.location_id],
-    references: [locations.id],
-  }),
-  receivedByUser: one(users, {
-    fields: [raw_material_vouchers_in.received_by],
-    references: [users.id],
-  }),
-}));
+);
 
-export const rawMaterialVouchersOutRelations = relations(raw_material_vouchers_out, ({ one }) => ({
-  productionOrder: one(production_orders, {
-    fields: [raw_material_vouchers_out.production_order_id],
-    references: [production_orders.id],
+export const rawMaterialVouchersOutRelations = relations(
+  raw_material_vouchers_out,
+  ({ one }) => ({
+    productionOrder: one(production_orders, {
+      fields: [raw_material_vouchers_out.production_order_id],
+      references: [production_orders.id],
+    }),
+    item: one(items, {
+      fields: [raw_material_vouchers_out.item_id],
+      references: [items.id],
+    }),
+    fromLocation: one(locations, {
+      fields: [raw_material_vouchers_out.from_location_id],
+      references: [locations.id],
+    }),
+    issuedByUser: one(users, {
+      fields: [raw_material_vouchers_out.issued_by],
+      references: [users.id],
+    }),
   }),
-  item: one(items, {
-    fields: [raw_material_vouchers_out.item_id],
-    references: [items.id],
-  }),
-  fromLocation: one(locations, {
-    fields: [raw_material_vouchers_out.from_location_id],
-    references: [locations.id],
-  }),
-  issuedByUser: one(users, {
-    fields: [raw_material_vouchers_out.issued_by],
-    references: [users.id],
-  }),
-}));
+);
 
-export const finishedGoodsVouchersInRelations = relations(finished_goods_vouchers_in, ({ one }) => ({
-  productionOrder: one(production_orders, {
-    fields: [finished_goods_vouchers_in.production_order_id],
-    references: [production_orders.id],
+export const finishedGoodsVouchersInRelations = relations(
+  finished_goods_vouchers_in,
+  ({ one }) => ({
+    productionOrder: one(production_orders, {
+      fields: [finished_goods_vouchers_in.production_order_id],
+      references: [production_orders.id],
+    }),
+    customer: one(customers, {
+      fields: [finished_goods_vouchers_in.customer_id],
+      references: [customers.id],
+    }),
   }),
-  customer: one(customers, {
-    fields: [finished_goods_vouchers_in.customer_id],
-    references: [customers.id],
-  }),
-}));
+);
 
-export const finishedGoodsVouchersOutRelations = relations(finished_goods_vouchers_out, ({ one }) => ({
-  customer: one(customers, {
-    fields: [finished_goods_vouchers_out.customer_id],
-    references: [customers.id],
+export const finishedGoodsVouchersOutRelations = relations(
+  finished_goods_vouchers_out,
+  ({ one }) => ({
+    customer: one(customers, {
+      fields: [finished_goods_vouchers_out.customer_id],
+      references: [customers.id],
+    }),
   }),
-}));
+);
 
-export const inventoryCountsRelations = relations(inventory_counts, ({ one, many }) => ({
-  location: one(locations, {
-    fields: [inventory_counts.location_id],
-    references: [locations.id],
+export const inventoryCountsRelations = relations(
+  inventory_counts,
+  ({ one, many }) => ({
+    location: one(locations, {
+      fields: [inventory_counts.location_id],
+      references: [locations.id],
+    }),
+    countedByUser: one(users, {
+      fields: [inventory_counts.counted_by],
+      references: [users.id],
+    }),
+    approvedByUser: one(users, {
+      fields: [inventory_counts.approved_by],
+      references: [users.id],
+    }),
+    items: many(inventory_count_items),
   }),
-  countedByUser: one(users, {
-    fields: [inventory_counts.counted_by],
-    references: [users.id],
-  }),
-  approvedByUser: one(users, {
-    fields: [inventory_counts.approved_by],
-    references: [users.id],
-  }),
-  items: many(inventory_count_items),
-}));
+);
 
-export const inventoryCountItemsRelations = relations(inventory_count_items, ({ one }) => ({
-  count: one(inventory_counts, {
-    fields: [inventory_count_items.count_id],
-    references: [inventory_counts.id],
+export const inventoryCountItemsRelations = relations(
+  inventory_count_items,
+  ({ one }) => ({
+    count: one(inventory_counts, {
+      fields: [inventory_count_items.count_id],
+      references: [inventory_counts.id],
+    }),
+    item: one(items, {
+      fields: [inventory_count_items.item_id],
+      references: [items.id],
+    }),
+    location: one(locations, {
+      fields: [inventory_count_items.location_id],
+      references: [locations.id],
+    }),
   }),
-  item: one(items, {
-    fields: [inventory_count_items.item_id],
-    references: [items.id],
-  }),
-  location: one(locations, {
-    fields: [inventory_count_items.location_id],
-    references: [locations.id],
-  }),
-}));
+);
 
 export const factory_layouts = pgTable("factory_layouts", {
   id: serial("id").primaryKey(),
@@ -3637,7 +3951,9 @@ export const factory_snapshots = pgTable("factory_snapshots", {
   created_at: timestamp("created_at").defaultNow(),
 });
 
-export const insertFactorySnapshotSchema = createInsertSchema(factory_snapshots).omit({ id: true, created_at: true });
+export const insertFactorySnapshotSchema = createInsertSchema(
+  factory_snapshots,
+).omit({ id: true, created_at: true });
 export type InsertFactorySnapshot = z.infer<typeof insertFactorySnapshotSchema>;
 export type FactorySnapshot = typeof factory_snapshots.$inferSelect;
 
@@ -3654,7 +3970,9 @@ export const display_slides = pgTable("display_slides", {
   updated_at: timestamp("updated_at").defaultNow(),
 });
 
-export const insertDisplaySlideSchema = createInsertSchema(display_slides).omit({ id: true, created_at: true, updated_at: true });
+export const insertDisplaySlideSchema = createInsertSchema(display_slides).omit(
+  { id: true, created_at: true, updated_at: true },
+);
 export type InsertDisplaySlide = z.infer<typeof insertDisplaySlideSchema>;
 export type DisplaySlide = typeof display_slides.$inferSelect;
 
@@ -3666,10 +3984,14 @@ export const quality_issues = pgTable("quality_issues", {
   status: varchar("status", { length: 20 }).notNull().default("open"),
   category: varchar("category", { length: 50 }).notNull(),
   stage: varchar("stage", { length: 30 }),
-  production_order_id: integer("production_order_id").references(() => production_orders.id),
+  production_order_id: integer("production_order_id").references(
+    () => production_orders.id,
+  ),
   order_id: integer("order_id").references(() => orders.id),
   roll_id: integer("roll_id").references(() => rolls.id),
-  customer_id: varchar("customer_id", { length: 20 }).references(() => customers.id),
+  customer_id: varchar("customer_id", { length: 20 }).references(
+    () => customers.id,
+  ),
   description: text("description").notNull(),
   customer_complaint_details: text("customer_complaint_details"),
   customer_action_taken: text("customer_action_taken"),
@@ -3686,22 +4008,33 @@ export const quality_issues = pgTable("quality_issues", {
   updated_at: timestamp("updated_at").defaultNow(),
 });
 
-export const quality_issue_responsibles = pgTable("quality_issue_responsibles", {
-  id: serial("id").primaryKey(),
-  quality_issue_id: integer("quality_issue_id").notNull().references(() => quality_issues.id, { onDelete: "cascade" }),
-  user_id: integer("user_id").notNull().references(() => users.id),
-  department: varchar("department", { length: 30 }).notNull(),
-  responsibility_type: varchar("responsibility_type", { length: 20 }).notNull().default("primary"),
-  action_taken: text("action_taken"),
-  penalty_type: varchar("penalty_type", { length: 30 }),
-  deduction_amount: varchar("deduction_amount", { length: 50 }),
-  notes: text("notes"),
-  created_at: timestamp("created_at").defaultNow(),
-});
+export const quality_issue_responsibles = pgTable(
+  "quality_issue_responsibles",
+  {
+    id: serial("id").primaryKey(),
+    quality_issue_id: integer("quality_issue_id")
+      .notNull()
+      .references(() => quality_issues.id, { onDelete: "cascade" }),
+    user_id: integer("user_id")
+      .notNull()
+      .references(() => users.id),
+    department: varchar("department", { length: 30 }).notNull(),
+    responsibility_type: varchar("responsibility_type", { length: 20 })
+      .notNull()
+      .default("primary"),
+    action_taken: text("action_taken"),
+    penalty_type: varchar("penalty_type", { length: 30 }),
+    deduction_amount: varchar("deduction_amount", { length: 50 }),
+    notes: text("notes"),
+    created_at: timestamp("created_at").defaultNow(),
+  },
+);
 
 export const quality_issue_actions = pgTable("quality_issue_actions", {
   id: serial("id").primaryKey(),
-  quality_issue_id: integer("quality_issue_id").notNull().references(() => quality_issues.id, { onDelete: "cascade" }),
+  quality_issue_id: integer("quality_issue_id")
+    .notNull()
+    .references(() => quality_issues.id, { onDelete: "cascade" }),
   action_type: varchar("action_type", { length: 30 }).notNull(),
   description: text("description").notNull(),
   performed_by: integer("performed_by").references(() => users.id),
@@ -3711,21 +4044,35 @@ export const quality_issue_actions = pgTable("quality_issue_actions", {
   created_at: timestamp("created_at").defaultNow(),
 });
 
-export const insertQualityIssueSchema = createInsertSchema(quality_issues).omit({ id: true, created_at: true, updated_at: true });
+export const insertQualityIssueSchema = createInsertSchema(quality_issues).omit(
+  { id: true, created_at: true, updated_at: true },
+);
 export type InsertQualityIssue = z.infer<typeof insertQualityIssueSchema>;
 export type QualityIssue = typeof quality_issues.$inferSelect;
 
-export const insertQualityIssueResponsibleSchema = createInsertSchema(quality_issue_responsibles).omit({ id: true, created_at: true });
-export type InsertQualityIssueResponsible = z.infer<typeof insertQualityIssueResponsibleSchema>;
-export type QualityIssueResponsible = typeof quality_issue_responsibles.$inferSelect;
+export const insertQualityIssueResponsibleSchema = createInsertSchema(
+  quality_issue_responsibles,
+).omit({ id: true, created_at: true });
+export type InsertQualityIssueResponsible = z.infer<
+  typeof insertQualityIssueResponsibleSchema
+>;
+export type QualityIssueResponsible =
+  typeof quality_issue_responsibles.$inferSelect;
 
-export const insertQualityIssueActionSchema = createInsertSchema(quality_issue_actions).omit({ id: true, created_at: true });
-export type InsertQualityIssueAction = z.infer<typeof insertQualityIssueActionSchema>;
+export const insertQualityIssueActionSchema = createInsertSchema(
+  quality_issue_actions,
+).omit({ id: true, created_at: true });
+export type InsertQualityIssueAction = z.infer<
+  typeof insertQualityIssueActionSchema
+>;
 export type QualityIssueAction = typeof quality_issue_actions.$inferSelect;
 
 export const face_registrations = pgTable("face_registrations", {
   id: serial("id").primaryKey(),
-  user_id: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  user_id: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" })
+    .unique(),
   face_hash: text("face_hash").notNull(),
   registered_at: timestamp("registered_at").defaultNow(),
   updated_at: timestamp("updated_at").defaultNow(),
@@ -3735,7 +4082,9 @@ export type FaceRegistration = typeof face_registrations.$inferSelect;
 
 export const mobile_device_tokens = pgTable("mobile_device_tokens", {
   id: serial("id").primaryKey(),
-  user_id: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  user_id: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   device_token: varchar("device_token", { length: 500 }).notNull(),
   platform: varchar("platform", { length: 20 }).notNull(),
   device_id: varchar("device_id", { length: 255 }),
@@ -3750,7 +4099,9 @@ export type MobileDeviceToken = typeof mobile_device_tokens.$inferSelect;
 
 export const mobile_sessions = pgTable("mobile_sessions", {
   id: serial("id").primaryKey(),
-  user_id: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  user_id: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   token: varchar("token", { length: 128 }).notNull().unique(),
   refresh_token: varchar("refresh_token", { length: 128 }).notNull().unique(),
   device_id: varchar("device_id", { length: 255 }),
@@ -3769,7 +4120,9 @@ export type MobileSession = typeof mobile_sessions.$inferSelect;
 
 export const mobile_sync_queue = pgTable("mobile_sync_queue", {
   id: serial("id").primaryKey(),
-  user_id: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  user_id: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   action_type: varchar("action_type", { length: 50 }).notNull(),
   entity_type: varchar("entity_type", { length: 50 }).notNull(),
   entity_data: jsonb("entity_data").notNull(),
@@ -3785,7 +4138,9 @@ export const mcp_api_keys = pgTable("mcp_api_keys", {
   name: varchar("name", { length: 100 }).notNull(),
   key_hash: varchar("key_hash", { length: 128 }).notNull(),
   key_prefix: varchar("key_prefix", { length: 12 }).notNull(),
-  created_by: integer("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  created_by: integer("created_by")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   is_active: boolean("is_active").default(true),
   last_used_at: timestamp("last_used_at"),
   created_at: timestamp("created_at").defaultNow(),
@@ -3793,7 +4148,11 @@ export const mcp_api_keys = pgTable("mcp_api_keys", {
 
 export type McpApiKey = typeof mcp_api_keys.$inferSelect;
 export type InsertMcpApiKey = typeof mcp_api_keys.$inferInsert;
-export const insertMcpApiKeySchema = createInsertSchema(mcp_api_keys).omit({ id: true, created_at: true, last_used_at: true });
+export const insertMcpApiKeySchema = createInsertSchema(mcp_api_keys).omit({
+  id: true,
+  created_at: true,
+  last_used_at: true,
+});
 
 export const mcp_oauth_tokens = pgTable("mcp_oauth_tokens", {
   id: serial("id").primaryKey(),
@@ -3820,7 +4179,9 @@ export const mcp_oauth_clients = pgTable("mcp_oauth_clients", {
 export const experimental_blends = pgTable("experimental_blends", {
   id: serial("id").primaryKey(),
   blend_number: varchar("blend_number", { length: 50 }).notNull(),
-  machine_id: varchar("machine_id", { length: 20 }).notNull().references(() => machines.id),
+  machine_id: varchar("machine_id", { length: 20 })
+    .notNull()
+    .references(() => machines.id),
   screw_type: varchar("screw_type", { length: 10 }).notNull().default("A"),
   notes: text("notes"),
   motor_speed_a: decimal("motor_speed_a", { precision: 8, scale: 2 }),
@@ -3841,30 +4202,44 @@ export const experimental_blends = pgTable("experimental_blends", {
 
 export const experimental_blend_items = pgTable("experimental_blend_items", {
   id: serial("id").primaryKey(),
-  blend_id: integer("blend_id").notNull().references(() => experimental_blends.id, { onDelete: "cascade" }),
+  blend_id: integer("blend_id")
+    .notNull()
+    .references(() => experimental_blends.id, { onDelete: "cascade" }),
   screw: varchar("screw", { length: 5 }).notNull().default("A"),
   material_type: varchar("material_type", { length: 50 }).notNull(),
   quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(),
   percentage: decimal("percentage", { precision: 5, scale: 2 }),
 });
 
-export const experimentalBlendsRelations = relations(experimental_blends, ({ many }) => ({
-  items: many(experimental_blend_items),
-}));
-
-export const experimentalBlendItemsRelations = relations(experimental_blend_items, ({ one }) => ({
-  blend: one(experimental_blends, {
-    fields: [experimental_blend_items.blend_id],
-    references: [experimental_blends.id],
+export const experimentalBlendsRelations = relations(
+  experimental_blends,
+  ({ many }) => ({
+    items: many(experimental_blend_items),
   }),
-}));
+);
+
+export const experimentalBlendItemsRelations = relations(
+  experimental_blend_items,
+  ({ one }) => ({
+    blend: one(experimental_blends, {
+      fields: [experimental_blend_items.blend_id],
+      references: [experimental_blends.id],
+    }),
+  }),
+);
 
 export type ExperimentalBlend = typeof experimental_blends.$inferSelect;
 export type InsertExperimentalBlend = typeof experimental_blends.$inferInsert;
-export type ExperimentalBlendItem = typeof experimental_blend_items.$inferSelect;
-export type InsertExperimentalBlendItem = typeof experimental_blend_items.$inferInsert;
-export const insertExperimentalBlendSchema = createInsertSchema(experimental_blends).omit({ id: true, created_at: true });
-export const insertExperimentalBlendItemSchema = createInsertSchema(experimental_blend_items).omit({ id: true });
+export type ExperimentalBlendItem =
+  typeof experimental_blend_items.$inferSelect;
+export type InsertExperimentalBlendItem =
+  typeof experimental_blend_items.$inferInsert;
+export const insertExperimentalBlendSchema = createInsertSchema(
+  experimental_blends,
+).omit({ id: true, created_at: true });
+export const insertExperimentalBlendItemSchema = createInsertSchema(
+  experimental_blend_items,
+).omit({ id: true });
 
 // 🧮 سجلات حاسبة وزن الكيس
 export const bag_weight_records = pgTable(
@@ -3877,11 +4252,19 @@ export const bag_weight_records = pgTable(
     bag_type: varchar("bag_type", { length: 30 }).notNull(),
     width_cm: decimal("width_cm", { precision: 8, scale: 2 }).notNull(),
     length_cm: decimal("length_cm", { precision: 8, scale: 2 }).notNull(),
-    side_gusset_cm: decimal("side_gusset_cm", { precision: 8, scale: 2 }).notNull().default("0"),
-    thickness_micron: decimal("thickness_micron", { precision: 8, scale: 2 }).notNull(),
+    side_gusset_cm: decimal("side_gusset_cm", { precision: 8, scale: 2 })
+      .notNull()
+      .default("0"),
+    thickness_micron: decimal("thickness_micron", {
+      precision: 8,
+      scale: 2,
+    }).notNull(),
     layers: integer("layers").notNull().default(1),
     density: decimal("density", { precision: 6, scale: 3 }).notNull(),
-    grams_per_bag: decimal("grams_per_bag", { precision: 12, scale: 4 }).notNull(),
+    grams_per_bag: decimal("grams_per_bag", {
+      precision: 12,
+      scale: 4,
+    }).notNull(),
     bags_per_kg: decimal("bags_per_kg", { precision: 12, scale: 2 }).notNull(),
     area_m2: decimal("area_m2", { precision: 12, scale: 4 }).notNull(),
     created_at: timestamp("created_at").notNull().defaultNow(),
@@ -3894,7 +4277,9 @@ export const bag_weight_records = pgTable(
 
 export type BagWeightRecord = typeof bag_weight_records.$inferSelect;
 export type InsertBagWeightRecord = typeof bag_weight_records.$inferInsert;
-export const insertBagWeightRecordSchema = createInsertSchema(bag_weight_records).omit({
+export const insertBagWeightRecordSchema = createInsertSchema(
+  bag_weight_records,
+).omit({
   id: true,
   user_id: true,
   created_at: true,

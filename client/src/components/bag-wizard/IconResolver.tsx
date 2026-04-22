@@ -1,6 +1,15 @@
 import {
-  ShoppingBag, Package, Smile, Trash2, FileText, Ban, Anchor, Link as LinkIcon,
-  Hand, ShieldCheck, HelpCircle,
+  ShoppingBag,
+  Package,
+  Smile,
+  Trash2,
+  FileText,
+  Ban,
+  Anchor,
+  Link as LinkIcon,
+  Hand,
+  ShieldCheck,
+  HelpCircle,
   type LucideIcon,
 } from "lucide-react";
 

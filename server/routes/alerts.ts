@@ -1,9 +1,11 @@
 import { Router } from "express";
-import type { IStorage } from "../storage";
-import { getAlertManager } from "../services/alert-manager";
-import { getSystemHealthMonitor } from "../services/system-health-monitor";
-import { getDataValidator } from "../services/data-validator";
 import { z } from "zod";
+
+import { getAlertManager } from "../services/alert-manager";
+import { getDataValidator } from "../services/data-validator";
+import { getSystemHealthMonitor } from "../services/system-health-monitor";
+
+import type { IStorage } from "../storage";
 
 export function createAlertsRouter(storage: IStorage) {
   const router = Router();
@@ -105,9 +107,11 @@ export function createAlertsRouter(storage: IStorage) {
       }
       const { notes } = req.body;
       const userId = (req as any).user?.id;
-      
+
       if (!userId) {
-        return res.status(401).json({ message: "غير مسجل الدخول - يرجى تسجيل الدخول أولاً" });
+        return res
+          .status(401)
+          .json({ message: "غير مسجل الدخول - يرجى تسجيل الدخول أولاً" });
       }
 
       const alert = await alertManager.resolveAlert(alertId, userId, notes);
@@ -126,9 +130,11 @@ export function createAlertsRouter(storage: IStorage) {
         return res.status(400).json({ message: "معرف التحذير غير صحيح" });
       }
       const userId = (req as any).user?.id;
-      
+
       if (!userId) {
-        return res.status(401).json({ message: "غير مسجل الدخول - يرجى تسجيل الدخول أولاً" });
+        return res
+          .status(401)
+          .json({ message: "غير مسجل الدخول - يرجى تسجيل الدخول أولاً" });
       }
 
       const alert = await alertManager.dismissAlert(alertId, userId);
@@ -166,11 +172,13 @@ export function createAlertsRouter(storage: IStorage) {
   router.get("/user/me", async (req, res) => {
     try {
       const userId = (req as any).user?.id;
-      
+
       if (!userId) {
-        return res.status(401).json({ message: "غير مسجل الدخول - يرجى تسجيل الدخول أولاً" });
+        return res
+          .status(401)
+          .json({ message: "غير مسجل الدخول - يرجى تسجيل الدخول أولاً" });
       }
-      
+
       const alerts = await storage.getAlertsByUser(userId);
       res.json(alerts);
     } catch (error: any) {
@@ -184,9 +192,11 @@ export function createAlertsRouter(storage: IStorage) {
     try {
       const ruleData = req.body;
       const userId = (req as any).user?.id;
-      
+
       if (!userId) {
-        return res.status(401).json({ message: "غير مسجل الدخول - يرجى تسجيل الدخول أولاً" });
+        return res
+          .status(401)
+          .json({ message: "غير مسجل الدخول - يرجى تسجيل الدخول أولاً" });
       }
 
       const rule = await alertManager.createAlertRule({

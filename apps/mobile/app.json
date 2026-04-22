@@ -28,11 +28,7 @@
       "bundler": "metro",
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [
-      "expo-router",
-      "expo-localization",
-      "expo-secure-store"
-    ],
+    "plugins": ["expo-router", "expo-localization", "expo-secure-store"],
     "extra": {
       "router": { "origin": false },
       "eas": { "projectId": "" }

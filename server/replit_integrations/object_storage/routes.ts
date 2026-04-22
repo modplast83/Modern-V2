@@ -1,5 +1,10 @@
+import {
+  ObjectStorageService,
+  ObjectNotFoundError,
+  objectStorageClient,
+} from "./objectStorage";
+
 import type { Express } from "express";
-import { ObjectStorageService, ObjectNotFoundError, objectStorageClient } from "./objectStorage";
 
 /**
  * Register object storage routes for file uploads.
@@ -48,7 +53,8 @@ export function registerObjectStorageRoutes(app: Express): void {
       const uploadURL = await objectStorageService.getObjectEntityUploadURL();
 
       // Extract object path from the presigned URL for later reference
-      const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+      const objectPath =
+        objectStorageService.normalizeObjectEntityPath(uploadURL);
 
       res.json({
         uploadURL,
@@ -79,13 +85,15 @@ export function registerObjectStorageRoutes(app: Express): void {
       try {
         const publicPaths = objectStorageService.getPublicObjectSearchPaths();
         for (const searchPath of publicPaths) {
-          const normalized = searchPath.startsWith('/') ? searchPath : `/${searchPath}`;
-          const parts = normalized.split('/');
+          const normalized = searchPath.startsWith("/")
+            ? searchPath
+            : `/${searchPath}`;
+          const parts = normalized.split("/");
           const bucketName = parts[1];
-          const bucketPrefix = parts.slice(2).join('/');
+          const bucketPrefix = parts.slice(2).join("/");
 
           // Check if the requested path starts with the bucket prefix (e.g. "public/")
-          if (bucketPrefix && pathAfterObjects.startsWith(bucketPrefix + '/')) {
+          if (bucketPrefix && pathAfterObjects.startsWith(bucketPrefix + "/")) {
             // Path already includes the prefix, use it directly
             const bucket = objectStorageClient.bucket(bucketName);
             const file = bucket.file(pathAfterObjects);
@@ -95,7 +103,9 @@ export function registerObjectStorageRoutes(app: Express): void {
             }
           }
           // Also try prepending the prefix for relative paths
-          const fullObjectName = bucketPrefix ? `${bucketPrefix}/${pathAfterObjects}` : pathAfterObjects;
+          const fullObjectName = bucketPrefix
+            ? `${bucketPrefix}/${pathAfterObjects}`
+            : pathAfterObjects;
           const bucket = objectStorageClient.bucket(bucketName);
           const file = bucket.file(fullObjectName);
           const [exists] = await file.exists();
@@ -108,7 +118,8 @@ export function registerObjectStorageRoutes(app: Express): void {
       }
 
       // Fall back to private entity file
-      const objectFile = await objectStorageService.getObjectEntityFile(reqPath);
+      const objectFile =
+        await objectStorageService.getObjectEntityFile(reqPath);
       await objectStorageService.downloadObject(objectFile, res);
     } catch (error) {
       console.error("Error serving object:", error);
@@ -119,4 +130,3 @@ export function registerObjectStorageRoutes(app: Express): void {
     }
   });
 }
-

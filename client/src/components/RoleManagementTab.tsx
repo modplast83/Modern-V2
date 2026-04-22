@@ -1,30 +1,31 @@
-import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Plus, Edit, Trash2, Shield, Check, X } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
+
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "./ui/table";
-import { Badge } from "./ui/badge";
-import { Checkbox } from "./ui/checkbox";
+  PERMISSIONS,
+  PERMISSION_CATEGORIES,
+} from "../../../shared/permissions";
 import { useToast } from "../hooks/use-toast";
 import { apiRequest } from "../lib/queryClient";
-import { PERMISSIONS, PERMISSION_CATEGORIES } from "../../../shared/permissions";
-import { Plus, Edit, Trash2, Shield, Check, X } from "lucide-react";
+
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "./ui/accordion";
+import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "./ui/card";
+import { Checkbox } from "./ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -33,24 +34,34 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "./ui/dialog";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "./ui/table";
 
 const CATEGORY_TRANSLATION_MAP: Record<string, string> = {
-  'عام': 'general',
-  'الطلبات': 'orders',
-  'الإنتاج': 'production',
-  'الصيانة': 'maintenance',
-  'الجودة': 'quality',
-  'المخزون': 'inventory',
-  'المستخدمين': 'users',
-  'الموارد البشرية': 'hr',
-  'التقارير': 'reports',
-  'المراقبة': 'monitoring',
-  'التكامل': 'integration',
-  'الوكيل الذكي': 'aiAgent',
-  'محاكاة المصنع': 'factorySimulation',
-  'شاشة العرض': 'displayScreen',
-  'التعريفات': 'definitions',
-  'النظام': 'system',
+  عام: "general",
+  الطلبات: "orders",
+  الإنتاج: "production",
+  الصيانة: "maintenance",
+  الجودة: "quality",
+  المخزون: "inventory",
+  المستخدمين: "users",
+  "الموارد البشرية": "hr",
+  التقارير: "reports",
+  المراقبة: "monitoring",
+  التكامل: "integration",
+  "الوكيل الذكي": "aiAgent",
+  "محاكاة المصنع": "factorySimulation",
+  "شاشة العرض": "displayScreen",
+  التعريفات: "definitions",
+  النظام: "system",
 };
 
 export default function RoleManagementTab() {
@@ -199,11 +210,15 @@ export default function RoleManagementTab() {
 
   const handleCategoryToggle = (category: string, isEditing = false) => {
     const categoryPermissions = availablePermissions
-      .filter(p => p.category === category)
-      .map(p => p.id);
-    
-    const currentPermissions = isEditing ? editingRole?.permissions || [] : newRole.permissions;
-    const allSelected = categoryPermissions.every(p => currentPermissions.includes(p));
+      .filter((p) => p.category === category)
+      .map((p) => p.id);
+
+    const currentPermissions = isEditing
+      ? editingRole?.permissions || []
+      : newRole.permissions;
+    const allSelected = categoryPermissions.every((p) =>
+      currentPermissions.includes(p),
+    );
 
     if (isEditing && editingRole) {
       if (allSelected) {
@@ -211,12 +226,14 @@ export default function RoleManagementTab() {
         setEditingRole({
           ...editingRole,
           permissions: editingRole.permissions.filter(
-            (p: string) => !categoryPermissions.includes(p as any)
+            (p: string) => !categoryPermissions.includes(p as any),
           ),
         });
       } else {
         // Add all category permissions
-        const newPermissions = Array.from(new Set([...editingRole.permissions, ...categoryPermissions]));
+        const newPermissions = Array.from(
+          new Set([...editingRole.permissions, ...categoryPermissions]),
+        );
         setEditingRole({
           ...editingRole,
           permissions: newPermissions,
@@ -227,11 +244,15 @@ export default function RoleManagementTab() {
         // Remove all category permissions
         setNewRole({
           ...newRole,
-          permissions: newRole.permissions.filter(p => !categoryPermissions.includes(p as any)),
+          permissions: newRole.permissions.filter(
+            (p) => !categoryPermissions.includes(p as any),
+          ),
         });
       } else {
         // Add all category permissions
-        const newPermissions = Array.from(new Set([...newRole.permissions, ...categoryPermissions]));
+        const newPermissions = Array.from(
+          new Set([...newRole.permissions, ...categoryPermissions]),
+        );
         setNewRole({
           ...newRole,
           permissions: newPermissions,
@@ -240,23 +261,37 @@ export default function RoleManagementTab() {
     }
   };
 
-  const getCategoryPermissionCount = (category: string, permissions: string[]) => {
+  const getCategoryPermissionCount = (
+    category: string,
+    permissions: string[],
+  ) => {
     const categoryPermissions = availablePermissions
-      .filter(p => p.category === category)
-      .map(p => p.id);
-    const selectedCount = categoryPermissions.filter(p => permissions.includes(p)).length;
+      .filter((p) => p.category === category)
+      .map((p) => p.id);
+    const selectedCount = categoryPermissions.filter((p) =>
+      permissions.includes(p),
+    ).length;
     return { selected: selectedCount, total: categoryPermissions.length };
   };
 
-  const PermissionsEditor = ({ permissions, isEditing }: { permissions: string[], isEditing: boolean }) => (
+  const PermissionsEditor = ({
+    permissions,
+    isEditing,
+  }: {
+    permissions: string[];
+    isEditing: boolean;
+  }) => (
     <Accordion type="multiple" className="w-full">
       {PERMISSION_CATEGORIES.map((category) => {
-        const categoryPermissions = availablePermissions.filter(p => p.category === category);
+        const categoryPermissions = availablePermissions.filter(
+          (p) => p.category === category,
+        );
         if (categoryPermissions.length === 0) return null;
-        
+
         const counts = getCategoryPermissionCount(category, permissions);
         const allSelected = counts.selected === counts.total;
-        const someSelected = counts.selected > 0 && counts.selected < counts.total;
+        const someSelected =
+          counts.selected > 0 && counts.selected < counts.total;
 
         return (
           <AccordionItem key={category} value={category}>
@@ -265,9 +300,10 @@ export default function RoleManagementTab() {
                 checked={allSelected}
                 ref={(el) => {
                   if (el) {
-                    const checkbox = el.querySelector('input');
+                    const checkbox = el.querySelector("input");
                     if (checkbox) {
-                      (checkbox as HTMLInputElement).indeterminate = someSelected;
+                      (checkbox as HTMLInputElement).indeterminate =
+                        someSelected;
                     }
                   }
                 }}
@@ -278,8 +314,13 @@ export default function RoleManagementTab() {
               />
               <AccordionTrigger className="hover:no-underline flex-1">
                 <div className="flex items-center gap-3 w-full">
-                  <span className="font-medium">{getCategoryTranslation(category)}</span>
-                  <Badge variant={counts.selected > 0 ? "default" : "outline"} className="mr-auto">
+                  <span className="font-medium">
+                    {getCategoryTranslation(category)}
+                  </span>
+                  <Badge
+                    variant={counts.selected > 0 ? "default" : "outline"}
+                    className="mr-auto"
+                  >
                     {counts.selected} / {counts.total}
                   </Badge>
                 </div>
@@ -293,16 +334,20 @@ export default function RoleManagementTab() {
                     className="flex items-start space-x-2 space-x-reverse p-2 rounded-md hover:bg-muted/50 transition-colors"
                   >
                     <Checkbox
-                      id={`${isEditing ? 'edit' : 'new'}-${permission.id}`}
+                      id={`${isEditing ? "edit" : "new"}-${permission.id}`}
                       checked={permissions.includes(permission.id)}
                       onCheckedChange={(checked) =>
-                        handlePermissionChange(permission.id, checked as boolean, isEditing)
+                        handlePermissionChange(
+                          permission.id,
+                          checked as boolean,
+                          isEditing,
+                        )
                       }
                       data-testid={`checkbox-permission-${permission.id}`}
                     />
                     <div className="flex-1 space-y-1">
                       <label
-                        htmlFor={`${isEditing ? 'edit' : 'new'}-${permission.id}`}
+                        htmlFor={`${isEditing ? "edit" : "new"}-${permission.id}`}
                         className="text-sm font-medium leading-none cursor-pointer peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                       >
                         {permission.name_ar}
@@ -333,7 +378,9 @@ export default function RoleManagementTab() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">{t("roles.totalRoles")}</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {t("roles.totalRoles")}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{roles.length}</div>
@@ -341,7 +388,9 @@ export default function RoleManagementTab() {
         </Card>
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">{t("roles.totalPermissions")}</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {t("roles.totalPermissions")}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{PERMISSIONS.length}</div>
@@ -349,10 +398,14 @@ export default function RoleManagementTab() {
         </Card>
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">{t("roles.permissionCategories")}</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {t("roles.permissionCategories")}
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{PERMISSION_CATEGORIES.length}</div>
+            <div className="text-2xl font-bold">
+              {PERMISSION_CATEGORIES.length}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -364,9 +417,7 @@ export default function RoleManagementTab() {
             <Plus className="w-5 h-5" />
             {t("roles.addRole")}
           </CardTitle>
-          <CardDescription>
-            {t("roles.addRoleDescription")}
-          </CardDescription>
+          <CardDescription>{t("roles.addRoleDescription")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -398,7 +449,10 @@ export default function RoleManagementTab() {
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>{t("roles.permissions")} ({newRole.permissions.length} {t("roles.selectedPermissions")})</Label>
+              <Label>
+                {t("roles.permissions")} ({newRole.permissions.length}{" "}
+                {t("roles.selectedPermissions")})
+              </Label>
               <div className="flex gap-2">
                 <Button
                   type="button"
@@ -430,7 +484,10 @@ export default function RoleManagementTab() {
                 </Button>
               </div>
             </div>
-            <PermissionsEditor permissions={newRole.permissions} isEditing={false} />
+            <PermissionsEditor
+              permissions={newRole.permissions}
+              isEditing={false}
+            />
           </div>
 
           <div className="flex justify-end">
@@ -491,7 +548,8 @@ export default function RoleManagementTab() {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary">
-                        {role.permissions?.length || 0} {t("roles.permissionCount")}
+                        {role.permissions?.length || 0}{" "}
+                        {t("roles.permissionCount")}
                       </Badge>
                       <Dialog>
                         <DialogTrigger asChild>
@@ -507,26 +565,40 @@ export default function RoleManagementTab() {
                         </DialogTrigger>
                         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
                           <DialogHeader>
-                            <DialogTitle>{t("roles.rolePermissions")}: {role.name_ar}</DialogTitle>
+                            <DialogTitle>
+                              {t("roles.rolePermissions")}: {role.name_ar}
+                            </DialogTitle>
                             <DialogDescription>
-                              {t("roles.rolePermissionsDescription")} ({role.permissions?.length || 0} {t("roles.permissionCount")})
+                              {t("roles.rolePermissionsDescription")} (
+                              {role.permissions?.length || 0}{" "}
+                              {t("roles.permissionCount")})
                             </DialogDescription>
                           </DialogHeader>
                           <div className="space-y-4 mt-4">
                             {PERMISSION_CATEGORIES.map((category) => {
-                              const categoryPerms = availablePermissions
-                                .filter(p => p.category === category && role.permissions?.includes(p.id));
+                              const categoryPerms = availablePermissions.filter(
+                                (p) =>
+                                  p.category === category &&
+                                  role.permissions?.includes(p.id),
+                              );
                               if (categoryPerms.length === 0) return null;
-                              
+
                               return (
                                 <div key={category} className="space-y-2">
                                   <div className="flex items-center gap-2">
-                                    <h4 className="font-medium">{getCategoryTranslation(category)}</h4>
-                                    <Badge variant="outline">{categoryPerms.length}</Badge>
+                                    <h4 className="font-medium">
+                                      {getCategoryTranslation(category)}
+                                    </h4>
+                                    <Badge variant="outline">
+                                      {categoryPerms.length}
+                                    </Badge>
                                   </div>
                                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 pr-4">
                                     {categoryPerms.map((perm) => (
-                                      <div key={perm.id} className="flex items-center gap-2 text-sm p-2 bg-muted/50 rounded">
+                                      <div
+                                        key={perm.id}
+                                        className="flex items-center gap-2 text-sm p-2 bg-muted/50 rounded"
+                                      >
                                         <Check className="w-4 h-4 text-green-600" />
                                         <span>{perm.name_ar}</span>
                                       </div>
@@ -556,7 +628,11 @@ export default function RoleManagementTab() {
                         size="sm"
                         variant="destructive"
                         onClick={() => {
-                          if (confirm(`${t("roles.confirmDelete")} "${role.name_ar}"?`)) {
+                          if (
+                            confirm(
+                              `${t("roles.confirmDelete")} "${role.name_ar}"?`,
+                            )
+                          ) {
                             deleteRoleMutation.mutate(role.id);
                           }
                         }}
@@ -600,9 +676,7 @@ export default function RoleManagementTab() {
                 <X className="w-4 h-4" />
               </Button>
             </CardTitle>
-            <CardDescription>
-              {t("roles.editRoleDescription")}
-            </CardDescription>
+            <CardDescription>{t("roles.editRoleDescription")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -638,7 +712,11 @@ export default function RoleManagementTab() {
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label>{t("roles.permissions")} ({editingRole.permissions?.length || 0} {t("roles.selectedPermissions")})</Label>
+                <Label>
+                  {t("roles.permissions")} (
+                  {editingRole.permissions?.length || 0}{" "}
+                  {t("roles.selectedPermissions")})
+                </Label>
                 <div className="flex gap-2">
                   <Button
                     type="button"
@@ -670,7 +748,10 @@ export default function RoleManagementTab() {
                   </Button>
                 </div>
               </div>
-              <PermissionsEditor permissions={editingRole.permissions || []} isEditing={true} />
+              <PermissionsEditor
+                permissions={editingRole.permissions || []}
+                isEditing={true}
+              />
             </div>
 
             <div className="flex justify-end gap-2">

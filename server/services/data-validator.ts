@@ -1,6 +1,8 @@
-import type { IStorage } from "../storage";
-import { getAlertManager } from "./alert-manager";
 import { z } from "zod";
+
+import { getAlertManager } from "./alert-manager";
+
+import type { IStorage } from "../storage";
 
 /**
  * أنواع قواعد التحقق
@@ -655,13 +657,16 @@ export class DataValidator {
       if (criticalErrors.length === 0) return;
 
       const alertManager = getAlertManager(this.storage);
-      
+
       // Dynamic lookup of admin roles to avoid hardcoded IDs
-      let target_roles = [1, 2]; // Default fallback
+      const target_roles = [1, 2]; // Default fallback
       try {
-        const roles = await this.storage.getSafeUsersByRole?.(1) || [];
+        const roles = (await this.storage.getSafeUsersByRole?.(1)) || [];
       } catch (e) {
-        console.warn("[DataValidator] Failed to resolve admin roles, using defaults:", e instanceof Error ? e.message : String(e));
+        console.warn(
+          "[DataValidator] Failed to resolve admin roles, using defaults:",
+          e instanceof Error ? e.message : String(e),
+        );
       }
 
       await alertManager.createAlert({

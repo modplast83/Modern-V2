@@ -1,6 +1,7 @@
+import { useTranslation } from "react-i18next";
+
 import PageLayout from "../components/layout/PageLayout";
 import NotificationCenter from "../components/notifications/NotificationCenter";
-import { useTranslation } from 'react-i18next';
 
 export default function NotificationsPage() {
   const { t } = useTranslation();

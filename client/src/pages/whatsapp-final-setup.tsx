@@ -1,20 +1,4 @@
-import { useState } from "react";
-import { useTranslation } from "react-i18next";
 import { useMutation } from "@tanstack/react-query";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
-import { Badge } from "../components/ui/badge";
-import { Alert, AlertDescription } from "../components/ui/alert";
-import { useToast } from "../hooks/use-toast";
-import { apiRequest } from "../lib/queryClient";
 import {
   CheckCircle,
   Send,
@@ -23,6 +7,23 @@ import {
   Zap,
   Settings,
 } from "lucide-react";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+
+import { Alert, AlertDescription } from "../components/ui/alert";
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { useToast } from "../hooks/use-toast";
+import { apiRequest } from "../lib/queryClient";
 
 export default function WhatsAppFinalSetup() {
   const { t } = useTranslation();
@@ -116,7 +117,8 @@ export default function WhatsAppFinalSetup() {
         <Alert className="border-green-200 bg-green-50">
           <CheckCircle className="h-4 w-4 text-green-600" />
           <AlertDescription className="text-green-700">
-            <strong>{t("whatsapp.finalSetup.setupComplete")}</strong> {t("whatsapp.finalSetup.setupCompleteDesc")}
+            <strong>{t("whatsapp.finalSetup.setupComplete")}</strong>{" "}
+            {t("whatsapp.finalSetup.setupCompleteDesc")}
           </AlertDescription>
         </Alert>
 
@@ -127,32 +129,52 @@ export default function WhatsAppFinalSetup() {
                 <Settings className="h-5 w-5" />
                 {t("whatsapp.finalSetup.systemStatus")}
               </CardTitle>
-              <CardDescription>{t("whatsapp.finalSetup.systemStatusDesc")}</CardDescription>
+              <CardDescription>
+                {t("whatsapp.finalSetup.systemStatusDesc")}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm">{t("whatsapp.finalSetup.twilioCredentials")}</span>
-                <Badge className="bg-green-100 text-green-800">{t("whatsapp.finalSetup.connected")}</Badge>
+                <span className="text-sm">
+                  {t("whatsapp.finalSetup.twilioCredentials")}
+                </span>
+                <Badge className="bg-green-100 text-green-800">
+                  {t("whatsapp.finalSetup.connected")}
+                </Badge>
               </div>
 
               <div className="flex items-center justify-between">
-                <span className="text-sm">{t("whatsapp.finalSetup.contentTemplate")}</span>
-                <Badge className="bg-green-100 text-green-800">{t("whatsapp.finalSetup.configured")}</Badge>
+                <span className="text-sm">
+                  {t("whatsapp.finalSetup.contentTemplate")}
+                </span>
+                <Badge className="bg-green-100 text-green-800">
+                  {t("whatsapp.finalSetup.configured")}
+                </Badge>
               </div>
 
               <div className="flex items-center justify-between">
-                <span className="text-sm">{t("whatsapp.finalSetup.metaTemplate")}</span>
-                <Badge className="bg-green-100 text-green-800">{t("whatsapp.finalSetup.approved")}</Badge>
+                <span className="text-sm">
+                  {t("whatsapp.finalSetup.metaTemplate")}
+                </span>
+                <Badge className="bg-green-100 text-green-800">
+                  {t("whatsapp.finalSetup.approved")}
+                </Badge>
               </div>
 
               <div className="flex items-center justify-between">
-                <span className="text-sm">{t("whatsapp.finalSetup.webhook")}</span>
-                <Badge className="bg-green-100 text-green-800">{t("whatsapp.finalSetup.active")}</Badge>
+                <span className="text-sm">
+                  {t("whatsapp.finalSetup.webhook")}
+                </span>
+                <Badge className="bg-green-100 text-green-800">
+                  {t("whatsapp.finalSetup.active")}
+                </Badge>
               </div>
 
               <div className="flex items-center justify-between font-medium pt-2 border-t">
                 <span>{t("whatsapp.finalSetup.overallStatus")}</span>
-                <Badge className="bg-green-600 text-white">{t("whatsapp.finalSetup.readyForProduction")}</Badge>
+                <Badge className="bg-green-600 text-white">
+                  {t("whatsapp.finalSetup.readyForProduction")}
+                </Badge>
               </div>
             </CardContent>
           </Card>
@@ -169,7 +191,9 @@ export default function WhatsAppFinalSetup() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="finalTestPhone">{t("whatsapp.finalSetup.phoneNumber")}</Label>
+                <Label htmlFor="finalTestPhone">
+                  {t("whatsapp.finalSetup.phoneNumber")}
+                </Label>
                 <Input
                   id="finalTestPhone"
                   value={phoneNumber}
@@ -181,7 +205,9 @@ export default function WhatsAppFinalSetup() {
               </div>
 
               <div>
-                <Label htmlFor="finalTestMessage">{t("whatsapp.finalSetup.message")}</Label>
+                <Label htmlFor="finalTestMessage">
+                  {t("whatsapp.finalSetup.message")}
+                </Label>
                 <Input
                   id="finalTestMessage"
                   value={message}
@@ -254,7 +280,9 @@ export default function WhatsAppFinalSetup() {
                       {feature.description}
                     </p>
                   </div>
-                  <Badge className="bg-green-100 text-green-800">{t("whatsapp.finalSetup.active")}</Badge>
+                  <Badge className="bg-green-100 text-green-800">
+                    {t("whatsapp.finalSetup.active")}
+                  </Badge>
                 </div>
               ))}
             </div>
@@ -263,7 +291,9 @@ export default function WhatsAppFinalSetup() {
 
         <Card className="border-blue-200 bg-blue-50">
           <CardHeader>
-            <CardTitle className="text-blue-800">{t("whatsapp.finalSetup.technicalDetails")}</CardTitle>
+            <CardTitle className="text-blue-800">
+              {t("whatsapp.finalSetup.technicalDetails")}
+            </CardTitle>
           </CardHeader>
           <CardContent className="text-blue-700 space-y-2 text-sm">
             <div className="flex items-center gap-2">
@@ -306,7 +336,9 @@ export default function WhatsAppFinalSetup() {
                   1
                 </span>
                 <div>
-                  <h4 className="font-medium">{t("whatsapp.finalSetup.useInProduction")}</h4>
+                  <h4 className="font-medium">
+                    {t("whatsapp.finalSetup.useInProduction")}
+                  </h4>
                   <p className="text-sm text-gray-600">
                     {t("whatsapp.finalSetup.useInProductionDesc")}
                   </p>
@@ -318,7 +350,9 @@ export default function WhatsAppFinalSetup() {
                   2
                 </span>
                 <div>
-                  <h4 className="font-medium">{t("whatsapp.finalSetup.monitorPerformance")}</h4>
+                  <h4 className="font-medium">
+                    {t("whatsapp.finalSetup.monitorPerformance")}
+                  </h4>
                   <p className="text-sm text-gray-600">
                     {t("whatsapp.finalSetup.monitorPerformanceDesc")}
                   </p>
@@ -330,7 +364,9 @@ export default function WhatsAppFinalSetup() {
                   3
                 </span>
                 <div>
-                  <h4 className="font-medium">{t("whatsapp.finalSetup.addNewTemplates")}</h4>
+                  <h4 className="font-medium">
+                    {t("whatsapp.finalSetup.addNewTemplates")}
+                  </h4>
                   <p className="text-sm text-gray-600">
                     {t("whatsapp.finalSetup.addNewTemplatesDesc")}
                   </p>

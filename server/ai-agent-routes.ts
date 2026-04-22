@@ -1,33 +1,84 @@
 import type { Express, Request, Response } from "express";
+
 import { requireAuth } from "./middleware/auth";
-import OpenAI from "openai";
-import { db } from "./db";
-import { orders, production_orders, rolls, quotes, quote_items, customers, customer_products, categories, ai_agent_settings, ai_agent_knowledge, ai_agent_feature_instructions, quote_templates, users, machines, inventory, maintenance_requests, items, company_profile, system_settings } from "@shared/schema";
-import { eq, desc, and, gte, lte, count, sum, like, or, sql, ilike } from "drizzle-orm";
-import multer, { FileFilterCallback } from "multer";
-import * as XLSX from "exceljs";
+
 import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath } from "url";
 
+import {
+  orders,
+  production_orders,
+  rolls,
+  quotes,
+  quote_items,
+  customers,
+  customer_products,
+  categories,
+  ai_agent_settings,
+  ai_agent_knowledge,
+  ai_agent_feature_instructions,
+  quote_templates,
+  users,
+  machines,
+  inventory,
+  maintenance_requests,
+  items,
+  company_profile,
+  system_settings,
+} from "@shared/schema";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-import PDFDocument from "pdfkit";
 import * as docx from "docx";
-import { objectStorageClient } from "./replit_integrations/object_storage";
-import { generateQuotePdfWithAdobe, isAdobePdfAvailable } from "./adobe-pdf-service";
-import { processArabicText, isArabicText } from "./services/arabic-text-service";
+import {
+  eq,
+  desc,
+  and,
+  gte,
+  lte,
+  count,
+  sum,
+  like,
+  or,
+  sql,
+  ilike,
+} from "drizzle-orm";
+import * as XLSX from "exceljs";
+import multer, { FileFilterCallback } from "multer";
+import OpenAI from "openai";
+import PDFDocument from "pdfkit";
 
-async function getCompanyLogoForPdf(fallbackPath: string): Promise<{ buffer: Buffer | null; path: string | null }> {
+import {
+  generateQuotePdfWithAdobe,
+  isAdobePdfAvailable,
+} from "./adobe-pdf-service";
+import { db } from "./db";
+import { objectStorageClient } from "./replit_integrations/object_storage";
+import {
+  processArabicText,
+  isArabicText,
+} from "./services/arabic-text-service";
+
+async function getCompanyLogoForPdf(
+  fallbackPath: string,
+): Promise<{ buffer: Buffer | null; path: string | null }> {
   try {
-    const [profile] = await db.select({ logo_url: company_profile.logo_url }).from(company_profile).limit(1);
+    const [profile] = await db
+      .select({ logo_url: company_profile.logo_url })
+      .from(company_profile)
+      .limit(1);
     if (profile?.logo_url && profile.logo_url.startsWith("/objects/")) {
       const parts = profile.logo_url.slice(1).split("/");
       const entityId = parts.slice(1).join("/");
       const privateDir = process.env.PRIVATE_OBJECT_DIR || "";
       if (privateDir) {
-        const fullPath = privateDir.endsWith("/") ? `${privateDir}${entityId}` : `${privateDir}/${entityId}`;
-        const pathParts = fullPath.startsWith("/") ? fullPath.slice(1).split("/") : fullPath.split("/");
+        const fullPath = privateDir.endsWith("/")
+          ? `${privateDir}${entityId}`
+          : `${privateDir}/${entityId}`;
+        const pathParts = fullPath.startsWith("/")
+          ? fullPath.slice(1).split("/")
+          : fullPath.split("/");
         const bucketName = pathParts[0];
         const objectName = pathParts.slice(1).join("/");
         const bucket = objectStorageClient.bucket(bucketName);
@@ -94,8 +145,12 @@ async function ensureAiSandboxTables() {
         created_at TIMESTAMP DEFAULT NOW()
       )
     `);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ai_sandbox_data_type ON ai_sandbox_data(data_type)`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ai_sandbox_data_batch ON ai_sandbox_data(batch_id)`);
+    await db.execute(
+      sql`CREATE INDEX IF NOT EXISTS idx_ai_sandbox_data_type ON ai_sandbox_data(data_type)`,
+    );
+    await db.execute(
+      sql`CREATE INDEX IF NOT EXISTS idx_ai_sandbox_data_batch ON ai_sandbox_data(batch_id)`,
+    );
     console.log("✅ AI sandbox tables ready (attendance + generic data)");
   } catch (error) {
     console.error("Error creating AI sandbox tables:", error);
@@ -127,7 +182,7 @@ cleanupOldDocs();
 function getAppBaseUrl(): string {
   // أولاً: التحقق من الدومين المخصص (Production)
   if (process.env.REPLIT_DOMAINS) {
-    const domains = process.env.REPLIT_DOMAINS.split(',');
+    const domains = process.env.REPLIT_DOMAINS.split(",");
     // استخدام أول دومين (عادة يكون الدومين المخصص أو الدومين الرئيسي)
     return `https://${domains[0]}`;
   }
@@ -135,22 +190,25 @@ function getAppBaseUrl(): string {
   if (process.env.REPLIT_DEV_DOMAIN) {
     return `https://${process.env.REPLIT_DEV_DOMAIN}`;
   }
-  return 'http://localhost:5000';
+  return "http://localhost:5000";
 }
 
 // دالة لرفع PDF إلى التخزين السحابي والحصول على رابط على الدومين الخاص
-async function uploadPdfToStorage(pdfBuffer: Buffer, documentNumber: string): Promise<string> {
+async function uploadPdfToStorage(
+  pdfBuffer: Buffer,
+  documentNumber: string,
+): Promise<string> {
   try {
     const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
     if (!bucketId) {
       throw new Error("Object storage not configured");
     }
-    
+
     const bucket = objectStorageClient.bucket(bucketId);
     // استخدام اسم ملف ثابت بناءً على رقم المستند فقط (بدون timestamp) للوصول المتكرر
     const fileName = `quotes/quote_${documentNumber}.pdf`;
     const file = bucket.file(fileName);
-    
+
     // رفع الملف
     await file.save(pdfBuffer, {
       contentType: "application/pdf",
@@ -158,11 +216,11 @@ async function uploadPdfToStorage(pdfBuffer: Buffer, documentNumber: string): Pr
         cacheControl: "public, max-age=86400", // 24 hours cache
       },
     });
-    
+
     // إرجاع رابط على الدومين الخاص بالتطبيق
     const baseUrl = getAppBaseUrl();
     const pdfUrl = `${baseUrl}/api/pdf/quotes/${documentNumber}`;
-    
+
     console.log(`PDF uploaded successfully. Access URL: ${pdfUrl}`);
     return pdfUrl;
   } catch (error) {
@@ -171,49 +229,83 @@ async function uploadPdfToStorage(pdfBuffer: Buffer, documentNumber: string): Pr
   }
 }
 
-
 async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
   const [quote] = await db.select().from(quotes).where(eq(quotes.id, quoteId));
   if (!quote) throw new Error("Quote not found");
 
-  const items = await db.select().from(quote_items).where(eq(quote_items.quote_id, quoteId)).orderBy(quote_items.line_number);
+  const items = await db
+    .select()
+    .from(quote_items)
+    .where(eq(quote_items.quote_id, quoteId))
+    .orderBy(quote_items.line_number);
 
-  const fmt = (n: string | number) => new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n || 0));
-  const fmtD = (d: string | Date) => { try { return new Date(d).toLocaleDateString("en-GB"); } catch { return ""; } };
+  const fmt = (n: string | number) =>
+    new Intl.NumberFormat("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number(n || 0));
+  const fmtD = (d: string | Date) => {
+    try {
+      return new Date(d).toLocaleDateString("en-GB");
+    } catch {
+      return "";
+    }
+  };
   const subtotal = Number(quote.total_before_tax || 0);
   const tax = Number(quote.tax_amount || subtotal * 0.15);
   const total = Number(quote.total_with_tax || subtotal + tax);
 
-  const lp = path.join(__dirname, 'fonts', 'factory-logo.png');
+  const lp = path.join(__dirname, "fonts", "factory-logo.png");
   const logoData = await getCompanyLogoForPdf(lp);
 
   return new Promise<Buffer>((resolve, reject) => {
     const chunks: Buffer[] = [];
     const doc = new PDFDocument({ size: "A4", margin: 30 });
-    const fp = path.join(__dirname, 'fonts', 'Amiri-Regular.ttf');
+    const fp = path.join(__dirname, "fonts", "Amiri-Regular.ttf");
     const hasAr = fs.existsSync(fp);
-    if (hasAr) doc.registerFont('Arabic', fp);
+    if (hasAr) doc.registerFont("Arabic", fp);
 
     const hasLogo = logoData.buffer !== null || logoData.path !== null;
 
-    doc.on('data', (c: Buffer) => chunks.push(c));
-    doc.on('end', () => resolve(Buffer.concat(chunks)));
-    doc.on('error', (e) => reject(e));
+    doc.on("data", (c: Buffer) => chunks.push(c));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", (e) => reject(e));
 
     const M = 30;
     const PW = 595;
     const PH = 842;
-    const L = M, R = PW - M, CW = R - L;
+    const L = M,
+      R = PW - M,
+      CW = R - L;
     let Y = M;
 
-    const arText = (t: string, x: number, y: number, w: number, opts: any = {}) => {
+    const arText = (
+      t: string,
+      x: number,
+      y: number,
+      w: number,
+      opts: any = {},
+    ) => {
       if (!hasAr) return;
-      doc.font('Arabic').text(processArabicText(t), x, y, { width: w, ...opts });
-      doc.font('Helvetica');
+      doc
+        .font("Arabic")
+        .text(processArabicText(t), x, y, { width: w, ...opts });
+      doc.font("Helvetica");
     };
 
-    const drawLine = (x1: number, y: number, x2: number, color = "#e2e8f0", width = 0.5) => {
-      doc.strokeColor(color).lineWidth(width).moveTo(x1, y).lineTo(x2, y).stroke();
+    const drawLine = (
+      x1: number,
+      y: number,
+      x2: number,
+      color = "#e2e8f0",
+      width = 0.5,
+    ) => {
+      doc
+        .strokeColor(color)
+        .lineWidth(width)
+        .moveTo(x1, y)
+        .lineTo(x2, y)
+        .stroke();
     };
 
     // ═══════════════════════════════════════════════════════
@@ -225,27 +317,44 @@ async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
       try {
         const logoSource = logoData.buffer || logoData.path!;
         doc.image(logoSource, L, Y, { width: 50, height: 50 });
-      } catch (e) { console.error("Logo:", e); }
+      } catch (e) {
+        console.error("Logo:", e);
+      }
     }
 
-    doc.font('Helvetica-Bold').fontSize(13).fillColor("#1e3a5f");
+    doc.font("Helvetica-Bold").fontSize(13).fillColor("#1e3a5f");
     doc.text("Modern Plastic Bags Factory", L + 60, Y + 4, { width: 260 });
     if (hasAr) {
-      doc.font('Arabic').fontSize(11).fillColor("#1e3a5f");
-      doc.text(processArabicText("مصنع الأكياس البلاستيكية الحديثة"), L + 60, Y + 22, { width: 260 });
-      doc.font('Helvetica');
+      doc.font("Arabic").fontSize(11).fillColor("#1e3a5f");
+      doc.text(
+        processArabicText("مصنع الأكياس البلاستيكية الحديثة"),
+        L + 60,
+        Y + 22,
+        { width: 260 },
+      );
+      doc.font("Helvetica");
     }
     doc.fontSize(7).fillColor("#666");
-    doc.text("Industrial Area, Riyadh | Saudi Arabia", L + 60, Y + 38, { width: 260 });
+    doc.text("Industrial Area, Riyadh | Saudi Arabia", L + 60, Y + 38, {
+      width: 260,
+    });
 
-    doc.font('Helvetica').fontSize(8).fillColor("#333");
+    doc.font("Helvetica").fontSize(8).fillColor("#333");
     const rCol = R - 140;
-    doc.font('Helvetica-Bold').text("Quote #:", rCol, Y + 4, { width: 55 });
-    doc.font('Helvetica').text(quote.document_number, rCol + 55, Y + 4, { width: 85 });
-    doc.font('Helvetica-Bold').text("Date:", rCol, Y + 18, { width: 55 });
-    doc.font('Helvetica').text(fmtD(quote.quote_date), rCol + 55, Y + 18, { width: 85 });
-    doc.font('Helvetica-Bold').text("Status:", rCol, Y + 32, { width: 55 });
-    doc.font('Helvetica').text((quote.status || "Draft").toUpperCase(), rCol + 55, Y + 32, { width: 85 });
+    doc.font("Helvetica-Bold").text("Quote #:", rCol, Y + 4, { width: 55 });
+    doc
+      .font("Helvetica")
+      .text(quote.document_number, rCol + 55, Y + 4, { width: 85 });
+    doc.font("Helvetica-Bold").text("Date:", rCol, Y + 18, { width: 55 });
+    doc
+      .font("Helvetica")
+      .text(fmtD(quote.quote_date), rCol + 55, Y + 18, { width: 85 });
+    doc.font("Helvetica-Bold").text("Status:", rCol, Y + 32, { width: 55 });
+    doc
+      .font("Helvetica")
+      .text((quote.status || "Draft").toUpperCase(), rCol + 55, Y + 32, {
+        width: 85,
+      });
 
     Y += headerH;
     drawLine(L, Y, R, "#1e3a5f", 2);
@@ -257,12 +366,15 @@ async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
     // TITLE
     // ═══════════════════════════════════════════════════════
     doc.rect(L, Y, CW, 22).fillColor("#1e3a5f").fill();
-    doc.font('Helvetica-Bold').fontSize(11).fillColor("#fff");
+    doc.font("Helvetica-Bold").fontSize(11).fillColor("#fff");
     doc.text("PRICE QUOTATION", L, Y + 5, { width: CW / 2, align: "center" });
     if (hasAr) {
-      doc.font('Arabic').fontSize(11).fillColor("#fff");
-      doc.text(processArabicText("عرض سعر"), L + CW / 2, Y + 5, { width: CW / 2, align: "center" });
-      doc.font('Helvetica');
+      doc.font("Arabic").fontSize(11).fillColor("#fff");
+      doc.text(processArabicText("عرض سعر"), L + CW / 2, Y + 5, {
+        width: CW / 2,
+        align: "center",
+      });
+      doc.font("Helvetica");
     }
     Y += 28;
 
@@ -275,27 +387,35 @@ async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
     const custName = quote.customer_name || "";
     const isArCust = /[\u0600-\u06FF]/.test(custName);
 
-    doc.font('Helvetica-Bold').fontSize(8).fillColor("#1e3a5f");
+    doc.font("Helvetica-Bold").fontSize(8).fillColor("#1e3a5f");
     doc.text("Customer:", L + 10, Y + 6, { width: 60 });
     if (hasAr && isArCust) {
-      doc.font('Arabic').fontSize(9).fillColor("#333");
-      doc.text(processArabicText(custName), L + 70, Y + 4, { width: CW / 2 - 80 });
-      doc.font('Helvetica');
+      doc.font("Arabic").fontSize(9).fillColor("#333");
+      doc.text(processArabicText(custName), L + 70, Y + 4, {
+        width: CW / 2 - 80,
+      });
+      doc.font("Helvetica");
     } else {
-      doc.font('Helvetica').fontSize(9).fillColor("#333");
+      doc.font("Helvetica").fontSize(9).fillColor("#333");
       doc.text(custName, L + 70, Y + 6, { width: CW / 2 - 80 });
     }
 
-    doc.font('Helvetica-Bold').fontSize(8).fillColor("#1e3a5f");
+    doc.font("Helvetica-Bold").fontSize(8).fillColor("#1e3a5f");
     doc.text("Tax Number:", L + 10, Y + 22, { width: 70 });
-    doc.font('Helvetica').fontSize(8).fillColor("#333");
+    doc.font("Helvetica").fontSize(8).fillColor("#333");
     doc.text(quote.tax_number || "N/A", L + 80, Y + 22, { width: 150 });
 
     if (hasAr) {
-      doc.font('Arabic').fontSize(7).fillColor("#888");
-      doc.text(processArabicText("العميل"), R - 120, Y + 6, { width: 110, align: "right" });
-      doc.text(processArabicText("الرقم الضريبي"), R - 120, Y + 22, { width: 110, align: "right" });
-      doc.font('Helvetica');
+      doc.font("Arabic").fontSize(7).fillColor("#888");
+      doc.text(processArabicText("العميل"), R - 120, Y + 6, {
+        width: 110,
+        align: "right",
+      });
+      doc.text(processArabicText("الرقم الضريبي"), R - 120, Y + 22, {
+        width: 110,
+        align: "right",
+      });
+      doc.font("Helvetica");
     }
 
     Y += 42;
@@ -305,23 +425,37 @@ async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
     // ═══════════════════════════════════════════════════════
     const colDefs = [
       { w: 30, hdr: "#", hdrAr: "م", align: "center" as const },
-      { w: CW - 30 - 55 - 60 - 80 - 80, hdr: "Description", hdrAr: "الوصف", align: "left" as const },
+      {
+        w: CW - 30 - 55 - 60 - 80 - 80,
+        hdr: "Description",
+        hdrAr: "الوصف",
+        align: "left" as const,
+      },
       { w: 55, hdr: "Unit", hdrAr: "الوحدة", align: "center" as const },
       { w: 60, hdr: "Qty", hdrAr: "الكمية", align: "center" as const },
-      { w: 80, hdr: "Unit Price", hdrAr: "سعر الوحدة", align: "center" as const },
+      {
+        w: 80,
+        hdr: "Unit Price",
+        hdrAr: "سعر الوحدة",
+        align: "center" as const,
+      },
       { w: 80, hdr: "Total", hdrAr: "الإجمالي", align: "center" as const },
     ];
-    const thH = 20, trH = 18;
+    const thH = 20,
+      trH = 18;
 
     doc.rect(L, Y, CW, thH).fillColor("#1e3a5f").fill();
-    doc.fillColor("#fff").font('Helvetica-Bold').fontSize(7.5);
+    doc.fillColor("#fff").font("Helvetica-Bold").fontSize(7.5);
     let cx = L;
-    colDefs.forEach(c => {
+    colDefs.forEach((c) => {
       doc.text(c.hdr, cx + 3, Y + 3, { width: c.w - 6, align: c.align });
       if (hasAr) {
-        doc.font('Arabic').fontSize(6.5);
-        doc.text(processArabicText(c.hdrAr), cx + 3, Y + 12, { width: c.w - 6, align: c.align });
-        doc.font('Helvetica-Bold').fontSize(7.5);
+        doc.font("Arabic").fontSize(6.5);
+        doc.text(processArabicText(c.hdrAr), cx + 3, Y + 12, {
+          width: c.w - 6,
+          align: c.align,
+        });
+        doc.font("Helvetica-Bold").fontSize(7.5);
       }
       cx += c.w;
     });
@@ -330,7 +464,8 @@ async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
     const footerNeed = 160 + (quote.notes ? 35 : 0);
     const maxY = PH - M - footerNeed;
     let maxRows = Math.max(0, Math.floor((maxY - Y) / trH));
-    if (items.length > maxRows && maxRows > 0) maxRows = Math.max(0, maxRows - 1);
+    if (items.length > maxRows && maxRows > 0)
+      maxRows = Math.max(0, maxRows - 1);
     const shown = items.slice(0, maxRows);
     const extra = items.length - shown.length;
 
@@ -340,18 +475,30 @@ async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
       }
 
       doc.strokeColor("#e8ecf0").lineWidth(0.3);
-      doc.moveTo(L, Y + trH).lineTo(R, Y + trH).stroke();
+      doc
+        .moveTo(L, Y + trH)
+        .lineTo(R, Y + trH)
+        .stroke();
 
       doc.fillColor("#333").fontSize(8);
       cx = L;
 
-      doc.font('Helvetica').text(String(item.line_number), cx + 3, Y + 5, { width: colDefs[0].w - 6, align: "center" });
+      doc.font("Helvetica").text(String(item.line_number), cx + 3, Y + 5, {
+        width: colDefs[0].w - 6,
+        align: "center",
+      });
       cx += colDefs[0].w;
 
       const nm = (item.item_name || "").substring(0, 55);
       if (hasAr && /[\u0600-\u06FF]/.test(nm)) {
-        doc.font('Arabic').fontSize(8).text(processArabicText(nm), cx + 3, Y + 3, { width: colDefs[1].w - 6, align: "right" });
-        doc.font('Helvetica');
+        doc
+          .font("Arabic")
+          .fontSize(8)
+          .text(processArabicText(nm), cx + 3, Y + 3, {
+            width: colDefs[1].w - 6,
+            align: "right",
+          });
+        doc.font("Helvetica");
       } else {
         doc.text(nm, cx + 3, Y + 5, { width: colDefs[1].w - 6, align: "left" });
       }
@@ -359,25 +506,43 @@ async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
 
       const ut = item.unit || "";
       if (hasAr && /[\u0600-\u06FF]/.test(ut)) {
-        doc.font('Arabic').fontSize(8).text(processArabicText(ut), cx + 3, Y + 3, { width: colDefs[2].w - 6, align: "center" });
-        doc.font('Helvetica');
+        doc
+          .font("Arabic")
+          .fontSize(8)
+          .text(processArabicText(ut), cx + 3, Y + 3, {
+            width: colDefs[2].w - 6,
+            align: "center",
+          });
+        doc.font("Helvetica");
       } else {
-        doc.text(ut, cx + 3, Y + 5, { width: colDefs[2].w - 6, align: "center" });
+        doc.text(ut, cx + 3, Y + 5, {
+          width: colDefs[2].w - 6,
+          align: "center",
+        });
       }
       cx += colDefs[2].w;
 
-      doc.font('Helvetica').fontSize(8);
-      doc.text(fmt(item.quantity), cx + 3, Y + 5, { width: colDefs[3].w - 6, align: "center" });
+      doc.font("Helvetica").fontSize(8);
+      doc.text(fmt(item.quantity), cx + 3, Y + 5, {
+        width: colDefs[3].w - 6,
+        align: "center",
+      });
       cx += colDefs[3].w;
-      doc.text(fmt(item.unit_price), cx + 3, Y + 5, { width: colDefs[4].w - 6, align: "center" });
+      doc.text(fmt(item.unit_price), cx + 3, Y + 5, {
+        width: colDefs[4].w - 6,
+        align: "center",
+      });
       cx += colDefs[4].w;
-      doc.font('Helvetica-Bold').text(fmt(item.line_total), cx + 3, Y + 5, { width: colDefs[5].w - 6, align: "center" });
+      doc.font("Helvetica-Bold").text(fmt(item.line_total), cx + 3, Y + 5, {
+        width: colDefs[5].w - 6,
+        align: "center",
+      });
 
       Y += trH;
     });
 
     if (extra > 0) {
-      doc.font('Helvetica').fontSize(7).fillColor("#888");
+      doc.font("Helvetica").fontSize(7).fillColor("#888");
       doc.text(`... +${extra} more items`, L + 5, Y + 3);
       Y += 14;
     }
@@ -388,28 +553,38 @@ async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
     // ═══════════════════════════════════════════════════════
     // TOTALS (right-aligned professional box)
     // ═══════════════════════════════════════════════════════
-    const tW = 220, tX = R - tW;
+    const tW = 220,
+      tX = R - tW;
 
     doc.rect(tX, Y, tW, 54).fillColor("#f0f4f8").fill();
     doc.strokeColor("#1e3a5f").lineWidth(0.5).rect(tX, Y, tW, 54).stroke();
 
-    const lbl = tX + 12, val = tX + 100, vw = tW - 112;
+    const lbl = tX + 12,
+      val = tX + 100,
+      vw = tW - 112;
 
-    doc.font('Helvetica').fontSize(8.5).fillColor("#333");
-    doc.text("Subtotal", lbl, Y + 7); doc.text(fmt(subtotal) + " SAR", val, Y + 7, { width: vw, align: "right" });
+    doc.font("Helvetica").fontSize(8.5).fillColor("#333");
+    doc.text("Subtotal", lbl, Y + 7);
+    doc.text(fmt(subtotal) + " SAR", val, Y + 7, { width: vw, align: "right" });
     if (hasAr) arText("المجموع", lbl, Y + 7, 80, { align: "right" });
 
-    doc.text("VAT (15%)", lbl, Y + 21); doc.text(fmt(tax) + " SAR", val, Y + 21, { width: vw, align: "right" });
-    if (hasAr) arText("ضريبة القيمة المضافة", lbl, Y + 21, 80, { align: "right" });
+    doc.text("VAT (15%)", lbl, Y + 21);
+    doc.text(fmt(tax) + " SAR", val, Y + 21, { width: vw, align: "right" });
+    if (hasAr)
+      arText("ضريبة القيمة المضافة", lbl, Y + 21, 80, { align: "right" });
 
     drawLine(tX + 8, Y + 34, tX + tW - 8, "#1e3a5f", 0.8);
 
-    doc.font('Helvetica-Bold').fontSize(10).fillColor("#1e3a5f");
-    doc.text("TOTAL", lbl, Y + 38); doc.text(fmt(total) + " SAR", val, Y + 38, { width: vw, align: "right" });
+    doc.font("Helvetica-Bold").fontSize(10).fillColor("#1e3a5f");
+    doc.text("TOTAL", lbl, Y + 38);
+    doc.text(fmt(total) + " SAR", val, Y + 38, { width: vw, align: "right" });
     if (hasAr) {
-      doc.font('Arabic').fontSize(9).fillColor("#1e3a5f");
-      doc.text(processArabicText("الإجمالي"), lbl, Y + 38, { width: 80, align: "right" });
-      doc.font('Helvetica');
+      doc.font("Arabic").fontSize(9).fillColor("#1e3a5f");
+      doc.text(processArabicText("الإجمالي"), lbl, Y + 38, {
+        width: 80,
+        align: "right",
+      });
+      doc.font("Helvetica");
     }
 
     Y += 62;
@@ -422,16 +597,19 @@ async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
       doc.rect(L, Y, CW, 30).fillColor("#fffde7").fill();
       doc.strokeColor("#f9a825").lineWidth(0.5).rect(L, Y, CW, 30).stroke();
 
-      doc.font('Helvetica-Bold').fontSize(7.5).fillColor("#e65100");
+      doc.font("Helvetica-Bold").fontSize(7.5).fillColor("#e65100");
       doc.text("Notes:", L + 8, Y + 4, { width: 40 });
       if (hasAr) arText("ملاحظات:", L + 50, Y + 4, 60, { align: "left" });
 
       if (hasAr && /[\u0600-\u06FF]/.test(nt)) {
-        doc.font('Arabic').fontSize(8).fillColor("#555");
-        doc.text(processArabicText(nt), L + 8, Y + 16, { width: CW - 16, align: "right" });
-        doc.font('Helvetica');
+        doc.font("Arabic").fontSize(8).fillColor("#555");
+        doc.text(processArabicText(nt), L + 8, Y + 16, {
+          width: CW - 16,
+          align: "right",
+        });
+        doc.font("Helvetica");
       } else {
-        doc.font('Helvetica').fontSize(7.5).fillColor("#555");
+        doc.font("Helvetica").fontSize(7.5).fillColor("#555");
         doc.text(nt, L + 8, Y + 16, { width: CW - 16 });
       }
       Y += 35;
@@ -445,21 +623,27 @@ async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
     doc.rect(L, Y, bW, 45).fillColor("#f5f7fa").fill();
     doc.strokeColor("#d0d8e0").lineWidth(0.5).rect(L, Y, bW, 45).stroke();
 
-    doc.font('Helvetica-Bold').fontSize(8).fillColor("#1e3a5f");
+    doc.font("Helvetica-Bold").fontSize(8).fillColor("#1e3a5f");
     doc.text("Terms & Validity", L + 8, Y + 5, { width: bW - 16 });
-    if (hasAr) arText("الشروط والصلاحية", L + 8, Y + 5, bW - 16, { align: "right" });
+    if (hasAr)
+      arText("الشروط والصلاحية", L + 8, Y + 5, bW - 16, { align: "right" });
 
-    doc.font('Helvetica').fontSize(7).fillColor("#555");
-    doc.text("- Valid for 15 days from issue date", L + 8, Y + 20, { width: bW - 16 });
-    doc.text("- Prices in Saudi Riyals (SAR)", L + 8, Y + 30, { width: bW - 16 });
+    doc.font("Helvetica").fontSize(7).fillColor("#555");
+    doc.text("- Valid for 15 days from issue date", L + 8, Y + 20, {
+      width: bW - 16,
+    });
+    doc.text("- Prices in Saudi Riyals (SAR)", L + 8, Y + 30, {
+      width: bW - 16,
+    });
 
     const sX = L + bW + 15;
     doc.rect(sX, Y, bW, 45).fillColor("#f5f7fa").fill();
     doc.strokeColor("#d0d8e0").lineWidth(0.5).rect(sX, Y, bW, 45).stroke();
 
-    doc.font('Helvetica-Bold').fontSize(8).fillColor("#1e3a5f");
+    doc.font("Helvetica-Bold").fontSize(8).fillColor("#1e3a5f");
     doc.text("Authorized Signature", sX + 8, Y + 5, { width: bW - 16 });
-    if (hasAr) arText("التوقيع المعتمد", sX + 8, Y + 5, bW - 16, { align: "right" });
+    if (hasAr)
+      arText("التوقيع المعتمد", sX + 8, Y + 5, bW - 16, { align: "right" });
 
     drawLine(sX + 15, Y + 35, sX + bW - 15, "#999", 0.5);
 
@@ -471,19 +655,25 @@ async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
     drawLine(L, Y, R, "#d0d8e0", 0.3);
     Y += 5;
 
-    doc.font('Helvetica').fontSize(7).fillColor("#999");
+    doc.font("Helvetica").fontSize(7).fillColor("#999");
     if (quote.created_by_name) {
       const pn = quote.created_by_name || "";
       const ph = quote.created_by_phone ? ` | ${quote.created_by_phone}` : "";
       if (hasAr && /[\u0600-\u06FF]/.test(pn)) {
         doc.text("Prepared by: ", L, Y, { width: 55 });
-        doc.font('Arabic').fontSize(7).text(processArabicText(pn) + ph, L + 55, Y, { width: 200 });
-        doc.font('Helvetica');
+        doc
+          .font("Arabic")
+          .fontSize(7)
+          .text(processArabicText(pn) + ph, L + 55, Y, { width: 200 });
+        doc.font("Helvetica");
       } else {
         doc.text(`Prepared by: ${pn}${ph}`, L, Y, { width: 300 });
       }
     }
-    doc.text("Thank you for your business", L, Y, { width: CW, align: "right" });
+    doc.text("Thank you for your business", L, Y, {
+      width: CW,
+      align: "right",
+    });
 
     doc.end();
   });
@@ -525,22 +715,36 @@ const currencyNames: Record<string, string> = {
 const upload = multer({
   dest: "/tmp/ai-uploads/",
   limits: { fileSize: 25 * 1024 * 1024 }, // 25MB max for audio files
-  fileFilter: (_req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
+  fileFilter: (
+    _req: Request,
+    file: Express.Multer.File,
+    cb: FileFilterCallback,
+  ) => {
     const allowedTypes = [
-      "image/jpeg", "image/png", "image/gif", "image/webp",
-      "text/plain", "text/csv",
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+      "text/plain",
+      "text/csv",
       "application/pdf",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "application/vnd.ms-excel",
-      "audio/mpeg", "audio/mp3", "audio/wav", "audio/ogg", "audio/webm", "audio/m4a",
-      "video/webm", "video/mp4"
+      "audio/mpeg",
+      "audio/mp3",
+      "audio/wav",
+      "audio/ogg",
+      "audio/webm",
+      "audio/m4a",
+      "video/webm",
+      "video/mp4",
     ];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
       cb(new Error("نوع الملف غير مدعوم"));
     }
-  }
+  },
 });
 
 // دالة لجلب محتوى موقع الويب
@@ -548,32 +752,33 @@ async function fetchWebsiteContent(url: string): Promise<string> {
   try {
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; ModPlastic AI Agent/1.0)',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'ar,en;q=0.9'
+        "User-Agent": "Mozilla/5.0 (compatible; ModPlastic AI Agent/1.0)",
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "ar,en;q=0.9",
       },
-      signal: AbortSignal.timeout(10000)
+      signal: AbortSignal.timeout(10000),
     });
-    
+
     if (!response.ok) {
       throw new Error(`HTTP error: ${response.status}`);
     }
-    
+
     const html = await response.text();
-    
+
     // تنظيف HTML واستخراج النص
     const textContent = html
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .replace(/&nbsp;/g, ' ')
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
       .replace(/&quot;/g, '"')
       .trim();
-    
+
     return textContent.substring(0, 15000);
   } catch (error) {
     console.error("Error fetching website:", error);
@@ -582,33 +787,42 @@ async function fetchWebsiteContent(url: string): Promise<string> {
 }
 
 // دالة للبحث الذكي في قاعدة المعرفة
-async function searchKnowledgeBase(query: string): Promise<Array<{ title: string; content: string; category: string; relevance: number }>> {
+async function searchKnowledgeBase(
+  query: string,
+): Promise<
+  Array<{ title: string; content: string; category: string; relevance: number }>
+> {
   try {
-    const keywords = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-    
-    const allKnowledge = await db.select()
+    const keywords = query
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((w) => w.length > 2);
+
+    const allKnowledge = await db
+      .select()
       .from(ai_agent_knowledge)
       .where(eq(ai_agent_knowledge.is_active, true));
-    
-    const results = allKnowledge.map(item => {
-      const titleLower = item.title.toLowerCase();
-      const contentLower = item.content.toLowerCase();
-      
-      let relevance = 0;
-      keywords.forEach(keyword => {
-        if (titleLower.includes(keyword)) relevance += 3;
-        if (contentLower.includes(keyword)) relevance += 1;
-      });
-      
-      return {
-        ...item,
-        relevance
-      };
-    })
-    .filter(item => item.relevance > 0)
-    .sort((a, b) => b.relevance - a.relevance)
-    .slice(0, 5);
-    
+
+    const results = allKnowledge
+      .map((item) => {
+        const titleLower = item.title.toLowerCase();
+        const contentLower = item.content.toLowerCase();
+
+        let relevance = 0;
+        keywords.forEach((keyword) => {
+          if (titleLower.includes(keyword)) relevance += 3;
+          if (contentLower.includes(keyword)) relevance += 1;
+        });
+
+        return {
+          ...item,
+          relevance,
+        };
+      })
+      .filter((item) => item.relevance > 0)
+      .sort((a, b) => b.relevance - a.relevance)
+      .slice(0, 5);
+
     return results;
   } catch (error) {
     console.error("Error searching knowledge base:", error);
@@ -620,15 +834,20 @@ let companyInfoCache: { data: any; timestamp: number } | null = null;
 const COMPANY_INFO_CACHE_TTL = 300000;
 
 async function getCompanyInfo(): Promise<any> {
-  if (companyInfoCache && Date.now() - companyInfoCache.timestamp < COMPANY_INFO_CACHE_TTL) {
+  if (
+    companyInfoCache &&
+    Date.now() - companyInfoCache.timestamp < COMPANY_INFO_CACHE_TTL
+  ) {
     return companyInfoCache.data;
   }
   const [profile] = await db.select().from(company_profile).limit(1);
   const settingsRows = await db.select().from(system_settings);
-  const getSetting = (key: string) => settingsRows.find(s => s.setting_key === key)?.setting_value || "";
-  
+  const getSetting = (key: string) =>
+    settingsRows.find((s) => s.setting_key === key)?.setting_value || "";
+
   const info = {
-    name: profile?.name || getSetting("company_name") || "مصنع الأكياس البلاستيكية",
+    name:
+      profile?.name || getSetting("company_name") || "مصنع الأكياس البلاستيكية",
     name_ar: profile?.name_ar || getSetting("company_name_ar") || "",
     address: profile?.address || getSetting("company_address") || "",
     phone: profile?.phone || getSetting("company_phone") || "",
@@ -646,21 +865,36 @@ let systemPromptCache: { prompt: string; timestamp: number } | null = null;
 const SYSTEM_PROMPT_CACHE_TTL = 60000;
 
 async function getSystemPrompt(): Promise<string> {
-  if (systemPromptCache && Date.now() - systemPromptCache.timestamp < SYSTEM_PROMPT_CACHE_TTL) {
+  if (
+    systemPromptCache &&
+    Date.now() - systemPromptCache.timestamp < SYSTEM_PROMPT_CACHE_TTL
+  ) {
     return systemPromptCache.prompt;
   }
   const settings = await db.select().from(ai_agent_settings);
-  const knowledge = await db.select().from(ai_agent_knowledge).where(eq(ai_agent_knowledge.is_active, true));
-  const featureInstructions = await db.select().from(ai_agent_feature_instructions).where(eq(ai_agent_feature_instructions.is_active, true)).orderBy(desc(ai_agent_feature_instructions.priority));
+  const knowledge = await db
+    .select()
+    .from(ai_agent_knowledge)
+    .where(eq(ai_agent_knowledge.is_active, true));
+  const featureInstructions = await db
+    .select()
+    .from(ai_agent_feature_instructions)
+    .where(eq(ai_agent_feature_instructions.is_active, true))
+    .orderBy(desc(ai_agent_feature_instructions.priority));
   const companyInfo = await getCompanyInfo();
-  
-  const agentName = settings.find(s => s.key === "agent_name")?.value || "المساعد الذكي";
-  const companyName = settings.find(s => s.key === "company_name")?.value || companyInfo.name;
-  const defaultGreeting = settings.find(s => s.key === "default_greeting")?.value || "";
-  const responseStyle = settings.find(s => s.key === "response_style")?.value || "ودي ومحترف";
-  const customInstructions = settings.find(s => s.key === "custom_instructions")?.value || "";
-  const vatRate = settings.find(s => s.key === "vat_rate")?.value || "0.15";
-  
+
+  const agentName =
+    settings.find((s) => s.key === "agent_name")?.value || "المساعد الذكي";
+  const companyName =
+    settings.find((s) => s.key === "company_name")?.value || companyInfo.name;
+  const defaultGreeting =
+    settings.find((s) => s.key === "default_greeting")?.value || "";
+  const responseStyle =
+    settings.find((s) => s.key === "response_style")?.value || "ودي ومحترف";
+  const customInstructions =
+    settings.find((s) => s.key === "custom_instructions")?.value || "";
+  const vatRate = settings.find((s) => s.key === "vat_rate")?.value || "0.15";
+
   let knowledgeText = "";
   if (knowledge.length > 0) {
     const knowledgeByCategory: Record<string, typeof knowledge> = {};
@@ -669,7 +903,8 @@ async function getSystemPrompt(): Promise<string> {
       if (!knowledgeByCategory[cat]) knowledgeByCategory[cat] = [];
       knowledgeByCategory[cat].push(k);
     }
-    knowledgeText = "\n\n### قاعدة المعرفة الشاملة:\n**هام جداً**: يجب عليك الالتزام بكل ما هو مذكور في قاعدة المعرفة أدناه. هذه تعليمات وسياسات ومعلومات يجب تطبيقها عند تنفيذ أي أمر ذي صلة.\n\n";
+    knowledgeText =
+      "\n\n### قاعدة المعرفة الشاملة:\n**هام جداً**: يجب عليك الالتزام بكل ما هو مذكور في قاعدة المعرفة أدناه. هذه تعليمات وسياسات ومعلومات يجب تطبيقها عند تنفيذ أي أمر ذي صلة.\n\n";
     for (const [category, items] of Object.entries(knowledgeByCategory)) {
       const categoryNames: Record<string, string> = {
         products: "المنتجات والمواصفات",
@@ -681,7 +916,7 @@ async function getSystemPrompt(): Promise<string> {
         maintenance: "الصيانة",
         quality: "الجودة",
         warehouse: "المستودعات",
-        general: "معلومات عامة"
+        general: "معلومات عامة",
       };
       knowledgeText += `#### ${categoryNames[category] || category}:\n`;
       for (const k of items) {
@@ -693,7 +928,8 @@ async function getSystemPrompt(): Promise<string> {
 
   let featureInstructionsText = "";
   if (featureInstructions.length > 0) {
-    featureInstructionsText = "\n\n### تعليمات الخصائص الإلزامية:\n**هام جداً**: التعليمات التالية إلزامية ويجب تنفيذها حرفياً عند التعامل مع الخاصية المذكورة. لا تتجاهل أي تعليمة.\n\n";
+    featureInstructionsText =
+      "\n\n### تعليمات الخصائص الإلزامية:\n**هام جداً**: التعليمات التالية إلزامية ويجب تنفيذها حرفياً عند التعامل مع الخاصية المذكورة. لا تتجاهل أي تعليمة.\n\n";
     for (const fi of featureInstructions) {
       featureInstructionsText += `#### 📌 ${fi.feature_name}:\n${fi.instructions}\n\n`;
     }
@@ -849,19 +1085,19 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       parameters: {
         type: "object",
         properties: {
-          order_id: { type: "number", description: "رقم الطلب" }
+          order_id: { type: "number", description: "رقم الطلب" },
         },
-        required: ["order_id"]
-      }
-    }
+        required: ["order_id"],
+      },
+    },
   },
   {
     type: "function",
     function: {
       name: "get_orders_summary",
       description: "الحصول على ملخص الطلبات (عدد الطلبات حسب الحالة)",
-      parameters: { type: "object", properties: {} }
-    }
+      parameters: { type: "object", properties: {} },
+    },
   },
   {
     type: "function",
@@ -871,19 +1107,22 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       parameters: {
         type: "object",
         properties: {
-          production_order_id: { type: "number", description: "رقم أمر الإنتاج" }
+          production_order_id: {
+            type: "number",
+            description: "رقم أمر الإنتاج",
+          },
         },
-        required: ["production_order_id"]
-      }
-    }
+        required: ["production_order_id"],
+      },
+    },
   },
   {
     type: "function",
     function: {
       name: "get_production_summary",
       description: "الحصول على ملخص الإنتاج (أوامر نشطة، كميات منتجة)",
-      parameters: { type: "object", properties: {} }
-    }
+      parameters: { type: "object", properties: {} },
+    },
   },
   {
     type: "function",
@@ -893,10 +1132,10 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       parameters: {
         type: "object",
         properties: {
-          days: { type: "number", description: "عدد الأيام (افتراضي 7)" }
-        }
-      }
-    }
+          days: { type: "number", description: "عدد الأيام (افتراضي 7)" },
+        },
+      },
+    },
   },
   {
     type: "function",
@@ -909,165 +1148,242 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
           customer_name: { type: "string", description: "اسم العميل" },
           tax_number: { type: "string", description: "الرقم الضريبي (14 رقم)" },
           created_by_name: { type: "string", description: "اسم المستخدم" },
-          created_by_phone: { type: "string", description: "رقم جوال المستخدم" },
+          created_by_phone: {
+            type: "string",
+            description: "رقم جوال المستخدم",
+          },
           items: {
             type: "array",
             items: {
               type: "object",
               properties: {
                 item_name: { type: "string", description: "اسم الصنف" },
-                unit: { type: "string", enum: ["كيلو", "كجم", "طن", "قطعة", "كرتون", "بندل", "رول"], description: "الوحدة" },
-                unit_price: { type: "number", description: "سعر الوحدة قبل الضريبة" },
-                quantity: { type: "number", description: "الكمية" }
+                unit: {
+                  type: "string",
+                  enum: ["كيلو", "كجم", "طن", "قطعة", "كرتون", "بندل", "رول"],
+                  description: "الوحدة",
+                },
+                unit_price: {
+                  type: "number",
+                  description: "سعر الوحدة قبل الضريبة",
+                },
+                quantity: { type: "number", description: "الكمية" },
               },
-              required: ["item_name", "unit", "unit_price", "quantity"]
+              required: ["item_name", "unit", "unit_price", "quantity"],
             },
-            description: "قائمة الأصناف"
+            description: "قائمة الأصناف",
           },
-          notes: { type: "string", description: "ملاحظات إضافية" }
+          notes: { type: "string", description: "ملاحظات إضافية" },
         },
-        required: ["customer_name", "tax_number", "items"]
-      }
-    }
+        required: ["customer_name", "tax_number", "items"],
+      },
+    },
   },
   {
     type: "function",
     function: {
       name: "convert_currency",
-      description: "تحويل مبلغ من عملة إلى أخرى. العملة الأساسية هي الريال السعودي (SAR)",
+      description:
+        "تحويل مبلغ من عملة إلى أخرى. العملة الأساسية هي الريال السعودي (SAR)",
       parameters: {
         type: "object",
         properties: {
           amount: { type: "number", description: "المبلغ المراد تحويله" },
-          from_currency: { type: "string", enum: ["SAR", "USD", "EUR", "GBP", "AED", "KWD", "QAR", "BHD", "OMR", "EGP"], description: "العملة المصدر" },
-          to_currency: { type: "string", enum: ["SAR", "USD", "EUR", "GBP", "AED", "KWD", "QAR", "BHD", "OMR", "EGP"], description: "العملة الهدف" }
+          from_currency: {
+            type: "string",
+            enum: [
+              "SAR",
+              "USD",
+              "EUR",
+              "GBP",
+              "AED",
+              "KWD",
+              "QAR",
+              "BHD",
+              "OMR",
+              "EGP",
+            ],
+            description: "العملة المصدر",
+          },
+          to_currency: {
+            type: "string",
+            enum: [
+              "SAR",
+              "USD",
+              "EUR",
+              "GBP",
+              "AED",
+              "KWD",
+              "QAR",
+              "BHD",
+              "OMR",
+              "EGP",
+            ],
+            description: "العملة الهدف",
+          },
         },
-        required: ["amount", "from_currency", "to_currency"]
-      }
-    }
+        required: ["amount", "from_currency", "to_currency"],
+      },
+    },
   },
   {
     type: "function",
     function: {
       name: "get_exchange_rates",
       description: "الحصول على أسعار صرف العملات مقارنة بالريال السعودي",
-      parameters: { type: "object", properties: {} }
-    }
+      parameters: { type: "object", properties: {} },
+    },
   },
   {
     type: "function",
     function: {
       name: "get_quote_templates",
-      description: "الحصول على نماذج عروض الأسعار الجاهزة. استخدم هذه الأداة لمعرفة المنتجات والأسعار المتاحة قبل إنشاء عرض سعر",
-      parameters: { type: "object", properties: {} }
-    }
+      description:
+        "الحصول على نماذج عروض الأسعار الجاهزة. استخدم هذه الأداة لمعرفة المنتجات والأسعار المتاحة قبل إنشاء عرض سعر",
+      parameters: { type: "object", properties: {} },
+    },
   },
   {
     type: "function",
     function: {
       name: "generate_quote_pdf",
-      description: "إنشاء ملف PDF لعرض سعر معين وإرجاع رابط التحميل. استخدم هذه الأداة بعد إنشاء عرض السعر لتوفير رابط تحميل PDF للمستخدم",
+      description:
+        "إنشاء ملف PDF لعرض سعر معين وإرجاع رابط التحميل. استخدم هذه الأداة بعد إنشاء عرض السعر لتوفير رابط تحميل PDF للمستخدم",
       parameters: {
         type: "object",
         properties: {
-          quote_id: { type: "number", description: "رقم معرف عرض السعر (ID)" }
+          quote_id: { type: "number", description: "رقم معرف عرض السعر (ID)" },
         },
-        required: ["quote_id"]
-      }
-    }
+        required: ["quote_id"],
+      },
+    },
   },
   {
     type: "function",
     function: {
       name: "send_whatsapp_message",
-      description: "إرسال رسالة واتساب نصية عامة إلى أي رقم. يتطلب رقم الجوال ونص الرسالة",
+      description:
+        "إرسال رسالة واتساب نصية عامة إلى أي رقم. يتطلب رقم الجوال ونص الرسالة",
       parameters: {
         type: "object",
         properties: {
-          phone_number: { type: "string", description: "رقم جوال المستلم (مع رمز الدولة، مثال: +966501234567)" },
+          phone_number: {
+            type: "string",
+            description:
+              "رقم جوال المستلم (مع رمز الدولة، مثال: +966501234567)",
+          },
           message: { type: "string", description: "نص الرسالة المراد إرسالها" },
-          title: { type: "string", description: "عنوان الرسالة (اختياري)" }
+          title: { type: "string", description: "عنوان الرسالة (اختياري)" },
         },
-        required: ["phone_number", "message"]
-      }
-    }
+        required: ["phone_number", "message"],
+      },
+    },
   },
   {
     type: "function",
     function: {
       name: "send_quote_whatsapp",
-      description: "إرسال عرض سعر عبر الواتساب. يتطلب رقم الجوال ومعرف عرض السعر",
+      description:
+        "إرسال عرض سعر عبر الواتساب. يتطلب رقم الجوال ومعرف عرض السعر",
       parameters: {
         type: "object",
         properties: {
           quote_id: { type: "number", description: "رقم معرف عرض السعر (ID)" },
-          phone_number: { type: "string", description: "رقم جوال المستلم (مع رمز الدولة، مثال: +966501234567)" }
+          phone_number: {
+            type: "string",
+            description:
+              "رقم جوال المستلم (مع رمز الدولة، مثال: +966501234567)",
+          },
         },
-        required: ["quote_id", "phone_number"]
-      }
-    }
+        required: ["quote_id", "phone_number"],
+      },
+    },
   },
   {
     type: "function",
     function: {
       name: "get_quote_by_number",
-      description: "الحصول على تفاصيل عرض سعر باستخدام رقم المستند (مثل QT-000001)",
+      description:
+        "الحصول على تفاصيل عرض سعر باستخدام رقم المستند (مثل QT-000001)",
       parameters: {
         type: "object",
         properties: {
-          document_number: { type: "string", description: "رقم مستند عرض السعر (مثال: QT-000001)" }
+          document_number: {
+            type: "string",
+            description: "رقم مستند عرض السعر (مثال: QT-000001)",
+          },
         },
-        required: ["document_number"]
-      }
-    }
+        required: ["document_number"],
+      },
+    },
   },
   {
     type: "function",
     function: {
       name: "search_knowledge_base",
-      description: "البحث في قاعدة المعرفة عن معلومات محددة. استخدم هذه الأداة عندما تحتاج معلومات عن المصنع أو المنتجات أو السياسات",
+      description:
+        "البحث في قاعدة المعرفة عن معلومات محددة. استخدم هذه الأداة عندما تحتاج معلومات عن المصنع أو المنتجات أو السياسات",
       parameters: {
         type: "object",
         properties: {
-          query: { type: "string", description: "نص البحث أو السؤال" }
+          query: { type: "string", description: "نص البحث أو السؤال" },
         },
-        required: ["query"]
-      }
-    }
+        required: ["query"],
+      },
+    },
   },
   {
     type: "function",
     function: {
       name: "get_website_info",
-      description: "جلب معلومات من موقع المصنع www.modplastic.com. استخدم هذه الأداة للإجابة عن أسئلة حول المنتجات والخدمات المتاحة على الموقع",
+      description:
+        "جلب معلومات من موقع المصنع www.modplastic.com. استخدم هذه الأداة للإجابة عن أسئلة حول المنتجات والخدمات المتاحة على الموقع",
       parameters: {
         type: "object",
         properties: {
-          page: { 
-            type: "string", 
+          page: {
+            type: "string",
             enum: ["home", "products", "about", "contact"],
-            description: "الصفحة المراد جلب معلوماتها (home=الرئيسية, products=المنتجات, about=عن المصنع, contact=التواصل)" 
-          }
+            description:
+              "الصفحة المراد جلب معلوماتها (home=الرئيسية, products=المنتجات, about=عن المصنع, contact=التواصل)",
+          },
         },
-        required: ["page"]
-      }
-    }
+        required: ["page"],
+      },
+    },
   },
   {
     type: "function",
     function: {
       name: "add_to_knowledge_base",
-      description: "إضافة معلومات جديدة إلى قاعدة المعرفة للتعلم والتذكر لاحقاً",
+      description:
+        "إضافة معلومات جديدة إلى قاعدة المعرفة للتعلم والتذكر لاحقاً",
       parameters: {
         type: "object",
         properties: {
           title: { type: "string", description: "عنوان المعلومة" },
           content: { type: "string", description: "محتوى المعلومة" },
-          category: { type: "string", enum: ["products", "policies", "customers", "pricing", "production", "hr", "maintenance", "quality", "warehouse", "general"], description: "تصنيف المعلومة (products=المنتجات، policies=السياسات، customers=العملاء، pricing=التسعير، production=الإنتاج، hr=الموارد البشرية، maintenance=الصيانة، quality=الجودة، warehouse=المستودعات، general=عام)" }
+          category: {
+            type: "string",
+            enum: [
+              "products",
+              "policies",
+              "customers",
+              "pricing",
+              "production",
+              "hr",
+              "maintenance",
+              "quality",
+              "warehouse",
+              "general",
+            ],
+            description:
+              "تصنيف المعلومة (products=المنتجات، policies=السياسات، customers=العملاء، pricing=التسعير، production=الإنتاج، hr=الموارد البشرية، maintenance=الصيانة، quality=الجودة، warehouse=المستودعات، general=عام)",
+          },
         },
-        required: ["title", "content", "category"]
-      }
-    }
+        required: ["title", "content", "category"],
+      },
+    },
   },
   {
     type: "function",
@@ -1077,11 +1393,14 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       parameters: {
         type: "object",
         properties: {
-          search_term: { type: "string", description: "اسم العميل أو رقم العميل للبحث" }
+          search_term: {
+            type: "string",
+            description: "اسم العميل أو رقم العميل للبحث",
+          },
         },
-        required: ["search_term"]
-      }
-    }
+        required: ["search_term"],
+      },
+    },
   },
   {
     type: "function",
@@ -1091,25 +1410,35 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       parameters: {
         type: "object",
         properties: {
-          limit: { type: "number", description: "الحد الأقصى لعدد العملاء (افتراضي 20)" },
-          active_only: { type: "boolean", description: "عرض العملاء النشطين فقط (افتراضي true)" }
-        }
-      }
-    }
+          limit: {
+            type: "number",
+            description: "الحد الأقصى لعدد العملاء (افتراضي 20)",
+          },
+          active_only: {
+            type: "boolean",
+            description: "عرض العملاء النشطين فقط (افتراضي true)",
+          },
+        },
+      },
+    },
   },
   {
     type: "function",
     function: {
       name: "get_users_info",
-      description: "الحصول على معلومات المستخدمين والموظفين في النظام، أدوارهم وحالتهم",
+      description:
+        "الحصول على معلومات المستخدمين والموظفين في النظام، أدوارهم وحالتهم",
       parameters: {
         type: "object",
         properties: {
-          search_term: { type: "string", description: "اسم المستخدم أو رقمه للبحث (اختياري)" },
-          role: { type: "string", description: "تصفية حسب الدور (اختياري)" }
-        }
-      }
-    }
+          search_term: {
+            type: "string",
+            description: "اسم المستخدم أو رقمه للبحث (اختياري)",
+          },
+          role: { type: "string", description: "تصفية حسب الدور (اختياري)" },
+        },
+      },
+    },
   },
   {
     type: "function",
@@ -1119,10 +1448,15 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       parameters: {
         type: "object",
         properties: {
-          machine_type: { type: "string", enum: ["extruder", "printer", "cutter", "all"], description: "نوع الماكينة (extruder=بثق، printer=طباعة، cutter=قطع، all=الكل)" }
-        }
-      }
-    }
+          machine_type: {
+            type: "string",
+            enum: ["extruder", "printer", "cutter", "all"],
+            description:
+              "نوع الماكينة (extruder=بثق، printer=طباعة، cutter=قطع، all=الكل)",
+          },
+        },
+      },
+    },
   },
   {
     type: "function",
@@ -1132,49 +1466,92 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       parameters: {
         type: "object",
         properties: {
-          category: { type: "string", description: "تصفية حسب الفئة (اختياري)" },
-          low_stock_only: { type: "boolean", description: "عرض المواد منخفضة المخزون فقط" }
-        }
-      }
-    }
+          category: {
+            type: "string",
+            description: "تصفية حسب الفئة (اختياري)",
+          },
+          low_stock_only: {
+            type: "boolean",
+            description: "عرض المواد منخفضة المخزون فقط",
+          },
+        },
+      },
+    },
   },
   {
     type: "function",
     function: {
       name: "calculate_bag_quantity",
-      description: "حساب عدد الأكياس بناء على الأبعاد والوزن، أو حساب الوزن المطلوب لعدد أكياس معين. مفيد لتحديد الكميات في عروض الأسعار",
+      description:
+        "حساب عدد الأكياس بناء على الأبعاد والوزن، أو حساب الوزن المطلوب لعدد أكياس معين. مفيد لتحديد الكميات في عروض الأسعار",
       parameters: {
         type: "object",
         properties: {
           width_cm: { type: "number", description: "عرض الكيس بالسنتيمتر" },
           length_cm: { type: "number", description: "طول الكيس بالسنتيمتر" },
-          thickness_micron: { type: "number", description: "سُمك الكيس بالميكرون" },
-          material_type: { type: "string", enum: ["HDPE", "LDPE", "LLDPE", "PP"], description: "نوع المادة (HDPE كثافة=0.95، LDPE كثافة=0.92، LLDPE كثافة=0.93، PP كثافة=0.91)" },
-          weight_kg: { type: "number", description: "الوزن بالكيلو (إذا أردت حساب عدد الأكياس من الوزن)" },
-          bag_count: { type: "number", description: "عدد الأكياس المطلوبة (إذا أردت حساب الوزن المطلوب)" }
+          thickness_micron: {
+            type: "number",
+            description: "سُمك الكيس بالميكرون",
+          },
+          material_type: {
+            type: "string",
+            enum: ["HDPE", "LDPE", "LLDPE", "PP"],
+            description:
+              "نوع المادة (HDPE كثافة=0.95، LDPE كثافة=0.92، LLDPE كثافة=0.93، PP كثافة=0.91)",
+          },
+          weight_kg: {
+            type: "number",
+            description: "الوزن بالكيلو (إذا أردت حساب عدد الأكياس من الوزن)",
+          },
+          bag_count: {
+            type: "number",
+            description: "عدد الأكياس المطلوبة (إذا أردت حساب الوزن المطلوب)",
+          },
         },
-        required: ["width_cm", "length_cm", "thickness_micron", "material_type"]
-      }
-    }
+        required: [
+          "width_cm",
+          "length_cm",
+          "thickness_micron",
+          "material_type",
+        ],
+      },
+    },
   },
   {
     type: "function",
     function: {
       name: "calculate_printing_costs",
-      description: "حساب تكلفة الكليشهات (الأسطوانات الطباعية) وتكلفة الطباعة بناء على عدد الألوان وأبعاد الكليشه",
+      description:
+        "حساب تكلفة الكليشهات (الأسطوانات الطباعية) وتكلفة الطباعة بناء على عدد الألوان وأبعاد الكليشه",
       parameters: {
         type: "object",
         properties: {
-          colors_count: { type: "number", description: "عدد ألوان الطباعة (1-8)" },
+          colors_count: {
+            type: "number",
+            description: "عدد ألوان الطباعة (1-8)",
+          },
           width_cm: { type: "number", description: "عرض الكليشه بالسنتيمتر" },
-          circumference_cm: { type: "number", description: "محيط الكليشه بالسنتيمتر (طول الدورة)" },
-          cliche_price_per_sqcm: { type: "number", description: "سعر الكليشه لكل سم² (افتراضي: 2 ريال)" },
-          printing_price_per_kg: { type: "number", description: "سعر الطباعة لكل كيلو (افتراضي: يتغير حسب عدد الألوان)" },
-          quantity_kg: { type: "number", description: "الكمية المطلوبة بالكيلو لحساب التكلفة الكلية" }
+          circumference_cm: {
+            type: "number",
+            description: "محيط الكليشه بالسنتيمتر (طول الدورة)",
+          },
+          cliche_price_per_sqcm: {
+            type: "number",
+            description: "سعر الكليشه لكل سم² (افتراضي: 2 ريال)",
+          },
+          printing_price_per_kg: {
+            type: "number",
+            description:
+              "سعر الطباعة لكل كيلو (افتراضي: يتغير حسب عدد الألوان)",
+          },
+          quantity_kg: {
+            type: "number",
+            description: "الكمية المطلوبة بالكيلو لحساب التكلفة الكلية",
+          },
         },
-        required: ["colors_count", "width_cm", "circumference_cm"]
-      }
-    }
+        required: ["colors_count", "width_cm", "circumference_cm"],
+      },
+    },
   },
   {
     type: "function",
@@ -1185,67 +1562,120 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
         type: "object",
         properties: {
           quote_id: { type: "number", description: "رقم معرف عرض السعر (ID)" },
-          email: { type: "string", description: "عنوان البريد الإلكتروني للمستلم" },
-          customer_name: { type: "string", description: "اسم المستلم (اختياري)" }
+          email: {
+            type: "string",
+            description: "عنوان البريد الإلكتروني للمستلم",
+          },
+          customer_name: {
+            type: "string",
+            description: "اسم المستلم (اختياري)",
+          },
         },
-        required: ["quote_id", "email"]
-      }
-    }
+        required: ["quote_id", "email"],
+      },
+    },
   },
   {
     type: "function",
     function: {
       name: "list_orders",
-      description: "عرض قائمة الطلبات مع إمكانية البحث والتصفية حسب الحالة أو العميل أو رقم الطلب. يعرض تفاصيل كل طلب مع أوامر الإنتاج المرتبطة",
+      description:
+        "عرض قائمة الطلبات مع إمكانية البحث والتصفية حسب الحالة أو العميل أو رقم الطلب. يعرض تفاصيل كل طلب مع أوامر الإنتاج المرتبطة",
       parameters: {
         type: "object",
         properties: {
-          status: { type: "string", enum: ["waiting", "in_production", "paused", "cancelled", "completed"], description: "تصفية حسب حالة الطلب" },
-          customer_id: { type: "string", description: "تصفية حسب معرف العميل (مثل CID001)" },
-          search: { type: "string", description: "بحث في رقم الطلب أو اسم العميل" },
-          limit: { type: "number", description: "الحد الأقصى للنتائج (افتراضي 20)" }
-        }
-      }
-    }
+          status: {
+            type: "string",
+            enum: [
+              "waiting",
+              "in_production",
+              "paused",
+              "cancelled",
+              "completed",
+            ],
+            description: "تصفية حسب حالة الطلب",
+          },
+          customer_id: {
+            type: "string",
+            description: "تصفية حسب معرف العميل (مثل CID001)",
+          },
+          search: {
+            type: "string",
+            description: "بحث في رقم الطلب أو اسم العميل",
+          },
+          limit: {
+            type: "number",
+            description: "الحد الأقصى للنتائج (افتراضي 20)",
+          },
+        },
+      },
+    },
   },
   {
     type: "function",
     function: {
       name: "create_order",
-      description: "إنشاء طلب جديد في النظام. يتطلب معرف العميل. يتم توليد رقم الطلب تلقائياً إذا لم يُحدد. العميل يجب أن يكون مسجلاً مسبقاً",
+      description:
+        "إنشاء طلب جديد في النظام. يتطلب معرف العميل. يتم توليد رقم الطلب تلقائياً إذا لم يُحدد. العميل يجب أن يكون مسجلاً مسبقاً",
       parameters: {
         type: "object",
         properties: {
-          customer_id: { type: "string", description: "معرف العميل (مثل CID001) - يجب أن يكون عميل مسجل في النظام" },
-          order_number: { type: "string", description: "رقم الطلب (اختياري - يتم توليده تلقائياً إذا لم يُحدد)" },
-          delivery_days: { type: "number", description: "عدد أيام التسليم (اختياري)" },
-          delivery_date: { type: "string", description: "تاريخ التسليم بصيغة YYYY-MM-DD (اختياري)" },
-          notes: { type: "string", description: "ملاحظات على الطلب (اختياري)" }
+          customer_id: {
+            type: "string",
+            description:
+              "معرف العميل (مثل CID001) - يجب أن يكون عميل مسجل في النظام",
+          },
+          order_number: {
+            type: "string",
+            description:
+              "رقم الطلب (اختياري - يتم توليده تلقائياً إذا لم يُحدد)",
+          },
+          delivery_days: {
+            type: "number",
+            description: "عدد أيام التسليم (اختياري)",
+          },
+          delivery_date: {
+            type: "string",
+            description: "تاريخ التسليم بصيغة YYYY-MM-DD (اختياري)",
+          },
+          notes: { type: "string", description: "ملاحظات على الطلب (اختياري)" },
         },
-        required: ["customer_id"]
-      }
-    }
+        required: ["customer_id"],
+      },
+    },
   },
   {
     type: "function",
     function: {
       name: "update_order_status",
-      description: "تحديث حالة طلب معين. الحالات المتاحة: waiting (انتظار)، in_production (قيد الإنتاج)، paused (متوقف)، cancelled (ملغي)، completed (مكتمل)",
+      description:
+        "تحديث حالة طلب معين. الحالات المتاحة: waiting (انتظار)، in_production (قيد الإنتاج)، paused (متوقف)، cancelled (ملغي)، completed (مكتمل)",
       parameters: {
         type: "object",
         properties: {
           order_id: { type: "number", description: "رقم معرف الطلب (ID)" },
-          status: { type: "string", enum: ["waiting", "in_production", "paused", "cancelled", "completed"], description: "الحالة الجديدة للطلب" }
+          status: {
+            type: "string",
+            enum: [
+              "waiting",
+              "in_production",
+              "paused",
+              "cancelled",
+              "completed",
+            ],
+            description: "الحالة الجديدة للطلب",
+          },
         },
-        required: ["order_id", "status"]
-      }
-    }
+        required: ["order_id", "status"],
+      },
+    },
   },
   {
     type: "function",
     function: {
       name: "create_customer",
-      description: "تسجيل عميل جديد في النظام. يتم توليد معرف العميل تلقائياً (CID001, CID002, ...)",
+      description:
+        "تسجيل عميل جديد في النظام. يتم توليد معرف العميل تلقائياً (CID001, CID002, ...)",
       parameters: {
         type: "object",
         properties: {
@@ -1254,37 +1684,71 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
           phone: { type: "string", description: "رقم الجوال" },
           city: { type: "string", description: "المدينة" },
           address: { type: "string", description: "العنوان (اختياري)" },
-          tax_number: { type: "string", description: "الرقم الضريبي (14 رقم، اختياري)" },
-          commercial_name: { type: "string", description: "الاسم التجاري (اختياري)" },
-          unified_number: { type: "string", description: "الرقم الموحد (يبدأ بـ 7 ومكون من 10 أرقام، اختياري)" }
+          tax_number: {
+            type: "string",
+            description: "الرقم الضريبي (14 رقم، اختياري)",
+          },
+          commercial_name: {
+            type: "string",
+            description: "الاسم التجاري (اختياري)",
+          },
+          unified_number: {
+            type: "string",
+            description: "الرقم الموحد (يبدأ بـ 7 ومكون من 10 أرقام، اختياري)",
+          },
         },
-        required: ["name"]
-      }
-    }
+        required: ["name"],
+      },
+    },
   },
   {
     type: "function",
     function: {
       name: "create_customer_product",
-      description: "تسجيل منتج جديد لعميل معين. يحدد مواصفات المنتج مثل الأبعاد والسماكة والمادة الخام ونوع التقطيع",
+      description:
+        "تسجيل منتج جديد لعميل معين. يحدد مواصفات المنتج مثل الأبعاد والسماكة والمادة الخام ونوع التقطيع",
       parameters: {
         type: "object",
         properties: {
-          customer_id: { type: "string", description: "معرف العميل (مثل CID001)" },
-          size_caption: { type: "string", description: "وصف المقاس (مثل: 30×40)" },
+          customer_id: {
+            type: "string",
+            description: "معرف العميل (مثل CID001)",
+          },
+          size_caption: {
+            type: "string",
+            description: "وصف المقاس (مثل: 30×40)",
+          },
           width: { type: "number", description: "العرض بالسنتيمتر" },
           thickness: { type: "number", description: "السماكة بالميكرون" },
-          raw_material: { type: "string", enum: ["HDPE", "LDPE", "LLDPE", "Regrind"], description: "نوع المادة الخام" },
-          cutting_length_cm: { type: "number", description: "طول التقطيع بالسنتيمتر" },
+          raw_material: {
+            type: "string",
+            enum: ["HDPE", "LDPE", "LLDPE", "Regrind"],
+            description: "نوع المادة الخام",
+          },
+          cutting_length_cm: {
+            type: "number",
+            description: "طول التقطيع بالسنتيمتر",
+          },
           is_printed: { type: "boolean", description: "هل المنتج مطبوع؟" },
-          punching: { type: "string", enum: ["NON", "T-Shirt", "T-shirt\\Hook", "Banana"], description: "نوع التخريم" },
-          cutting_unit: { type: "string", enum: ["KG", "ROLL", "PKT"], description: "وحدة التقطيع" },
-          master_batch_id: { type: "string", description: "لون الماستر باتش (مثل: CLEAR, WHITE, BLACK)" },
-          notes: { type: "string", description: "ملاحظات إضافية" }
+          punching: {
+            type: "string",
+            enum: ["NON", "T-Shirt", "T-shirt\\Hook", "Banana"],
+            description: "نوع التخريم",
+          },
+          cutting_unit: {
+            type: "string",
+            enum: ["KG", "ROLL", "PKT"],
+            description: "وحدة التقطيع",
+          },
+          master_batch_id: {
+            type: "string",
+            description: "لون الماستر باتش (مثل: CLEAR, WHITE, BLACK)",
+          },
+          notes: { type: "string", description: "ملاحظات إضافية" },
         },
-        required: ["customer_id"]
-      }
-    }
+        required: ["customer_id"],
+      },
+    },
   },
   {
     type: "function",
@@ -1298,36 +1762,89 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       parameters: {
         type: "object",
         properties: {
-          query: { type: "string", description: "استعلام SQL. أمثلة: SELECT * FROM attendance WHERE user_id = 5 أو INSERT INTO attendance (user_id, status, check_in_time) VALUES (5, 'حاضر', '2026-01-01 09:00:00')" },
-          description: { type: "string", description: "وصف مختصر لما يفعله الاستعلام" }
+          query: {
+            type: "string",
+            description:
+              "استعلام SQL. أمثلة: SELECT * FROM attendance WHERE user_id = 5 أو INSERT INTO attendance (user_id, status, check_in_time) VALUES (5, 'حاضر', '2026-01-01 09:00:00')",
+          },
+          description: {
+            type: "string",
+            description: "وصف مختصر لما يفعله الاستعلام",
+          },
         },
-        required: ["query", "description"]
-      }
-    }
+        required: ["query", "description"],
+      },
+    },
   },
   {
     type: "function",
     function: {
       name: "generate_attendance_data",
-      description: "إنشاء بيانات حضور وانصراف في جدول منفصل (sandbox) لا يؤثر على بيانات التطبيق الأساسية. يمكن إنشاء بيانات لأي موظف حتى لو لم يكن مسجلاً في النظام.",
+      description:
+        "إنشاء بيانات حضور وانصراف في جدول منفصل (sandbox) لا يؤثر على بيانات التطبيق الأساسية. يمكن إنشاء بيانات لأي موظف حتى لو لم يكن مسجلاً في النظام.",
       parameters: {
         type: "object",
         properties: {
-          employees: { type: "array", items: { type: "object", properties: { id: { type: "number", description: "رقم الموظف" }, name: { type: "string", description: "اسم الموظف" }, department: { type: "string", description: "القسم" } }, required: ["id"] }, description: "قائمة الموظفين (رقم، اسم، قسم)" },
-          start_date: { type: "string", description: "تاريخ البداية (YYYY-MM-DD)" },
-          end_date: { type: "string", description: "تاريخ النهاية (YYYY-MM-DD)" },
-          check_in_start_hour: { type: "number", description: "بداية ساعة الحضور (مثل 8 أو 9)" },
-          check_in_end_hour: { type: "number", description: "نهاية ساعة الحضور (مثل 9 أو 10)" },
-          check_out_start_hour: { type: "number", description: "بداية ساعة الانصراف (مثل 14 أو 16)" },
-          check_out_end_hour: { type: "number", description: "نهاية ساعة الانصراف (مثل 17 أو 18)" },
-          absent_days_per_month: { type: "number", description: "عدد أيام الغياب لكل شهر (افتراضي 0)" },
-          exclude_days: { type: "array", items: { type: "number" }, description: "أيام الأسبوع المستبعدة (0=أحد، 5=جمعة، 6=سبت). افتراضي [5,6]" },
-          shift_type: { type: "string", description: "نوع الوردية (صباحي/مسائي/ليلي). افتراضي: صباحي" },
-          clear_previous: { type: "boolean", description: "مسح البيانات السابقة لنفس الموظفين قبل الإنشاء (افتراضي: false)" }
+          employees: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                id: { type: "number", description: "رقم الموظف" },
+                name: { type: "string", description: "اسم الموظف" },
+                department: { type: "string", description: "القسم" },
+              },
+              required: ["id"],
+            },
+            description: "قائمة الموظفين (رقم، اسم، قسم)",
+          },
+          start_date: {
+            type: "string",
+            description: "تاريخ البداية (YYYY-MM-DD)",
+          },
+          end_date: {
+            type: "string",
+            description: "تاريخ النهاية (YYYY-MM-DD)",
+          },
+          check_in_start_hour: {
+            type: "number",
+            description: "بداية ساعة الحضور (مثل 8 أو 9)",
+          },
+          check_in_end_hour: {
+            type: "number",
+            description: "نهاية ساعة الحضور (مثل 9 أو 10)",
+          },
+          check_out_start_hour: {
+            type: "number",
+            description: "بداية ساعة الانصراف (مثل 14 أو 16)",
+          },
+          check_out_end_hour: {
+            type: "number",
+            description: "نهاية ساعة الانصراف (مثل 17 أو 18)",
+          },
+          absent_days_per_month: {
+            type: "number",
+            description: "عدد أيام الغياب لكل شهر (افتراضي 0)",
+          },
+          exclude_days: {
+            type: "array",
+            items: { type: "number" },
+            description:
+              "أيام الأسبوع المستبعدة (0=أحد، 5=جمعة، 6=سبت). افتراضي [5,6]",
+          },
+          shift_type: {
+            type: "string",
+            description: "نوع الوردية (صباحي/مسائي/ليلي). افتراضي: صباحي",
+          },
+          clear_previous: {
+            type: "boolean",
+            description:
+              "مسح البيانات السابقة لنفس الموظفين قبل الإنشاء (افتراضي: false)",
+          },
         },
-        required: ["employees", "start_date", "end_date"]
-      }
-    }
+        required: ["employees", "start_date", "end_date"],
+      },
+    },
   },
   {
     type: "function",
@@ -1339,47 +1856,86 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       parameters: {
         type: "object",
         properties: {
-          data_type: { type: "string", description: "نوع البيانات (مثل: orders, invoices, products, customers, inventory, production, salaries, maintenance, quality, sales)" },
-          label: { type: "string", description: "وصف مختصر لمجموعة البيانات (مثل: طلبات شهر يناير 2026)" },
-          records: { type: "array", items: { type: "object" }, description: "مصفوفة من السجلات. كل سجل كائن JSON بالحقول المطلوبة حسب نوع البيانات" },
-          clear_previous: { type: "boolean", description: "مسح البيانات السابقة من نفس النوع قبل الإنشاء (افتراضي: false)" }
+          data_type: {
+            type: "string",
+            description:
+              "نوع البيانات (مثل: orders, invoices, products, customers, inventory, production, salaries, maintenance, quality, sales)",
+          },
+          label: {
+            type: "string",
+            description:
+              "وصف مختصر لمجموعة البيانات (مثل: طلبات شهر يناير 2026)",
+          },
+          records: {
+            type: "array",
+            items: { type: "object" },
+            description:
+              "مصفوفة من السجلات. كل سجل كائن JSON بالحقول المطلوبة حسب نوع البيانات",
+          },
+          clear_previous: {
+            type: "boolean",
+            description:
+              "مسح البيانات السابقة من نفس النوع قبل الإنشاء (افتراضي: false)",
+          },
         },
-        required: ["data_type", "records"]
-      }
-    }
+        required: ["data_type", "records"],
+      },
+    },
   },
   {
     type: "function",
     function: {
       name: "query_sandbox_data",
-      description: "استعلام وعرض البيانات المخزنة في sandbox. يمكن تصفيتها حسب النوع أو معرف الدفعة أو شروط JSON محددة.",
+      description:
+        "استعلام وعرض البيانات المخزنة في sandbox. يمكن تصفيتها حسب النوع أو معرف الدفعة أو شروط JSON محددة.",
       parameters: {
         type: "object",
         properties: {
-          data_type: { type: "string", description: "نوع البيانات للتصفية (مثل: orders, salaries)" },
+          data_type: {
+            type: "string",
+            description: "نوع البيانات للتصفية (مثل: orders, salaries)",
+          },
           batch_id: { type: "string", description: "معرف الدفعة للتصفية" },
-          filter: { type: "object", description: "شروط تصفية إضافية على حقول data (مثل: {\"status\": \"completed\"})" },
+          filter: {
+            type: "object",
+            description:
+              'شروط تصفية إضافية على حقول data (مثل: {"status": "completed"})',
+          },
           limit: { type: "number", description: "عدد السجلات (افتراضي: 50)" },
-          summary: { type: "boolean", description: "عرض ملخص إحصائي بدلاً من البيانات التفصيلية (افتراضي: false)" }
-        }
-      }
-    }
+          summary: {
+            type: "boolean",
+            description:
+              "عرض ملخص إحصائي بدلاً من البيانات التفصيلية (افتراضي: false)",
+          },
+        },
+      },
+    },
   },
   {
     type: "function",
     function: {
       name: "verify_sandbox_data",
-      description: "التحقق من سلامة وصحة البيانات المُنشأة في sandbox. يفحص: عدد السجلات، الحقول المطلوبة، القيم الفارغة، التكرارات، الاتساق، ويُرجع تقرير تفصيلي.",
+      description:
+        "التحقق من سلامة وصحة البيانات المُنشأة في sandbox. يفحص: عدد السجلات، الحقول المطلوبة، القيم الفارغة، التكرارات، الاتساق، ويُرجع تقرير تفصيلي.",
       parameters: {
         type: "object",
         properties: {
           data_type: { type: "string", description: "نوع البيانات للفحص" },
           batch_id: { type: "string", description: "معرف الدفعة للفحص" },
-          required_fields: { type: "array", items: { type: "string" }, description: "قائمة الحقول المطلوبة للتحقق من وجودها (مثل: [\"name\", \"amount\", \"date\"])" },
-          check_attendance: { type: "boolean", description: "فحص جدول ai_sandbox_attendance بدلاً من ai_sandbox_data (افتراضي: false)" }
-        }
-      }
-    }
+          required_fields: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              'قائمة الحقول المطلوبة للتحقق من وجودها (مثل: ["name", "amount", "date"])',
+          },
+          check_attendance: {
+            type: "boolean",
+            description:
+              "فحص جدول ai_sandbox_attendance بدلاً من ai_sandbox_data (افتراضي: false)",
+          },
+        },
+      },
+    },
   },
   {
     type: "function",
@@ -1391,23 +1947,31 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
         properties: {
           data_type: { type: "string", description: "نوع البيانات للحذف" },
           batch_id: { type: "string", description: "معرف الدفعة للحذف" },
-          delete_all: { type: "boolean", description: "حذف جميع بيانات sandbox (افتراضي: false)" }
-        }
-      }
-    }
+          delete_all: {
+            type: "boolean",
+            description: "حذف جميع بيانات sandbox (افتراضي: false)",
+          },
+        },
+      },
+    },
   },
   {
     type: "function",
     function: {
       name: "get_database_schema",
-      description: "الحصول على هيكل جدول معين أو قائمة بجميع الجداول المتاحة في قاعدة البيانات",
+      description:
+        "الحصول على هيكل جدول معين أو قائمة بجميع الجداول المتاحة في قاعدة البيانات",
       parameters: {
         type: "object",
         properties: {
-          table_name: { type: "string", description: "اسم الجدول للحصول على أعمدته. اتركه فارغاً لعرض جميع الجداول" }
-        }
-      }
-    }
+          table_name: {
+            type: "string",
+            description:
+              "اسم الجدول للحصول على أعمدته. اتركه فارغاً لعرض جميع الجداول",
+          },
+        },
+      },
+    },
   },
   {
     type: "function",
@@ -1417,19 +1981,26 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       parameters: {
         type: "object",
         properties: {
-          section_id: { type: "string", description: "رقم أو معرف القسم (مثل 1 أو SEC01)" },
-          section_name: { type: "string", description: "اسم القسم للبحث (مثل: التسويق، الإنتاج)" }
-        }
-      }
-    }
+          section_id: {
+            type: "string",
+            description: "رقم أو معرف القسم (مثل 1 أو SEC01)",
+          },
+          section_name: {
+            type: "string",
+            description: "اسم القسم للبحث (مثل: التسويق، الإنتاج)",
+          },
+        },
+      },
+    },
   },
   {
     type: "function",
     function: {
       name: "get_company_info",
-      description: "جلب بيانات المصنع الكاملة (الاسم، العنوان، الهاتف، البريد، الرقم الضريبي، السجل التجاري). استخدم هذه الأداة دائماً قبل إنشاء أي مستند لوضع بيانات المصنع في الهيدر",
-      parameters: { type: "object", properties: {} }
-    }
+      description:
+        "جلب بيانات المصنع الكاملة (الاسم، العنوان، الهاتف، البريد، الرقم الضريبي، السجل التجاري). استخدم هذه الأداة دائماً قبل إنشاء أي مستند لوضع بيانات المصنع في الهيدر",
+      parameters: { type: "object", properties: {} },
+    },
   },
   {
     type: "function",
@@ -1441,9 +2012,21 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       parameters: {
         type: "object",
         properties: {
-          format: { type: "string", enum: ["pdf", "excel", "csv", "word"], description: "صيغة الملف (pdf/excel/csv/word)" },
-          title: { type: "string", description: "عنوان المستند (مثل: تقرير الحضور الشهري - يناير 2026)" },
-          filename: { type: "string", description: "اسم الملف بدون امتداد (مثل: attendance_report_jan_2026)" },
+          format: {
+            type: "string",
+            enum: ["pdf", "excel", "csv", "word"],
+            description: "صيغة الملف (pdf/excel/csv/word)",
+          },
+          title: {
+            type: "string",
+            description:
+              "عنوان المستند (مثل: تقرير الحضور الشهري - يناير 2026)",
+          },
+          filename: {
+            type: "string",
+            description:
+              "اسم الملف بدون امتداد (مثل: attendance_report_jan_2026)",
+          },
           content: {
             type: "object",
             description: "محتوى المستند",
@@ -1455,8 +2038,12 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
                   subtitle: { type: "string", description: "عنوان فرعي" },
                   date: { type: "string", description: "التاريخ" },
                   logo_text: { type: "string", description: "نص بديل للشعار" },
-                  extra_info: { type: "array", items: { type: "string" }, description: "معلومات إضافية في الرأس" }
-                }
+                  extra_info: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "معلومات إضافية في الرأس",
+                  },
+                },
               },
               sections: {
                 type: "array",
@@ -1464,44 +2051,88 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
                   type: "object",
                   properties: {
                     title: { type: "string", description: "عنوان القسم" },
-                    type: { type: "string", enum: ["table", "text", "key_value", "summary"], description: "نوع المحتوى" },
+                    type: {
+                      type: "string",
+                      enum: ["table", "text", "key_value", "summary"],
+                      description: "نوع المحتوى",
+                    },
                     text: { type: "string", description: "نص حر (لنوع text)" },
-                    columns: { type: "array", items: { type: "string" }, description: "أسماء أعمدة الجدول (لنوع table)" },
-                    rows: { type: "array", items: { type: "array", items: { type: "string" } }, description: "صفوف الجدول (لنوع table)" },
-                    data: { type: "object", description: "بيانات مفتاح-قيمة (لنوع key_value)" },
-                    items: { type: "array", items: { type: "object", properties: { label: { type: "string" }, value: { type: "string" } } }, description: "عناصر الملخص (لنوع summary)" }
-                  }
+                    columns: {
+                      type: "array",
+                      items: { type: "string" },
+                      description: "أسماء أعمدة الجدول (لنوع table)",
+                    },
+                    rows: {
+                      type: "array",
+                      items: { type: "array", items: { type: "string" } },
+                      description: "صفوف الجدول (لنوع table)",
+                    },
+                    data: {
+                      type: "object",
+                      description: "بيانات مفتاح-قيمة (لنوع key_value)",
+                    },
+                    items: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          label: { type: "string" },
+                          value: { type: "string" },
+                        },
+                      },
+                      description: "عناصر الملخص (لنوع summary)",
+                    },
+                  },
                 },
-                description: "أقسام المستند"
+                description: "أقسام المستند",
               },
               footer: {
                 type: "object",
                 properties: {
                   text: { type: "string", description: "نص التذييل" },
-                  signatures: { type: "array", items: { type: "object", properties: { title: { type: "string" }, name: { type: "string" } } }, description: "مناطق التوقيع" }
-                }
-              }
-            }
-          }
+                  signatures: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        title: { type: "string" },
+                        name: { type: "string" },
+                      },
+                    },
+                    description: "مناطق التوقيع",
+                  },
+                },
+              },
+            },
+          },
         },
-        required: ["format", "title", "filename", "content"]
-      }
-    }
-  }
+        required: ["format", "title", "filename", "content"],
+      },
+    },
+  },
 ];
 
-async function generatePdfDocument(title: string, filename: string, content: any): Promise<string> {
+async function generatePdfDocument(
+  title: string,
+  filename: string,
+  content: any,
+): Promise<string> {
   const filePath = path.join(DOCS_DIR, `${filename}.pdf`);
   const fontSearchPaths = [
     path.join(__dirname, "..", "public", "fonts", "NotoSansArabic-Regular.ttf"),
     path.join(__dirname, "..", "server", "fonts", "NotoSansArabic-Regular.ttf"),
     path.join(__dirname, "fonts", "NotoSansArabic-Regular.ttf"),
   ];
-  const arabicFontPath = fontSearchPaths.find(p => fs.existsSync(p)) || "";
+  const arabicFontPath = fontSearchPaths.find((p) => fs.existsSync(p)) || "";
   const hasArabicFont = !!arabicFontPath;
 
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: "A4", margin: 40, layout: "portrait", bufferPages: true });
+    const doc = new PDFDocument({
+      size: "A4",
+      margin: 40,
+      layout: "portrait",
+      bufferPages: true,
+    });
     const stream = fs.createWriteStream(filePath);
     doc.pipe(stream);
 
@@ -1518,23 +2149,43 @@ async function generatePdfDocument(title: string, filename: string, content: any
 
     const header = content.header || {};
     if (header.company_name) {
-      doc.fontSize(18).fillColor("#1a365d").text(safeText(header.company_name), { align: "center" });
+      doc
+        .fontSize(18)
+        .fillColor("#1a365d")
+        .text(safeText(header.company_name), { align: "center" });
       doc.moveDown(0.3);
     }
-    doc.fontSize(14).fillColor("#2d3748").text(safeText(title), { align: "center" });
+    doc
+      .fontSize(14)
+      .fillColor("#2d3748")
+      .text(safeText(title), { align: "center" });
     if (header.subtitle) {
-      doc.fontSize(10).fillColor("#718096").text(safeText(header.subtitle), { align: "center" });
+      doc
+        .fontSize(10)
+        .fillColor("#718096")
+        .text(safeText(header.subtitle), { align: "center" });
     }
     if (header.date) {
-      doc.fontSize(9).fillColor("#a0aec0").text(safeText(header.date), { align: "center" });
+      doc
+        .fontSize(9)
+        .fillColor("#a0aec0")
+        .text(safeText(header.date), { align: "center" });
     }
     if (header.extra_info && Array.isArray(header.extra_info)) {
       header.extra_info.forEach((info: string) => {
-        doc.fontSize(9).fillColor("#718096").text(safeText(info), { align: "center" });
+        doc
+          .fontSize(9)
+          .fillColor("#718096")
+          .text(safeText(info), { align: "center" });
       });
     }
     doc.moveDown(0.5);
-    doc.moveTo(40, doc.y).lineTo(555, doc.y).strokeColor("#e2e8f0").lineWidth(1).stroke();
+    doc
+      .moveTo(40, doc.y)
+      .lineTo(555, doc.y)
+      .strokeColor("#e2e8f0")
+      .lineWidth(1)
+      .stroke();
     doc.moveDown(0.5);
 
     const sections = content.sections || [];
@@ -1542,19 +2193,28 @@ async function generatePdfDocument(title: string, filename: string, content: any
       if (doc.y > 700) doc.addPage();
 
       if (section.title) {
-        doc.fontSize(12).fillColor("#2b6cb0").text(safeText(section.title), { underline: true });
+        doc
+          .fontSize(12)
+          .fillColor("#2b6cb0")
+          .text(safeText(section.title), { underline: true });
         doc.moveDown(0.3);
       }
 
       if (section.type === "text" && section.text) {
-        doc.fontSize(10).fillColor("#2d3748").text(safeText(section.text), { lineGap: 4 });
+        doc
+          .fontSize(10)
+          .fillColor("#2d3748")
+          .text(safeText(section.text), { lineGap: 4 });
         doc.moveDown(0.5);
       }
 
       if (section.type === "key_value" && section.data) {
         const entries = Object.entries(section.data);
         for (const [key, value] of entries) {
-          doc.fontSize(10).fillColor("#4a5568").text(`${safeText(key)}: `, { continued: true });
+          doc
+            .fontSize(10)
+            .fillColor("#4a5568")
+            .text(`${safeText(key)}: `, { continued: true });
           doc.fillColor("#1a202c").text(safeText(String(value)));
         }
         doc.moveDown(0.5);
@@ -1562,13 +2222,21 @@ async function generatePdfDocument(title: string, filename: string, content: any
 
       if (section.type === "summary" && section.items) {
         for (const item of section.items) {
-          doc.fontSize(10).fillColor("#4a5568").text(`${safeText(item.label)}: `, { continued: true });
+          doc
+            .fontSize(10)
+            .fillColor("#4a5568")
+            .text(`${safeText(item.label)}: `, { continued: true });
           doc.fillColor("#1a202c").text(safeText(String(item.value)));
         }
         doc.moveDown(0.5);
       }
 
-      if (section.type === "table" && section.columns && section.rows && section.columns.length > 0) {
+      if (
+        section.type === "table" &&
+        section.columns &&
+        section.rows &&
+        section.columns.length > 0
+      ) {
         const cols = section.columns as string[];
         const rows = section.rows as string[][];
         const tableWidth = 515;
@@ -1579,18 +2247,29 @@ async function generatePdfDocument(title: string, filename: string, content: any
         doc.fillColor("#ebf8ff").rect(startX, y, tableWidth, 20).fill();
         doc.fillColor("#2b6cb0").fontSize(8);
         cols.forEach((col: string, i: number) => {
-          doc.text(safeText(col), startX + i * colWidth + 4, y + 5, { width: colWidth - 8, align: "center" });
+          doc.text(safeText(col), startX + i * colWidth + 4, y + 5, {
+            width: colWidth - 8,
+            align: "center",
+          });
         });
         y += 20;
 
         rows.forEach((row: string[], rowIdx: number) => {
-          if (y > 740) { doc.addPage(); y = 40; }
+          if (y > 740) {
+            doc.addPage();
+            y = 40;
+          }
           if (rowIdx % 2 === 0) {
             doc.fillColor("#f7fafc").rect(startX, y, tableWidth, 18).fill();
           }
           doc.fillColor("#2d3748").fontSize(7);
           row.forEach((cell: string, i: number) => {
-            doc.text(safeText(String(cell || "")), startX + i * colWidth + 4, y + 4, { width: colWidth - 8, align: "center" });
+            doc.text(
+              safeText(String(cell || "")),
+              startX + i * colWidth + 4,
+              y + 4,
+              { width: colWidth - 8, align: "center" },
+            );
           });
           y += 18;
         });
@@ -1600,21 +2279,41 @@ async function generatePdfDocument(title: string, filename: string, content: any
     }
 
     const footer = content.footer || {};
-    if (footer.signatures && Array.isArray(footer.signatures) && footer.signatures.length > 0) {
+    if (
+      footer.signatures &&
+      Array.isArray(footer.signatures) &&
+      footer.signatures.length > 0
+    ) {
       if (doc.y > 650) doc.addPage();
       doc.moveDown(2);
       const sigWidth = 515 / footer.signatures.length;
       const sigY = doc.y;
       footer.signatures.forEach((sig: any, i: number) => {
         const x = 40 + i * sigWidth;
-        doc.fontSize(9).fillColor("#4a5568").text(safeText(sig.title || ""), x, sigY, { width: sigWidth, align: "center" });
-        doc.text(safeText(sig.name || "_______________"), x, sigY + 14, { width: sigWidth, align: "center" });
-        doc.moveTo(x + 20, sigY + 40).lineTo(x + sigWidth - 20, sigY + 40).strokeColor("#cbd5e0").stroke();
+        doc
+          .fontSize(9)
+          .fillColor("#4a5568")
+          .text(safeText(sig.title || ""), x, sigY, {
+            width: sigWidth,
+            align: "center",
+          });
+        doc.text(safeText(sig.name || "_______________"), x, sigY + 14, {
+          width: sigWidth,
+          align: "center",
+        });
+        doc
+          .moveTo(x + 20, sigY + 40)
+          .lineTo(x + sigWidth - 20, sigY + 40)
+          .strokeColor("#cbd5e0")
+          .stroke();
       });
     }
     if (footer.text) {
       doc.moveDown(2);
-      doc.fontSize(8).fillColor("#a0aec0").text(safeText(footer.text), { align: "center" });
+      doc
+        .fontSize(8)
+        .fillColor("#a0aec0")
+        .text(safeText(footer.text), { align: "center" });
     }
 
     doc.end();
@@ -1623,7 +2322,11 @@ async function generatePdfDocument(title: string, filename: string, content: any
   });
 }
 
-async function generateExcelDocument(title: string, filename: string, content: any): Promise<string> {
+async function generateExcelDocument(
+  title: string,
+  filename: string,
+  content: any,
+): Promise<string> {
   const filePath = path.join(DOCS_DIR, `${filename}.xlsx`);
   const workbook = new XLSX.Workbook();
   workbook.creator = "MPBF Smart Agent";
@@ -1634,7 +2337,9 @@ async function generateExcelDocument(title: string, filename: string, content: a
 
   const usedSheetNames = new Set<string>();
   for (const section of sections) {
-    let sheetName = (section.title || title).substring(0, 30).replace(/[\\/*?\[\]:]/g, "");
+    let sheetName = (section.title || title)
+      .substring(0, 30)
+      .replace(/[\\/*?\[\]:]/g, "");
     let counter = 1;
     const baseName = sheetName;
     while (usedSheetNames.has(sheetName)) {
@@ -1648,16 +2353,34 @@ async function generateExcelDocument(title: string, filename: string, content: a
     if (header.company_name) {
       const hRow = sheet.getRow(rowNum);
       hRow.getCell(1).value = header.company_name;
-      hRow.getCell(1).font = { bold: true, size: 16, color: { argb: "FF1A365D" } };
+      hRow.getCell(1).font = {
+        bold: true,
+        size: 16,
+        color: { argb: "FF1A365D" },
+      };
       hRow.getCell(1).alignment = { horizontal: "center" };
-      sheet.mergeCells(rowNum, 1, rowNum, Math.max(section.columns?.length || 4, 4));
+      sheet.mergeCells(
+        rowNum,
+        1,
+        rowNum,
+        Math.max(section.columns?.length || 4, 4),
+      );
       rowNum++;
     }
     const titleRow = sheet.getRow(rowNum);
     titleRow.getCell(1).value = title;
-    titleRow.getCell(1).font = { bold: true, size: 13, color: { argb: "FF2D3748" } };
+    titleRow.getCell(1).font = {
+      bold: true,
+      size: 13,
+      color: { argb: "FF2D3748" },
+    };
     titleRow.getCell(1).alignment = { horizontal: "center" };
-    sheet.mergeCells(rowNum, 1, rowNum, Math.max(section.columns?.length || 4, 4));
+    sheet.mergeCells(
+      rowNum,
+      1,
+      rowNum,
+      Math.max(section.columns?.length || 4, 4),
+    );
     rowNum++;
 
     if (header.subtitle) {
@@ -1665,7 +2388,12 @@ async function generateExcelDocument(title: string, filename: string, content: a
       subRow.getCell(1).value = header.subtitle;
       subRow.getCell(1).font = { size: 10, color: { argb: "FF718096" } };
       subRow.getCell(1).alignment = { horizontal: "center" };
-      sheet.mergeCells(rowNum, 1, rowNum, Math.max(section.columns?.length || 4, 4));
+      sheet.mergeCells(
+        rowNum,
+        1,
+        rowNum,
+        Math.max(section.columns?.length || 4, 4),
+      );
       rowNum++;
     }
     if (header.date) {
@@ -1673,7 +2401,12 @@ async function generateExcelDocument(title: string, filename: string, content: a
       dateRow.getCell(1).value = header.date;
       dateRow.getCell(1).font = { size: 9, color: { argb: "FFA0AEC0" } };
       dateRow.getCell(1).alignment = { horizontal: "center" };
-      sheet.mergeCells(rowNum, 1, rowNum, Math.max(section.columns?.length || 4, 4));
+      sheet.mergeCells(
+        rowNum,
+        1,
+        rowNum,
+        Math.max(section.columns?.length || 4, 4),
+      );
       rowNum++;
     }
     rowNum++;
@@ -1684,9 +2417,18 @@ async function generateExcelDocument(title: string, filename: string, content: a
         const cell = headerRow.getCell(i + 1);
         cell.value = col;
         cell.font = { bold: true, size: 10, color: { argb: "FFFFFFFF" } };
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF2B6CB0" } };
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FF2B6CB0" },
+        };
         cell.alignment = { horizontal: "center", vertical: "middle" };
-        cell.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
+        cell.border = {
+          top: { style: "thin" },
+          bottom: { style: "thin" },
+          left: { style: "thin" },
+          right: { style: "thin" },
+        };
         sheet.getColumn(i + 1).width = Math.max(15, col.length * 2);
       });
       rowNum++;
@@ -1698,9 +2440,18 @@ async function generateExcelDocument(title: string, filename: string, content: a
           c.value = isNaN(Number(cell)) ? cell : Number(cell);
           c.font = { size: 9 };
           c.alignment = { horizontal: "center", vertical: "middle" };
-          c.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
+          c.border = {
+            top: { style: "thin" },
+            bottom: { style: "thin" },
+            left: { style: "thin" },
+            right: { style: "thin" },
+          };
           if (rIdx % 2 === 0) {
-            c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF7FAFC" } };
+            c.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: "FFF7FAFC" },
+            };
           }
         });
         rowNum++;
@@ -1749,7 +2500,11 @@ async function generateExcelDocument(title: string, filename: string, content: a
   return filePath;
 }
 
-async function generateWordDocument(title: string, filename: string, content: any): Promise<string> {
+async function generateWordDocument(
+  title: string,
+  filename: string,
+  content: any,
+): Promise<string> {
   const filePath = path.join(DOCS_DIR, `${filename}.docx`);
   const header = content.header || {};
   const sections = content.sections || [];
@@ -1758,72 +2513,230 @@ async function generateWordDocument(title: string, filename: string, content: an
   const children: any[] = [];
 
   if (header.company_name) {
-    children.push(new docx.Paragraph({ children: [new docx.TextRun({ text: header.company_name, bold: true, size: 36, color: "1A365D" })], alignment: docx.AlignmentType.CENTER, spacing: { after: 100 } }));
+    children.push(
+      new docx.Paragraph({
+        children: [
+          new docx.TextRun({
+            text: header.company_name,
+            bold: true,
+            size: 36,
+            color: "1A365D",
+          }),
+        ],
+        alignment: docx.AlignmentType.CENTER,
+        spacing: { after: 100 },
+      }),
+    );
   }
-  children.push(new docx.Paragraph({ children: [new docx.TextRun({ text: title, bold: true, size: 28, color: "2D3748" })], alignment: docx.AlignmentType.CENTER, spacing: { after: 100 } }));
+  children.push(
+    new docx.Paragraph({
+      children: [
+        new docx.TextRun({
+          text: title,
+          bold: true,
+          size: 28,
+          color: "2D3748",
+        }),
+      ],
+      alignment: docx.AlignmentType.CENTER,
+      spacing: { after: 100 },
+    }),
+  );
   if (header.subtitle) {
-    children.push(new docx.Paragraph({ children: [new docx.TextRun({ text: header.subtitle, size: 20, color: "718096" })], alignment: docx.AlignmentType.CENTER }));
+    children.push(
+      new docx.Paragraph({
+        children: [
+          new docx.TextRun({
+            text: header.subtitle,
+            size: 20,
+            color: "718096",
+          }),
+        ],
+        alignment: docx.AlignmentType.CENTER,
+      }),
+    );
   }
   if (header.date) {
-    children.push(new docx.Paragraph({ children: [new docx.TextRun({ text: header.date, size: 18, color: "A0AEC0" })], alignment: docx.AlignmentType.CENTER }));
+    children.push(
+      new docx.Paragraph({
+        children: [
+          new docx.TextRun({ text: header.date, size: 18, color: "A0AEC0" }),
+        ],
+        alignment: docx.AlignmentType.CENTER,
+      }),
+    );
   }
   if (header.extra_info) {
     for (const info of header.extra_info) {
-      children.push(new docx.Paragraph({ children: [new docx.TextRun({ text: info, size: 18, color: "718096" })], alignment: docx.AlignmentType.CENTER }));
+      children.push(
+        new docx.Paragraph({
+          children: [
+            new docx.TextRun({ text: info, size: 18, color: "718096" }),
+          ],
+          alignment: docx.AlignmentType.CENTER,
+        }),
+      );
     }
   }
-  children.push(new docx.Paragraph({ children: [], spacing: { after: 200 }, border: { bottom: { style: docx.BorderStyle.SINGLE, size: 1, color: "E2E8F0" } } }));
+  children.push(
+    new docx.Paragraph({
+      children: [],
+      spacing: { after: 200 },
+      border: {
+        bottom: { style: docx.BorderStyle.SINGLE, size: 1, color: "E2E8F0" },
+      },
+    }),
+  );
 
   for (const section of sections) {
     if (section.title) {
-      children.push(new docx.Paragraph({ children: [new docx.TextRun({ text: section.title, bold: true, size: 24, color: "2B6CB0", underline: { type: docx.UnderlineType.SINGLE } })], spacing: { before: 300, after: 100 } }));
+      children.push(
+        new docx.Paragraph({
+          children: [
+            new docx.TextRun({
+              text: section.title,
+              bold: true,
+              size: 24,
+              color: "2B6CB0",
+              underline: { type: docx.UnderlineType.SINGLE },
+            }),
+          ],
+          spacing: { before: 300, after: 100 },
+        }),
+      );
     }
 
     if (section.type === "text" && section.text) {
-      children.push(new docx.Paragraph({ children: [new docx.TextRun({ text: section.text, size: 20 })], spacing: { after: 200 } }));
+      children.push(
+        new docx.Paragraph({
+          children: [new docx.TextRun({ text: section.text, size: 20 })],
+          spacing: { after: 200 },
+        }),
+      );
     }
 
     if (section.type === "key_value" && section.data) {
       for (const [key, value] of Object.entries(section.data)) {
-        children.push(new docx.Paragraph({ children: [new docx.TextRun({ text: `${key}: `, bold: true, size: 20 }), new docx.TextRun({ text: String(value), size: 20 })], spacing: { after: 60 } }));
+        children.push(
+          new docx.Paragraph({
+            children: [
+              new docx.TextRun({ text: `${key}: `, bold: true, size: 20 }),
+              new docx.TextRun({ text: String(value), size: 20 }),
+            ],
+            spacing: { after: 60 },
+          }),
+        );
       }
     }
 
     if (section.type === "summary" && section.items) {
       for (const item of section.items) {
-        children.push(new docx.Paragraph({ children: [new docx.TextRun({ text: `${item.label}: `, bold: true, size: 20 }), new docx.TextRun({ text: String(item.value), size: 20 })], spacing: { after: 60 } }));
+        children.push(
+          new docx.Paragraph({
+            children: [
+              new docx.TextRun({
+                text: `${item.label}: `,
+                bold: true,
+                size: 20,
+              }),
+              new docx.TextRun({ text: String(item.value), size: 20 }),
+            ],
+            spacing: { after: 60 },
+          }),
+        );
       }
     }
 
     if (section.type === "table" && section.columns && section.rows) {
-      const headerCells = section.columns.map((col: string) => new docx.TableCell({
-        children: [new docx.Paragraph({ children: [new docx.TextRun({ text: col, bold: true, size: 18, color: "FFFFFF" })], alignment: docx.AlignmentType.CENTER })],
-        shading: { fill: "2B6CB0" }, verticalAlign: docx.VerticalAlign.CENTER,
-      }));
+      const headerCells = section.columns.map(
+        (col: string) =>
+          new docx.TableCell({
+            children: [
+              new docx.Paragraph({
+                children: [
+                  new docx.TextRun({
+                    text: col,
+                    bold: true,
+                    size: 18,
+                    color: "FFFFFF",
+                  }),
+                ],
+                alignment: docx.AlignmentType.CENTER,
+              }),
+            ],
+            shading: { fill: "2B6CB0" },
+            verticalAlign: docx.VerticalAlign.CENTER,
+          }),
+      );
 
-      const dataRows = section.rows.map((row: string[], rIdx: number) => new docx.TableRow({
-        children: row.map((cell: string) => new docx.TableCell({
-          children: [new docx.Paragraph({ children: [new docx.TextRun({ text: String(cell || ""), size: 18 })], alignment: docx.AlignmentType.CENTER })],
-          shading: rIdx % 2 === 0 ? { fill: "F7FAFC" } : undefined, verticalAlign: docx.VerticalAlign.CENTER,
-        }))
-      }));
+      const dataRows = section.rows.map(
+        (row: string[], rIdx: number) =>
+          new docx.TableRow({
+            children: row.map(
+              (cell: string) =>
+                new docx.TableCell({
+                  children: [
+                    new docx.Paragraph({
+                      children: [
+                        new docx.TextRun({
+                          text: String(cell || ""),
+                          size: 18,
+                        }),
+                      ],
+                      alignment: docx.AlignmentType.CENTER,
+                    }),
+                  ],
+                  shading: rIdx % 2 === 0 ? { fill: "F7FAFC" } : undefined,
+                  verticalAlign: docx.VerticalAlign.CENTER,
+                }),
+            ),
+          }),
+      );
 
-      children.push(new docx.Table({
-        rows: [new docx.TableRow({ children: headerCells, tableHeader: true }), ...dataRows],
-        width: { size: 100, type: docx.WidthType.PERCENTAGE },
-      }));
-      children.push(new docx.Paragraph({ children: [], spacing: { after: 200 } }));
+      children.push(
+        new docx.Table({
+          rows: [
+            new docx.TableRow({ children: headerCells, tableHeader: true }),
+            ...dataRows,
+          ],
+          width: { size: 100, type: docx.WidthType.PERCENTAGE },
+        }),
+      );
+      children.push(
+        new docx.Paragraph({ children: [], spacing: { after: 200 } }),
+      );
     }
   }
 
   if (footer.signatures && Array.isArray(footer.signatures)) {
-    children.push(new docx.Paragraph({ children: [], spacing: { before: 400 } }));
+    children.push(
+      new docx.Paragraph({ children: [], spacing: { before: 400 } }),
+    );
     for (const sig of footer.signatures) {
-      children.push(new docx.Paragraph({ children: [new docx.TextRun({ text: sig.title || "", bold: true, size: 20 }), new docx.TextRun({ text: `    ${sig.name || "_______________"}`, size: 20 })], spacing: { after: 100 } }));
+      children.push(
+        new docx.Paragraph({
+          children: [
+            new docx.TextRun({ text: sig.title || "", bold: true, size: 20 }),
+            new docx.TextRun({
+              text: `    ${sig.name || "_______________"}`,
+              size: 20,
+            }),
+          ],
+          spacing: { after: 100 },
+        }),
+      );
     }
   }
   if (footer.text) {
-    children.push(new docx.Paragraph({ children: [new docx.TextRun({ text: footer.text, size: 16, color: "A0AEC0" })], alignment: docx.AlignmentType.CENTER, spacing: { before: 400 } }));
+    children.push(
+      new docx.Paragraph({
+        children: [
+          new docx.TextRun({ text: footer.text, size: 16, color: "A0AEC0" }),
+        ],
+        alignment: docx.AlignmentType.CENTER,
+        spacing: { before: 400 },
+      }),
+    );
   }
 
   const document = new docx.Document({
@@ -1835,7 +2748,11 @@ async function generateWordDocument(title: string, filename: string, content: an
   return filePath;
 }
 
-async function generateCsvDocument(title: string, filename: string, content: any): Promise<string> {
+async function generateCsvDocument(
+  title: string,
+  filename: string,
+  content: any,
+): Promise<string> {
   const filePath = path.join(DOCS_DIR, `${filename}.csv`);
   const sections = content.sections || [];
   const lines: string[] = [];
@@ -1870,7 +2787,9 @@ async function generateCsvDocument(title: string, filename: string, content: any
     if (section.type === "table" && section.columns && section.rows) {
       lines.push(section.columns.map(escapeCsv).join(","));
       for (const row of section.rows) {
-        lines.push(row.map((cell: string) => escapeCsv(String(cell || ""))).join(","));
+        lines.push(
+          row.map((cell: string) => escapeCsv(String(cell || ""))).join(","),
+        );
       }
     }
 
@@ -1898,19 +2817,33 @@ async function generateCsvDocument(title: string, filename: string, content: any
   return filePath;
 }
 
-async function executeFunction(name: string, args: Record<string, unknown>, userPermissions?: string[]): Promise<string> {
+async function executeFunction(
+  name: string,
+  args: Record<string, unknown>,
+  userPermissions?: string[],
+): Promise<string> {
   const perms = userPermissions || [];
-  const hasPermission = (perm: string) => perms.includes('admin') || perms.includes(perm);
-  
+  const hasPermission = (perm: string) =>
+    perms.includes("admin") || perms.includes(perm);
+
   try {
     switch (name) {
       case "get_order_status": {
         const orderId = args.order_id as number;
-        const [order] = await db.select().from(orders).where(eq(orders.id, orderId));
+        const [order] = await db
+          .select()
+          .from(orders)
+          .where(eq(orders.id, orderId));
         if (!order) return JSON.stringify({ error: "الطلب غير موجود" });
-        
-        const prodOrders = await db.select().from(production_orders).where(eq(production_orders.order_id, orderId));
-        const totalQuantity = prodOrders.reduce((sum, po) => sum + parseFloat(po.quantity_kg || "0"), 0);
+
+        const prodOrders = await db
+          .select()
+          .from(production_orders)
+          .where(eq(production_orders.order_id, orderId));
+        const totalQuantity = prodOrders.reduce(
+          (sum, po) => sum + parseFloat(po.quantity_kg || "0"),
+          0,
+        );
         return JSON.stringify({
           order: {
             id: order.id,
@@ -1918,36 +2851,45 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
             status: order.status,
             total_quantity_kg: totalQuantity,
             delivery_date: order.delivery_date,
-            created_at: order.created_at
+            created_at: order.created_at,
           },
-          production_orders: prodOrders.map(po => ({
+          production_orders: prodOrders.map((po) => ({
             id: po.id,
             status: po.status,
             quantity_kg: po.quantity_kg,
-            produced_quantity_kg: po.produced_quantity_kg
-          }))
+            produced_quantity_kg: po.produced_quantity_kg,
+          })),
         });
       }
 
       case "get_orders_summary": {
-        const orderStats = await db.select({
-          status: orders.status,
-          count: count()
-        }).from(orders).groupBy(orders.status);
-        
+        const orderStats = await db
+          .select({
+            status: orders.status,
+            count: count(),
+          })
+          .from(orders)
+          .groupBy(orders.status);
+
         const totalOrders = await db.select({ count: count() }).from(orders);
         return JSON.stringify({
           total: totalOrders[0]?.count || 0,
-          by_status: orderStats
+          by_status: orderStats,
         });
       }
 
       case "get_production_order_status": {
         const poId = args.production_order_id as number;
-        const [po] = await db.select().from(production_orders).where(eq(production_orders.id, poId));
+        const [po] = await db
+          .select()
+          .from(production_orders)
+          .where(eq(production_orders.id, poId));
         if (!po) return JSON.stringify({ error: "أمر الإنتاج غير موجود" });
-        
-        const poRolls = await db.select().from(rolls).where(eq(rolls.production_order_id, poId));
+
+        const poRolls = await db
+          .select()
+          .from(rolls)
+          .where(eq(rolls.production_order_id, poId));
         return JSON.stringify({
           production_order: {
             id: po.id,
@@ -1955,30 +2897,33 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
             quantity_kg: po.quantity_kg,
             produced_quantity_kg: po.produced_quantity_kg,
             film_completed: po.film_completed,
-            printing_completed: po.printing_completed
+            printing_completed: po.printing_completed,
           },
           rolls_count: poRolls.length,
-          rolls: poRolls.slice(0, 10).map(r => ({
+          rolls: poRolls.slice(0, 10).map((r) => ({
             id: r.id,
             roll_number: r.roll_number,
             weight_kg: r.weight_kg,
-            stage: r.stage
-          }))
+            stage: r.stage,
+          })),
         });
       }
 
       case "get_production_summary": {
-        const activeOrders = await db.select({ count: count() })
+        const activeOrders = await db
+          .select({ count: count() })
           .from(production_orders)
           .where(eq(production_orders.status, "active"));
-        
-        const totalProduced = await db.select({ 
-          total: sum(production_orders.produced_quantity_kg) 
-        }).from(production_orders);
-        
+
+        const totalProduced = await db
+          .select({
+            total: sum(production_orders.produced_quantity_kg),
+          })
+          .from(production_orders);
+
         return JSON.stringify({
           active_production_orders: activeOrders[0]?.count || 0,
-          total_produced_kg: totalProduced[0]?.total || 0
+          total_produced_kg: totalProduced[0]?.total || 0,
         });
       }
 
@@ -1986,24 +2931,39 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
         const days = (args.days as number) || 7;
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - days);
-        
-        const recentRolls = await db.select({
-          count: count(),
-          total_weight: sum(rolls.weight_kg)
-        }).from(rolls).where(gte(rolls.created_at, startDate));
-        
+
+        const recentRolls = await db
+          .select({
+            count: count(),
+            total_weight: sum(rolls.weight_kg),
+          })
+          .from(rolls)
+          .where(gte(rolls.created_at, startDate));
+
         return JSON.stringify({
           period_days: days,
           rolls_created: recentRolls[0]?.count || 0,
-          total_weight_kg: recentRolls[0]?.total_weight || 0
+          total_weight_kg: recentRolls[0]?.total_weight || 0,
         });
       }
 
       case "create_quote": {
-        const { customer_name, tax_number, items, created_by_name, created_by_phone, notes } = args as {
+        const {
+          customer_name,
+          tax_number,
+          items,
+          created_by_name,
+          created_by_phone,
+          notes,
+        } = args as {
           customer_name: string;
           tax_number: string;
-          items: Array<{ item_name: string; unit: string; unit_price: number; quantity: number }>;
+          items: Array<{
+            item_name: string;
+            unit: string;
+            unit_price: number;
+            quantity: number;
+          }>;
           created_by_name?: string;
           created_by_phone?: string;
           notes?: string;
@@ -2013,14 +2973,16 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
           return JSON.stringify({ error: "الرقم الضريبي يجب أن يكون 14 رقم" });
         }
 
-        const lastQuote = await db.select({ document_number: quotes.document_number })
+        const lastQuote = await db
+          .select({ document_number: quotes.document_number })
           .from(quotes)
           .orderBy(desc(quotes.id))
           .limit(1);
-        
+
         let nextNum = 1;
         if (lastQuote.length > 0) {
-          const lastNum = parseInt(lastQuote[0].document_number.replace("QT-", "")) || 0;
+          const lastNum =
+            parseInt(lastQuote[0].document_number.replace("QT-", "")) || 0;
           nextNum = lastNum + 1;
         }
         const documentNumber = `QT-${String(nextNum).padStart(6, "0")}`;
@@ -2035,30 +2997,33 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
             unit: item.unit,
             unit_price: String(item.unit_price),
             quantity: String(item.quantity),
-            line_total: String(lineTotal)
+            line_total: String(lineTotal),
           };
         });
 
         const taxAmount = totalBeforeTax * 0.15;
         const totalWithTax = totalBeforeTax + taxAmount;
 
-        const [newQuote] = await db.insert(quotes).values({
-          document_number: documentNumber,
-          customer_name,
-          tax_number,
-          total_before_tax: String(totalBeforeTax),
-          tax_amount: String(taxAmount),
-          total_with_tax: String(totalWithTax),
-          created_by_name: created_by_name || null,
-          created_by_phone: created_by_phone || null,
-          notes: notes || null,
-          status: "draft"
-        }).returning();
+        const [newQuote] = await db
+          .insert(quotes)
+          .values({
+            document_number: documentNumber,
+            customer_name,
+            tax_number,
+            total_before_tax: String(totalBeforeTax),
+            tax_amount: String(taxAmount),
+            total_with_tax: String(totalWithTax),
+            created_by_name: created_by_name || null,
+            created_by_phone: created_by_phone || null,
+            notes: notes || null,
+            status: "draft",
+          })
+          .returning();
 
         for (const item of quoteItems) {
           await db.insert(quote_items).values({
             quote_id: newQuote.id,
-            ...item
+            ...item,
           });
         }
 
@@ -2073,9 +3038,9 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
             total_with_tax: totalWithTax.toFixed(2),
             items_count: items.length,
             currency: "SAR",
-            currency_name: "ريال سعودي"
+            currency_name: "ريال سعودي",
           },
-          message: `تم إنشاء عرض السعر رقم ${documentNumber} بنجاح`
+          message: `تم إنشاء عرض السعر رقم ${documentNumber} بنجاح`,
         });
       }
 
@@ -2085,18 +3050,18 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
           from_currency: string;
           to_currency: string;
         };
-        
+
         const fromRate = exchangeRates[from_currency];
         const toRate = exchangeRates[to_currency];
-        
+
         if (!fromRate || !toRate) {
           return JSON.stringify({ error: "عملة غير مدعومة" });
         }
-        
+
         // تحويل إلى ريال سعودي أولاً ثم إلى العملة الهدف
         const amountInSAR = amount / fromRate;
         const convertedAmount = amountInSAR * toRate;
-        
+
         return JSON.stringify({
           original_amount: amount,
           original_currency: from_currency,
@@ -2105,7 +3070,7 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
           target_currency: to_currency,
           target_currency_name: currencyNames[to_currency],
           exchange_rate: (toRate / fromRate).toFixed(4),
-          message: `${amount.toFixed(2)} ${currencyNames[from_currency]} = ${convertedAmount.toFixed(2)} ${currencyNames[to_currency]}`
+          message: `${amount.toFixed(2)} ${currencyNames[from_currency]} = ${convertedAmount.toFixed(2)} ${currencyNames[to_currency]}`,
         });
       }
 
@@ -2114,31 +3079,33 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
           code,
           name: currencyNames[code],
           rate_vs_sar: rate,
-          sar_equivalent: (1 / rate).toFixed(4)
+          sar_equivalent: (1 / rate).toFixed(4),
         }));
-        
+
         return JSON.stringify({
           base_currency: "SAR",
           base_currency_name: "ريال سعودي",
           rates,
-          last_updated: new Date().toISOString()
+          last_updated: new Date().toISOString(),
         });
       }
 
       case "get_quote_templates": {
-        const activeTemplates = await db.select().from(quote_templates)
+        const activeTemplates = await db
+          .select()
+          .from(quote_templates)
           .where(eq(quote_templates.is_active, true))
           .orderBy(quote_templates.name);
-        
+
         if (activeTemplates.length === 0) {
           return JSON.stringify({
             templates: [],
-            message: "لا توجد نماذج عروض أسعار متاحة حالياً"
+            message: "لا توجد نماذج عروض أسعار متاحة حالياً",
           });
         }
-        
+
         return JSON.stringify({
-          templates: activeTemplates.map(t => ({
+          templates: activeTemplates.map((t) => ({
             id: t.id,
             name: t.name,
             product_name: t.product_name,
@@ -2146,43 +3113,60 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
             unit_price: t.unit_price,
             unit: t.unit,
             min_quantity: t.min_quantity,
-            category: t.category
+            category: t.category,
           })),
           count: activeTemplates.length,
-          message: `يوجد ${activeTemplates.length} نموذج متاح لعروض الأسعار`
+          message: `يوجد ${activeTemplates.length} نموذج متاح لعروض الأسعار`,
         });
       }
 
       case "generate_quote_pdf": {
         const quoteId = args.quote_id as number;
-        const [quote] = await db.select().from(quotes).where(eq(quotes.id, quoteId));
-        
+        const [quote] = await db
+          .select()
+          .from(quotes)
+          .where(eq(quotes.id, quoteId));
+
         if (!quote) {
           return JSON.stringify({ error: "عرض السعر غير موجود" });
         }
-        
-        const quoteItems = await db.select().from(quote_items).where(eq(quote_items.quote_id, quoteId)).orderBy(quote_items.line_number);
-        
+
+        const quoteItems = await db
+          .select()
+          .from(quote_items)
+          .where(eq(quote_items.quote_id, quoteId))
+          .orderBy(quote_items.line_number);
+
         try {
           let pdfBuffer: Buffer;
-          
+
           // استخدام Adobe PDF Services API للدعم الكامل للنص العربي RTL
           if (isAdobePdfAvailable()) {
-            console.log("Using Adobe PDF Services API for quote generation with full Arabic RTL support");
+            console.log(
+              "Using Adobe PDF Services API for quote generation with full Arabic RTL support",
+            );
             try {
               pdfBuffer = await generateQuotePdfWithAdobe(quoteId);
               console.log("✅ Adobe PDF generated successfully");
             } catch (adobeError) {
-              console.error("Adobe PDF failed, falling back to PDFKit:", adobeError);
+              console.error(
+                "Adobe PDF failed, falling back to PDFKit:",
+                adobeError,
+              );
               pdfBuffer = await generateQuotePdfBuffer(quoteId);
             }
           } else {
-            console.log("Using PDFKit for quote generation (Adobe credentials not configured)");
+            console.log(
+              "Using PDFKit for quote generation (Adobe credentials not configured)",
+            );
             pdfBuffer = await generateQuotePdfBuffer(quoteId);
           }
-          
-          const cloudPdfUrl = await uploadPdfToStorage(pdfBuffer, quote.document_number);
-          
+
+          const cloudPdfUrl = await uploadPdfToStorage(
+            pdfBuffer,
+            quote.document_number,
+          );
+
           return JSON.stringify({
             success: true,
             quote_id: quoteId,
@@ -2191,19 +3175,21 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
             total_with_tax: quote.total_with_tax,
             pdf_url: cloudPdfUrl,
             download_link: `[تحميل ملف PDF](${cloudPdfUrl})`,
-            message: `تم إنشاء ملف PDF لعرض السعر ${quote.document_number}.\n\nرابط التحميل: ${cloudPdfUrl}`
+            message: `تم إنشاء ملف PDF لعرض السعر ${quote.document_number}.\n\nرابط التحميل: ${cloudPdfUrl}`,
           });
         } catch (error) {
           console.error("Error generating/uploading PDF:", error);
           // Fallback to local URL if storage fails
-          const baseUrl = process.env.REPLIT_DEV_DOMAIN 
-            ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
-            : process.env.REPLIT_DOMAINS 
-              ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-              : '';
+          const baseUrl = process.env.REPLIT_DEV_DOMAIN
+            ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+            : process.env.REPLIT_DOMAINS
+              ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
+              : "";
           const relativePdfUrl = `/api/quotes/${quoteId}/pdf`;
-          const fullPdfUrl = baseUrl ? `${baseUrl}${relativePdfUrl}` : relativePdfUrl;
-          
+          const fullPdfUrl = baseUrl
+            ? `${baseUrl}${relativePdfUrl}`
+            : relativePdfUrl;
+
           return JSON.stringify({
             success: true,
             quote_id: quoteId,
@@ -2212,7 +3198,7 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
             total_with_tax: quote.total_with_tax,
             pdf_url: fullPdfUrl,
             download_link: `[تحميل ملف PDF](${fullPdfUrl})`,
-            message: `تم إنشاء ملف PDF لعرض السعر ${quote.document_number}.\n\nرابط التحميل: ${fullPdfUrl}`
+            message: `تم إنشاء ملف PDF لعرض السعر ${quote.document_number}.\n\nرابط التحميل: ${fullPdfUrl}`,
           });
         }
       }
@@ -2221,7 +3207,7 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
         const phoneNumber = args.phone_number as string;
         const messageText = args.message as string;
         const messageTitle = (args.title as string) || "رسالة من الوكيل الذكي";
-        
+
         let formattedPhone = phoneNumber.replace(/[\s\-\(\)]/g, "");
         if (!formattedPhone.startsWith("+")) {
           if (formattedPhone.startsWith("05")) {
@@ -2232,9 +3218,10 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
             formattedPhone = "+" + formattedPhone;
           }
         }
-        
+
         try {
-          const { NotificationService } = await import("./services/notification-service");
+          const { NotificationService } =
+            await import("./services/notification-service");
           const { storage } = await import("./storage");
           const notifService = new NotificationService(storage);
           const result = await notifService.sendWhatsAppMessage(
@@ -2244,9 +3231,9 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
               title: messageTitle,
               context_type: "ai_agent",
               context_id: "general",
-            }
+            },
           );
-          
+
           if (result.success) {
             return JSON.stringify({
               success: true,
@@ -2254,17 +3241,18 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
               messageId: result.messageId,
             });
           } else {
-            const whatsappWebLink = `https://wa.me/${formattedPhone.replace('+', '')}?text=${encodeURIComponent(messageText)}`;
+            const whatsappWebLink = `https://wa.me/${formattedPhone.replace("+", "")}?text=${encodeURIComponent(messageText)}`;
             return JSON.stringify({
               success: false,
               error: result.error || "فشل في إرسال الرسالة",
-              message: "لم يتم إرسال الرسالة تلقائياً. يمكنك استخدام الرابط التالي للإرسال يدوياً:",
+              message:
+                "لم يتم إرسال الرسالة تلقائياً. يمكنك استخدام الرابط التالي للإرسال يدوياً:",
               whatsapp_link: whatsappWebLink,
             });
           }
         } catch (error) {
           console.error("WhatsApp general send error:", error);
-          const whatsappWebLink = `https://wa.me/${formattedPhone.replace('+', '')}?text=${encodeURIComponent(messageText)}`;
+          const whatsappWebLink = `https://wa.me/${formattedPhone.replace("+", "")}?text=${encodeURIComponent(messageText)}`;
           return JSON.stringify({
             success: false,
             error: "خدمة الواتساب غير متاحة حالياً",
@@ -2277,13 +3265,16 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
       case "send_quote_whatsapp": {
         const quoteId = args.quote_id as number;
         const phoneNumber = args.phone_number as string;
-        
-        const [quote] = await db.select().from(quotes).where(eq(quotes.id, quoteId));
-        
+
+        const [quote] = await db
+          .select()
+          .from(quotes)
+          .where(eq(quotes.id, quoteId));
+
         if (!quote) {
           return JSON.stringify({ error: "عرض السعر غير موجود" });
         }
-        
+
         let formattedPhone = phoneNumber.replace(/[\s\-\(\)]/g, "");
         if (!formattedPhone.startsWith("+")) {
           if (formattedPhone.startsWith("05")) {
@@ -2294,21 +3285,23 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
             formattedPhone = "+" + formattedPhone;
           }
         }
-        
-        const quoteMessage = `عرض سعر جديد\n\n` +
+
+        const quoteMessage =
+          `عرض سعر جديد\n\n` +
           `رقم المستند: ${quote.document_number}\n` +
           `العميل: ${quote.customer_name}\n` +
-          `التاريخ: ${new Date(quote.created_at!).toLocaleDateString('en-US')}\n\n` +
+          `التاريخ: ${new Date(quote.created_at!).toLocaleDateString("en-US")}\n\n` +
           `المجموع قبل الضريبة: ${Number(quote.total_before_tax).toFixed(2)} ر.س\n` +
           `ضريبة القيمة المضافة 15%: ${Number(quote.tax_amount).toFixed(2)} ر.س\n` +
           `الإجمالي: ${Number(quote.total_with_tax).toFixed(2)} ر.س\n\n` +
           `هذا العرض صالح لمدة 15 يوم من تاريخ الإصدار.`;
-        
+
         try {
-          const { NotificationService } = await import("./services/notification-service");
+          const { NotificationService } =
+            await import("./services/notification-service");
           const { storage } = await import("./storage");
           const notificationService = new NotificationService(storage);
-          
+
           let pdfBuffer: Buffer | undefined;
           try {
             if (isAdobePdfAvailable()) {
@@ -2316,7 +3309,9 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
             } else {
               pdfBuffer = await generateQuotePdfBuffer(quoteId);
             }
-            console.log(`📄 PDF buffer generated for WhatsApp send: ${(pdfBuffer.length / 1024).toFixed(1)} KB`);
+            console.log(
+              `📄 PDF buffer generated for WhatsApp send: ${(pdfBuffer.length / 1024).toFixed(1)} KB`,
+            );
           } catch (pdfErr) {
             console.error("Failed to generate PDF for WhatsApp:", pdfErr);
             try {
@@ -2325,11 +3320,12 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
               console.error("Fallback PDF also failed:", fallbackErr);
             }
           }
-          
-          const pdfCaption = `عرض سعر ${quote.document_number}\n` +
+
+          const pdfCaption =
+            `عرض سعر ${quote.document_number}\n` +
             `العميل: ${quote.customer_name}\n` +
             `الإجمالي: ${Number(quote.total_with_tax).toFixed(2)} ر.س`;
-          
+
           const docResult = await notificationService.sendWhatsAppDocument(
             formattedPhone,
             "",
@@ -2340,65 +3336,77 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
               context_type: "quote",
               context_id: String(quoteId),
               pdfBuffer: pdfBuffer,
-            }
+            },
           );
-          
+
           const textResult = await notificationService.sendWhatsAppMessage(
             formattedPhone,
             quoteMessage,
             {
               title: `عرض سعر ${quote.document_number}`,
               context_type: "quote",
-              context_id: String(quoteId)
-            }
+              context_id: String(quoteId),
+            },
           );
-          
+
           if (docResult.success || textResult.success) {
             return JSON.stringify({
               success: true,
-              message: `تم إرسال عرض السعر ${quote.document_number} ${docResult.success ? 'مع ملف PDF' : ''} بنجاح إلى ${formattedPhone} عبر الواتساب`,
+              message: `تم إرسال عرض السعر ${quote.document_number} ${docResult.success ? "مع ملف PDF" : ""} بنجاح إلى ${formattedPhone} عبر الواتساب`,
               quote_id: quoteId,
               document_number: quote.document_number,
               phone_number: formattedPhone,
               pdf_sent: docResult.success,
               text_sent: textResult.success,
-              message_ids: [docResult.messageId, textResult.messageId].filter(Boolean)
+              message_ids: [docResult.messageId, textResult.messageId].filter(
+                Boolean,
+              ),
             });
           } else {
             // إذا فشل الإرسال، نوفر رابط للإرسال اليدوي
-            const whatsappWebLink = `https://wa.me/${formattedPhone.replace('+', '')}?text=${encodeURIComponent(quoteMessage)}`;
+            const whatsappWebLink = `https://wa.me/${formattedPhone.replace("+", "")}?text=${encodeURIComponent(quoteMessage)}`;
             return JSON.stringify({
               success: false,
-              error: textResult.error || docResult.error || "فشل في إرسال الرسالة",
-              message: "لم يتم إرسال الرسالة تلقائياً. يمكنك استخدام الرابط التالي للإرسال يدوياً:",
+              error:
+                textResult.error || docResult.error || "فشل في إرسال الرسالة",
+              message:
+                "لم يتم إرسال الرسالة تلقائياً. يمكنك استخدام الرابط التالي للإرسال يدوياً:",
               whatsapp_link: whatsappWebLink,
-              pdf_url: `${getAppBaseUrl()}/api/quotes/${quoteId}/pdf`
+              pdf_url: `${getAppBaseUrl()}/api/quotes/${quoteId}/pdf`,
             });
           }
         } catch (error) {
           console.error("WhatsApp send error:", error);
           // توفير رابط للإرسال اليدوي
-          const whatsappWebLink = `https://wa.me/${formattedPhone.replace('+', '')}?text=${encodeURIComponent(quoteMessage)}`;
+          const whatsappWebLink = `https://wa.me/${formattedPhone.replace("+", "")}?text=${encodeURIComponent(quoteMessage)}`;
           return JSON.stringify({
             success: false,
             error: "خدمة الواتساب غير متاحة حالياً",
-            message: "يمكنك استخدام الرابط التالي للإرسال يدوياً عبر WhatsApp Web:",
+            message:
+              "يمكنك استخدام الرابط التالي للإرسال يدوياً عبر WhatsApp Web:",
             whatsapp_link: whatsappWebLink,
-            pdf_url: `${getAppBaseUrl()}/api/quotes/${quoteId}/pdf`
+            pdf_url: `${getAppBaseUrl()}/api/quotes/${quoteId}/pdf`,
           });
         }
       }
 
       case "get_quote_by_number": {
         const documentNumber = args.document_number as string;
-        const [quote] = await db.select().from(quotes).where(eq(quotes.document_number, documentNumber));
-        
+        const [quote] = await db
+          .select()
+          .from(quotes)
+          .where(eq(quotes.document_number, documentNumber));
+
         if (!quote) {
           return JSON.stringify({ error: "عرض السعر غير موجود" });
         }
-        
-        const items = await db.select().from(quote_items).where(eq(quote_items.quote_id, quote.id)).orderBy(quote_items.line_number);
-        
+
+        const items = await db
+          .select()
+          .from(quote_items)
+          .where(eq(quote_items.quote_id, quote.id))
+          .orderBy(quote_items.line_number);
+
         return JSON.stringify({
           quote: {
             id: quote.id,
@@ -2410,38 +3418,38 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
             total_with_tax: quote.total_with_tax,
             status: quote.status,
             created_at: quote.created_at,
-            notes: quote.notes
+            notes: quote.notes,
           },
-          items: items.map(i => ({
+          items: items.map((i) => ({
             item_name: i.item_name,
             unit: i.unit,
             quantity: i.quantity,
             unit_price: i.unit_price,
-            line_total: i.line_total
+            line_total: i.line_total,
           })),
-          pdf_url: `/api/quotes/${quote.id}/pdf`
+          pdf_url: `/api/quotes/${quote.id}/pdf`,
         });
       }
 
       case "search_knowledge_base": {
         const query = args.query as string;
         const results = await searchKnowledgeBase(query);
-        
+
         if (results.length === 0) {
           return JSON.stringify({
             found: false,
-            message: "لم يتم العثور على معلومات مطابقة في قاعدة المعرفة"
+            message: "لم يتم العثور على معلومات مطابقة في قاعدة المعرفة",
           });
         }
-        
+
         return JSON.stringify({
           found: true,
           count: results.length,
-          results: results.map(r => ({
+          results: results.map((r) => ({
             title: r.title,
             content: r.content,
-            category: r.category
-          }))
+            category: r.category,
+          })),
         });
       }
 
@@ -2451,11 +3459,11 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
           home: "https://www.modplastic.com",
           products: "https://www.modplastic.com/products",
           about: "https://www.modplastic.com/about",
-          contact: "https://www.modplastic.com/contact"
+          contact: "https://www.modplastic.com/contact",
         };
-        
+
         const url = urlMap[page] || urlMap.home;
-        
+
         try {
           const content = await fetchWebsiteContent(url);
           return JSON.stringify({
@@ -2463,90 +3471,100 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
             page,
             url,
             content,
-            message: `تم جلب محتوى صفحة ${page} من موقع المصنع`
+            message: `تم جلب محتوى صفحة ${page} من موقع المصنع`,
           });
         } catch (error) {
           return JSON.stringify({
             success: false,
             error: "تعذر جلب محتوى الموقع",
-            message: "الموقع قد يكون غير متاح حالياً. يرجى المحاولة لاحقاً"
+            message: "الموقع قد يكون غير متاح حالياً. يرجى المحاولة لاحقاً",
           });
         }
       }
 
       case "add_to_knowledge_base": {
-        const { title, content, category } = args as { title: string; content: string; category: string };
-        
+        const { title, content, category } = args as {
+          title: string;
+          content: string;
+          category: string;
+        };
+
         try {
-          const [newKnowledge] = await db.insert(ai_agent_knowledge).values({
-            title,
-            content,
-            category,
-            is_active: true
-          }).returning();
-          
+          const [newKnowledge] = await db
+            .insert(ai_agent_knowledge)
+            .values({
+              title,
+              content,
+              category,
+              is_active: true,
+            })
+            .returning();
+
           return JSON.stringify({
             success: true,
             id: newKnowledge.id,
-            message: `تم إضافة "${title}" إلى قاعدة المعرفة بنجاح`
+            message: `تم إضافة "${title}" إلى قاعدة المعرفة بنجاح`,
           });
         } catch (error) {
           return JSON.stringify({
             success: false,
-            error: "فشل في إضافة المعلومات إلى قاعدة المعرفة"
+            error: "فشل في إضافة المعلومات إلى قاعدة المعرفة",
           });
         }
       }
 
       case "get_customer_info": {
         const searchTerm = args.search_term as string;
-        
-        const customerResults = await db.select()
+
+        const customerResults = await db
+          .select()
           .from(customers)
           .where(
             or(
               like(customers.name, `%${searchTerm}%`),
               like(customers.name_ar, `%${searchTerm}%`),
               eq(customers.id, searchTerm),
-              like(customers.phone, `%${searchTerm}%`)
-            )
+              like(customers.phone, `%${searchTerm}%`),
+            ),
           )
           .limit(5);
-        
+
         if (customerResults.length === 0) {
           return JSON.stringify({
             found: false,
-            message: "لم يتم العثور على عميل مطابق"
+            message: "لم يتم العثور على عميل مطابق",
           });
         }
-        
+
         return JSON.stringify({
           found: true,
           count: customerResults.length,
-          customers: customerResults.map(c => ({
+          customers: customerResults.map((c) => ({
             id: c.id,
             name: c.name,
             name_ar: c.name_ar,
             phone: c.phone,
             city: c.city,
             tax_number: c.tax_number,
-            is_active: c.is_active
-          }))
+            is_active: c.is_active,
+          })),
         });
       }
 
       case "get_customers_list": {
         const limit = (args.limit as number) || 20;
         const activeOnly = args.active_only !== false;
-        
+
         if (activeOnly) {
-          const results = await db.select().from(customers)
+          const results = await db
+            .select()
+            .from(customers)
             .where(eq(customers.is_active, true))
             .orderBy(customers.name)
             .limit(limit);
           return JSON.stringify({
             count: results.length,
-            customers: results.map(c => ({
+            customers: results.map((c) => ({
               id: c.id,
               name: c.name,
               name_ar: c.name_ar,
@@ -2554,16 +3572,18 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
               city: c.city,
               tax_number: c.tax_number,
               commercial_name: c.commercial_name,
-              is_active: c.is_active
-            }))
+              is_active: c.is_active,
+            })),
           });
         } else {
-          const results = await db.select().from(customers)
+          const results = await db
+            .select()
+            .from(customers)
             .orderBy(customers.name)
             .limit(limit);
           return JSON.stringify({
             count: results.length,
-            customers: results.map(c => ({
+            customers: results.map((c) => ({
               id: c.id,
               name: c.name,
               name_ar: c.name_ar,
@@ -2571,8 +3591,8 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
               city: c.city,
               tax_number: c.tax_number,
               commercial_name: c.commercial_name,
-              is_active: c.is_active
-            }))
+              is_active: c.is_active,
+            })),
           });
         }
       }
@@ -2580,24 +3600,25 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
       case "get_users_info": {
         const searchTerm = args.search_term as string | undefined;
         const roleFilter = args.role as string | undefined;
-        
+
         let userResults = await db.select().from(users).limit(50);
-        
+
         if (searchTerm) {
-          userResults = userResults.filter(u => 
-            u.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            u.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            u.phone?.includes(searchTerm)
+          userResults = userResults.filter(
+            (u) =>
+              u.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              u.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              u.phone?.includes(searchTerm),
           );
         }
-        
+
         if (roleFilter) {
-          userResults = userResults.filter(u => u.role_id !== null);
+          userResults = userResults.filter((u) => u.role_id !== null);
         }
-        
+
         return JSON.stringify({
           count: userResults.length,
-          users: userResults.map(u => ({
+          users: userResults.map((u) => ({
             id: u.id,
             username: u.username,
             full_name: u.full_name,
@@ -2608,26 +3629,30 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
             status: u.status,
             role_id: u.role_id,
             section_id: u.section_id,
-            created_at: u.created_at
-          }))
+            created_at: u.created_at,
+          })),
         });
       }
 
       case "get_machines_status": {
-        const machineType = args.machine_type as string || "all";
-        
+        const machineType = (args.machine_type as string) || "all";
+
         let machineResults = await db.select().from(machines);
-        
+
         if (machineType !== "all") {
-          machineResults = machineResults.filter(m => m.type === machineType);
+          machineResults = machineResults.filter((m) => m.type === machineType);
         }
-        
-        const maintenanceData = await db.select().from(maintenance_requests)
+
+        const maintenanceData = await db
+          .select()
+          .from(maintenance_requests)
           .where(eq(maintenance_requests.status, "open"))
           .limit(50);
-        
-        const machinesWithMaintenance = machineResults.map(m => {
-          const openMaintenance = maintenanceData.filter(mr => mr.machine_id === m.id);
+
+        const machinesWithMaintenance = machineResults.map((m) => {
+          const openMaintenance = maintenanceData.filter(
+            (mr) => mr.machine_id === m.id,
+          );
           return {
             id: m.id,
             name: m.name,
@@ -2638,35 +3663,36 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
             capacity_medium_kg_per_hour: m.capacity_medium_kg_per_hour,
             capacity_large_kg_per_hour: m.capacity_large_kg_per_hour,
             open_maintenance_requests: openMaintenance.length,
-            maintenance_issues: openMaintenance.map(mr => ({
+            maintenance_issues: openMaintenance.map((mr) => ({
               id: mr.id,
               description: mr.description,
               priority: mr.urgency_level,
-              reported_at: mr.date_reported
-            }))
+              reported_at: mr.date_reported,
+            })),
           };
         });
-        
+
         const statusSummary = {
           total: machineResults.length,
-          active: machineResults.filter(m => m.status === "active").length,
-          down: machineResults.filter(m => m.status === "down").length,
-          maintenance: machineResults.filter(m => m.status === "maintenance").length,
-          extruders: machineResults.filter(m => m.type === "extruder").length,
-          printers: machineResults.filter(m => m.type === "printer").length,
-          cutters: machineResults.filter(m => m.type === "cutter").length
+          active: machineResults.filter((m) => m.status === "active").length,
+          down: machineResults.filter((m) => m.status === "down").length,
+          maintenance: machineResults.filter((m) => m.status === "maintenance")
+            .length,
+          extruders: machineResults.filter((m) => m.type === "extruder").length,
+          printers: machineResults.filter((m) => m.type === "printer").length,
+          cutters: machineResults.filter((m) => m.type === "cutter").length,
         };
-        
+
         return JSON.stringify({
           summary: statusSummary,
-          machines: machinesWithMaintenance
+          machines: machinesWithMaintenance,
         });
       }
 
       case "get_inventory_status": {
         const categoryFilter = args.category as string | undefined;
-        const lowStockOnly = args.low_stock_only as boolean || false;
-        
+        const lowStockOnly = (args.low_stock_only as boolean) || false;
+
         const inventoryResults = await db
           .select({
             id: inventory.id,
@@ -2678,41 +3704,46 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
             max_stock: inventory.max_stock,
             unit: inventory.unit,
             cost_per_unit: inventory.cost_per_unit,
-            last_updated: inventory.last_updated
+            last_updated: inventory.last_updated,
           })
           .from(inventory)
           .leftJoin(items, eq(inventory.item_id, items.id))
           .limit(100);
-        
+
         let filtered = inventoryResults;
-        
+
         if (categoryFilter) {
-          filtered = filtered.filter(i => 
-            i.item_name?.toLowerCase().includes(categoryFilter.toLowerCase()) ||
-            i.item_name_ar?.toLowerCase().includes(categoryFilter.toLowerCase())
+          filtered = filtered.filter(
+            (i) =>
+              i.item_name
+                ?.toLowerCase()
+                .includes(categoryFilter.toLowerCase()) ||
+              i.item_name_ar
+                ?.toLowerCase()
+                .includes(categoryFilter.toLowerCase()),
           );
         }
-        
+
         if (lowStockOnly) {
-          filtered = filtered.filter(i => {
+          filtered = filtered.filter((i) => {
             const current = parseFloat(i.current_stock || "0");
             const minimum = parseFloat(i.min_stock || "0");
             return current <= minimum;
           });
         }
-        
+
         const summary = {
           total_items: filtered.length,
-          low_stock_count: filtered.filter(i => {
+          low_stock_count: filtered.filter((i) => {
             const current = parseFloat(i.current_stock || "0");
             const minimum = parseFloat(i.min_stock || "0");
             return current <= minimum;
-          }).length
+          }).length,
         };
-        
+
         return JSON.stringify({
           summary,
-          inventory: filtered.map(i => ({
+          inventory: filtered.map((i) => ({
             id: i.id,
             item_id: i.item_id,
             name: i.item_name,
@@ -2722,14 +3753,23 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
             min_stock: i.min_stock,
             max_stock: i.max_stock,
             cost_per_unit: i.cost_per_unit,
-            is_low_stock: parseFloat(i.current_stock || "0") <= parseFloat(i.min_stock || "0"),
-            last_updated: i.last_updated
-          }))
+            is_low_stock:
+              parseFloat(i.current_stock || "0") <=
+              parseFloat(i.min_stock || "0"),
+            last_updated: i.last_updated,
+          })),
         });
       }
 
       case "calculate_bag_quantity": {
-        const { width_cm, length_cm, thickness_micron, material_type, weight_kg, bag_count } = args as {
+        const {
+          width_cm,
+          length_cm,
+          thickness_micron,
+          material_type,
+          weight_kg,
+          bag_count,
+        } = args as {
           width_cm: number;
           length_cm: number;
           thickness_micron: number;
@@ -2737,62 +3777,69 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
           weight_kg?: number;
           bag_count?: number;
         };
-        
+
         const densityMap: Record<string, number> = {
           HDPE: 0.95,
           LDPE: 0.92,
           LLDPE: 0.93,
-          PP: 0.91
+          PP: 0.91,
         };
         const density = densityMap[material_type] || 0.92;
-        
+
         const thickness_cm = thickness_micron / 10000;
         const bag_area_cm2 = width_cm * 2 * length_cm;
         const bag_volume_cm3 = bag_area_cm2 * thickness_cm;
         const bag_weight_grams = bag_volume_cm3 * density;
         const bag_weight_kg = bag_weight_grams / 1000;
         const bags_per_kg = 1 / bag_weight_kg;
-        
-        let result: Record<string, unknown> = {
+
+        const result: Record<string, unknown> = {
           inputs: {
             width_cm,
             length_cm,
             thickness_micron,
             material_type,
-            density
+            density,
           },
           bag_weight_grams: bag_weight_grams.toFixed(4),
           bags_per_kg: Math.round(bags_per_kg),
-          formula_used: `وزن الكيس = (عرض×2 × طول × سُمك_cm × كثافة) = ${bag_weight_grams.toFixed(4)} جرام`
+          formula_used: `وزن الكيس = (عرض×2 × طول × سُمك_cm × كثافة) = ${bag_weight_grams.toFixed(4)} جرام`,
         };
-        
+
         if (weight_kg) {
           const total_bags = Math.floor(bags_per_kg * weight_kg);
           result.from_weight = {
             weight_kg,
             total_bags,
-            message: `${weight_kg} كيلو ينتج تقريباً ${total_bags.toLocaleString()} كيس من ${material_type} بأبعاد ${width_cm}×${length_cm} سم وسُمك ${thickness_micron} ميكرون`
+            message: `${weight_kg} كيلو ينتج تقريباً ${total_bags.toLocaleString()} كيس من ${material_type} بأبعاد ${width_cm}×${length_cm} سم وسُمك ${thickness_micron} ميكرون`,
           };
         }
-        
+
         if (bag_count) {
           const required_weight = bag_count / bags_per_kg;
           result.from_count = {
             bag_count,
             required_weight_kg: required_weight.toFixed(2),
-            message: `لإنتاج ${bag_count.toLocaleString()} كيس من ${material_type} بأبعاد ${width_cm}×${length_cm} سم وسُمك ${thickness_micron} ميكرون تحتاج ${required_weight.toFixed(2)} كيلو`
+            message: `لإنتاج ${bag_count.toLocaleString()} كيس من ${material_type} بأبعاد ${width_cm}×${length_cm} سم وسُمك ${thickness_micron} ميكرون تحتاج ${required_weight.toFixed(2)} كيلو`,
           };
         }
-        
+
         if (!weight_kg && !bag_count) {
           result.summary = `كيس ${width_cm}×${length_cm} سم، سُمك ${thickness_micron} ميكرون، مادة ${material_type}: وزن الكيس ${bag_weight_grams.toFixed(3)} جرام، الكيلو يحتوي ${Math.round(bags_per_kg)} كيس`;
         }
-        
+
         return JSON.stringify(result);
       }
 
       case "calculate_printing_costs": {
-        const { colors_count, width_cm, circumference_cm, cliche_price_per_sqcm, printing_price_per_kg, quantity_kg } = args as {
+        const {
+          colors_count,
+          width_cm,
+          circumference_cm,
+          cliche_price_per_sqcm,
+          printing_price_per_kg,
+          quantity_kg,
+        } = args as {
           colors_count: number;
           width_cm: number;
           circumference_cm: number;
@@ -2800,43 +3847,52 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
           printing_price_per_kg?: number;
           quantity_kg?: number;
         };
-        
+
         const clichePrice = cliche_price_per_sqcm || 2.0;
-        
+
         const printingPriceMap: Record<number, number> = {
-          1: 1.5, 2: 2.5, 3: 3.5, 4: 4.5,
-          5: 5.5, 6: 6.5, 7: 7.5, 8: 8.5
+          1: 1.5,
+          2: 2.5,
+          3: 3.5,
+          4: 4.5,
+          5: 5.5,
+          6: 6.5,
+          7: 7.5,
+          8: 8.5,
         };
-        const printingPrice = printing_price_per_kg || printingPriceMap[Math.min(colors_count, 8)] || 1.5;
-        
+        const printingPrice =
+          printing_price_per_kg ||
+          printingPriceMap[Math.min(colors_count, 8)] ||
+          1.5;
+
         const cliche_area_cm2 = width_cm * circumference_cm;
         const cliche_cost_per_color = cliche_area_cm2 * clichePrice;
         const total_cliche_cost = cliche_cost_per_color * colors_count;
-        
-        let result: Record<string, unknown> = {
+
+        const result: Record<string, unknown> = {
           inputs: {
             colors_count,
             width_cm,
             circumference_cm,
             cliche_area_cm2,
             cliche_price_per_sqcm: clichePrice,
-            printing_price_per_kg: printingPrice
+            printing_price_per_kg: printingPrice,
           },
           cliche_costs: {
             area_cm2: cliche_area_cm2,
             cost_per_color_sar: cliche_cost_per_color.toFixed(2),
             total_cliche_cost_sar: total_cliche_cost.toFixed(2),
-            note: `${colors_count} كليشه × ${cliche_area_cm2} سم² × ${clichePrice} ريال/سم²`
+            note: `${colors_count} كليشه × ${cliche_area_cm2} سم² × ${clichePrice} ريال/سم²`,
           },
-          printing_rate_per_kg: `${printingPrice} ريال/كيلو للـ ${colors_count} ألوان`
+          printing_rate_per_kg: `${printingPrice} ريال/كيلو للـ ${colors_count} ألوان`,
         };
-        
+
         if (quantity_kg) {
           const printing_cost = quantity_kg * printingPrice;
           const total_production_cost = total_cliche_cost + printing_cost;
           const cliche_cost_per_kg = total_cliche_cost / quantity_kg;
           const total_cost_per_kg = printingPrice + cliche_cost_per_kg;
-          
+
           result.production_costs = {
             quantity_kg,
             printing_cost_sar: printing_cost.toFixed(2),
@@ -2844,10 +3900,10 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
             total_cost_sar: total_production_cost.toFixed(2),
             cliche_cost_per_kg: cliche_cost_per_kg.toFixed(4),
             total_cost_per_kg: total_cost_per_kg.toFixed(4),
-            message: `لـ ${quantity_kg} كيلو:\n- تكلفة كليشهات: ${total_cliche_cost.toFixed(2)} ر.س (مرة واحدة)\n- تكلفة طباعة: ${printing_cost.toFixed(2)} ر.س\n- الإجمالي: ${total_production_cost.toFixed(2)} ر.س\n- تكلفة الطباعة لكل كيلو (شاملة الكليشه): ${total_cost_per_kg.toFixed(2)} ر.س`
+            message: `لـ ${quantity_kg} كيلو:\n- تكلفة كليشهات: ${total_cliche_cost.toFixed(2)} ر.س (مرة واحدة)\n- تكلفة طباعة: ${printing_cost.toFixed(2)} ر.س\n- الإجمالي: ${total_production_cost.toFixed(2)} ر.س\n- تكلفة الطباعة لكل كيلو (شاملة الكليشه): ${total_cost_per_kg.toFixed(2)} ر.س`,
           };
         }
-        
+
         return JSON.stringify(result);
       }
 
@@ -2855,32 +3911,48 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
         const quoteId = args.quote_id as number;
         const email = args.email as string;
         const recipientName = args.customer_name as string | undefined;
-        
-        const [quote] = await db.select().from(quotes).where(eq(quotes.id, quoteId));
+
+        const [quote] = await db
+          .select()
+          .from(quotes)
+          .where(eq(quotes.id, quoteId));
         if (!quote) {
           return JSON.stringify({ error: "عرض السعر غير موجود" });
         }
-        
-        const quoteItemsList = await db.select().from(quote_items)
+
+        const quoteItemsList = await db
+          .select()
+          .from(quote_items)
           .where(eq(quote_items.quote_id, quoteId))
           .orderBy(quote_items.line_number);
-        
+
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
           return JSON.stringify({ error: "البريد الإلكتروني غير صحيح" });
         }
 
         const emailCompanyInfo = await getCompanyInfo();
-        const emailCompanyName = emailCompanyInfo.name_ar || emailCompanyInfo.name || "مصنع الأكياس البلاستيكية الحديثة";
-        const emailCompanyNameEn = emailCompanyInfo.name || "Modern Plastic Bags Factory";
-        const emailCompanyWebsite = emailCompanyInfo.website || "www.modplastic.com";
+        const emailCompanyName =
+          emailCompanyInfo.name_ar ||
+          emailCompanyInfo.name ||
+          "مصنع الأكياس البلاستيكية الحديثة";
+        const emailCompanyNameEn =
+          emailCompanyInfo.name || "Modern Plastic Bags Factory";
+        const emailCompanyWebsite =
+          emailCompanyInfo.website || "www.modplastic.com";
         const emailCompanyPhone = emailCompanyInfo.phone || "";
         const emailCompanyEmail = emailCompanyInfo.email || "";
         const emailCompanyTax = emailCompanyInfo.tax_number || "";
-        
-        const fmt = (n: string | number) => new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n || 0));
-        
-        const itemsHtml = quoteItemsList.map(item => `
+
+        const fmt = (n: string | number) =>
+          new Intl.NumberFormat("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          }).format(Number(n || 0));
+
+        const itemsHtml = quoteItemsList
+          .map(
+            (item) => `
           <tr>
             <td style="padding:8px;border:1px solid #e2e8f0;text-align:center;">${item.line_number}</td>
             <td style="padding:8px;border:1px solid #e2e8f0;">${item.item_name}</td>
@@ -2889,12 +3961,16 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
             <td style="padding:8px;border:1px solid #e2e8f0;text-align:center;">${fmt(item.unit_price)}</td>
             <td style="padding:8px;border:1px solid #e2e8f0;text-align:center;font-weight:bold;">${fmt(item.line_total)}</td>
           </tr>
-        `).join("");
-        
+        `,
+          )
+          .join("");
+
         const baseUrl = getAppBaseUrl();
         const pdfUrl = `${baseUrl}/api/quotes/${quoteId}/pdf`;
-        const greeting = recipientName ? `عزيزي ${recipientName}،` : `عزيزنا العميل الكريم،`;
-        
+        const greeting = recipientName
+          ? `عزيزي ${recipientName}،`
+          : `عزيزنا العميل الكريم،`;
+
         const htmlBody = `
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
@@ -2904,12 +3980,12 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
     <div style="background:linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%); padding:30px; text-align:center; color:#fff;">
       <h1 style="margin:0; font-size:24px; font-weight:bold;">${emailCompanyName}</h1>
       <p style="margin:8px 0 0; font-size:14px; opacity:0.9;">${emailCompanyNameEn} | ${emailCompanyWebsite}</p>
-      ${emailCompanyPhone ? `<p style="margin:4px 0 0; font-size:12px; opacity:0.8;">هاتف: ${emailCompanyPhone}${emailCompanyEmail ? ` | بريد: ${emailCompanyEmail}` : ''}</p>` : ''}
-      ${emailCompanyTax ? `<p style="margin:4px 0 0; font-size:11px; opacity:0.7;">الرقم الضريبي: ${emailCompanyTax}</p>` : ''}
+      ${emailCompanyPhone ? `<p style="margin:4px 0 0; font-size:12px; opacity:0.8;">هاتف: ${emailCompanyPhone}${emailCompanyEmail ? ` | بريد: ${emailCompanyEmail}` : ""}</p>` : ""}
+      ${emailCompanyTax ? `<p style="margin:4px 0 0; font-size:11px; opacity:0.7;">الرقم الضريبي: ${emailCompanyTax}</p>` : ""}
     </div>
     <div style="padding:30px;">
       <h2 style="color:#1e3a5f; margin-bottom:8px;">عرض السعر رقم: ${quote.document_number}</h2>
-      <p style="color:#64748b; font-size:14px; margin-bottom:24px;">التاريخ: ${new Date(quote.created_at!).toLocaleDateString('ar-SA')}</p>
+      <p style="color:#64748b; font-size:14px; margin-bottom:24px;">التاريخ: ${new Date(quote.created_at!).toLocaleDateString("ar-SA")}</p>
       <p style="color:#374151; margin-bottom:20px;">${greeting}</p>
       <p style="color:#374151; margin-bottom:24px;">يسعدنا تقديم عرض السعر التالي لكم، ونأمل أن يلبي احتياجاتكم:</p>
       <table style="width:100%; border-collapse:collapse; margin-bottom:20px;">
@@ -2953,7 +4029,10 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
 
         const subjectLine = `عرض السعر ${quote.document_number} - ${emailCompanyName}`;
         const plainText = `عرض السعر ${quote.document_number}\nالعميل: ${quote.customer_name}\nالإجمالي: ${fmt(quote.total_with_tax)} ر.س\nرابط PDF: ${pdfUrl}`;
-        const fromEmail = process.env.SENDGRID_FROM_EMAIL || process.env.SMTP_FROM || "noreply@modplastic.com";
+        const fromEmail =
+          process.env.SENDGRID_FROM_EMAIL ||
+          process.env.SMTP_FROM ||
+          "noreply@modplastic.com";
 
         // الأولوية 1: SendGrid API (Twilio Email Service)
         const sendgridApiKey = process.env.SENDGRID_API_KEY;
@@ -2961,7 +4040,7 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
           try {
             const sgMail = (await import("@sendgrid/mail")).default;
             sgMail.setApiKey(sendgridApiKey);
-            
+
             await sgMail.send({
               to: email,
               from: { email: fromEmail, name: emailCompanyName },
@@ -2969,7 +4048,7 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
               text: plainText,
               html: htmlBody,
             });
-            
+
             return JSON.stringify({
               success: true,
               method: "sendgrid",
@@ -2977,46 +4056,52 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
               quote_id: quoteId,
               document_number: quote.document_number,
               email_sent_to: email,
-              pdf_url: pdfUrl
+              pdf_url: pdfUrl,
             });
           } catch (sgError: any) {
-            console.error("SendGrid error:", sgError?.response?.body || sgError?.message);
+            console.error(
+              "SendGrid error:",
+              sgError?.response?.body || sgError?.message,
+            );
           }
         }
 
         // الأولوية 2: SMTP (مع دعم SendGrid SMTP: smtp.sendgrid.net)
         const smtpHost = process.env.SMTP_HOST;
-        const smtpUser = process.env.SMTP_USER || (sendgridApiKey ? "apikey" : undefined);
+        const smtpUser =
+          process.env.SMTP_USER || (sendgridApiKey ? "apikey" : undefined);
         const smtpPass = process.env.SMTP_PASS || sendgridApiKey;
-        
+
         if (smtpHost || sendgridApiKey) {
           try {
             const nodemailerModule = await import("nodemailer");
             const nodemailer = nodemailerModule.default;
-            
-            const transportConfig = smtpHost ? {
-              host: smtpHost,
-              port: parseInt(process.env.SMTP_PORT || "587"),
-              secure: process.env.SMTP_SECURE === "true",
-              auth: { user: smtpUser!, pass: smtpPass! }
-            } : {
-              // SendGrid SMTP fallback
-              host: "smtp.sendgrid.net",
-              port: 587,
-              secure: false,
-              auth: { user: "apikey", pass: sendgridApiKey! }
-            };
-            
+
+            const transportConfig = smtpHost
+              ? {
+                  host: smtpHost,
+                  port: parseInt(process.env.SMTP_PORT || "587"),
+                  secure: process.env.SMTP_SECURE === "true",
+                  auth: { user: smtpUser!, pass: smtpPass! },
+                }
+              : {
+                  // SendGrid SMTP fallback
+                  host: "smtp.sendgrid.net",
+                  port: 587,
+                  secure: false,
+                  auth: { user: "apikey", pass: sendgridApiKey! },
+                };
+
             const transporter = nodemailer.createTransport(transportConfig);
-            
+
             await transporter.sendMail({
               from: `"${emailCompanyName}" <${fromEmail}>`,
               to: email,
               subject: subjectLine,
               html: htmlBody,
-              text: plainText
+              text: plainText,
             });
-            
+
             return JSON.stringify({
               success: true,
               method: "smtp",
@@ -3024,7 +4109,7 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
               quote_id: quoteId,
               document_number: quote.document_number,
               email_sent_to: email,
-              pdf_url: pdfUrl
+              pdf_url: pdfUrl,
             });
           } catch (smtpError: any) {
             console.error("SMTP error:", smtpError?.message);
@@ -3037,7 +4122,8 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
           error: "لم يتم تكوين خدمة البريد الإلكتروني بعد",
           message: `لإتمام الإرسال، أضف المتغير SENDGRID_API_KEY إلى إعدادات البيئة.\n\nيمكنك في الوقت الحالي تحميل عرض السعر PDF وإرساله يدوياً إلى ${email}:`,
           pdf_url: pdfUrl,
-          setup_instructions: "أضف SENDGRID_API_KEY من: Twilio Console → Email → SendGrid → API Keys"
+          setup_instructions:
+            "أضف SENDGRID_API_KEY من: Twilio Console → Email → SendGrid → API Keys",
         });
       }
 
@@ -3059,8 +4145,8 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
             or(
               ilike(orders.order_number, `%${searchTerm}%`),
               ilike(customers.name, `%${searchTerm}%`),
-              like(customers.name_ar, `%${searchTerm}%`)
-            )
+              like(customers.name_ar, `%${searchTerm}%`),
+            ),
           );
         }
 
@@ -3083,18 +4169,26 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
           .orderBy(desc(orders.created_at))
           .limit(limitNum);
 
-        const orderIds = orderResults.map(o => o.id);
+        const orderIds = orderResults.map((o) => o.id);
         let prodOrdersData: any[] = [];
         if (orderIds.length > 0) {
-          prodOrdersData = await db.select({
-            id: production_orders.id,
-            order_id: production_orders.order_id,
-            production_order_number: production_orders.production_order_number,
-            status: production_orders.status,
-            quantity_kg: production_orders.quantity_kg,
-            produced_quantity_kg: production_orders.produced_quantity_kg,
-          }).from(production_orders)
-            .where(sql`${production_orders.order_id} IN (${sql.join(orderIds.map(id => sql`${id}`), sql`, `)})`);
+          prodOrdersData = await db
+            .select({
+              id: production_orders.id,
+              order_id: production_orders.order_id,
+              production_order_number:
+                production_orders.production_order_number,
+              status: production_orders.status,
+              quantity_kg: production_orders.quantity_kg,
+              produced_quantity_kg: production_orders.produced_quantity_kg,
+            })
+            .from(production_orders)
+            .where(
+              sql`${production_orders.order_id} IN (${sql.join(
+                orderIds.map((id) => sql`${id}`),
+                sql`, `,
+              )})`,
+            );
         }
 
         const statusLabels: Record<string, string> = {
@@ -3102,12 +4196,12 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
           in_production: "قيد الإنتاج",
           paused: "متوقف",
           cancelled: "ملغي",
-          completed: "مكتمل"
+          completed: "مكتمل",
         };
 
         return JSON.stringify({
           count: orderResults.length,
-          orders: orderResults.map(o => ({
+          orders: orderResults.map((o) => ({
             id: o.id,
             order_number: o.order_number,
             customer_id: o.customer_id,
@@ -3119,21 +4213,23 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
             notes: o.notes,
             created_at: o.created_at,
             production_orders: prodOrdersData
-              .filter(po => po.order_id === o.id)
-              .map(po => ({
+              .filter((po) => po.order_id === o.id)
+              .map((po) => ({
                 id: po.id,
                 number: po.production_order_number,
                 status: po.status,
                 quantity_kg: po.quantity_kg,
                 produced_quantity_kg: po.produced_quantity_kg,
-              }))
-          }))
+              })),
+          })),
         });
       }
 
       case "create_order": {
-        if (!hasPermission('manage_orders')) {
-          return JSON.stringify({ error: "ليس لديك صلاحية إنشاء طلبات. مطلوب صلاحية manage_orders" });
+        if (!hasPermission("manage_orders")) {
+          return JSON.stringify({
+            error: "ليس لديك صلاحية إنشاء طلبات. مطلوب صلاحية manage_orders",
+          });
         }
 
         const customerId = args.customer_id as string;
@@ -3142,16 +4238,23 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
         const deliveryDateStr = args.delivery_date as string | undefined;
         const notes = args.notes as string | undefined;
 
-        const [customer] = await db.select().from(customers).where(eq(customers.id, customerId));
+        const [customer] = await db
+          .select()
+          .from(customers)
+          .where(eq(customers.id, customerId));
         if (!customer) {
-          return JSON.stringify({ error: `العميل غير موجود بالمعرف: ${customerId}. تأكد من تسجيل العميل أولاً` });
+          return JSON.stringify({
+            error: `العميل غير موجود بالمعرف: ${customerId}. تأكد من تسجيل العميل أولاً`,
+          });
         }
 
         let deliveryDate: string | null = null;
         if (deliveryDateStr) {
           const parsedDate = new Date(deliveryDateStr);
           if (isNaN(parsedDate.getTime())) {
-            return JSON.stringify({ error: "صيغة تاريخ التسليم غير صحيحة. استخدم YYYY-MM-DD" });
+            return JSON.stringify({
+              error: "صيغة تاريخ التسليم غير صحيحة. استخدم YYYY-MM-DD",
+            });
           }
           deliveryDate = parsedDate.toISOString().split("T")[0];
         }
@@ -3163,25 +4266,32 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
             const result = await tx.execute(
               sql`SELECT MAX(CAST(SUBSTRING(order_number FROM 4) AS INTEGER)) as max_num 
                   FROM orders 
-                  WHERE order_number ~ '^ORD[0-9]+$'`
+                  WHERE order_number ~ '^ORD[0-9]+$'`,
             );
             const maxNum = (result as any).rows?.[0]?.max_num || 0;
             orderNumber = `ORD${(maxNum + 1).toString().padStart(3, "0")}`;
           } else {
-            const [existing] = await tx.select({ id: orders.id }).from(orders).where(eq(orders.order_number, orderNumber!.trim()));
+            const [existing] = await tx
+              .select({ id: orders.id })
+              .from(orders)
+              .where(eq(orders.order_number, orderNumber!.trim()));
             if (existing) {
               throw new Error(`رقم الطلب ${orderNumber} مستخدم بالفعل`);
             }
           }
 
-          const [order] = await tx.insert(orders).values({
-            order_number: orderNumber!,
-            customer_id: customerId,
-            delivery_days: deliveryDays && deliveryDays > 0 ? deliveryDays : null,
-            delivery_date: deliveryDate,
-            notes: notes || null,
-            status: "waiting",
-          }).returning();
+          const [order] = await tx
+            .insert(orders)
+            .values({
+              order_number: orderNumber!,
+              customer_id: customerId,
+              delivery_days:
+                deliveryDays && deliveryDays > 0 ? deliveryDays : null,
+              delivery_date: deliveryDate,
+              notes: notes || null,
+              status: "waiting",
+            })
+            .returning();
           return order;
         });
 
@@ -3199,34 +4309,54 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
             notes: newOrder.notes,
             created_at: newOrder.created_at,
           },
-          message: `تم إنشاء الطلب رقم ${newOrder.order_number} بنجاح للعميل ${customer.name_ar || customer.name}`
+          message: `تم إنشاء الطلب رقم ${newOrder.order_number} بنجاح للعميل ${customer.name_ar || customer.name}`,
         });
       }
 
       case "update_order_status": {
-        if (!hasPermission('manage_orders') && !hasPermission('update_order_status') && !hasPermission('manage_production')) {
-          return JSON.stringify({ error: "ليس لديك صلاحية تحديث حالة الطلبات" });
+        if (
+          !hasPermission("manage_orders") &&
+          !hasPermission("update_order_status") &&
+          !hasPermission("manage_production")
+        ) {
+          return JSON.stringify({
+            error: "ليس لديك صلاحية تحديث حالة الطلبات",
+          });
         }
 
         const orderId = args.order_id as number;
         const newStatus = args.status as string;
 
-        const validStatuses = ["waiting", "in_production", "paused", "cancelled", "completed"];
+        const validStatuses = [
+          "waiting",
+          "in_production",
+          "paused",
+          "cancelled",
+          "completed",
+        ];
         if (!validStatuses.includes(newStatus)) {
-          return JSON.stringify({ error: `حالة غير صالحة: ${newStatus}. الحالات المتاحة: ${validStatuses.join(", ")}` });
+          return JSON.stringify({
+            error: `حالة غير صالحة: ${newStatus}. الحالات المتاحة: ${validStatuses.join(", ")}`,
+          });
         }
 
-        const [existingOrder] = await db.select().from(orders).where(eq(orders.id, orderId));
+        const [existingOrder] = await db
+          .select()
+          .from(orders)
+          .where(eq(orders.id, orderId));
         if (!existingOrder) {
           return JSON.stringify({ error: "الطلب غير موجود" });
         }
 
         const oldStatus = existingOrder.status;
         if (oldStatus === newStatus) {
-          return JSON.stringify({ message: `الطلب بالفعل في حالة "${newStatus}"، لم يتم التغيير` });
+          return JSON.stringify({
+            message: `الطلب بالفعل في حالة "${newStatus}"، لم يتم التغيير`,
+          });
         }
 
-        const [updatedOrder] = await db.update(orders)
+        const [updatedOrder] = await db
+          .update(orders)
           .set({ status: newStatus })
           .where(eq(orders.id, orderId))
           .returning();
@@ -3236,7 +4366,7 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
           in_production: "قيد الإنتاج",
           paused: "متوقف",
           cancelled: "ملغي",
-          completed: "مكتمل"
+          completed: "مكتمل",
         };
 
         return JSON.stringify({
@@ -3249,12 +4379,15 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
             new_status: updatedOrder.status,
             new_status_label: statusLabels[newStatus] || newStatus,
           },
-          message: `تم تحديث حالة الطلب ${updatedOrder.order_number} من "${statusLabels[oldStatus] || oldStatus}" إلى "${statusLabels[newStatus] || newStatus}"`
+          message: `تم تحديث حالة الطلب ${updatedOrder.order_number} من "${statusLabels[oldStatus] || oldStatus}" إلى "${statusLabels[newStatus] || newStatus}"`,
         });
       }
 
       case "create_customer": {
-        if (!hasPermission('manage_customers') && !hasPermission('manage_definitions')) {
+        if (
+          !hasPermission("manage_customers") &&
+          !hasPermission("manage_definitions")
+        ) {
           return JSON.stringify({ error: "ليس لديك صلاحية تسجيل عملاء جدد" });
         }
 
@@ -3267,11 +4400,16 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
         const commercialName = args.commercial_name as string | undefined;
         const unifiedNumber = args.unified_number as string | undefined;
 
-        if (taxNumber && (taxNumber.length !== 14 || !/^\d+$/.test(taxNumber))) {
+        if (
+          taxNumber &&
+          (taxNumber.length !== 14 || !/^\d+$/.test(taxNumber))
+        ) {
           return JSON.stringify({ error: "الرقم الضريبي يجب أن يكون 14 رقم" });
         }
         if (unifiedNumber && !/^7[0-9]{9}$/.test(unifiedNumber)) {
-          return JSON.stringify({ error: "الرقم الموحد يجب أن يبدأ بـ 7 ويتكون من 10 أرقام" });
+          return JSON.stringify({
+            error: "الرقم الموحد يجب أن يبدأ بـ 7 ويتكون من 10 أرقام",
+          });
         }
 
         const { storage } = await import("./storage");
@@ -3299,13 +4437,18 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
             commercial_name: newCustomer.commercial_name,
             is_active: newCustomer.is_active,
           },
-          message: `تم تسجيل العميل "${nameAr || customerName}" بنجاح بالمعرف ${newCustomer.id}`
+          message: `تم تسجيل العميل "${nameAr || customerName}" بنجاح بالمعرف ${newCustomer.id}`,
         });
       }
 
       case "create_customer_product": {
-        if (!hasPermission('manage_customers') && !hasPermission('manage_definitions')) {
-          return JSON.stringify({ error: "ليس لديك صلاحية تسجيل منتجات العملاء" });
+        if (
+          !hasPermission("manage_customers") &&
+          !hasPermission("manage_definitions")
+        ) {
+          return JSON.stringify({
+            error: "ليس لديك صلاحية تسجيل منتجات العملاء",
+          });
         }
 
         const custId = args.customer_id as string;
@@ -3320,9 +4463,14 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
         const masterBatchId = args.master_batch_id as string | undefined;
         const prodNotes = args.notes as string | undefined;
 
-        const [cust] = await db.select().from(customers).where(eq(customers.id, custId));
+        const [cust] = await db
+          .select()
+          .from(customers)
+          .where(eq(customers.id, custId));
         if (!cust) {
-          return JSON.stringify({ error: `العميل غير موجود بالمعرف: ${custId}. تأكد من تسجيل العميل أولاً` });
+          return JSON.stringify({
+            error: `العميل غير موجود بالمعرف: ${custId}. تأكد من تسجيل العميل أولاً`,
+          });
         }
 
         const { storage } = await import("./storage");
@@ -3357,31 +4505,48 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
             cutting_unit: newProduct.cutting_unit,
             master_batch_id: newProduct.master_batch_id,
           },
-          message: `تم تسجيل المنتج بنجاح للعميل "${cust.name_ar || cust.name}" (معرف المنتج: ${newProduct.id})`
+          message: `تم تسجيل المنتج بنجاح للعميل "${cust.name_ar || cust.name}" (معرف المنتج: ${newProduct.id})`,
         });
       }
 
       case "execute_database_query": {
-        const queryStr = (args.query as string || "").trim();
-        const description = args.description as string || "";
-        
-        const forbidden = /\b(DROP|TRUNCATE|ALTER|DELETE\s+FROM|CREATE\s+TABLE|CREATE\s+INDEX|GRANT|REVOKE|COPY|EXECUTE|DO\s*\$|pg_read_file|pg_write_file|lo_import|lo_export|pg_sleep|pg_terminate|pg_cancel|set\s+role|set\s+session|reset\s+role|VACUUM|ANALYZE|REINDEX|CLUSTER|COMMENT|SECURITY|OWNER)\b/i;
+        const queryStr = ((args.query as string) || "").trim();
+        const description = (args.description as string) || "";
+
+        const forbidden =
+          /\b(DROP|TRUNCATE|ALTER|DELETE\s+FROM|CREATE\s+TABLE|CREATE\s+INDEX|GRANT|REVOKE|COPY|EXECUTE|DO\s*\$|pg_read_file|pg_write_file|lo_import|lo_export|pg_sleep|pg_terminate|pg_cancel|set\s+role|set\s+session|reset\s+role|VACUUM|ANALYZE|REINDEX|CLUSTER|COMMENT|SECURITY|OWNER)\b/i;
         if (forbidden.test(queryStr)) {
-          return JSON.stringify({ error: "هذا النوع من الاستعلامات غير مسموح به. يُسمح فقط بـ SELECT و INSERT و UPDATE." });
+          return JSON.stringify({
+            error:
+              "هذا النوع من الاستعلامات غير مسموح به. يُسمح فقط بـ SELECT و INSERT و UPDATE.",
+          });
         }
 
-        const sensitiveTablePattern = /\b(UPDATE|INSERT\s+INTO)\b[^;]*\b(users|roles|system_settings|mobile_sessions)\b/i;
+        const sensitiveTablePattern =
+          /\b(UPDATE|INSERT\s+INTO)\b[^;]*\b(users|roles|system_settings|mobile_sessions)\b/i;
         if (sensitiveTablePattern.test(queryStr)) {
-          return JSON.stringify({ error: "لا يُسمح بتعديل الجداول الحساسة (users, roles, system_settings, mobile_sessions) عبر الاستعلامات المباشرة." });
+          return JSON.stringify({
+            error:
+              "لا يُسمح بتعديل الجداول الحساسة (users, roles, system_settings, mobile_sessions) عبر الاستعلامات المباشرة.",
+          });
         }
 
         const passwordPattern = /\bpassword\b/i;
         if (passwordPattern.test(queryStr)) {
-          return JSON.stringify({ error: "لا يُسمح بالوصول إلى حقول كلمات المرور عبر الاستعلامات المباشرة." });
+          return JSON.stringify({
+            error:
+              "لا يُسمح بالوصول إلى حقول كلمات المرور عبر الاستعلامات المباشرة.",
+          });
         }
 
-        if (queryStr.includes(';') && queryStr.replace(/;[\s]*$/, '').includes(';')) {
-          return JSON.stringify({ error: "لا يُسمح بتنفيذ استعلامات متعددة في نفس الوقت. أرسل كل استعلام على حدة." });
+        if (
+          queryStr.includes(";") &&
+          queryStr.replace(/;[\s]*$/, "").includes(";")
+        ) {
+          return JSON.stringify({
+            error:
+              "لا يُسمح بتنفيذ استعلامات متعددة في نفس الوقت. أرسل كل استعلام على حدة.",
+          });
         }
 
         const containsWrite = /\b(INSERT|UPDATE)\b/i.test(queryStr);
@@ -3391,33 +4556,47 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
         const startsWithUpdate = /^\s*UPDATE\b/i.test(queryStr);
 
         if (startsWithWith && containsWrite) {
-          return JSON.stringify({ error: "لا يُسمح باستخدام WITH مع استعلامات الكتابة (INSERT/UPDATE). استخدم الاستعلام مباشرة." });
+          return JSON.stringify({
+            error:
+              "لا يُسمح باستخدام WITH مع استعلامات الكتابة (INSERT/UPDATE). استخدم الاستعلام مباشرة.",
+          });
         }
 
         const isSelect = startsWithSelect || (startsWithWith && !containsWrite);
         const isWrite = startsWithInsert || startsWithUpdate;
-        
+
         if (!isSelect && !isWrite) {
-          return JSON.stringify({ error: "يُسمح فقط باستعلامات SELECT و INSERT و UPDATE" });
+          return JSON.stringify({
+            error: "يُسمح فقط باستعلامات SELECT و INSERT و UPDATE",
+          });
         }
 
         if (isSelect) {
-          const sensitiveSelectPattern = /\bFROM\b[^;]*\b(users|roles|system_settings|mobile_sessions)\b/i;
+          const sensitiveSelectPattern =
+            /\bFROM\b[^;]*\b(users|roles|system_settings|mobile_sessions)\b/i;
           if (sensitiveSelectPattern.test(queryStr)) {
-            return JSON.stringify({ error: "لا يُسمح بالاستعلام المباشر من الجداول الحساسة (users, roles, system_settings, mobile_sessions). استخدم الأدوات المخصصة بدلاً من ذلك." });
+            return JSON.stringify({
+              error:
+                "لا يُسمح بالاستعلام المباشر من الجداول الحساسة (users, roles, system_settings, mobile_sessions). استخدم الأدوات المخصصة بدلاً من ذلك.",
+            });
           }
         }
 
         if (isWrite) {
-          if (startsWithUpdate && !queryStr.toLowerCase().includes('where')) {
-            return JSON.stringify({ error: "يجب تحديد شرط WHERE في استعلامات UPDATE لمنع التعديل الشامل." });
+          if (startsWithUpdate && !queryStr.toLowerCase().includes("where")) {
+            return JSON.stringify({
+              error:
+                "يجب تحديد شرط WHERE في استعلامات UPDATE لمنع التعديل الشامل.",
+            });
           }
         }
 
-        console.log(`[AI Agent] Executing SQL (${description}): ${queryStr.substring(0, 200)}`);
-        
+        console.log(
+          `[AI Agent] Executing SQL (${description}): ${queryStr.substring(0, 200)}`,
+        );
+
         const result = await db.execute(sql.raw(queryStr));
-        
+
         if (isSelect) {
           const rows = result.rows || [];
           const limitedRows = rows.slice(0, 100);
@@ -3426,20 +4605,24 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
             description,
             row_count: rows.length,
             data: limitedRows,
-            truncated: rows.length > 100
+            truncated: rows.length > 100,
           });
         } else {
           return JSON.stringify({
             success: true,
             description,
             message: `تم تنفيذ الاستعلام بنجاح`,
-            rows_affected: result.rowCount || 0
+            rows_affected: result.rowCount || 0,
           });
         }
       }
 
       case "generate_attendance_data": {
-        const employees = args.employees as Array<{ id: number; name?: string; department?: string }>;
+        const employees = args.employees as Array<{
+          id: number;
+          name?: string;
+          department?: string;
+        }>;
         const startDate = new Date(args.start_date as string);
         const endDate = new Date(args.end_date as string);
         const checkInStartHour = (args.check_in_start_hour as number) || 8;
@@ -3452,8 +4635,10 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
         const clearPrevious = (args.clear_previous as boolean) || false;
 
         if (clearPrevious) {
-          const empIds = employees.map(e => e.id);
-          await db.execute(sql`DELETE FROM ai_sandbox_attendance WHERE employee_id = ANY(${empIds})`);
+          const empIds = employees.map((e) => e.id);
+          await db.execute(
+            sql`DELETE FROM ai_sandbox_attendance WHERE employee_id = ANY(${empIds})`,
+          );
         }
 
         let totalRecords = 0;
@@ -3482,8 +4667,13 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
                 }
                 tempDate.setDate(tempDate.getDate() + 1);
               }
-              while (absentDaysThisMonth.size < Math.min(absentDaysPerMonth, workDaysThisMonth.length)) {
-                const idx = Math.floor(Math.random() * workDaysThisMonth.length);
+              while (
+                absentDaysThisMonth.size <
+                Math.min(absentDaysPerMonth, workDaysThisMonth.length)
+              ) {
+                const idx = Math.floor(
+                  Math.random() * workDaysThisMonth.length,
+                );
                 absentDaysThisMonth.add(workDaysThisMonth[idx]);
               }
             }
@@ -3494,25 +4684,40 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
               const empDept = emp.department || null;
 
               if (isAbsent) {
-                await db.execute(sql`INSERT INTO ai_sandbox_attendance (employee_id, employee_name, department, date, status, work_hours, overtime_hours, shift_type, late_minutes) VALUES (${emp.id}, ${empName}, ${empDept}, ${dateStr}, 'غائب', 0, 0, ${shiftType}, 0)`);
+                await db.execute(
+                  sql`INSERT INTO ai_sandbox_attendance (employee_id, employee_name, department, date, status, work_hours, overtime_hours, shift_type, late_minutes) VALUES (${emp.id}, ${empName}, ${empDept}, ${dateStr}, 'غائب', 0, 0, ${shiftType}, 0)`,
+                );
                 absentRecords++;
               } else {
-                const ciHour = checkInStartHour + Math.floor(Math.random() * (checkInEndHour - checkInStartHour));
+                const ciHour =
+                  checkInStartHour +
+                  Math.floor(
+                    Math.random() * (checkInEndHour - checkInStartHour),
+                  );
                 const ciMin = Math.floor(Math.random() * 60);
-                const coHour = checkOutStartHour + Math.floor(Math.random() * (checkOutEndHour - checkOutStartHour));
+                const coHour =
+                  checkOutStartHour +
+                  Math.floor(
+                    Math.random() * (checkOutEndHour - checkOutStartHour),
+                  );
                 const coMin = Math.floor(Math.random() * 60);
-                
+
                 const y = currentDate.getFullYear();
                 const m = String(currentDate.getMonth() + 1).padStart(2, "0");
                 const d = String(currentDate.getDate()).padStart(2, "0");
                 const checkIn = `${y}-${m}-${d} ${String(ciHour).padStart(2, "0")}:${String(ciMin).padStart(2, "0")}:00`;
                 const checkOut = `${y}-${m}-${d} ${String(coHour).padStart(2, "0")}:${String(coMin).padStart(2, "0")}:00`;
-                
-                const workHours = (coHour * 60 + coMin - ciHour * 60 - ciMin) / 60;
-                const overtime = workHours > 8 ? Math.round((workHours - 8) * 100) / 100 : 0;
-                const lateMin = ciMin > 0 && ciHour >= checkInStartHour ? ciMin : 0;
 
-                await db.execute(sql`INSERT INTO ai_sandbox_attendance (employee_id, employee_name, department, date, status, check_in_time, check_out_time, work_hours, overtime_hours, shift_type, late_minutes) VALUES (${emp.id}, ${empName}, ${empDept}, ${dateStr}, 'حاضر', ${checkIn}, ${checkOut}, ${Math.round(workHours * 100) / 100}, ${overtime}, ${shiftType}, ${lateMin})`);
+                const workHours =
+                  (coHour * 60 + coMin - ciHour * 60 - ciMin) / 60;
+                const overtime =
+                  workHours > 8 ? Math.round((workHours - 8) * 100) / 100 : 0;
+                const lateMin =
+                  ciMin > 0 && ciHour >= checkInStartHour ? ciMin : 0;
+
+                await db.execute(
+                  sql`INSERT INTO ai_sandbox_attendance (employee_id, employee_name, department, date, status, check_in_time, check_out_time, work_hours, overtime_hours, shift_type, late_minutes) VALUES (${emp.id}, ${empName}, ${empDept}, ${dateStr}, 'حاضر', ${checkIn}, ${checkOut}, ${Math.round(workHours * 100) / 100}, ${overtime}, ${shiftType}, ${lateMin})`,
+                );
                 presentRecords++;
               }
               totalRecords++;
@@ -3530,7 +4735,7 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
           absent_records: absentRecords,
           employees_count: employees.length,
           table: "ai_sandbox_attendance",
-          note: "البيانات محفوظة في جدول منفصل ولا تؤثر على بيانات التطبيق الأساسية. يمكنك الاستعلام عنها باستخدام: SELECT * FROM ai_sandbox_attendance"
+          note: "البيانات محفوظة في جدول منفصل ولا تؤثر على بيانات التطبيق الأساسية. يمكنك الاستعلام عنها باستخدام: SELECT * FROM ai_sandbox_attendance",
         });
       }
 
@@ -3542,16 +4747,22 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
         const batchId = `${dataType}_${Date.now()}`;
 
         if (!records || records.length === 0) {
-          return JSON.stringify({ error: "يجب توفير سجل واحد على الأقل في records" });
+          return JSON.stringify({
+            error: "يجب توفير سجل واحد على الأقل في records",
+          });
         }
 
         if (clearPrev) {
-          await db.execute(sql`DELETE FROM ai_sandbox_data WHERE data_type = ${dataType}`);
+          await db.execute(
+            sql`DELETE FROM ai_sandbox_data WHERE data_type = ${dataType}`,
+          );
         }
 
         let inserted = 0;
         for (const record of records) {
-          await db.execute(sql`INSERT INTO ai_sandbox_data (data_type, data_label, data, batch_id) VALUES (${dataType}, ${label}, ${JSON.stringify(record)}::jsonb, ${batchId})`);
+          await db.execute(
+            sql`INSERT INTO ai_sandbox_data (data_type, data_label, data, batch_id) VALUES (${dataType}, ${label}, ${JSON.stringify(record)}::jsonb, ${batchId})`,
+          );
           inserted++;
         }
 
@@ -3562,7 +4773,7 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
           batch_id: batchId,
           records_count: inserted,
           table: "ai_sandbox_data",
-          note: "البيانات محفوظة في جدول منفصل (ai_sandbox_data) ولا تؤثر على بيانات التطبيق. استخدم verify_sandbox_data للتحقق من سلامتها."
+          note: "البيانات محفوظة في جدول منفصل (ai_sandbox_data) ولا تؤثر على بيانات التطبيق. استخدم verify_sandbox_data للتحقق من سلامتها.",
         });
       }
 
@@ -3575,33 +4786,47 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
 
         if (qSummary) {
           const summaryResult = qType
-            ? await db.execute(sql`SELECT data_type, COUNT(*) as count, MIN(created_at) as first_created, MAX(created_at) as last_created FROM ai_sandbox_data WHERE data_type = ${qType} GROUP BY data_type ORDER BY count DESC`)
-            : await db.execute(sql`SELECT data_type, COUNT(*) as count, MIN(created_at) as first_created, MAX(created_at) as last_created FROM ai_sandbox_data GROUP BY data_type ORDER BY count DESC`);
+            ? await db.execute(
+                sql`SELECT data_type, COUNT(*) as count, MIN(created_at) as first_created, MAX(created_at) as last_created FROM ai_sandbox_data WHERE data_type = ${qType} GROUP BY data_type ORDER BY count DESC`,
+              )
+            : await db.execute(
+                sql`SELECT data_type, COUNT(*) as count, MIN(created_at) as first_created, MAX(created_at) as last_created FROM ai_sandbox_data GROUP BY data_type ORDER BY count DESC`,
+              );
 
-          const attCount = await db.execute(sql`SELECT COUNT(*) as count FROM ai_sandbox_attendance`);
+          const attCount = await db.execute(
+            sql`SELECT COUNT(*) as count FROM ai_sandbox_attendance`,
+          );
 
           return JSON.stringify({
             sandbox_data_summary: summaryResult.rows,
             sandbox_attendance_count: (attCount.rows[0] as any)?.count || 0,
-            note: "ملخص البيانات المخزنة في sandbox"
+            note: "ملخص البيانات المخزنة في sandbox",
           });
         }
 
         let result;
         if (qType && qBatch) {
-          result = await db.execute(sql`SELECT id, data_type, data_label, data, batch_id, created_at FROM ai_sandbox_data WHERE data_type = ${qType} AND batch_id = ${qBatch} ORDER BY created_at DESC LIMIT ${safeLimit}`);
+          result = await db.execute(
+            sql`SELECT id, data_type, data_label, data, batch_id, created_at FROM ai_sandbox_data WHERE data_type = ${qType} AND batch_id = ${qBatch} ORDER BY created_at DESC LIMIT ${safeLimit}`,
+          );
         } else if (qType) {
-          result = await db.execute(sql`SELECT id, data_type, data_label, data, batch_id, created_at FROM ai_sandbox_data WHERE data_type = ${qType} ORDER BY created_at DESC LIMIT ${safeLimit}`);
+          result = await db.execute(
+            sql`SELECT id, data_type, data_label, data, batch_id, created_at FROM ai_sandbox_data WHERE data_type = ${qType} ORDER BY created_at DESC LIMIT ${safeLimit}`,
+          );
         } else if (qBatch) {
-          result = await db.execute(sql`SELECT id, data_type, data_label, data, batch_id, created_at FROM ai_sandbox_data WHERE batch_id = ${qBatch} ORDER BY created_at DESC LIMIT ${safeLimit}`);
+          result = await db.execute(
+            sql`SELECT id, data_type, data_label, data, batch_id, created_at FROM ai_sandbox_data WHERE batch_id = ${qBatch} ORDER BY created_at DESC LIMIT ${safeLimit}`,
+          );
         } else {
-          result = await db.execute(sql`SELECT id, data_type, data_label, data, batch_id, created_at FROM ai_sandbox_data ORDER BY created_at DESC LIMIT ${safeLimit}`);
+          result = await db.execute(
+            sql`SELECT id, data_type, data_label, data, batch_id, created_at FROM ai_sandbox_data ORDER BY created_at DESC LIMIT ${safeLimit}`,
+          );
         }
 
         return JSON.stringify({
           records: result.rows,
           count: result.rows.length,
-          data_type: qType || "all"
+          data_type: qType || "all",
         });
       }
 
@@ -3615,7 +4840,7 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
           status: "✅ سليم",
           checks: [],
           issues: [],
-          warnings: []
+          warnings: [],
         };
 
         if (checkAttendance) {
@@ -3636,39 +4861,54 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
             return JSON.stringify(report);
           }
 
-          const nullCheckins = rows.filter(r => r.status === 'حاضر' && !r.check_in_time).length;
+          const nullCheckins = rows.filter(
+            (r) => r.status === "حاضر" && !r.check_in_time,
+          ).length;
           if (nullCheckins > 0) {
             report.issues.push(`❌ ${nullCheckins} سجل حاضر بدون وقت حضور`);
           } else {
             report.checks.push("✅ جميع سجلات الحضور لها وقت دخول");
           }
 
-          const negativeHours = rows.filter(r => parseFloat(r.work_hours) < 0).length;
+          const negativeHours = rows.filter(
+            (r) => parseFloat(r.work_hours) < 0,
+          ).length;
           if (negativeHours > 0) {
             report.issues.push(`❌ ${negativeHours} سجل بساعات عمل سالبة`);
           } else {
             report.checks.push("✅ لا توجد ساعات عمل سالبة");
           }
 
-          const employees = new Set(rows.map(r => r.employee_id));
-          const dates = rows.map(r => r.date);
-          const duplicates = rows.length - new Set(rows.map(r => `${r.employee_id}_${r.date}`)).size;
+          const employees = new Set(rows.map((r) => r.employee_id));
+          const dates = rows.map((r) => r.date);
+          const duplicates =
+            rows.length -
+            new Set(rows.map((r) => `${r.employee_id}_${r.date}`)).size;
           if (duplicates > 0) {
-            report.warnings.push(`⚠️ ${duplicates} سجل مكرر (نفس الموظف ونفس التاريخ)`);
+            report.warnings.push(
+              `⚠️ ${duplicates} سجل مكرر (نفس الموظف ونفس التاريخ)`,
+            );
           } else {
             report.checks.push("✅ لا توجد سجلات مكررة");
           }
 
           report.summary = {
             employees_count: employees.size,
-            date_range: { from: dates.sort()[0], to: dates.sort().reverse()[0] },
-            present: rows.filter(r => r.status === 'حاضر').length,
-            absent: rows.filter(r => r.status === 'غائب').length,
-            avg_work_hours: (rows.reduce((s, r) => s + parseFloat(r.work_hours || 0), 0) / rows.filter(r => r.status === 'حاضر').length).toFixed(2)
+            date_range: {
+              from: dates.sort()[0],
+              to: dates.sort().reverse()[0],
+            },
+            present: rows.filter((r) => r.status === "حاضر").length,
+            absent: rows.filter((r) => r.status === "غائب").length,
+            avg_work_hours: (
+              rows.reduce((s, r) => s + parseFloat(r.work_hours || 0), 0) /
+              rows.filter((r) => r.status === "حاضر").length
+            ).toFixed(2),
           };
 
           if (report.issues.length > 0) report.status = "❌ يوجد مشاكل";
-          else if (report.warnings.length > 0) report.status = "⚠️ يوجد تنبيهات";
+          else if (report.warnings.length > 0)
+            report.status = "⚠️ يوجد تنبيهات";
           return JSON.stringify(report);
         }
 
@@ -3699,9 +4939,14 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
           let missingCount = 0;
           const missingDetails: string[] = [];
           for (const row of dataRows) {
-            const data = typeof row.data === 'string' ? JSON.parse(row.data) : row.data;
+            const data =
+              typeof row.data === "string" ? JSON.parse(row.data) : row.data;
             for (const field of requiredFields) {
-              if (data[field] === undefined || data[field] === null || data[field] === '') {
+              if (
+                data[field] === undefined ||
+                data[field] === null ||
+                data[field] === ""
+              ) {
                 missingCount++;
                 if (missingDetails.length < 5) {
                   missingDetails.push(`سجل #${row.id}: حقل "${field}" مفقود`);
@@ -3710,15 +4955,19 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
             }
           }
           if (missingCount > 0) {
-            report.issues.push(`❌ ${missingCount} قيمة مفقودة في الحقول المطلوبة`);
+            report.issues.push(
+              `❌ ${missingCount} قيمة مفقودة في الحقول المطلوبة`,
+            );
             report.missing_details = missingDetails;
           } else {
-            report.checks.push(`✅ جميع الحقول المطلوبة (${requiredFields.join(", ")}) موجودة`);
+            report.checks.push(
+              `✅ جميع الحقول المطلوبة (${requiredFields.join(", ")}) موجودة`,
+            );
           }
         }
 
-        const emptyData = dataRows.filter(r => {
-          const d = typeof r.data === 'string' ? JSON.parse(r.data) : r.data;
+        const emptyData = dataRows.filter((r) => {
+          const d = typeof r.data === "string" ? JSON.parse(r.data) : r.data;
           return Object.keys(d).length === 0;
         }).length;
         if (emptyData > 0) {
@@ -3729,12 +4978,13 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
 
         const allFields = new Set<string>();
         for (const row of dataRows) {
-          const d = typeof row.data === 'string' ? JSON.parse(row.data) : row.data;
-          Object.keys(d).forEach(k => allFields.add(k));
+          const d =
+            typeof row.data === "string" ? JSON.parse(row.data) : row.data;
+          Object.keys(d).forEach((k) => allFields.add(k));
         }
         report.fields_found = Array.from(allFields);
 
-        const batches = new Set(dataRows.map(r => r.batch_id));
+        const batches = new Set(dataRows.map((r) => r.batch_id));
         report.batches = Array.from(batches);
 
         if (report.issues.length > 0) report.status = "❌ يوجد مشاكل";
@@ -3757,24 +5007,30 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
           deletedGeneric = (r1 as any).rowCount || 0;
           deletedAttendance = (r2 as any).rowCount || 0;
         } else if (dBatch) {
-          const r1 = await db.execute(sql`DELETE FROM ai_sandbox_data WHERE batch_id = ${dBatch}`);
+          const r1 = await db.execute(
+            sql`DELETE FROM ai_sandbox_data WHERE batch_id = ${dBatch}`,
+          );
           deletedGeneric = (r1 as any).rowCount || 0;
         } else if (dType) {
-          const r1 = await db.execute(sql`DELETE FROM ai_sandbox_data WHERE data_type = ${dType}`);
+          const r1 = await db.execute(
+            sql`DELETE FROM ai_sandbox_data WHERE data_type = ${dType}`,
+          );
           deletedGeneric = (r1 as any).rowCount || 0;
-          if (dType === 'attendance') {
+          if (dType === "attendance") {
             const r2 = await db.execute(sql`DELETE FROM ai_sandbox_attendance`);
             deletedAttendance = (r2 as any).rowCount || 0;
           }
         } else {
-          return JSON.stringify({ error: "يجب تحديد data_type أو batch_id أو delete_all" });
+          return JSON.stringify({
+            error: "يجب تحديد data_type أو batch_id أو delete_all",
+          });
         }
 
         return JSON.stringify({
           success: true,
           message: `تم حذف البيانات من sandbox`,
           deleted_generic: deletedGeneric,
-          deleted_attendance: deletedAttendance
+          deleted_attendance: deletedAttendance,
         });
       }
 
@@ -3782,31 +5038,41 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
         const tableName = args.table_name as string;
 
         if (!tableName) {
-          const tables = await db.execute(sql`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name`);
+          const tables = await db.execute(
+            sql`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name`,
+          );
           return JSON.stringify({
             tables: tables.rows.map((r: any) => r.table_name),
-            total: tables.rows.length
+            total: tables.rows.length,
           });
         }
 
-        const columns = await db.execute(sql`SELECT column_name, data_type, character_maximum_length, is_nullable, column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = ${tableName} ORDER BY ordinal_position`);
-        
+        const columns = await db.execute(
+          sql`SELECT column_name, data_type, character_maximum_length, is_nullable, column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = ${tableName} ORDER BY ordinal_position`,
+        );
+
         if (columns.rows.length === 0) {
           return JSON.stringify({ error: `الجدول '${tableName}' غير موجود` });
         }
 
-        const safeTableName = tableName.replace(/[^a-zA-Z0-9_]/g, '');
-        const rowCount = await db.execute(sql`SELECT COUNT(*) as cnt FROM ${sql.identifier(safeTableName)}`);
+        const safeTableName = tableName.replace(/[^a-zA-Z0-9_]/g, "");
+        const rowCount = await db.execute(
+          sql`SELECT COUNT(*) as cnt FROM ${sql.identifier(safeTableName)}`,
+        );
 
         return JSON.stringify({
           table: tableName,
           row_count: rowCount.rows[0]?.cnt || 0,
           columns: columns.rows.map((c: any) => ({
             name: c.column_name,
-            type: c.data_type + (c.character_maximum_length ? `(${c.character_maximum_length})` : ""),
+            type:
+              c.data_type +
+              (c.character_maximum_length
+                ? `(${c.character_maximum_length})`
+                : ""),
             nullable: c.is_nullable === "YES",
-            default: c.column_default
-          }))
+            default: c.column_default,
+          })),
         });
       }
 
@@ -3816,26 +5082,42 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
 
         let sectionUsers;
         if (sectionId) {
-          const safeSectionId = String(sectionId).replace(/[^a-zA-Z0-9_]/g, '');
-          const secPadded = 'SEC' + safeSectionId.padStart(2, '0');
-          sectionUsers = await db.execute(sql`SELECT id, username, display_name, display_name_ar, phone, email, section_id, status FROM users WHERE section_id::text = ${safeSectionId} OR section_id::text = ${secPadded} ORDER BY id`);
+          const safeSectionId = String(sectionId).replace(/[^a-zA-Z0-9_]/g, "");
+          const secPadded = "SEC" + safeSectionId.padStart(2, "0");
+          sectionUsers = await db.execute(
+            sql`SELECT id, username, display_name, display_name_ar, phone, email, section_id, status FROM users WHERE section_id::text = ${safeSectionId} OR section_id::text = ${secPadded} ORDER BY id`,
+          );
         } else if (sectionName) {
-          const matchingSections = await db.execute(sql`SELECT id FROM sections WHERE name_ar LIKE ${'%' + sectionName + '%'} OR name LIKE ${'%' + sectionName + '%'}`);
+          const matchingSections = await db.execute(
+            sql`SELECT id FROM sections WHERE name_ar LIKE ${"%" + sectionName + "%"} OR name LIKE ${"%" + sectionName + "%"}`,
+          );
           if (matchingSections.rows.length === 0) {
-            return JSON.stringify({ error: `لم يتم العثور على قسم باسم '${sectionName}'`, available_sections: "استخدم get_database_schema مع table_name='sections' أو execute_database_query مع SELECT * FROM sections" });
+            return JSON.stringify({
+              error: `لم يتم العثور على قسم باسم '${sectionName}'`,
+              available_sections:
+                "استخدم get_database_schema مع table_name='sections' أو execute_database_query مع SELECT * FROM sections",
+            });
           }
-          const secIdValues = matchingSections.rows.map((r: any) => String(r.id));
-          sectionUsers = await db.execute(sql`SELECT id, username, display_name, display_name_ar, phone, email, section_id, status FROM users WHERE section_id::text = ANY(${secIdValues}) ORDER BY id`);
+          const secIdValues = matchingSections.rows.map((r: any) =>
+            String(r.id),
+          );
+          sectionUsers = await db.execute(
+            sql`SELECT id, username, display_name, display_name_ar, phone, email, section_id, status FROM users WHERE section_id::text = ANY(${secIdValues}) ORDER BY id`,
+          );
         } else {
-          return JSON.stringify({ error: "يجب تحديد section_id أو section_name" });
+          return JSON.stringify({
+            error: "يجب تحديد section_id أو section_name",
+          });
         }
 
-        const allSections = await db.execute(sql`SELECT id, name, name_ar FROM sections`);
+        const allSections = await db.execute(
+          sql`SELECT id, name, name_ar FROM sections`,
+        );
 
         return JSON.stringify({
           users: sectionUsers.rows,
           total: sectionUsers.rows.length,
-          available_sections: allSections.rows
+          available_sections: allSections.rows,
         });
       }
 
@@ -3851,24 +5133,32 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
           cr_number: info.cr_number,
           website: info.website,
           logo_url: info.logo_url,
-          note: "استخدم هذه البيانات في header المستند عند إنشاء أي ملف"
+          note: "استخدم هذه البيانات في header المستند عند إنشاء أي ملف",
         });
       }
 
       case "generate_document": {
         const format = args.format as string;
         const docTitle = args.title as string;
-        const docFilename = (args.filename as string || "document").replace(/[^a-zA-Z0-9_\-]/g, "_");
-        const docContent = args.content as any || {};
+        const docFilename = ((args.filename as string) || "document").replace(
+          /[^a-zA-Z0-9_\-]/g,
+          "_",
+        );
+        const docContent = (args.content as any) || {};
 
         const companyInfo = await getCompanyInfo();
         if (!docContent.header) docContent.header = {};
         if (!docContent.header.company_name) {
-          docContent.header.company_name = companyInfo.name_ar || companyInfo.name;
+          docContent.header.company_name =
+            companyInfo.name_ar || companyInfo.name;
         }
-        if (!Array.isArray(docContent.header.extra_info)) docContent.header.extra_info = [];
+        if (!Array.isArray(docContent.header.extra_info))
+          docContent.header.extra_info = [];
         const existingInfo = docContent.header.extra_info.map(String).join(" ");
-        if (companyInfo.address && !existingInfo.includes(companyInfo.address)) {
+        if (
+          companyInfo.address &&
+          !existingInfo.includes(companyInfo.address)
+        ) {
           docContent.header.extra_info.push(companyInfo.address);
         }
         if (companyInfo.phone && !existingInfo.includes(companyInfo.phone)) {
@@ -3877,36 +5167,66 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
         if (companyInfo.email && !existingInfo.includes(companyInfo.email)) {
           docContent.header.extra_info.push(`بريد: ${companyInfo.email}`);
         }
-        if (companyInfo.tax_number && !existingInfo.includes(companyInfo.tax_number)) {
-          docContent.header.extra_info.push(`الرقم الضريبي: ${companyInfo.tax_number}`);
+        if (
+          companyInfo.tax_number &&
+          !existingInfo.includes(companyInfo.tax_number)
+        ) {
+          docContent.header.extra_info.push(
+            `الرقم الضريبي: ${companyInfo.tax_number}`,
+          );
         }
-        if (companyInfo.cr_number && !existingInfo.includes(companyInfo.cr_number)) {
-          docContent.header.extra_info.push(`السجل التجاري: ${companyInfo.cr_number}`);
+        if (
+          companyInfo.cr_number &&
+          !existingInfo.includes(companyInfo.cr_number)
+        ) {
+          docContent.header.extra_info.push(
+            `السجل التجاري: ${companyInfo.cr_number}`,
+          );
         }
 
         let filePath: string;
         let ext: string;
 
         if (format === "pdf") {
-          filePath = await generatePdfDocument(docTitle, docFilename, docContent);
+          filePath = await generatePdfDocument(
+            docTitle,
+            docFilename,
+            docContent,
+          );
           ext = "pdf";
         } else if (format === "excel") {
-          filePath = await generateExcelDocument(docTitle, docFilename, docContent);
+          filePath = await generateExcelDocument(
+            docTitle,
+            docFilename,
+            docContent,
+          );
           ext = "xlsx";
         } else if (format === "csv") {
-          filePath = await generateCsvDocument(docTitle, docFilename, docContent);
+          filePath = await generateCsvDocument(
+            docTitle,
+            docFilename,
+            docContent,
+          );
           ext = "csv";
         } else if (format === "word") {
-          filePath = await generateWordDocument(docTitle, docFilename, docContent);
+          filePath = await generateWordDocument(
+            docTitle,
+            docFilename,
+            docContent,
+          );
           ext = "docx";
         } else {
-          return JSON.stringify({ error: "صيغة غير مدعومة. الصيغ المدعومة: pdf, excel, csv, word" });
+          return JSON.stringify({
+            error: "صيغة غير مدعومة. الصيغ المدعومة: pdf, excel, csv, word",
+          });
         }
 
         const baseUrl = getAppBaseUrl();
         const downloadUrl = `${baseUrl}/api/ai-agent/download/${docFilename}.${ext}`;
 
-        console.log(`[AI Agent] Document generated: ${filePath} -> ${downloadUrl}`);
+        console.log(
+          `[AI Agent] Document generated: ${filePath} -> ${downloadUrl}`,
+        );
 
         return JSON.stringify({
           success: true,
@@ -3914,7 +5234,7 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
           format: ext,
           filename: `${docFilename}.${ext}`,
           download_url: downloadUrl,
-          download_link: `[📥 تحميل الملف](${downloadUrl})`
+          download_link: `[📥 تحميل الملف](${downloadUrl})`,
         });
       }
 
@@ -3923,14 +5243,21 @@ async function executeFunction(name: string, args: Record<string, unknown>, user
     }
   } catch (error) {
     console.error("Error executing function:", name, error);
-    return JSON.stringify({ error: `حدث خطأ أثناء تنفيذ العملية: ${(error as Error).message}` });
+    return JSON.stringify({
+      error: `حدث خطأ أثناء تنفيذ العملية: ${(error as Error).message}`,
+    });
   }
 }
 
 export function registerAiAgentRoutes(app: Express): void {
   app.get("/api/ai-agent/download/:filename", (req: Request, res: Response) => {
     const filename = req.params.filename;
-    if (!filename || filename.includes("..") || filename.includes("/") || filename.includes("\0")) {
+    if (
+      !filename ||
+      filename.includes("..") ||
+      filename.includes("/") ||
+      filename.includes("\0")
+    ) {
       return res.status(400).json({ error: "اسم ملف غير صالح" });
     }
     const filePath = path.join(DOCS_DIR, filename);
@@ -3945,13 +5272,18 @@ export function registerAiAgentRoutes(app: Express): void {
     const ext = path.extname(filename).toLowerCase();
     const mimeTypes: Record<string, string> = {
       ".pdf": "application/pdf",
-      ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ".xlsx":
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      ".docx":
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       ".csv": "text/csv; charset=utf-8",
     };
 
     res.setHeader("Content-Type", mimeTypes[ext] || "application/octet-stream");
-    res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(filename)}"`);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${encodeURIComponent(filename)}"`,
+    );
     const stream = fs.createReadStream(filePath);
     stream.on("error", () => {
       if (!res.headersSent) {
@@ -3961,195 +5293,202 @@ export function registerAiAgentRoutes(app: Express): void {
     stream.pipe(res);
   });
 
-  app.post("/api/ai-agent/chat", requireAuth, async (req: Request, res: Response) => {
-  let clientClosed = false;
-  let ping: NodeJS.Timeout | null = null;
+  app.post(
+    "/api/ai-agent/chat",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      let clientClosed = false;
+      let ping: NodeJS.Timeout | null = null;
 
-  const safeEnd = () => {
-    try {
-      if (ping) {
-        clearInterval(ping);
-        ping = null;
-      }
-      if (!res.writableEnded) {
-        res.end();
-      }
-    } catch {
-    }
-  };
+      const safeEnd = () => {
+        try {
+          if (ping) {
+            clearInterval(ping);
+            ping = null;
+          }
+          if (!res.writableEnded) {
+            res.end();
+          }
+        } catch {}
+      };
 
-  const safeWrite = (data: any) => {
-    if (clientClosed || res.writableEnded) return;
-    try {
-      res.write(`data: ${JSON.stringify(data)}\n\n`);
-    } catch {
-    }
-  };
+      const safeWrite = (data: any) => {
+        if (clientClosed || res.writableEnded) return;
+        try {
+          res.write(`data: ${JSON.stringify(data)}\n\n`);
+        } catch {}
+      };
 
-  req.on("close", () => {
-    clientClosed = true;
-    safeEnd();
-  });
+      req.on("close", () => {
+        clientClosed = true;
+        safeEnd();
+      });
 
-  try {
-    const { messages } = req.body as { messages: Array<{ role: string; content: string }> };
-    const userPerms: string[] = (req as any).user?.permissions || [];
-
-    if (!Array.isArray(messages)) {
-      return res.status(400).json({ error: "صيغة الرسائل غير صحيحة" });
-    }
-
-    res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
-    res.setHeader("Cache-Control", "no-cache, no-transform");
-    res.setHeader("Connection", "keep-alive");
-    res.flushHeaders?.();
-
-    ping = setInterval(() => {
-      if (clientClosed || res.writableEnded) return;
       try {
-        res.write(`: ping\n\n`);
-      } catch {
-      }
-    }, SSE_PING_INTERVAL_MS);
+        const { messages } = req.body as {
+          messages: Array<{ role: string; content: string }>;
+        };
+        const userPerms: string[] = (req as any).user?.permissions || [];
 
-    const dynamicSystemPrompt = await getSystemPrompt();
+        if (!Array.isArray(messages)) {
+          return res.status(400).json({ error: "صيغة الرسائل غير صحيحة" });
+        }
 
-    const chatMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-      { role: "system", content: dynamicSystemPrompt },
-      ...messages
-        .slice(-MAX_CHAT_HISTORY)
-        .map((m) => ({
-          role: m.role as "user" | "assistant",
-          content: String(m.content || ""),
-        })),
-    ];
+        res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+        res.setHeader("Cache-Control", "no-cache, no-transform");
+        res.setHeader("Connection", "keep-alive");
+        res.flushHeaders?.();
 
-    let toolRounds = 0;
+        ping = setInterval(() => {
+          if (clientClosed || res.writableEnded) return;
+          try {
+            res.write(`: ping\n\n`);
+          } catch {}
+        }, SSE_PING_INTERVAL_MS);
 
-    let response = await openai.chat.completions.create({
-      model: AI_MODEL,
-      messages: chatMessages,
-      tools,
-      tool_choice: "auto",
-      max_completion_tokens: 4096,
-    });
+        const dynamicSystemPrompt = await getSystemPrompt();
 
-    while (response.choices[0]?.message?.tool_calls) {
-      if (clientClosed) return safeEnd();
+        const chatMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] =
+          [
+            { role: "system", content: dynamicSystemPrompt },
+            ...messages.slice(-MAX_CHAT_HISTORY).map((m) => ({
+              role: m.role as "user" | "assistant",
+              content: String(m.content || ""),
+            })),
+          ];
 
-      toolRounds++;
-      if (toolRounds > MAX_TOOL_ROUNDS) {
-        safeWrite({
-          content:
-            "تعذر إكمال العملية تلقائياً بسبب تكرار الاستدعاءات. فضلاً حدّد رقم الطلب/عرض السعر بشكل أدق.",
-          done: true,
+        let toolRounds = 0;
+
+        let response = await openai.chat.completions.create({
+          model: AI_MODEL,
+          messages: chatMessages,
+          tools,
+          tool_choice: "auto",
+          max_completion_tokens: 4096,
         });
-        return safeEnd();
-      }
 
-      const toolCalls = response.choices[0].message.tool_calls;
-      chatMessages.push(response.choices[0].message);
+        while (response.choices[0]?.message?.tool_calls) {
+          if (clientClosed) return safeEnd();
 
-      for (const toolCall of toolCalls) {
+          toolRounds++;
+          if (toolRounds > MAX_TOOL_ROUNDS) {
+            safeWrite({
+              content:
+                "تعذر إكمال العملية تلقائياً بسبب تكرار الاستدعاءات. فضلاً حدّد رقم الطلب/عرض السعر بشكل أدق.",
+              done: true,
+            });
+            return safeEnd();
+          }
+
+          const toolCalls = response.choices[0].message.tool_calls;
+          chatMessages.push(response.choices[0].message);
+
+          for (const toolCall of toolCalls) {
+            if (clientClosed) return safeEnd();
+
+            const fn = (toolCall as any).function;
+
+            let args: any;
+            try {
+              args = JSON.parse(fn.arguments || "{}");
+            } catch {
+              chatMessages.push({
+                role: "tool",
+                tool_call_id: toolCall.id,
+                content: JSON.stringify({
+                  ok: false,
+                  error: {
+                    code: "BAD_TOOL_ARGS",
+                    message: "تعذر قراءة مدخلات الأداة",
+                  },
+                }),
+              });
+              continue;
+            }
+
+            const result = await executeFunction(fn.name, args, userPerms);
+
+            chatMessages.push({
+              role: "tool",
+              tool_call_id: toolCall.id,
+              content: result,
+            });
+          }
+
+          if (clientClosed) return safeEnd();
+
+          response = await openai.chat.completions.create({
+            model: AI_MODEL,
+            messages: chatMessages,
+            tools,
+            tool_choice: "auto",
+            max_completion_tokens: 4096,
+          });
+        }
+
         if (clientClosed) return safeEnd();
 
-        const fn = (toolCall as any).function;
+        // ===== Final response =====
+        const finalContent = response.choices[0]?.message?.content;
+        if (finalContent) {
+          safeWrite({ content: finalContent, done: true });
+          safeEnd();
+        } else {
+          try {
+            const stream = await openai.chat.completions.create({
+              model: AI_MODEL,
+              messages: chatMessages,
+              max_completion_tokens: 4096,
+              stream: true,
+            });
 
-        let args: any;
-        try {
-          args = JSON.parse(fn.arguments || "{}");
-        } catch {
-          chatMessages.push({
-            role: "tool",
-            tool_call_id: toolCall.id,
-            content: JSON.stringify({
-              ok: false,
-              error: { code: "BAD_TOOL_ARGS", message: "تعذر قراءة مدخلات الأداة" },
-            }),
-          });
-          continue;
-        }
-
-        const result = await executeFunction(fn.name, args, userPerms);
-
-        chatMessages.push({
-          role: "tool",
-          tool_call_id: toolCall.id,
-          content: result,
-        });
-      }
-
-      if (clientClosed) return safeEnd();
-
-      response = await openai.chat.completions.create({
-        model: AI_MODEL,
-        messages: chatMessages,
-        tools,
-        tool_choice: "auto",
-        max_completion_tokens: 4096,
-      });
-    }
-
-    if (clientClosed) return safeEnd();
-
-    // ===== Final response =====
-    const finalContent = response.choices[0]?.message?.content;
-    if (finalContent) {
-      safeWrite({ content: finalContent, done: true });
-      safeEnd();
-    } else {
-      try {
-        const stream = await openai.chat.completions.create({
-          model: AI_MODEL,
-          messages: chatMessages,
-          max_completion_tokens: 4096,
-          stream: true,
-        });
-
-        let accumulated = "";
-        for await (const chunk of stream) {
-          if (clientClosed) return safeEnd();
-          const delta = chunk.choices[0]?.delta?.content;
-          if (delta) {
-            accumulated += delta;
-            safeWrite({ content: accumulated, done: false });
+            let accumulated = "";
+            for await (const chunk of stream) {
+              if (clientClosed) return safeEnd();
+              const delta = chunk.choices[0]?.delta?.content;
+              if (delta) {
+                accumulated += delta;
+                safeWrite({ content: accumulated, done: false });
+              }
+            }
+            safeWrite({ content: accumulated || "", done: true });
+            safeEnd();
+          } catch (streamError) {
+            console.error("Streaming fallback error:", streamError);
+            const fallback = await openai.chat.completions.create({
+              model: AI_MODEL,
+              messages: chatMessages,
+              max_completion_tokens: 4096,
+            });
+            const content = fallback.choices[0]?.message?.content || "";
+            safeWrite({ content, done: true });
+            safeEnd();
           }
         }
-        safeWrite({ content: accumulated || "", done: true });
-        safeEnd();
-      } catch (streamError) {
-        console.error("Streaming fallback error:", streamError);
-        const fallback = await openai.chat.completions.create({
-          model: AI_MODEL,
-          messages: chatMessages,
-          max_completion_tokens: 4096,
-        });
-        const content = fallback.choices[0]?.message?.content || "";
-        safeWrite({ content, done: true });
-        safeEnd();
+      } catch (error) {
+        console.error("AI Agent error:", error);
+
+        if (res.headersSent && !res.writableEnded) {
+          safeWrite({ error: "حدث خطأ في المعالجة", done: true });
+          safeEnd();
+          return;
+        }
+
+        try {
+          return res.status(500).json({ error: "حدث خطأ في المعالجة" });
+        } catch {
+          safeEnd();
+        }
       }
-    }
-  } catch (error) {
-    console.error("AI Agent error:", error);
-
-    if (res.headersSent && !res.writableEnded) {
-      safeWrite({ error: "حدث خطأ في المعالجة", done: true });
-      safeEnd();
-      return;
-    }
-
-    try {
-      return res.status(500).json({ error: "حدث خطأ في المعالجة" });
-    } catch {
-      safeEnd();
-    }
-  }
-});
-
+    },
+  );
 
   app.get("/api/quotes", requireAuth, async (_req: Request, res: Response) => {
     try {
-      const allQuotes = await db.select().from(quotes).orderBy(desc(quotes.created_at));
+      const allQuotes = await db
+        .select()
+        .from(quotes)
+        .orderBy(desc(quotes.created_at));
       res.json(allQuotes);
     } catch (error) {
       console.error("Error fetching quotes:", error);
@@ -4157,65 +5496,85 @@ export function registerAiAgentRoutes(app: Express): void {
     }
   });
 
-  app.get("/api/quotes/:id", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id) || id <= 0) {
-        return res.status(400).json({ error: "معرف عرض السعر غير صالح" });
+  app.get(
+    "/api/quotes/:id",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id) || id <= 0) {
+          return res.status(400).json({ error: "معرف عرض السعر غير صالح" });
+        }
+        const [quote] = await db.select().from(quotes).where(eq(quotes.id, id));
+        if (!quote) {
+          return res.status(404).json({ error: "عرض السعر غير موجود" });
+        }
+        const items = await db
+          .select()
+          .from(quote_items)
+          .where(eq(quote_items.quote_id, id))
+          .orderBy(quote_items.line_number);
+        res.json({ ...quote, items });
+      } catch (error) {
+        console.error("Error fetching quote:", error);
+        res.status(500).json({ error: "فشل في جلب عرض السعر" });
       }
-      const [quote] = await db.select().from(quotes).where(eq(quotes.id, id));
-      if (!quote) {
-        return res.status(404).json({ error: "عرض السعر غير موجود" });
-      }
-      const items = await db.select().from(quote_items).where(eq(quote_items.quote_id, id)).orderBy(quote_items.line_number);
-      res.json({ ...quote, items });
-    } catch (error) {
-      console.error("Error fetching quote:", error);
-      res.status(500).json({ error: "فشل في جلب عرض السعر" });
-    }
-  });
+    },
+  );
 
   // نقطة نهاية لتقديم ملفات PDF من التخزين السحابي على الدومين الخاص
-  app.get("/api/pdf/quotes/:documentNumber", async (req: Request, res: Response) => {
-    try {
-      const { documentNumber } = req.params;
-      
-      const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
-      
-      // محاولة جلب الملف من Object Storage أولاً
-      if (bucketId) {
-        try {
-          const bucket = objectStorageClient.bucket(bucketId);
-          const fileName = `quotes/quote_${documentNumber}.pdf`;
-          const file = bucket.file(fileName);
-          
-          const [exists] = await file.exists();
-          if (exists) {
-            const [fileBuffer] = await file.download();
-            
-            res.setHeader("Content-Type", "application/pdf");
-            res.setHeader("Content-Disposition", `inline; filename="quote_${documentNumber}.pdf"`);
-            res.setHeader("Cache-Control", "public, max-age=86400");
-            return res.send(fileBuffer);
+  app.get(
+    "/api/pdf/quotes/:documentNumber",
+    async (req: Request, res: Response) => {
+      try {
+        const { documentNumber } = req.params;
+
+        const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+
+        // محاولة جلب الملف من Object Storage أولاً
+        if (bucketId) {
+          try {
+            const bucket = objectStorageClient.bucket(bucketId);
+            const fileName = `quotes/quote_${documentNumber}.pdf`;
+            const file = bucket.file(fileName);
+
+            const [exists] = await file.exists();
+            if (exists) {
+              const [fileBuffer] = await file.download();
+
+              res.setHeader("Content-Type", "application/pdf");
+              res.setHeader(
+                "Content-Disposition",
+                `inline; filename="quote_${documentNumber}.pdf"`,
+              );
+              res.setHeader("Cache-Control", "public, max-age=86400");
+              return res.send(fileBuffer);
+            }
+          } catch (storageError) {
+            console.warn(
+              "Object storage fetch failed, falling back to dynamic generation:",
+              storageError,
+            );
           }
-        } catch (storageError) {
-          console.warn("Object storage fetch failed, falling back to dynamic generation:", storageError);
         }
+
+        // Fallback: إنشاء PDF ديناميكياً من قاعدة البيانات
+        const [quote] = await db
+          .select()
+          .from(quotes)
+          .where(eq(quotes.document_number, documentNumber));
+        if (!quote) {
+          return res.status(404).json({ error: "عرض السعر غير موجود" });
+        }
+
+        // إعادة التوجيه إلى endpoint التوليد الديناميكي
+        return res.redirect(`/api/quotes/${quote.id}/pdf`);
+      } catch (error) {
+        console.error("Error serving PDF:", error);
+        res.status(500).json({ error: "فشل في تحميل ملف PDF" });
       }
-      
-      // Fallback: إنشاء PDF ديناميكياً من قاعدة البيانات
-      const [quote] = await db.select().from(quotes).where(eq(quotes.document_number, documentNumber));
-      if (!quote) {
-        return res.status(404).json({ error: "عرض السعر غير موجود" });
-      }
-      
-      // إعادة التوجيه إلى endpoint التوليد الديناميكي
-      return res.redirect(`/api/quotes/${quote.id}/pdf`);
-    } catch (error) {
-      console.error("Error serving PDF:", error);
-      res.status(500).json({ error: "فشل في تحميل ملف PDF" });
-    }
-  });
+    },
+  );
 
   app.get("/api/quotes/:id/pdf", async (req: Request, res: Response) => {
     try {
@@ -4223,29 +5582,34 @@ export function registerAiAgentRoutes(app: Express): void {
       if (isNaN(id)) {
         return res.status(400).json({ error: "معرف عرض السعر غير صالح" });
       }
-      
+
       const [quote] = await db.select().from(quotes).where(eq(quotes.id, id));
       if (!quote) {
         return res.status(404).json({ error: "عرض السعر غير موجود" });
       }
-      
+
       let pdfBuffer: Buffer;
       if (isAdobePdfAvailable()) {
         try {
           pdfBuffer = await generateQuotePdfWithAdobe(id);
         } catch (adobeErr) {
-          console.error("Adobe template PDF failed for download, falling back to PDFKit:", adobeErr);
+          console.error(
+            "Adobe template PDF failed for download, falling back to PDFKit:",
+            adobeErr,
+          );
           pdfBuffer = await generateQuotePdfBuffer(id);
         }
       } else {
         pdfBuffer = await generateQuotePdfBuffer(id);
       }
-      
+
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Length", pdfBuffer.length);
-      res.setHeader("Content-Disposition", `attachment; filename="quote_${quote.document_number}.pdf"`);
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="quote_${quote.document_number}.pdf"`,
+      );
       res.send(pdfBuffer);
-      
     } catch (error) {
       console.error("Error generating quote PDF:", error);
       if (!res.headersSent) {
@@ -4255,400 +5619,560 @@ export function registerAiAgentRoutes(app: Express): void {
   });
 
   // ===== رفع الملفات وقراءتها =====
-  app.post("/api/ai-agent/upload", requireAuth, upload.single("file"), async (req: Request, res: Response) => {
-    const file = req.file;
-    const filePath = file?.path;
-    
-    const cleanupFile = async () => {
-      if (filePath) {
-        try {
-          await fs.promises.unlink(filePath);
-        } catch (e: any) {
-          if (e.code !== 'ENOENT') {
-            console.error("Failed to cleanup temp file:", e);
+  app.post(
+    "/api/ai-agent/upload",
+    requireAuth,
+    upload.single("file"),
+    async (req: Request, res: Response) => {
+      const file = req.file;
+      const filePath = file?.path;
+
+      const cleanupFile = async () => {
+        if (filePath) {
+          try {
+            await fs.promises.unlink(filePath);
+          } catch (e: any) {
+            if (e.code !== "ENOENT") {
+              console.error("Failed to cleanup temp file:", e);
+            }
           }
         }
-      }
-    };
-    
-    try {
-      if (!file) {
-        return res.status(400).json({ error: "لم يتم رفع أي ملف" });
-      }
+      };
 
-      let content = "";
-
-      if (file.mimetype.startsWith("image/")) {
-        const imageBuffer = await fs.promises.readFile(filePath!);
-        const base64Image = imageBuffer.toString("base64");
-        const imageUrl = `data:${file.mimetype};base64,${base64Image}`;
-        
-        const visionResponse = await openai.chat.completions.create({
-          model: AI_MODEL_VISION,
-          messages: [
-            {
-              role: "user",
-              content: [
-                { type: "text", text: "قم بوصف محتوى هذه الصورة باللغة العربية بشكل مفصل" },
-                { type: "image_url", image_url: { url: imageUrl } }
-              ]
-            }
-          ],
-          max_tokens: 1000
-        });
-        content = visionResponse.choices[0]?.message?.content || "لم يتم التعرف على محتوى الصورة";
-        
-      } else if (file.mimetype === "text/plain" || file.mimetype === "text/csv") {
-        content = await fs.promises.readFile(filePath!, "utf-8");
-        
-      } else if (file.mimetype.includes("spreadsheet") || file.mimetype.includes("excel")) {
-        const workbook = new XLSX.Workbook();
-        await workbook.xlsx.readFile(filePath!);
-        const worksheet = workbook.worksheets[0];
-        
-        const rows: string[][] = [];
-        worksheet.eachRow((row, rowNumber) => {
-          const values: string[] = [];
-          row.eachCell((cell) => {
-            values.push(String(cell.value || ""));
-          });
-          rows.push(values);
-        });
-        
-        content = `ملف Excel يحتوي على ${rows.length} صف:\n`;
-        rows.slice(0, 50).forEach((row, idx) => {
-          content += `الصف ${idx + 1}: ${row.join(" | ")}\n`;
-        });
-        if (rows.length > 50) {
-          content += `\n... و${rows.length - 50} صف إضافي`;
+      try {
+        if (!file) {
+          return res.status(400).json({ error: "لم يتم رفع أي ملف" });
         }
-        
-      } else if (file.mimetype === "application/pdf") {
-        content = `ملف PDF تم رفعه: ${file.originalname}. لقراءة محتوى PDF، يرجى استخدام أداة متخصصة.`;
+
+        let content = "";
+
+        if (file.mimetype.startsWith("image/")) {
+          const imageBuffer = await fs.promises.readFile(filePath!);
+          const base64Image = imageBuffer.toString("base64");
+          const imageUrl = `data:${file.mimetype};base64,${base64Image}`;
+
+          const visionResponse = await openai.chat.completions.create({
+            model: AI_MODEL_VISION,
+            messages: [
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "text",
+                    text: "قم بوصف محتوى هذه الصورة باللغة العربية بشكل مفصل",
+                  },
+                  { type: "image_url", image_url: { url: imageUrl } },
+                ],
+              },
+            ],
+            max_tokens: 1000,
+          });
+          content =
+            visionResponse.choices[0]?.message?.content ||
+            "لم يتم التعرف على محتوى الصورة";
+        } else if (
+          file.mimetype === "text/plain" ||
+          file.mimetype === "text/csv"
+        ) {
+          content = await fs.promises.readFile(filePath!, "utf-8");
+        } else if (
+          file.mimetype.includes("spreadsheet") ||
+          file.mimetype.includes("excel")
+        ) {
+          const workbook = new XLSX.Workbook();
+          await workbook.xlsx.readFile(filePath!);
+          const worksheet = workbook.worksheets[0];
+
+          const rows: string[][] = [];
+          worksheet.eachRow((row, rowNumber) => {
+            const values: string[] = [];
+            row.eachCell((cell) => {
+              values.push(String(cell.value || ""));
+            });
+            rows.push(values);
+          });
+
+          content = `ملف Excel يحتوي على ${rows.length} صف:\n`;
+          rows.slice(0, 50).forEach((row, idx) => {
+            content += `الصف ${idx + 1}: ${row.join(" | ")}\n`;
+          });
+          if (rows.length > 50) {
+            content += `\n... و${rows.length - 50} صف إضافي`;
+          }
+        } else if (file.mimetype === "application/pdf") {
+          content = `ملف PDF تم رفعه: ${file.originalname}. لقراءة محتوى PDF، يرجى استخدام أداة متخصصة.`;
+        }
+
+        await cleanupFile();
+
+        res.json({
+          success: true,
+          filename: file.originalname,
+          mimetype: file.mimetype,
+          size: file.size,
+          content: content.substring(0, 10000),
+        });
+      } catch (error) {
+        await cleanupFile();
+        console.error("File upload error:", error);
+        res.status(500).json({ error: "فشل في معالجة الملف" });
       }
-
-      await cleanupFile();
-
-      res.json({
-        success: true,
-        filename: file.originalname,
-        mimetype: file.mimetype,
-        size: file.size,
-        content: content.substring(0, 10000)
-      });
-    } catch (error) {
-      await cleanupFile();
-      console.error("File upload error:", error);
-      res.status(500).json({ error: "فشل في معالجة الملف" });
-    }
-  });
+    },
+  );
 
   // ===== تحويل الصوت إلى نص باستخدام Whisper =====
-  app.post("/api/ai-agent/transcribe", requireAuth, upload.single("audio"), async (req: Request, res: Response) => {
-    const file = req.file;
-    const filePath = file?.path;
-    
-    const cleanupFile = async () => {
-      if (filePath) {
-        try {
-          await fs.promises.unlink(filePath);
-        } catch (e: any) {
-          if (e.code !== 'ENOENT') {
-            console.error("Failed to cleanup temp audio file:", e);
+  app.post(
+    "/api/ai-agent/transcribe",
+    requireAuth,
+    upload.single("audio"),
+    async (req: Request, res: Response) => {
+      const file = req.file;
+      const filePath = file?.path;
+
+      const cleanupFile = async () => {
+        if (filePath) {
+          try {
+            await fs.promises.unlink(filePath);
+          } catch (e: any) {
+            if (e.code !== "ENOENT") {
+              console.error("Failed to cleanup temp audio file:", e);
+            }
           }
         }
-      }
-    };
-    
-    try {
-      if (!file) {
-        return res.status(400).json({ error: "لم يتم رفع ملف صوتي" });
-      }
+      };
 
-      // التحقق من أن الملف صوتي
-      const audioTypes = ["audio/mpeg", "audio/mp3", "audio/wav", "audio/ogg", "audio/webm", "audio/m4a", "video/webm", "video/mp4"];
-      if (!audioTypes.includes(file.mimetype)) {
+      try {
+        if (!file) {
+          return res.status(400).json({ error: "لم يتم رفع ملف صوتي" });
+        }
+
+        // التحقق من أن الملف صوتي
+        const audioTypes = [
+          "audio/mpeg",
+          "audio/mp3",
+          "audio/wav",
+          "audio/ogg",
+          "audio/webm",
+          "audio/m4a",
+          "video/webm",
+          "video/mp4",
+        ];
+        if (!audioTypes.includes(file.mimetype)) {
+          await cleanupFile();
+          return res
+            .status(400)
+            .json({ error: "نوع الملف غير مدعوم. يرجى رفع ملف صوتي" });
+        }
+
+        console.log(
+          `Transcribing audio file: ${file.originalname}, type: ${file.mimetype}, size: ${file.size}`,
+        );
+
+        // استخدام OpenAI Whisper لتحويل الصوت إلى نص
+        const audioBuffer = await fs.promises.readFile(filePath!);
+        const audioFile = new File([audioBuffer], file.originalname, {
+          type: file.mimetype,
+        });
+
+        const transcription = await openai.audio.transcriptions.create({
+          file: audioFile,
+          model: "whisper-1",
+          language: "ar", // اللغة العربية افتراضياً
+          response_format: "text",
+        });
+
         await cleanupFile();
-        return res.status(400).json({ error: "نوع الملف غير مدعوم. يرجى رفع ملف صوتي" });
+
+        console.log(
+          `Transcription successful: ${transcription.substring(0, 100)}...`,
+        );
+
+        res.json({
+          success: true,
+          text: transcription,
+          filename: file.originalname,
+          duration_hint: "تم تحويل الصوت بنجاح",
+        });
+      } catch (error: any) {
+        await cleanupFile();
+        console.error("Audio transcription error:", error);
+        res.status(500).json({
+          error: "فشل في تحويل الصوت إلى نص",
+          details: error.message || "خطأ غير معروف",
+        });
       }
-
-      console.log(`Transcribing audio file: ${file.originalname}, type: ${file.mimetype}, size: ${file.size}`);
-
-      // استخدام OpenAI Whisper لتحويل الصوت إلى نص
-      const audioBuffer = await fs.promises.readFile(filePath!);
-      const audioFile = new File([audioBuffer], file.originalname, { type: file.mimetype });
-      
-      const transcription = await openai.audio.transcriptions.create({
-        file: audioFile,
-        model: "whisper-1",
-        language: "ar", // اللغة العربية افتراضياً
-        response_format: "text"
-      });
-
-      await cleanupFile();
-
-      console.log(`Transcription successful: ${transcription.substring(0, 100)}...`);
-
-      res.json({
-        success: true,
-        text: transcription,
-        filename: file.originalname,
-        duration_hint: "تم تحويل الصوت بنجاح"
-      });
-    } catch (error: any) {
-      await cleanupFile();
-      console.error("Audio transcription error:", error);
-      res.status(500).json({ 
-        error: "فشل في تحويل الصوت إلى نص",
-        details: error.message || "خطأ غير معروف"
-      });
-    }
-  });
+    },
+  );
 
   // ===== إعدادات الوكيل الذكي =====
-  app.get("/api/ai-agent/settings", requireAuth, async (_req: Request, res: Response) => {
-    try {
-      const settings = await db.select().from(ai_agent_settings);
-      res.json(settings);
-    } catch (error) {
-      console.error("Error fetching AI settings:", error);
-      res.status(500).json({ error: "فشل في جلب الإعدادات" });
-    }
-  });
-
-  app.put("/api/ai-agent/settings/:key", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const { key } = req.params;
-      const { value, description } = req.body;
-      
-      const [existing] = await db.select().from(ai_agent_settings).where(eq(ai_agent_settings.key, key));
-      
-      if (existing) {
-        await db.update(ai_agent_settings)
-          .set({ value, description, updated_at: new Date() })
-          .where(eq(ai_agent_settings.key, key));
-      } else {
-        await db.insert(ai_agent_settings).values({ key, value, description });
+  app.get(
+    "/api/ai-agent/settings",
+    requireAuth,
+    async (_req: Request, res: Response) => {
+      try {
+        const settings = await db.select().from(ai_agent_settings);
+        res.json(settings);
+      } catch (error) {
+        console.error("Error fetching AI settings:", error);
+        res.status(500).json({ error: "فشل في جلب الإعدادات" });
       }
-      
-      res.json({ success: true, message: "تم تحديث الإعداد بنجاح" });
-    } catch (error) {
-      console.error("Error updating AI setting:", error);
-      res.status(500).json({ error: "فشل في تحديث الإعداد" });
-    }
-  });
+    },
+  );
+
+  app.put(
+    "/api/ai-agent/settings/:key",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      try {
+        const { key } = req.params;
+        const { value, description } = req.body;
+
+        const [existing] = await db
+          .select()
+          .from(ai_agent_settings)
+          .where(eq(ai_agent_settings.key, key));
+
+        if (existing) {
+          await db
+            .update(ai_agent_settings)
+            .set({ value, description, updated_at: new Date() })
+            .where(eq(ai_agent_settings.key, key));
+        } else {
+          await db
+            .insert(ai_agent_settings)
+            .values({ key, value, description });
+        }
+
+        res.json({ success: true, message: "تم تحديث الإعداد بنجاح" });
+      } catch (error) {
+        console.error("Error updating AI setting:", error);
+        res.status(500).json({ error: "فشل في تحديث الإعداد" });
+      }
+    },
+  );
 
   // ===== قاعدة المعرفة =====
-  app.get("/api/ai-agent/knowledge", requireAuth, async (_req: Request, res: Response) => {
-    try {
-      const knowledge = await db.select().from(ai_agent_knowledge).orderBy(desc(ai_agent_knowledge.created_at));
-      res.json(knowledge);
-    } catch (error) {
-      console.error("Error fetching knowledge base:", error);
-      res.status(500).json({ error: "فشل في جلب قاعدة المعرفة" });
-    }
-  });
-
-  app.post("/api/ai-agent/knowledge", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const { title, content, category } = req.body;
-      const [newKnowledge] = await db.insert(ai_agent_knowledge).values({
-        title,
-        content,
-        category: category || "general",
-        is_active: true
-      }).returning();
-      res.json(newKnowledge);
-    } catch (error) {
-      console.error("Error adding knowledge:", error);
-      res.status(500).json({ error: "فشل في إضافة المعرفة" });
-    }
-  });
-
-  app.put("/api/ai-agent/knowledge/:id", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id) || id <= 0) {
-        return res.status(400).json({ error: "معرف غير صالح" });
+  app.get(
+    "/api/ai-agent/knowledge",
+    requireAuth,
+    async (_req: Request, res: Response) => {
+      try {
+        const knowledge = await db
+          .select()
+          .from(ai_agent_knowledge)
+          .orderBy(desc(ai_agent_knowledge.created_at));
+        res.json(knowledge);
+      } catch (error) {
+        console.error("Error fetching knowledge base:", error);
+        res.status(500).json({ error: "فشل في جلب قاعدة المعرفة" });
       }
-      const { title, content, category, is_active } = req.body;
-      
-      const [updated] = await db.update(ai_agent_knowledge)
-        .set({ title, content, category, is_active, updated_at: new Date() })
-        .where(eq(ai_agent_knowledge.id, id))
-        .returning();
-      
-      res.json(updated);
-    } catch (error) {
-      console.error("Error updating knowledge:", error);
-      res.status(500).json({ error: "فشل في تحديث المعرفة" });
-    }
-  });
+    },
+  );
 
-  app.delete("/api/ai-agent/knowledge/:id", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id) || id <= 0) {
-        return res.status(400).json({ error: "معرف غير صالح" });
+  app.post(
+    "/api/ai-agent/knowledge",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      try {
+        const { title, content, category } = req.body;
+        const [newKnowledge] = await db
+          .insert(ai_agent_knowledge)
+          .values({
+            title,
+            content,
+            category: category || "general",
+            is_active: true,
+          })
+          .returning();
+        res.json(newKnowledge);
+      } catch (error) {
+        console.error("Error adding knowledge:", error);
+        res.status(500).json({ error: "فشل في إضافة المعرفة" });
       }
-      await db.delete(ai_agent_knowledge).where(eq(ai_agent_knowledge.id, id));
-      res.json({ success: true, message: "تم الحذف بنجاح" });
-    } catch (error) {
-      console.error("Error deleting knowledge:", error);
-      res.status(500).json({ error: "فشل في الحذف" });
-    }
-  });
+    },
+  );
+
+  app.put(
+    "/api/ai-agent/knowledge/:id",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id) || id <= 0) {
+          return res.status(400).json({ error: "معرف غير صالح" });
+        }
+        const { title, content, category, is_active } = req.body;
+
+        const [updated] = await db
+          .update(ai_agent_knowledge)
+          .set({ title, content, category, is_active, updated_at: new Date() })
+          .where(eq(ai_agent_knowledge.id, id))
+          .returning();
+
+        res.json(updated);
+      } catch (error) {
+        console.error("Error updating knowledge:", error);
+        res.status(500).json({ error: "فشل في تحديث المعرفة" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/ai-agent/knowledge/:id",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id) || id <= 0) {
+          return res.status(400).json({ error: "معرف غير صالح" });
+        }
+        await db
+          .delete(ai_agent_knowledge)
+          .where(eq(ai_agent_knowledge.id, id));
+        res.json({ success: true, message: "تم الحذف بنجاح" });
+      } catch (error) {
+        console.error("Error deleting knowledge:", error);
+        res.status(500).json({ error: "فشل في الحذف" });
+      }
+    },
+  );
 
   // ===== تعليمات الخصائص =====
-  app.get("/api/ai-agent/feature-instructions", requireAuth, async (_req: Request, res: Response) => {
-    try {
-      const instructions = await db.select().from(ai_agent_feature_instructions).orderBy(desc(ai_agent_feature_instructions.priority), desc(ai_agent_feature_instructions.created_at));
-      res.json(instructions);
-    } catch (error) {
-      console.error("Error fetching feature instructions:", error);
-      res.status(500).json({ error: "فشل في جلب تعليمات الخصائص" });
-    }
-  });
-
-  app.post("/api/ai-agent/feature-instructions", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const { feature_name, instructions, priority } = req.body;
-      if (!feature_name || !instructions) {
-        return res.status(400).json({ error: "اسم الخاصية والتعليمات مطلوبة" });
+  app.get(
+    "/api/ai-agent/feature-instructions",
+    requireAuth,
+    async (_req: Request, res: Response) => {
+      try {
+        const instructions = await db
+          .select()
+          .from(ai_agent_feature_instructions)
+          .orderBy(
+            desc(ai_agent_feature_instructions.priority),
+            desc(ai_agent_feature_instructions.created_at),
+          );
+        res.json(instructions);
+      } catch (error) {
+        console.error("Error fetching feature instructions:", error);
+        res.status(500).json({ error: "فشل في جلب تعليمات الخصائص" });
       }
-      const [newInstruction] = await db.insert(ai_agent_feature_instructions).values({
-        feature_name,
-        instructions,
-        priority: priority || 0,
-        is_active: true,
-      }).returning();
-      res.json(newInstruction);
-    } catch (error) {
-      console.error("Error adding feature instruction:", error);
-      res.status(500).json({ error: "فشل في إضافة تعليمات الخاصية" });
-    }
-  });
+    },
+  );
 
-  app.put("/api/ai-agent/feature-instructions/:id", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id) || id <= 0) {
-        return res.status(400).json({ error: "معرف غير صالح" });
+  app.post(
+    "/api/ai-agent/feature-instructions",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      try {
+        const { feature_name, instructions, priority } = req.body;
+        if (!feature_name || !instructions) {
+          return res
+            .status(400)
+            .json({ error: "اسم الخاصية والتعليمات مطلوبة" });
+        }
+        const [newInstruction] = await db
+          .insert(ai_agent_feature_instructions)
+          .values({
+            feature_name,
+            instructions,
+            priority: priority || 0,
+            is_active: true,
+          })
+          .returning();
+        res.json(newInstruction);
+      } catch (error) {
+        console.error("Error adding feature instruction:", error);
+        res.status(500).json({ error: "فشل في إضافة تعليمات الخاصية" });
       }
-      const { feature_name, instructions, is_active, priority } = req.body;
-      const [updated] = await db.update(ai_agent_feature_instructions)
-        .set({ feature_name, instructions, is_active, priority, updated_at: new Date() })
-        .where(eq(ai_agent_feature_instructions.id, id))
-        .returning();
-      res.json(updated);
-    } catch (error) {
-      console.error("Error updating feature instruction:", error);
-      res.status(500).json({ error: "فشل في تحديث تعليمات الخاصية" });
-    }
-  });
+    },
+  );
 
-  app.delete("/api/ai-agent/feature-instructions/:id", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id) || id <= 0) {
-        return res.status(400).json({ error: "معرف غير صالح" });
+  app.put(
+    "/api/ai-agent/feature-instructions/:id",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id) || id <= 0) {
+          return res.status(400).json({ error: "معرف غير صالح" });
+        }
+        const { feature_name, instructions, is_active, priority } = req.body;
+        const [updated] = await db
+          .update(ai_agent_feature_instructions)
+          .set({
+            feature_name,
+            instructions,
+            is_active,
+            priority,
+            updated_at: new Date(),
+          })
+          .where(eq(ai_agent_feature_instructions.id, id))
+          .returning();
+        res.json(updated);
+      } catch (error) {
+        console.error("Error updating feature instruction:", error);
+        res.status(500).json({ error: "فشل في تحديث تعليمات الخاصية" });
       }
-      await db.delete(ai_agent_feature_instructions).where(eq(ai_agent_feature_instructions.id, id));
-      res.json({ success: true, message: "تم حذف تعليمات الخاصية بنجاح" });
-    } catch (error) {
-      console.error("Error deleting feature instruction:", error);
-      res.status(500).json({ error: "فشل في حذف تعليمات الخاصية" });
-    }
-  });
+    },
+  );
+
+  app.delete(
+    "/api/ai-agent/feature-instructions/:id",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id) || id <= 0) {
+          return res.status(400).json({ error: "معرف غير صالح" });
+        }
+        await db
+          .delete(ai_agent_feature_instructions)
+          .where(eq(ai_agent_feature_instructions.id, id));
+        res.json({ success: true, message: "تم حذف تعليمات الخاصية بنجاح" });
+      } catch (error) {
+        console.error("Error deleting feature instruction:", error);
+        res.status(500).json({ error: "فشل في حذف تعليمات الخاصية" });
+      }
+    },
+  );
 
   // ===== نماذج عروض الأسعار =====
-  app.get("/api/quote-templates", requireAuth, async (_req: Request, res: Response) => {
-    try {
-      const templates = await db.select().from(quote_templates).orderBy(desc(quote_templates.created_at));
-      res.json(templates);
-    } catch (error) {
-      console.error("Error fetching quote templates:", error);
-      res.status(500).json({ error: "فشل في جلب النماذج" });
-    }
-  });
-
-  app.get("/api/quote-templates/active", requireAuth, async (_req: Request, res: Response) => {
-    try {
-      const templates = await db.select().from(quote_templates)
-        .where(eq(quote_templates.is_active, true))
-        .orderBy(quote_templates.name);
-      res.json(templates);
-    } catch (error) {
-      console.error("Error fetching active quote templates:", error);
-      res.status(500).json({ error: "فشل في جلب النماذج النشطة" });
-    }
-  });
-
-  app.post("/api/quote-templates", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const { name, description, product_name, product_description, unit_price, unit, min_quantity, specifications, category } = req.body;
-      const [newTemplate] = await db.insert(quote_templates).values({
-        name,
-        description,
-        product_name,
-        product_description,
-        unit_price: String(unit_price),
-        unit: unit || "كجم",
-        min_quantity: min_quantity ? String(min_quantity) : null,
-        specifications,
-        category,
-        is_active: true
-      }).returning();
-      res.json(newTemplate);
-    } catch (error) {
-      console.error("Error creating quote template:", error);
-      res.status(500).json({ error: "فشل في إنشاء النموذج" });
-    }
-  });
-
-  app.put("/api/quote-templates/:id", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id) || id <= 0) {
-        return res.status(400).json({ error: "معرف النموذج غير صالح" });
+  app.get(
+    "/api/quote-templates",
+    requireAuth,
+    async (_req: Request, res: Response) => {
+      try {
+        const templates = await db
+          .select()
+          .from(quote_templates)
+          .orderBy(desc(quote_templates.created_at));
+        res.json(templates);
+      } catch (error) {
+        console.error("Error fetching quote templates:", error);
+        res.status(500).json({ error: "فشل في جلب النماذج" });
       }
-      const { name, description, product_name, product_description, unit_price, unit, min_quantity, specifications, category, is_active } = req.body;
-      
-      const [updated] = await db.update(quote_templates)
-        .set({
+    },
+  );
+
+  app.get(
+    "/api/quote-templates/active",
+    requireAuth,
+    async (_req: Request, res: Response) => {
+      try {
+        const templates = await db
+          .select()
+          .from(quote_templates)
+          .where(eq(quote_templates.is_active, true))
+          .orderBy(quote_templates.name);
+        res.json(templates);
+      } catch (error) {
+        console.error("Error fetching active quote templates:", error);
+        res.status(500).json({ error: "فشل في جلب النماذج النشطة" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/quote-templates",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      try {
+        const {
           name,
           description,
           product_name,
           product_description,
-          unit_price: String(unit_price),
+          unit_price,
           unit,
-          min_quantity: min_quantity ? String(min_quantity) : null,
+          min_quantity,
+          specifications,
+          category,
+        } = req.body;
+        const [newTemplate] = await db
+          .insert(quote_templates)
+          .values({
+            name,
+            description,
+            product_name,
+            product_description,
+            unit_price: String(unit_price),
+            unit: unit || "كجم",
+            min_quantity: min_quantity ? String(min_quantity) : null,
+            specifications,
+            category,
+            is_active: true,
+          })
+          .returning();
+        res.json(newTemplate);
+      } catch (error) {
+        console.error("Error creating quote template:", error);
+        res.status(500).json({ error: "فشل في إنشاء النموذج" });
+      }
+    },
+  );
+
+  app.put(
+    "/api/quote-templates/:id",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id) || id <= 0) {
+          return res.status(400).json({ error: "معرف النموذج غير صالح" });
+        }
+        const {
+          name,
+          description,
+          product_name,
+          product_description,
+          unit_price,
+          unit,
+          min_quantity,
           specifications,
           category,
           is_active,
-          updated_at: new Date()
-        })
-        .where(eq(quote_templates.id, id))
-        .returning();
-      
-      res.json(updated);
-    } catch (error) {
-      console.error("Error updating quote template:", error);
-      res.status(500).json({ error: "فشل في تحديث النموذج" });
-    }
-  });
+        } = req.body;
 
-  app.delete("/api/quote-templates/:id", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id) || id <= 0) {
-        return res.status(400).json({ error: "معرف النموذج غير صالح" });
+        const [updated] = await db
+          .update(quote_templates)
+          .set({
+            name,
+            description,
+            product_name,
+            product_description,
+            unit_price: String(unit_price),
+            unit,
+            min_quantity: min_quantity ? String(min_quantity) : null,
+            specifications,
+            category,
+            is_active,
+            updated_at: new Date(),
+          })
+          .where(eq(quote_templates.id, id))
+          .returning();
+
+        res.json(updated);
+      } catch (error) {
+        console.error("Error updating quote template:", error);
+        res.status(500).json({ error: "فشل في تحديث النموذج" });
       }
-      await db.delete(quote_templates).where(eq(quote_templates.id, id));
-      res.json({ success: true, message: "تم حذف النموذج بنجاح" });
-    } catch (error) {
-      console.error("Error deleting quote template:", error);
-      res.status(500).json({ error: "فشل في حذف النموذج" });
-    }
-  });
+    },
+  );
+
+  app.delete(
+    "/api/quote-templates/:id",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id) || id <= 0) {
+          return res.status(400).json({ error: "معرف النموذج غير صالح" });
+        }
+        await db.delete(quote_templates).where(eq(quote_templates.id, id));
+        res.json({ success: true, message: "تم حذف النموذج بنجاح" });
+      } catch (error) {
+        console.error("Error deleting quote template:", error);
+        res.status(500).json({ error: "فشل في حذف النموذج" });
+      }
+    },
+  );
 }

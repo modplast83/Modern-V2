@@ -37,16 +37,16 @@ export class ErrorLearningEnhancer {
       userId?: number;
       action?: string;
       data?: any;
-    }
+    },
   ): Promise<void> {
     try {
       // تحديث نمط الخطأ
       const pattern = this.errorHistory.get(errorType);
-      
+
       if (pattern) {
         pattern.frequency++;
         pattern.lastOccurrence = new Date();
-        
+
         // تحديث مستوى التأثير بناءً على التكرار
         if (pattern.frequency > 10) {
           pattern.userImpact = "high";
@@ -59,7 +59,7 @@ export class ErrorLearningEnhancer {
           frequency: 1,
           lastOccurrence: new Date(),
           userImpact: "low",
-          relatedErrors: []
+          relatedErrors: [],
         });
       }
 
@@ -81,7 +81,9 @@ export class ErrorLearningEnhancer {
         await this.generateErrorRecommendation(errorType, pattern);
       }
 
-      console.log(`⚠️ تم تسجيل خطأ: ${errorType} (التكرار: ${pattern?.frequency || 1})`);
+      console.log(
+        `⚠️ تم تسجيل خطأ: ${errorType} (التكرار: ${pattern?.frequency || 1})`,
+      );
     } catch (error) {
       console.error("Error recording error:", error);
     }
@@ -92,11 +94,11 @@ export class ErrorLearningEnhancer {
    */
   private static async generateErrorRecommendation(
     errorType: string,
-    pattern: ErrorPattern
+    pattern: ErrorPattern,
   ): Promise<void> {
     // فحص إذا كان لدينا توصية مسبقة لهذا الخطأ
-    const existingRec = this.recommendations.find(
-      r => r.description.includes(errorType)
+    const existingRec = this.recommendations.find((r) =>
+      r.description.includes(errorType),
     );
 
     if (existingRec) {
@@ -110,15 +112,19 @@ export class ErrorLearningEnhancer {
     // إنشاء توصية جديدة
     const recommendation: LearningRecommendation = {
       type: "prevent_error",
-      priority: pattern.userImpact === "high" ? "high" : 
-                pattern.userImpact === "medium" ? "medium" : "low",
+      priority:
+        pattern.userImpact === "high"
+          ? "high"
+          : pattern.userImpact === "medium"
+            ? "medium"
+            : "low",
       description: `تكرر خطأ "${errorType}" ${pattern.frequency} مرة`,
       actionItems: [
         "مراجعة الكود المتعلق بهذا الخطأ",
         "إضافة validationإضافية",
-        "تحسين رسائل الخطأ للمستخدم"
+        "تحسين رسائل الخطأ للمستخدم",
       ],
-      expectedImpact: `تقليل تكرار هذا الخطأ بنسبة ${Math.min(pattern.frequency * 5, 90)}%`
+      expectedImpact: `تقليل تكرار هذا الخطأ بنسبة ${Math.min(pattern.frequency * 5, 90)}%`,
     };
 
     this.recommendations.push(recommendation);
@@ -139,23 +145,27 @@ export class ErrorLearningEnhancer {
    */
   static getHighPriorityRecommendations(): LearningRecommendation[] {
     return this.recommendations
-      .filter(r => r.priority === "high")
+      .filter((r) => r.priority === "high")
       .slice(0, 10);
   }
 
   /**
    * البحث عن حل لخطأ معين
    */
-  static async suggestFix(errorType: string, errorMessage: string): Promise<string> {
+  static async suggestFix(
+    errorType: string,
+    errorMessage: string,
+  ): Promise<string> {
     const pattern = this.errorHistory.get(errorType);
-    
+
     if (pattern && pattern.suggestedFix) {
       return pattern.suggestedFix;
     }
 
     // استخدام التاريخ للعثور على حلول
-    const relatedErrors = Array.from(this.errorHistory.values())
-      .filter(p => p.errorType.includes(errorType.split('_')[0]));
+    const relatedErrors = Array.from(this.errorHistory.values()).filter((p) =>
+      p.errorType.includes(errorType.split("_")[0]),
+    );
 
     if (relatedErrors.length > 0) {
       return `هذا الخطأ حدث ${pattern?.frequency || 0} مرة سابقاً. جرب:
@@ -194,7 +204,7 @@ export class ErrorLearningEnhancer {
     return {
       criticalIssues: critical,
       warningIssues: warnings,
-      suggestions
+      suggestions,
     };
   }
 
@@ -228,12 +238,14 @@ export class ErrorLearningEnhancer {
     const analysis = this.analyzeErrorPatterns();
 
     return {
-      totalErrors: Array.from(this.errorHistory.values())
-        .reduce((sum, p) => sum + p.frequency, 0),
+      totalErrors: Array.from(this.errorHistory.values()).reduce(
+        (sum, p) => sum + p.frequency,
+        0,
+      ),
       uniqueErrors: this.errorHistory.size,
       topErrors,
       recommendations: this.getHighPriorityRecommendations(),
-      analysis
+      analysis,
     };
   }
 
@@ -243,7 +255,7 @@ export class ErrorLearningEnhancer {
   static async learnFromSuccess(
     action: string,
     context: any,
-    userId?: number
+    userId?: number,
   ): Promise<void> {
     // تسجيل النجاح
     // Commented out - AILearning module doesn't exist
@@ -259,8 +271,9 @@ export class ErrorLearningEnhancer {
     // }
 
     // البحث عن أخطاء مماثلة وتحديث الحلول المقترحة
-    const relatedErrorTypes = Array.from(this.errorHistory.keys())
-      .filter(errorType => errorType.includes(action.split('_')[0]));
+    const relatedErrorTypes = Array.from(this.errorHistory.keys()).filter(
+      (errorType) => errorType.includes(action.split("_")[0]),
+    );
 
     for (const errorType of relatedErrorTypes) {
       const pattern = this.errorHistory.get(errorType);
@@ -272,8 +285,11 @@ export class ErrorLearningEnhancer {
 }
 
 // تنظيف دوري للأخطاء القديمة (كل 24 ساعة)
-setInterval(() => {
-  ErrorLearningEnhancer.clearOldErrors(30);
-}, 24 * 60 * 60 * 1000);
+setInterval(
+  () => {
+    ErrorLearningEnhancer.clearOldErrors(30);
+  },
+  24 * 60 * 60 * 1000,
+);
 
 export default ErrorLearningEnhancer;

@@ -1,34 +1,47 @@
 import type { Express, Request } from "express";
-import { createServer, type Server } from "http";
+
 import crypto from "crypto";
+import { createServer, type Server } from "http";
+
 import bcrypt from "bcrypt";
-import multer from "multer";
-import ExcelJS from "exceljs";
 
 // Helper: add a sheet from an array of objects to a workbook
-function addJsonSheet(workbook: ExcelJS.Workbook, data: any[], sheetName: string, colWidths?: number[]) {
+function addJsonSheet(
+  workbook: ExcelJS.Workbook,
+  data: any[],
+  sheetName: string,
+  colWidths?: number[],
+) {
   const worksheet = workbook.addWorksheet(sheetName);
   if (data.length > 0) {
     const headers = Object.keys(data[0]);
     if (colWidths) {
-      worksheet.columns = headers.map((h, i) => ({ header: h, key: h, width: colWidths[i] ?? 15 }));
+      worksheet.columns = headers.map((h, i) => ({
+        header: h,
+        key: h,
+        width: colWidths[i] ?? 15,
+      }));
     } else {
       worksheet.addRow(headers);
     }
     for (const row of data) {
-      worksheet.addRow(headers.map(h => row[h] ?? ""));
+      worksheet.addRow(headers.map((h) => row[h] ?? ""));
     }
   }
   return worksheet;
 }
 
 // Helper: parse the first sheet of an Excel buffer into an array of objects
-async function parseExcelBuffer(buffer: Buffer): Promise<Record<string, any>[]> {
+async function parseExcelBuffer(
+  buffer: Buffer,
+): Promise<Record<string, any>[]> {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
   const worksheet = workbook.worksheets[0];
   if (!worksheet) {
-    throw Object.assign(new Error("الملف لا يحتوي على أوراق عمل"), { statusCode: 400 });
+    throw Object.assign(new Error("الملف لا يحتوي على أوراق عمل"), {
+      statusCode: 400,
+    });
   }
   const rows: Record<string, any>[] = [];
   const headers: string[] = [];
@@ -48,12 +61,9 @@ async function parseExcelBuffer(buffer: Buffer): Promise<Record<string, any>[]> 
   });
   return rows;
 }
-import { requireAuth, requirePermission, requireAdmin, type AuthRequest } from "./middleware/auth";
-import { generateMobileToken, revokeMobileToken, invalidateRolesCache, getCachedRoles, createMobileSession, refreshMobileSession, revokeMobileSession } from "./middleware/session-auth";
-import { logger } from "./lib/logger";
 
 const upload = multer({ storage: multer.memoryStorage() });
-const mobileUpload = multer({ 
+const mobileUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024, files: 1 },
 });
@@ -74,6 +84,7 @@ declare module "express-serve-static-core" {
 }
 import { storage } from "./storage";
 import { db } from "./db";
+
 import {
   insertUserSchema,
   insertNewOrderSchema,
@@ -141,7 +152,6 @@ import {
 } from "@shared/schema";
 import { eq, sql, and, gte, lte, gt, desc, inArray } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
-
 import { z } from "zod";
 import {
   parseIntSafe,
@@ -156,7 +166,9 @@ const safeJsonParse = (value: string, paramName: string): any => {
   try {
     return JSON.parse(value);
   } catch {
-    throw Object.assign(new Error(`${paramName} يحتوي على بيانات غير صالحة`), { statusCode: 400 });
+    throw Object.assign(new Error(`${paramName} يحتوي على بيانات غير صالحة`), {
+      statusCode: 400,
+    });
   }
 };
 
@@ -185,26 +197,42 @@ const parseOptionalQueryParam = (
 };
 
 // Helper function to check if an order is paused and block production
-const checkOrderNotPaused = async (productionOrderId: number): Promise<{ isPaused: boolean; notFound?: boolean; orderStatus?: string; message?: string }> => {
+const checkOrderNotPaused = async (
+  productionOrderId: number,
+): Promise<{
+  isPaused: boolean;
+  notFound?: boolean;
+  orderStatus?: string;
+  message?: string;
+}> => {
   try {
-    const productionOrder = await storage.getProductionOrderById(productionOrderId);
+    const productionOrder =
+      await storage.getProductionOrderById(productionOrderId);
     if (!productionOrder) {
-      return { isPaused: true, notFound: true, message: "أمر الإنتاج غير موجود" };
-    }
-    
-    const order = await storage.getOrderById(productionOrder.order_id);
-    if (!order) {
-      return { isPaused: true, notFound: true, message: "الطلب المرتبط بأمر الإنتاج غير موجود" };
-    }
-    
-    if (order.status === "paused") {
-      return { 
-        isPaused: true, 
-        orderStatus: order.status,
-        message: "الطلب معلق مؤقتاً - لا يمكن إضافة إنتاج جديد"
+      return {
+        isPaused: true,
+        notFound: true,
+        message: "أمر الإنتاج غير موجود",
       };
     }
-    
+
+    const order = await storage.getOrderById(productionOrder.order_id);
+    if (!order) {
+      return {
+        isPaused: true,
+        notFound: true,
+        message: "الطلب المرتبط بأمر الإنتاج غير موجود",
+      };
+    }
+
+    if (order.status === "paused") {
+      return {
+        isPaused: true,
+        orderStatus: order.status,
+        message: "الطلب معلق مؤقتاً - لا يمكن إضافة إنتاج جديد",
+      };
+    }
+
     return { isPaused: false };
   } catch (error) {
     console.error("Error checking order status:", error);
@@ -229,17 +257,6 @@ const insertCustomerSchema = createInsertSchema(customers)
       }),
   });
 const insertLocationSchema = createInsertSchema(locations).omit({ id: true });
-import { NotificationService } from "./services/notification-service";
-import { TaqnyatSMSService } from "./services/taqnyat-sms";
-import {
-  getNotificationManager,
-  type SystemNotificationData,
-} from "./services/notification-manager";
-import { setNotificationManager } from "./storage";
-import {
-  createPerformanceIndexes,
-  createTextSearchIndexes,
-} from "./database-optimizations";
 import {
   createAlertsRouter,
   createSystemHealthRouter,
@@ -251,14 +268,44 @@ import { getSystemHealthMonitor } from "./services/system-health-monitor";
 import { getAlertManager } from "./services/alert-manager";
 import { getDataValidator } from "./services/data-validator";
 import QRCode from "qrcode";
-import {
-  validateRequest,
-  commonSchemas,
-} from "./middleware/validation";
+import { validateRequest, commonSchemas } from "./middleware/validation";
 import { calculateProductionQuantities } from "@shared/quantity-utils";
-import { setupAuth, isAuthenticated as isAuthenticatedReplit } from "./replitAuth";
-import { resolveSessionUser } from "./auth/sessionUser";
+import ExcelJS from "exceljs";
+import multer from "multer";
+
 import { registerAiAgentRoutes } from "./ai-agent-routes";
+import { resolveSessionUser } from "./auth/sessionUser";
+import {
+  createPerformanceIndexes,
+  createTextSearchIndexes,
+} from "./database-optimizations";
+import { logger } from "./lib/logger";
+import {
+  requireAuth,
+  requirePermission,
+  requireAdmin,
+  type AuthRequest,
+} from "./middleware/auth";
+import {
+  generateMobileToken,
+  revokeMobileToken,
+  invalidateRolesCache,
+  getCachedRoles,
+  createMobileSession,
+  refreshMobileSession,
+  revokeMobileSession,
+} from "./middleware/session-auth";
+import {
+  setupAuth,
+  isAuthenticated as isAuthenticatedReplit,
+} from "./replitAuth";
+import {
+  getNotificationManager,
+  type SystemNotificationData,
+} from "./services/notification-manager";
+import { NotificationService } from "./services/notification-service";
+import { TaqnyatSMSService } from "./services/taqnyat-sms";
+import { setNotificationManager } from "./storage";
 
 // Initialize notification service
 const notificationService = new NotificationService(storage);
@@ -270,10 +317,13 @@ const taqnyatSMS = new TaqnyatSMSService(storage);
 let notificationManager: ReturnType<typeof getNotificationManager> | null =
   null;
 
-export async function registerRoutes(app: Express, existingServer?: Server): Promise<Server> {
+export async function registerRoutes(
+  app: Express,
+  existingServer?: Server,
+): Promise<Server> {
   // Setup Replit Auth (OpenID Connect)
   await setupAuth(app);
-  
+
   // Register AI Agent routes
   registerAiAgentRoutes(app);
 
@@ -286,7 +336,8 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   registerMcpRoutes(app);
 
   // Register Object Storage routes (serves /objects/* for uploaded files)
-  const { registerObjectStorageRoutes } = await import("./replit_integrations/object_storage");
+  const { registerObjectStorageRoutes } =
+    await import("./replit_integrations/object_storage");
   registerObjectStorageRoutes(app);
 
   // ==========================================================================
@@ -317,20 +368,29 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   app.post("/api/public/bag-design-quote", async (req, res) => {
     try {
       // Rate limiting
-      const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim()
-        || req.socket.remoteAddress || "unknown";
+      const ip =
+        (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+        req.socket.remoteAddress ||
+        "unknown";
       const now = Date.now();
 
       // Global window
-      while (bagQuoteGlobalHits.length && now - bagQuoteGlobalHits[0] > GLOBAL_WINDOW_MS) {
+      while (
+        bagQuoteGlobalHits.length &&
+        now - bagQuoteGlobalHits[0] > GLOBAL_WINDOW_MS
+      ) {
         bagQuoteGlobalHits.shift();
       }
       if (bagQuoteGlobalHits.length >= GLOBAL_MAX) {
-        return res.status(429).json({ success: false, error: "الخدمة مزدحمة، حاول بعد قليل" });
+        return res
+          .status(429)
+          .json({ success: false, error: "الخدمة مزدحمة، حاول بعد قليل" });
       }
 
       // Per-IP window
-      const ipHits = (bagQuoteIpHits.get(ip) || []).filter((t) => now - t < IP_WINDOW_MS);
+      const ipHits = (bagQuoteIpHits.get(ip) || []).filter(
+        (t) => now - t < IP_WINDOW_MS,
+      );
       if (ipHits.length >= IP_MAX) {
         return res.status(429).json({
           success: false,
@@ -344,13 +404,23 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
           phone: z.string().trim().min(8, "رقم الجوال غير صحيح").max(20),
         }),
         configuration: z.record(z.any()),
-        summary: z.array(z.object({ label: z.string(), value: z.string().max(500) }))
-          .max(50).optional(),
-        validation: z.object({
-          isValid: z.boolean(),
-          errors: z.array(z.object({ message: z.string().max(500) }).passthrough()).max(50).default([]),
-          warnings: z.array(z.object({ message: z.string().max(500) }).passthrough()).max(50).default([]),
-        }).optional(),
+        summary: z
+          .array(z.object({ label: z.string(), value: z.string().max(500) }))
+          .max(50)
+          .optional(),
+        validation: z
+          .object({
+            isValid: z.boolean(),
+            errors: z
+              .array(z.object({ message: z.string().max(500) }).passthrough())
+              .max(50)
+              .default([]),
+            warnings: z
+              .array(z.object({ message: z.string().max(500) }).passthrough())
+              .max(50)
+              .default([]),
+          })
+          .optional(),
       });
 
       const data = schema.parse(req.body);
@@ -358,7 +428,9 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       // Server-side phone normalization & validation
       const normalizedPhone = normalizePhoneServer(data.customer.phone);
       if (!normalizedPhone) {
-        return res.status(400).json({ success: false, error: "رقم الجوال غير صحيح" });
+        return res
+          .status(400)
+          .json({ success: false, error: "رقم الجوال غير صحيح" });
       }
 
       // Record the hit only after validation succeeds
@@ -388,12 +460,19 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         ...(data.summary || []).map((s) => `• ${s.label}: ${s.value}`),
       ];
 
-      if (data.validation && !data.validation.isValid && data.validation.errors.length) {
+      if (
+        data.validation &&
+        !data.validation.isValid &&
+        data.validation.errors.length
+      ) {
         lines.push("", "⚠️ *ملاحظات فنية:*");
         for (const e of data.validation.errors) lines.push(`- ${e.message}`);
       }
 
-      lines.push("", `🕒 ${new Date().toLocaleString("ar-SA", { timeZone: "Asia/Riyadh" })}`);
+      lines.push(
+        "",
+        `🕒 ${new Date().toLocaleString("ar-SA", { timeZone: "Asia/Riyadh" })}`,
+      );
       const message = lines.join("\n");
 
       // Resolve owner phone (env override → primary admin)
@@ -409,19 +488,24 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       let whatsappError: string | undefined;
       if (ownerPhone) {
         try {
-          const waResult = await notificationService.sendWhatsAppMessage(ownerPhone, message, {
-            title: `طلب تصميم كيس — ${data.customer.name}`,
-            priority: "high",
-            context_type: "bag_quote",
-            context_id: ref,
-          });
+          const waResult = await notificationService.sendWhatsAppMessage(
+            ownerPhone,
+            message,
+            {
+              title: `طلب تصميم كيس — ${data.customer.name}`,
+              priority: "high",
+              context_type: "bag_quote",
+              context_id: ref,
+            },
+          );
           whatsappSent = !!waResult.success;
           if (!waResult.success) whatsappError = waResult.error;
         } catch (err: any) {
           whatsappError = err?.message || String(err);
         }
       } else {
-        whatsappError = "OWNER_WHATSAPP_PHONE غير مُعد ولا يوجد رقم لمسؤول النظام";
+        whatsappError =
+          "OWNER_WHATSAPP_PHONE غير مُعد ولا يوجد رقم لمسؤول النظام";
       }
 
       // Always create an internal notification so it shows in /notifications
@@ -441,7 +525,9 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
           context_id: ref,
         } as any);
       } catch (err) {
-        logger.warn("Failed to persist internal bag-quote notification", { err });
+        logger.warn("Failed to persist internal bag-quote notification", {
+          err,
+        });
       }
 
       return res.json({
@@ -458,13 +544,17 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
           details: error.issues.map((i: any) => i.message),
         });
       }
-      logger.error("Public bag-quote endpoint failed", { error: error?.message });
-      return res.status(500).json({ success: false, error: "تعذر إرسال الطلب، حاول مرة أخرى" });
+      logger.error("Public bag-quote endpoint failed", {
+        error: error?.message,
+      });
+      return res
+        .status(500)
+        .json({ success: false, error: "تعذر إرسال الطلب، حاول مرة أخرى" });
     }
   });
 
   // Replit Auth user endpoint
-  app.get('/api/auth/user', isAuthenticatedReplit, async (req: any, res) => {
+  app.get("/api/auth/user", isAuthenticatedReplit, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUserByReplitId(userId);
@@ -479,27 +569,38 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       res.status(500).json({ message: "Failed to fetch user" });
     }
   });
-  
-  const webLoginAttempts = new Map<string, { count: number; lastAttempt: number }>();
+
+  const webLoginAttempts = new Map<
+    string,
+    { count: number; lastAttempt: number }
+  >();
   const WEB_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
   const WEB_MAX_ATTEMPTS = 10;
   const WEB_RATE_LIMIT_MAX_ENTRIES = 10000;
 
-  setInterval(() => {
-    const now = Date.now();
-    for (const [key, value] of webLoginAttempts) {
-      if (now - value.lastAttempt > WEB_RATE_LIMIT_WINDOW_MS) {
-        webLoginAttempts.delete(key);
+  setInterval(
+    () => {
+      const now = Date.now();
+      for (const [key, value] of webLoginAttempts) {
+        if (now - value.lastAttempt > WEB_RATE_LIMIT_WINDOW_MS) {
+          webLoginAttempts.delete(key);
+        }
       }
-    }
-    if (webLoginAttempts.size > WEB_RATE_LIMIT_MAX_ENTRIES) {
-      const entries = [...webLoginAttempts.entries()].sort((a, b) => a[1].lastAttempt - b[1].lastAttempt);
-      const toRemove = entries.slice(0, entries.length - WEB_RATE_LIMIT_MAX_ENTRIES);
-      for (const [key] of toRemove) {
-        webLoginAttempts.delete(key);
+      if (webLoginAttempts.size > WEB_RATE_LIMIT_MAX_ENTRIES) {
+        const entries = [...webLoginAttempts.entries()].sort(
+          (a, b) => a[1].lastAttempt - b[1].lastAttempt,
+        );
+        const toRemove = entries.slice(
+          0,
+          entries.length - WEB_RATE_LIMIT_MAX_ENTRIES,
+        );
+        for (const [key] of toRemove) {
+          webLoginAttempts.delete(key);
+        }
       }
-    }
-  }, 5 * 60 * 1000);
+    },
+    5 * 60 * 1000,
+  );
 
   // Authentication routes
   app.post(
@@ -524,15 +625,25 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
           } else if (attempts.count >= WEB_MAX_ATTEMPTS) {
             return res.status(429).json({
               message: "تم تجاوز عدد المحاولات المسموح. حاول مرة أخرى لاحقاً.",
-              retry_after_seconds: Math.ceil((WEB_RATE_LIMIT_WINDOW_MS - (Date.now() - attempts.lastAttempt)) / 1000)
+              retry_after_seconds: Math.ceil(
+                (WEB_RATE_LIMIT_WINDOW_MS -
+                  (Date.now() - attempts.lastAttempt)) /
+                  1000,
+              ),
             });
           }
         }
 
         const user = await storage.getUserByUsername(username.trim());
         if (!user) {
-          const current = webLoginAttempts.get(rateLimitKey) || { count: 0, lastAttempt: 0 };
-          webLoginAttempts.set(rateLimitKey, { count: current.count + 1, lastAttempt: Date.now() });
+          const current = webLoginAttempts.get(rateLimitKey) || {
+            count: 0,
+            lastAttempt: 0,
+          };
+          webLoginAttempts.set(rateLimitKey, {
+            count: current.count + 1,
+            lastAttempt: Date.now(),
+          });
           return res
             .status(401)
             .json({ message: "بيانات تسجيل الدخول غير صحيحة" });
@@ -541,8 +652,14 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         // Enhanced null checks for user properties
         if (!user.password) {
           logger.error("User found but password is null or undefined");
-          const current = webLoginAttempts.get(rateLimitKey) || { count: 0, lastAttempt: 0 };
-          webLoginAttempts.set(rateLimitKey, { count: current.count + 1, lastAttempt: Date.now() });
+          const current = webLoginAttempts.get(rateLimitKey) || {
+            count: 0,
+            lastAttempt: 0,
+          };
+          webLoginAttempts.set(rateLimitKey, {
+            count: current.count + 1,
+            lastAttempt: Date.now(),
+          });
           return res
             .status(401)
             .json({ message: "بيانات تسجيل الدخول غير صحيحة" });
@@ -551,16 +668,28 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         // Check password using bcrypt for security
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
-          const current = webLoginAttempts.get(rateLimitKey) || { count: 0, lastAttempt: 0 };
-          webLoginAttempts.set(rateLimitKey, { count: current.count + 1, lastAttempt: Date.now() });
+          const current = webLoginAttempts.get(rateLimitKey) || {
+            count: 0,
+            lastAttempt: 0,
+          };
+          webLoginAttempts.set(rateLimitKey, {
+            count: current.count + 1,
+            lastAttempt: Date.now(),
+          });
           return res
             .status(401)
             .json({ message: "بيانات تسجيل الدخول غير صحيحة" });
         }
 
         if (user.status !== "active") {
-          const current = webLoginAttempts.get(rateLimitKey) || { count: 0, lastAttempt: 0 };
-          webLoginAttempts.set(rateLimitKey, { count: current.count + 1, lastAttempt: Date.now() });
+          const current = webLoginAttempts.get(rateLimitKey) || {
+            count: 0,
+            lastAttempt: 0,
+          };
+          webLoginAttempts.set(rateLimitKey, {
+            count: current.count + 1,
+            lastAttempt: Date.now(),
+          });
           return res
             .status(401)
             .json({ message: "بيانات تسجيل الدخول غير صحيحة" });
@@ -575,7 +704,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
 
         if (user.role_id) {
           const roles = await getCachedRoles();
-          const userRole = roles.find(r => r.id === user.role_id);
+          const userRole = roles.find((r) => r.id === user.role_id);
 
           if (userRole) {
             roleName = userRole.name || "user";
@@ -585,12 +714,15 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
               try {
                 if (Array.isArray(userRole.permissions)) {
                   permissions = userRole.permissions;
-                } else if (typeof userRole.permissions === 'string') {
+                } else if (typeof userRole.permissions === "string") {
                   const parsed = JSON.parse(userRole.permissions);
                   permissions = Array.isArray(parsed) ? parsed : [];
                 }
               } catch (e) {
-                if (typeof userRole.permissions === 'string' && (userRole.permissions as string).trim()) {
+                if (
+                  typeof userRole.permissions === "string" &&
+                  (userRole.permissions as string).trim()
+                ) {
                   permissions = [(userRole.permissions as string).trim()];
                 } else {
                   permissions = [];
@@ -645,7 +777,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
     try {
       // Use unified session resolver to handle both auth types
       const user = await resolveSessionUser(req);
-      
+
       if (!user) {
         logger.debug("No authenticated session on /api/me");
         return res.status(401).json({
@@ -678,25 +810,28 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       let roleName = "user";
       let roleNameAr = "مستخدم";
       let permissions: string[] = [];
-      
+
       if (user.role_id) {
         const roles = await getCachedRoles();
-        const userRole = roles.find(r => r.id === user.role_id);
-        
+        const userRole = roles.find((r) => r.id === user.role_id);
+
         if (userRole) {
           roleName = userRole.name || "user";
           roleNameAr = userRole.name_ar || "مستخدم";
-          
+
           if (userRole.permissions) {
             try {
               if (Array.isArray(userRole.permissions)) {
                 permissions = userRole.permissions;
-              } else if (typeof userRole.permissions === 'string') {
+              } else if (typeof userRole.permissions === "string") {
                 const parsed = JSON.parse(userRole.permissions);
                 permissions = Array.isArray(parsed) ? parsed : [];
               }
             } catch (e) {
-              if (typeof userRole.permissions === 'string' && (userRole.permissions as string).trim()) {
+              if (
+                typeof userRole.permissions === "string" &&
+                (userRole.permissions as string).trim()
+              ) {
                 permissions = [(userRole.permissions as string).trim()];
               } else {
                 permissions = [];
@@ -747,17 +882,17 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
             logger.error("Session destroy error", err);
             return res.status(500).json({ message: "خطأ في تسجيل الخروج" });
           }
-          
+
           // Clear all possible session cookies
           res.clearCookie("connect.sid");
           res.clearCookie("plastic-bag-session");
-          
+
           // For Replit Auth users, also call passport logout
           if (isReplitAuth && req.logout) {
             req.logout(() => {
-              res.json({ 
+              res.json({
                 message: "تم تسجيل الخروج بنجاح",
-                replitAuth: true 
+                replitAuth: true,
               });
             });
           } else {
@@ -769,12 +904,12 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         req.session = {} as any;
         res.clearCookie("connect.sid");
         res.clearCookie("plastic-bag-session");
-        
+
         if (isReplitAuth && req.logout) {
           req.logout(() => {
-            res.json({ 
+            res.json({
               message: "تم تسجيل الخروج بنجاح",
-              replitAuth: true 
+              replitAuth: true,
             });
           });
         } else {
@@ -812,23 +947,33 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         .where(
           and(
             eq(user_settings.user_id, String(userId)),
-            eq(user_settings.setting_key, "dashboard_config")
-          )
+            eq(user_settings.setting_key, "dashboard_config"),
+          ),
         )
         .limit(1);
 
       const VALID_WIDGET_IDS = new Set([
-        "dashboard_stats", "machine_status", "recent_rolls", "attendance_stats",
-        "quick_notes", "shortcuts", "inventory_widget", "quotes_widget",
-        "attendance_widget", "recent_orders_widget", "production_progress_widget",
-        "maintenance_widget"
+        "dashboard_stats",
+        "machine_status",
+        "recent_rolls",
+        "attendance_stats",
+        "quick_notes",
+        "shortcuts",
+        "inventory_widget",
+        "quotes_widget",
+        "attendance_widget",
+        "recent_orders_widget",
+        "production_progress_widget",
+        "maintenance_widget",
       ]);
 
       if (setting.length > 0 && setting[0].setting_value) {
         try {
           const config = JSON.parse(setting[0].setting_value);
           if (Array.isArray(config.widgets)) {
-            config.widgets = config.widgets.filter((w: string) => VALID_WIDGET_IDS.has(w));
+            config.widgets = config.widgets.filter((w: string) =>
+              VALID_WIDGET_IDS.has(w),
+            );
           }
           return res.json(config);
         } catch {
@@ -844,38 +989,68 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         .where(eq(users.id, userId))
         .limit(1);
 
-      const userPerms: string[] = (userResult[0]?.permissions as string[]) || [];
+      const userPerms: string[] =
+        (userResult[0]?.permissions as string[]) || [];
       const isAdmin = userPerms.includes("admin");
 
       let defaultWidgets: string[];
 
       if (isAdmin) {
         defaultWidgets = [
-          "dashboard_stats", "recent_orders_widget", "production_progress_widget",
-          "machine_status", "inventory_widget", "attendance_widget",
-          "maintenance_widget", "shortcuts", "quick_notes"
+          "dashboard_stats",
+          "recent_orders_widget",
+          "production_progress_widget",
+          "machine_status",
+          "inventory_widget",
+          "attendance_widget",
+          "maintenance_widget",
+          "shortcuts",
+          "quick_notes",
         ];
-      } else if (userPerms.includes("manage_production") || userPerms.includes("view_production")) {
+      } else if (
+        userPerms.includes("manage_production") ||
+        userPerms.includes("view_production")
+      ) {
         defaultWidgets = [
-          "dashboard_stats", "recent_orders_widget", "production_progress_widget",
-          "machine_status", "recent_rolls", "shortcuts"
+          "dashboard_stats",
+          "recent_orders_widget",
+          "production_progress_widget",
+          "machine_status",
+          "recent_rolls",
+          "shortcuts",
         ];
-      } else if (userPerms.includes("manage_hr") || userPerms.includes("view_hr")) {
+      } else if (
+        userPerms.includes("manage_hr") ||
+        userPerms.includes("view_hr")
+      ) {
         defaultWidgets = [
-          "attendance_stats", "attendance_widget", "shortcuts", "quick_notes"
+          "attendance_stats",
+          "attendance_widget",
+          "shortcuts",
+          "quick_notes",
         ];
-      } else if (userPerms.includes("manage_warehouse") || userPerms.includes("view_warehouse")) {
+      } else if (
+        userPerms.includes("manage_warehouse") ||
+        userPerms.includes("view_warehouse")
+      ) {
         defaultWidgets = [
-          "inventory_widget", "recent_orders_widget", "shortcuts", "quick_notes"
+          "inventory_widget",
+          "recent_orders_widget",
+          "shortcuts",
+          "quick_notes",
         ];
-      } else if (userPerms.includes("manage_orders") || userPerms.includes("manage_customers")) {
+      } else if (
+        userPerms.includes("manage_orders") ||
+        userPerms.includes("manage_customers")
+      ) {
         defaultWidgets = [
-          "recent_orders_widget", "quotes_widget", "dashboard_stats", "shortcuts"
+          "recent_orders_widget",
+          "quotes_widget",
+          "dashboard_stats",
+          "shortcuts",
         ];
       } else {
-        defaultWidgets = [
-          "dashboard_stats", "shortcuts", "quick_notes"
-        ];
+        defaultWidgets = ["dashboard_stats", "shortcuts", "quick_notes"];
       }
 
       res.json({ widgets: defaultWidgets });
@@ -897,12 +1072,22 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       }
 
       const VALID_WIDGET_IDS = new Set([
-        "dashboard_stats", "machine_status", "recent_rolls", "attendance_stats",
-        "quick_notes", "shortcuts", "inventory_widget", "quotes_widget",
-        "attendance_widget", "recent_orders_widget", "production_progress_widget",
-        "maintenance_widget"
+        "dashboard_stats",
+        "machine_status",
+        "recent_rolls",
+        "attendance_stats",
+        "quick_notes",
+        "shortcuts",
+        "inventory_widget",
+        "quotes_widget",
+        "attendance_widget",
+        "recent_orders_widget",
+        "production_progress_widget",
+        "maintenance_widget",
       ]);
-      const validWidgets = widgets.filter((w: string) => typeof w === "string" && VALID_WIDGET_IDS.has(w));
+      const validWidgets = widgets.filter(
+        (w: string) => typeof w === "string" && VALID_WIDGET_IDS.has(w),
+      );
 
       const configJson = JSON.stringify({ widgets: validWidgets });
 
@@ -912,15 +1097,19 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         .where(
           and(
             eq(user_settings.user_id, String(userId)),
-            eq(user_settings.setting_key, "dashboard_config")
-          )
+            eq(user_settings.setting_key, "dashboard_config"),
+          ),
         )
         .limit(1);
 
       if (existing.length > 0) {
         await db
           .update(user_settings)
-          .set({ setting_value: configJson, setting_type: "json", updated_at: new Date() })
+          .set({
+            setting_value: configJson,
+            setting_type: "json",
+            updated_at: new Date(),
+          })
           .where(eq(user_settings.id, existing[0].id));
       } else {
         await db.insert(user_settings).values({
@@ -1098,9 +1287,8 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
           sender_name,
         } = req.body;
 
-        const allRecipients = recipients && recipients.length > 0
-          ? recipients
-          : [phone_number];
+        const allRecipients =
+          recipients && recipients.length > 0 ? recipients : [phone_number];
 
         const result = await taqnyatSMS.sendSMS(allRecipients, message, {
           title,
@@ -1117,7 +1305,8 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
             data: {
               messageId: result.messageId,
               recipients: allRecipients,
-              message: message.substring(0, 100) + (message.length > 100 ? "..." : ""),
+              message:
+                message.substring(0, 100) + (message.length > 100 ? "..." : ""),
               timestamp: new Date().toISOString(),
             },
             message: "تم إرسال الرسالة النصية بنجاح",
@@ -1147,20 +1336,22 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
           message: "خطأ غير متوقع في إرسال الرسالة النصية",
         });
       }
-    }
+    },
   );
 
   app.post("/api/sms/test", requireAuth, async (req, res) => {
     try {
       const { phone_number } = req.body;
       if (!phone_number) {
-        return res.status(400).json({ success: false, message: "رقم الهاتف مطلوب" });
+        return res
+          .status(400)
+          .json({ success: false, message: "رقم الهاتف مطلوب" });
       }
 
       const result = await taqnyatSMS.sendSMS(
         phone_number,
         "رسالة اختبار من نظام MPBF - تم إرسالها بنجاح عبر خدمة تقنيات ✅",
-        { title: "اختبار SMS" }
+        { title: "اختبار SMS" },
       );
 
       if (result.success) {
@@ -1178,7 +1369,9 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       }
     } catch (error: any) {
       logger.error("Error sending SMS test", error);
-      res.status(500).json({ success: false, message: "خطأ في إرسال رسالة الاختبار" });
+      res
+        .status(500)
+        .json({ success: false, message: "خطأ في إرسال رسالة الاختبار" });
     }
   });
 
@@ -1199,7 +1392,9 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       }
     } catch (error: any) {
       logger.error("Error fetching SMS balance", error);
-      res.status(500).json({ success: false, message: "خطأ في جلب رصيد الرسائل" });
+      res
+        .status(500)
+        .json({ success: false, message: "خطأ في جلب رصيد الرسائل" });
     }
   });
 
@@ -1219,7 +1414,9 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       }
     } catch (error: any) {
       logger.error("Error fetching SMS senders", error);
-      res.status(500).json({ success: false, message: "خطأ في جلب أسماء المرسلين" });
+      res
+        .status(500)
+        .json({ success: false, message: "خطأ في جلب أسماء المرسلين" });
     }
   });
 
@@ -1241,7 +1438,9 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       });
     } catch (error: any) {
       logger.error("Error checking SMS status", error);
-      res.status(500).json({ success: false, message: "خطأ في فحص حالة خدمة الرسائل" });
+      res
+        .status(500)
+        .json({ success: false, message: "خطأ في فحص حالة خدمة الرسائل" });
     }
   });
 
@@ -1250,15 +1449,26 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
     try {
       const webhookSecret = process.env.TAQNYAT_WEBHOOK_SECRET;
       if (webhookSecret) {
-        const signature = req.headers["x-taqnyat-signature"] || req.headers["x-webhook-signature"];
+        const signature =
+          req.headers["x-taqnyat-signature"] ||
+          req.headers["x-webhook-signature"];
         if (!signature) {
           logger.warn("Taqnyat webhook received without signature header");
           return res.status(401).json({ error: "Missing webhook signature" });
         }
-        const taqRawBody = (req as any).rawBody || Buffer.from(JSON.stringify(req.body));
-        const expectedSignature = crypto.createHmac("sha256", webhookSecret).update(taqRawBody).digest("hex");
+        const taqRawBody =
+          (req as any).rawBody || Buffer.from(JSON.stringify(req.body));
+        const expectedSignature = crypto
+          .createHmac("sha256", webhookSecret)
+          .update(taqRawBody)
+          .digest("hex");
         try {
-          if (!crypto.timingSafeEqual(Buffer.from(String(signature)), Buffer.from(expectedSignature))) {
+          if (
+            !crypto.timingSafeEqual(
+              Buffer.from(String(signature)),
+              Buffer.from(expectedSignature),
+            )
+          ) {
             logger.warn("Taqnyat webhook signature mismatch");
             return res.status(403).json({ error: "Invalid webhook signature" });
           }
@@ -1268,7 +1478,15 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         }
       }
 
-      const { messageId, mobile, status, statusCode, errorCode, deliveredTime, sentTime } = req.body;
+      const {
+        messageId,
+        mobile,
+        status,
+        statusCode,
+        errorCode,
+        deliveredTime,
+        sentTime,
+      } = req.body;
 
       logger.info("Taqnyat SMS webhook received", {
         messageId,
@@ -1287,7 +1505,8 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
           EXPIRED: "failed",
         };
 
-        const mappedStatus = statusMap[String(status).toUpperCase()] || "unknown";
+        const mappedStatus =
+          statusMap[String(status).toUpperCase()] || "unknown";
 
         try {
           const updates: any = {
@@ -1295,16 +1514,25 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
           };
           if (mappedStatus === "delivered") {
             updates.status = "delivered";
-            updates.delivered_at = deliveredTime ? new Date(deliveredTime) : new Date();
+            updates.delivered_at = deliveredTime
+              ? new Date(deliveredTime)
+              : new Date();
           } else if (mappedStatus === "failed") {
             updates.status = "failed";
-            updates.error_message = errorCode ? `Error code: ${errorCode}` : "Delivery failed";
+            updates.error_message = errorCode
+              ? `Error code: ${errorCode}`
+              : "Delivery failed";
           }
 
           await storage.updateNotificationStatus(String(messageId), updates);
-          logger.info(`SMS delivery status updated: ${messageId} -> ${mappedStatus}`);
+          logger.info(
+            `SMS delivery status updated: ${messageId} -> ${mappedStatus}`,
+          );
         } catch (dbError) {
-          logger.error("Error updating SMS delivery status in database", dbError);
+          logger.error(
+            "Error updating SMS delivery status in database",
+            dbError,
+          );
         }
       }
 
@@ -1408,10 +1636,18 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
           logger.warn("Meta webhook received without signature header");
           return res.status(401).send("Missing signature");
         }
-        const rawBody = (req as any).rawBody || Buffer.from(JSON.stringify(req.body));
-        const expectedSignature = "sha256=" + crypto.createHmac("sha256", appSecret).update(rawBody).digest("hex");
+        const rawBody =
+          (req as any).rawBody || Buffer.from(JSON.stringify(req.body));
+        const expectedSignature =
+          "sha256=" +
+          crypto.createHmac("sha256", appSecret).update(rawBody).digest("hex");
         try {
-          if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) {
+          if (
+            !crypto.timingSafeEqual(
+              Buffer.from(signature),
+              Buffer.from(expectedSignature),
+            )
+          ) {
             logger.warn("Meta webhook signature mismatch");
             return res.status(403).send("Invalid signature");
           }
@@ -1429,9 +1665,11 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       res.status(200).send("OK");
 
       if (notificationService.metaWhatsApp) {
-        notificationService.metaWhatsApp.handleWebhook(req.body).catch((err: any) => {
-          logger.error("Error processing Meta webhook in background", err);
-        });
+        notificationService.metaWhatsApp
+          .handleWebhook(req.body)
+          .catch((err: any) => {
+            logger.error("Error processing Meta webhook in background", err);
+          });
       }
     } catch (error: any) {
       logger.error("Error processing Meta webhook", error);
@@ -1762,9 +2000,14 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
     try {
       const validation = insertNotificationTemplateSchema.safeParse(req.body);
       if (!validation.success) {
-        return res.status(400).json({ message: "بيانات غير صحيحة", errors: validation.error.errors });
+        return res.status(400).json({
+          message: "بيانات غير صحيحة",
+          errors: validation.error.errors,
+        });
       }
-      const template = await storage.createNotificationTemplate(validation.data);
+      const template = await storage.createNotificationTemplate(
+        validation.data,
+      );
       res.json(template);
     } catch (error: any) {
       console.error("Error creating notification template:", error);
@@ -1777,7 +2020,10 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   // explicit `?limit=500`. Pagination metadata is exposed via headers.
   app.get("/api/orders", requireAuth, async (req, res) => {
     try {
-      const limit = Math.max(1, Math.min(parseInt(String(req.query.limit ?? "")) || 50, 500));
+      const limit = Math.max(
+        1,
+        Math.min(parseInt(String(req.query.limit ?? "")) || 50, 500),
+      );
       const offset = Math.max(0, parseInt(String(req.query.offset ?? "")) || 0);
       const orders = await storage.getAllOrders({ limit, offset });
 
@@ -1812,7 +2058,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       const result = await db.execute(
         sql`SELECT MAX(CAST(SUBSTRING(order_number FROM 4) AS INTEGER)) as max_num 
             FROM orders 
-            WHERE order_number ~ '^ORD[0-9]+$'`
+            WHERE order_number ~ '^ORD[0-9]+$'`,
       );
       const maxNum = (result as any).rows?.[0]?.max_num || 0;
       const nextNumber = maxNum + 1;
@@ -1878,13 +2124,13 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
               const result = await db.execute(
                 sql`SELECT MAX(CAST(SUBSTRING(order_number FROM 4) AS INTEGER)) as max_num 
                     FROM orders 
-                    WHERE order_number ~ '^ORD[0-9]+$'`
+                    WHERE order_number ~ '^ORD[0-9]+$'`,
               );
               const maxNum = (result as any).rows?.[0]?.max_num || 0;
               order_number = `ORD${(maxNum + 1 + attempt).toString().padStart(3, "0")}`;
             } else if (attempt === 0) {
               const existingResult = await db.execute(
-                sql`SELECT id FROM orders WHERE order_number = ${order_number.trim()} LIMIT 1`
+                sql`SELECT id FROM orders WHERE order_number = ${order_number.trim()} LIMIT 1`,
               );
               if ((existingResult as any).rows?.length > 0) {
                 return res.status(409).json({
@@ -1908,8 +2154,11 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
             break;
           } catch (retryError: any) {
             lastError = retryError;
-            if (retryError?.message?.includes('unique') || retryError?.message?.includes('duplicate') ||
-                retryError?.code === '23505') {
+            if (
+              retryError?.message?.includes("unique") ||
+              retryError?.message?.includes("duplicate") ||
+              retryError?.code === "23505"
+            ) {
               continue;
             }
             throw retryError;
@@ -1917,7 +2166,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         }
 
         if (!order) {
-          if (lastError?.code === '23505') {
+          if (lastError?.code === "23505") {
             return res.status(409).json({
               message: "تعذر توليد رقم طلب فريد. يرجى المحاولة مرة أخرى.",
               success: false,
@@ -1948,7 +2197,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   app.delete(
     "/api/orders/:id",
     requireAuth,
-    requirePermission('manage_orders'),
+    requirePermission("manage_orders"),
     validateRequest({ params: commonSchemas.idParam }),
     async (req, res) => {
       try {
@@ -2024,9 +2273,13 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   app.get("/api/production-orders", requireAuth, async (req, res) => {
     try {
       const productionOrders = await storage.getAllProductionOrders();
-      const orderId = req.query.order_id ? parseInt(String(req.query.order_id)) : null;
+      const orderId = req.query.order_id
+        ? parseInt(String(req.query.order_id))
+        : null;
       if (orderId && !isNaN(orderId)) {
-        const filtered = productionOrders.filter((po: any) => po.order_id === orderId);
+        const filtered = productionOrders.filter(
+          (po: any) => po.order_id === orderId,
+        );
         return res.json(filtered);
       }
       res.json(productionOrders);
@@ -2048,198 +2301,246 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       }
       res.json(productionOrder);
     } catch (error) {
-      console.error("Error fetching production order:", error instanceof Error ? error.message : String(error));
+      console.error(
+        "Error fetching production order:",
+        error instanceof Error ? error.message : String(error),
+      );
       res.status(500).json({ message: "خطأ في جلب أمر الإنتاج" });
     }
   });
 
-  app.post("/api/production-orders", requireAuth, requirePermission('manage_production'), async (req, res) => {
-    try {
-      // Extract and validate basic fields first
-      const { customer_product_id, quantity_kg, overrun_percentage } = req.body;
+  app.post(
+    "/api/production-orders",
+    requireAuth,
+    requirePermission("manage_production"),
+    async (req, res) => {
+      try {
+        // Extract and validate basic fields first
+        const { customer_product_id, quantity_kg, overrun_percentage } =
+          req.body;
 
-      // Get customer product info for intelligent calculation
-      const parsedCustomerProductId = parseIntSafe(String(customer_product_id), "customer_product_id", { min: 1 });
-      const parsedQuantityKg = parseFloatSafe(String(quantity_kg), "quantity_kg", { min: 0.01 });
+        // Get customer product info for intelligent calculation
+        const parsedCustomerProductId = parseIntSafe(
+          String(customer_product_id),
+          "customer_product_id",
+          { min: 1 },
+        );
+        const parsedQuantityKg = parseFloatSafe(
+          String(quantity_kg),
+          "quantity_kg",
+          { min: 0.01 },
+        );
 
-      const customerProductsResult = await storage.getCustomerProducts();
-      const customerProduct = customerProductsResult.data.find(
-        (cp: any) => cp.id === parsedCustomerProductId,
-      );
-
-      if (!customerProduct) {
-        return res.status(404).json({
-          message: "المنتج غير موجود",
-          success: false,
-        });
-      }
-
-      // Calculate final quantity using server-side logic (ignore client-provided value)
-      const quantityCalculation = calculateProductionQuantities(
-        parsedQuantityKg,
-        customerProduct.punching,
-      );
-
-      // Prepare production order data with server-calculated final quantity
-      const productionOrderData = {
-        ...req.body,
-        // Override with server-calculated values for security
-        final_quantity_kg: quantityCalculation.finalQuantityKg,
-        overrun_percentage: quantityCalculation.overrunPercentage,
-      };
-
-      const validatedData =
-        insertProductionOrderSchema.parse(productionOrderData);
-      const productionOrder =
-        await storage.createProductionOrder(validatedData, { final_quantity_kg: quantityCalculation.finalQuantityKg });
-      res.status(201).json(productionOrder);
-    } catch (error) {
-      console.error("Error creating production order:", error);
-      if (error instanceof Error && "issues" in error) {
-        res.status(400).json({ message: "بيانات غير صحيحة", errors: error });
-      } else {
-        res.status(500).json({ message: "خطأ في إنشاء أمر الإنتاج" });
-      }
-    }
-  });
-
-  app.post("/api/production-orders/batch", requireAuth, requirePermission('manage_production'), async (req, res) => {
-    try {
-      const { orders } = req.body;
-
-      if (!Array.isArray(orders) || orders.length === 0) {
-        return res.status(400).json({
-          message: "يجب توفير قائمة من الطلبات",
-          success: false,
-        });
-      }
-
-      const customerProductsResult = await storage.getCustomerProducts();
-      const processedOrders = [];
-
-      for (const order of orders) {
-        const { customer_product_id, quantity_kg, overrun_percentage } = order;
-
-        let parsedCpId: number;
-        let parsedQtyKg: number;
-        try {
-          parsedCpId = parseIntSafe(String(customer_product_id), "customer_product_id", { min: 1 });
-          parsedQtyKg = parseFloatSafe(String(quantity_kg), "quantity_kg", { min: 0.01 });
-        } catch (e: any) {
-          processedOrders.push({
-            success: false,
-            error: e.message || "بيانات غير صحيحة",
-            order,
-          });
-          continue;
-        }
-
+        const customerProductsResult = await storage.getCustomerProducts();
         const customerProduct = customerProductsResult.data.find(
-          (cp: any) => cp.id === parsedCpId,
+          (cp: any) => cp.id === parsedCustomerProductId,
         );
 
         if (!customerProduct) {
-          processedOrders.push({
+          return res.status(404).json({
+            message: "المنتج غير موجود",
             success: false,
-            error: `المنتج ${customer_product_id} غير موجود`,
-            order,
           });
-          continue;
         }
 
+        // Calculate final quantity using server-side logic (ignore client-provided value)
         const quantityCalculation = calculateProductionQuantities(
-          parsedQtyKg,
+          parsedQuantityKg,
           customerProduct.punching,
         );
 
+        // Prepare production order data with server-calculated final quantity
         const productionOrderData = {
-          ...order,
+          ...req.body,
+          // Override with server-calculated values for security
           final_quantity_kg: quantityCalculation.finalQuantityKg,
           overrun_percentage: quantityCalculation.overrunPercentage,
         };
 
-        try {
-          const validatedData =
-            insertProductionOrderSchema.parse(productionOrderData);
-          processedOrders.push({
-            success: true,
-            data: validatedData,
-            finalQuantityKg: quantityCalculation.finalQuantityKg,
-          });
-        } catch (validationError) {
-          processedOrders.push({
-            success: false,
-            error: "بيانات غير صحيحة",
-            order,
-            validationError,
-          });
+        const validatedData =
+          insertProductionOrderSchema.parse(productionOrderData);
+        const productionOrder = await storage.createProductionOrder(
+          validatedData,
+          { final_quantity_kg: quantityCalculation.finalQuantityKg },
+        );
+        res.status(201).json(productionOrder);
+      } catch (error) {
+        console.error("Error creating production order:", error);
+        if (error instanceof Error && "issues" in error) {
+          res.status(400).json({ message: "بيانات غير صحيحة", errors: error });
+        } else {
+          res.status(500).json({ message: "خطأ في إنشاء أمر الإنتاج" });
         }
       }
+    },
+  );
 
-      const validOrders = processedOrders.filter((po) => po.success);
+  app.post(
+    "/api/production-orders/batch",
+    requireAuth,
+    requirePermission("manage_production"),
+    async (req, res) => {
+      try {
+        const { orders } = req.body;
 
-      if (validOrders.length === 0) {
-        return res.status(400).json({
-          message: "لا توجد طلبات صالحة للإنشاء",
-          errors: processedOrders,
+        if (!Array.isArray(orders) || orders.length === 0) {
+          return res.status(400).json({
+            message: "يجب توفير قائمة من الطلبات",
+            success: false,
+          });
+        }
+
+        const customerProductsResult = await storage.getCustomerProducts();
+        const processedOrders = [];
+
+        for (const order of orders) {
+          const { customer_product_id, quantity_kg, overrun_percentage } =
+            order;
+
+          let parsedCpId: number;
+          let parsedQtyKg: number;
+          try {
+            parsedCpId = parseIntSafe(
+              String(customer_product_id),
+              "customer_product_id",
+              { min: 1 },
+            );
+            parsedQtyKg = parseFloatSafe(String(quantity_kg), "quantity_kg", {
+              min: 0.01,
+            });
+          } catch (e: any) {
+            processedOrders.push({
+              success: false,
+              error: e.message || "بيانات غير صحيحة",
+              order,
+            });
+            continue;
+          }
+
+          const customerProduct = customerProductsResult.data.find(
+            (cp: any) => cp.id === parsedCpId,
+          );
+
+          if (!customerProduct) {
+            processedOrders.push({
+              success: false,
+              error: `المنتج ${customer_product_id} غير موجود`,
+              order,
+            });
+            continue;
+          }
+
+          const quantityCalculation = calculateProductionQuantities(
+            parsedQtyKg,
+            customerProduct.punching,
+          );
+
+          const productionOrderData = {
+            ...order,
+            final_quantity_kg: quantityCalculation.finalQuantityKg,
+            overrun_percentage: quantityCalculation.overrunPercentage,
+          };
+
+          try {
+            const validatedData =
+              insertProductionOrderSchema.parse(productionOrderData);
+            processedOrders.push({
+              success: true,
+              data: validatedData,
+              finalQuantityKg: quantityCalculation.finalQuantityKg,
+            });
+          } catch (validationError) {
+            processedOrders.push({
+              success: false,
+              error: "بيانات غير صحيحة",
+              order,
+              validationError,
+            });
+          }
+        }
+
+        const validOrders = processedOrders.filter((po) => po.success);
+
+        if (validOrders.length === 0) {
+          return res.status(400).json({
+            message: "لا توجد طلبات صالحة للإنشاء",
+            errors: processedOrders,
+          });
+        }
+
+        const result = await storage.createProductionOrdersBatchWithFinalQty(
+          validOrders.map((po) => ({
+            data: po.data!,
+            finalQuantityKg: po.finalQuantityKg!,
+          })),
+        );
+
+        res.status(201).json({
+          message: `تم إنشاء ${result.successful.length} من ${orders.length} طلب`,
+          successful: result.successful,
+          failed: result.failed,
+          validationErrors: processedOrders.filter((po) => !po.success),
         });
+      } catch (error) {
+        console.error("Error creating batch production orders:", error);
+        res.status(500).json({ message: "خطأ في إنشاء أوامر الإنتاج" });
       }
-
-      const result = await storage.createProductionOrdersBatchWithFinalQty(
-        validOrders.map((po) => ({ data: po.data!, finalQuantityKg: po.finalQuantityKg! })),
-      );
-
-      res.status(201).json({
-        message: `تم إنشاء ${result.successful.length} من ${orders.length} طلب`,
-        successful: result.successful,
-        failed: result.failed,
-        validationErrors: processedOrders.filter((po) => !po.success),
-      });
-    } catch (error) {
-      console.error("Error creating batch production orders:", error);
-      res.status(500).json({ message: "خطأ في إنشاء أوامر الإنتاج" });
-    }
-  });
+    },
+  );
 
   app.put(
     "/api/production-orders/:id",
     requireAuth,
-    requirePermission('manage_production'),
+    requirePermission("manage_production"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "ID");
-        
+
         // If customer_product_id or quantity_kg is being updated, recalculate overrun_percentage
         if (req.body.customer_product_id || req.body.quantity_kg) {
           const customerProductsResult = await storage.getCustomerProducts();
-          
+
           // Get the existing production order to fill in missing fields
           const existingOrder = await storage.getProductionOrderById(id);
           if (!existingOrder) {
             return res.status(404).json({ message: "أمر الإنتاج غير موجود" });
           }
-          
-          const customer_product_id = req.body.customer_product_id !== undefined ? req.body.customer_product_id : existingOrder.customer_product_id;
-          const quantity_kg = req.body.quantity_kg !== undefined ? req.body.quantity_kg : existingOrder.quantity_kg;
-          
-          const parsedCpIdForUpdate = parseIntSafe(String(customer_product_id), "customer_product_id", { min: 1 });
-          const parsedQtyKgForUpdate = parseFloatSafe(String(quantity_kg), "quantity_kg", { min: 0.01 });
+
+          const customer_product_id =
+            req.body.customer_product_id !== undefined
+              ? req.body.customer_product_id
+              : existingOrder.customer_product_id;
+          const quantity_kg =
+            req.body.quantity_kg !== undefined
+              ? req.body.quantity_kg
+              : existingOrder.quantity_kg;
+
+          const parsedCpIdForUpdate = parseIntSafe(
+            String(customer_product_id),
+            "customer_product_id",
+            { min: 1 },
+          );
+          const parsedQtyKgForUpdate = parseFloatSafe(
+            String(quantity_kg),
+            "quantity_kg",
+            { min: 0.01 },
+          );
 
           const customerProduct = customerProductsResult.data.find(
             (cp: any) => cp.id === parsedCpIdForUpdate,
           );
-          
+
           if (customerProduct) {
             const quantityCalculation = calculateProductionQuantities(
               parsedQtyKgForUpdate,
               customerProduct.punching,
             );
-            
+
             req.body.overrun_percentage = quantityCalculation.overrunPercentage;
             req.body.final_quantity_kg = quantityCalculation.finalQuantityKg;
           }
         }
-        
+
         const validatedData = insertProductionOrderSchema
           .partial()
           .parse(req.body);
@@ -2258,9 +2559,14 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
               siblingOrders.length > 0 &&
               siblingOrders.every((po: any) => po.status === "completed");
             if (allCompleted) {
-              const parentOrder = await storage.getOrderById(productionOrder.order_id);
+              const parentOrder = await storage.getOrderById(
+                productionOrder.order_id,
+              );
               if (parentOrder && parentOrder.status === "in_production") {
-                await storage.updateOrderStatus(productionOrder.order_id, "completed");
+                await storage.updateOrderStatus(
+                  productionOrder.order_id,
+                  "completed",
+                );
                 console.log(
                   `✅ تم إكمال الطلب ${parentOrder.order_number} تلقائياً - جميع أوامر الإنتاج مكتملة`,
                 );
@@ -2282,7 +2588,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   app.delete(
     "/api/production-orders/:id",
     requireAuth,
-    requirePermission('manage_production'),
+    requirePermission("manage_production"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "ID");
@@ -2369,29 +2675,32 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         }
 
         const userRole = await storage.getRoleById(user.role_id);
-        if (!userRole || (userRole.name !== "admin" && userRole.name !== "production_manager")) {
-          return res.status(403).json({ 
-            message: "هذه الصفحة متاحة فقط للمدير ومدير الإنتاج" 
+        if (
+          !userRole ||
+          (userRole.name !== "admin" && userRole.name !== "production_manager")
+        ) {
+          return res.status(403).json({
+            message: "هذه الصفحة متاحة فقط للمدير ومدير الإنتاج",
           });
         }
 
         const productionOrders = await storage.getProductionOrdersWithDetails();
         res.json({
           success: true,
-          data: productionOrders
+          data: productionOrders,
         });
       } catch (error) {
         console.error("Error fetching production orders with details:", error);
-        res.status(500).json({ 
+        res.status(500).json({
           success: false,
-          message: "خطأ في جلب أوامر الإنتاج" 
+          message: "خطأ في جلب أوامر الإنتاج",
         });
       }
-    }
+    },
   );
 
   app.patch(
-    "/api/production-orders/:id/activate", 
+    "/api/production-orders/:id/activate",
     requireAuth,
     async (req: AuthRequest, res) => {
       try {
@@ -2402,33 +2711,36 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
 
         // التحقق من صلاحيات المدير أو مدير الإنتاج
         const userRole = await storage.getRoleById(user.role_id);
-        if (!userRole || (userRole.name !== "admin" && userRole.name !== "production_manager")) {
-          return res.status(403).json({ 
-            message: "غير مصرح لك بتفعيل أوامر الإنتاج" 
+        if (
+          !userRole ||
+          (userRole.name !== "admin" && userRole.name !== "production_manager")
+        ) {
+          return res.status(403).json({
+            message: "غير مصرح لك بتفعيل أوامر الإنتاج",
           });
         }
 
         const id = parseRouteParam(req.params.id, "Production Order ID");
         const { machineId, operatorId } = req.body;
 
-        const activatedOrder = await storage.activateProductionOrder(
-          id,
-          { machine_id: machineId, operator_id: operatorId }
-        );
+        const activatedOrder = await storage.activateProductionOrder(id, {
+          machine_id: machineId,
+          operator_id: operatorId,
+        });
 
         res.json({
           success: true,
           data: activatedOrder,
-          message: "تم تفعيل أمر الإنتاج بنجاح"
+          message: "تم تفعيل أمر الإنتاج بنجاح",
         });
       } catch (error: any) {
         console.error("Error activating production order:", error);
-        res.status(400).json({ 
+        res.status(400).json({
           success: false,
-          message: "خطأ في تفعيل أمر الإنتاج" 
+          message: "خطأ في تفعيل أمر الإنتاج",
         });
       }
-    }
+    },
   );
 
   app.patch(
@@ -2443,33 +2755,36 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
 
         // التحقق من صلاحيات المدير أو مدير الإنتاج
         const userRole = await storage.getRoleById(user.role_id);
-        if (!userRole || (userRole.name !== "admin" && userRole.name !== "production_manager")) {
-          return res.status(403).json({ 
-            message: "غير مصرح لك بتخصيص أوامر الإنتاج" 
+        if (
+          !userRole ||
+          (userRole.name !== "admin" && userRole.name !== "production_manager")
+        ) {
+          return res.status(403).json({
+            message: "غير مصرح لك بتخصيص أوامر الإنتاج",
           });
         }
 
         const id = parseRouteParam(req.params.id, "Production Order ID");
         const { machineId, operatorId } = req.body;
 
-        const updatedOrder = await storage.updateProductionOrderAssignment(
-          id,
-          { machine_id: machineId, operator_id: operatorId }
-        );
+        const updatedOrder = await storage.updateProductionOrderAssignment(id, {
+          machine_id: machineId,
+          operator_id: operatorId,
+        });
 
         res.json({
           success: true,
           data: updatedOrder,
-          message: "تم تحديث التخصيص بنجاح"
+          message: "تم تحديث التخصيص بنجاح",
         });
       } catch (error: any) {
         console.error("Error assigning production order:", error);
-        res.status(400).json({ 
+        res.status(400).json({
           success: false,
-          message: "خطأ في تخصيص أمر الإنتاج" 
+          message: "خطأ في تخصيص أمر الإنتاج",
         });
       }
-    }
+    },
   );
 
   app.get(
@@ -2479,19 +2794,19 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       try {
         const id = parseRouteParam(req.params.id, "Production Order ID");
         const stats = await storage.getProductionOrderStats(id);
-        
+
         res.json({
           success: true,
-          data: stats
+          data: stats,
         });
       } catch (error: any) {
         console.error("Error fetching production order stats:", error);
-        res.status(400).json({ 
+        res.status(400).json({
           success: false,
-          message: "خطأ في جلب إحصائيات أمر الإنتاج" 
+          message: "خطأ في جلب إحصائيات أمر الإنتاج",
         });
       }
-    }
+    },
   );
 
   // Get all orders with enhanced search and filtering
@@ -2535,7 +2850,9 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
     try {
       const orderId = parseInt(req.params.id);
       if (!orderId || isNaN(orderId) || orderId <= 0) {
-        return res.status(400).json({ message: "معرف الطلب غير صحيح", success: false });
+        return res
+          .status(400)
+          .json({ message: "معرف الطلب غير صحيح", success: false });
       }
 
       const orderResult = await db
@@ -2559,7 +2876,9 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         .limit(1);
 
       if (orderResult.length === 0) {
-        return res.status(404).json({ message: "الطلب غير موجود", success: false });
+        return res
+          .status(404)
+          .json({ message: "الطلب غير موجود", success: false });
       }
 
       const productionOrdersList = await db
@@ -2570,9 +2889,12 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
           quantity_kg: production_orders.quantity_kg,
           final_quantity_kg: production_orders.final_quantity_kg,
           produced_quantity_kg: production_orders.produced_quantity_kg,
-          film_completion_percentage: production_orders.film_completion_percentage,
-          printing_completion_percentage: production_orders.printing_completion_percentage,
-          cutting_completion_percentage: production_orders.cutting_completion_percentage,
+          film_completion_percentage:
+            production_orders.film_completion_percentage,
+          printing_completion_percentage:
+            production_orders.printing_completion_percentage,
+          cutting_completion_percentage:
+            production_orders.cutting_completion_percentage,
           status: production_orders.status,
         })
         .from(production_orders)
@@ -2588,139 +2910,162 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       });
     } catch (error) {
       console.error("Enhanced order detail fetch error:", error);
-      res.status(500).json({ message: "خطأ في جلب تفاصيل الطلب", success: false });
+      res
+        .status(500)
+        .json({ message: "خطأ في جلب تفاصيل الطلب", success: false });
     }
   });
 
-  app.get("/api/my-orders", requireAuth, requirePermission('view_my_orders', 'manage_orders', 'admin'), async (req, res) => {
-    try {
-      const userId = (req as any).user?.id;
-      const userPerms: string[] = (req as any).user?.permissions || [];
-      const isAdmin = userPerms.includes('admin');
+  app.get(
+    "/api/my-orders",
+    requireAuth,
+    requirePermission("view_my_orders", "manage_orders", "admin"),
+    async (req, res) => {
+      try {
+        const userId = (req as any).user?.id;
+        const userPerms: string[] = (req as any).user?.permissions || [];
+        const isAdmin = userPerms.includes("admin");
 
-      let baseQuery = db
-        .select({
-          id: orders.id,
-          order_number: orders.order_number,
-          customer_id: orders.customer_id,
-          customer_name: customers.name,
-          customer_name_ar: customers.name_ar,
-          delivery_days: orders.delivery_days,
-          delivery_date: orders.delivery_date,
-          status: orders.status,
-          notes: orders.notes,
-          created_by: orders.created_by,
-          created_at: orders.created_at,
-          sales_rep_id: customers.sales_rep_id,
-        })
-        .from(orders)
-        .leftJoin(customers, eq(orders.customer_id, customers.id));
-
-      let filteredOrders;
-      if (isAdmin) {
-        filteredOrders = await baseQuery.orderBy(desc(orders.id));
-      } else {
-        filteredOrders = await baseQuery
-          .where(eq(customers.sales_rep_id, userId))
-          .orderBy(desc(orders.id));
-      }
-
-      if (filteredOrders.length === 0) {
-        return res.json({ success: true, data: [] });
-      }
-
-      const orderIds = filteredOrders.map(o => o.id);
-      const allPOs = await db
-        .select({
-          id: production_orders.id,
-          order_id: production_orders.order_id,
-          production_order_number: production_orders.production_order_number,
-          quantity_kg: production_orders.quantity_kg,
-          final_quantity_kg: production_orders.final_quantity_kg,
-          produced_quantity_kg: production_orders.produced_quantity_kg,
-          film_completion_percentage: production_orders.film_completion_percentage,
-          printing_completion_percentage: production_orders.printing_completion_percentage,
-          cutting_completion_percentage: production_orders.cutting_completion_percentage,
-          status: production_orders.status,
-        })
-        .from(production_orders)
-        .where(inArray(production_orders.order_id, orderIds));
-
-      const poIds = allPOs.map(po => po.id);
-      let allRolls: any[] = [];
-      if (poIds.length > 0) {
-        allRolls = await db
+        const baseQuery = db
           .select({
-            id: rolls.id,
-            roll_number: rolls.roll_number,
-            production_order_id: rolls.production_order_id,
-            stage: rolls.stage,
-            weight_kg: rolls.weight_kg,
-            waste_kg: rolls.waste_kg,
-            created_at: rolls.created_at,
+            id: orders.id,
+            order_number: orders.order_number,
+            customer_id: orders.customer_id,
+            customer_name: customers.name,
+            customer_name_ar: customers.name_ar,
+            delivery_days: orders.delivery_days,
+            delivery_date: orders.delivery_date,
+            status: orders.status,
+            notes: orders.notes,
+            created_by: orders.created_by,
+            created_at: orders.created_at,
+            sales_rep_id: customers.sales_rep_id,
           })
-          .from(rolls)
-          .where(inArray(rolls.production_order_id, poIds));
-      }
+          .from(orders)
+          .leftJoin(customers, eq(orders.customer_id, customers.id));
 
-      const rollsByPoId = new Map<number, any[]>();
-      for (const roll of allRolls) {
-        if (roll.production_order_id != null) {
-          if (!rollsByPoId.has(roll.production_order_id)) rollsByPoId.set(roll.production_order_id, []);
-          rollsByPoId.get(roll.production_order_id)!.push(roll);
+        let filteredOrders;
+        if (isAdmin) {
+          filteredOrders = await baseQuery.orderBy(desc(orders.id));
+        } else {
+          filteredOrders = await baseQuery
+            .where(eq(customers.sales_rep_id, userId))
+            .orderBy(desc(orders.id));
         }
-      }
 
-      const poByOrderId = new Map<number, any[]>();
-      for (const po of allPOs) {
-        if (po.order_id != null) {
-          const poWithRolls = { ...po, rolls: rollsByPoId.get(po.id) || [] };
-          if (!poByOrderId.has(po.order_id)) poByOrderId.set(po.order_id, []);
-          poByOrderId.get(po.order_id)!.push(poWithRolls);
+        if (filteredOrders.length === 0) {
+          return res.json({ success: true, data: [] });
         }
-      }
 
-      const salesRepIds = [...new Set(filteredOrders.map(o => o.sales_rep_id).filter(Boolean))] as number[];
-      let salesReps: any[] = [];
-      if (salesRepIds.length > 0) {
-        salesReps = await db
+        const orderIds = filteredOrders.map((o) => o.id);
+        const allPOs = await db
           .select({
-            id: users.id,
-            display_name: users.display_name,
-            display_name_ar: users.display_name_ar,
-            username: users.username,
+            id: production_orders.id,
+            order_id: production_orders.order_id,
+            production_order_number: production_orders.production_order_number,
+            quantity_kg: production_orders.quantity_kg,
+            final_quantity_kg: production_orders.final_quantity_kg,
+            produced_quantity_kg: production_orders.produced_quantity_kg,
+            film_completion_percentage:
+              production_orders.film_completion_percentage,
+            printing_completion_percentage:
+              production_orders.printing_completion_percentage,
+            cutting_completion_percentage:
+              production_orders.cutting_completion_percentage,
+            status: production_orders.status,
           })
-          .from(users)
-          .where(inArray(users.id, salesRepIds));
-      }
+          .from(production_orders)
+          .where(inArray(production_orders.order_id, orderIds));
 
-      const salesRepMap = new Map<number, any>();
-      for (const rep of salesReps) {
-        salesRepMap.set(rep.id, rep);
-      }
-
-      const grouped: Record<string, { salesRep: any; orders: any[] }> = {};
-      for (const order of filteredOrders) {
-        const repId = order.sales_rep_id || 0;
-        const key = String(repId);
-        if (!grouped[key]) {
-          grouped[key] = {
-            salesRep: repId ? salesRepMap.get(repId) || { id: repId, display_name: 'غير معروف', display_name_ar: 'غير معروف' } : { id: 0, display_name: 'بدون مندوب', display_name_ar: 'بدون مندوب' },
-            orders: [],
-          };
+        const poIds = allPOs.map((po) => po.id);
+        let allRolls: any[] = [];
+        if (poIds.length > 0) {
+          allRolls = await db
+            .select({
+              id: rolls.id,
+              roll_number: rolls.roll_number,
+              production_order_id: rolls.production_order_id,
+              stage: rolls.stage,
+              weight_kg: rolls.weight_kg,
+              waste_kg: rolls.waste_kg,
+              created_at: rolls.created_at,
+            })
+            .from(rolls)
+            .where(inArray(rolls.production_order_id, poIds));
         }
-        grouped[key].orders.push({
-          ...order,
-          production_orders: poByOrderId.get(order.id) || [],
-        });
-      }
 
-      res.json({ success: true, data: Object.values(grouped) });
-    } catch (error) {
-      console.error("My orders fetch error:", error);
-      res.status(500).json({ message: "خطأ في جلب طلباتي", success: false });
-    }
-  });
+        const rollsByPoId = new Map<number, any[]>();
+        for (const roll of allRolls) {
+          if (roll.production_order_id != null) {
+            if (!rollsByPoId.has(roll.production_order_id))
+              rollsByPoId.set(roll.production_order_id, []);
+            rollsByPoId.get(roll.production_order_id)!.push(roll);
+          }
+        }
+
+        const poByOrderId = new Map<number, any[]>();
+        for (const po of allPOs) {
+          if (po.order_id != null) {
+            const poWithRolls = { ...po, rolls: rollsByPoId.get(po.id) || [] };
+            if (!poByOrderId.has(po.order_id)) poByOrderId.set(po.order_id, []);
+            poByOrderId.get(po.order_id)!.push(poWithRolls);
+          }
+        }
+
+        const salesRepIds = [
+          ...new Set(filteredOrders.map((o) => o.sales_rep_id).filter(Boolean)),
+        ] as number[];
+        let salesReps: any[] = [];
+        if (salesRepIds.length > 0) {
+          salesReps = await db
+            .select({
+              id: users.id,
+              display_name: users.display_name,
+              display_name_ar: users.display_name_ar,
+              username: users.username,
+            })
+            .from(users)
+            .where(inArray(users.id, salesRepIds));
+        }
+
+        const salesRepMap = new Map<number, any>();
+        for (const rep of salesReps) {
+          salesRepMap.set(rep.id, rep);
+        }
+
+        const grouped: Record<string, { salesRep: any; orders: any[] }> = {};
+        for (const order of filteredOrders) {
+          const repId = order.sales_rep_id || 0;
+          const key = String(repId);
+          if (!grouped[key]) {
+            grouped[key] = {
+              salesRep: repId
+                ? salesRepMap.get(repId) || {
+                    id: repId,
+                    display_name: "غير معروف",
+                    display_name_ar: "غير معروف",
+                  }
+                : {
+                    id: 0,
+                    display_name: "بدون مندوب",
+                    display_name_ar: "بدون مندوب",
+                  },
+              orders: [],
+            };
+          }
+          grouped[key].orders.push({
+            ...order,
+            production_orders: poByOrderId.get(order.id) || [],
+          });
+        }
+
+        res.json({ success: true, data: Object.values(grouped) });
+      } catch (error) {
+        console.error("My orders fetch error:", error);
+        res.status(500).json({ message: "خطأ في جلب طلباتي", success: false });
+      }
+    },
+  );
 
   // Rolls routes with pagination support
   app.get("/api/rolls", requireAuth, async (req, res) => {
@@ -2730,7 +3075,10 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         const rolls = await storage.getRollsByStage(stage as string);
         return res.json(rolls);
       }
-      const limit = Math.max(1, Math.min(parseInt(String(req.query.limit ?? "")) || 50, 500));
+      const limit = Math.max(
+        1,
+        Math.min(parseInt(String(req.query.limit ?? "")) || 50, 500),
+      );
       const offset = Math.max(0, parseInt(String(req.query.offset ?? "")) || 0);
       const rolls = await storage.getAllRolls({ limit, offset });
       res.set("X-Pagination-Limit", String(limit));
@@ -2755,186 +3103,239 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       }
       res.json(roll);
     } catch (error) {
-      console.error("Error fetching roll:", error instanceof Error ? error.message : String(error));
+      console.error(
+        "Error fetching roll:",
+        error instanceof Error ? error.message : String(error),
+      );
       res.status(500).json({ message: "خطأ في جلب الرول" });
     }
   });
 
-  app.patch("/api/rolls/:id", requireAuth, requirePermission('manage_production', 'view_film_dashboard', 'view_printing_dashboard', 'view_cutting_dashboard'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "ID");
-      const { stage, weight_kg, waste_kg, cut_weight_total_kg, printing_machine_id } = req.body;
+  app.patch(
+    "/api/rolls/:id",
+    requireAuth,
+    requirePermission(
+      "manage_production",
+      "view_film_dashboard",
+      "view_printing_dashboard",
+      "view_cutting_dashboard",
+    ),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "ID");
+        const {
+          stage,
+          weight_kg,
+          waste_kg,
+          cut_weight_total_kg,
+          printing_machine_id,
+        } = req.body;
 
-      // Prepare safe updates object
-      const safeUpdates: any = {};
+        // Prepare safe updates object
+        const safeUpdates: any = {};
 
-      // Handle stage transitions securely with employee tracking
-      if (stage) {
-        const validStages = ["film", "printing", "cutting", "done"];
-        if (!validStages.includes(stage)) {
-          return res.status(400).json({ message: "مرحلة غير صالحة" });
-        }
+        // Handle stage transitions securely with employee tracking
+        if (stage) {
+          const validStages = ["film", "printing", "cutting", "done"];
+          if (!validStages.includes(stage)) {
+            return res.status(400).json({ message: "مرحلة غير صالحة" });
+          }
 
-        const currentRoll = await storage.getRollById(id);
-        if (!currentRoll) {
-          return res.status(404).json({ message: "الرول غير موجود" });
-        }
+          const currentRoll = await storage.getRollById(id);
+          if (!currentRoll) {
+            return res.status(404).json({ message: "الرول غير موجود" });
+          }
 
-        const allowedTransitions: Record<string, string[]> = {
-          film: ["printing"],
-          printing: ["cutting"],
-          cutting: ["done"],
-          done: [],
-        };
+          const allowedTransitions: Record<string, string[]> = {
+            film: ["printing"],
+            printing: ["cutting"],
+            cutting: ["done"],
+            done: [],
+          };
 
-        const currentStage = currentRoll.stage || "film";
-        if (!allowedTransitions[currentStage]?.includes(stage)) {
-          return res.status(400).json({ 
-            message: `لا يمكن الانتقال من مرحلة "${currentStage}" إلى مرحلة "${stage}"` 
-          });
-        }
+          const currentStage = currentRoll.stage || "film";
+          if (!allowedTransitions[currentStage]?.includes(stage)) {
+            return res.status(400).json({
+              message: `لا يمكن الانتقال من مرحلة "${currentStage}" إلى مرحلة "${stage}"`,
+            });
+          }
 
-        safeUpdates.stage = stage;
-        const userId = getAuthUserId(req);
+          safeUpdates.stage = stage;
+          const userId = getAuthUserId(req);
 
-        if (userId) {
-          if (stage === "printing") {
-            safeUpdates.printed_by = userId;
-            safeUpdates.printed_at = new Date();
-            if (printing_machine_id) {
-              const parsedMachineId = parseIntSafe(String(printing_machine_id), "printing_machine_id", { min: 1 });
-              safeUpdates.printing_machine_id = parsedMachineId;
+          if (userId) {
+            if (stage === "printing") {
+              safeUpdates.printed_by = userId;
+              safeUpdates.printed_at = new Date();
+              if (printing_machine_id) {
+                const parsedMachineId = parseIntSafe(
+                  String(printing_machine_id),
+                  "printing_machine_id",
+                  { min: 1 },
+                );
+                safeUpdates.printing_machine_id = parsedMachineId;
+              }
+            } else if (stage === "cutting") {
+              safeUpdates.cut_by = userId;
+              // Note: cut_completed_at is set only when moving to 'done'
+            } else if (stage === "done") {
+              safeUpdates.cut_completed_at = new Date();
             }
-          } else if (stage === "cutting") {
-            safeUpdates.cut_by = userId;
-            // Note: cut_completed_at is set only when moving to 'done'
-          } else if (stage === "done") {
-            safeUpdates.cut_completed_at = new Date();
           }
         }
-      }
 
-      // Allow specific safe fields only (whitelist approach) with numeric validation
-      if (weight_kg !== undefined) {
-        const parsedWeight = parseFloat(String(weight_kg));
-        if (isNaN(parsedWeight) || parsedWeight < 0) {
-          return res.status(400).json({ message: "وزن الرول يجب أن يكون رقماً غير سالب" });
+        // Allow specific safe fields only (whitelist approach) with numeric validation
+        if (weight_kg !== undefined) {
+          const parsedWeight = parseFloat(String(weight_kg));
+          if (isNaN(parsedWeight) || parsedWeight < 0) {
+            return res
+              .status(400)
+              .json({ message: "وزن الرول يجب أن يكون رقماً غير سالب" });
+          }
+          safeUpdates.weight_kg = parsedWeight;
         }
-        safeUpdates.weight_kg = parsedWeight;
-      }
-      if (waste_kg !== undefined) {
-        const parsedWaste = parseFloat(String(waste_kg));
-        if (isNaN(parsedWaste) || parsedWaste < 0) {
-          return res.status(400).json({ message: "كمية الهدر يجب أن تكون رقماً غير سالب" });
+        if (waste_kg !== undefined) {
+          const parsedWaste = parseFloat(String(waste_kg));
+          if (isNaN(parsedWaste) || parsedWaste < 0) {
+            return res
+              .status(400)
+              .json({ message: "كمية الهدر يجب أن تكون رقماً غير سالب" });
+          }
+          safeUpdates.waste_kg = parsedWaste;
         }
-        safeUpdates.waste_kg = parsedWaste;
-      }
-      if (cut_weight_total_kg !== undefined) {
-        const parsedCutWeight = parseFloat(String(cut_weight_total_kg));
-        if (isNaN(parsedCutWeight) || parsedCutWeight < 0) {
-          return res.status(400).json({ message: "وزن القص يجب أن يكون رقماً غير سالب" });
+        if (cut_weight_total_kg !== undefined) {
+          const parsedCutWeight = parseFloat(String(cut_weight_total_kg));
+          if (isNaN(parsedCutWeight) || parsedCutWeight < 0) {
+            return res
+              .status(400)
+              .json({ message: "وزن القص يجب أن يكون رقماً غير سالب" });
+          }
+          safeUpdates.cut_weight_total_kg = parsedCutWeight;
         }
-        safeUpdates.cut_weight_total_kg = parsedCutWeight;
+
+        if (Object.keys(safeUpdates).length === 0) {
+          return res.status(400).json({ message: "لا توجد بيانات للتحديث" });
+        }
+
+        const roll = await storage.updateRoll(id, safeUpdates);
+
+        // Update completion percentages when stage changes
+        if (stage && roll) {
+          await storage.updateProductionOrderCompletionPercentages(
+            roll.production_order_id,
+          );
+        }
+
+        res.json(roll);
+      } catch (error) {
+        console.error(
+          "Error updating roll:",
+          error instanceof Error ? error.message : String(error),
+        );
+        res.status(400).json({ message: "خطأ في تحديث الرول" });
       }
-
-      if (Object.keys(safeUpdates).length === 0) {
-        return res.status(400).json({ message: "لا توجد بيانات للتحديث" });
-      }
-
-      const roll = await storage.updateRoll(id, safeUpdates);
-
-      // Update completion percentages when stage changes
-      if (stage && roll) {
-        await storage.updateProductionOrderCompletionPercentages(roll.production_order_id);
-      }
-
-      res.json(roll);
-    } catch (error) {
-      console.error("Error updating roll:", error instanceof Error ? error.message : String(error));
-      res.status(400).json({ message: "خطأ في تحديث الرول" });
-    }
-  });
+    },
+  );
 
   // ================ PRINTING OPERATOR API ROUTES ================
-  
-  // Get rolls ready for printing by section
-  app.get("/api/rolls/printing-queue-by-section", requireAuth, async (req: AuthRequest, res) => {
-    try {
-      const user = req.user;
-      if (!user) {
-        return res.status(401).json({ message: "غير مصرح" });
-      }
 
-      // Get rolls ready for printing (in film stage)
-      const printingQueue = await storage.getRollsForPrintingBySection((user as any).section_id);
-      
-      res.json(printingQueue);
-    } catch (error) {
-      console.error("Error fetching printing queue by section:", error);
-      res.status(500).json({ message: "خطأ في جلب قائمة انتظار الطباعة" });
-    }
-  });
+  // Get rolls ready for printing by section
+  app.get(
+    "/api/rolls/printing-queue-by-section",
+    requireAuth,
+    async (req: AuthRequest, res) => {
+      try {
+        const user = req.user;
+        if (!user) {
+          return res.status(401).json({ message: "غير مصرح" });
+        }
+
+        // Get rolls ready for printing (in film stage)
+        const printingQueue = await storage.getRollsForPrintingBySection(
+          (user as any).section_id,
+        );
+
+        res.json(printingQueue);
+      } catch (error) {
+        console.error("Error fetching printing queue by section:", error);
+        res.status(500).json({ message: "خطأ في جلب قائمة انتظار الطباعة" });
+      }
+    },
+  );
 
   // Mark roll as printed
-  app.post("/api/rolls/:id/mark-printed", requireAuth, requirePermission('manage_production', 'view_printing_dashboard'), async (req: AuthRequest, res) => {
-    try {
-      const rollId = parseRouteParam(req.params.id, "Roll ID");
-      const user = req.user;
-      
-      if (!user) {
-        return res.status(401).json({ message: "غير مصرح" });
-      }
+  app.post(
+    "/api/rolls/:id/mark-printed",
+    requireAuth,
+    requirePermission("manage_production", "view_printing_dashboard"),
+    async (req: AuthRequest, res) => {
+      try {
+        const rollId = parseRouteParam(req.params.id, "Roll ID");
+        const user = req.user;
 
-      // Mark the roll as printed
-      const updatedRoll = await storage.markRollAsPrinted(rollId, user.id);
-      
-      res.json({
-        success: true,
-        data: updatedRoll,
-        message: "تم تسجيل طباعة الرول بنجاح"
-      });
-    } catch (error: any) {
-      console.error("Error marking roll as printed:", error);
-      res.status(400).json({ 
-        success: false,
-        message: "خطأ في تسجيل طباعة الرول" 
-      });
-    }
-  });
+        if (!user) {
+          return res.status(401).json({ message: "غير مصرح" });
+        }
+
+        // Mark the roll as printed
+        const updatedRoll = await storage.markRollAsPrinted(rollId, user.id);
+
+        res.json({
+          success: true,
+          data: updatedRoll,
+          message: "تم تسجيل طباعة الرول بنجاح",
+        });
+      } catch (error: any) {
+        console.error("Error marking roll as printed:", error);
+        res.status(400).json({
+          success: false,
+          message: "خطأ في تسجيل طباعة الرول",
+        });
+      }
+    },
+  );
 
   // Get printing progress for a production order
-  app.get("/api/production-orders/:id/printing-progress", requireAuth, async (req: AuthRequest, res) => {
-    try {
-      const productionOrderId = parseRouteParam(req.params.id, "Production Order ID");
-      
-      // Get production order stats
-      const stats = await storage.getProductionOrderStats(productionOrderId);
-      
-      // Check if printing is completed
-      const isCompleted = await storage.checkPrintingCompletion(productionOrderId);
-      
-      res.json({
-        success: true,
-        data: {
-          ...stats,
-          printing_completed: isCompleted
-        }
-      });
-    } catch (error) {
-      console.error("Error fetching printing progress:", error);
-      res.status(500).json({ 
-        success: false,
-        message: "خطأ في جلب تقدم الطباعة" 
-      });
-    }
-  });
+  app.get(
+    "/api/production-orders/:id/printing-progress",
+    requireAuth,
+    async (req: AuthRequest, res) => {
+      try {
+        const productionOrderId = parseRouteParam(
+          req.params.id,
+          "Production Order ID",
+        );
+
+        // Get production order stats
+        const stats = await storage.getProductionOrderStats(productionOrderId);
+
+        // Check if printing is completed
+        const isCompleted =
+          await storage.checkPrintingCompletion(productionOrderId);
+
+        res.json({
+          success: true,
+          data: {
+            ...stats,
+            printing_completed: isCompleted,
+          },
+        });
+      } catch (error) {
+        console.error("Error fetching printing progress:", error);
+        res.status(500).json({
+          success: false,
+          message: "خطأ في جلب تقدم الطباعة",
+        });
+      }
+    },
+  );
 
   // Get printing statistics
   app.get("/api/printing/stats", requireAuth, async (req: AuthRequest, res) => {
     try {
       const user = req.user;
       const stats = await storage.getPrintingStats();
-      
+
       res.json(stats);
     } catch (error) {
       console.error("Error fetching printing stats:", error);
@@ -2959,18 +3360,24 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       const { search, page, limit, offset, all } = req.query;
 
       // ?all=true → full list (dropdowns, bulk import).
-      if (all === 'true') {
+      if (all === "true") {
         const allCustomers = await storage.getAllCustomers();
         return res.json(allCustomers);
       }
 
-      const options: { search?: string; page?: number; limit?: number; offset?: number } = {};
-      if (search && typeof search === 'string') options.search = search;
-      if (page && typeof page === 'string') options.page = Math.max(parseInt(page) || 1, 1);
-      if (limit && typeof limit === 'string') {
+      const options: {
+        search?: string;
+        page?: number;
+        limit?: number;
+        offset?: number;
+      } = {};
+      if (search && typeof search === "string") options.search = search;
+      if (page && typeof page === "string")
+        options.page = Math.max(parseInt(page) || 1, 1);
+      if (limit && typeof limit === "string") {
         options.limit = Math.min(Math.max(parseInt(limit) || 50, 1), 500);
       }
-      if (offset && typeof offset === 'string') {
+      if (offset && typeof offset === "string") {
         options.offset = Math.max(parseInt(offset) || 0, 0);
       }
 
@@ -2997,7 +3404,10 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   app.get("/api/reports/orders", requireAuth, async (req, res) => {
     try {
       const { date_from, date_to } = req.query;
-      const reports = await storage.getOrderReports({ dateFrom: date_from as string, dateTo: date_to as string });
+      const reports = await storage.getOrderReports({
+        dateFrom: date_from as string,
+        dateTo: date_to as string,
+      });
       res.json({
         success: true,
         data: reports,
@@ -3012,169 +3422,216 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // ============ Film Operator Endpoints ============
-  
-  // Get active production orders for film operator
-  app.get("/api/production-orders/active-for-operator", requireAuth, async (req: AuthRequest, res) => {
-    try {
-      const userId = getAuthUserId(req);
-      if (!userId) {
-        return res.status(401).json({ message: "غير مصرح" });
-      }
 
-      const orders = await storage.getActiveProductionOrdersForOperator(userId);
-      res.json(orders);
-    } catch (error) {
-      console.error("Error fetching operator production orders:", error);
-      res.status(500).json({ message: "خطأ في جلب أوامر الإنتاج" });
-    }
-  });
+  // Get active production orders for film operator
+  app.get(
+    "/api/production-orders/active-for-operator",
+    requireAuth,
+    async (req: AuthRequest, res) => {
+      try {
+        const userId = getAuthUserId(req);
+        if (!userId) {
+          return res.status(401).json({ message: "غير مصرح" });
+        }
+
+        const orders =
+          await storage.getActiveProductionOrdersForOperator(userId);
+        res.json(orders);
+      } catch (error) {
+        console.error("Error fetching operator production orders:", error);
+        res.status(500).json({ message: "خطأ في جلب أوامر الإنتاج" });
+      }
+    },
+  );
 
   // Create roll with timing calculation
-  app.post("/api/rolls/create-with-timing", requireAuth, requirePermission('manage_production', 'view_film_dashboard'), async (req: AuthRequest, res) => {
-    try {
-      const userId = getAuthUserId(req);
-      
-      if (!userId) {
-        return res.status(401).json({ message: "غير مصرح" });
-      }
+  app.post(
+    "/api/rolls/create-with-timing",
+    requireAuth,
+    requirePermission("manage_production", "view_film_dashboard"),
+    async (req: AuthRequest, res) => {
+      try {
+        const userId = getAuthUserId(req);
 
-      const dataToValidate = {
-        ...req.body,
-        created_by: userId,
-      };
+        if (!userId) {
+          return res.status(401).json({ message: "غير مصرح" });
+        }
 
-      const validatedData = insertRollSchema.parse(dataToValidate);
+        const dataToValidate = {
+          ...req.body,
+          created_by: userId,
+        };
 
-      // Check if order is paused - block production entry
-      const pauseCheck = await checkOrderNotPaused(validatedData.production_order_id);
-      if (pauseCheck.isPaused) {
-        return res.status(403).json({ 
-          success: false,
-          message: pauseCheck.message,
-          orderStatus: pauseCheck.orderStatus
-        });
-      }
+        const validatedData = insertRollSchema.parse(dataToValidate);
 
-      const isLastRoll = req.body.is_last_roll || false;
+        // Check if order is paused - block production entry
+        const pauseCheck = await checkOrderNotPaused(
+          validatedData.production_order_id,
+        );
+        if (pauseCheck.isPaused) {
+          return res.status(403).json({
+            success: false,
+            message: pauseCheck.message,
+            orderStatus: pauseCheck.orderStatus,
+          });
+        }
 
-      if (!isLastRoll) {
-        const po = await storage.getProductionOrderById(validatedData.production_order_id);
-        if (po) {
-          const finalQty = parseFloat(po.final_quantity_kg?.toString() || '0');
-          const targetKg = finalQty > 0 ? finalQty : parseFloat(po.quantity_kg?.toString() || '0');
-          const overrunPct = parseFloat(po.overrun_percentage?.toString() || '0');
-          const maxAllowed = targetKg * (1 + overrunPct / 100);
-          const existingRolls = await storage.getRollsByProductionOrder(validatedData.production_order_id);
-          const totalProduced = existingRolls.reduce((sum: number, r: any) => sum + parseFloat(r.weight_kg?.toString() || '0'), 0);
-          const newRollWeight = parseFloat(req.body.weight_kg?.toString() || '0');
+        const isLastRoll = req.body.is_last_roll || false;
 
-          if ((totalProduced + newRollWeight) > maxAllowed) {
-            return res.status(400).json({
-              success: false,
-              message: `سيتجاوز الإنتاج الكمية المسموحة (${maxAllowed.toFixed(1)} كجم). الكمية المنتجة حالياً: ${totalProduced.toFixed(1)} كجم + رول جديد: ${newRollWeight.toFixed(1)} كجم = ${(totalProduced + newRollWeight).toFixed(1)} كجم. استخدم "رول نهائي" لإغلاق الأمر.`
-            });
+        if (!isLastRoll) {
+          const po = await storage.getProductionOrderById(
+            validatedData.production_order_id,
+          );
+          if (po) {
+            const finalQty = parseFloat(
+              po.final_quantity_kg?.toString() || "0",
+            );
+            const targetKg =
+              finalQty > 0
+                ? finalQty
+                : parseFloat(po.quantity_kg?.toString() || "0");
+            const overrunPct = parseFloat(
+              po.overrun_percentage?.toString() || "0",
+            );
+            const maxAllowed = targetKg * (1 + overrunPct / 100);
+            const existingRolls = await storage.getRollsByProductionOrder(
+              validatedData.production_order_id,
+            );
+            const totalProduced = existingRolls.reduce(
+              (sum: number, r: any) =>
+                sum + parseFloat(r.weight_kg?.toString() || "0"),
+              0,
+            );
+            const newRollWeight = parseFloat(
+              req.body.weight_kg?.toString() || "0",
+            );
+
+            if (totalProduced + newRollWeight > maxAllowed) {
+              return res.status(400).json({
+                success: false,
+                message: `سيتجاوز الإنتاج الكمية المسموحة (${maxAllowed.toFixed(1)} كجم). الكمية المنتجة حالياً: ${totalProduced.toFixed(1)} كجم + رول جديد: ${newRollWeight.toFixed(1)} كجم = ${(totalProduced + newRollWeight).toFixed(1)} كجم. استخدم "رول نهائي" لإغلاق الأمر.`,
+              });
+            }
           }
         }
-      }
 
-      const rollData = {
-        ...validatedData,
-        is_last_roll: isLastRoll,
-      };
+        const rollData = {
+          ...validatedData,
+          is_last_roll: isLastRoll,
+        };
 
-      const newRoll = await storage.createRollWithTiming(rollData);
-      res.status(201).json({
-        success: true,
-        message: "تم إنشاء الرول بنجاح",
-        roll: newRoll,
-        roll_number: newRoll.roll_number,
-      });
-    } catch (error) {
-      console.error("Error creating roll with timing:", error instanceof Error ? error.message : String(error));
-      res.status(500).json({ 
-        success: false,
-        message: "خطأ في إنشاء الرول" 
-      });
-    }
-  });
-
-  // Create final roll and complete film production
-  app.post("/api/rolls/create-final", requireAuth, requirePermission('manage_production', 'view_film_dashboard'), async (req: AuthRequest, res) => {
-    try {
-      const userId = getAuthUserId(req);
-      
-      if (!userId) {
-        return res.status(401).json({ message: "غير مصرح" });
-      }
-
-      const dataToValidate = {
-        ...req.body,
-        created_by: userId,
-      };
-
-      const validatedData = insertRollSchema.parse(dataToValidate);
-
-      // Check if order is paused - block production entry
-      const pauseCheck = await checkOrderNotPaused(validatedData.production_order_id);
-      if (pauseCheck.isPaused) {
-        return res.status(403).json({ 
+        const newRoll = await storage.createRollWithTiming(rollData);
+        res.status(201).json({
+          success: true,
+          message: "تم إنشاء الرول بنجاح",
+          roll: newRoll,
+          roll_number: newRoll.roll_number,
+        });
+      } catch (error) {
+        console.error(
+          "Error creating roll with timing:",
+          error instanceof Error ? error.message : String(error),
+        );
+        res.status(500).json({
           success: false,
-          message: pauseCheck.message,
-          orderStatus: pauseCheck.orderStatus
+          message: "خطأ في إنشاء الرول",
         });
       }
+    },
+  );
 
-      const newRoll = await storage.createFinalRoll(validatedData);
-      res.status(201).json({
-        success: true,
-        message: "تم إنشاء آخر رول وإغلاق مرحلة الفيلم بنجاح",
-        roll: newRoll,
-        roll_number: newRoll.roll_number,
-      });
-    } catch (error) {
-      console.error("Error creating final roll:", error);
-      res.status(500).json({ 
-        success: false,
-        message: "خطأ في إنشاء آخر رول" 
-      });
-    }
-  });
+  // Create final roll and complete film production
+  app.post(
+    "/api/rolls/create-final",
+    requireAuth,
+    requirePermission("manage_production", "view_film_dashboard"),
+    async (req: AuthRequest, res) => {
+      try {
+        const userId = getAuthUserId(req);
+
+        if (!userId) {
+          return res.status(401).json({ message: "غير مصرح" });
+        }
+
+        const dataToValidate = {
+          ...req.body,
+          created_by: userId,
+        };
+
+        const validatedData = insertRollSchema.parse(dataToValidate);
+
+        // Check if order is paused - block production entry
+        const pauseCheck = await checkOrderNotPaused(
+          validatedData.production_order_id,
+        );
+        if (pauseCheck.isPaused) {
+          return res.status(403).json({
+            success: false,
+            message: pauseCheck.message,
+            orderStatus: pauseCheck.orderStatus,
+          });
+        }
+
+        const newRoll = await storage.createFinalRoll(validatedData);
+        res.status(201).json({
+          success: true,
+          message: "تم إنشاء آخر رول وإغلاق مرحلة الفيلم بنجاح",
+          roll: newRoll,
+          roll_number: newRoll.roll_number,
+        });
+      } catch (error) {
+        console.error("Error creating final roll:", error);
+        res.status(500).json({
+          success: false,
+          message: "خطأ في إنشاء آخر رول",
+        });
+      }
+    },
+  );
 
   // ============ Printing Operator Endpoints ============
-  
-  // Get active rolls for printing operator
-  app.get("/api/rolls/active-for-printing", requireAuth, async (req: AuthRequest, res) => {
-    try {
-      const userId = getAuthUserId(req);
-      if (!userId) {
-        return res.status(401).json({ message: "غير مصرح" });
-      }
 
-      const rolls = await storage.getActivePrintingRollsForOperator(userId);
-      res.json(rolls);
-    } catch (error) {
-      console.error("Error fetching printing rolls:", error);
-      res.status(500).json({ message: "خطأ في جلب رولات الطباعة" });
-    }
-  });
+  // Get active rolls for printing operator
+  app.get(
+    "/api/rolls/active-for-printing",
+    requireAuth,
+    async (req: AuthRequest, res) => {
+      try {
+        const userId = getAuthUserId(req);
+        if (!userId) {
+          return res.status(401).json({ message: "غير مصرح" });
+        }
+
+        const rolls = await storage.getActivePrintingRollsForOperator(userId);
+        res.json(rolls);
+      } catch (error) {
+        console.error("Error fetching printing rolls:", error);
+        res.status(500).json({ message: "خطأ في جلب رولات الطباعة" });
+      }
+    },
+  );
 
   // ============ Cutting Operator Endpoints ============
-  
-  // Get active rolls for cutting operator
-  app.get("/api/rolls/active-for-cutting", requireAuth, async (req: AuthRequest, res) => {
-    try {
-      const userId = getAuthUserId(req);
-      if (!userId) {
-        return res.status(401).json({ message: "غير مصرح" });
-      }
 
-      const rolls = await storage.getActiveCuttingRollsForOperator(userId);
-      res.json(rolls);
-    } catch (error) {
-      console.error("Error fetching cutting rolls:", error);
-      res.status(500).json({ message: "خطأ في جلب رولات التقطيع" });
-    }
-  });
+  // Get active rolls for cutting operator
+  app.get(
+    "/api/rolls/active-for-cutting",
+    requireAuth,
+    async (req: AuthRequest, res) => {
+      try {
+        const userId = getAuthUserId(req);
+        if (!userId) {
+          return res.status(401).json({ message: "غير مصرح" });
+        }
+
+        const rolls = await storage.getActiveCuttingRollsForOperator(userId);
+        res.json(rolls);
+      } catch (error) {
+        console.error("Error fetching cutting rolls:", error);
+        res.status(500).json({ message: "خطأ في جلب رولات التقطيع" });
+      }
+    },
+  );
 
   // Advanced Metrics (OEE, Cycle Time, Quality)
   app.get("/api/reports/advanced-metrics", requireAuth, async (req, res) => {
@@ -3198,7 +3655,10 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   app.get("/api/reports/hr", requireAuth, async (req, res) => {
     try {
       const { date_from, date_to } = req.query;
-      const reports = await storage.getHRReports({ dateFrom: date_from as string, dateTo: date_to as string });
+      const reports = await storage.getHRReports({
+        dateFrom: date_from as string,
+        dateTo: date_to as string,
+      });
       res.json({
         success: true,
         data: reports,
@@ -3246,9 +3706,15 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         productionEfficiency,
         productionAlerts,
       ] = await Promise.all([
-        storage.getOrderReports({ dateFrom: date_from as string, dateTo: date_to as string }),
+        storage.getOrderReports({
+          dateFrom: date_from as string,
+          dateTo: date_to as string,
+        }),
         storage.getAdvancedMetrics(),
-        storage.getHRReports({ dateFrom: date_from as string, dateTo: date_to as string }),
+        storage.getHRReports({
+          dateFrom: date_from as string,
+          dateTo: date_to as string,
+        }),
         storage.getMaintenanceReports(),
         storage.getRealTimeProductionStats(),
         storage.getMachineUtilizationStats(),
@@ -3280,21 +3746,29 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // ============ PRODUCTION REPORTS API ROUTES ============
-  
+
   // Production Summary Report
   app.get("/api/reports/production-summary", requireAuth, async (req, res) => {
     try {
       const filters = {
         dateFrom: req.query.date_from as string,
         dateTo: req.query.date_to as string,
-        customerId: req.query.customer_id ? safeJsonParse(req.query.customer_id as string, "customer_id") : undefined,
-        productId: req.query.product_id ? safeJsonParse(req.query.product_id as string, "product_id") : undefined,
-        status: req.query.status ? safeJsonParse(req.query.status as string, "status") : undefined,
+        customerId: req.query.customer_id
+          ? safeJsonParse(req.query.customer_id as string, "customer_id")
+          : undefined,
+        productId: req.query.product_id
+          ? safeJsonParse(req.query.product_id as string, "product_id")
+          : undefined,
+        status: req.query.status
+          ? safeJsonParse(req.query.status as string, "status")
+          : undefined,
         sectionId: req.query.section_id as string,
         machineId: req.query.machine_id as string,
-        operatorId: req.query.operator_id ? parseInt(req.query.operator_id as string) : undefined,
+        operatorId: req.query.operator_id
+          ? parseInt(req.query.operator_id as string)
+          : undefined,
       };
-      
+
       const summary = await storage.getProductionSummary(filters);
       res.json({ success: true, data: summary });
     } catch (error: any) {
@@ -3302,7 +3776,9 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         return res.status(400).json({ message: error.message, success: false });
       }
       console.error("Production summary error:", error);
-      res.status(500).json({ message: "خطأ في جلب ملخص الإنتاج", success: false });
+      res
+        .status(500)
+        .json({ message: "خطأ في جلب ملخص الإنتاج", success: false });
     }
   });
 
@@ -3312,10 +3788,14 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       const filters = {
         dateFrom: req.query.date_from as string,
         dateTo: req.query.date_to as string,
-        customerId: req.query.customer_id ? safeJsonParse(req.query.customer_id as string, "customer_id") : undefined,
-        productId: req.query.product_id ? safeJsonParse(req.query.product_id as string, "product_id") : undefined,
+        customerId: req.query.customer_id
+          ? safeJsonParse(req.query.customer_id as string, "customer_id")
+          : undefined,
+        productId: req.query.product_id
+          ? safeJsonParse(req.query.product_id as string, "product_id")
+          : undefined,
       };
-      
+
       const data = await storage.getProductionByDate(filters);
       res.json({ success: true, data });
     } catch (error: any) {
@@ -3323,29 +3803,42 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         return res.status(400).json({ message: error.message, success: false });
       }
       console.error("Production by date error:", error);
-      res.status(500).json({ message: "خطأ في جلب بيانات الإنتاج اليومية", success: false });
+      res
+        .status(500)
+        .json({ message: "خطأ في جلب بيانات الإنتاج اليومية", success: false });
     }
   });
 
   // Production by Product
-  app.get("/api/reports/production-by-product", requireAuth, async (req, res) => {
-    try {
-      const filters = {
-        dateFrom: req.query.date_from as string,
-        dateTo: req.query.date_to as string,
-        customerId: req.query.customer_id ? safeJsonParse(req.query.customer_id as string, "customer_id") : undefined,
-      };
-      
-      const data = await storage.getProductionByProduct(filters);
-      res.json({ success: true, data });
-    } catch (error: any) {
-      if (error?.statusCode === 400) {
-        return res.status(400).json({ message: error.message, success: false });
+  app.get(
+    "/api/reports/production-by-product",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const filters = {
+          dateFrom: req.query.date_from as string,
+          dateTo: req.query.date_to as string,
+          customerId: req.query.customer_id
+            ? safeJsonParse(req.query.customer_id as string, "customer_id")
+            : undefined,
+        };
+
+        const data = await storage.getProductionByProduct(filters);
+        res.json({ success: true, data });
+      } catch (error: any) {
+        if (error?.statusCode === 400) {
+          return res
+            .status(400)
+            .json({ message: error.message, success: false });
+        }
+        console.error("Production by product error:", error);
+        res.status(500).json({
+          message: "خطأ في جلب بيانات الإنتاج حسب المنتج",
+          success: false,
+        });
       }
-      console.error("Production by product error:", error);
-      res.status(500).json({ message: "خطأ في جلب بيانات الإنتاج حسب المنتج", success: false });
-    }
-  });
+    },
+  );
 
   // Waste Analysis
   app.get("/api/reports/waste-analysis", requireAuth, async (req, res) => {
@@ -3355,12 +3848,14 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         dateTo: req.query.date_to as string,
         sectionId: req.query.section_id as string,
       };
-      
+
       const data = await storage.getWasteAnalysis(filters);
       res.json({ success: true, data });
     } catch (error) {
       console.error("Waste analysis error:", error);
-      res.status(500).json({ message: "خطأ في جلب تحليل الهدر", success: false });
+      res
+        .status(500)
+        .json({ message: "خطأ في جلب تحليل الهدر", success: false });
     }
   });
 
@@ -3371,38 +3866,54 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         dateFrom: req.query.date_from as string,
         dateTo: req.query.date_to as string,
       };
-      
+
       const data = await storage.getMachinePerformance(filters);
       res.json({ success: true, data });
     } catch (error) {
       console.error("Machine performance error:", error);
-      res.status(500).json({ message: "خطأ في جلب أداء المكائن", success: false });
+      res
+        .status(500)
+        .json({ message: "خطأ في جلب أداء المكائن", success: false });
     }
   });
 
   // Operator Performance
-  app.get("/api/reports/operator-performance", requireAuth, async (req, res) => {
-    try {
-      const filters = {
-        dateFrom: req.query.date_from as string,
-        dateTo: req.query.date_to as string,
-        sectionId: req.query.section_id as string,
-      };
-      
-      const data = await storage.getOperatorPerformance(filters);
-      res.json({ success: true, data });
-    } catch (error) {
-      console.error("Operator performance error:", error);
-      res.status(500).json({ message: "خطأ في جلب أداء العمال", success: false });
-    }
-  });
+  app.get(
+    "/api/reports/operator-performance",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const filters = {
+          dateFrom: req.query.date_from as string,
+          dateTo: req.query.date_to as string,
+          sectionId: req.query.section_id as string,
+        };
+
+        const data = await storage.getOperatorPerformance(filters);
+        res.json({ success: true, data });
+      } catch (error) {
+        console.error("Operator performance error:", error);
+        res
+          .status(500)
+          .json({ message: "خطأ في جلب أداء العمال", success: false });
+      }
+    },
+  );
 
   app.post("/api/reports/production/export", requireAuth, async (req, res) => {
     try {
-      const { format: exportFormat, dateFrom, dateTo, filters: reportFilters } = req.body;
+      const {
+        format: exportFormat,
+        dateFrom,
+        dateTo,
+        filters: reportFilters,
+      } = req.body;
 
       if (!exportFormat || !["pdf", "excel"].includes(exportFormat)) {
-        return res.status(400).json({ message: "صيغة التصدير غير صالحة (pdf أو excel)", success: false });
+        return res.status(400).json({
+          message: "صيغة التصدير غير صالحة (pdf أو excel)",
+          success: false,
+        });
       }
 
       const baseFilters = {
@@ -3413,10 +3924,19 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         status: reportFilters?.status,
         sectionId: reportFilters?.sectionId,
         machineId: reportFilters?.machineId,
-        operatorId: reportFilters?.operatorId ? parseInt(reportFilters.operatorId) : undefined,
+        operatorId: reportFilters?.operatorId
+          ? parseInt(reportFilters.operatorId)
+          : undefined,
       };
 
-      const [summaryData, dateData, productData, wasteData, machineData, operatorData] = await Promise.all([
+      const [
+        summaryData,
+        dateData,
+        productData,
+        wasteData,
+        machineData,
+        operatorData,
+      ] = await Promise.all([
         storage.getProductionSummary(baseFilters).catch(() => null),
         storage.getProductionByDate(baseFilters).catch(() => []),
         storage.getProductionByProduct(baseFilters).catch(() => []),
@@ -3425,7 +3945,10 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         storage.getOperatorPerformance(baseFilters).catch(() => []),
       ]);
 
-      const periodText = dateFrom && dateTo ? `${dateFrom} — ${dateTo}` : new Date().toLocaleDateString("en-US");
+      const periodText =
+        dateFrom && dateTo
+          ? `${dateFrom} — ${dateTo}`
+          : new Date().toLocaleDateString("en-US");
 
       if (exportFormat === "excel") {
         const ExcelJS = (await import("exceljs")).default;
@@ -3435,11 +3958,17 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
 
         const headerStyle: Partial<ExcelJS.Style> = {
           font: { bold: true, color: { argb: "FFFFFFFF" }, size: 11 },
-          fill: { type: "pattern", pattern: "solid", fgColor: { argb: "FF2563EB" } },
+          fill: {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FF2563EB" },
+          },
           alignment: { horizontal: "center", vertical: "middle" },
           border: {
-            top: { style: "thin" }, bottom: { style: "thin" },
-            left: { style: "thin" }, right: { style: "thin" },
+            top: { style: "thin" },
+            bottom: { style: "thin" },
+            left: { style: "thin" },
+            right: { style: "thin" },
           },
         };
 
@@ -3453,9 +3982,15 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
           alignment: { vertical: "middle" },
         };
 
-        const addSheetWithData = (name: string, headers: { key: string; label: string; width?: number }[], data: any[]) => {
-          const sheet = workbook.addWorksheet(name, { views: [{ rightToLeft: true }] });
-          
+        const addSheetWithData = (
+          name: string,
+          headers: { key: string; label: string; width?: number }[],
+          data: any[],
+        ) => {
+          const sheet = workbook.addWorksheet(name, {
+            views: [{ rightToLeft: true }],
+          });
+
           sheet.mergeCells(1, 1, 1, headers.length);
           const titleCell = sheet.getCell(1, 1);
           titleCell.value = `تقرير الإنتاج - ${name}`;
@@ -3486,9 +4021,14 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
               cell.value = val;
               cell.style = {
                 ...dataStyle,
-                fill: rowIdx % 2 === 0 
-                  ? { type: "pattern", pattern: "solid", fgColor: { argb: "FFF9FAFB" } }
-                  : undefined,
+                fill:
+                  rowIdx % 2 === 0
+                    ? {
+                        type: "pattern",
+                        pattern: "solid",
+                        fgColor: { argb: "FFF9FAFB" },
+                      }
+                    : undefined,
               } as Partial<ExcelJS.Style>;
             });
           });
@@ -3497,7 +4037,9 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         };
 
         if (summaryData) {
-          const summarySheet = workbook.addWorksheet("الملخص", { views: [{ rightToLeft: true }] });
+          const summarySheet = workbook.addWorksheet("الملخص", {
+            views: [{ rightToLeft: true }],
+          });
           summarySheet.mergeCells("A1:B1");
           const t = summarySheet.getCell("A1");
           t.value = "ملخص تقرير الإنتاج";
@@ -3515,10 +4057,30 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
             ["الطلبات النشطة", summaryData.activeOrders || 0],
             ["الطلبات المكتملة", summaryData.completedOrders || 0],
             ["إجمالي الرولات", summaryData.totalRolls || 0],
-            ["إجمالي الوزن (كجم)", summaryData.totalWeight ? parseFloat(summaryData.totalWeight).toFixed(2) : "0"],
-            ["متوسط وقت الإنتاج (ساعة)", summaryData.avgProductionTime ? parseFloat(summaryData.avgProductionTime).toFixed(2) : "0"],
-            ["نسبة الهدر %", summaryData.wastePercentage ? parseFloat(summaryData.wastePercentage).toFixed(2) : "0"],
-            ["نسبة الإنجاز %", summaryData.completionRate ? parseFloat(summaryData.completionRate).toFixed(1) : "0"],
+            [
+              "إجمالي الوزن (كجم)",
+              summaryData.totalWeight
+                ? parseFloat(summaryData.totalWeight).toFixed(2)
+                : "0",
+            ],
+            [
+              "متوسط وقت الإنتاج (ساعة)",
+              summaryData.avgProductionTime
+                ? parseFloat(summaryData.avgProductionTime).toFixed(2)
+                : "0",
+            ],
+            [
+              "نسبة الهدر %",
+              summaryData.wastePercentage
+                ? parseFloat(summaryData.wastePercentage).toFixed(2)
+                : "0",
+            ],
+            [
+              "نسبة الإنجاز %",
+              summaryData.completionRate
+                ? parseFloat(summaryData.completionRate).toFixed(1)
+                : "0",
+            ],
           ];
           summaryRows.forEach(([label, value], i) => {
             const row = summarySheet.getRow(i + 4);
@@ -3532,8 +4094,16 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
             if (dataStyle.border) valCell.border = dataStyle.border;
             valCell.alignment = { horizontal: "center" };
             if (i % 2 === 0) {
-              labelCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0F9FF" } };
-              valCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0F9FF" } };
+              labelCell.fill = {
+                type: "pattern",
+                pattern: "solid",
+                fgColor: { argb: "FFF0F9FF" },
+              };
+              valCell.fill = {
+                type: "pattern",
+                pattern: "solid",
+                fgColor: { argb: "FFF0F9FF" },
+              };
             }
           });
           summarySheet.getColumn(1).width = 30;
@@ -3541,18 +4111,22 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         }
 
         if (Array.isArray(dateData) && dateData.length > 0) {
-          addSheetWithData("الإنتاج اليومي", [
-            { key: "date", label: "التاريخ", width: 15 },
-            { key: "total_orders", label: "عدد الطلبات", width: 14 },
-            { key: "total_rolls", label: "عدد الرولات", width: 14 },
-            { key: "total_weight", label: "الوزن (كجم)", width: 14 },
-            { key: "total_waste", label: "الهدر (كجم)", width: 14 },
-            { key: "waste_percentage", label: "نسبة الهدر %", width: 14 },
-          ], dateData);
+          addSheetWithData(
+            "الإنتاج اليومي",
+            [
+              { key: "date", label: "التاريخ", width: 15 },
+              { key: "total_orders", label: "عدد الطلبات", width: 14 },
+              { key: "total_rolls", label: "عدد الرولات", width: 14 },
+              { key: "total_weight", label: "الوزن (كجم)", width: 14 },
+              { key: "total_waste", label: "الهدر (كجم)", width: 14 },
+              { key: "waste_percentage", label: "نسبة الهدر %", width: 14 },
+            ],
+            dateData,
+          );
         }
 
         if (Array.isArray(productData) && productData.length > 0) {
-          const productHeaders = Object.keys(productData[0]).map(k => ({
+          const productHeaders = Object.keys(productData[0]).map((k) => ({
             key: k,
             label: k,
             width: 18,
@@ -3561,7 +4135,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         }
 
         if (Array.isArray(wasteData) && wasteData.length > 0) {
-          const wasteHeaders = Object.keys(wasteData[0]).map(k => ({
+          const wasteHeaders = Object.keys(wasteData[0]).map((k) => ({
             key: k,
             label: k,
             width: 18,
@@ -3570,7 +4144,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         }
 
         if (Array.isArray(machineData) && machineData.length > 0) {
-          const machineHeaders = Object.keys(machineData[0]).map(k => ({
+          const machineHeaders = Object.keys(machineData[0]).map((k) => ({
             key: k,
             label: k,
             width: 18,
@@ -3579,7 +4153,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         }
 
         if (Array.isArray(operatorData) && operatorData.length > 0) {
-          const operatorHeaders = Object.keys(operatorData[0]).map(k => ({
+          const operatorHeaders = Object.keys(operatorData[0]).map((k) => ({
             key: k,
             label: k,
             width: 18,
@@ -3589,70 +4163,144 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
 
         const buffer = await workbook.xlsx.writeBuffer();
         const filename = `Production_Report_${dateFrom || "all"}_${dateTo || "all"}.xlsx`;
-        res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+        res.setHeader(
+          "Content-Type",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        );
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="${filename}"`,
+        );
         return res.send(Buffer.from(buffer as ArrayBuffer));
       }
 
       if (exportFormat === "pdf") {
         const PDFDocument = (await import("pdfkit")).default;
-        const doc = new PDFDocument({ size: "A4", layout: "landscape", margin: 40 });
+        const doc = new PDFDocument({
+          size: "A4",
+          layout: "landscape",
+          margin: 40,
+        });
         const chunks: Buffer[] = [];
         doc.on("data", (chunk: Buffer) => chunks.push(chunk));
         const pdfReady = new Promise<Buffer>((resolve) => {
           doc.on("end", () => resolve(Buffer.concat(chunks)));
         });
 
-        const drawTableHeader = (headers: string[], colWidths: number[], startX: number) => {
-          let y = doc.y;
-          doc.rect(startX, y, colWidths.reduce((a, b) => a + b, 0), 18).fill("#2563EB");
+        const drawTableHeader = (
+          headers: string[],
+          colWidths: number[],
+          startX: number,
+        ) => {
+          const y = doc.y;
+          doc
+            .rect(
+              startX,
+              y,
+              colWidths.reduce((a, b) => a + b, 0),
+              18,
+            )
+            .fill("#2563EB");
           doc.fillColor("#FFFFFF").font("Helvetica-Bold").fontSize(8);
           let x = startX;
           headers.forEach((h, i) => {
-            doc.text(h, x + 2, y + 4, { width: colWidths[i] - 4, align: "center", lineBreak: false });
+            doc.text(h, x + 2, y + 4, {
+              width: colWidths[i] - 4,
+              align: "center",
+              lineBreak: false,
+            });
             x += colWidths[i];
           });
           doc.fillColor("#000000");
           doc.y = y + 20;
         };
 
-        const drawTableRow = (values: string[], colWidths: number[], startX: number, isAlt: boolean) => {
+        const drawTableRow = (
+          values: string[],
+          colWidths: number[],
+          startX: number,
+          isAlt: boolean,
+        ) => {
           let y = doc.y;
           if (y > doc.page.height - 50) {
             doc.addPage();
             y = 40;
           }
           if (isAlt) {
-            doc.rect(startX, y, colWidths.reduce((a, b) => a + b, 0), 14).fill("#F3F4F6");
+            doc
+              .rect(
+                startX,
+                y,
+                colWidths.reduce((a, b) => a + b, 0),
+                14,
+              )
+              .fill("#F3F4F6");
             doc.fillColor("#000000");
           }
           doc.font("Helvetica").fontSize(7);
           let x = startX;
           values.forEach((v, i) => {
-            doc.text(String(v ?? ""), x + 2, y + 3, { width: colWidths[i] - 4, align: "center", lineBreak: false });
+            doc.text(String(v ?? ""), x + 2, y + 3, {
+              width: colWidths[i] - 4,
+              align: "center",
+              lineBreak: false,
+            });
             x += colWidths[i];
           });
           doc.y = y + 15;
         };
 
-        doc.fontSize(18).font("Helvetica-Bold").text("Production Report", { align: "center" });
+        doc
+          .fontSize(18)
+          .font("Helvetica-Bold")
+          .text("Production Report", { align: "center" });
         doc.moveDown(0.3);
-        doc.fontSize(10).font("Helvetica").text(`Period: ${periodText}`, { align: "center" });
-        doc.fontSize(8).text(`Generated: ${new Date().toLocaleString("en-US")}`, { align: "center" });
+        doc
+          .fontSize(10)
+          .font("Helvetica")
+          .text(`Period: ${periodText}`, { align: "center" });
+        doc
+          .fontSize(8)
+          .text(`Generated: ${new Date().toLocaleString("en-US")}`, {
+            align: "center",
+          });
         doc.moveDown(1);
 
         if (summaryData) {
-          doc.fontSize(12).font("Helvetica-Bold").text("Summary", { align: "left" });
+          doc
+            .fontSize(12)
+            .font("Helvetica-Bold")
+            .text("Summary", { align: "left" });
           doc.moveDown(0.3);
           const summaryItems = [
             ["Total Orders", String(summaryData.totalOrders || 0)],
             ["Active Orders", String(summaryData.activeOrders || 0)],
             ["Completed Orders", String(summaryData.completedOrders || 0)],
             ["Total Rolls", String(summaryData.totalRolls || 0)],
-            ["Total Weight (kg)", summaryData.totalWeight ? parseFloat(summaryData.totalWeight).toFixed(2) : "0"],
-            ["Avg Production Time (hr)", summaryData.avgProductionTime ? parseFloat(summaryData.avgProductionTime).toFixed(2) : "0"],
-            ["Waste %", summaryData.wastePercentage ? parseFloat(summaryData.wastePercentage).toFixed(2) + "%" : "0%"],
-            ["Completion Rate", summaryData.completionRate ? parseFloat(summaryData.completionRate).toFixed(1) + "%" : "0%"],
+            [
+              "Total Weight (kg)",
+              summaryData.totalWeight
+                ? parseFloat(summaryData.totalWeight).toFixed(2)
+                : "0",
+            ],
+            [
+              "Avg Production Time (hr)",
+              summaryData.avgProductionTime
+                ? parseFloat(summaryData.avgProductionTime).toFixed(2)
+                : "0",
+            ],
+            [
+              "Waste %",
+              summaryData.wastePercentage
+                ? parseFloat(summaryData.wastePercentage).toFixed(2) + "%"
+                : "0%",
+            ],
+            [
+              "Completion Rate",
+              summaryData.completionRate
+                ? parseFloat(summaryData.completionRate).toFixed(1) + "%"
+                : "0%",
+            ],
           ];
           doc.font("Helvetica").fontSize(9);
           summaryItems.forEach(([label, val]) => {
@@ -3664,14 +4312,17 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         const addDataTable = (title: string, data: any[]) => {
           if (!Array.isArray(data) || data.length === 0) return;
           if (doc.y > doc.page.height - 120) doc.addPage();
-          doc.fontSize(12).font("Helvetica-Bold").text(title, { align: "left" });
+          doc
+            .fontSize(12)
+            .font("Helvetica-Bold")
+            .text(title, { align: "left" });
           doc.moveDown(0.3);
           const headers = Object.keys(data[0]);
           const tableWidth = doc.page.width - 80;
           const colWidths = headers.map(() => tableWidth / headers.length);
           drawTableHeader(headers, colWidths, 40);
           data.forEach((item, idx) => {
-            const values = headers.map(h => {
+            const values = headers.map((h) => {
               const v = item[h];
               if (v === null || v === undefined) return "";
               if (typeof v === "number") return v.toFixed(2);
@@ -3696,7 +4347,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
             `Page ${i + 1} of ${totalPages} | MPBF Manufacturing System`,
             40,
             doc.page.height - 25,
-            { align: "center", width: doc.page.width - 80 }
+            { align: "center", width: doc.page.width - 80 },
           );
           doc.fillColor("#000000");
         }
@@ -3705,14 +4356,19 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         const pdfBuffer = await pdfReady;
         const filename = `Production_Report_${dateFrom || "all"}_${dateTo || "all"}.pdf`;
         res.setHeader("Content-Type", "application/pdf");
-        res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="${filename}"`,
+        );
         return res.send(pdfBuffer);
       }
 
       res.status(400).json({ message: "صيغة غير مدعومة", success: false });
     } catch (error: any) {
       console.error("Production report export error:", error);
-      res.status(500).json({ message: "خطأ في تصدير تقرير الإنتاج", success: false });
+      res
+        .status(500)
+        .json({ message: "خطأ في تصدير تقرير الإنتاج", success: false });
     }
   });
 
@@ -3720,7 +4376,10 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   app.post("/api/reports/export", requireAuth, async (req, res) => {
     try {
       const { format, date_from, date_to, filters } = req.body;
-      const report_type = typeof req.body.report_type === "string" ? req.body.report_type.trim().toLowerCase() : req.body.report_type;
+      const report_type =
+        typeof req.body.report_type === "string"
+          ? req.body.report_type.trim().toLowerCase()
+          : req.body.report_type;
 
       if (!report_type || !format) {
         return res.status(400).json({
@@ -3734,16 +4393,26 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       switch (report_type) {
         case "orders":
         case "production":
-          reportData = await storage.getOrderReports({ dateFrom: date_from, dateTo: date_to });
-          reportTitle = report_type === "production" ? "تقرير الإنتاج" : "تقرير الطلبات";
+          reportData = await storage.getOrderReports({
+            dateFrom: date_from,
+            dateTo: date_to,
+          });
+          reportTitle =
+            report_type === "production" ? "تقرير الإنتاج" : "تقرير الطلبات";
           break;
         case "advanced-metrics":
         case "quality":
           reportData = await storage.getAdvancedMetrics();
-          reportTitle = report_type === "quality" ? "تقرير الجودة" : "تقرير المقاييس المتقدمة";
+          reportTitle =
+            report_type === "quality"
+              ? "تقرير الجودة"
+              : "تقرير المقاييس المتقدمة";
           break;
         case "hr":
-          reportData = await storage.getHRReports({ dateFrom: date_from, dateTo: date_to });
+          reportData = await storage.getHRReports({
+            dateFrom: date_from,
+            dateTo: date_to,
+          });
           reportTitle = "تقرير الموارد البشرية";
           break;
         case "maintenance":
@@ -3792,8 +4461,15 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
           ? reportData
           : typeof reportData === "object" && reportData !== null
             ? Object.entries(reportData).map(([key, value]) => {
-                if (typeof value === "object" && value !== null && !Array.isArray(value)) {
-                  return { المفتاح: key, ...(value as Record<string, unknown>) };
+                if (
+                  typeof value === "object" &&
+                  value !== null &&
+                  !Array.isArray(value)
+                ) {
+                  return {
+                    المفتاح: key,
+                    ...(value as Record<string, unknown>),
+                  };
                 }
                 return { المفتاح: key, القيمة: value };
               })
@@ -3808,16 +4484,22 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
             pattern: "solid",
             fgColor: { argb: "FF4472C4" },
           };
-          headerRow.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 12 };
+          headerRow.font = {
+            bold: true,
+            color: { argb: "FFFFFFFF" },
+            size: 12,
+          };
 
           for (const item of flatData) {
             const row = item as Record<string, unknown>;
-            sheet.addRow(headers.map((h) => {
-              const val = row[h];
-              if (val === null || val === undefined) return "";
-              if (typeof val === "object") return JSON.stringify(val);
-              return val;
-            }));
+            sheet.addRow(
+              headers.map((h) => {
+                const val = row[h];
+                if (val === null || val === undefined) return "";
+                if (typeof val === "object") return JSON.stringify(val);
+                return val;
+              }),
+            );
           }
 
           headers.forEach((_, i) => {
@@ -3827,15 +4509,23 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         }
 
         sheet.addRow([]);
-        sheet.addRow([`تاريخ التقرير: ${new Date().toLocaleDateString("en-US")}`]);
+        sheet.addRow([
+          `تاريخ التقرير: ${new Date().toLocaleDateString("en-US")}`,
+        ]);
         if (date_from && date_to) {
           sheet.addRow([`الفترة: من ${date_from} إلى ${date_to}`]);
         }
 
         const buffer = await workbook.xlsx.writeBuffer();
         const filename = `${report_type}-${Date.now()}.xlsx`;
-        res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+        res.setHeader(
+          "Content-Type",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        );
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="${filename}"`,
+        );
         return res.send(Buffer.from(buffer as ArrayBuffer));
       }
 
@@ -3846,14 +4536,22 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
           ? reportData
           : typeof reportData === "object" && reportData !== null
             ? Object.entries(reportData).map(([key, value]) => {
-                if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+                if (
+                  typeof value === "object" &&
+                  value !== null &&
+                  !Array.isArray(value)
+                ) {
                   return { key, ...(value as Record<string, unknown>) };
                 }
                 return { key, value };
               })
             : [{ data: reportData }];
 
-        const doc = new PDFDocument({ size: "A4", layout: "landscape", margin: 40 });
+        const doc = new PDFDocument({
+          size: "A4",
+          layout: "landscape",
+          margin: 40,
+        });
         const chunks: Buffer[] = [];
         doc.on("data", (chunk: Buffer) => chunks.push(chunk));
 
@@ -3863,10 +4561,12 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
 
         doc.fontSize(16).text(reportTitle, { align: "center" });
         doc.moveDown(0.5);
-        doc.fontSize(10).text(
-          `Report Date: ${new Date().toLocaleDateString("en-US")}${date_from && date_to ? ` | Period: ${date_from} to ${date_to}` : ""}`,
-          { align: "center" }
-        );
+        doc
+          .fontSize(10)
+          .text(
+            `Report Date: ${new Date().toLocaleDateString("en-US")}${date_from && date_to ? ` | Period: ${date_from} to ${date_to}` : ""}`,
+            { align: "center" },
+          );
         doc.moveDown(1);
 
         if (flatData.length > 0) {
@@ -3887,7 +4587,10 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
           });
 
           y += 16;
-          doc.moveTo(startX, y).lineTo(startX + tableWidth, y).stroke();
+          doc
+            .moveTo(startX, y)
+            .lineTo(startX + tableWidth, y)
+            .stroke();
           y += 4;
           doc.font("Helvetica").fontSize(fontSize > 6 ? 7 : 5.5);
 
@@ -3917,7 +4620,10 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         const pdfBuffer = await pdfReady;
         const filename = `${report_type}-${Date.now()}.pdf`;
         res.setHeader("Content-Type", "application/pdf");
-        res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="${filename}"`,
+        );
         return res.send(pdfBuffer);
       }
 
@@ -3926,7 +4632,11 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
           ? reportData
           : typeof reportData === "object" && reportData !== null
             ? Object.entries(reportData).map(([key, value]) => {
-                if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+                if (
+                  typeof value === "object" &&
+                  value !== null &&
+                  !Array.isArray(value)
+                ) {
                   return { key, ...(value as Record<string, unknown>) };
                 }
                 return { key, value };
@@ -3934,7 +4644,9 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
             : [{ data: reportData }];
 
         if (flatData.length === 0) {
-          return res.status(404).json({ message: "لا توجد بيانات للتصدير", success: false });
+          return res
+            .status(404)
+            .json({ message: "لا توجد بيانات للتصدير", success: false });
         }
 
         const headers = Object.keys(flatData[0] as Record<string, unknown>);
@@ -3942,19 +4654,27 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         for (const item of flatData) {
           const row = item as Record<string, unknown>;
           csvRows.push(
-            headers.map((h) => {
-              const val = row[h];
-              if (val === null || val === undefined) return "";
-              const str = typeof val === "object" ? JSON.stringify(val) : String(val);
-              return str.includes(",") || str.includes('"') ? `"${str.replace(/"/g, '""')}"` : str;
-            }).join(",")
+            headers
+              .map((h) => {
+                const val = row[h];
+                if (val === null || val === undefined) return "";
+                const str =
+                  typeof val === "object" ? JSON.stringify(val) : String(val);
+                return str.includes(",") || str.includes('"')
+                  ? `"${str.replace(/"/g, '""')}"`
+                  : str;
+              })
+              .join(","),
           );
         }
 
         const csvContent = "\uFEFF" + csvRows.join("\n");
         const filename = `${report_type}-${Date.now()}.csv`;
         res.setHeader("Content-Type", "text/csv; charset=utf-8");
-        res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="${filename}"`,
+        );
         return res.send(csvContent);
       }
 
@@ -3974,33 +4694,62 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   // Adobe PDF Generation API
   app.post("/api/pdf/generate", requireAuth, async (req, res) => {
     try {
-      const { isAdobePDFConfigured, mergeDocumentToPDF, generatePDFFromTemplate } = await import("./services/adobe-pdf/pdf-service");
-      
+      const {
+        isAdobePDFConfigured,
+        mergeDocumentToPDF,
+        generatePDFFromTemplate,
+      } = await import("./services/adobe-pdf/pdf-service");
+
       if (!isAdobePDFConfigured()) {
-        return res.status(503).json({ message: "خدمة Adobe PDF غير مهيأة", success: false });
+        return res
+          .status(503)
+          .json({ message: "خدمة Adobe PDF غير مهيأة", success: false });
       }
 
-      const { templateName, templatePath, jsonData, outputFormat = "pdf" } = req.body;
+      const {
+        templateName,
+        templatePath,
+        jsonData,
+        outputFormat = "pdf",
+      } = req.body;
 
       if (!jsonData || typeof jsonData !== "object") {
-        return res.status(400).json({ message: "بيانات JSON مطلوبة", success: false });
+        return res
+          .status(400)
+          .json({ message: "بيانات JSON مطلوبة", success: false });
       }
 
       let pdfBuffer: Buffer;
 
       if (templateName) {
-        pdfBuffer = await generatePDFFromTemplate(templateName, jsonData, outputFormat);
+        pdfBuffer = await generatePDFFromTemplate(
+          templateName,
+          jsonData,
+          outputFormat,
+        );
       } else if (templatePath) {
-        pdfBuffer = await mergeDocumentToPDF({ templatePath, jsonData, outputFormat });
+        pdfBuffer = await mergeDocumentToPDF({
+          templatePath,
+          jsonData,
+          outputFormat,
+        });
       } else {
-        return res.status(400).json({ message: "اسم القالب أو مسار القالب مطلوب", success: false });
+        return res
+          .status(400)
+          .json({ message: "اسم القالب أو مسار القالب مطلوب", success: false });
       }
 
-      const contentType = outputFormat === "pdf" ? "application/pdf" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+      const contentType =
+        outputFormat === "pdf"
+          ? "application/pdf"
+          : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
       const ext = outputFormat === "pdf" ? "pdf" : "docx";
 
       res.setHeader("Content-Type", contentType);
-      res.setHeader("Content-Disposition", `attachment; filename="document.${ext}"`);
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="document.${ext}"`,
+      );
       res.send(pdfBuffer);
     } catch (error) {
       console.error("PDF generation error:", error);
@@ -4013,7 +4762,8 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
 
   app.get("/api/pdf/status", requireAuth, async (req, res) => {
     try {
-      const { isAdobePDFConfigured } = await import("./services/adobe-pdf/pdf-service");
+      const { isAdobePDFConfigured } =
+        await import("./services/adobe-pdf/pdf-service");
       res.json({
         configured: isAdobePDFConfigured(),
         service: "Adobe Document Generation API",
@@ -4028,15 +4778,23 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
     try {
       const fs = await import("fs/promises");
       const path = await import("path");
-      const templatesDir = path.join(process.cwd(), "server", "services", "adobe-pdf", "templates");
-      
+      const templatesDir = path.join(
+        process.cwd(),
+        "server",
+        "services",
+        "adobe-pdf",
+        "templates",
+      );
+
       try {
         await fs.access(templatesDir);
       } catch {
         return res.json({ templates: [], success: true });
       }
 
-      const files = (await fs.readdir(templatesDir)).filter((f: string) => f.endsWith(".docx"));
+      const files = (await fs.readdir(templatesDir)).filter((f: string) =>
+        f.endsWith(".docx"),
+      );
       res.json({ templates: files, success: true });
     } catch (error) {
       console.error("[API Error]", error);
@@ -4070,111 +4828,125 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   app.post("/api/translate-name", requireAuth, async (req, res) => {
     try {
       const { text, targetLanguage } = req.body;
-      
+
       if (!text || !targetLanguage) {
-        return res.status(400).json({ message: "النص واللغة المستهدفة مطلوبان" });
+        return res
+          .status(400)
+          .json({ message: "النص واللغة المستهدفة مطلوبان" });
       }
-      
+
       // Check if OpenAI is available
       const OpenAI = (await import("openai")).default;
       const openai = new OpenAI();
-      
-      const prompt = targetLanguage === "en" 
-        ? `Transliterate the following Arabic name to English letters. Only provide the transliteration without quotes or any additional text: ${text}`
-        : `For the English name "${text}", provide:
+
+      const prompt =
+        targetLanguage === "en"
+          ? `Transliterate the following Arabic name to English letters. Only provide the transliteration without quotes or any additional text: ${text}`
+          : `For the English name "${text}", provide:
 1. First: The Arabic meaning translation (translate the meaning of the words to Arabic)
 2. Second: The Arabic transliteration in parentheses (how it sounds in Arabic letters)
 
 Example: "Price House" should become "بيت الأسعار (برايس هاوس)"
 Format: [meaning in Arabic] ([transliteration])
 Do not include quotes or explanations.`;
-      
-      const systemContent = targetLanguage === "en"
-        ? "You are a professional transliterator. Convert Arabic names to English letters (transliteration). Never use quotes in your response. Just provide the transliterated name directly."
-        : "You are a professional Arabic translator. Translate English names to Arabic by providing: 1) The meaning translation first, 2) Then the transliteration (how it sounds) in parentheses. Example: Price House = بيت الأسعار (برايس هاوس). Do not use quotes.";
-      
+
+      const systemContent =
+        targetLanguage === "en"
+          ? "You are a professional transliterator. Convert Arabic names to English letters (transliteration). Never use quotes in your response. Just provide the transliterated name directly."
+          : "You are a professional Arabic translator. Translate English names to Arabic by providing: 1) The meaning translation first, 2) Then the transliteration (how it sounds) in parentheses. Example: Price House = بيت الأسعار (برايس هاوس). Do not use quotes.";
+
       const response = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
-          { 
-            role: "system", 
-            content: systemContent
+          {
+            role: "system",
+            content: systemContent,
           },
-          { role: "user", content: prompt }
+          { role: "user", content: prompt },
         ],
         temperature: 0.3,
         max_tokens: 150,
       });
-      
+
       let translatedText = response.choices[0]?.message?.content?.trim() || "";
       // Remove any quotes that might still appear
       translatedText = translatedText.replace(/^["']|["']$/g, "").trim();
-      
+
       res.json({ translatedText });
     } catch (error) {
       console.error("Translation error:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "خطأ في الترجمة",
-        error: "خطأ داخلي"
+        error: "خطأ داخلي",
       });
     }
   });
 
   // Customers routes
-  app.post("/api/customers", requireAuth, requirePermission('manage_customers', 'manage_definitions'), async (req, res) => {
-    try {
-      const validatedData = insertCustomerSchema.parse(req.body);
-      
-      // Convert empty strings to null for fields with length constraints
-      const cleanedData = {
-        ...validatedData,
-        code: validatedData.code || null,
-        user_id: validatedData.user_id || null,
-        tax_number: validatedData.tax_number || null,
-        plate_drawer_code: validatedData.plate_drawer_code || null,
-      };
-      
-      const customer = await storage.createCustomer(cleanedData);
-      res.json(customer);
-    } catch (error) {
-      console.error("Customer creation error:", error);
-      if (error instanceof Error) {
-        console.error("Error message:", error.message);
-      }
-      res.status(400).json({
-        message: "بيانات غير صحيحة",
-        error: "خطأ داخلي",
-      });
-    }
-  });
+  app.post(
+    "/api/customers",
+    requireAuth,
+    requirePermission("manage_customers", "manage_definitions"),
+    async (req, res) => {
+      try {
+        const validatedData = insertCustomerSchema.parse(req.body);
 
-  app.put("/api/customers/:id", requireAuth, requirePermission('manage_customers', 'manage_definitions'), async (req, res) => {
-    try {
-      const id = req.params.id?.trim();
-      if (!id) {
-        return res.status(400).json({ message: "معرف العميل غير صحيح" });
+        // Convert empty strings to null for fields with length constraints
+        const cleanedData = {
+          ...validatedData,
+          code: validatedData.code || null,
+          user_id: validatedData.user_id || null,
+          tax_number: validatedData.tax_number || null,
+          plate_drawer_code: validatedData.plate_drawer_code || null,
+        };
+
+        const customer = await storage.createCustomer(cleanedData);
+        res.json(customer);
+      } catch (error) {
+        console.error("Customer creation error:", error);
+        if (error instanceof Error) {
+          console.error("Error message:", error.message);
+        }
+        res.status(400).json({
+          message: "بيانات غير صحيحة",
+          error: "خطأ داخلي",
+        });
       }
-      const validatedData = insertCustomerSchema.parse(req.body);
-      
-      // Convert empty strings to null for fields with length constraints
-      const cleanedData = {
-        ...validatedData,
-        code: validatedData.code || null,
-        user_id: validatedData.user_id || null,
-        tax_number: validatedData.tax_number || null,
-        plate_drawer_code: validatedData.plate_drawer_code || null,
-      };
-      
-      const customer = await storage.updateCustomer(id, cleanedData);
-      res.json(customer);
-    } catch (error) {
-      console.error("Customer update error:", error);
-      res.status(400).json({
-        message: "خطأ في تحديث العميل",
-        error: "خطأ داخلي",
-      });
-    }
-  });
+    },
+  );
+
+  app.put(
+    "/api/customers/:id",
+    requireAuth,
+    requirePermission("manage_customers", "manage_definitions"),
+    async (req, res) => {
+      try {
+        const id = req.params.id?.trim();
+        if (!id) {
+          return res.status(400).json({ message: "معرف العميل غير صحيح" });
+        }
+        const validatedData = insertCustomerSchema.parse(req.body);
+
+        // Convert empty strings to null for fields with length constraints
+        const cleanedData = {
+          ...validatedData,
+          code: validatedData.code || null,
+          user_id: validatedData.user_id || null,
+          tax_number: validatedData.tax_number || null,
+          plate_drawer_code: validatedData.plate_drawer_code || null,
+        };
+
+        const customer = await storage.updateCustomer(id, cleanedData);
+        res.json(customer);
+      } catch (error) {
+        console.error("Customer update error:", error);
+        res.status(400).json({
+          message: "خطأ في تحديث العميل",
+          error: "خطأ داخلي",
+        });
+      }
+    },
+  );
 
   // Sections routes
   app.get("/api/sections", requireAuth, async (req, res) => {
@@ -4213,29 +4985,38 @@ Do not include quotes or explanations.`;
   app.get("/api/customer-products", requireAuth, async (req, res) => {
     try {
       const { customer_id, ids, page, limit, search } = req.query;
-      
-      const options: { customer_id?: string; ids?: number[]; page?: number; limit?: number; search?: string } = {};
-      
-      if (customer_id && typeof customer_id === 'string') {
+
+      const options: {
+        customer_id?: string;
+        ids?: number[];
+        page?: number;
+        limit?: number;
+        search?: string;
+      } = {};
+
+      if (customer_id && typeof customer_id === "string") {
         options.customer_id = customer_id;
       }
-      
-      if (ids && typeof ids === 'string') {
-        options.ids = ids.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+
+      if (ids && typeof ids === "string") {
+        options.ids = ids
+          .split(",")
+          .map((id) => parseInt(id.trim()))
+          .filter((id) => !isNaN(id));
       }
-      
-      if (page && typeof page === 'string') {
+
+      if (page && typeof page === "string") {
         options.page = Math.max(parseInt(page) || 1, 1);
       }
-      
-      if (limit && typeof limit === 'string') {
+
+      if (limit && typeof limit === "string") {
         options.limit = Math.min(Math.max(parseInt(limit) || 50, 1), 500);
       }
-      
-      if (search && typeof search === 'string') {
+
+      if (search && typeof search === "string") {
         options.search = search;
       }
-      
+
       const result = await storage.getCustomerProducts(options);
       res.json(result);
     } catch (error) {
@@ -4244,47 +5025,53 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/customer-products", requireAuth, requirePermission('manage_customers', 'manage_definitions'), async (req, res) => {
-    try {
-      // STEP 1: Zod schema validation
-      const validatedData = insertCustomerProductSchema.parse(req.body);
+  app.post(
+    "/api/customer-products",
+    requireAuth,
+    requirePermission("manage_customers", "manage_definitions"),
+    async (req, res) => {
+      try {
+        // STEP 1: Zod schema validation
+        const validatedData = insertCustomerProductSchema.parse(req.body);
 
-      // STEP 2: DataValidator integration for business rules
-      const validationResult = await getDataValidator(storage).validateData(
-        "customer_products",
-        validatedData,
-      );
-      if (!validationResult.isValid) {
-        const criticalErrors = validationResult.errors.filter(
-          (e) => e.severity === "critical" || e.severity === "high",
+        // STEP 2: DataValidator integration for business rules
+        const validationResult = await getDataValidator(storage).validateData(
+          "customer_products",
+          validatedData,
         );
-        if (criticalErrors.length > 0) {
-          return res.status(400).json({
-            message: criticalErrors[0].message_ar || criticalErrors[0].message,
-            errors: validationResult.errors,
-            success: false,
-          });
+        if (!validationResult.isValid) {
+          const criticalErrors = validationResult.errors.filter(
+            (e) => e.severity === "critical" || e.severity === "high",
+          );
+          if (criticalErrors.length > 0) {
+            return res.status(400).json({
+              message:
+                criticalErrors[0].message_ar || criticalErrors[0].message,
+              errors: validationResult.errors,
+              success: false,
+            });
+          }
         }
+
+        // STEP 3: Create customer product with validated data
+        const customerProduct =
+          await storage.createCustomerProduct(validatedData);
+
+        res.status(201).json({
+          data: customerProduct,
+          message: "تم إنشاء منتج العميل بنجاح",
+          success: true,
+        });
+      } catch (error: any) {
+        console.error("Customer product creation error:", error);
+
+        res.status(500).json({
+          message: "خطأ في إنشاء منتج العميل",
+          success: false,
+        });
       }
-
-      // STEP 3: Create customer product with validated data
-      const customerProduct =
-        await storage.createCustomerProduct(validatedData);
-
-      res.status(201).json({
-        data: customerProduct,
-        message: "تم إنشاء منتج العميل بنجاح",
-        success: true,
-      });
-    } catch (error: any) {
-      console.error("Customer product creation error:", error);
-
-      res.status(500).json({
-        message: "خطأ في إنشاء منتج العميل",
-        success: false,
-      });
-    }
-  });
+    },
+  );
 
   // Locations routes
   app.get("/api/locations", requireAuth, async (req, res) => {
@@ -4331,36 +5118,46 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/inventory-movements", requireAuth, requirePermission('manage_warehouse'), async (req, res) => {
-    try {
-      const validatedData = insertInventoryMovementSchema.parse(req.body);
-      const movement = await storage.createInventoryMovement(validatedData);
-      res.json(movement);
-    } catch (error) {
-      console.error("Inventory movement creation error:", error);
-      res.status(400).json({ message: "بيانات غير صحيحة" });
-    }
-  });
-
-  app.delete("/api/inventory-movements/:id", requireAuth, requirePermission('manage_warehouse'), async (req, res) => {
-    try {
-      // Enhanced parameter validation
-      if (!req.params?.id) {
-        return res.status(400).json({ message: "معرف الحركة مطلوب" });
+  app.post(
+    "/api/inventory-movements",
+    requireAuth,
+    requirePermission("manage_warehouse"),
+    async (req, res) => {
+      try {
+        const validatedData = insertInventoryMovementSchema.parse(req.body);
+        const movement = await storage.createInventoryMovement(validatedData);
+        res.json(movement);
+      } catch (error) {
+        console.error("Inventory movement creation error:", error);
+        res.status(400).json({ message: "بيانات غير صحيحة" });
       }
+    },
+  );
 
-      const id = parseInt(req.params.id);
-      if (isNaN(id) || id <= 0) {
-        return res.status(400).json({ message: "معرف الحركة غير صحيح" });
+  app.delete(
+    "/api/inventory-movements/:id",
+    requireAuth,
+    requirePermission("manage_warehouse"),
+    async (req, res) => {
+      try {
+        // Enhanced parameter validation
+        if (!req.params?.id) {
+          return res.status(400).json({ message: "معرف الحركة مطلوب" });
+        }
+
+        const id = parseInt(req.params.id);
+        if (isNaN(id) || id <= 0) {
+          return res.status(400).json({ message: "معرف الحركة غير صحيح" });
+        }
+
+        await storage.deleteInventoryMovement(id);
+        res.json({ message: "تم حذف الحركة بنجاح" });
+      } catch (error) {
+        console.error("Inventory movement deletion error:", error);
+        res.status(500).json({ message: "خطأ في حذف الحركة" });
       }
-
-      await storage.deleteInventoryMovement(id);
-      res.json({ message: "تم حذف الحركة بنجاح" });
-    } catch (error) {
-      console.error("Inventory movement deletion error:", error);
-      res.status(500).json({ message: "خطأ في حذف الحركة" });
-    }
-  });
+    },
+  );
 
   // Users routes
   app.get("/api/users", requireAuth, async (req, res) => {
@@ -4418,96 +5215,111 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/categories", requireAuth, requirePermission('manage_categories', 'manage_definitions'), async (req, res) => {
-    try {
+  app.post(
+    "/api/categories",
+    requireAuth,
+    requirePermission("manage_categories", "manage_definitions"),
+    async (req, res) => {
+      try {
+        // Generate sequential ID if not provided with enhanced null safety
+        let categoryId = req.body?.id;
+        if (!categoryId) {
+          const existingCategories = (await storage.getCategories()) || [];
+          const categoryNumbers = existingCategories
+            .map((cat) => cat?.id)
+            .filter(
+              (id) =>
+                id &&
+                typeof id === "string" &&
+                id.startsWith("CAT") &&
+                id.length <= 6,
+            ) // Standard format only
+            .map((id) => {
+              const num = id.replace("CAT", "");
+              const parsed = parseInt(num);
+              return isNaN(parsed) ? 0 : parsed;
+            })
+            .filter((num) => num > 0)
+            .sort((a, b) => b - a);
 
-      // Generate sequential ID if not provided with enhanced null safety
-      let categoryId = req.body?.id;
-      if (!categoryId) {
-        const existingCategories = (await storage.getCategories()) || [];
-        const categoryNumbers = existingCategories
-          .map((cat) => cat?.id)
-          .filter(
-            (id) =>
-              id &&
-              typeof id === "string" &&
-              id.startsWith("CAT") &&
-              id.length <= 6,
-          ) // Standard format only
-          .map((id) => {
-            const num = id.replace("CAT", "");
-            const parsed = parseInt(num);
-            return isNaN(parsed) ? 0 : parsed;
-          })
-          .filter((num) => num > 0)
-          .sort((a, b) => b - a);
+          const nextNumber =
+            categoryNumbers.length > 0 ? categoryNumbers[0] + 1 : 1;
+          categoryId =
+            nextNumber < 10 ? `CAT0${nextNumber}` : `CAT${nextNumber}`;
+        }
 
-        const nextNumber =
-          categoryNumbers.length > 0 ? categoryNumbers[0] + 1 : 1;
-        categoryId = nextNumber < 10 ? `CAT0${nextNumber}` : `CAT${nextNumber}`;
+        // Enhanced null safety for request body processing
+        const processedData = {
+          ...req.body,
+          id: categoryId,
+          parent_id:
+            !req.body?.parent_id ||
+            req.body.parent_id === "none" ||
+            req.body.parent_id === ""
+              ? null
+              : req.body.parent_id,
+          code: !req.body?.code || req.body.code === "" ? null : req.body.code,
+        };
+
+        const category = await storage.createCategory(processedData);
+        res.json(category);
+      } catch (error) {
+        console.error("Category creation error:", error);
+        res.status(500).json({
+          message: "خطأ في إنشاء الفئة",
+          error: "خطأ داخلي",
+        });
       }
+    },
+  );
 
-      // Enhanced null safety for request body processing
-      const processedData = {
-        ...req.body,
-        id: categoryId,
-        parent_id:
-          !req.body?.parent_id ||
-          req.body.parent_id === "none" ||
-          req.body.parent_id === ""
-            ? null
-            : req.body.parent_id,
-        code: !req.body?.code || req.body.code === "" ? null : req.body.code,
-      };
+  app.put(
+    "/api/categories/:id",
+    requireAuth,
+    requirePermission("manage_categories", "manage_definitions"),
+    async (req, res) => {
+      try {
+        const id = req.params.id;
 
-      const category = await storage.createCategory(processedData);
-      res.json(category);
-    } catch (error) {
-      console.error("Category creation error:", error);
-      res.status(500).json({
-        message: "خطأ في إنشاء الفئة",
-        error: "خطأ داخلي",
-      });
-    }
-  });
+        const processedData = {
+          ...req.body,
+          parent_id:
+            req.body.parent_id === "none" || req.body.parent_id === ""
+              ? null
+              : req.body.parent_id,
+          code: req.body.code === "" || !req.body.code ? null : req.body.code,
+        };
 
-  app.put("/api/categories/:id", requireAuth, requirePermission('manage_categories', 'manage_definitions'), async (req, res) => {
-    try {
-      const id = req.params.id;
+        const category = await storage.updateCategory(id, processedData);
+        res.json(category);
+      } catch (error) {
+        console.error("Category update error:", error);
+        res.status(500).json({
+          message: "خطأ في تحديث الفئة",
+          error: "خطأ داخلي",
+        });
+      }
+    },
+  );
 
-      const processedData = {
-        ...req.body,
-        parent_id:
-          req.body.parent_id === "none" || req.body.parent_id === ""
-            ? null
-            : req.body.parent_id,
-        code: req.body.code === "" || !req.body.code ? null : req.body.code,
-      };
-
-      const category = await storage.updateCategory(id, processedData);
-      res.json(category);
-    } catch (error) {
-      console.error("Category update error:", error);
-      res.status(500).json({
-        message: "خطأ في تحديث الفئة",
-        error: "خطأ داخلي",
-      });
-    }
-  });
-
-  app.delete("/api/categories/:id", requireAuth, requirePermission('manage_categories', 'manage_definitions'), async (req, res) => {
-    try {
-      const id = req.params.id;
-      await storage.deleteCategory(id);
-      res.json({ message: "تم حذف الفئة بنجاح" });
-    } catch (error) {
-      console.error("Category deletion error:", error);
-      res.status(500).json({
-        message: "خطأ في حذف الفئة",
-        error: "خطأ داخلي",
-      });
-    }
-  });
+  app.delete(
+    "/api/categories/:id",
+    requireAuth,
+    requirePermission("manage_categories", "manage_definitions"),
+    async (req, res) => {
+      try {
+        const id = req.params.id;
+        await storage.deleteCategory(id);
+        res.json({ message: "تم حذف الفئة بنجاح" });
+      } catch (error) {
+        console.error("Category deletion error:", error);
+        res.status(500).json({
+          message: "خطأ في حذف الفئة",
+          error: "خطأ داخلي",
+        });
+      }
+    },
+  );
 
   // ===== Master Batch Colors Routes =====
   app.get("/api/master-batch-colors", requireAuth, async (req, res) => {
@@ -4537,63 +5349,83 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/master-batch-colors", requireAuth, requirePermission('manage_master_batch', 'manage_definitions'), async (req, res) => {
-    try {
-      const parseResult = insertMasterBatchColorSchema.safeParse(req.body);
-      if (!parseResult.success) {
-        return res.status(400).json({ 
-          message: "بيانات غير صحيحة",
-          errors: parseResult.error.errors 
+  app.post(
+    "/api/master-batch-colors",
+    requireAuth,
+    requirePermission("manage_master_batch", "manage_definitions"),
+    async (req, res) => {
+      try {
+        const parseResult = insertMasterBatchColorSchema.safeParse(req.body);
+        if (!parseResult.success) {
+          return res.status(400).json({
+            message: "بيانات غير صحيحة",
+            errors: parseResult.error.errors,
+          });
+        }
+        const color = await storage.createMasterBatchColor(parseResult.data);
+        res.status(201).json(color);
+      } catch (error) {
+        console.error("Error creating master batch color:", error);
+        res.status(500).json({
+          message: "خطأ في إنشاء لون الماستر باتش",
         });
       }
-      const color = await storage.createMasterBatchColor(parseResult.data);
-      res.status(201).json(color);
-    } catch (error) {
-      console.error("Error creating master batch color:", error);
-      res.status(500).json({ 
-        message: "خطأ في إنشاء لون الماستر باتش"
-      });
-    }
-  });
+    },
+  );
 
-  app.put("/api/master-batch-colors/:id", requireAuth, requirePermission('manage_master_batch', 'manage_definitions'), async (req, res) => {
-    try {
-      const id = req.params.id?.trim();
-      if (!id) {
-        return res.status(400).json({ message: "معرف اللون مطلوب" });
-      }
-      const parseResult = insertMasterBatchColorSchema.partial().safeParse(req.body);
-      if (!parseResult.success) {
-        return res.status(400).json({ 
-          message: "بيانات غير صحيحة",
-          errors: parseResult.error.errors 
+  app.put(
+    "/api/master-batch-colors/:id",
+    requireAuth,
+    requirePermission("manage_master_batch", "manage_definitions"),
+    async (req, res) => {
+      try {
+        const id = req.params.id?.trim();
+        if (!id) {
+          return res.status(400).json({ message: "معرف اللون مطلوب" });
+        }
+        const parseResult = insertMasterBatchColorSchema
+          .partial()
+          .safeParse(req.body);
+        if (!parseResult.success) {
+          return res.status(400).json({
+            message: "بيانات غير صحيحة",
+            errors: parseResult.error.errors,
+          });
+        }
+        const color = await storage.updateMasterBatchColor(
+          id,
+          parseResult.data,
+        );
+        res.json(color);
+      } catch (error) {
+        console.error("Error updating master batch color:", error);
+        res.status(500).json({
+          message: "خطأ في تحديث لون الماستر باتش",
         });
       }
-      const color = await storage.updateMasterBatchColor(id, parseResult.data);
-      res.json(color);
-    } catch (error) {
-      console.error("Error updating master batch color:", error);
-      res.status(500).json({ 
-        message: "خطأ في تحديث لون الماستر باتش"
-      });
-    }
-  });
+    },
+  );
 
-  app.delete("/api/master-batch-colors/:id", requireAuth, requirePermission('manage_master_batch', 'manage_definitions'), async (req, res) => {
-    try {
-      const id = req.params.id?.trim();
-      if (!id) {
-        return res.status(400).json({ message: "معرف اللون مطلوب" });
+  app.delete(
+    "/api/master-batch-colors/:id",
+    requireAuth,
+    requirePermission("manage_master_batch", "manage_definitions"),
+    async (req, res) => {
+      try {
+        const id = req.params.id?.trim();
+        if (!id) {
+          return res.status(400).json({ message: "معرف اللون مطلوب" });
+        }
+        await storage.deleteMasterBatchColor(id);
+        res.json({ message: "تم حذف اللون بنجاح" });
+      } catch (error) {
+        console.error("Error deleting master batch color:", error);
+        res.status(500).json({
+          message: "خطأ في حذف لون الماستر باتش",
+        });
       }
-      await storage.deleteMasterBatchColor(id);
-      res.json({ message: "تم حذف اللون بنجاح" });
-    } catch (error) {
-      console.error("Error deleting master batch color:", error);
-      res.status(500).json({ 
-        message: "خطأ في حذف لون الماستر باتش"
-      });
-    }
-  });
+    },
+  );
 
   // Training Records routes
   app.get("/api/training-records", requireAuth, async (req, res) => {
@@ -4610,9 +5442,14 @@ Do not include quotes or explanations.`;
     try {
       const validation = insertTrainingRecordSchema.safeParse(req.body);
       if (!validation.success) {
-        return res.status(400).json({ message: "بيانات غير صحيحة", errors: validation.error.errors });
+        return res.status(400).json({
+          message: "بيانات غير صحيحة",
+          errors: validation.error.errors,
+        });
       }
-      const trainingRecord = await storage.createTrainingRecord(validation.data);
+      const trainingRecord = await storage.createTrainingRecord(
+        validation.data,
+      );
       res.json(trainingRecord);
     } catch (error) {
       res.status(400).json({ message: "بيانات غير صحيحة" });
@@ -4634,7 +5471,10 @@ Do not include quotes or explanations.`;
     try {
       const validation = insertAdminDecisionSchema.safeParse(req.body);
       if (!validation.success) {
-        return res.status(400).json({ message: "بيانات غير صحيحة", errors: validation.error.errors });
+        return res.status(400).json({
+          message: "بيانات غير صحيحة",
+          errors: validation.error.errors,
+        });
       }
       const adminDecision = await storage.createAdminDecision(validation.data);
       res.json(adminDecision);
@@ -4676,22 +5516,29 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/warehouse-transactions", requireAuth, requirePermission('manage_warehouse'), async (req, res) => {
-    try {
-      if (!req.body || typeof req.body !== "object") {
-        return res.status(400).json({ message: "بيانات الحركة مطلوبة" });
+  app.post(
+    "/api/warehouse-transactions",
+    requireAuth,
+    requirePermission("manage_warehouse"),
+    async (req, res) => {
+      try {
+        if (!req.body || typeof req.body !== "object") {
+          return res.status(400).json({ message: "بيانات الحركة مطلوبة" });
+        }
+        if (!req.body.item_id || !req.body.transaction_type) {
+          return res
+            .status(400)
+            .json({ message: "معرف الصنف ونوع الحركة مطلوبان" });
+        }
+        const warehouseTransaction = await storage.createWarehouseTransaction(
+          req.body,
+        );
+        res.json(warehouseTransaction);
+      } catch (error) {
+        res.status(400).json({ message: "بيانات غير صحيحة" });
       }
-      if (!req.body.item_id || !req.body.transaction_type) {
-        return res.status(400).json({ message: "معرف الصنف ونوع الحركة مطلوبان" });
-      }
-      const warehouseTransaction = await storage.createWarehouseTransaction(
-        req.body,
-      );
-      res.json(warehouseTransaction);
-    } catch (error) {
-      res.status(400).json({ message: "بيانات غير صحيحة" });
-    }
-  });
+    },
+  );
 
   // Mixing Recipes routes
   app.get("/api/mixing-recipes", requireAuth, async (req, res) => {
@@ -4704,25 +5551,30 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/mixing-recipes", requireAuth, requirePermission('manage_mixing', 'manage_production'), async (req, res) => {
-    try {
-      const parsed = insertMixingRecipeSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({
-          message: "بيانات الوصفة غير صحيحة",
-          errors: parsed.error.flatten().fieldErrors,
-        });
+  app.post(
+    "/api/mixing-recipes",
+    requireAuth,
+    requirePermission("manage_mixing", "manage_production"),
+    async (req, res) => {
+      try {
+        const parsed = insertMixingRecipeSchema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({
+            message: "بيانات الوصفة غير صحيحة",
+            errors: parsed.error.flatten().fieldErrors,
+          });
+        }
+        const authUserId = getAuthUserId(req);
+        const payload: Record<string, any> = { ...parsed.data };
+        if (authUserId) payload.created_by = authUserId;
+        const mixingRecipe = await storage.createMixingRecipe(payload);
+        res.status(201).json(mixingRecipe);
+      } catch (error) {
+        console.error("Error creating mixing recipe:", error);
+        res.status(500).json({ message: "خطأ في إنشاء الوصفة" });
       }
-      const authUserId = getAuthUserId(req);
-      const payload: Record<string, any> = { ...parsed.data };
-      if (authUserId) payload.created_by = authUserId;
-      const mixingRecipe = await storage.createMixingRecipe(payload);
-      res.status(201).json(mixingRecipe);
-    } catch (error) {
-      console.error("Error creating mixing recipe:", error);
-      res.status(500).json({ message: "خطأ في إنشاء الوصفة" });
-    }
-  });
+    },
+  );
 
   // Maintenance routes
   app.get("/api/maintenance", requireAuth, async (req, res) => {
@@ -4735,15 +5587,20 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/maintenance", requireAuth, requirePermission('manage_maintenance', 'create_maintenance_requests'), async (req, res) => {
-    try {
-      const validatedData = insertMaintenanceRequestSchema.parse(req.body);
-      const request = await storage.createMaintenanceRequest(validatedData);
-      res.json(request);
-    } catch (error) {
-      res.status(400).json({ message: "بيانات غير صحيحة" });
-    }
-  });
+  app.post(
+    "/api/maintenance",
+    requireAuth,
+    requirePermission("manage_maintenance", "create_maintenance_requests"),
+    async (req, res) => {
+      try {
+        const validatedData = insertMaintenanceRequestSchema.parse(req.body);
+        const request = await storage.createMaintenanceRequest(validatedData);
+        res.json(request);
+      } catch (error) {
+        res.status(400).json({ message: "بيانات غير صحيحة" });
+      }
+    },
+  );
 
   // Quality checks routes
   app.get("/api/quality-checks", requireAuth, async (req, res) => {
@@ -4773,123 +5630,186 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.get("/api/quality-issues/stats", requireAuth, async (req: AuthRequest, res) => {
-    try {
-      const stats = await storage.getQualityIssueStats();
-      res.json({ success: true, data: stats });
-    } catch (error: any) {
-      console.error("Error fetching quality stats:", error);
-      res.status(500).json({ message: "خطأ في جلب إحصائيات الجودة" });
-    }
-  });
-
-  app.get("/api/quality-issues/:id", requireAuth, async (req: AuthRequest, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      const issue = await storage.getQualityIssueById(id);
-      if (!issue) return res.status(404).json({ message: "لم يتم العثور على المشكلة" });
-      res.json({ success: true, data: issue });
-    } catch (error: any) {
-      console.error("Error fetching quality issue:", error);
-      res.status(500).json({ message: "خطأ في جلب بيانات المشكلة" });
-    }
-  });
-
-  app.post("/api/quality-issues", requireAuth, requirePermission('manage_quality'), async (req: AuthRequest, res) => {
-    try {
-      const parseResult = insertQualityIssueSchema.safeParse(req.body);
-      if (!parseResult.success) {
-        return res.status(400).json({ message: "بيانات غير صحيحة", errors: parseResult.error.errors });
+  app.get(
+    "/api/quality-issues/stats",
+    requireAuth,
+    async (req: AuthRequest, res) => {
+      try {
+        const stats = await storage.getQualityIssueStats();
+        res.json({ success: true, data: stats });
+      } catch (error: any) {
+        console.error("Error fetching quality stats:", error);
+        res.status(500).json({ message: "خطأ في جلب إحصائيات الجودة" });
       }
-      const issue = await storage.createQualityIssue(parseResult.data);
-      res.status(201).json({ success: true, data: issue });
-    } catch (error: any) {
-      console.error("Error creating quality issue:", error);
-      res.status(500).json({ message: "خطأ في إنشاء مشكلة الجودة" });
-    }
-  });
+    },
+  );
 
-  app.patch("/api/quality-issues/:id", requireAuth, requirePermission('manage_quality'), async (req: AuthRequest, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      const issue = await storage.updateQualityIssue(id, req.body);
-      if (!issue) return res.status(404).json({ message: "لم يتم العثور على المشكلة" });
-      res.json({ success: true, data: issue });
-    } catch (error: any) {
-      console.error("Error updating quality issue:", error);
-      res.status(500).json({ message: "خطأ في تحديث مشكلة الجودة" });
-    }
-  });
+  app.get(
+    "/api/quality-issues/:id",
+    requireAuth,
+    async (req: AuthRequest, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const issue = await storage.getQualityIssueById(id);
+        if (!issue)
+          return res.status(404).json({ message: "لم يتم العثور على المشكلة" });
+        res.json({ success: true, data: issue });
+      } catch (error: any) {
+        console.error("Error fetching quality issue:", error);
+        res.status(500).json({ message: "خطأ في جلب بيانات المشكلة" });
+      }
+    },
+  );
 
-  app.delete("/api/quality-issues/:id", requireAuth, requirePermission('manage_quality'), async (req: AuthRequest, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      const deleted = await storage.deleteQualityIssue(id);
-      if (!deleted) return res.status(404).json({ message: "لم يتم العثور على المشكلة" });
-      res.json({ success: true });
-    } catch (error: any) {
-      console.error("Error deleting quality issue:", error);
-      res.status(500).json({ message: "خطأ في حذف مشكلة الجودة" });
-    }
-  });
+  app.post(
+    "/api/quality-issues",
+    requireAuth,
+    requirePermission("manage_quality"),
+    async (req: AuthRequest, res) => {
+      try {
+        const parseResult = insertQualityIssueSchema.safeParse(req.body);
+        if (!parseResult.success) {
+          return res.status(400).json({
+            message: "بيانات غير صحيحة",
+            errors: parseResult.error.errors,
+          });
+        }
+        const issue = await storage.createQualityIssue(parseResult.data);
+        res.status(201).json({ success: true, data: issue });
+      } catch (error: any) {
+        console.error("Error creating quality issue:", error);
+        res.status(500).json({ message: "خطأ في إنشاء مشكلة الجودة" });
+      }
+    },
+  );
 
-  app.post("/api/quality-issues/:id/responsibles", requireAuth, requirePermission('manage_quality'), async (req: AuthRequest, res) => {
-    try {
-      const issueId = parseRouteParam(req.params.id, "id");
-      const resp = await storage.addQualityIssueResponsible({ ...req.body, quality_issue_id: issueId });
-      res.status(201).json({ success: true, data: resp });
-    } catch (error: any) {
-      console.error("Error adding responsible:", error);
-      res.status(500).json({ message: "خطأ في إضافة المتسبب" });
-    }
-  });
+  app.patch(
+    "/api/quality-issues/:id",
+    requireAuth,
+    requirePermission("manage_quality"),
+    async (req: AuthRequest, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const issue = await storage.updateQualityIssue(id, req.body);
+        if (!issue)
+          return res.status(404).json({ message: "لم يتم العثور على المشكلة" });
+        res.json({ success: true, data: issue });
+      } catch (error: any) {
+        console.error("Error updating quality issue:", error);
+        res.status(500).json({ message: "خطأ في تحديث مشكلة الجودة" });
+      }
+    },
+  );
 
-  app.patch("/api/quality-issues/responsibles/:id", requireAuth, requirePermission('manage_quality'), async (req: AuthRequest, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      const resp = await storage.updateQualityIssueResponsible(id, req.body);
-      if (!resp) return res.status(404).json({ message: "لم يتم العثور على السجل" });
-      res.json({ success: true, data: resp });
-    } catch (error: any) {
-      console.error("Error updating responsible:", error);
-      res.status(500).json({ message: "خطأ في تحديث بيانات المتسبب" });
-    }
-  });
+  app.delete(
+    "/api/quality-issues/:id",
+    requireAuth,
+    requirePermission("manage_quality"),
+    async (req: AuthRequest, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const deleted = await storage.deleteQualityIssue(id);
+        if (!deleted)
+          return res.status(404).json({ message: "لم يتم العثور على المشكلة" });
+        res.json({ success: true });
+      } catch (error: any) {
+        console.error("Error deleting quality issue:", error);
+        res.status(500).json({ message: "خطأ في حذف مشكلة الجودة" });
+      }
+    },
+  );
 
-  app.delete("/api/quality-issues/responsibles/:id", requireAuth, requirePermission('manage_quality'), async (req: AuthRequest, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      const deleted = await storage.deleteQualityIssueResponsible(id);
-      if (!deleted) return res.status(404).json({ message: "لم يتم العثور على السجل" });
-      res.json({ success: true });
-    } catch (error: any) {
-      console.error("Error deleting responsible:", error);
-      res.status(500).json({ message: "خطأ في حذف المتسبب" });
-    }
-  });
+  app.post(
+    "/api/quality-issues/:id/responsibles",
+    requireAuth,
+    requirePermission("manage_quality"),
+    async (req: AuthRequest, res) => {
+      try {
+        const issueId = parseRouteParam(req.params.id, "id");
+        const resp = await storage.addQualityIssueResponsible({
+          ...req.body,
+          quality_issue_id: issueId,
+        });
+        res.status(201).json({ success: true, data: resp });
+      } catch (error: any) {
+        console.error("Error adding responsible:", error);
+        res.status(500).json({ message: "خطأ في إضافة المتسبب" });
+      }
+    },
+  );
 
-  app.post("/api/quality-issues/:id/actions", requireAuth, requirePermission('manage_quality'), async (req: AuthRequest, res) => {
-    try {
-      const issueId = parseRouteParam(req.params.id, "id");
-      const action = await storage.addQualityIssueAction({ ...req.body, quality_issue_id: issueId });
-      res.status(201).json({ success: true, data: action });
-    } catch (error: any) {
-      console.error("Error adding action:", error);
-      res.status(500).json({ message: "خطأ في إضافة الإجراء" });
-    }
-  });
+  app.patch(
+    "/api/quality-issues/responsibles/:id",
+    requireAuth,
+    requirePermission("manage_quality"),
+    async (req: AuthRequest, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const resp = await storage.updateQualityIssueResponsible(id, req.body);
+        if (!resp)
+          return res.status(404).json({ message: "لم يتم العثور على السجل" });
+        res.json({ success: true, data: resp });
+      } catch (error: any) {
+        console.error("Error updating responsible:", error);
+        res.status(500).json({ message: "خطأ في تحديث بيانات المتسبب" });
+      }
+    },
+  );
 
-  app.patch("/api/quality-issues/actions/:id", requireAuth, requirePermission('manage_quality'), async (req: AuthRequest, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      const action = await storage.updateQualityIssueAction(id, req.body);
-      if (!action) return res.status(404).json({ message: "لم يتم العثور على الإجراء" });
-      res.json({ success: true, data: action });
-    } catch (error: any) {
-      console.error("Error updating action:", error);
-      res.status(500).json({ message: "خطأ في تحديث الإجراء" });
-    }
-  });
+  app.delete(
+    "/api/quality-issues/responsibles/:id",
+    requireAuth,
+    requirePermission("manage_quality"),
+    async (req: AuthRequest, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const deleted = await storage.deleteQualityIssueResponsible(id);
+        if (!deleted)
+          return res.status(404).json({ message: "لم يتم العثور على السجل" });
+        res.json({ success: true });
+      } catch (error: any) {
+        console.error("Error deleting responsible:", error);
+        res.status(500).json({ message: "خطأ في حذف المتسبب" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/quality-issues/:id/actions",
+    requireAuth,
+    requirePermission("manage_quality"),
+    async (req: AuthRequest, res) => {
+      try {
+        const issueId = parseRouteParam(req.params.id, "id");
+        const action = await storage.addQualityIssueAction({
+          ...req.body,
+          quality_issue_id: issueId,
+        });
+        res.status(201).json({ success: true, data: action });
+      } catch (error: any) {
+        console.error("Error adding action:", error);
+        res.status(500).json({ message: "خطأ في إضافة الإجراء" });
+      }
+    },
+  );
+
+  app.patch(
+    "/api/quality-issues/actions/:id",
+    requireAuth,
+    requirePermission("manage_quality"),
+    async (req: AuthRequest, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const action = await storage.updateQualityIssueAction(id, req.body);
+        if (!action)
+          return res.status(404).json({ message: "لم يتم العثور على الإجراء" });
+        res.json({ success: true, data: action });
+      } catch (error: any) {
+        console.error("Error updating action:", error);
+        res.status(500).json({ message: "خطأ في تحديث الإجراء" });
+      }
+    },
+  );
 
   // Maintenance requests routes
   app.get("/api/maintenance-requests", requireAuth, async (req, res) => {
@@ -4902,38 +5822,52 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/maintenance-requests", requireAuth, requirePermission('manage_maintenance'), async (req, res) => {
-    try {
-      
-      // Process the data to convert string values to appropriate types
-      const processedData = { ...req.body };
-      
-      // machine_id stays as string (e.g., 'MAC12')
-      // No conversion needed
-      
-      // Convert reported_by from string to number
-      if (processedData.reported_by && typeof processedData.reported_by === 'string') {
-        processedData.reported_by = parseInt(processedData.reported_by, 10);
+  app.post(
+    "/api/maintenance-requests",
+    requireAuth,
+    requirePermission("manage_maintenance"),
+    async (req, res) => {
+      try {
+        // Process the data to convert string values to appropriate types
+        const processedData = { ...req.body };
+
+        // machine_id stays as string (e.g., 'MAC12')
+        // No conversion needed
+
+        // Convert reported_by from string to number
+        if (
+          processedData.reported_by &&
+          typeof processedData.reported_by === "string"
+        ) {
+          processedData.reported_by = parseInt(processedData.reported_by, 10);
+        }
+
+        // Convert assigned_to from empty string to null, or from string to number
+        if (
+          processedData.assigned_to === "" ||
+          processedData.assigned_to === "none"
+        ) {
+          processedData.assigned_to = null;
+        } else if (
+          processedData.assigned_to &&
+          typeof processedData.assigned_to === "string"
+        ) {
+          processedData.assigned_to = parseInt(processedData.assigned_to, 10);
+        }
+
+        const validatedData =
+          insertMaintenanceRequestSchema.parse(processedData);
+        const request = await storage.createMaintenanceRequest(validatedData);
+        res.json(request);
+      } catch (error) {
+        console.error("Error creating maintenance request:", error);
+        res.status(500).json({
+          message: "خطأ في إنشاء طلب الصيانة",
+          error: "خطأ داخلي",
+        });
       }
-      
-      // Convert assigned_to from empty string to null, or from string to number
-      if (processedData.assigned_to === '' || processedData.assigned_to === 'none') {
-        processedData.assigned_to = null;
-      } else if (processedData.assigned_to && typeof processedData.assigned_to === 'string') {
-        processedData.assigned_to = parseInt(processedData.assigned_to, 10);
-      }
-      
-      const validatedData = insertMaintenanceRequestSchema.parse(processedData);
-      const request = await storage.createMaintenanceRequest(validatedData);
-      res.json(request);
-    } catch (error) {
-      console.error("Error creating maintenance request:", error);
-      res.status(500).json({
-        message: "خطأ في إنشاء طلب الصيانة",
-        error: "خطأ داخلي",
-      });
-    }
-  });
+    },
+  );
 
   // Maintenance Actions routes
   app.get("/api/maintenance-actions", requireAuth, async (req, res) => {
@@ -4946,52 +5880,72 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.get("/api/maintenance-actions/request/:requestId", requireAuth, async (req, res) => {
-    try {
-      const requestId = parseRouteParam(req.params.requestId, "Request ID");
-      const actions = await storage.getMaintenanceActionsByRequestId(requestId);
-      res.json(actions);
-    } catch (error) {
-      console.error("Error fetching maintenance actions by request:", error);
-      res.status(500).json({ message: "خطأ في جلب إجراءات الصيانة للطلب" });
-    }
-  });
+  app.get(
+    "/api/maintenance-actions/request/:requestId",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const requestId = parseRouteParam(req.params.requestId, "Request ID");
+        const actions =
+          await storage.getMaintenanceActionsByRequestId(requestId);
+        res.json(actions);
+      } catch (error) {
+        console.error("Error fetching maintenance actions by request:", error);
+        res.status(500).json({ message: "خطأ في جلب إجراءات الصيانة للطلب" });
+      }
+    },
+  );
 
-  app.post("/api/maintenance-actions", requireAuth, requirePermission('manage_maintenance'), async (req, res) => {
-    try {
-      const data = insertMaintenanceActionSchema.parse(req.body);
-      const action = await storage.createMaintenanceAction(data);
-      res.json(action);
-    } catch (error) {
-      console.error("Error creating maintenance action:", error);
-      res.status(500).json({
-        message: "خطأ في إنشاء إجراء الصيانة",
-        error: "خطأ داخلي",
-      });
-    }
-  });
+  app.post(
+    "/api/maintenance-actions",
+    requireAuth,
+    requirePermission("manage_maintenance"),
+    async (req, res) => {
+      try {
+        const data = insertMaintenanceActionSchema.parse(req.body);
+        const action = await storage.createMaintenanceAction(data);
+        res.json(action);
+      } catch (error) {
+        console.error("Error creating maintenance action:", error);
+        res.status(500).json({
+          message: "خطأ في إنشاء إجراء الصيانة",
+          error: "خطأ داخلي",
+        });
+      }
+    },
+  );
 
-  app.put("/api/maintenance-actions/:id", requireAuth, requirePermission('manage_maintenance'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "ID");
-      const action = await storage.updateMaintenanceAction(id, req.body);
-      res.json(action);
-    } catch (error) {
-      console.error("Error updating maintenance action:", error);
-      res.status(500).json({ message: "خطأ في تحديث إجراء الصيانة" });
-    }
-  });
+  app.put(
+    "/api/maintenance-actions/:id",
+    requireAuth,
+    requirePermission("manage_maintenance"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "ID");
+        const action = await storage.updateMaintenanceAction(id, req.body);
+        res.json(action);
+      } catch (error) {
+        console.error("Error updating maintenance action:", error);
+        res.status(500).json({ message: "خطأ في تحديث إجراء الصيانة" });
+      }
+    },
+  );
 
-  app.delete("/api/maintenance-actions/:id", requireAuth, requirePermission('manage_maintenance'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "ID");
-      await storage.deleteMaintenanceAction(id);
-      res.json({ message: "تم حذف إجراء الصيانة بنجاح" });
-    } catch (error) {
-      console.error("Error deleting maintenance action:", error);
-      res.status(500).json({ message: "خطأ في حذف إجراء الصيانة" });
-    }
-  });
+  app.delete(
+    "/api/maintenance-actions/:id",
+    requireAuth,
+    requirePermission("manage_maintenance"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "ID");
+        await storage.deleteMaintenanceAction(id);
+        res.json({ message: "تم حذف إجراء الصيانة بنجاح" });
+      } catch (error) {
+        console.error("Error deleting maintenance action:", error);
+        res.status(500).json({ message: "خطأ في حذف إجراء الصيانة" });
+      }
+    },
+  );
 
   // Maintenance Reports routes
   app.get("/api/maintenance-reports", requireAuth, async (req, res) => {
@@ -5007,38 +5961,53 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/maintenance-reports", requireAuth, requirePermission('manage_maintenance'), async (req, res) => {
-    try {
-      const data = insertMaintenanceReportSchema.parse(req.body);
-      const report = await storage.createMaintenanceReport(data);
-      res.json(report);
-    } catch (error) {
-      console.error("Error creating maintenance report:", error);
-      res.status(500).json({ message: "خطأ في إنشاء بلاغ الصيانة" });
-    }
-  });
+  app.post(
+    "/api/maintenance-reports",
+    requireAuth,
+    requirePermission("manage_maintenance"),
+    async (req, res) => {
+      try {
+        const data = insertMaintenanceReportSchema.parse(req.body);
+        const report = await storage.createMaintenanceReport(data);
+        res.json(report);
+      } catch (error) {
+        console.error("Error creating maintenance report:", error);
+        res.status(500).json({ message: "خطأ في إنشاء بلاغ الصيانة" });
+      }
+    },
+  );
 
-  app.put("/api/maintenance-reports/:id", requireAuth, requirePermission('manage_maintenance'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "ID");
-      const report = await storage.updateMaintenanceReport(id, req.body);
-      res.json(report);
-    } catch (error) {
-      console.error("Error updating maintenance report:", error);
-      res.status(500).json({ message: "خطأ في تحديث بلاغ الصيانة" });
-    }
-  });
+  app.put(
+    "/api/maintenance-reports/:id",
+    requireAuth,
+    requirePermission("manage_maintenance"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "ID");
+        const report = await storage.updateMaintenanceReport(id, req.body);
+        res.json(report);
+      } catch (error) {
+        console.error("Error updating maintenance report:", error);
+        res.status(500).json({ message: "خطأ في تحديث بلاغ الصيانة" });
+      }
+    },
+  );
 
-  app.delete("/api/maintenance-reports/:id", requireAuth, requirePermission('manage_maintenance'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "ID");
-      await storage.deleteMaintenanceReport(id);
-      res.json({ message: "تم حذف بلاغ الصيانة بنجاح" });
-    } catch (error) {
-      console.error("Error deleting maintenance report:", error);
-      res.status(500).json({ message: "خطأ في حذف بلاغ الصيانة" });
-    }
-  });
+  app.delete(
+    "/api/maintenance-reports/:id",
+    requireAuth,
+    requirePermission("manage_maintenance"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "ID");
+        await storage.deleteMaintenanceReport(id);
+        res.json({ message: "تم حذف بلاغ الصيانة بنجاح" });
+      } catch (error) {
+        console.error("Error deleting maintenance report:", error);
+        res.status(500).json({ message: "خطأ في حذف بلاغ الصيانة" });
+      }
+    },
+  );
 
   // Operator Negligence Reports routes
   app.get("/api/operator-negligence-reports", requireAuth, async (req, res) => {
@@ -5056,38 +6025,54 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/operator-negligence-reports", requireAuth, async (req, res) => {
-    try {
-      const data = insertOperatorNegligenceReportSchema.parse(req.body);
-      const report = await storage.createOperatorNegligenceReport(data);
-      res.json(report);
-    } catch (error) {
-      console.error("Error creating operator negligence report:", error);
-      res.status(500).json({ message: "خطأ في إنشاء بلاغ إهمال المشغل" });
-    }
-  });
+  app.post(
+    "/api/operator-negligence-reports",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const data = insertOperatorNegligenceReportSchema.parse(req.body);
+        const report = await storage.createOperatorNegligenceReport(data);
+        res.json(report);
+      } catch (error) {
+        console.error("Error creating operator negligence report:", error);
+        res.status(500).json({ message: "خطأ في إنشاء بلاغ إهمال المشغل" });
+      }
+    },
+  );
 
-  app.put("/api/operator-negligence-reports/:id", requireAuth, async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "ID");
-      const report = await storage.updateOperatorNegligenceReport(id, req.body);
-      res.json(report);
-    } catch (error) {
-      console.error("Error updating operator negligence report:", error);
-      res.status(500).json({ message: "خطأ في تحديث بلاغ إهمال المشغل" });
-    }
-  });
+  app.put(
+    "/api/operator-negligence-reports/:id",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "ID");
+        const report = await storage.updateOperatorNegligenceReport(
+          id,
+          req.body,
+        );
+        res.json(report);
+      } catch (error) {
+        console.error("Error updating operator negligence report:", error);
+        res.status(500).json({ message: "خطأ في تحديث بلاغ إهمال المشغل" });
+      }
+    },
+  );
 
-  app.delete("/api/operator-negligence-reports/:id", requireAuth, requirePermission('manage_production', 'manage_maintenance'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "ID");
-      await storage.deleteOperatorNegligenceReport(id);
-      res.json({ message: "تم حذف بلاغ إهمال المشغل بنجاح" });
-    } catch (error) {
-      console.error("Error deleting operator negligence report:", error);
-      res.status(500).json({ message: "خطأ في حذف بلاغ إهمال المشغل" });
-    }
-  });
+  app.delete(
+    "/api/operator-negligence-reports/:id",
+    requireAuth,
+    requirePermission("manage_production", "manage_maintenance"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "ID");
+        await storage.deleteOperatorNegligenceReport(id);
+        res.json({ message: "تم حذف بلاغ إهمال المشغل بنجاح" });
+      } catch (error) {
+        console.error("Error deleting operator negligence report:", error);
+        res.status(500).json({ message: "خطأ في حذف بلاغ إهمال المشغل" });
+      }
+    },
+  );
 
   // Spare Parts routes
   app.get("/api/spare-parts", requireAuth, async (req, res) => {
@@ -5100,54 +6085,73 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/spare-parts", requireAuth, requirePermission('manage_maintenance'), async (req, res) => {
-    try {
-      const parsed = insertSparePartSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({
-          message: "بيانات قطعة الغيار غير صحيحة",
-          errors: parsed.error.flatten().fieldErrors,
+  app.post(
+    "/api/spare-parts",
+    requireAuth,
+    requirePermission("manage_maintenance"),
+    async (req, res) => {
+      try {
+        const parsed = insertSparePartSchema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({
+            message: "بيانات قطعة الغيار غير صحيحة",
+            errors: parsed.error.flatten().fieldErrors,
+          });
+        }
+        const sparePart = await storage.createSparePart(parsed.data);
+        res.status(201).json(sparePart);
+      } catch (error: any) {
+        console.error("Error creating spare part:", error);
+        const isUnique =
+          String(error?.code) === "23505" ||
+          /unique/i.test(String(error?.message));
+        res.status(isUnique ? 409 : 500).json({
+          message: isUnique
+            ? "رقم القطعة موجود مسبقاً"
+            : "خطأ في إنشاء قطعة الغيار",
         });
       }
-      const sparePart = await storage.createSparePart(parsed.data);
-      res.status(201).json(sparePart);
-    } catch (error: any) {
-      console.error("Error creating spare part:", error);
-      const isUnique = String(error?.code) === "23505" || /unique/i.test(String(error?.message));
-      res.status(isUnique ? 409 : 500).json({
-        message: isUnique ? "رقم القطعة موجود مسبقاً" : "خطأ في إنشاء قطعة الغيار",
-      });
-    }
-  });
+    },
+  );
 
-  app.put("/api/spare-parts/:id", requireAuth, requirePermission('manage_maintenance'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "ID");
-      const parsed = updateSparePartSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({
-          message: "بيانات التحديث غير صحيحة",
-          errors: parsed.error.flatten().fieldErrors,
-        });
+  app.put(
+    "/api/spare-parts/:id",
+    requireAuth,
+    requirePermission("manage_maintenance"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "ID");
+        const parsed = updateSparePartSchema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({
+            message: "بيانات التحديث غير صحيحة",
+            errors: parsed.error.flatten().fieldErrors,
+          });
+        }
+        const sparePart = await storage.updateSparePart(id, parsed.data);
+        res.json(sparePart);
+      } catch (error) {
+        console.error("Error updating spare part:", error);
+        res.status(500).json({ message: "خطأ في تحديث قطعة الغيار" });
       }
-      const sparePart = await storage.updateSparePart(id, parsed.data);
-      res.json(sparePart);
-    } catch (error) {
-      console.error("Error updating spare part:", error);
-      res.status(500).json({ message: "خطأ في تحديث قطعة الغيار" });
-    }
-  });
+    },
+  );
 
-  app.delete("/api/spare-parts/:id", requireAuth, requirePermission('manage_maintenance'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "ID");
-      await storage.deleteSparePart(id);
-      res.json({ message: "تم حذف قطعة الغيار بنجاح" });
-    } catch (error) {
-      console.error("Error deleting spare part:", error);
-      res.status(500).json({ message: "خطأ في حذف قطعة الغيار" });
-    }
-  });
+  app.delete(
+    "/api/spare-parts/:id",
+    requireAuth,
+    requirePermission("manage_maintenance"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "ID");
+        await storage.deleteSparePart(id);
+        res.json({ message: "تم حذف قطعة الغيار بنجاح" });
+      } catch (error) {
+        console.error("Error deleting spare part:", error);
+        res.status(500).json({ message: "خطأ في حذف قطعة الغيار" });
+      }
+    },
+  );
 
   // Consumable Parts routes
   app.get("/api/consumable-parts", requireAuth, async (req, res) => {
@@ -5160,59 +6164,89 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/consumable-parts", requireAuth, requirePermission('manage_maintenance'), async (req, res) => {
-    try {
-      const parseResult = insertConsumablePartSchema.safeParse(req.body);
-      if (!parseResult.success) {
-        return res.status(400).json({ message: "بيانات غير صحيحة", errors: parseResult.error.errors });
+  app.post(
+    "/api/consumable-parts",
+    requireAuth,
+    requirePermission("manage_maintenance"),
+    async (req, res) => {
+      try {
+        const parseResult = insertConsumablePartSchema.safeParse(req.body);
+        if (!parseResult.success) {
+          return res.status(400).json({
+            message: "بيانات غير صحيحة",
+            errors: parseResult.error.errors,
+          });
+        }
+        const consumablePart = await storage.createConsumablePart(
+          parseResult.data,
+        );
+        res.json(consumablePart);
+      } catch (error) {
+        console.error("Error creating consumable part:", error);
+        res
+          .status(500)
+          .json({ message: "خطأ في إنشاء قطعة الغيار الاستهلاكية" });
       }
-      const consumablePart = await storage.createConsumablePart(parseResult.data);
-      res.json(consumablePart);
-    } catch (error) {
-      console.error("Error creating consumable part:", error);
-      res.status(500).json({ message: "خطأ في إنشاء قطعة الغيار الاستهلاكية" });
-    }
-  });
+    },
+  );
 
-  app.put("/api/consumable-parts/:id", requireAuth, requirePermission('manage_maintenance'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "ID");
-      const consumablePart = await storage.updateConsumablePart(id, req.body);
-      res.json(consumablePart);
-    } catch (error) {
-      console.error("Error updating consumable part:", error);
-      res.status(500).json({ message: "خطأ في تحديث قطعة الغيار الاستهلاكية" });
-    }
-  });
+  app.put(
+    "/api/consumable-parts/:id",
+    requireAuth,
+    requirePermission("manage_maintenance"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "ID");
+        const consumablePart = await storage.updateConsumablePart(id, req.body);
+        res.json(consumablePart);
+      } catch (error) {
+        console.error("Error updating consumable part:", error);
+        res
+          .status(500)
+          .json({ message: "خطأ في تحديث قطعة الغيار الاستهلاكية" });
+      }
+    },
+  );
 
-  app.delete("/api/consumable-parts/:id", requireAuth, requirePermission('manage_maintenance'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "ID");
-      await storage.deleteConsumablePart(id);
-      res.json({ message: "تم حذف قطعة الغيار الاستهلاكية بنجاح" });
-    } catch (error) {
-      console.error("Error deleting consumable part:", error);
-      res.status(500).json({ message: "خطأ في حذف قطعة الغيار الاستهلاكية" });
-    }
-  });
+  app.delete(
+    "/api/consumable-parts/:id",
+    requireAuth,
+    requirePermission("manage_maintenance"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "ID");
+        await storage.deleteConsumablePart(id);
+        res.json({ message: "تم حذف قطعة الغيار الاستهلاكية بنجاح" });
+      } catch (error) {
+        console.error("Error deleting consumable part:", error);
+        res.status(500).json({ message: "خطأ في حذف قطعة الغيار الاستهلاكية" });
+      }
+    },
+  );
 
   // Consumable Parts Transactions routes - list all
-  app.get("/api/consumable-parts-transactions", requireAuth, async (req, res) => {
-    try {
-      const allParts = await storage.getConsumableParts();
-      const allTransactions = [];
-      for (const part of allParts) {
-        const transactions = await storage.getConsumablePartTransactions(part.id);
-        allTransactions.push(...transactions);
+  app.get(
+    "/api/consumable-parts-transactions",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const allParts = await storage.getConsumableParts();
+        const allTransactions = [];
+        for (const part of allParts) {
+          const transactions = await storage.getConsumablePartTransactions(
+            part.id,
+          );
+          allTransactions.push(...transactions);
+        }
+        res.json(allTransactions);
+      } catch (error) {
+        console.error("Error fetching consumable parts transactions:", error);
+        res
+          .status(500)
+          .json({ message: "خطأ في جلب حركات قطع الغيار الاستهلاكية" });
       }
-      res.json(allTransactions);
-    } catch (error) {
-      console.error("Error fetching consumable parts transactions:", error);
-      res
-        .status(500)
-        .json({ message: "خطأ في جلب حركات قطع الغيار الاستهلاكية" });
-    }
-  });
+    },
+  );
 
   app.get(
     "/api/consumable-parts-transactions/part/:partId",
@@ -5235,93 +6269,110 @@ Do not include quotes or explanations.`;
     },
   );
 
-  app.post("/api/consumable-parts-transactions", requireAuth, async (req, res) => {
-    try {
-      const transaction = await storage.createConsumablePartTransaction(
-        req.body,
-      );
-      res.json(transaction);
-    } catch (error) {
-      console.error("Error creating consumable parts transaction:", error);
-      res
-        .status(500)
-        .json({ message: "خطأ في إنشاء حركة قطعة الغيار الاستهلاكية" });
-    }
-  });
+  app.post(
+    "/api/consumable-parts-transactions",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const transaction = await storage.createConsumablePartTransaction(
+          req.body,
+        );
+        res.json(transaction);
+      } catch (error) {
+        console.error("Error creating consumable parts transaction:", error);
+        res
+          .status(500)
+          .json({ message: "خطأ في إنشاء حركة قطعة الغيار الاستهلاكية" });
+      }
+    },
+  );
 
   // Barcode scanning endpoint for consumable parts
-  app.post("/api/consumable-parts/scan-barcode", requireAuth, async (req, res) => {
-    try {
-      const { barcode } = req.body;
-      if (!barcode) {
-        return res.status(400).json({ message: "الباركود مطلوب" });
-      }
+  app.post(
+    "/api/consumable-parts/scan-barcode",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const { barcode } = req.body;
+        if (!barcode) {
+          return res.status(400).json({ message: "الباركود مطلوب" });
+        }
 
-      const consumablePart = await storage.getConsumablePartByBarcode(barcode);
-      if (!consumablePart) {
-        return res
-          .status(404)
-          .json({ message: "لم يتم العثور على قطعة غيار بهذا الباركود" });
-      }
+        const consumablePart =
+          await storage.getConsumablePartByBarcode(barcode);
+        if (!consumablePart) {
+          return res
+            .status(404)
+            .json({ message: "لم يتم العثور على قطعة غيار بهذا الباركود" });
+        }
 
-      res.json(consumablePart);
-    } catch (error) {
-      console.error("Error scanning barcode:", error);
-      res.status(500).json({ message: "خطأ في قراءة الباركود" });
-    }
-  });
+        res.json(consumablePart);
+      } catch (error) {
+        console.error("Error scanning barcode:", error);
+        res.status(500).json({ message: "خطأ في قراءة الباركود" });
+      }
+    },
+  );
 
   // Process barcode transaction (in/out)
-  app.post("/api/consumable-parts/barcode-transaction", requireAuth, async (req, res) => {
-    try {
-      const {
-        barcode,
-        transaction_type,
-        quantity,
-        transaction_reason,
-        notes,
-        manual_entry,
-      } = req.body;
+  app.post(
+    "/api/consumable-parts/barcode-transaction",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const {
+          barcode,
+          transaction_type,
+          quantity,
+          transaction_reason,
+          notes,
+          manual_entry,
+        } = req.body;
 
-      if (!getAuthUserId(req)) {
-        return res.status(401).json({ message: "يجب تسجيل الدخول لإجراء حركة مخزنية" });
+        if (!getAuthUserId(req)) {
+          return res
+            .status(401)
+            .json({ message: "يجب تسجيل الدخول لإجراء حركة مخزنية" });
+        }
+
+        if (!barcode || !transaction_type || !quantity) {
+          return res
+            .status(400)
+            .json({ message: "الباركود ونوع الحركة والكمية مطلوبة" });
+        }
+
+        // Find consumable part by barcode
+        const consumablePart =
+          await storage.getConsumablePartByBarcode(barcode);
+        if (!consumablePart) {
+          return res
+            .status(404)
+            .json({ message: "لم يتم العثور على قطعة غيار بهذا الباركود" });
+        }
+
+        // Create transaction
+        const transactionData = {
+          consumable_part_id: consumablePart.id,
+          transaction_type,
+          quantity: parseInt(quantity),
+          barcode_scanned: barcode,
+          manual_entry: manual_entry || false,
+          transaction_reason: transaction_reason || "",
+          notes: notes || "",
+          performed_by: getAuthUserId(req),
+        };
+
+        const transaction =
+          await storage.processConsumablePartBarcodeTransaction(
+            transactionData,
+          );
+        res.json(transaction);
+      } catch (error) {
+        console.error("Error processing barcode transaction:", error);
+        res.status(500).json({ message: "خطأ في معالجة حركة الباركود" });
       }
-
-      if (!barcode || !transaction_type || !quantity) {
-        return res
-          .status(400)
-          .json({ message: "الباركود ونوع الحركة والكمية مطلوبة" });
-      }
-
-      // Find consumable part by barcode
-      const consumablePart = await storage.getConsumablePartByBarcode(barcode);
-      if (!consumablePart) {
-        return res
-          .status(404)
-          .json({ message: "لم يتم العثور على قطعة غيار بهذا الباركود" });
-      }
-
-      // Create transaction
-      const transactionData = {
-        consumable_part_id: consumablePart.id,
-        transaction_type,
-        quantity: parseInt(quantity),
-        barcode_scanned: barcode,
-        manual_entry: manual_entry || false,
-        transaction_reason: transaction_reason || "",
-        notes: notes || "",
-        performed_by: getAuthUserId(req),
-      };
-
-      const transaction =
-        await storage.processConsumablePartBarcodeTransaction(transactionData);
-      res.json(transaction);
-    } catch (error) {
-      console.error("Error processing barcode transaction:", error);
-      res.status(500).json({ message: "خطأ في معالجة حركة الباركود" });
-    }
-  });
-
+    },
+  );
 
   // Reports endpoint
   app.get("/api/reports", requireAuth, async (req, res) => {
@@ -5334,572 +6385,666 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/machines", requireAuth, requirePermission('manage_machines', 'manage_definitions'), async (req, res) => {
-    try {
+  app.post(
+    "/api/machines",
+    requireAuth,
+    requirePermission("manage_machines", "manage_definitions"),
+    async (req, res) => {
+      try {
+        // Generate sequential ID if not provided with enhanced null safety
+        let machineId = req.body?.id;
+        if (!machineId) {
+          // Get the latest machine to determine the next sequential number
+          const existingMachines = (await storage.getMachines()) || [];
+          const machineNumbers = existingMachines
+            .map((machine) => machine?.id)
+            .filter(
+              (id) => id && typeof id === "string" && id.startsWith("MAC"),
+            )
+            .map((id) => {
+              const num = id.replace("MAC", "");
+              const parsed = parseInt(num);
+              return isNaN(parsed) ? 0 : parsed;
+            })
+            .filter((num) => num > 0)
+            .sort((a, b) => b - a);
 
-      // Generate sequential ID if not provided with enhanced null safety
-      let machineId = req.body?.id;
-      if (!machineId) {
-        // Get the latest machine to determine the next sequential number
-        const existingMachines = (await storage.getMachines()) || [];
-        const machineNumbers = existingMachines
-          .map((machine) => machine?.id)
-          .filter((id) => id && typeof id === "string" && id.startsWith("MAC"))
-          .map((id) => {
-            const num = id.replace("MAC", "");
-            const parsed = parseInt(num);
-            return isNaN(parsed) ? 0 : parsed;
-          })
-          .filter((num) => num > 0)
-          .sort((a, b) => b - a);
-
-        const nextNumber =
-          machineNumbers.length > 0 ? machineNumbers[0] + 1 : 1;
-        machineId = `MAC${nextNumber.toString().padStart(2, "0")}`;
-      }
-
-      const processedData = {
-        ...req.body,
-        id: machineId,
-      };
-
-      // STEP 1: DataValidator integration for business rules
-      const validationResult = await getDataValidator(storage).validateData(
-        "machines",
-        processedData,
-      );
-      if (!validationResult.isValid) {
-        const criticalErrors = validationResult.errors.filter(
-          (e) => e.severity === "critical" || e.severity === "high",
-        );
-        if (criticalErrors.length > 0) {
-          return res.status(400).json({
-            message: criticalErrors[0].message_ar || criticalErrors[0].message,
-            errors: validationResult.errors,
-            success: false,
-          });
+          const nextNumber =
+            machineNumbers.length > 0 ? machineNumbers[0] + 1 : 1;
+          machineId = `MAC${nextNumber.toString().padStart(2, "0")}`;
         }
+
+        const processedData = {
+          ...req.body,
+          id: machineId,
+        };
+
+        // STEP 1: DataValidator integration for business rules
+        const validationResult = await getDataValidator(storage).validateData(
+          "machines",
+          processedData,
+        );
+        if (!validationResult.isValid) {
+          const criticalErrors = validationResult.errors.filter(
+            (e) => e.severity === "critical" || e.severity === "high",
+          );
+          if (criticalErrors.length > 0) {
+            return res.status(400).json({
+              message:
+                criticalErrors[0].message_ar || criticalErrors[0].message,
+              errors: validationResult.errors,
+              success: false,
+            });
+          }
+        }
+
+        const machine = await storage.createMachine(processedData);
+
+        res.status(201).json({
+          data: machine,
+          message: "تم إنشاء الماكينة بنجاح",
+          success: true,
+        });
+      } catch (error: any) {
+        console.error("Machine creation error:", error);
+
+        res.status(500).json({
+          message: "خطأ في إنشاء الماكينة",
+          success: false,
+        });
       }
+    },
+  );
 
-      const machine = await storage.createMachine(processedData);
+  app.put(
+    "/api/machines/:id",
+    requireAuth,
+    requirePermission("manage_machines", "manage_definitions"),
+    async (req, res) => {
+      try {
+        const id = req.params.id; // Now using string ID
 
-      res.status(201).json({
-        data: machine,
-        message: "تم إنشاء الماكينة بنجاح",
-        success: true,
-      });
-    } catch (error: any) {
-      console.error("Machine creation error:", error);
+        // Clean up empty capacity fields - convert empty strings to null
+        const cleanedData = {
+          ...req.body,
+          capacity_small_kg_per_hour:
+            req.body.capacity_small_kg_per_hour === "" ||
+            req.body.capacity_small_kg_per_hour === null
+              ? null
+              : req.body.capacity_small_kg_per_hour,
+          capacity_medium_kg_per_hour:
+            req.body.capacity_medium_kg_per_hour === "" ||
+            req.body.capacity_medium_kg_per_hour === null
+              ? null
+              : req.body.capacity_medium_kg_per_hour,
+          capacity_large_kg_per_hour:
+            req.body.capacity_large_kg_per_hour === "" ||
+            req.body.capacity_large_kg_per_hour === null
+              ? null
+              : req.body.capacity_large_kg_per_hour,
+        };
 
-      res.status(500).json({
-        message: "خطأ في إنشاء الماكينة",
-        success: false,
-      });
-    }
-  });
-
-  app.put("/api/machines/:id", requireAuth, requirePermission('manage_machines', 'manage_definitions'), async (req, res) => {
-    try {
-      const id = req.params.id; // Now using string ID
-      
-      // Clean up empty capacity fields - convert empty strings to null
-      const cleanedData = {
-        ...req.body,
-        capacity_small_kg_per_hour: req.body.capacity_small_kg_per_hour === "" || req.body.capacity_small_kg_per_hour === null 
-          ? null 
-          : req.body.capacity_small_kg_per_hour,
-        capacity_medium_kg_per_hour: req.body.capacity_medium_kg_per_hour === "" || req.body.capacity_medium_kg_per_hour === null 
-          ? null 
-          : req.body.capacity_medium_kg_per_hour,
-        capacity_large_kg_per_hour: req.body.capacity_large_kg_per_hour === "" || req.body.capacity_large_kg_per_hour === null 
-          ? null 
-          : req.body.capacity_large_kg_per_hour,
-      };
-      
-      const machine = await storage.updateMachine(id, cleanedData);
-      res.json(machine);
-    } catch (error) {
-      console.error("Machine update error:", error);
-      res.status(500).json({
-        message: "خطأ في تحديث الماكينة",
-        error: "خطأ داخلي",
-      });
-    }
-  });
+        const machine = await storage.updateMachine(id, cleanedData);
+        res.json(machine);
+      } catch (error) {
+        console.error("Machine update error:", error);
+        res.status(500).json({
+          message: "خطأ في تحديث الماكينة",
+          error: "خطأ داخلي",
+        });
+      }
+    },
+  );
 
   // Users routes
-  app.post("/api/users", requireAuth, requirePermission('manage_users'), async (req, res) => {
-    try {
-      // Resolve role_id (number, "ROLE0X", or role name) BEFORE Zod validation.
-      let roleId: number | null = null;
-      if (
-        req.body?.role_id &&
-        req.body.role_id !== "" &&
-        req.body.role_id !== "none"
-      ) {
-        if (typeof req.body.role_id === "string") {
-          const roleMatch = req.body.role_id.match(/^ROLE(\d+)$/);
-          if (roleMatch) {
-            roleId = parseInt(roleMatch[1], 10);
-          } else {
-            const roles = await getCachedRoles();
-            const role = roles.find(
-              (r) =>
-                r.name === req.body.role_id || r.name_ar === req.body.role_id,
-            );
-            if (role) {
-              roleId = role.id;
+  app.post(
+    "/api/users",
+    requireAuth,
+    requirePermission("manage_users"),
+    async (req, res) => {
+      try {
+        // Resolve role_id (number, "ROLE0X", or role name) BEFORE Zod validation.
+        let roleId: number | null = null;
+        if (
+          req.body?.role_id &&
+          req.body.role_id !== "" &&
+          req.body.role_id !== "none"
+        ) {
+          if (typeof req.body.role_id === "string") {
+            const roleMatch = req.body.role_id.match(/^ROLE(\d+)$/);
+            if (roleMatch) {
+              roleId = parseInt(roleMatch[1], 10);
             } else {
-              const parsedNum = parseInt(req.body.role_id);
-              if (!isNaN(parsedNum)) {
-                roleId = parsedNum;
+              const roles = await getCachedRoles();
+              const role = roles.find(
+                (r) =>
+                  r.name === req.body.role_id || r.name_ar === req.body.role_id,
+              );
+              if (role) {
+                roleId = role.id;
+              } else {
+                const parsedNum = parseInt(req.body.role_id);
+                if (!isNaN(parsedNum)) {
+                  roleId = parsedNum;
+                }
               }
             }
+          } else if (typeof req.body.role_id === "number") {
+            roleId = req.body.role_id;
           }
-        } else if (typeof req.body.role_id === "number") {
-          roleId = req.body.role_id;
         }
-      }
 
-      let sectionId: number | null = null;
-      if (
-        req.body?.section_id &&
-        req.body.section_id !== "" &&
-        req.body.section_id !== "none"
-      ) {
-        const sid = String(req.body.section_id);
-        const sectionMatch = sid.match(/^SEC(\d+)$/);
-        if (sectionMatch) {
-          sectionId = parseInt(sectionMatch[1], 10);
-        } else if (!isNaN(Number(sid))) {
-          sectionId = Number(sid);
+        let sectionId: number | null = null;
+        if (
+          req.body?.section_id &&
+          req.body.section_id !== "" &&
+          req.body.section_id !== "none"
+        ) {
+          const sid = String(req.body.section_id);
+          const sectionMatch = sid.match(/^SEC(\d+)$/);
+          if (sectionMatch) {
+            sectionId = parseInt(sectionMatch[1], 10);
+          } else if (!isNaN(Number(sid))) {
+            sectionId = Number(sid);
+          }
         }
-      }
 
-      const allowed = ['username', 'password', 'display_name', 'display_name_ar',
-        'full_name', 'phone', 'email', 'status'];
-      const candidate: Record<string, any> = { role_id: roleId, section_id: sectionId };
-      for (const f of allowed) {
-        if (req.body?.[f] !== undefined) candidate[f] = req.body[f];
-      }
-      const parsed = createUserApiSchema.safeParse(candidate);
-      if (!parsed.success) {
-        return res.status(400).json({
-          message: "بيانات المستخدم غير صحيحة",
-          errors: parsed.error.flatten().fieldErrors,
+        const allowed = [
+          "username",
+          "password",
+          "display_name",
+          "display_name_ar",
+          "full_name",
+          "phone",
+          "email",
+          "status",
+        ];
+        const candidate: Record<string, any> = {
+          role_id: roleId,
+          section_id: sectionId,
+        };
+        for (const f of allowed) {
+          if (req.body?.[f] !== undefined) candidate[f] = req.body[f];
+        }
+        const parsed = createUserApiSchema.safeParse(candidate);
+        if (!parsed.success) {
+          return res.status(400).json({
+            message: "بيانات المستخدم غير صحيحة",
+            errors: parsed.error.flatten().fieldErrors,
+          });
+        }
+
+        const processedData = {
+          ...parsed.data,
+          password:
+            parsed.data.password ||
+            crypto.randomBytes(12).toString("base64url"),
+          status: parsed.data.status || "active",
+        };
+
+        const user = await storage.createUser(processedData);
+        const { password: _, ...safeUser } = user;
+        res.status(201).json(safeUser);
+      } catch (error) {
+        console.error("User creation error:", error);
+        res.status(500).json({
+          message: "خطأ في إنشاء المستخدم",
+          error: "خطأ داخلي",
         });
       }
+    },
+  );
 
-      const processedData = {
-        ...parsed.data,
-        password: parsed.data.password || crypto.randomBytes(12).toString("base64url"),
-        status: parsed.data.status || "active",
-      };
-
-      const user = await storage.createUser(processedData);
-      const { password: _, ...safeUser } = user;
-      res.status(201).json(safeUser);
-    } catch (error) {
-      console.error("User creation error:", error);
-      res.status(500).json({
-        message: "خطأ في إنشاء المستخدم",
-        error: "خطأ داخلي",
-      });
-    }
-  });
-
-  app.put("/api/users/:id", requireAuth, requirePermission('manage_users'), async (req, res) => {
-    try {
-      // Enhanced parameter validation
-      if (!req.params?.id) {
-        return res.status(400).json({ message: "معرف المستخدم مطلوب" });
-      }
-
-      const id = parseInt(req.params.id);
-      if (isNaN(id) || id <= 0) {
-        return res.status(400).json({ message: "معرف المستخدم غير صحيح" });
-      }
-
-      if (!req.body || typeof req.body !== "object") {
-        return res.status(400).json({ message: "بيانات التحديث مطلوبة" });
-      }
-
-
-      // Process role_id and section_id to convert empty strings and "none" to null with enhanced null safety
-      let roleId = null;
-      if (
-        req.body?.role_id &&
-        req.body.role_id !== "" &&
-        req.body.role_id !== "none"
-      ) {
-        const rid = String(req.body.role_id);
-        const roleMatch = rid.match(/^ROLE(\d+)$/);
-        if (roleMatch) {
-          roleId = parseInt(roleMatch[1], 10);
-        } else if (!isNaN(Number(rid))) {
-          roleId = Number(rid);
+  app.put(
+    "/api/users/:id",
+    requireAuth,
+    requirePermission("manage_users"),
+    async (req, res) => {
+      try {
+        // Enhanced parameter validation
+        if (!req.params?.id) {
+          return res.status(400).json({ message: "معرف المستخدم مطلوب" });
         }
-      }
 
-      let sectionId = null;
-      if (
-        req.body?.section_id &&
-        req.body.section_id !== "" &&
-        req.body.section_id !== "none"
-      ) {
-        const sid = String(req.body.section_id);
-        const sectionMatch = sid.match(/^SEC(\d+)$/);
-        if (sectionMatch) {
-          sectionId = parseInt(sectionMatch[1], 10);
-        } else if (!isNaN(Number(sid))) {
-          sectionId = Number(sid);
+        const id = parseInt(req.params.id);
+        if (isNaN(id) || id <= 0) {
+          return res.status(400).json({ message: "معرف المستخدم غير صحيح" });
         }
-      }
 
-      const allowedFields = ['username', 'display_name', 'display_name_ar', 'full_name', 'phone', 'email', 'status', 'password'];
-      const candidate: Record<string, any> = {
-        role_id: roleId,
-        section_id: sectionId,
-      };
-      for (const field of allowedFields) {
-        if (req.body[field] !== undefined) {
-          candidate[field] = req.body[field];
+        if (!req.body || typeof req.body !== "object") {
+          return res.status(400).json({ message: "بيانات التحديث مطلوبة" });
         }
-      }
-      const parsed = updateUserSchema.safeParse(candidate);
-      if (!parsed.success) {
-        return res.status(400).json({
-          message: "بيانات المستخدم غير صحيحة",
-          errors: parsed.error.flatten().fieldErrors,
+
+        // Process role_id and section_id to convert empty strings and "none" to null with enhanced null safety
+        let roleId = null;
+        if (
+          req.body?.role_id &&
+          req.body.role_id !== "" &&
+          req.body.role_id !== "none"
+        ) {
+          const rid = String(req.body.role_id);
+          const roleMatch = rid.match(/^ROLE(\d+)$/);
+          if (roleMatch) {
+            roleId = parseInt(roleMatch[1], 10);
+          } else if (!isNaN(Number(rid))) {
+            roleId = Number(rid);
+          }
+        }
+
+        let sectionId = null;
+        if (
+          req.body?.section_id &&
+          req.body.section_id !== "" &&
+          req.body.section_id !== "none"
+        ) {
+          const sid = String(req.body.section_id);
+          const sectionMatch = sid.match(/^SEC(\d+)$/);
+          if (sectionMatch) {
+            sectionId = parseInt(sectionMatch[1], 10);
+          } else if (!isNaN(Number(sid))) {
+            sectionId = Number(sid);
+          }
+        }
+
+        const allowedFields = [
+          "username",
+          "display_name",
+          "display_name_ar",
+          "full_name",
+          "phone",
+          "email",
+          "status",
+          "password",
+        ];
+        const candidate: Record<string, any> = {
+          role_id: roleId,
+          section_id: sectionId,
+        };
+        for (const field of allowedFields) {
+          if (req.body[field] !== undefined) {
+            candidate[field] = req.body[field];
+          }
+        }
+        const parsed = updateUserSchema.safeParse(candidate);
+        if (!parsed.success) {
+          return res.status(400).json({
+            message: "بيانات المستخدم غير صحيحة",
+            errors: parsed.error.flatten().fieldErrors,
+          });
+        }
+        const processedData = parsed.data;
+
+        const user = await storage.updateUser(id, processedData);
+        if (!user) {
+          return res.status(404).json({ message: "المستخدم غير موجود" });
+        }
+        const { password: _, ...safeUser } = user;
+        res.json(safeUser);
+      } catch (error) {
+        console.error("User update error:", error);
+        res.status(500).json({
+          message: "خطأ في تحديث المستخدم",
+          error: "خطأ داخلي",
         });
       }
-      const processedData = parsed.data;
-
-      const user = await storage.updateUser(id, processedData);
-      if (!user) {
-        return res.status(404).json({ message: "المستخدم غير موجود" });
-      }
-      const { password: _, ...safeUser } = user;
-      res.json(safeUser);
-    } catch (error) {
-      console.error("User update error:", error);
-      res.status(500).json({
-        message: "خطأ في تحديث المستخدم",
-        error: "خطأ داخلي",
-      });
-    }
-  });
+    },
+  );
 
   // Roles management routes
-  app.get("/api/roles", requireAuth, requirePermission('manage_roles'), async (req: AuthRequest, res) => {
-    try {
-      const roles = await storage.getRoles();
-      res.json(roles);
-    } catch (error) {
-      console.error("Roles fetch error:", error);
-      res.status(500).json({ message: "خطأ في جلب الأدوار" });
-    }
-  });
+  app.get(
+    "/api/roles",
+    requireAuth,
+    requirePermission("manage_roles"),
+    async (req: AuthRequest, res) => {
+      try {
+        const roles = await storage.getRoles();
+        res.json(roles);
+      } catch (error) {
+        console.error("Roles fetch error:", error);
+        res.status(500).json({ message: "خطأ في جلب الأدوار" });
+      }
+    },
+  );
 
-  app.post("/api/roles", requireAuth, requirePermission('manage_roles'), async (req: AuthRequest, res) => {
-    try {
-      const roleSchema = z.object({
-        name: z.string().min(1).max(50),
-        name_ar: z.string().max(100).optional().nullable(),
-        permissions: z.array(z.string()).optional().nullable(),
-      });
-      const parseResult = roleSchema.safeParse(req.body);
-      if (!parseResult.success) {
-        return res.status(400).json({
-          message: "بيانات الدور غير صحيحة",
-          errors: parseResult.error.errors,
+  app.post(
+    "/api/roles",
+    requireAuth,
+    requirePermission("manage_roles"),
+    async (req: AuthRequest, res) => {
+      try {
+        const roleSchema = z.object({
+          name: z.string().min(1).max(50),
+          name_ar: z.string().max(100).optional().nullable(),
+          permissions: z.array(z.string()).optional().nullable(),
+        });
+        const parseResult = roleSchema.safeParse(req.body);
+        if (!parseResult.success) {
+          return res.status(400).json({
+            message: "بيانات الدور غير صحيحة",
+            errors: parseResult.error.errors,
+          });
+        }
+        const role = await storage.createRole(parseResult.data);
+        invalidateRolesCache();
+        res.json(role);
+      } catch (error) {
+        console.error("Role creation error:", error);
+        res.status(500).json({
+          message: "خطأ في إنشاء الدور",
         });
       }
-      const role = await storage.createRole(parseResult.data);
-      invalidateRolesCache();
-      res.json(role);
-    } catch (error) {
-      console.error("Role creation error:", error);
-      res.status(500).json({
-        message: "خطأ في إنشاء الدور",
-      });
-    }
-  });
+    },
+  );
 
-  app.put("/api/roles/:id", requireAuth, requirePermission('manage_roles'), async (req: AuthRequest, res) => {
-    try {
-      // Enhanced parameter validation
-      if (!req.params?.id) {
-        return res.status(400).json({ message: "معرف الدور مطلوب" });
-      }
+  app.put(
+    "/api/roles/:id",
+    requireAuth,
+    requirePermission("manage_roles"),
+    async (req: AuthRequest, res) => {
+      try {
+        // Enhanced parameter validation
+        if (!req.params?.id) {
+          return res.status(400).json({ message: "معرف الدور مطلوب" });
+        }
 
-      const id = parseInt(req.params.id);
-      if (isNaN(id) || id <= 0) {
-        return res.status(400).json({ message: "معرف الدور غير صحيح" });
-      }
+        const id = parseInt(req.params.id);
+        if (isNaN(id) || id <= 0) {
+          return res.status(400).json({ message: "معرف الدور غير صحيح" });
+        }
 
-      if (!req.body || typeof req.body !== "object") {
-        return res.status(400).json({ message: "بيانات التحديث مطلوبة" });
-      }
+        if (!req.body || typeof req.body !== "object") {
+          return res.status(400).json({ message: "بيانات التحديث مطلوبة" });
+        }
 
-      const roleUpdateSchema = z.object({
-        name: z.string().min(1).max(50).optional(),
-        name_ar: z.string().max(100).optional().nullable(),
-        permissions: z.array(z.string()).optional().nullable(),
-      });
-      const parseResult = roleUpdateSchema.safeParse(req.body);
-      if (!parseResult.success) {
-        return res.status(400).json({
-          message: "بيانات الدور غير صحيحة",
-          errors: parseResult.error.errors,
+        const roleUpdateSchema = z.object({
+          name: z.string().min(1).max(50).optional(),
+          name_ar: z.string().max(100).optional().nullable(),
+          permissions: z.array(z.string()).optional().nullable(),
+        });
+        const parseResult = roleUpdateSchema.safeParse(req.body);
+        if (!parseResult.success) {
+          return res.status(400).json({
+            message: "بيانات الدور غير صحيحة",
+            errors: parseResult.error.errors,
+          });
+        }
+        const role = await storage.updateRole(id, parseResult.data);
+        if (!role) {
+          return res.status(404).json({ message: "الدور غير موجود" });
+        }
+        invalidateRolesCache();
+        res.json(role);
+      } catch (error) {
+        console.error("Role update error:", error);
+        res.status(500).json({
+          message: "خطأ في تحديث الدور",
         });
       }
-      const role = await storage.updateRole(id, parseResult.data);
-      if (!role) {
-        return res.status(404).json({ message: "الدور غير موجود" });
-      }
-      invalidateRolesCache();
-      res.json(role);
-    } catch (error) {
-      console.error("Role update error:", error);
-      res.status(500).json({
-        message: "خطأ في تحديث الدور",
-      });
-    }
-  });
+    },
+  );
 
-  app.delete("/api/roles/:id", requireAuth, requirePermission('manage_roles'), async (req: AuthRequest, res) => {
-    try {
-      // Enhanced parameter validation
-      if (!req.params?.id) {
-        return res.status(400).json({ message: "معرف الدور مطلوب" });
-      }
+  app.delete(
+    "/api/roles/:id",
+    requireAuth,
+    requirePermission("manage_roles"),
+    async (req: AuthRequest, res) => {
+      try {
+        // Enhanced parameter validation
+        if (!req.params?.id) {
+          return res.status(400).json({ message: "معرف الدور مطلوب" });
+        }
 
-      const id = parseInt(req.params.id);
-      if (isNaN(id) || id <= 0) {
-        return res.status(400).json({ message: "معرف الدور غير صحيح" });
-      }
+        const id = parseInt(req.params.id);
+        if (isNaN(id) || id <= 0) {
+          return res.status(400).json({ message: "معرف الدور غير صحيح" });
+        }
 
-      await storage.deleteRole(id);
-      invalidateRolesCache();
-      res.json({ message: "تم حذف الدور بنجاح" });
-    } catch (error) {
-      console.error("Role deletion error:", error);
-      res.status(500).json({
-        message: "خطأ في حذف الدور",
-      });
-    }
-  });
+        await storage.deleteRole(id);
+        invalidateRolesCache();
+        res.json({ message: "تم حذف الدور بنجاح" });
+      } catch (error) {
+        console.error("Role deletion error:", error);
+        res.status(500).json({
+          message: "خطأ في حذف الدور",
+        });
+      }
+    },
+  );
 
   // Sections routes
-  app.post("/api/sections", requireAuth, requirePermission('manage_sections', 'manage_definitions'), async (req, res) => {
-    try {
+  app.post(
+    "/api/sections",
+    requireAuth,
+    requirePermission("manage_sections", "manage_definitions"),
+    async (req, res) => {
+      try {
+        // Generate sequential ID if not provided with enhanced null safety
+        let sectionId = req.body?.id;
+        if (!sectionId) {
+          // Get the latest section to determine the next sequential number
+          const existingSections = (await storage.getSections()) || [];
+          const sectionNumbers = existingSections
+            .map((section) => section?.id)
+            .filter(
+              (id) => id && typeof id === "string" && id.startsWith("SEC"),
+            )
+            .map((id) => {
+              const num = id.replace("SEC", "");
+              const parsed = parseInt(num);
+              return isNaN(parsed) ? 0 : parsed;
+            })
+            .filter((num) => num > 0)
+            .sort((a, b) => b - a);
 
-      // Generate sequential ID if not provided with enhanced null safety
-      let sectionId = req.body?.id;
-      if (!sectionId) {
-        // Get the latest section to determine the next sequential number
-        const existingSections = (await storage.getSections()) || [];
-        const sectionNumbers = existingSections
-          .map((section) => section?.id)
-          .filter((id) => id && typeof id === "string" && id.startsWith("SEC"))
-          .map((id) => {
-            const num = id.replace("SEC", "");
-            const parsed = parseInt(num);
-            return isNaN(parsed) ? 0 : parsed;
-          })
-          .filter((num) => num > 0)
-          .sort((a, b) => b - a);
+          const nextNumber =
+            sectionNumbers.length > 0 ? sectionNumbers[0] + 1 : 1;
+          sectionId = `SEC${nextNumber.toString().padStart(2, "0")}`;
+        }
 
-        const nextNumber =
-          sectionNumbers.length > 0 ? sectionNumbers[0] + 1 : 1;
-        sectionId = `SEC${nextNumber.toString().padStart(2, "0")}`;
+        const processedData = {
+          ...req.body,
+          id: sectionId,
+        };
+
+        const section = await storage.createSection(processedData);
+        res.json(section);
+      } catch (error) {
+        console.error("Section creation error:", error);
+        res.status(500).json({
+          message: "خطأ في إنشاء القسم",
+          error: "خطأ داخلي",
+        });
       }
+    },
+  );
 
-      const processedData = {
-        ...req.body,
-        id: sectionId,
-      };
+  app.put(
+    "/api/sections/:id",
+    requireAuth,
+    requirePermission("manage_sections", "manage_definitions"),
+    async (req, res) => {
+      try {
+        // Enhanced parameter validation
+        if (!req.params?.id?.trim()) {
+          return res.status(400).json({ message: "معرف القسم مطلوب" });
+        }
 
-      const section = await storage.createSection(processedData);
-      res.json(section);
-    } catch (error) {
-      console.error("Section creation error:", error);
-      res.status(500).json({
-        message: "خطأ في إنشاء القسم",
-        error: "خطأ داخلي",
-      });
-    }
-  });
+        if (!req.body || typeof req.body !== "object") {
+          return res.status(400).json({ message: "بيانات التحديث مطلوبة" });
+        }
 
-  app.put("/api/sections/:id", requireAuth, requirePermission('manage_sections', 'manage_definitions'), async (req, res) => {
-    try {
-      // Enhanced parameter validation
-      if (!req.params?.id?.trim()) {
-        return res.status(400).json({ message: "معرف القسم مطلوب" });
+        const id = req.params.id.trim();
+        const section = await storage.updateSection(id, req.body);
+        if (!section) {
+          return res.status(404).json({ message: "القسم غير موجود" });
+        }
+        res.json(section);
+      } catch (error) {
+        console.error("[API Error]", error);
+        res.status(500).json({ message: "خطأ في تحديث القسم" });
       }
-
-      if (!req.body || typeof req.body !== "object") {
-        return res.status(400).json({ message: "بيانات التحديث مطلوبة" });
-      }
-
-      const id = req.params.id.trim();
-      const section = await storage.updateSection(id, req.body);
-      if (!section) {
-        return res.status(404).json({ message: "القسم غير موجود" });
-      }
-      res.json(section);
-    } catch (error) {
-      console.error("[API Error]", error);
-      res.status(500).json({ message: "خطأ في تحديث القسم" });
-    }
-  });
+    },
+  );
 
   // Material Groups routes
 
   // Items routes
-  app.post("/api/items", requireAuth, requirePermission('manage_items', 'manage_definitions'), async (req, res) => {
-    try {
+  app.post(
+    "/api/items",
+    requireAuth,
+    requirePermission("manage_items", "manage_definitions"),
+    async (req, res) => {
+      try {
+        // Generate sequential ID if not provided with enhanced null safety
+        let itemId = req.body?.id;
+        if (!itemId) {
+          // Get the latest item to determine the next sequential number
+          const existingItems = (await storage.getItems()) || [];
+          const itemNumbers = existingItems
+            .map((item) => item?.id)
+            .filter(
+              (id) => id && typeof id === "string" && id.startsWith("ITEM"),
+            )
+            .map((id) => {
+              const num = id.replace("ITEM", "");
+              const parsed = parseInt(num);
+              return isNaN(parsed) ? 0 : parsed;
+            })
+            .filter((num) => num > 0)
+            .sort((a, b) => b - a);
 
-      // Generate sequential ID if not provided with enhanced null safety
-      let itemId = req.body?.id;
-      if (!itemId) {
-        // Get the latest item to determine the next sequential number
-        const existingItems = (await storage.getItems()) || [];
-        const itemNumbers = existingItems
-          .map((item) => item?.id)
-          .filter((id) => id && typeof id === "string" && id.startsWith("ITEM"))
-          .map((id) => {
-            const num = id.replace("ITEM", "");
-            const parsed = parseInt(num);
-            return isNaN(parsed) ? 0 : parsed;
-          })
-          .filter((num) => num > 0)
-          .sort((a, b) => b - a);
+          const nextNumber = itemNumbers.length > 0 ? itemNumbers[0] + 1 : 1;
+          itemId = `ITEM${nextNumber.toString().padStart(3, "0")}`;
+        }
 
-        const nextNumber = itemNumbers.length > 0 ? itemNumbers[0] + 1 : 1;
-        itemId = `ITEM${nextNumber.toString().padStart(3, "0")}`;
-      }
+        // Convert empty strings to null for optional fields with enhanced null safety
+        const processedData = {
+          ...req.body,
+          id: itemId,
+          category_id:
+            !req.body?.category_id ||
+            req.body.category_id === "" ||
+            req.body.category_id === "none"
+              ? null
+              : req.body.category_id,
+          code: !req.body?.code || req.body.code === "" ? null : req.body.code,
+        };
 
-      // Convert empty strings to null for optional fields with enhanced null safety
-      const processedData = {
-        ...req.body,
-        id: itemId,
-        category_id:
-          !req.body?.category_id ||
-          req.body.category_id === "" ||
-          req.body.category_id === "none"
-            ? null
-            : req.body.category_id,
-        code: !req.body?.code || req.body.code === "" ? null : req.body.code,
-      };
-
-      const item = await storage.createItem(processedData);
-      res.json(item);
-    } catch (error) {
-      console.error("Item creation error:", error);
-      console.error(
-        "Error stack:",
-        error instanceof Error ? error.stack : "No stack trace",
-      );
-      res.status(500).json({
-        message: "خطأ في إنشاء الصنف",
-        error: "خطأ داخلي",
-      });
-    }
-  });
-
-  app.put("/api/items/:id", requireAuth, requirePermission('manage_items', 'manage_definitions'), async (req, res) => {
-    try {
-      // Enhanced parameter validation
-      if (!req.params?.id?.trim()) {
-        return res.status(400).json({ message: "معرف الصنف مطلوب" });
-      }
-
-      if (!req.body || typeof req.body !== "object") {
-        return res.status(400).json({ message: "بيانات التحديث مطلوبة" });
-      }
-
-      const id = req.params.id.trim();
-
-      // Convert empty strings to null for optional fields with enhanced null safety
-      const processedData = {
-        ...req.body,
-        category_id:
-          !req.body?.category_id ||
-          req.body.category_id === "" ||
-          req.body.category_id === "none"
-            ? null
-            : req.body.category_id,
-        code: !req.body?.code || req.body.code === "" ? null : req.body.code,
-      };
-
-      const item = await storage.updateItem(id, processedData);
-      if (!item) {
-        return res.status(404).json({ message: "الصنف غير موجود" });
-      }
-      res.json(item);
-    } catch (error) {
-      console.error("Item update error:", error);
-      res.status(500).json({
-        message: "خطأ في تحديث الصنف",
-        error: "خطأ داخلي",
-      });
-    }
-  });
-
-
-  app.put("/api/customer-products/:id", requireAuth, requirePermission('manage_customers', 'manage_definitions'), async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-
-      // Validate the ID parameter
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "معرف المنتج غير صحيح" });
-      }
-
-      // Validate request body using Zod schema
-      const validation = insertCustomerProductSchema.safeParse({
-        ...req.body,
-        category_id: req.body.material_group_id || req.body.category_id,
-      });
-
-      if (!validation.success) {
+        const item = await storage.createItem(processedData);
+        res.json(item);
+      } catch (error) {
+        console.error("Item creation error:", error);
         console.error(
-          "Customer product validation error:",
-          validation.error.errors,
+          "Error stack:",
+          error instanceof Error ? error.stack : "No stack trace",
         );
-        return res.status(400).json({
-          message: "بيانات غير صحيحة",
-          errors: validation.error.errors.map((err) => ({
-            field: err.path.join("."),
-            message: err.message,
-          })),
+        res.status(500).json({
+          message: "خطأ في إنشاء الصنف",
+          error: "خطأ داخلي",
         });
       }
+    },
+  );
 
-      // Remove material_group_id for backwards compatibility
-      const processedData = { ...validation.data };
-      delete (processedData as any).material_group_id;
+  app.put(
+    "/api/items/:id",
+    requireAuth,
+    requirePermission("manage_items", "manage_definitions"),
+    async (req, res) => {
+      try {
+        // Enhanced parameter validation
+        if (!req.params?.id?.trim()) {
+          return res.status(400).json({ message: "معرف الصنف مطلوب" });
+        }
 
-      const customerProduct = await storage.updateCustomerProduct(
-        id,
-        processedData,
-      );
+        if (!req.body || typeof req.body !== "object") {
+          return res.status(400).json({ message: "بيانات التحديث مطلوبة" });
+        }
 
-      if (!customerProduct) {
-        return res.status(404).json({ message: "منتج العميل غير موجود" });
+        const id = req.params.id.trim();
+
+        // Convert empty strings to null for optional fields with enhanced null safety
+        const processedData = {
+          ...req.body,
+          category_id:
+            !req.body?.category_id ||
+            req.body.category_id === "" ||
+            req.body.category_id === "none"
+              ? null
+              : req.body.category_id,
+          code: !req.body?.code || req.body.code === "" ? null : req.body.code,
+        };
+
+        const item = await storage.updateItem(id, processedData);
+        if (!item) {
+          return res.status(404).json({ message: "الصنف غير موجود" });
+        }
+        res.json(item);
+      } catch (error) {
+        console.error("Item update error:", error);
+        res.status(500).json({
+          message: "خطأ في تحديث الصنف",
+          error: "خطأ داخلي",
+        });
       }
+    },
+  );
 
-      res.json(customerProduct);
-    } catch (error) {
-      console.error("Customer product update error:", error);
-      res.status(500).json({
-        message: "خطأ في تحديث منتج العميل",
-      });
-    }
-  });
+  app.put(
+    "/api/customer-products/:id",
+    requireAuth,
+    requirePermission("manage_customers", "manage_definitions"),
+    async (req, res) => {
+      try {
+        const id = parseInt(req.params.id);
 
+        // Validate the ID parameter
+        if (isNaN(id)) {
+          return res.status(400).json({ message: "معرف المنتج غير صحيح" });
+        }
+
+        // Validate request body using Zod schema
+        const validation = insertCustomerProductSchema.safeParse({
+          ...req.body,
+          category_id: req.body.material_group_id || req.body.category_id,
+        });
+
+        if (!validation.success) {
+          console.error(
+            "Customer product validation error:",
+            validation.error.errors,
+          );
+          return res.status(400).json({
+            message: "بيانات غير صحيحة",
+            errors: validation.error.errors.map((err) => ({
+              field: err.path.join("."),
+              message: err.message,
+            })),
+          });
+        }
+
+        // Remove material_group_id for backwards compatibility
+        const processedData = { ...validation.data };
+        delete (processedData as any).material_group_id;
+
+        const customerProduct = await storage.updateCustomerProduct(
+          id,
+          processedData,
+        );
+
+        if (!customerProduct) {
+          return res.status(404).json({ message: "منتج العميل غير موجود" });
+        }
+
+        res.json(customerProduct);
+      } catch (error) {
+        console.error("Customer product update error:", error);
+        res.status(500).json({
+          message: "خطأ في تحديث منتج العميل",
+        });
+      }
+    },
+  );
 
   // ============ HR System API Routes ============
 
@@ -5914,50 +7059,65 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/hr/training-programs", requireAuth, requirePermission('manage_hr'), async (req, res) => {
-    try {
-      const validation = insertTrainingProgramSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({ message: "بيانات غير صحيحة", errors: validation.error.errors });
+  app.post(
+    "/api/hr/training-programs",
+    requireAuth,
+    requirePermission("manage_hr"),
+    async (req, res) => {
+      try {
+        const validation = insertTrainingProgramSchema.safeParse(req.body);
+        if (!validation.success) {
+          return res.status(400).json({
+            message: "بيانات غير صحيحة",
+            errors: validation.error.errors,
+          });
+        }
+        const program = await storage.createTrainingProgram(validation.data);
+        res.json(program);
+      } catch (error) {
+        console.error("[API Error]", error);
+        res.status(500).json({ message: "خطأ في إنشاء البرنامج التدريبي" });
       }
-      const program = await storage.createTrainingProgram(validation.data);
-      res.json(program);
-    } catch (error) {
-      console.error("[API Error]", error);
-      res.status(500).json({ message: "خطأ في إنشاء البرنامج التدريبي" });
-    }
-  });
+    },
+  );
 
-  app.put("/api/hr/training-programs/:id", requireAuth, requirePermission('manage_hr'), async (req, res) => {
-    try {
-      // Enhanced parameter validation
-      if (!req.params?.id) {
-        return res
-          .status(400)
-          .json({ message: "معرف البرنامج التدريبي مطلوب" });
-      }
+  app.put(
+    "/api/hr/training-programs/:id",
+    requireAuth,
+    requirePermission("manage_hr"),
+    async (req, res) => {
+      try {
+        // Enhanced parameter validation
+        if (!req.params?.id) {
+          return res
+            .status(400)
+            .json({ message: "معرف البرنامج التدريبي مطلوب" });
+        }
 
-      const id = parseInt(req.params.id);
-      if (isNaN(id) || id <= 0) {
-        return res
-          .status(400)
-          .json({ message: "معرف البرنامج التدريبي غير صحيح" });
-      }
+        const id = parseInt(req.params.id);
+        if (isNaN(id) || id <= 0) {
+          return res
+            .status(400)
+            .json({ message: "معرف البرنامج التدريبي غير صحيح" });
+        }
 
-      if (!req.body || typeof req.body !== "object") {
-        return res.status(400).json({ message: "بيانات التحديث مطلوبة" });
-      }
+        if (!req.body || typeof req.body !== "object") {
+          return res.status(400).json({ message: "بيانات التحديث مطلوبة" });
+        }
 
-      const program = await storage.updateTrainingProgram(id, req.body);
-      if (!program) {
-        return res.status(404).json({ message: "البرنامج التدريبي غير موجود" });
+        const program = await storage.updateTrainingProgram(id, req.body);
+        if (!program) {
+          return res
+            .status(404)
+            .json({ message: "البرنامج التدريبي غير موجود" });
+        }
+        res.json(program);
+      } catch (error) {
+        console.error("[API Error]", error);
+        res.status(500).json({ message: "خطأ في تحديث البرنامج التدريبي" });
       }
-      res.json(program);
-    } catch (error) {
-      console.error("[API Error]", error);
-      res.status(500).json({ message: "خطأ في تحديث البرنامج التدريبي" });
-    }
-  });
+    },
+  );
 
   app.get("/api/hr/training-programs/:id", requireAuth, async (req, res) => {
     try {
@@ -6010,19 +7170,27 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/hr/training-materials", requireAuth, requirePermission('manage_hr'), async (req, res) => {
-    try {
-      const validation = insertTrainingMaterialSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({ message: "بيانات غير صحيحة", errors: validation.error.errors });
+  app.post(
+    "/api/hr/training-materials",
+    requireAuth,
+    requirePermission("manage_hr"),
+    async (req, res) => {
+      try {
+        const validation = insertTrainingMaterialSchema.safeParse(req.body);
+        if (!validation.success) {
+          return res.status(400).json({
+            message: "بيانات غير صحيحة",
+            errors: validation.error.errors,
+          });
+        }
+        const material = await storage.createTrainingMaterial(validation.data);
+        res.json(material);
+      } catch (error) {
+        console.error("[API Error]", error);
+        res.status(500).json({ message: "خطأ في إنشاء المادة التدريبية" });
       }
-      const material = await storage.createTrainingMaterial(validation.data);
-      res.json(material);
-    } catch (error) {
-      console.error("[API Error]", error);
-      res.status(500).json({ message: "خطأ في إنشاء المادة التدريبية" });
-    }
-  });
+    },
+  );
 
   // Training Enrollments
   app.get("/api/hr/training-enrollments", requireAuth, async (req, res) => {
@@ -6037,7 +7205,9 @@ Do not include quotes or explanations.`;
             : undefined;
       }
 
-      const enrollments = await storage.getTrainingEnrollments(employeeId ? { employeeId } : undefined);
+      const enrollments = await storage.getTrainingEnrollments(
+        employeeId ? { employeeId } : undefined,
+      );
       if (!enrollments) {
         return res.json([]); // Return empty array instead of null
       }
@@ -6048,30 +7218,45 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/hr/training-enrollments", requireAuth, requirePermission('manage_hr'), async (req, res) => {
-    try {
-      const validation = insertTrainingEnrollmentSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({ message: "بيانات غير صحيحة", errors: validation.error.errors });
+  app.post(
+    "/api/hr/training-enrollments",
+    requireAuth,
+    requirePermission("manage_hr"),
+    async (req, res) => {
+      try {
+        const validation = insertTrainingEnrollmentSchema.safeParse(req.body);
+        if (!validation.success) {
+          return res.status(400).json({
+            message: "بيانات غير صحيحة",
+            errors: validation.error.errors,
+          });
+        }
+        const enrollment = await storage.createTrainingEnrollment(
+          validation.data,
+        );
+        res.json(enrollment);
+      } catch (error) {
+        console.error("[API Error]", error);
+        res.status(500).json({ message: "خطأ في تسجيل الموظف في البرنامج" });
       }
-      const enrollment = await storage.createTrainingEnrollment(validation.data);
-      res.json(enrollment);
-    } catch (error) {
-      console.error("[API Error]", error);
-      res.status(500).json({ message: "خطأ في تسجيل الموظف في البرنامج" });
-    }
-  });
+    },
+  );
 
-  app.put("/api/hr/training-enrollments/:id", requireAuth, requirePermission('manage_hr'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "ID");
-      const enrollment = await storage.updateTrainingEnrollment(id, req.body);
-      res.json(enrollment);
-    } catch (error) {
-      console.error("[API Error]", error);
-      res.status(500).json({ message: "خطأ في تحديث التسجيل التدريبي" });
-    }
-  });
+  app.put(
+    "/api/hr/training-enrollments/:id",
+    requireAuth,
+    requirePermission("manage_hr"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "ID");
+        const enrollment = await storage.updateTrainingEnrollment(id, req.body);
+        res.json(enrollment);
+      } catch (error) {
+        console.error("[API Error]", error);
+        res.status(500).json({ message: "خطأ في تحديث التسجيل التدريبي" });
+      }
+    },
+  );
 
   // Training Evaluations
   app.get("/api/hr/training-evaluations", requireAuth, async (req, res) => {
@@ -6097,30 +7282,45 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/hr/training-evaluations", requireAuth, requirePermission('manage_hr'), async (req, res) => {
-    try {
-      const validation = insertTrainingEvaluationSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({ message: "بيانات غير صحيحة", errors: validation.error.errors });
+  app.post(
+    "/api/hr/training-evaluations",
+    requireAuth,
+    requirePermission("manage_hr"),
+    async (req, res) => {
+      try {
+        const validation = insertTrainingEvaluationSchema.safeParse(req.body);
+        if (!validation.success) {
+          return res.status(400).json({
+            message: "بيانات غير صحيحة",
+            errors: validation.error.errors,
+          });
+        }
+        const evaluation = await storage.createTrainingEvaluation(
+          validation.data,
+        );
+        res.json(evaluation);
+      } catch (error) {
+        console.error("[API Error]", error);
+        res.status(500).json({ message: "خطأ في إنشاء التقييم التدريبي" });
       }
-      const evaluation = await storage.createTrainingEvaluation(validation.data);
-      res.json(evaluation);
-    } catch (error) {
-      console.error("[API Error]", error);
-      res.status(500).json({ message: "خطأ في إنشاء التقييم التدريبي" });
-    }
-  });
+    },
+  );
 
-  app.put("/api/hr/training-evaluations/:id", requireAuth, requirePermission('manage_hr'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "ID");
-      const evaluation = await storage.updateTrainingEvaluation(id, req.body);
-      res.json(evaluation);
-    } catch (error) {
-      console.error("[API Error]", error);
-      res.status(500).json({ message: "خطأ في تحديث التقييم التدريبي" });
-    }
-  });
+  app.put(
+    "/api/hr/training-evaluations/:id",
+    requireAuth,
+    requirePermission("manage_hr"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "ID");
+        const evaluation = await storage.updateTrainingEvaluation(id, req.body);
+        res.json(evaluation);
+      } catch (error) {
+        console.error("[API Error]", error);
+        res.status(500).json({ message: "خطأ في تحديث التقييم التدريبي" });
+      }
+    },
+  );
 
   app.get("/api/hr/training-evaluations/:id", requireAuth, async (req, res) => {
     try {
@@ -6153,26 +7353,39 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/hr/training-certificates", requireAuth, requirePermission('manage_hr'), async (req, res) => {
-    try {
-      const validation = insertTrainingCertificateSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({ message: "بيانات غير صحيحة", errors: validation.error.errors });
+  app.post(
+    "/api/hr/training-certificates",
+    requireAuth,
+    requirePermission("manage_hr"),
+    async (req, res) => {
+      try {
+        const validation = insertTrainingCertificateSchema.safeParse(req.body);
+        if (!validation.success) {
+          return res.status(400).json({
+            message: "بيانات غير صحيحة",
+            errors: validation.error.errors,
+          });
+        }
+        const certificate = await storage.createTrainingCertificate(
+          validation.data,
+        );
+        res.json(certificate);
+      } catch (error) {
+        console.error("[API Error]", error);
+        res.status(500).json({ message: "خطأ في إنشاء الشهادة التدريبية" });
       }
-      const certificate = await storage.createTrainingCertificate(validation.data);
-      res.json(certificate);
-    } catch (error) {
-      console.error("[API Error]", error);
-      res.status(500).json({ message: "خطأ في إنشاء الشهادة التدريبية" });
-    }
-  });
+    },
+  );
 
   app.post(
     "/api/hr/training-certificates/generate/:enrollmentId",
     requireAuth,
     async (req, res) => {
       try {
-        const enrollmentId = parseRouteParam(req.params.enrollmentId, "Enrollment ID");
+        const enrollmentId = parseRouteParam(
+          req.params.enrollmentId,
+          "Enrollment ID",
+        );
         const certificate =
           await storage.generateTrainingCertificate(enrollmentId);
         res.json(certificate);
@@ -6183,27 +7396,39 @@ Do not include quotes or explanations.`;
     },
   );
 
-  app.put("/api/hr/training-certificates/:id", requireAuth, requirePermission('manage_hr'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      const certificate = await storage.updateTrainingCertificate(id, req.body);
-      res.json(certificate);
-    } catch (error) {
-      console.error("[API Error]", error);
-      res.status(500).json({ message: "خطأ في تحديث الشهادة التدريبية" });
-    }
-  });
+  app.put(
+    "/api/hr/training-certificates/:id",
+    requireAuth,
+    requirePermission("manage_hr"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const certificate = await storage.updateTrainingCertificate(
+          id,
+          req.body,
+        );
+        res.json(certificate);
+      } catch (error) {
+        console.error("[API Error]", error);
+        res.status(500).json({ message: "خطأ في تحديث الشهادة التدريبية" });
+      }
+    },
+  );
 
-  app.get("/api/hr/training-certificates/:id/generate", requireAuth, async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      const certificate = await storage.generateTrainingCertificate(id);
-      res.json(certificate);
-    } catch (error) {
-      console.error("[API Error]", error);
-      res.status(500).json({ message: "خطأ في توليد شهادة التدريب" });
-    }
-  });
+  app.get(
+    "/api/hr/training-certificates/:id/generate",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const certificate = await storage.generateTrainingCertificate(id);
+        res.json(certificate);
+      } catch (error) {
+        console.error("[API Error]", error);
+        res.status(500).json({ message: "خطأ في توليد شهادة التدريب" });
+      }
+    },
+  );
 
   // Performance Reviews
   app.get("/api/hr/performance-reviews", requireAuth, async (req, res) => {
@@ -6219,30 +7444,43 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/hr/performance-reviews", requireAuth, requirePermission('manage_hr'), async (req, res) => {
-    try {
-      const validation = insertPerformanceReviewSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({ message: "بيانات غير صحيحة", errors: validation.error.errors });
+  app.post(
+    "/api/hr/performance-reviews",
+    requireAuth,
+    requirePermission("manage_hr"),
+    async (req, res) => {
+      try {
+        const validation = insertPerformanceReviewSchema.safeParse(req.body);
+        if (!validation.success) {
+          return res.status(400).json({
+            message: "بيانات غير صحيحة",
+            errors: validation.error.errors,
+          });
+        }
+        const review = await storage.createPerformanceReview(validation.data);
+        res.json(review);
+      } catch (error) {
+        console.error("[API Error]", error);
+        res.status(500).json({ message: "خطأ في إنشاء تقييم الأداء" });
       }
-      const review = await storage.createPerformanceReview(validation.data);
-      res.json(review);
-    } catch (error) {
-      console.error("[API Error]", error);
-      res.status(500).json({ message: "خطأ في إنشاء تقييم الأداء" });
-    }
-  });
+    },
+  );
 
-  app.put("/api/hr/performance-reviews/:id", requireAuth, requirePermission('manage_hr'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      const review = await storage.updatePerformanceReview(id, req.body);
-      res.json(review);
-    } catch (error) {
-      console.error("[API Error]", error);
-      res.status(500).json({ message: "خطأ في تحديث تقييم الأداء" });
-    }
-  });
+  app.put(
+    "/api/hr/performance-reviews/:id",
+    requireAuth,
+    requirePermission("manage_hr"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const review = await storage.updatePerformanceReview(id, req.body);
+        res.json(review);
+      } catch (error) {
+        console.error("[API Error]", error);
+        res.status(500).json({ message: "خطأ في تحديث تقييم الأداء" });
+      }
+    },
+  );
 
   // Performance Criteria
   app.get("/api/hr/performance-criteria", requireAuth, async (req, res) => {
@@ -6255,19 +7493,29 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/hr/performance-criteria", requireAuth, requirePermission('manage_hr'), async (req, res) => {
-    try {
-      const validation = insertPerformanceCriteriaSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({ message: "بيانات غير صحيحة", errors: validation.error.errors });
+  app.post(
+    "/api/hr/performance-criteria",
+    requireAuth,
+    requirePermission("manage_hr"),
+    async (req, res) => {
+      try {
+        const validation = insertPerformanceCriteriaSchema.safeParse(req.body);
+        if (!validation.success) {
+          return res.status(400).json({
+            message: "بيانات غير صحيحة",
+            errors: validation.error.errors,
+          });
+        }
+        const criteria = await storage.createPerformanceCriteria(
+          validation.data,
+        );
+        res.json(criteria);
+      } catch (error) {
+        console.error("[API Error]", error);
+        res.status(500).json({ message: "خطأ في إنشاء معيار التقييم" });
       }
-      const criteria = await storage.createPerformanceCriteria(validation.data);
-      res.json(criteria);
-    } catch (error) {
-      console.error("[API Error]", error);
-      res.status(500).json({ message: "خطأ في إنشاء معيار التقييم" });
-    }
-  });
+    },
+  );
 
   // Leave Types
   app.get("/api/hr/leave-types", requireAuth, async (req, res) => {
@@ -6280,19 +7528,27 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/hr/leave-types", requireAuth, requirePermission('manage_hr'), async (req, res) => {
-    try {
-      const validation = insertLeaveTypeSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({ message: "بيانات غير صحيحة", errors: validation.error.errors });
+  app.post(
+    "/api/hr/leave-types",
+    requireAuth,
+    requirePermission("manage_hr"),
+    async (req, res) => {
+      try {
+        const validation = insertLeaveTypeSchema.safeParse(req.body);
+        if (!validation.success) {
+          return res.status(400).json({
+            message: "بيانات غير صحيحة",
+            errors: validation.error.errors,
+          });
+        }
+        const leaveType = await storage.createLeaveType(validation.data);
+        res.json(leaveType);
+      } catch (error) {
+        console.error("[API Error]", error);
+        res.status(500).json({ message: "خطأ في إنشاء نوع الإجازة" });
       }
-      const leaveType = await storage.createLeaveType(validation.data);
-      res.json(leaveType);
-    } catch (error) {
-      console.error("[API Error]", error);
-      res.status(500).json({ message: "خطأ في إنشاء نوع الإجازة" });
-    }
-  });
+    },
+  );
 
   // Leave Requests
   app.get("/api/hr/leave-requests", requireAuth, async (req, res) => {
@@ -6308,30 +7564,43 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/hr/leave-requests", requireAuth, requirePermission('manage_hr'), async (req, res) => {
-    try {
-      const validation = insertLeaveRequestSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({ message: "بيانات غير صحيحة", errors: validation.error.errors });
+  app.post(
+    "/api/hr/leave-requests",
+    requireAuth,
+    requirePermission("manage_hr"),
+    async (req, res) => {
+      try {
+        const validation = insertLeaveRequestSchema.safeParse(req.body);
+        if (!validation.success) {
+          return res.status(400).json({
+            message: "بيانات غير صحيحة",
+            errors: validation.error.errors,
+          });
+        }
+        const request = await storage.createLeaveRequest(validation.data);
+        res.json(request);
+      } catch (error) {
+        console.error("[API Error]", error);
+        res.status(500).json({ message: "خطأ في إنشاء طلب الإجازة" });
       }
-      const request = await storage.createLeaveRequest(validation.data);
-      res.json(request);
-    } catch (error) {
-      console.error("[API Error]", error);
-      res.status(500).json({ message: "خطأ في إنشاء طلب الإجازة" });
-    }
-  });
+    },
+  );
 
-  app.put("/api/hr/leave-requests/:id", requireAuth, requirePermission('manage_hr'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      const request = await storage.updateLeaveRequest(id, req.body);
-      res.json(request);
-    } catch (error) {
-      console.error("[API Error]", error);
-      res.status(500).json({ message: "خطأ في تحديث طلب الإجازة" });
-    }
-  });
+  app.put(
+    "/api/hr/leave-requests/:id",
+    requireAuth,
+    requirePermission("manage_hr"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const request = await storage.updateLeaveRequest(id, req.body);
+        res.json(request);
+      } catch (error) {
+        console.error("[API Error]", error);
+        res.status(500).json({ message: "خطأ في تحديث طلب الإجازة" });
+      }
+    },
+  );
 
   app.get("/api/hr/leave-requests/pending", requireAuth, async (req, res) => {
     try {
@@ -6344,111 +7613,158 @@ Do not include quotes or explanations.`;
   });
 
   // Leave Balances
-  app.get("/api/hr/leave-balances/:employeeId", requireAuth, async (req, res) => {
-    try {
-      const employeeId = req.params.employeeId;
-      let year: number | undefined;
-      if (req.query.year) {
-        const parsed = parseInt(req.query.year as string);
-        year = !isNaN(parsed) && parsed > 0 ? parsed : undefined;
+  app.get(
+    "/api/hr/leave-balances/:employeeId",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const employeeId = req.params.employeeId;
+        let year: number | undefined;
+        if (req.query.year) {
+          const parsed = parseInt(req.query.year as string);
+          year = !isNaN(parsed) && parsed > 0 ? parsed : undefined;
+        }
+        const balances = await storage.getLeaveBalances(employeeId, year);
+        res.json(balances);
+      } catch (error) {
+        console.error("[API Error]", error);
+        res.status(500).json({ message: "خطأ في جلب أرصدة الإجازات" });
       }
-      const balances = await storage.getLeaveBalances(employeeId, year);
-      res.json(balances);
-    } catch (error) {
-      console.error("[API Error]", error);
-      res.status(500).json({ message: "خطأ في جلب أرصدة الإجازات" });
-    }
-  });
+    },
+  );
 
-  app.post("/api/hr/leave-balances", requireAuth, requirePermission('manage_hr'), async (req, res) => {
-    try {
-      const validation = insertLeaveBalanceSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({ message: "بيانات غير صحيحة", errors: validation.error.errors });
+  app.post(
+    "/api/hr/leave-balances",
+    requireAuth,
+    requirePermission("manage_hr"),
+    async (req, res) => {
+      try {
+        const validation = insertLeaveBalanceSchema.safeParse(req.body);
+        if (!validation.success) {
+          return res.status(400).json({
+            message: "بيانات غير صحيحة",
+            errors: validation.error.errors,
+          });
+        }
+        const balance = await storage.createLeaveBalance(validation.data);
+        res.json(balance);
+      } catch (error) {
+        console.error("[API Error]", error);
+        res.status(500).json({ message: "خطأ في إنشاء رصيد الإجازة" });
       }
-      const balance = await storage.createLeaveBalance(validation.data);
-      res.json(balance);
-    } catch (error) {
-      console.error("[API Error]", error);
-      res.status(500).json({ message: "خطأ في إنشاء رصيد الإجازة" });
-    }
-  });
+    },
+  );
 
   // DELETE routes for definitions
-  app.delete("/api/customers/:id", requireAuth, requirePermission('manage_customers', 'manage_definitions'), async (req, res) => {
-    try {
-      await storage.deleteCustomer(req.params.id);
-      res.json({ message: "تم حذف العميل بنجاح" });
-    } catch (error) {
-      console.error("[API Error]", error);
-      res.status(500).json({ message: "خطأ في حذف العميل" });
-    }
-  });
+  app.delete(
+    "/api/customers/:id",
+    requireAuth,
+    requirePermission("manage_customers", "manage_definitions"),
+    async (req, res) => {
+      try {
+        await storage.deleteCustomer(req.params.id);
+        res.json({ message: "تم حذف العميل بنجاح" });
+      } catch (error) {
+        console.error("[API Error]", error);
+        res.status(500).json({ message: "خطأ في حذف العميل" });
+      }
+    },
+  );
 
-  app.delete("/api/sections/:id", requireAuth, requirePermission('manage_sections', 'manage_definitions'), async (req, res) => {
-    try {
-      const id = req.params.id;
-      await storage.deleteSection(id);
-      res.json({ message: "تم حذف القسم بنجاح" });
-    } catch (error) {
-      console.error("[API Error]", error);
-      res.status(500).json({ message: "خطأ في حذف القسم" });
-    }
-  });
+  app.delete(
+    "/api/sections/:id",
+    requireAuth,
+    requirePermission("manage_sections", "manage_definitions"),
+    async (req, res) => {
+      try {
+        const id = req.params.id;
+        await storage.deleteSection(id);
+        res.json({ message: "تم حذف القسم بنجاح" });
+      } catch (error) {
+        console.error("[API Error]", error);
+        res.status(500).json({ message: "خطأ في حذف القسم" });
+      }
+    },
+  );
 
-  app.delete("/api/items/:id", requireAuth, requirePermission('manage_items', 'manage_definitions'), async (req, res) => {
-    try {
-      await storage.deleteItem(req.params.id);
-      res.json({ message: "تم حذف الصنف بنجاح" });
-    } catch (error) {
-      console.error("[API Error]", error);
-      res.status(500).json({ message: "خطأ في حذف الصنف" });
-    }
-  });
+  app.delete(
+    "/api/items/:id",
+    requireAuth,
+    requirePermission("manage_items", "manage_definitions"),
+    async (req, res) => {
+      try {
+        await storage.deleteItem(req.params.id);
+        res.json({ message: "تم حذف الصنف بنجاح" });
+      } catch (error) {
+        console.error("[API Error]", error);
+        res.status(500).json({ message: "خطأ في حذف الصنف" });
+      }
+    },
+  );
 
-  app.delete("/api/customer-products/:id", requireAuth, requirePermission('manage_customers', 'manage_definitions'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      await storage.deleteCustomerProduct(id);
-      res.json({ message: "تم حذف منتج العميل بنجاح" });
-    } catch (error) {
-      console.error("[API Error]", error);
-      res.status(500).json({ message: "خطأ في حذف منتج العميل" });
-    }
-  });
+  app.delete(
+    "/api/customer-products/:id",
+    requireAuth,
+    requirePermission("manage_customers", "manage_definitions"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        await storage.deleteCustomerProduct(id);
+        res.json({ message: "تم حذف منتج العميل بنجاح" });
+      } catch (error) {
+        console.error("[API Error]", error);
+        res.status(500).json({ message: "خطأ في حذف منتج العميل" });
+      }
+    },
+  );
 
-  app.delete("/api/locations/:id", requireAuth, requirePermission('manage_warehouse', 'manage_definitions'), async (req, res) => {
-    try {
-      const id = req.params.id;
-      await storage.deleteLocation(id);
-      res.json({ message: "تم حذف الموقع بنجاح" });
-    } catch (error) {
-      console.error("[API Error]", error);
-      res.status(500).json({ message: "خطأ في حذف الموقع" });
-    }
-  });
+  app.delete(
+    "/api/locations/:id",
+    requireAuth,
+    requirePermission("manage_warehouse", "manage_definitions"),
+    async (req, res) => {
+      try {
+        const id = req.params.id;
+        await storage.deleteLocation(id);
+        res.json({ message: "تم حذف الموقع بنجاح" });
+      } catch (error) {
+        console.error("[API Error]", error);
+        res.status(500).json({ message: "خطأ في حذف الموقع" });
+      }
+    },
+  );
 
-  app.delete("/api/machines/:id", requireAuth, requirePermission('manage_machines', 'manage_definitions'), async (req, res) => {
-    try {
-      const id = req.params.id;
-      await storage.deleteMachine(id);
-      res.json({ message: "تم حذف الماكينة بنجاح" });
-    } catch (error) {
-      console.error("[API Error]", error);
-      res.status(500).json({ message: "خطأ في حذف الماكينة" });
-    }
-  });
+  app.delete(
+    "/api/machines/:id",
+    requireAuth,
+    requirePermission("manage_machines", "manage_definitions"),
+    async (req, res) => {
+      try {
+        const id = req.params.id;
+        await storage.deleteMachine(id);
+        res.json({ message: "تم حذف الماكينة بنجاح" });
+      } catch (error) {
+        console.error("[API Error]", error);
+        res.status(500).json({ message: "خطأ في حذف الماكينة" });
+      }
+    },
+  );
 
-  app.delete("/api/users/:id", requireAuth, requirePermission('manage_users'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      await storage.deleteUser(id);
-      res.json({ message: "تم حذف المستخدم بنجاح" });
-    } catch (error) {
-      console.error("[API Error]", error);
-      res.status(500).json({ message: "خطأ في حذف المستخدم" });
-    }
-  });
+  app.delete(
+    "/api/users/:id",
+    requireAuth,
+    requirePermission("manage_users"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        await storage.deleteUser(id);
+        res.json({ message: "تم حذف المستخدم بنجاح" });
+      } catch (error) {
+        console.error("[API Error]", error);
+        res.status(500).json({ message: "خطأ في حذف المستخدم" });
+      }
+    },
+  );
 
   // Inventory Management routes
   app.get("/api/inventory", requireAuth, async (req, res) => {
@@ -6471,112 +7787,128 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/inventory", requireAuth, requirePermission('manage_warehouse'), async (req, res) => {
-    try {
-      // STEP 1: Zod schema validation
-      const validatedData = insertInventorySchema.parse(req.body);
+  app.post(
+    "/api/inventory",
+    requireAuth,
+    requirePermission("manage_warehouse"),
+    async (req, res) => {
+      try {
+        // STEP 1: Zod schema validation
+        const validatedData = insertInventorySchema.parse(req.body);
 
-      // STEP 2: DataValidator integration for business rules
-      const validationResult = await getDataValidator(storage).validateData(
-        "inventory",
-        validatedData,
-      );
-      if (!validationResult.isValid) {
-        const criticalErrors = validationResult.errors.filter(
-          (e) => e.severity === "critical" || e.severity === "high",
+        // STEP 2: DataValidator integration for business rules
+        const validationResult = await getDataValidator(storage).validateData(
+          "inventory",
+          validatedData,
         );
-        if (criticalErrors.length > 0) {
-          return res.status(400).json({
-            message: criticalErrors[0].message_ar || criticalErrors[0].message,
-            errors: validationResult.errors,
-            success: false,
-          });
+        if (!validationResult.isValid) {
+          const criticalErrors = validationResult.errors.filter(
+            (e) => e.severity === "critical" || e.severity === "high",
+          );
+          if (criticalErrors.length > 0) {
+            return res.status(400).json({
+              message:
+                criticalErrors[0].message_ar || criticalErrors[0].message,
+              errors: validationResult.errors,
+              success: false,
+            });
+          }
         }
-      }
 
-      // STEP 3: Create inventory item with validated data
-      const item = await storage.createInventoryItem(validatedData);
+        // STEP 3: Create inventory item with validated data
+        const item = await storage.createInventoryItem(validatedData);
 
-      res.status(201).json({
-        data: item,
-        message: "تم إضافة صنف المخزون بنجاح",
-        success: true,
-      });
-    } catch (error: any) {
-      console.error("Inventory creation error:", error);
+        res.status(201).json({
+          data: item,
+          message: "تم إضافة صنف المخزون بنجاح",
+          success: true,
+        });
+      } catch (error: any) {
+        console.error("Inventory creation error:", error);
 
-      res.status(500).json({
-        message: "خطأ في إضافة صنف للمخزون",
-        success: false,
-      });
-    }
-  });
-
-  app.put("/api/inventory/:id", requireAuth, requirePermission('manage_warehouse'), async (req, res) => {
-    try {
-      // STEP 1: Parameter validation
-      const id = parseInt(req.params.id);
-      if (isNaN(id) || id <= 0) {
-        return res.status(400).json({
-          message: "معرف المخزون غير صحيح",
+        res.status(500).json({
+          message: "خطأ في إضافة صنف للمخزون",
           success: false,
         });
       }
+    },
+  );
 
-      // STEP 2: Zod schema validation (partial for updates)
-      const validatedData = insertInventorySchema.partial().parse(req.body);
-
-      // STEP 3: DataValidator integration for business rules
-      const validationResult = await getDataValidator(storage).validateData(
-        "inventory",
-        validatedData,
-        true,
-      );
-      if (!validationResult.isValid) {
-        const criticalErrors = validationResult.errors.filter(
-          (e) => e.severity === "critical" || e.severity === "high",
-        );
-        if (criticalErrors.length > 0) {
+  app.put(
+    "/api/inventory/:id",
+    requireAuth,
+    requirePermission("manage_warehouse"),
+    async (req, res) => {
+      try {
+        // STEP 1: Parameter validation
+        const id = parseInt(req.params.id);
+        if (isNaN(id) || id <= 0) {
           return res.status(400).json({
-            message: criticalErrors[0].message_ar || criticalErrors[0].message,
-            errors: validationResult.errors,
+            message: "معرف المخزون غير صحيح",
             success: false,
           });
         }
+
+        // STEP 2: Zod schema validation (partial for updates)
+        const validatedData = insertInventorySchema.partial().parse(req.body);
+
+        // STEP 3: DataValidator integration for business rules
+        const validationResult = await getDataValidator(storage).validateData(
+          "inventory",
+          validatedData,
+          true,
+        );
+        if (!validationResult.isValid) {
+          const criticalErrors = validationResult.errors.filter(
+            (e) => e.severity === "critical" || e.severity === "high",
+          );
+          if (criticalErrors.length > 0) {
+            return res.status(400).json({
+              message:
+                criticalErrors[0].message_ar || criticalErrors[0].message,
+              errors: validationResult.errors,
+              success: false,
+            });
+          }
+        }
+
+        // STEP 4: Update inventory item with validated data
+        const item = await storage.updateInventoryItem(id, validatedData);
+
+        res.json({
+          data: item,
+          message: "تم تحديث صنف المخزون بنجاح",
+          success: true,
+        });
+      } catch (error: any) {
+        console.error("Inventory update error:", error);
+
+        res.status(500).json({
+          message: "خطأ في تحديث صنف المخزون",
+          success: false,
+        });
       }
+    },
+  );
 
-      // STEP 4: Update inventory item with validated data
-      const item = await storage.updateInventoryItem(id, validatedData);
-
-      res.json({
-        data: item,
-        message: "تم تحديث صنف المخزون بنجاح",
-        success: true,
-      });
-    } catch (error: any) {
-      console.error("Inventory update error:", error);
-
-      res.status(500).json({
-        message: "خطأ في تحديث صنف المخزون",
-        success: false,
-      });
-    }
-  });
-
-  app.delete("/api/inventory/:id", requireAuth, requirePermission('manage_warehouse'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      await storage.deleteInventoryItem(id);
-      res.json({ message: "تم حذف صنف المخزون بنجاح" });
-    } catch (error) {
-      console.error("[API Error]", error);
-      res.status(500).json({ message: "خطأ في حذف صنف المخزون" });
-    }
-  });
-
+  app.delete(
+    "/api/inventory/:id",
+    requireAuth,
+    requirePermission("manage_warehouse"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        await storage.deleteInventoryItem(id);
+        res.json({ message: "تم حذف صنف المخزون بنجاح" });
+      } catch (error) {
+        console.error("[API Error]", error);
+        res.status(500).json({ message: "خطأ في حذف صنف المخزون" });
+      }
+    },
+  );
 
   // ============ Machine Queues Management API ============
-  
+
   app.get("/api/machine-queues", requireAuth, async (req, res) => {
     try {
       const queues = await storage.getMachineQueues();
@@ -6590,10 +7922,11 @@ Do not include quotes or explanations.`;
   app.post("/api/machine-queues/assign", requireAuth, async (req, res) => {
     try {
       const { productionOrderId, machineId, position } = req.body;
-      
+
       if (!productionOrderId || !machineId || position === undefined) {
-        return res.status(400).json({ 
-          message: "بيانات غير كاملة - مطلوب معرف أمر الإنتاج والماكينة والموضع" 
+        return res.status(400).json({
+          message:
+            "بيانات غير كاملة - مطلوب معرف أمر الإنتاج والماكينة والموضع",
         });
       }
 
@@ -6602,71 +7935,81 @@ Do not include quotes or explanations.`;
         return res.status(401).json({ message: "يجب تسجيل الدخول" });
       }
       const queueEntry = await storage.assignToMachineQueue(
-        productionOrderId, 
-        machineId, 
+        productionOrderId,
+        machineId,
         position,
-        assignUserId
+        assignUserId,
       );
-      
-      res.json({ 
+
+      res.json({
         data: queueEntry,
-        message: "تم تخصيص أمر الإنتاج للماكينة بنجاح" 
+        message: "تم تخصيص أمر الإنتاج للماكينة بنجاح",
       });
     } catch (error: any) {
       console.error("Error assigning to machine queue:", error);
-      res.status(400).json({ 
-        message: "خطأ في تخصيص أمر الإنتاج للماكينة" 
+      res.status(400).json({
+        message: "خطأ في تخصيص أمر الإنتاج للماكينة",
       });
     }
   });
 
-  app.put("/api/machine-queues/reorder", requireAuth, requirePermission('manage_production'), async (req, res) => {
-    try {
-      const { queueId, newPosition } = req.body;
-      
-      if (!queueId || newPosition === undefined) {
-        return res.status(400).json({ 
-          message: "بيانات غير كاملة - مطلوب معرف الطابور والموضع الجديد" 
+  app.put(
+    "/api/machine-queues/reorder",
+    requireAuth,
+    requirePermission("manage_production"),
+    async (req, res) => {
+      try {
+        const { queueId, newPosition } = req.body;
+
+        if (!queueId || newPosition === undefined) {
+          return res.status(400).json({
+            message: "بيانات غير كاملة - مطلوب معرف الطابور والموضع الجديد",
+          });
+        }
+
+        const updated = await storage.updateQueuePosition(queueId, newPosition);
+
+        res.json({
+          data: updated,
+          message: "تم تحديث ترتيب الطابور بنجاح",
+        });
+      } catch (error: any) {
+        console.error("Error reordering queue:", error);
+        res.status(400).json({
+          message: "خطأ في تحديث ترتيب الطابور",
         });
       }
+    },
+  );
 
-      const updated = await storage.updateQueuePosition(queueId, newPosition);
-      
-      res.json({ 
-        data: updated,
-        message: "تم تحديث ترتيب الطابور بنجاح" 
-      });
-    } catch (error: any) {
-      console.error("Error reordering queue:", error);
-      res.status(400).json({ 
-        message: "خطأ في تحديث ترتيب الطابور" 
-      });
-    }
-  });
+  app.delete(
+    "/api/machine-queues/:id",
+    requireAuth,
+    requirePermission("manage_production", "manage_definitions"),
+    async (req, res) => {
+      try {
+        const queueId = parseInt(req.params.id);
 
-  app.delete("/api/machine-queues/:id", requireAuth, requirePermission('manage_production', 'manage_definitions'), async (req, res) => {
-    try {
-      const queueId = parseInt(req.params.id);
-      
-      if (isNaN(queueId)) {
-        return res.status(400).json({ 
-          message: "معرف طابور غير صحيح" 
+        if (isNaN(queueId)) {
+          return res.status(400).json({
+            message: "معرف طابور غير صحيح",
+          });
+        }
+
+        await storage.removeFromQueue(queueId);
+
+        res.json({
+          message: "تم إزالة أمر الإنتاج من الطابور بنجاح",
+          success: true,
+        });
+      } catch (error: any) {
+        console.error("Error removing from queue:", error);
+        res.status(400).json({
+          message: "خطأ في إزالة أمر الإنتاج من الطابور",
         });
       }
-
-      await storage.removeFromQueue(queueId);
-      
-      res.json({ 
-        message: "تم إزالة أمر الإنتاج من الطابور بنجاح",
-        success: true
-      });
-    } catch (error: any) {
-      console.error("Error removing from queue:", error);
-      res.status(400).json({ 
-        message: "خطأ في إزالة أمر الإنتاج من الطابور" 
-      });
-    }
-  });
+    },
+  );
 
   app.get("/api/machine-queues/suggest", requireAuth, async (req, res) => {
     try {
@@ -6679,161 +8022,197 @@ Do not include quotes or explanations.`;
   });
 
   // ============ Smart Distribution API ============
-  
+
   // Apply smart distribution
-  app.post("/api/machine-queues/smart-distribute", requireAuth, async (req, res) => {
-    try {
-      const { algorithm, params } = req.body;
-      
-      if (!algorithm) {
-        return res.status(400).json({
-          message: "خوارزمية التوزيع مطلوبة"
+  app.post(
+    "/api/machine-queues/smart-distribute",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const { algorithm, params } = req.body;
+
+        if (!algorithm) {
+          return res.status(400).json({
+            message: "خوارزمية التوزيع مطلوبة",
+          });
+        }
+
+        const validAlgorithms = [
+          "balanced",
+          "load-based",
+          "priority",
+          "product-type",
+          "hybrid",
+        ];
+        if (!validAlgorithms.includes(algorithm)) {
+          return res.status(400).json({
+            message: `خوارزمية غير صحيحة. الخيارات المتاحة: ${validAlgorithms.join(", ")}`,
+          });
+        }
+
+        const distributeUserId = getAuthUserId(req);
+        if (!distributeUserId) {
+          return res.status(401).json({ message: "يجب تسجيل الدخول" });
+        }
+        const result = await storage.smartDistributeOrders(algorithm, {
+          ...params,
+          userId: distributeUserId,
+        });
+
+        res.json({
+          success: result.success,
+          message: result.message,
+          data: result,
+        });
+      } catch (error: any) {
+        console.error("Error applying smart distribution:", error);
+        res.status(400).json({
+          message: "خطأ في تطبيق التوزيع الذكي",
         });
       }
-      
-      const validAlgorithms = ["balanced", "load-based", "priority", "product-type", "hybrid"];
-      if (!validAlgorithms.includes(algorithm)) {
-        return res.status(400).json({
-          message: `خوارزمية غير صحيحة. الخيارات المتاحة: ${validAlgorithms.join(", ")}`
-        });
-      }
-      
-      const distributeUserId = getAuthUserId(req);
-      if (!distributeUserId) {
-        return res.status(401).json({ message: "يجب تسجيل الدخول" });
-      }
-      const result = await storage.smartDistributeOrders(algorithm, {
-        ...params,
-        userId: distributeUserId
-      });
-      
-      res.json({
-        success: result.success,
-        message: result.message,
-        data: result
-      });
-    } catch (error: any) {
-      console.error("Error applying smart distribution:", error);
-      res.status(400).json({
-        message: "خطأ في تطبيق التوزيع الذكي"
-      });
-    }
-  });
-  
+    },
+  );
+
   // Get distribution preview
-  app.get("/api/machine-queues/distribution-preview", requireAuth, async (req, res) => {
-    try {
-      const { algorithm, ...params } = req.query;
-      
-      if (!algorithm) {
-        return res.status(400).json({
-          message: "خوارزمية التوزيع مطلوبة"
+  app.get(
+    "/api/machine-queues/distribution-preview",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const { algorithm, ...params } = req.query;
+
+        if (!algorithm) {
+          return res.status(400).json({
+            message: "خوارزمية التوزيع مطلوبة",
+          });
+        }
+
+        const preview = await storage.getDistributionPreview(
+          algorithm as string,
+          params,
+        );
+
+        res.json({
+          success: true,
+          data: preview,
+        });
+      } catch (error: any) {
+        console.error("Error getting distribution preview:", error);
+        res.status(400).json({
+          message: "خطأ في معاينة التوزيع",
         });
       }
-      
-      const preview = await storage.getDistributionPreview(algorithm as string, params);
-      
-      res.json({
-        success: true,
-        data: preview
-      });
-    } catch (error: any) {
-      console.error("Error getting distribution preview:", error);
-      res.status(400).json({
-        message: "خطأ في معاينة التوزيع"
-      });
-    }
-  });
-  
+    },
+  );
+
   // Get machine capacity statistics
   app.get("/api/machines/capacity-stats", requireAuth, async (req, res) => {
     try {
       const stats = await storage.getMachineCapacityStats();
-      
+
       res.json({
         success: true,
-        data: stats
+        data: stats,
       });
     } catch (error: any) {
       console.error("Error getting machine capacity stats:", error);
       res.status(500).json({
-        message: "خطأ في جلب إحصائيات السعة"
-      });
-    }
-  });
-  
-  // Optimize machine queue order
-  app.post("/api/machine-queues/optimize/:machineId", requireAuth, async (req, res) => {
-    try {
-      const { machineId } = req.params;
-      
-      if (!machineId) {
-        return res.status(400).json({
-          message: "معرف الماكينة مطلوب"
-        });
-      }
-      
-      await storage.optimizeQueueOrder(machineId);
-      
-      res.json({
-        success: true,
-        message: "تم تحسين ترتيب طابور الماكينة بنجاح"
-      });
-    } catch (error: any) {
-      console.error("Error optimizing queue order:", error);
-      res.status(400).json({
-        message: "خطأ في تحسين ترتيب الطابور"
+        message: "خطأ في جلب إحصائيات السعة",
       });
     }
   });
 
+  // Optimize machine queue order
+  app.post(
+    "/api/machine-queues/optimize/:machineId",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const { machineId } = req.params;
+
+        if (!machineId) {
+          return res.status(400).json({
+            message: "معرف الماكينة مطلوب",
+          });
+        }
+
+        await storage.optimizeQueueOrder(machineId);
+
+        res.json({
+          success: true,
+          message: "تم تحسين ترتيب طابور الماكينة بنجاح",
+        });
+      } catch (error: any) {
+        console.error("Error optimizing queue order:", error);
+        res.status(400).json({
+          message: "خطأ في تحسين ترتيب الطابور",
+        });
+      }
+    },
+  );
 
   // ============ Orders Management API ============
 
-
-  app.post("/api/orders", requireAuth, requirePermission('manage_orders'), async (req, res) => {
-    try {
-      const parseResult = insertNewOrderSchema.safeParse(req.body);
-      if (!parseResult.success) {
-        return res.status(400).json({ message: "بيانات الطلب غير صحيحة", errors: parseResult.error.errors });
+  app.post(
+    "/api/orders",
+    requireAuth,
+    requirePermission("manage_orders"),
+    async (req, res) => {
+      try {
+        const parseResult = insertNewOrderSchema.safeParse(req.body);
+        if (!parseResult.success) {
+          return res.status(400).json({
+            message: "بيانات الطلب غير صحيحة",
+            errors: parseResult.error.errors,
+          });
+        }
+        const order = await storage.createOrder(parseResult.data);
+        res.status(201).json(order);
+      } catch (error) {
+        console.error("Error creating order:", error);
+        res.status(500).json({ message: "خطأ في إنشاء الطلب" });
       }
-      const order = await storage.createOrder(parseResult.data);
-      res.status(201).json(order);
-    } catch (error) {
-      console.error("Error creating order:", error);
-      res.status(500).json({ message: "خطأ في إنشاء الطلب" });
-    }
-  });
+    },
+  );
 
-  app.put("/api/orders/:id", requireAuth, requirePermission('manage_orders'), async (req, res) => {
-    try {
-      const orderId = parseRouteParam(req.params.id, "id");
-      const result = insertNewOrderSchema.safeParse(req.body);
-      if (!result.success) {
-        return res
-          .status(400)
-          .json({ message: "بيانات غير صحيحة", errors: result.error.errors });
+  app.put(
+    "/api/orders/:id",
+    requireAuth,
+    requirePermission("manage_orders"),
+    async (req, res) => {
+      try {
+        const orderId = parseRouteParam(req.params.id, "id");
+        const result = insertNewOrderSchema.safeParse(req.body);
+        if (!result.success) {
+          return res
+            .status(400)
+            .json({ message: "بيانات غير صحيحة", errors: result.error.errors });
+        }
+
+        // Convert Date objects to strings for database compatibility
+        const updateData = {
+          ...result.data,
+          delivery_date: result.data.delivery_date
+            ? result.data.delivery_date.toISOString().split("T")[0]
+            : result.data.delivery_date,
+        };
+        const order = await storage.updateOrder(orderId, updateData);
+        res.json(order);
+      } catch (error) {
+        console.error("Error updating order:", error);
+        res.status(500).json({ message: "خطأ في تحديث الطلب" });
       }
-
-      // Convert Date objects to strings for database compatibility
-      const updateData = {
-        ...result.data,
-        delivery_date: result.data.delivery_date
-          ? result.data.delivery_date.toISOString().split("T")[0]
-          : result.data.delivery_date,
-      };
-      const order = await storage.updateOrder(orderId, updateData);
-      res.json(order);
-    } catch (error) {
-      console.error("Error updating order:", error);
-      res.status(500).json({ message: "خطأ في تحديث الطلب" });
-    }
-  });
+    },
+  );
 
   app.patch(
     "/api/orders/:id/status",
     requireAuth,
-    requirePermission('manage_orders', 'update_order_status', 'manage_production'),
+    requirePermission(
+      "manage_orders",
+      "update_order_status",
+      "manage_production",
+    ),
     async (req, res) => {
       try {
         const orderId = parseRouteParam(req.params.id, "id");
@@ -6884,13 +8263,44 @@ Do not include quotes or explanations.`;
 
         // Define valid state transitions based on business logic
         const validTransitions: Record<string, string[]> = {
-          waiting: ["on_hold", "in_production", "paused", "cancelled", "archived"],
-          on_hold: ["waiting", "in_production", "paused", "cancelled", "archived"],
-          in_production: ["on_hold", "paused", "completed", "cancelled", "archived"],
-          paused: ["waiting", "on_hold", "in_production", "cancelled", "archived"],
+          waiting: [
+            "on_hold",
+            "in_production",
+            "paused",
+            "cancelled",
+            "archived",
+          ],
+          on_hold: [
+            "waiting",
+            "in_production",
+            "paused",
+            "cancelled",
+            "archived",
+          ],
+          in_production: [
+            "on_hold",
+            "paused",
+            "completed",
+            "cancelled",
+            "archived",
+          ],
+          paused: [
+            "waiting",
+            "on_hold",
+            "in_production",
+            "cancelled",
+            "archived",
+          ],
           completed: ["in_production", "archived"],
           cancelled: ["waiting", "archived"],
-          archived: ["waiting", "on_hold", "in_production", "paused", "completed", "cancelled"],
+          archived: [
+            "waiting",
+            "on_hold",
+            "in_production",
+            "paused",
+            "completed",
+            "cancelled",
+          ],
         };
 
         // Check if transition is allowed
@@ -6949,7 +8359,11 @@ Do not include quotes or explanations.`;
 
         // STEP 4: Perform atomic status update with validation
         if (newStatus === "archived") {
-          await storage.updateOrderStatusWithPrevious(orderId, "archived", currentStatus);
+          await storage.updateOrderStatusWithPrevious(
+            orderId,
+            "archived",
+            currentStatus,
+          );
         } else if (currentStatus === "archived") {
           await storage.updateOrderStatusWithPrevious(orderId, newStatus, null);
         } else {
@@ -6960,25 +8374,53 @@ Do not include quotes or explanations.`;
 
         // STEP 5: Sync production orders status based on the new order status
         if (newStatus === "in_production") {
-          await storage.updateProductionOrdersStatusByOrder(orderId, ["pending"], "active");
+          await storage.updateProductionOrdersStatusByOrder(
+            orderId,
+            ["pending"],
+            "active",
+          );
         } else if (newStatus === "paused") {
-          await storage.updateProductionOrdersStatusByOrder(orderId, ["active"], "pending");
+          await storage.updateProductionOrdersStatusByOrder(
+            orderId,
+            ["active"],
+            "pending",
+          );
         } else if (newStatus === "cancelled") {
-          await storage.updateProductionOrdersStatusByOrder(orderId, ["pending", "active"], "cancelled");
+          await storage.updateProductionOrdersStatusByOrder(
+            orderId,
+            ["pending", "active"],
+            "cancelled",
+          );
         } else if (newStatus === "archived") {
           const allProdOrders = await storage.getAllProductionOrders();
-          const orderProdOrders = allProdOrders.filter((po: any) => po.order_id === orderId);
+          const orderProdOrders = allProdOrders.filter(
+            (po: any) => po.order_id === orderId,
+          );
           for (const po of orderProdOrders) {
-            if (["pending", "active", "completed", "cancelled"].includes(po.status)) {
-              await storage.updateProductionOrderStatusWithPrevious(po.id, "archived", po.status);
+            if (
+              ["pending", "active", "completed", "cancelled"].includes(
+                po.status,
+              )
+            ) {
+              await storage.updateProductionOrderStatusWithPrevious(
+                po.id,
+                "archived",
+                po.status,
+              );
             }
           }
         } else if (currentStatus === "archived") {
           const allProdOrders = await storage.getAllProductionOrders();
-          const orderProdOrders = allProdOrders.filter((po: any) => po.order_id === orderId && po.status === "archived");
+          const orderProdOrders = allProdOrders.filter(
+            (po: any) => po.order_id === orderId && po.status === "archived",
+          );
           for (const po of orderProdOrders) {
             const poRestoreStatus = po.previous_status || "completed";
-            await storage.updateProductionOrderStatusWithPrevious(po.id, poRestoreStatus, null);
+            await storage.updateProductionOrderStatusWithPrevious(
+              po.id,
+              poRestoreStatus,
+              null,
+            );
           }
         }
 
@@ -7005,7 +8447,7 @@ Do not include quotes or explanations.`;
   app.post(
     "/api/orders/archive",
     requireAuth,
-    requirePermission('manage_orders'),
+    requirePermission("manage_orders"),
     async (req, res) => {
       try {
         const { order_ids } = req.body;
@@ -7017,13 +8459,18 @@ Do not include quotes or explanations.`;
           });
         }
 
-        const results: { orderId: number; success: boolean; error?: string }[] = [];
+        const results: { orderId: number; success: boolean; error?: string }[] =
+          [];
 
         for (const orderId of order_ids) {
           try {
             const order = await storage.getOrderById(orderId);
             if (!order) {
-              results.push({ orderId, success: false, error: "الطلب غير موجود" });
+              results.push({
+                orderId,
+                success: false,
+                error: "الطلب غير موجود",
+              });
               continue;
             }
 
@@ -7032,13 +8479,27 @@ Do not include quotes or explanations.`;
               continue;
             }
 
-            await storage.updateOrderStatusWithPrevious(orderId, "archived", order.status);
+            await storage.updateOrderStatusWithPrevious(
+              orderId,
+              "archived",
+              order.status,
+            );
 
             const allProdOrders = await storage.getAllProductionOrders();
-            const orderProdOrders = allProdOrders.filter((po: any) => po.order_id === orderId);
+            const orderProdOrders = allProdOrders.filter(
+              (po: any) => po.order_id === orderId,
+            );
             for (const po of orderProdOrders) {
-              if (["pending", "active", "completed", "cancelled"].includes(po.status)) {
-                await storage.updateProductionOrderStatusWithPrevious(po.id, "archived", po.status);
+              if (
+                ["pending", "active", "completed", "cancelled"].includes(
+                  po.status,
+                )
+              ) {
+                await storage.updateProductionOrderStatusWithPrevious(
+                  po.id,
+                  "archived",
+                  po.status,
+                );
               }
             }
 
@@ -7048,8 +8509,8 @@ Do not include quotes or explanations.`;
           }
         }
 
-        const successCount = results.filter(r => r.success).length;
-        const failCount = results.filter(r => !r.success).length;
+        const successCount = results.filter((r) => r.success).length;
+        const failCount = results.filter((r) => !r.success).length;
 
         res.json({
           success: true,
@@ -7071,7 +8532,7 @@ Do not include quotes or explanations.`;
   app.post(
     "/api/orders/unarchive",
     requireAuth,
-    requirePermission('manage_orders'),
+    requirePermission("manage_orders"),
     async (req, res) => {
       try {
         const { order_ids } = req.body;
@@ -7083,29 +8544,48 @@ Do not include quotes or explanations.`;
           });
         }
 
-        const results: { orderId: number; success: boolean; error?: string }[] = [];
+        const results: { orderId: number; success: boolean; error?: string }[] =
+          [];
 
         for (const orderId of order_ids) {
           try {
             const order = await storage.getOrderById(orderId);
             if (!order) {
-              results.push({ orderId, success: false, error: "الطلب غير موجود" });
+              results.push({
+                orderId,
+                success: false,
+                error: "الطلب غير موجود",
+              });
               continue;
             }
 
             if (order.status !== "archived") {
-              results.push({ orderId, success: false, error: "الطلب غير مؤرشف" });
+              results.push({
+                orderId,
+                success: false,
+                error: "الطلب غير مؤرشف",
+              });
               continue;
             }
 
             const restoreStatus = order.previous_status || "completed";
-            await storage.updateOrderStatusWithPrevious(orderId, restoreStatus, null);
+            await storage.updateOrderStatusWithPrevious(
+              orderId,
+              restoreStatus,
+              null,
+            );
 
             const allProdOrders = await storage.getAllProductionOrders();
-            const orderProdOrders = allProdOrders.filter((po: any) => po.order_id === orderId && po.status === "archived");
+            const orderProdOrders = allProdOrders.filter(
+              (po: any) => po.order_id === orderId && po.status === "archived",
+            );
             for (const po of orderProdOrders) {
               const poRestoreStatus = po.previous_status || "completed";
-              await storage.updateProductionOrderStatusWithPrevious(po.id, poRestoreStatus, null);
+              await storage.updateProductionOrderStatusWithPrevious(
+                po.id,
+                poRestoreStatus,
+                null,
+              );
             }
 
             results.push({ orderId, success: true });
@@ -7114,8 +8594,8 @@ Do not include quotes or explanations.`;
           }
         }
 
-        const successCount = results.filter(r => r.success).length;
-        const failCount = results.filter(r => !r.success).length;
+        const successCount = results.filter((r) => r.success).length;
+        const failCount = results.filter((r) => !r.success).length;
 
         res.json({
           success: true,
@@ -7151,7 +8631,9 @@ Do not include quotes or explanations.`;
   app.post("/api/setup/initialize", async (req, res) => {
     try {
       if (setupInProgress) {
-        return res.status(409).json({ message: "عملية الإعداد قيد التنفيذ بالفعل" });
+        return res
+          .status(409)
+          .json({ message: "عملية الإعداد قيد التنفيذ بالفعل" });
       }
 
       const existing = await storage.getSystemSettingByKey("setup_completed");
@@ -7177,25 +8659,37 @@ Do not include quotes or explanations.`;
 
       const { company, admin } = req.body;
 
-      if (!company?.name || !admin?.username || !admin?.password || !admin?.displayName) {
-        return res.status(400).json({ message: "جميع الحقول المطلوبة يجب أن تكون مملوءة" });
+      if (
+        !company?.name ||
+        !admin?.username ||
+        !admin?.password ||
+        !admin?.displayName
+      ) {
+        return res
+          .status(400)
+          .json({ message: "جميع الحقول المطلوبة يجب أن تكون مملوءة" });
       }
 
       if (admin.password.length < 6) {
-        return res.status(400).json({ message: "كلمة المرور يجب أن تكون 6 أحرف على الأقل" });
+        return res
+          .status(400)
+          .json({ message: "كلمة المرور يجب أن تكون 6 أحرف على الأقل" });
       }
 
       setupInProgress = true;
 
       try {
-        const doubleCheck = await storage.getSystemSettingByKey("setup_completed");
+        const doubleCheck =
+          await storage.getSystemSettingByKey("setup_completed");
         if (doubleCheck?.setting_value === "true") {
           return res.status(400).json({ message: "تم إعداد النظام مسبقاً" });
         }
 
         const existingUser = await storage.getUserByUsername(admin.username);
         if (existingUser) {
-          return res.status(400).json({ message: "اسم المستخدم مستخدم بالفعل. اختر اسم مستخدم آخر." });
+          return res.status(400).json({
+            message: "اسم المستخدم مستخدم بالفعل. اختر اسم مستخدم آخر.",
+          });
         }
 
         const companySettings: Record<string, string> = {
@@ -7237,7 +8731,8 @@ Do not include quotes or explanations.`;
           status: "active",
         });
 
-        const setupSetting = await storage.getSystemSettingByKey("setup_completed");
+        const setupSetting =
+          await storage.getSystemSettingByKey("setup_completed");
         if (setupSetting) {
           await storage.updateSystemSetting("setup_completed", "true");
         } else {
@@ -7247,9 +8742,13 @@ Do not include quotes or explanations.`;
           });
         }
 
-        const setupDateSetting = await storage.getSystemSettingByKey("setup_date");
+        const setupDateSetting =
+          await storage.getSystemSettingByKey("setup_date");
         if (setupDateSetting) {
-          await storage.updateSystemSetting("setup_date", new Date().toISOString());
+          await storage.updateSystemSetting(
+            "setup_date",
+            new Date().toISOString(),
+          );
         } else {
           await storage.createSystemSetting({
             setting_key: "setup_date",
@@ -7269,62 +8768,74 @@ Do not include quotes or explanations.`;
       console.error("Error during setup:", error);
       setupInProgress = false;
       console.error("Setup error details:", error.message);
-      res.status(500).json({ message: "خطأ في إعداد النظام. يرجى المحاولة مرة أخرى." });
+      res
+        .status(500)
+        .json({ message: "خطأ في إعداد النظام. يرجى المحاولة مرة أخرى." });
     }
   });
 
   // ============ Settings API ============
 
   // System Settings
-  app.get("/api/settings/system", requireAuth, requirePermission('manage_settings'), async (req: AuthRequest, res) => {
-    try {
-      const settings = await storage.getSystemSettings();
-      res.json(settings);
-    } catch (error) {
-      console.error("Error fetching system settings:", error);
-      res.status(500).json({ message: "خطأ في جلب إعدادات النظام" });
-    }
-  });
-
-  app.post("/api/settings/system", requireAuth, requirePermission('manage_settings'), async (req: AuthRequest, res) => {
-    try {
-      const { settings } = req.body;
-      const userId = req.user?.id;
-      if (!userId) {
-        return res.status(401).json({ message: "المستخدم غير مصرح له" });
+  app.get(
+    "/api/settings/system",
+    requireAuth,
+    requirePermission("manage_settings"),
+    async (req: AuthRequest, res) => {
+      try {
+        const settings = await storage.getSystemSettings();
+        res.json(settings);
+      } catch (error) {
+        console.error("Error fetching system settings:", error);
+        res.status(500).json({ message: "خطأ في جلب إعدادات النظام" });
       }
-      
-      const results = [];
+    },
+  );
 
-      for (const [key, value] of Object.entries(settings)) {
-        try {
-          const existingSetting = await storage.getSystemSettingByKey(key);
-          if (existingSetting) {
-            const updated = await storage.updateSystemSetting(
-              key,
-              String(value),
-              userId,
-            );
-            results.push(updated);
-          } else {
-            const created = await storage.createSystemSetting({
-              setting_key: key,
-              setting_value: String(value),
-              updated_by: String(userId),
-            });
-            results.push(created);
-          }
-        } catch (error) {
-          console.error(`Error saving setting ${key}:`, error);
+  app.post(
+    "/api/settings/system",
+    requireAuth,
+    requirePermission("manage_settings"),
+    async (req: AuthRequest, res) => {
+      try {
+        const { settings } = req.body;
+        const userId = req.user?.id;
+        if (!userId) {
+          return res.status(401).json({ message: "المستخدم غير مصرح له" });
         }
-      }
 
-      res.json({ message: "تم حفظ إعدادات النظام بنجاح", settings: results });
-    } catch (error) {
-      console.error("Error saving system settings:", error);
-      res.status(500).json({ message: "خطأ في حفظ إعدادات النظام" });
-    }
-  });
+        const results = [];
+
+        for (const [key, value] of Object.entries(settings)) {
+          try {
+            const existingSetting = await storage.getSystemSettingByKey(key);
+            if (existingSetting) {
+              const updated = await storage.updateSystemSetting(
+                key,
+                String(value),
+                userId,
+              );
+              results.push(updated);
+            } else {
+              const created = await storage.createSystemSetting({
+                setting_key: key,
+                setting_value: String(value),
+                updated_by: String(userId),
+              });
+              results.push(created);
+            }
+          } catch (error) {
+            console.error(`Error saving setting ${key}:`, error);
+          }
+        }
+
+        res.json({ message: "تم حفظ إعدادات النظام بنجاح", settings: results });
+      } catch (error) {
+        console.error("Error saving system settings:", error);
+        res.status(500).json({ message: "خطأ في حفظ إعدادات النظام" });
+      }
+    },
+  );
 
   // User Settings
   app.get("/api/settings/user/:userId", requireAuth, async (req, res) => {
@@ -7335,7 +8846,9 @@ Do not include quotes or explanations.`;
       }
       const authUserId = getAuthUserId(req);
       if (authUserId !== userId) {
-        return res.status(403).json({ message: "لا يمكنك الوصول إلى إعدادات مستخدم آخر" });
+        return res
+          .status(403)
+          .json({ message: "لا يمكنك الوصول إلى إعدادات مستخدم آخر" });
       }
       const settings = await storage.getUserSettings(userId);
       res.json(settings);
@@ -7353,7 +8866,9 @@ Do not include quotes or explanations.`;
       }
       const authUserId = getAuthUserId(req);
       if (authUserId !== userId) {
-        return res.status(403).json({ message: "لا يمكنك تعديل إعدادات مستخدم آخر" });
+        return res
+          .status(403)
+          .json({ message: "لا يمكنك تعديل إعدادات مستخدم آخر" });
       }
       const { settings } = req.body;
       const results = [];
@@ -7378,7 +8893,8 @@ Do not include quotes or explanations.`;
     }
   });
 
-  let companyLogoCache: { logo_url: string | null; expiresAt: number } | null = null;
+  let companyLogoCache: { logo_url: string | null; expiresAt: number } | null =
+    null;
   const COMPANY_LOGO_CACHE_TTL_MS = 5 * 60 * 1000;
 
   app.get("/api/company/logo", async (_req, res) => {
@@ -7388,9 +8904,15 @@ Do not include quotes or explanations.`;
         res.set("Cache-Control", "public, max-age=300");
         return res.json({ logo_url: companyLogoCache.logo_url });
       }
-      const [profile] = await db.select({ logo_url: company_profile.logo_url }).from(company_profile).limit(1);
+      const [profile] = await db
+        .select({ logo_url: company_profile.logo_url })
+        .from(company_profile)
+        .limit(1);
       const logo_url = profile?.logo_url || null;
-      companyLogoCache = { logo_url, expiresAt: now + COMPANY_LOGO_CACHE_TTL_MS };
+      companyLogoCache = {
+        logo_url,
+        expiresAt: now + COMPANY_LOGO_CACHE_TTL_MS,
+      };
       res.set("Cache-Control", "public, max-age=300");
       res.json({ logo_url });
     } catch (error) {
@@ -7399,25 +8921,42 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/company/logo", requireAuth, requirePermission('manage_settings'), async (req: AuthRequest, res) => {
-    try {
-      const { logo_url } = req.body;
-      if (!logo_url || typeof logo_url !== "string" || !logo_url.startsWith("/objects/")) {
-        return res.status(400).json({ message: "رابط الشعار غير صالح" });
+  app.post(
+    "/api/company/logo",
+    requireAuth,
+    requirePermission("manage_settings"),
+    async (req: AuthRequest, res) => {
+      try {
+        const { logo_url } = req.body;
+        if (
+          !logo_url ||
+          typeof logo_url !== "string" ||
+          !logo_url.startsWith("/objects/")
+        ) {
+          return res.status(400).json({ message: "رابط الشعار غير صالح" });
+        }
+        const [existing] = await db.select().from(company_profile).limit(1);
+        if (existing) {
+          await db
+            .update(company_profile)
+            .set({ logo_url })
+            .where(eq(company_profile.id, existing.id));
+        } else {
+          await db
+            .insert(company_profile)
+            .values({ name: "Company", logo_url });
+        }
+        companyLogoCache = {
+          logo_url,
+          expiresAt: Date.now() + COMPANY_LOGO_CACHE_TTL_MS,
+        };
+        res.json({ message: "تم حفظ شعار الشركة بنجاح", logo_url });
+      } catch (error) {
+        console.error("Error saving company logo:", error);
+        res.status(500).json({ message: "خطأ في حفظ شعار الشركة" });
       }
-      const [existing] = await db.select().from(company_profile).limit(1);
-      if (existing) {
-        await db.update(company_profile).set({ logo_url }).where(eq(company_profile.id, existing.id));
-      } else {
-        await db.insert(company_profile).values({ name: "Company", logo_url });
-      }
-      companyLogoCache = { logo_url, expiresAt: Date.now() + COMPANY_LOGO_CACHE_TTL_MS };
-      res.json({ message: "تم حفظ شعار الشركة بنجاح", logo_url });
-    } catch (error) {
-      console.error("Error saving company logo:", error);
-      res.status(500).json({ message: "خطأ في حفظ شعار الشركة" });
-    }
-  });
+    },
+  );
 
   // Database Management routes
   app.get("/api/database/stats", requireAdmin, async (req, res) => {
@@ -7473,14 +9012,21 @@ Do not include quotes or explanations.`;
   app.post("/api/database/restore", requireAdmin, async (req, res) => {
     try {
       const { backupData } = req.body;
-      if (!backupData || typeof backupData !== 'object') {
-        return res.status(400).json({ message: "بيانات النسخة الاحتياطية مطلوبة" });
+      if (!backupData || typeof backupData !== "object") {
+        return res
+          .status(400)
+          .json({ message: "بيانات النسخة الاحتياطية مطلوبة" });
       }
       const result = await storage.restoreDatabaseBackup(backupData);
-      res.json({ message: result.message || "تم استعادة قاعدة البيانات بنجاح", ...result });
+      res.json({
+        message: result.message || "تم استعادة قاعدة البيانات بنجاح",
+        ...result,
+      });
     } catch (error: any) {
       console.error("Error restoring database:", error);
-      res.status(500).json({ message: error.message || "خطأ في استعادة قاعدة البيانات" });
+      res
+        .status(500)
+        .json({ message: error.message || "خطأ في استعادة قاعدة البيانات" });
     }
   });
 
@@ -7524,21 +9070,47 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.get("/api/database/table-schema/:tableName", requireAdmin, async (req, res) => {
-    try {
-      const tableName = req.params.tableName;
-      const allowedTables = [
-        "customers", "categories", "sections", "items", "customer_products", "users", "roles",
-        "machines", "locations", "suppliers", "orders", "production_orders", "rolls", "cuts",
-        "inventory", "inventory_movements", "warehouse_receipts", "warehouse_transactions",
-        "maintenance_requests", "maintenance_actions", "spare_parts", "consumable_parts",
-        "waste", "quality_checks", "attendance", "notifications",
-      ];
-      if (!allowedTables.includes(tableName)) {
-        return res.status(404).json({ message: `الجدول غير موجود: ${tableName}` });
-      }
+  app.get(
+    "/api/database/table-schema/:tableName",
+    requireAdmin,
+    async (req, res) => {
+      try {
+        const tableName = req.params.tableName;
+        const allowedTables = [
+          "customers",
+          "categories",
+          "sections",
+          "items",
+          "customer_products",
+          "users",
+          "roles",
+          "machines",
+          "locations",
+          "suppliers",
+          "orders",
+          "production_orders",
+          "rolls",
+          "cuts",
+          "inventory",
+          "inventory_movements",
+          "warehouse_receipts",
+          "warehouse_transactions",
+          "maintenance_requests",
+          "maintenance_actions",
+          "spare_parts",
+          "consumable_parts",
+          "waste",
+          "quality_checks",
+          "attendance",
+          "notifications",
+        ];
+        if (!allowedTables.includes(tableName)) {
+          return res
+            .status(404)
+            .json({ message: `الجدول غير موجود: ${tableName}` });
+        }
 
-      const result = await db.execute(sql`
+        const result = await db.execute(sql`
         SELECT
           c.column_name,
           c.data_type,
@@ -7554,25 +9126,26 @@ Do not include quotes or explanations.`;
         ORDER BY c.ordinal_position
       `);
 
-      const columns = (result.rows || []).map((row: any) => ({
-        name: row.column_name,
-        dataType: row.data_type,
-        notNull: row.is_nullable === 'NO',
-        hasDefault: !!row.column_default,
-        isAutoGenerated: !!row.column_default && (
-          String(row.column_default).includes('nextval') ||
-          String(row.column_default).includes('now()') ||
-          String(row.column_default).includes('CURRENT_TIMESTAMP')
-        ),
-        isPrimary: row.is_primary === true || row.is_primary === 't',
-      }));
+        const columns = (result.rows || []).map((row: any) => ({
+          name: row.column_name,
+          dataType: row.data_type,
+          notNull: row.is_nullable === "NO",
+          hasDefault: !!row.column_default,
+          isAutoGenerated:
+            !!row.column_default &&
+            (String(row.column_default).includes("nextval") ||
+              String(row.column_default).includes("now()") ||
+              String(row.column_default).includes("CURRENT_TIMESTAMP")),
+          isPrimary: row.is_primary === true || row.is_primary === "t",
+        }));
 
-      res.json({ tableName, columns });
-    } catch (error) {
-      console.error("Error getting table schema:", error);
-      res.status(500).json({ message: "خطأ في جلب بنية الجدول" });
-    }
-  });
+        res.json({ tableName, columns });
+      } catch (error) {
+        console.error("Error getting table schema:", error);
+        res.status(500).json({ message: "خطأ في جلب بنية الجدول" });
+      }
+    },
+  );
 
   app.post(
     "/api/database/import/:tableName",
@@ -7622,7 +9195,7 @@ Do not include quotes or explanations.`;
 
           try {
             // Validate and process the record based on table type
-            let processedRecord = { ...record };
+            const processedRecord = { ...record };
 
             // Table-specific processing
             if (tableName === "customers") {
@@ -7699,7 +9272,8 @@ Do not include quotes or explanations.`;
             } else if (tableName === "customer_products") {
               // Auto-increment numeric ID
               if (!processedRecord.id) {
-                const existingProductsResult = await storage.getCustomerProducts();
+                const existingProductsResult =
+                  await storage.getCustomerProducts();
                 const lastId =
                   existingProductsResult.data.length > 0
                     ? Math.max(
@@ -7783,9 +9357,13 @@ Do not include quotes or explanations.`;
               // Set random temporary password if not provided (required for user creation)
               // Admin must reset password for imported users after import
               if (!processedRecord.password) {
-                const tempPassword = crypto.randomBytes(12).toString("base64url");
+                const tempPassword = crypto
+                  .randomBytes(12)
+                  .toString("base64url");
                 processedRecord.password = tempPassword;
-                logger.warn(`Imported user "${processedRecord.username}" created with temporary random password - admin must reset`);
+                logger.warn(
+                  `Imported user "${processedRecord.username}" created with temporary random password - admin must reset`,
+                );
               }
 
               // Ensure username is set (use id if not provided)
@@ -7910,7 +9488,10 @@ Do not include quotes or explanations.`;
 
   app.get("/api/attendance", requireAuth, async (req, res) => {
     try {
-      const limit = Math.max(1, Math.min(parseInt(String(req.query.limit ?? "")) || 50, 500));
+      const limit = Math.max(
+        1,
+        Math.min(parseInt(String(req.query.limit ?? "")) || 50, 500),
+      );
       const offset = Math.max(0, parseInt(String(req.query.offset ?? "")) || 0);
       const attendance = await storage.getAttendance({ limit, offset });
       res.set("X-Pagination-Limit", String(limit));
@@ -7924,124 +9505,157 @@ Do not include quotes or explanations.`;
   });
 
   // Get daily attendance status for a user
-  app.get("/api/attendance/daily-status/:userId", requireAuth, async (req, res) => {
-    try {
-      const userId = parseInt(req.params.userId);
-      if (isNaN(userId) || userId <= 0) {
-        return res.status(400).json({ message: "معرف المستخدم غير صحيح" });
-      }
-      const date =
-        (req.query.date as string) || new Date().toISOString().split("T")[0];
+  app.get(
+    "/api/attendance/daily-status/:userId",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const userId = parseInt(req.params.userId);
+        if (isNaN(userId) || userId <= 0) {
+          return res.status(400).json({ message: "معرف المستخدم غير صحيح" });
+        }
+        const date =
+          (req.query.date as string) || new Date().toISOString().split("T")[0];
 
-      const status = await storage.getDailyAttendanceStatus(userId, date);
-      res.json(status);
-    } catch (error) {
-      console.error("Error fetching daily attendance status:", error);
-      res.status(500).json({ message: "خطأ في جلب حالة الحضور اليومية" });
-    }
-  });
+        const status = await storage.getDailyAttendanceStatus(userId, date);
+        res.json(status);
+      } catch (error) {
+        console.error("Error fetching daily attendance status:", error);
+        res.status(500).json({ message: "خطأ في جلب حالة الحضور اليومية" });
+      }
+    },
+  );
 
   // Get attendance by date for manual entry (all users)
   app.get("/api/attendance/manual", requireAuth, async (req, res) => {
     try {
-      const date = (req.query.date as string) || new Date().toISOString().split("T")[0];
+      const date =
+        (req.query.date as string) || new Date().toISOString().split("T")[0];
       const attendanceData = await storage.getAttendanceByDate(date);
       res.json({ data: attendanceData, date });
     } catch (error) {
       console.error("Error fetching attendance by date:", error);
-      res.status(500).json({ message: "خطأ في جلب بيانات الحضور للتاريخ المحدد" });
+      res
+        .status(500)
+        .json({ message: "خطأ في جلب بيانات الحضور للتاريخ المحدد" });
     }
   });
 
   // Bulk upsert manual attendance
-  app.post("/api/attendance/manual", requireAuth, requirePermission('manage_attendance'), async (req, res) => {
-    try {
-      const { entries } = req.body;
-      
-      if (!entries || !Array.isArray(entries) || entries.length === 0) {
-        return res.status(400).json({ message: "يجب توفير بيانات الحضور" });
+  app.post(
+    "/api/attendance/manual",
+    requireAuth,
+    requirePermission("manage_attendance"),
+    async (req, res) => {
+      try {
+        const { entries } = req.body;
+
+        if (!entries || !Array.isArray(entries) || entries.length === 0) {
+          return res.status(400).json({ message: "يجب توفير بيانات الحضور" });
+        }
+
+        const results = await storage.upsertManualAttendance(entries);
+        res.json({
+          success: true,
+          message: `تم حفظ حضور ${results.length} موظف بنجاح`,
+          data: results,
+        });
+      } catch (error) {
+        console.error("Error saving manual attendance:", error);
+        res.status(500).json({ message: "خطأ في حفظ بيانات الحضور اليدوي" });
       }
-      
-      const results = await storage.upsertManualAttendance(entries);
-      res.json({ 
-        success: true, 
-        message: `تم حفظ حضور ${results.length} موظف بنجاح`,
-        data: results 
-      });
-    } catch (error) {
-      console.error("Error saving manual attendance:", error);
-      res.status(500).json({ message: "خطأ في حفظ بيانات الحضور اليدوي" });
-    }
-  });
+    },
+  );
 
   // تصدير قالب حضور الموظف للشهر كامل
   app.get("/api/attendance/template/:userId", requireAuth, async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
-      
+
       // Validate userId parameter
       if (isNaN(userId) || userId <= 0) {
         return res.status(400).json({ message: "رقم الموظف غير صحيح" });
       }
-      
-      const month = (req.query.month as string) || new Date().toISOString().slice(0, 7);
-      
+
+      const month =
+        (req.query.month as string) || new Date().toISOString().slice(0, 7);
+
       // Get user info
       const user = await storage.getUserById(userId);
       if (!user) {
         return res.status(404).json({ message: "الموظف غير موجود" });
       }
-      
+
       // Generate days of the month
       const [year, monthNum] = month.split("-").map(Number);
       const daysInMonth = new Date(year, monthNum, 0).getDate();
-      
+
       // Create template data with all days of the month
       const templateData = [];
       for (let day = 1; day <= daysInMonth; day++) {
         const dateStr = `${year}-${String(monthNum).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
         const dayDate = new Date(year, monthNum - 1, day);
-        const dayName = dayDate.toLocaleDateString("en-US", { weekday: "long" });
-        
+        const dayName = dayDate.toLocaleDateString("en-US", {
+          weekday: "long",
+        });
+
         templateData.push({
-          "التاريخ": dateStr,
-          "اليوم": dayName,
+          التاريخ: dateStr,
+          اليوم: dayName,
           "رقم الموظف": userId,
-          "اسم الموظف": user.display_name_ar || user.display_name || user.username,
-          "الحالة": "حاضر",
+          "اسم الموظف":
+            user.display_name_ar || user.display_name || user.username,
+          الحالة: "حاضر",
           "وقت الحضور": "09:00",
           "وقت الانصراف": "16:00",
           "ساعات العمل": 7,
           "ساعات إضافية": 0,
-          "ملاحظات": ""
+          ملاحظات: "",
         });
       }
-      
+
       // Create Excel workbook
       const wb = new ExcelJS.Workbook();
-      addJsonSheet(wb, templateData, "حضور الموظف", [12, 10, 10, 25, 10, 12, 12, 12, 12, 25]);
-      
+      addJsonSheet(
+        wb,
+        templateData,
+        "حضور الموظف",
+        [12, 10, 10, 25, 10, 12, 12, 12, 12, 25],
+      );
+
       // Add instructions sheet
       const instructionsData = [
-        { "التعليمات": "تعليمات ملء قالب الحضور" },
-        { "التعليمات": "-----------------------------" },
-        { "التعليمات": "القالب يحتوي افتراضياً على: حاضر، 09:00 حضور، 16:00 انصراف، 7 ساعات عمل" },
-        { "التعليمات": "عدّل فقط الأيام التي تختلف عن الحالة الافتراضية" },
-        { "التعليمات": "-----------------------------" },
-        { "التعليمات": "1. الحالة: أدخل أحد القيم التالية: حاضر، غائب، مغادر، إجازة" },
-        { "التعليمات": "2. وقت الحضور: أدخل الوقت بصيغة HH:MM (مثال: 08:00)" },
-        { "التعليمات": "3. وقت الانصراف: أدخل الوقت بصيغة HH:MM (مثال: 17:00)" },
-        { "التعليمات": "4. ساعات العمل: عدد ساعات العمل الفعلية (رقم)" },
-        { "التعليمات": "5. ساعات إضافية: عدد ساعات العمل الإضافي (رقم)" },
-        { "التعليمات": "6. لا تغير رقم الموظف أو التاريخ" },
-        { "التعليمات": "7. بعد الانتهاء، ارفع الملف من زر الاستيراد" },
+        { التعليمات: "تعليمات ملء قالب الحضور" },
+        { التعليمات: "-----------------------------" },
+        {
+          التعليمات:
+            "القالب يحتوي افتراضياً على: حاضر، 09:00 حضور، 16:00 انصراف، 7 ساعات عمل",
+        },
+        { التعليمات: "عدّل فقط الأيام التي تختلف عن الحالة الافتراضية" },
+        { التعليمات: "-----------------------------" },
+        {
+          التعليمات:
+            "1. الحالة: أدخل أحد القيم التالية: حاضر، غائب، مغادر، إجازة",
+        },
+        { التعليمات: "2. وقت الحضور: أدخل الوقت بصيغة HH:MM (مثال: 08:00)" },
+        { التعليمات: "3. وقت الانصراف: أدخل الوقت بصيغة HH:MM (مثال: 17:00)" },
+        { التعليمات: "4. ساعات العمل: عدد ساعات العمل الفعلية (رقم)" },
+        { التعليمات: "5. ساعات إضافية: عدد ساعات العمل الإضافي (رقم)" },
+        { التعليمات: "6. لا تغير رقم الموظف أو التاريخ" },
+        { التعليمات: "7. بعد الانتهاء، ارفع الملف من زر الاستيراد" },
       ];
       addJsonSheet(wb, instructionsData, "تعليمات", [60]);
-      
+
       const buffer = Buffer.from(await wb.xlsx.writeBuffer());
-      
-      res.setHeader("Content-Disposition", `attachment; filename=attendance_template_${userId}_${month}.xlsx`);
-      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename=attendance_template_${userId}_${month}.xlsx`,
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
       res.send(buffer);
     } catch (error) {
       console.error("Error generating attendance template:", error);
@@ -8050,175 +9664,201 @@ Do not include quotes or explanations.`;
   });
 
   // استيراد بيانات الحضور من ملف Excel
-  app.post("/api/attendance/import", requireAuth, requirePermission('manage_attendance'), upload.single("file"), async (req, res) => {
-    try {
-      const userId = parseInt(req.body.userId);
-      
-      if (!req.file) {
-        return res.status(400).json({ message: "يجب رفع ملف" });
-      }
-      
-      if (!userId || isNaN(userId) || userId <= 0) {
-        return res.status(400).json({ message: "رقم الموظف غير صحيح" });
-      }
-      
-      // Verify user exists
-      const targetUser = await storage.getUserById(userId);
-      if (!targetUser) {
-        return res.status(404).json({ message: "الموظف غير موجود" });
-      }
-      
-      // Parse Excel file
-      const data = await parseExcelBuffer(req.file.buffer);
-      
-      if (!data || data.length === 0) {
-        return res.status(400).json({ message: "الملف فارغ أو غير صحيح" });
-      }
-      
-      // Process and validate each row
-      const entries = [];
-      const errors: string[] = [];
-      let rowNum = 1;
-      
-      for (const row of data) {
-        rowNum++;
-        const dateStr = row["التاريخ"];
-        const status = row["الحالة"];
-        const checkIn = row["وقت الحضور"];
-        const checkOut = row["وقت الانصراف"];
-        const notes = row["ملاحظات"];
-        const fileUserId = row["رقم الموظف"];
-        
-        // Skip rows without status
-        if (!status || String(status).trim() === "") {
-          continue;
+  app.post(
+    "/api/attendance/import",
+    requireAuth,
+    requirePermission("manage_attendance"),
+    upload.single("file"),
+    async (req, res) => {
+      try {
+        const userId = parseInt(req.body.userId);
+
+        if (!req.file) {
+          return res.status(400).json({ message: "يجب رفع ملف" });
         }
-        
-        // Validate that the user ID in the file matches the target user
-        if (fileUserId && parseInt(fileUserId) !== userId) {
-          errors.push(`سطر ${rowNum}: رقم الموظف في الملف (${fileUserId}) لا يطابق الموظف المحدد (${userId})`);
-          continue;
+
+        if (!userId || isNaN(userId) || userId <= 0) {
+          return res.status(400).json({ message: "رقم الموظف غير صحيح" });
         }
-        
-        // Validate date format
-        if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr))) {
-          errors.push(`سطر ${rowNum}: تاريخ غير صحيح: ${dateStr}`);
-          continue;
+
+        // Verify user exists
+        const targetUser = await storage.getUserById(userId);
+        if (!targetUser) {
+          return res.status(404).json({ message: "الموظف غير موجود" });
         }
-        
-        // Map status to valid values
-        const statusMap: { [key: string]: string } = {
-          "حاضر": "حاضر",
-          "غائب": "غائب",
-          "مغادر": "مغادر",
-          "إجازة": "إجازة",
-          "اجازة": "إجازة",
-        };
-        
-        const mappedStatus = statusMap[String(status).trim()];
-        if (!mappedStatus) {
-          errors.push(`سطر ${rowNum}: حالة غير صحيحة: ${status} (المسموح: حاضر، غائب، مغادر، إجازة)`);
-          continue;
+
+        // Parse Excel file
+        const data = await parseExcelBuffer(req.file.buffer);
+
+        if (!data || data.length === 0) {
+          return res.status(400).json({ message: "الملف فارغ أو غير صحيح" });
         }
-        
-        // Format and validate times
-        let formattedCheckIn = null;
-        let formattedCheckOut = null;
-        let hasTimeError = false;
-        
-        if (checkIn && String(checkIn).trim() !== "") {
-          const timeMatch = String(checkIn).match(/^(\d{1,2}):(\d{2})$/);
-          if (timeMatch) {
-            const hours = parseInt(timeMatch[1]);
-            const minutes = parseInt(timeMatch[2]);
-            if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
-              formattedCheckIn = `${dateStr}T${timeMatch[1].padStart(2, "0")}:${timeMatch[2]}:00`;
+
+        // Process and validate each row
+        const entries = [];
+        const errors: string[] = [];
+        let rowNum = 1;
+
+        for (const row of data) {
+          rowNum++;
+          const dateStr = row["التاريخ"];
+          const status = row["الحالة"];
+          const checkIn = row["وقت الحضور"];
+          const checkOut = row["وقت الانصراف"];
+          const notes = row["ملاحظات"];
+          const fileUserId = row["رقم الموظف"];
+
+          // Skip rows without status
+          if (!status || String(status).trim() === "") {
+            continue;
+          }
+
+          // Validate that the user ID in the file matches the target user
+          if (fileUserId && parseInt(fileUserId) !== userId) {
+            errors.push(
+              `سطر ${rowNum}: رقم الموظف في الملف (${fileUserId}) لا يطابق الموظف المحدد (${userId})`,
+            );
+            continue;
+          }
+
+          // Validate date format
+          if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr))) {
+            errors.push(`سطر ${rowNum}: تاريخ غير صحيح: ${dateStr}`);
+            continue;
+          }
+
+          // Map status to valid values
+          const statusMap: { [key: string]: string } = {
+            حاضر: "حاضر",
+            غائب: "غائب",
+            مغادر: "مغادر",
+            إجازة: "إجازة",
+            اجازة: "إجازة",
+          };
+
+          const mappedStatus = statusMap[String(status).trim()];
+          if (!mappedStatus) {
+            errors.push(
+              `سطر ${rowNum}: حالة غير صحيحة: ${status} (المسموح: حاضر، غائب، مغادر، إجازة)`,
+            );
+            continue;
+          }
+
+          // Format and validate times
+          let formattedCheckIn = null;
+          let formattedCheckOut = null;
+          let hasTimeError = false;
+
+          if (checkIn && String(checkIn).trim() !== "") {
+            const timeMatch = String(checkIn).match(/^(\d{1,2}):(\d{2})$/);
+            if (timeMatch) {
+              const hours = parseInt(timeMatch[1]);
+              const minutes = parseInt(timeMatch[2]);
+              if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
+                formattedCheckIn = `${dateStr}T${timeMatch[1].padStart(2, "0")}:${timeMatch[2]}:00`;
+              } else {
+                errors.push(
+                  `سطر ${rowNum}: وقت حضور غير صالح: ${checkIn} (الساعة 0-23، الدقائق 0-59)`,
+                );
+                hasTimeError = true;
+              }
             } else {
-              errors.push(`سطر ${rowNum}: وقت حضور غير صالح: ${checkIn} (الساعة 0-23، الدقائق 0-59)`);
+              errors.push(
+                `سطر ${rowNum}: صيغة وقت الحضور غير صحيحة: ${checkIn} (المتوقع: HH:MM مثال 08:00)`,
+              );
               hasTimeError = true;
             }
-          } else {
-            errors.push(`سطر ${rowNum}: صيغة وقت الحضور غير صحيحة: ${checkIn} (المتوقع: HH:MM مثال 08:00)`);
-            hasTimeError = true;
           }
-        }
-        
-        if (checkOut && String(checkOut).trim() !== "") {
-          const timeMatch = String(checkOut).match(/^(\d{1,2}):(\d{2})$/);
-          if (timeMatch) {
-            const hours = parseInt(timeMatch[1]);
-            const minutes = parseInt(timeMatch[2]);
-            if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
-              formattedCheckOut = `${dateStr}T${timeMatch[1].padStart(2, "0")}:${timeMatch[2]}:00`;
+
+          if (checkOut && String(checkOut).trim() !== "") {
+            const timeMatch = String(checkOut).match(/^(\d{1,2}):(\d{2})$/);
+            if (timeMatch) {
+              const hours = parseInt(timeMatch[1]);
+              const minutes = parseInt(timeMatch[2]);
+              if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
+                formattedCheckOut = `${dateStr}T${timeMatch[1].padStart(2, "0")}:${timeMatch[2]}:00`;
+              } else {
+                errors.push(
+                  `سطر ${rowNum}: وقت انصراف غير صالح: ${checkOut} (الساعة 0-23، الدقائق 0-59)`,
+                );
+                hasTimeError = true;
+              }
             } else {
-              errors.push(`سطر ${rowNum}: وقت انصراف غير صالح: ${checkOut} (الساعة 0-23، الدقائق 0-59)`);
+              errors.push(
+                `سطر ${rowNum}: صيغة وقت الانصراف غير صحيحة: ${checkOut} (المتوقع: HH:MM مثال 17:00)`,
+              );
               hasTimeError = true;
             }
-          } else {
-            errors.push(`سطر ${rowNum}: صيغة وقت الانصراف غير صحيحة: ${checkOut} (المتوقع: HH:MM مثال 17:00)`);
-            hasTimeError = true;
           }
-        }
-        
-        // Skip rows with time validation errors
-        if (hasTimeError) {
-          continue;
-        }
-        
-        // Parse work hours and overtime
-        const workHours = row["ساعات العمل"];
-        const overtimeHours = row["ساعات إضافية"];
-        
-        let parsedWorkHours = null;
-        let parsedOvertimeHours = null;
-        
-        if (workHours !== undefined && workHours !== "" && workHours !== null) {
-          const num = parseFloat(String(workHours));
-          if (!isNaN(num) && num >= 0) {
-            parsedWorkHours = num;
+
+          // Skip rows with time validation errors
+          if (hasTimeError) {
+            continue;
           }
-        }
-        
-        if (overtimeHours !== undefined && overtimeHours !== "" && overtimeHours !== null) {
-          const num = parseFloat(String(overtimeHours));
-          if (!isNaN(num) && num >= 0) {
-            parsedOvertimeHours = num;
+
+          // Parse work hours and overtime
+          const workHours = row["ساعات العمل"];
+          const overtimeHours = row["ساعات إضافية"];
+
+          let parsedWorkHours = null;
+          let parsedOvertimeHours = null;
+
+          if (
+            workHours !== undefined &&
+            workHours !== "" &&
+            workHours !== null
+          ) {
+            const num = parseFloat(String(workHours));
+            if (!isNaN(num) && num >= 0) {
+              parsedWorkHours = num;
+            }
           }
+
+          if (
+            overtimeHours !== undefined &&
+            overtimeHours !== "" &&
+            overtimeHours !== null
+          ) {
+            const num = parseFloat(String(overtimeHours));
+            if (!isNaN(num) && num >= 0) {
+              parsedOvertimeHours = num;
+            }
+          }
+
+          entries.push({
+            user_id: userId,
+            date: dateStr,
+            status: mappedStatus,
+            check_in_time: formattedCheckIn,
+            check_out_time: formattedCheckOut,
+            work_hours: parsedWorkHours,
+            overtime_hours: parsedOvertimeHours,
+            notes: notes || "",
+          });
         }
-        
-        entries.push({
-          user_id: userId,
-          date: dateStr,
-          status: mappedStatus,
-          check_in_time: formattedCheckIn,
-          check_out_time: formattedCheckOut,
-          work_hours: parsedWorkHours,
-          overtime_hours: parsedOvertimeHours,
-          notes: notes || "",
+
+        if (entries.length === 0) {
+          return res.status(400).json({
+            message: "لم يتم العثور على بيانات صالحة للاستيراد",
+            errors,
+          });
+        }
+
+        // Save attendance data
+        const results = await storage.upsertManualAttendance(entries);
+
+        res.json({
+          success: true,
+          message: `تم استيراد ${results.length} سجل حضور بنجاح`,
+          importedCount: results.length,
+          errors: errors.length > 0 ? errors : undefined,
         });
+      } catch (error) {
+        console.error("Error importing attendance:", error);
+        res.status(500).json({ message: "خطأ في استيراد بيانات الحضور" });
       }
-      
-      if (entries.length === 0) {
-        return res.status(400).json({ 
-          message: "لم يتم العثور على بيانات صالحة للاستيراد",
-          errors 
-        });
-      }
-      
-      // Save attendance data
-      const results = await storage.upsertManualAttendance(entries);
-      
-      res.json({ 
-        success: true, 
-        message: `تم استيراد ${results.length} سجل حضور بنجاح`,
-        importedCount: results.length,
-        errors: errors.length > 0 ? errors : undefined
-      });
-    } catch (error) {
-      console.error("Error importing attendance:", error);
-      res.status(500).json({ message: "خطأ في استيراد بيانات الحضور" });
-    }
-  });
+    },
+  );
 
   // تقرير حضور موظف احترافي مع بيانات المصنع
   app.get("/api/attendance/report/:userId", requireAuth, async (req, res) => {
@@ -8226,21 +9866,23 @@ Do not include quotes or explanations.`;
       const userId = parseInt(req.params.userId);
       const startDate = req.query.startDate as string;
       const endDate = req.query.endDate as string;
-      
+
       if (isNaN(userId) || userId <= 0) {
         return res.status(400).json({ message: "رقم الموظف غير صحيح" });
       }
-      
+
       if (!startDate || !endDate) {
-        return res.status(400).json({ message: "يجب تحديد تاريخ البداية والنهاية" });
+        return res
+          .status(400)
+          .json({ message: "يجب تحديد تاريخ البداية والنهاية" });
       }
-      
+
       // Get user info
       const user = await storage.getUserById(userId);
       if (!user) {
         return res.status(404).json({ message: "الموظف غير موجود" });
       }
-      
+
       // Get attendance records for the period
       const attendanceRecords = await db
         .select()
@@ -8249,11 +9891,11 @@ Do not include quotes or explanations.`;
           and(
             eq(attendance.user_id, userId),
             gte(attendance.date, startDate),
-            lte(attendance.date, endDate)
-          )
+            lte(attendance.date, endDate),
+          ),
         )
         .orderBy(attendance.date);
-      
+
       // Calculate summary statistics
       let totalWorkHours = 0;
       let totalOvertimeHours = 0;
@@ -8261,11 +9903,12 @@ Do not include quotes or explanations.`;
       let absentDays = 0;
       let leaveDays = 0;
       let earlyLeaveDays = 0;
-      
+
       for (const record of attendanceRecords) {
         if (record.work_hours) totalWorkHours += Number(record.work_hours);
-        if (record.overtime_hours) totalOvertimeHours += Number(record.overtime_hours);
-        
+        if (record.overtime_hours)
+          totalOvertimeHours += Number(record.overtime_hours);
+
         switch (record.status) {
           case "حاضر":
             presentDays++;
@@ -8281,16 +9924,16 @@ Do not include quotes or explanations.`;
             break;
         }
       }
-      
+
       // Factory info (can be customized from settings)
       const factoryInfo = {
         name: "مصنع الأكياس البلاستيكية",
         address: "المنطقة الصناعية",
         phone: "+966 XX XXX XXXX",
         email: "info@factory.com",
-        logo: null
+        logo: null,
       };
-      
+
       res.json({
         success: true,
         report: {
@@ -8300,12 +9943,12 @@ Do not include quotes or explanations.`;
             name: user.display_name_ar || user.display_name || user.username,
             employeeNumber: `EMP-${user.id}`,
             department: "غير محدد",
-            position: "غير محدد"
+            position: "غير محدد",
           },
           period: {
             startDate,
             endDate,
-            totalDays: attendanceRecords.length
+            totalDays: attendanceRecords.length,
           },
           summary: {
             totalWorkHours: Math.round(totalWorkHours * 10) / 10,
@@ -8314,22 +9957,36 @@ Do not include quotes or explanations.`;
             absentDays,
             leaveDays,
             earlyLeaveDays,
-            attendanceRate: attendanceRecords.length > 0 
-              ? Math.round((presentDays / attendanceRecords.length) * 100) 
-              : 0
+            attendanceRate:
+              attendanceRecords.length > 0
+                ? Math.round((presentDays / attendanceRecords.length) * 100)
+                : 0,
           },
-          records: attendanceRecords.map(r => ({
+          records: attendanceRecords.map((r) => ({
             date: r.date,
-            dayName: new Date(r.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "long" }),
+            dayName: new Date(r.date + "T12:00:00").toLocaleDateString(
+              "en-US",
+              { weekday: "long" },
+            ),
             status: r.status,
-            checkIn: r.check_in_time ? new Date(r.check_in_time).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : null,
-            checkOut: r.check_out_time ? new Date(r.check_out_time).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : null,
+            checkIn: r.check_in_time
+              ? new Date(r.check_in_time).toLocaleTimeString("en-US", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : null,
+            checkOut: r.check_out_time
+              ? new Date(r.check_out_time).toLocaleTimeString("en-US", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : null,
             workHours: r.work_hours,
             overtimeHours: r.overtime_hours,
-            notes: r.notes
+            notes: r.notes,
           })),
-          generatedAt: new Date().toISOString()
-        }
+          generatedAt: new Date().toISOString(),
+        },
       });
     } catch (error) {
       console.error("Error generating attendance report:", error);
@@ -8338,387 +9995,449 @@ Do not include quotes or explanations.`;
   });
 
   // تصدير تقرير حضور موظف كملف Excel احترافي
-  app.get("/api/attendance/report/:userId/export", requireAuth, async (req, res) => {
-    try {
-      const userId = parseInt(req.params.userId);
-      const startDate = req.query.startDate as string;
-      const endDate = req.query.endDate as string;
-      
-      if (isNaN(userId) || userId <= 0) {
-        return res.status(400).json({ message: "رقم الموظف غير صحيح" });
-      }
-      
-      if (!startDate || !endDate) {
-        return res.status(400).json({ message: "يجب تحديد تاريخ البداية والنهاية" });
-      }
-      
-      // Get user info
-      const user = await storage.getUserById(userId);
-      if (!user) {
-        return res.status(404).json({ message: "الموظف غير موجود" });
-      }
-      
-      // Get attendance records
-      const attendanceRecords = await db
-        .select()
-        .from(attendance)
-        .where(
-          and(
-            eq(attendance.user_id, userId),
-            gte(attendance.date, startDate),
-            lte(attendance.date, endDate)
+  app.get(
+    "/api/attendance/report/:userId/export",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const userId = parseInt(req.params.userId);
+        const startDate = req.query.startDate as string;
+        const endDate = req.query.endDate as string;
+
+        if (isNaN(userId) || userId <= 0) {
+          return res.status(400).json({ message: "رقم الموظف غير صحيح" });
+        }
+
+        if (!startDate || !endDate) {
+          return res
+            .status(400)
+            .json({ message: "يجب تحديد تاريخ البداية والنهاية" });
+        }
+
+        // Get user info
+        const user = await storage.getUserById(userId);
+        if (!user) {
+          return res.status(404).json({ message: "الموظف غير موجود" });
+        }
+
+        // Get attendance records
+        const attendanceRecords = await db
+          .select()
+          .from(attendance)
+          .where(
+            and(
+              eq(attendance.user_id, userId),
+              gte(attendance.date, startDate),
+              lte(attendance.date, endDate),
+            ),
           )
-        )
-        .orderBy(attendance.date);
-      
-      // Calculate summary
-      let totalWorkHours = 0;
-      let totalOvertimeHours = 0;
-      let presentDays = 0;
-      let absentDays = 0;
-      let leaveDays = 0;
-      
-      for (const record of attendanceRecords) {
-        if (record.work_hours) totalWorkHours += Number(record.work_hours);
-        if (record.overtime_hours) totalOvertimeHours += Number(record.overtime_hours);
-        if (record.status === "حاضر") presentDays++;
-        if (record.status === "غائب") absentDays++;
-        if (record.status === "إجازة") leaveDays++;
-      }
-      
-      // Create workbook
-      const wb = new ExcelJS.Workbook();
-      
-      // Header sheet with factory and employee info
-      const headerData = [
-        { "": "مصنع الأكياس البلاستيكية" },
-        { "": "تقرير حضور موظف" },
-        { "": "-----------------------------" },
-        { "": `اسم الموظف: ${user.display_name_ar || user.display_name || user.username}` },
-        { "": `رقم الموظف: EMP-${user.id}` },
-        { "": `الفترة: من ${startDate} إلى ${endDate}` },
-        { "": `تاريخ التقرير: ${new Date().toLocaleDateString("en-US")}` },
-        { "": "-----------------------------" },
-        { "": `إجمالي أيام الحضور: ${presentDays}` },
-        { "": `إجمالي أيام الغياب: ${absentDays}` },
-        { "": `إجمالي أيام الإجازة: ${leaveDays}` },
-        { "": `إجمالي ساعات العمل: ${totalWorkHours.toFixed(1)}` },
-        { "": `إجمالي الساعات الإضافية: ${totalOvertimeHours.toFixed(1)}` },
-        { "": `نسبة الحضور: ${attendanceRecords.length > 0 ? Math.round((presentDays / attendanceRecords.length) * 100) : 0}%` },
-      ];
-      addJsonSheet(wb, headerData, "ملخص التقرير", [50]);
-      
-      // Attendance details sheet
-      const detailsData = attendanceRecords.map(r => ({
-        "التاريخ": r.date,
-        "اليوم": new Date(r.date).toLocaleDateString("en-US", { weekday: "long" }),
-        "الحالة": r.status,
-        "وقت الحضور": r.check_in_time ? new Date(r.check_in_time).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "-",
-        "وقت الانصراف": r.check_out_time ? new Date(r.check_out_time).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "-",
-        "ساعات العمل": r.work_hours || 0,
-        "ساعات إضافية": r.overtime_hours || 0,
-        "ملاحظات": r.notes || ""
-      }));
-      addJsonSheet(wb, detailsData, "تفاصيل الحضور", [12, 10, 10, 12, 12, 12, 12, 25]);
-      
-      const buffer = Buffer.from(await wb.xlsx.writeBuffer());
-      
-      const fileName = `attendance_report_${user.username}_${startDate}_${endDate}.xlsx`;
-      res.setHeader("Content-Disposition", `attachment; filename=${fileName}`);
-      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-      res.send(buffer);
-    } catch (error) {
-      console.error("Error exporting attendance report:", error);
-      res.status(500).json({ message: "خطأ في تصدير تقرير الحضور" });
-    }
-  });
+          .orderBy(attendance.date);
 
-  // تسجيل الحضور مع تحقق الموقع الجغرافي المحسّن
-  app.post(["/api/attendance", "/api/attendance/check-in", "/api/attendance/check-out"], requireAuth, async (req, res) => {
-    try {
-      const isDevMode = process.env.NODE_ENV === 'development';
-      
-      // =============== إعدادات الحماية ===============
-      const MAX_ACCURACY_METERS = 500; // الحد الأقصى للدقة المسموحة بالأمتار (مرن للمباني الداخلية)
-      const MIN_ACCURACY_METERS = 3;   // الحد الأدنى للدقة (أقل من ذلك يعني تزوير محتمل)
-      
-      // =============== جمع معلومات الجهاز للتدقيق ===============
-      const deviceInfo = {
-        ip: req.ip || req.connection?.remoteAddress || 'unknown',
-        userAgent: req.headers['user-agent'] || 'unknown',
-        timestamp: new Date().toISOString(),
-        timezone: req.headers['timezone'] || Intl.DateTimeFormat().resolvedOptions().timeZone,
-      };
-      
-      // =============== التحقق من وجود بيانات الموقع ===============
-      if (!req.body.location || !req.body.location.lat || !req.body.location.lng) {
-        return res.status(400).json({
-          message: "يجب توفير الموقع الجغرافي لتسجيل الحضور",
-          code: "LOCATION_REQUIRED"
-        });
-      }
+        // Calculate summary
+        let totalWorkHours = 0;
+        let totalOvertimeHours = 0;
+        let presentDays = 0;
+        let absentDays = 0;
+        let leaveDays = 0;
 
-      const { lat, lng, accuracy, isMocked, altitudeAccuracy } = req.body.location;
-      
-      // =============== التحقق من دقة الموقع ===============
-      // نتعامل مع accuracy كرقم صالح أو نتجاهل التحقق إذا لم تتوفر
-      const hasValidAccuracy = accuracy !== undefined && accuracy !== null && !isNaN(accuracy);
-      
-      if (hasValidAccuracy) {
-        // دقة عالية جداً (أقل من 5 متر) قد تشير لتزوير
-        if (accuracy < MIN_ACCURACY_METERS) {
-          // نسجل التحذير لكن لا نرفض (قد يكون GPS حقيقي ممتاز)
+        for (const record of attendanceRecords) {
+          if (record.work_hours) totalWorkHours += Number(record.work_hours);
+          if (record.overtime_hours)
+            totalOvertimeHours += Number(record.overtime_hours);
+          if (record.status === "حاضر") presentDays++;
+          if (record.status === "غائب") absentDays++;
+          if (record.status === "إجازة") leaveDays++;
         }
-        
-        // دقة منخفضة جداً
-        if (accuracy > MAX_ACCURACY_METERS) {
-          return res.status(400).json({
-            message: `دقة الموقع منخفضة جداً (${Math.round(accuracy)} متر). يرجى الانتظار حتى تتحسن دقة GPS أو الخروج لمكان مفتوح.`,
-            code: "LOW_ACCURACY",
-            accuracy: Math.round(accuracy),
-            maxAllowed: MAX_ACCURACY_METERS
-          });
-        }
-      } else {
-        // تحذير في السجل إذا لم تتوفر معلومات الدقة
-      }
 
-      // =============== كشف تزوير الموقع (Mock Location) ===============
-      if (isMocked === true) {
-        
-        // تسجيل محاولة التلاعب
-        try {
-          await storage.createViolation({
-            user_id: req.body.user_id,
-            type: 'location_spoofing',
-            description: `محاولة تسجيل حضور بموقع مزور`,
-            details: JSON.stringify({
-              location: { lat, lng },
-              accuracy,
-              deviceInfo,
-              timestamp: new Date().toISOString()
-            }),
-            severity: 'high'
-          });
-        } catch (violationError) {
-          console.error('خطأ في تسجيل المخالفة:', violationError);
-        }
-        
-        return res.status(403).json({
-          message: "تم اكتشاف محاولة تزوير الموقع! هذه المحاولة تم تسجيلها وسيتم إبلاغ الإدارة.",
-          code: "MOCK_LOCATION_DETECTED"
-        });
-      }
+        // Create workbook
+        const wb = new ExcelJS.Workbook();
 
-      // =============== التحقق من صحة إحداثيات الموقع ===============
-      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-        return res.status(400).json({
-          message: "إحداثيات الموقع غير صالحة",
-          code: "INVALID_COORDINATES"
-        });
-      }
+        // Header sheet with factory and employee info
+        const headerData = [
+          { "": "مصنع الأكياس البلاستيكية" },
+          { "": "تقرير حضور موظف" },
+          { "": "-----------------------------" },
+          {
+            "": `اسم الموظف: ${user.display_name_ar || user.display_name || user.username}`,
+          },
+          { "": `رقم الموظف: EMP-${user.id}` },
+          { "": `الفترة: من ${startDate} إلى ${endDate}` },
+          { "": `تاريخ التقرير: ${new Date().toLocaleDateString("en-US")}` },
+          { "": "-----------------------------" },
+          { "": `إجمالي أيام الحضور: ${presentDays}` },
+          { "": `إجمالي أيام الغياب: ${absentDays}` },
+          { "": `إجمالي أيام الإجازة: ${leaveDays}` },
+          { "": `إجمالي ساعات العمل: ${totalWorkHours.toFixed(1)}` },
+          { "": `إجمالي الساعات الإضافية: ${totalOvertimeHours.toFixed(1)}` },
+          {
+            "": `نسبة الحضور: ${attendanceRecords.length > 0 ? Math.round((presentDays / attendanceRecords.length) * 100) : 0}%`,
+          },
+        ];
+        addJsonSheet(wb, headerData, "ملخص التقرير", [50]);
 
-      // =============== التحقق من دور المستخدم (مندوب مبيعات) ===============
-      const SALES_REP_ROLE_ID = 7; // دور مندوب المبيعات
-      const user = await storage.getUserById(req.body.user_id);
-      const isSalesRep = user?.role_id === SALES_REP_ROLE_ID;
-      
-      if (isSalesRep) {
-      }
-
-      // =============== جلب مواقع المصانع النشطة ===============
-      const activeLocations = await storage.getActiveFactoryLocations();
-
-      // مندوب المبيعات لا يحتاج لمواقع مصانع نشطة
-      if (activeLocations.length === 0 && !isSalesRep) {
-        return res.status(400).json({
-          message: "لا توجد مواقع مصانع نشطة. يرجى التواصل مع الإدارة.",
-          code: "NO_ACTIVE_LOCATIONS"
-        });
-      }
-
-      // =============== دالة حساب المسافة (Haversine) ===============
-      const calculateDistance = (
-        lat1: number,
-        lon1: number,
-        lat2: number,
-        lon2: number
-      ): number => {
-        const R = 6371e3; // نصف قطر الأرض بالأمتار
-        const φ1 = (lat1 * Math.PI) / 180;
-        const φ2 = (lat2 * Math.PI) / 180;
-        const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-        const Δλ = ((lon2 - lon1) * Math.PI) / 180;
-
-        const a =
-          Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-          Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-        return R * c;
-      };
-
-      // =============== التحقق من الموقع ===============
-      let isWithinRange = false;
-      let closestDistance = Infinity;
-      let closestLocation: any = null;
-      let matchedLocation: any = null;
-
-      if (isDevMode) {
-      }
-
-      for (const factoryLocation of activeLocations) {
-        const distance = calculateDistance(
-          lat,
-          lng,
-          parseFloat(factoryLocation.latitude),
-          parseFloat(factoryLocation.longitude)
+        // Attendance details sheet
+        const detailsData = attendanceRecords.map((r) => ({
+          التاريخ: r.date,
+          اليوم: new Date(r.date).toLocaleDateString("en-US", {
+            weekday: "long",
+          }),
+          الحالة: r.status,
+          "وقت الحضور": r.check_in_time
+            ? new Date(r.check_in_time).toLocaleTimeString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : "-",
+          "وقت الانصراف": r.check_out_time
+            ? new Date(r.check_out_time).toLocaleTimeString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : "-",
+          "ساعات العمل": r.work_hours || 0,
+          "ساعات إضافية": r.overtime_hours || 0,
+          ملاحظات: r.notes || "",
+        }));
+        addJsonSheet(
+          wb,
+          detailsData,
+          "تفاصيل الحضور",
+          [12, 10, 10, 12, 12, 12, 12, 25],
         );
 
-        // نأخذ دقة GPS بعين الاعتبار عند حساب المسافة الفعلية
-        const effectiveDistance = accuracy ? Math.max(0, distance - accuracy) : distance;
-        const effectiveRadius = factoryLocation.allowed_radius + (accuracy || 0);
+        const buffer = Buffer.from(await wb.xlsx.writeBuffer());
+
+        const fileName = `attendance_report_${user.username}_${startDate}_${endDate}.xlsx`;
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename=${fileName}`,
+        );
+        res.setHeader(
+          "Content-Type",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        );
+        res.send(buffer);
+      } catch (error) {
+        console.error("Error exporting attendance report:", error);
+        res.status(500).json({ message: "خطأ في تصدير تقرير الحضور" });
+      }
+    },
+  );
+
+  // تسجيل الحضور مع تحقق الموقع الجغرافي المحسّن
+  app.post(
+    [
+      "/api/attendance",
+      "/api/attendance/check-in",
+      "/api/attendance/check-out",
+    ],
+    requireAuth,
+    async (req, res) => {
+      try {
+        const isDevMode = process.env.NODE_ENV === "development";
+
+        // =============== إعدادات الحماية ===============
+        const MAX_ACCURACY_METERS = 500; // الحد الأقصى للدقة المسموحة بالأمتار (مرن للمباني الداخلية)
+        const MIN_ACCURACY_METERS = 3; // الحد الأدنى للدقة (أقل من ذلك يعني تزوير محتمل)
+
+        // =============== جمع معلومات الجهاز للتدقيق ===============
+        const deviceInfo = {
+          ip: req.ip || req.connection?.remoteAddress || "unknown",
+          userAgent: req.headers["user-agent"] || "unknown",
+          timestamp: new Date().toISOString(),
+          timezone:
+            req.headers["timezone"] ||
+            Intl.DateTimeFormat().resolvedOptions().timeZone,
+        };
+
+        // =============== التحقق من وجود بيانات الموقع ===============
+        if (
+          !req.body.location ||
+          !req.body.location.lat ||
+          !req.body.location.lng
+        ) {
+          return res.status(400).json({
+            message: "يجب توفير الموقع الجغرافي لتسجيل الحضور",
+            code: "LOCATION_REQUIRED",
+          });
+        }
+
+        const { lat, lng, accuracy, isMocked, altitudeAccuracy } =
+          req.body.location;
+
+        // =============== التحقق من دقة الموقع ===============
+        // نتعامل مع accuracy كرقم صالح أو نتجاهل التحقق إذا لم تتوفر
+        const hasValidAccuracy =
+          accuracy !== undefined && accuracy !== null && !isNaN(accuracy);
+
+        if (hasValidAccuracy) {
+          // دقة عالية جداً (أقل من 5 متر) قد تشير لتزوير
+          if (accuracy < MIN_ACCURACY_METERS) {
+            // نسجل التحذير لكن لا نرفض (قد يكون GPS حقيقي ممتاز)
+          }
+
+          // دقة منخفضة جداً
+          if (accuracy > MAX_ACCURACY_METERS) {
+            return res.status(400).json({
+              message: `دقة الموقع منخفضة جداً (${Math.round(accuracy)} متر). يرجى الانتظار حتى تتحسن دقة GPS أو الخروج لمكان مفتوح.`,
+              code: "LOW_ACCURACY",
+              accuracy: Math.round(accuracy),
+              maxAllowed: MAX_ACCURACY_METERS,
+            });
+          }
+        } else {
+          // تحذير في السجل إذا لم تتوفر معلومات الدقة
+        }
+
+        // =============== كشف تزوير الموقع (Mock Location) ===============
+        if (isMocked === true) {
+          // تسجيل محاولة التلاعب
+          try {
+            await storage.createViolation({
+              user_id: req.body.user_id,
+              type: "location_spoofing",
+              description: `محاولة تسجيل حضور بموقع مزور`,
+              details: JSON.stringify({
+                location: { lat, lng },
+                accuracy,
+                deviceInfo,
+                timestamp: new Date().toISOString(),
+              }),
+              severity: "high",
+            });
+          } catch (violationError) {
+            console.error("خطأ في تسجيل المخالفة:", violationError);
+          }
+
+          return res.status(403).json({
+            message:
+              "تم اكتشاف محاولة تزوير الموقع! هذه المحاولة تم تسجيلها وسيتم إبلاغ الإدارة.",
+            code: "MOCK_LOCATION_DETECTED",
+          });
+        }
+
+        // =============== التحقق من صحة إحداثيات الموقع ===============
+        if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+          return res.status(400).json({
+            message: "إحداثيات الموقع غير صالحة",
+            code: "INVALID_COORDINATES",
+          });
+        }
+
+        // =============== التحقق من دور المستخدم (مندوب مبيعات) ===============
+        const SALES_REP_ROLE_ID = 7; // دور مندوب المبيعات
+        const user = await storage.getUserById(req.body.user_id);
+        const isSalesRep = user?.role_id === SALES_REP_ROLE_ID;
+
+        if (isSalesRep) {
+        }
+
+        // =============== جلب مواقع المصانع النشطة ===============
+        const activeLocations = await storage.getActiveFactoryLocations();
+
+        // مندوب المبيعات لا يحتاج لمواقع مصانع نشطة
+        if (activeLocations.length === 0 && !isSalesRep) {
+          return res.status(400).json({
+            message: "لا توجد مواقع مصانع نشطة. يرجى التواصل مع الإدارة.",
+            code: "NO_ACTIVE_LOCATIONS",
+          });
+        }
+
+        // =============== دالة حساب المسافة (Haversine) ===============
+        const calculateDistance = (
+          lat1: number,
+          lon1: number,
+          lat2: number,
+          lon2: number,
+        ): number => {
+          const R = 6371e3; // نصف قطر الأرض بالأمتار
+          const φ1 = (lat1 * Math.PI) / 180;
+          const φ2 = (lat2 * Math.PI) / 180;
+          const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+          const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+          const a =
+            Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+            Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+          return R * c;
+        };
+
+        // =============== التحقق من الموقع ===============
+        let isWithinRange = false;
+        let closestDistance = Infinity;
+        let closestLocation: any = null;
+        let matchedLocation: any = null;
 
         if (isDevMode) {
         }
 
-        if (distance < closestDistance) {
-          closestDistance = distance;
-          closestLocation = factoryLocation;
+        for (const factoryLocation of activeLocations) {
+          const distance = calculateDistance(
+            lat,
+            lng,
+            parseFloat(factoryLocation.latitude),
+            parseFloat(factoryLocation.longitude),
+          );
+
+          // نأخذ دقة GPS بعين الاعتبار عند حساب المسافة الفعلية
+          const effectiveDistance = accuracy
+            ? Math.max(0, distance - accuracy)
+            : distance;
+          const effectiveRadius =
+            factoryLocation.allowed_radius + (accuracy || 0);
+
+          if (isDevMode) {
+          }
+
+          if (distance < closestDistance) {
+            closestDistance = distance;
+            closestLocation = factoryLocation;
+          }
+
+          if (distance <= factoryLocation.allowed_radius) {
+            isWithinRange = true;
+            matchedLocation = factoryLocation;
+            break;
+          }
         }
 
-        if (distance <= factoryLocation.allowed_radius) {
-          isWithinRange = true;
-          matchedLocation = factoryLocation;
-          break;
-        }
-      }
+        if (!isWithinRange) {
+          const errorMsg = `أنت خارج نطاق المصنع. المسافة: ${Math.round(closestDistance)} متر. النطاق المسموح: ${closestLocation?.allowed_radius} متر.`;
 
-      if (!isWithinRange) {
-        const errorMsg = `أنت خارج نطاق المصنع. المسافة: ${Math.round(closestDistance)} متر. النطاق المسموح: ${closestLocation?.allowed_radius} متر.`;
-        
-        return res.status(403).json({
-          message: errorMsg,
-          code: "OUT_OF_RANGE",
-          distance: Math.round(closestDistance),
-          allowedRadius: closestLocation?.allowed_radius,
-          locationName: closestLocation?.name_ar,
-          ...(isDevMode && {
-            debug: {
-              userLocation: { lat, lng, accuracy },
-              closestLocation: {
-                name: closestLocation?.name_ar,
-                lat: closestLocation?.latitude,
-                lng: closestLocation?.longitude
+          return res.status(403).json({
+            message: errorMsg,
+            code: "OUT_OF_RANGE",
+            distance: Math.round(closestDistance),
+            allowedRadius: closestLocation?.allowed_radius,
+            locationName: closestLocation?.name_ar,
+            ...(isDevMode && {
+              debug: {
+                userLocation: { lat, lng, accuracy },
+                closestLocation: {
+                  name: closestLocation?.name_ar,
+                  lat: closestLocation?.latitude,
+                  lng: closestLocation?.longitude,
+                },
+              },
+            }),
+          });
+        }
+
+        // =============== إعداد بيانات الحضور مع معلومات التدقيق ===============
+        const attendanceData = {
+          ...req.body,
+          location_accuracy: accuracy,
+          location_lat: lat,
+          location_lng: lng,
+          factory_location_id: matchedLocation?.id,
+          device_info: JSON.stringify(deviceInfo),
+          distance_from_factory: Math.round(closestDistance),
+        };
+
+        const attendance = await storage.createAttendance(attendanceData);
+
+        // Send attendance notification asynchronously (fire-and-forget)
+        const attendanceId = attendance.id;
+        const attendanceUserId = req.body.user_id;
+        const attendanceStatus = req.body.status;
+        (async () => {
+          try {
+            const notifUser = await storage.getUserById(attendanceUserId);
+            if (notifUser && notifUser.phone) {
+              let messageTemplate = "";
+              let priority = "normal";
+
+              switch (attendanceStatus) {
+                case "حاضر":
+                  messageTemplate = `مرحباً ${notifUser.display_name_ar || notifUser.username}، تم تسجيل حضورك اليوم بنجاح في ${new Date().toLocaleTimeString("en-US")}. نتمنى لك يوم عمل مثمر!`;
+                  priority = "normal";
+                  break;
+                case "في الاستراحة":
+                  messageTemplate = `${notifUser.display_name_ar || notifUser.username}، تم تسجيل بدء استراحة الغداء في ${new Date().toLocaleTimeString("en-US")}. استمتع بوقت راحتك!`;
+                  priority = "low";
+                  break;
+                case "يعمل":
+                  messageTemplate = `${notifUser.display_name_ar || notifUser.username}، تم تسجيل انتهاء استراحة الغداء في ${new Date().toLocaleTimeString("en-US")}. مرحباً بعودتك للعمل!`;
+                  priority = "normal";
+                  break;
+                case "مغادر":
+                  messageTemplate = `${notifUser.display_name_ar || notifUser.username}، تم تسجيل انصرافك في ${new Date().toLocaleTimeString("en-US")}. شكراً لجهودك اليوم، نراك غداً!`;
+                  priority = "normal";
+                  break;
+              }
+
+              if (messageTemplate) {
+                await notificationService.sendWhatsAppMessage(
+                  notifUser.phone,
+                  messageTemplate,
+                  {
+                    title: "تنبيه الحضور",
+                    priority,
+                    context_type: "attendance",
+                    context_id: attendanceId?.toString(),
+                  },
+                );
               }
             }
-          })
-        });
-      }
-
-      // =============== إعداد بيانات الحضور مع معلومات التدقيق ===============
-      const attendanceData = {
-        ...req.body,
-        location_accuracy: accuracy,
-        location_lat: lat,
-        location_lng: lng,
-        factory_location_id: matchedLocation?.id,
-        device_info: JSON.stringify(deviceInfo),
-        distance_from_factory: Math.round(closestDistance)
-      };
-
-      const attendance = await storage.createAttendance(attendanceData);
-      
-
-      // Send attendance notification asynchronously (fire-and-forget)
-      const attendanceId = attendance.id;
-      const attendanceUserId = req.body.user_id;
-      const attendanceStatus = req.body.status;
-      (async () => {
-        try {
-          const notifUser = await storage.getUserById(attendanceUserId);
-          if (notifUser && notifUser.phone) {
-            let messageTemplate = "";
-            let priority = "normal";
-
-            switch (attendanceStatus) {
-              case "حاضر":
-                messageTemplate = `مرحباً ${notifUser.display_name_ar || notifUser.username}، تم تسجيل حضورك اليوم بنجاح في ${new Date().toLocaleTimeString("en-US")}. نتمنى لك يوم عمل مثمر!`;
-                priority = "normal";
-                break;
-              case "في الاستراحة":
-                messageTemplate = `${notifUser.display_name_ar || notifUser.username}، تم تسجيل بدء استراحة الغداء في ${new Date().toLocaleTimeString("en-US")}. استمتع بوقت راحتك!`;
-                priority = "low";
-                break;
-              case "يعمل":
-                messageTemplate = `${notifUser.display_name_ar || notifUser.username}، تم تسجيل انتهاء استراحة الغداء في ${new Date().toLocaleTimeString("en-US")}. مرحباً بعودتك للعمل!`;
-                priority = "normal";
-                break;
-              case "مغادر":
-                messageTemplate = `${notifUser.display_name_ar || notifUser.username}، تم تسجيل انصرافك في ${new Date().toLocaleTimeString("en-US")}. شكراً لجهودك اليوم، نراك غداً!`;
-                priority = "normal";
-                break;
-            }
-
-            if (messageTemplate) {
-              await notificationService.sendWhatsAppMessage(
-                notifUser.phone,
-                messageTemplate,
-                {
-                  title: "تنبيه الحضور",
-                  priority,
-                  context_type: "attendance",
-                  context_id: attendanceId?.toString(),
-                },
-              );
-            }
+          } catch (notificationError) {
+            console.error(
+              "Failed to send attendance notification:",
+              notificationError,
+            );
           }
-        } catch (notificationError) {
-          console.error(
-            "Failed to send attendance notification:",
-            notificationError,
-          );
+        })();
+
+        res.status(201).json(attendance);
+      } catch (error) {
+        console.error("Error creating attendance:", error);
+
+        // Return the specific error message for validation errors
+        if (error instanceof Error && error.message.includes("تم تسجيل")) {
+          return res.status(400).json({ message: error.message });
         }
-      })();
 
-      res.status(201).json(attendance);
-    } catch (error) {
-      console.error("Error creating attendance:", error);
+        if (error instanceof Error && error.message.includes("يجب")) {
+          return res.status(400).json({ message: error.message });
+        }
 
-      // Return the specific error message for validation errors
-      if (error instanceof Error && error.message.includes("تم تسجيل")) {
-        return res.status(400).json({ message: error.message });
+        res.status(500).json({ message: "خطأ في إنشاء سجل الحضور" });
       }
+    },
+  );
 
-      if (error instanceof Error && error.message.includes("يجب")) {
-        return res.status(400).json({ message: error.message });
+  app.put(
+    "/api/attendance/:id",
+    requireAuth,
+    requirePermission("manage_attendance"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const attendance = await storage.updateAttendance(id, req.body);
+        res.json(attendance);
+      } catch (error) {
+        console.error("Error updating attendance:", error);
+        res.status(500).json({ message: "خطأ في تحديث سجل الحضور" });
       }
+    },
+  );
 
-      res.status(500).json({ message: "خطأ في إنشاء سجل الحضور" });
-    }
-  });
-
-  app.put("/api/attendance/:id", requireAuth, requirePermission('manage_attendance'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      const attendance = await storage.updateAttendance(id, req.body);
-      res.json(attendance);
-    } catch (error) {
-      console.error("Error updating attendance:", error);
-      res.status(500).json({ message: "خطأ في تحديث سجل الحضور" });
-    }
-  });
-
-  app.delete("/api/attendance/:id", requireAuth, requirePermission('manage_attendance'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      await storage.deleteAttendance(id);
-      res.json({ message: "تم حذف سجل الحضور بنجاح" });
-    } catch (error) {
-      console.error("Error deleting attendance:", error);
-      res.status(500).json({ message: "خطأ في حذف سجل الحضور" });
-    }
-  });
+  app.delete(
+    "/api/attendance/:id",
+    requireAuth,
+    requirePermission("manage_attendance"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        await storage.deleteAttendance(id);
+        res.json({ message: "تم حذف سجل الحضور بنجاح" });
+      } catch (error) {
+        console.error("Error deleting attendance:", error);
+        res.status(500).json({ message: "خطأ في حذف سجل الحضور" });
+      }
+    },
+  );
 
   // ============ Attendance Reports and Statistics API ============
 
@@ -8729,15 +10448,15 @@ Do not include quotes or explanations.`;
       if (isNaN(userId) || userId <= 0) {
         return res.status(400).json({ message: "معرف المستخدم غير صحيح" });
       }
-      const { startDate, endDate, period = 'month' } = req.query;
-      
+      const { startDate, endDate, period = "month" } = req.query;
+
       let start: Date, end: Date;
       const now = new Date();
-      
+
       if (startDate && endDate) {
         start = new Date(startDate as string);
         end = new Date(endDate as string);
-      } else if (period === 'week') {
+      } else if (period === "week") {
         start = new Date(now);
         start.setDate(now.getDate() - now.getDay());
         end = new Date(now);
@@ -8745,7 +10464,7 @@ Do not include quotes or explanations.`;
         start = new Date(now.getFullYear(), now.getMonth(), 1);
         end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
       }
-      
+
       const summary = await storage.getAttendanceSummary(userId, start, end);
       res.json({ data: summary, startDate: start, endDate: end });
     } catch (error) {
@@ -8755,314 +10474,415 @@ Do not include quotes or explanations.`;
   });
 
   // Get attendance report for all employees
-  app.get("/api/attendance/report", requireAuth, requirePermission("view_attendance_reports"), async (req, res) => {
-    try {
-      const { startDate, endDate, sectionId, roleId } = req.query;
-      
-      let start: Date, end: Date;
-      const now = new Date();
-      
-      if (startDate && endDate) {
-        start = new Date(startDate as string);
-        end = new Date(endDate as string);
-      } else {
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
-        end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  app.get(
+    "/api/attendance/report",
+    requireAuth,
+    requirePermission("view_attendance_reports"),
+    async (req, res) => {
+      try {
+        const { startDate, endDate, sectionId, roleId } = req.query;
+
+        let start: Date, end: Date;
+        const now = new Date();
+
+        if (startDate && endDate) {
+          start = new Date(startDate as string);
+          end = new Date(endDate as string);
+        } else {
+          start = new Date(now.getFullYear(), now.getMonth(), 1);
+          end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        }
+
+        const report = await storage.getAttendanceReport(start, end, {
+          sectionId: sectionId ? parseInt(sectionId as string) : undefined,
+          roleId: roleId ? parseInt(roleId as string) : undefined,
+        });
+
+        res.json({ data: report, startDate: start, endDate: end });
+      } catch (error) {
+        console.error("Error fetching attendance report:", error);
+        res.status(500).json({ message: "خطأ في جلب تقرير الحضور" });
       }
-      
-      const report = await storage.getAttendanceReport(start, end, {
-        sectionId: sectionId ? parseInt(sectionId as string) : undefined,
-        roleId: roleId ? parseInt(roleId as string) : undefined,
-      });
-      
-      res.json({ data: report, startDate: start, endDate: end });
-    } catch (error) {
-      console.error("Error fetching attendance report:", error);
-      res.status(500).json({ message: "خطأ في جلب تقرير الحضور" });
-    }
-  });
+    },
+  );
 
   // Calculate and update work hours for an attendance record
-  app.put("/api/attendance/:id/calculate-hours", requireAuth, requirePermission("manage_attendance"), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      const attendance = await storage.getAttendanceById(id);
-      
-      if (!attendance) {
-        return res.status(404).json({ message: "سجل الحضور غير موجود" });
+  app.put(
+    "/api/attendance/:id/calculate-hours",
+    requireAuth,
+    requirePermission("manage_attendance"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const attendance = await storage.getAttendanceById(id);
+
+        if (!attendance) {
+          return res.status(404).json({ message: "سجل الحضور غير موجود" });
+        }
+
+        let workHours = 0;
+        let overtimeHours = 0;
+        const standardWorkHours = 8; // ساعات العمل الرسمية
+
+        if (attendance.check_in_time && attendance.check_out_time) {
+          const checkIn = new Date(attendance.check_in_time);
+          const checkOut = new Date(attendance.check_out_time);
+          let totalMinutes =
+            (checkOut.getTime() - checkIn.getTime()) / (1000 * 60);
+
+          // Subtract lunch break if exists
+          if (attendance.lunch_start_time && attendance.lunch_end_time) {
+            const lunchStart = new Date(attendance.lunch_start_time);
+            const lunchEnd = new Date(attendance.lunch_end_time);
+            totalMinutes -=
+              (lunchEnd.getTime() - lunchStart.getTime()) / (1000 * 60);
+          }
+
+          // Subtract other break if exists
+          if (attendance.break_start_time && attendance.break_end_time) {
+            const breakStart = new Date(attendance.break_start_time);
+            const breakEnd = new Date(attendance.break_end_time);
+            totalMinutes -=
+              (breakEnd.getTime() - breakStart.getTime()) / (1000 * 60);
+          }
+
+          workHours = Math.max(0, totalMinutes / 60);
+
+          // Calculate overtime
+          if (workHours > standardWorkHours) {
+            overtimeHours = workHours - standardWorkHours;
+            workHours = standardWorkHours;
+          }
+        }
+
+        const updated = await storage.updateAttendance(id, {
+          work_hours: parseFloat(workHours.toFixed(2)),
+          overtime_hours: parseFloat(overtimeHours.toFixed(2)),
+        });
+
+        res.json(updated);
+      } catch (error) {
+        console.error("Error calculating work hours:", error);
+        res.status(500).json({ message: "خطأ في حساب ساعات العمل" });
       }
-      
-      let workHours = 0;
-      let overtimeHours = 0;
-      const standardWorkHours = 8; // ساعات العمل الرسمية
-      
-      if (attendance.check_in_time && attendance.check_out_time) {
-        const checkIn = new Date(attendance.check_in_time);
-        const checkOut = new Date(attendance.check_out_time);
-        let totalMinutes = (checkOut.getTime() - checkIn.getTime()) / (1000 * 60);
-        
-        // Subtract lunch break if exists
-        if (attendance.lunch_start_time && attendance.lunch_end_time) {
-          const lunchStart = new Date(attendance.lunch_start_time);
-          const lunchEnd = new Date(attendance.lunch_end_time);
-          totalMinutes -= (lunchEnd.getTime() - lunchStart.getTime()) / (1000 * 60);
-        }
-        
-        // Subtract other break if exists
-        if (attendance.break_start_time && attendance.break_end_time) {
-          const breakStart = new Date(attendance.break_start_time);
-          const breakEnd = new Date(attendance.break_end_time);
-          totalMinutes -= (breakEnd.getTime() - breakStart.getTime()) / (1000 * 60);
-        }
-        
-        workHours = Math.max(0, totalMinutes / 60);
-        
-        // Calculate overtime
-        if (workHours > standardWorkHours) {
-          overtimeHours = workHours - standardWorkHours;
-          workHours = standardWorkHours;
-        }
-      }
-      
-      const updated = await storage.updateAttendance(id, {
-        work_hours: parseFloat(workHours.toFixed(2)),
-        overtime_hours: parseFloat(overtimeHours.toFixed(2)),
-      });
-      
-      res.json(updated);
-    } catch (error) {
-      console.error("Error calculating work hours:", error);
-      res.status(500).json({ message: "خطأ في حساب ساعات العمل" });
-    }
-  });
+    },
+  );
 
   // Get daily attendance statistics
-  app.get("/api/attendance/daily-stats", requireAuth, requirePermission("view_attendance"), async (req, res) => {
-    try {
-      const date = req.query.date as string || new Date().toISOString().split('T')[0];
-      const stats = await storage.getDailyAttendanceStats(date);
-      res.json({ data: stats, date });
-    } catch (error) {
-      console.error("Error fetching daily attendance stats:", error);
-      res.status(500).json({ message: "خطأ في جلب إحصائيات الحضور اليومية" });
-    }
-  });
+  app.get(
+    "/api/attendance/daily-stats",
+    requireAuth,
+    requirePermission("view_attendance"),
+    async (req, res) => {
+      try {
+        const date =
+          (req.query.date as string) || new Date().toISOString().split("T")[0];
+        const stats = await storage.getDailyAttendanceStats(date);
+        res.json({ data: stats, date });
+      } catch (error) {
+        console.error("Error fetching daily attendance stats:", error);
+        res.status(500).json({ message: "خطأ في جلب إحصائيات الحضور اليومية" });
+      }
+    },
+  );
 
   // Monthly attendance editor - Get employee monthly attendance data
-  app.get("/api/attendance/monthly-editor/:userId", requireAuth, requirePermission("manage_attendance"), async (req, res) => {
-    try {
-      const userId = parseInt(req.params.userId);
-      if (isNaN(userId) || userId <= 0) {
-        return res.status(400).json({ message: "معرف الموظف غير صحيح" });
-      }
-      const startDate = req.query.startDate as string;
-      const endDate = req.query.endDate as string;
+  app.get(
+    "/api/attendance/monthly-editor/:userId",
+    requireAuth,
+    requirePermission("manage_attendance"),
+    async (req, res) => {
+      try {
+        const userId = parseInt(req.params.userId);
+        if (isNaN(userId) || userId <= 0) {
+          return res.status(400).json({ message: "معرف الموظف غير صحيح" });
+        }
+        const startDate = req.query.startDate as string;
+        const endDate = req.query.endDate as string;
 
-      if (!startDate || !endDate) {
-        return res.status(400).json({ message: "تاريخ البداية والنهاية مطلوبان" });
-      }
+        if (!startDate || !endDate) {
+          return res
+            .status(400)
+            .json({ message: "تاريخ البداية والنهاية مطلوبان" });
+        }
 
-      // Get employee info
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ message: "الموظف غير موجود" });
-      }
+        // Get employee info
+        const user = await storage.getUser(userId);
+        if (!user) {
+          return res.status(404).json({ message: "الموظف غير موجود" });
+        }
 
-      // Get user's role and section
-      const allRoles = await getCachedRoles();
-      const allSections = await storage.getSections();
-      const role = user.role_id ? allRoles.find(r => r.id === user.role_id) : null;
-      const sectionKey = user.section_id ? `SEC${String(user.section_id).padStart(2, '0')}` : null;
-      const section = sectionKey ? allSections.find(s => s.id === sectionKey) : null;
+        // Get user's role and section
+        const allRoles = await getCachedRoles();
+        const allSections = await storage.getSections();
+        const role = user.role_id
+          ? allRoles.find((r) => r.id === user.role_id)
+          : null;
+        const sectionKey = user.section_id
+          ? `SEC${String(user.section_id).padStart(2, "0")}`
+          : null;
+        const section = sectionKey
+          ? allSections.find((s) => s.id === sectionKey)
+          : null;
 
-      // Generate all dates in the range
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      const dates: string[] = [];
-      const dayNames = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
-      
-      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        dates.push(d.toISOString().split('T')[0]);
-      }
+        // Generate all dates in the range
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const dates: string[] = [];
+        const dayNames = [
+          "الأحد",
+          "الاثنين",
+          "الثلاثاء",
+          "الأربعاء",
+          "الخميس",
+          "الجمعة",
+          "السبت",
+        ];
 
-      // Get existing attendance records for this user in the date range
-      const attendanceRecords = await storage.getAttendanceByUserAndDateRange(userId, startDate, endDate);
-      
-      // Create a map of date -> attendance record
-      const recordMap = new Map<string, any>();
-      for (const record of attendanceRecords) {
-        const dateStr = new Date(record.date).toISOString().split('T')[0];
-        recordMap.set(dateStr, record);
-      }
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          dates.push(d.toISOString().split("T")[0]);
+        }
 
-      // Build the records array with all dates
-      const records = dates.map(dateStr => {
-        const record = recordMap.get(dateStr);
-        const dayOfWeek = new Date(dateStr).getDay();
-        
-        return {
-          date: dateStr,
-          dayName: dayNames[dayOfWeek],
-          status: record?.status || null,
-          check_in_time: record?.check_in_time ? new Date(record.check_in_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }) : null,
-          check_out_time: record?.check_out_time ? new Date(record.check_out_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }) : null,
-          work_hours: record?.work_hours || null,
-          overtime_hours: record?.overtime_hours || null,
-          notes: record?.notes || null,
-          attendance_id: record?.id || null,
+        // Get existing attendance records for this user in the date range
+        const attendanceRecords = await storage.getAttendanceByUserAndDateRange(
+          userId,
+          startDate,
+          endDate,
+        );
+
+        // Create a map of date -> attendance record
+        const recordMap = new Map<string, any>();
+        for (const record of attendanceRecords) {
+          const dateStr = new Date(record.date).toISOString().split("T")[0];
+          recordMap.set(dateStr, record);
+        }
+
+        // Build the records array with all dates
+        const records = dates.map((dateStr) => {
+          const record = recordMap.get(dateStr);
+          const dayOfWeek = new Date(dateStr).getDay();
+
+          return {
+            date: dateStr,
+            dayName: dayNames[dayOfWeek],
+            status: record?.status || null,
+            check_in_time: record?.check_in_time
+              ? new Date(record.check_in_time).toLocaleTimeString("en-US", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: false,
+                })
+              : null,
+            check_out_time: record?.check_out_time
+              ? new Date(record.check_out_time).toLocaleTimeString("en-US", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: false,
+                })
+              : null,
+            work_hours: record?.work_hours || null,
+            overtime_hours: record?.overtime_hours || null,
+            notes: record?.notes || null,
+            attendance_id: record?.id || null,
+          };
+        });
+
+        // Calculate summary
+        const summary = {
+          presentDays: records.filter(
+            (r) => r.status === "حاضر" || r.status === "متأخر",
+          ).length,
+          absentDays: records.filter((r) => r.status === "غائب").length,
+          leaveDays: records.filter((r) => r.status === "إجازة").length,
+          lateDays: records.filter((r) => r.status === "متأخر").length,
+          totalWorkHours: records.reduce(
+            (sum, r) => sum + (r.work_hours || 0),
+            0,
+          ),
+          totalOvertimeHours: records.reduce(
+            (sum, r) => sum + (r.overtime_hours || 0),
+            0,
+          ),
         };
-      });
 
-      // Calculate summary
-      const summary = {
-        presentDays: records.filter(r => r.status === 'حاضر' || r.status === 'متأخر').length,
-        absentDays: records.filter(r => r.status === 'غائب').length,
-        leaveDays: records.filter(r => r.status === 'إجازة').length,
-        lateDays: records.filter(r => r.status === 'متأخر').length,
-        totalWorkHours: records.reduce((sum, r) => sum + (r.work_hours || 0), 0),
-        totalOvertimeHours: records.reduce((sum, r) => sum + (r.overtime_hours || 0), 0),
-      };
-
-      res.json({
-        success: true,
-        data: {
-          employee: {
-            id: user.id,
-            name: user.display_name_ar || user.display_name || user.username,
-            employeeNumber: user.username,
-            department: section?.name_ar || section?.name || "-",
-            position: role?.name_ar || role?.name || "-",
+        res.json({
+          success: true,
+          data: {
+            employee: {
+              id: user.id,
+              name: user.display_name_ar || user.display_name || user.username,
+              employeeNumber: user.username,
+              department: section?.name_ar || section?.name || "-",
+              position: role?.name_ar || role?.name || "-",
+            },
+            records,
+            summary,
           },
-          records,
-          summary,
-        },
-      });
-    } catch (error) {
-      console.error("Error fetching monthly attendance data:", error);
-      res.status(500).json({ message: "خطأ في جلب بيانات الحضور الشهري" });
-    }
-  });
+        });
+      } catch (error) {
+        console.error("Error fetching monthly attendance data:", error);
+        res.status(500).json({ message: "خطأ في جلب بيانات الحضور الشهري" });
+      }
+    },
+  );
 
   // Monthly attendance editor - Save modified records
-  app.post("/api/attendance/monthly-editor/save", requireAuth, requirePermission("manage_attendance"), async (req, res) => {
-    try {
-      const { userId, records } = req.body;
+  app.post(
+    "/api/attendance/monthly-editor/save",
+    requireAuth,
+    requirePermission("manage_attendance"),
+    async (req, res) => {
+      try {
+        const { userId, records } = req.body;
 
-      if (!userId || !records || !Array.isArray(records)) {
-        return res.status(400).json({ message: "بيانات غير صحيحة" });
-      }
-
-      let savedCount = 0;
-
-      if (records.length === 0) {
-        return res.json({ success: true, message: "لا توجد سجلات لحفظها", savedCount: 0 });
-      }
-
-      const seenDates = new Set<string>();
-      const dedupedRecords = [];
-      for (const record of records) {
-        const dateStr = typeof record.date === 'string' ? record.date : new Date(record.date).toISOString().split('T')[0];
-        if (!seenDates.has(dateStr)) {
-          seenDates.add(dateStr);
-          dedupedRecords.push(record);
-        }
-      }
-
-      const allDates = dedupedRecords.map((r: any) => typeof r.date === 'string' ? r.date : new Date(r.date).toISOString().split('T')[0]);
-      const minDate = allDates.reduce((a: string, b: string) => a < b ? a : b);
-      const maxDate = allDates.reduce((a: string, b: string) => a > b ? a : b);
-      const existingRecords = await storage.getAttendanceByUserAndDateRange(userId, minDate, maxDate);
-      const existingByDate = new Map<string, any>();
-      for (const rec of existingRecords) {
-        const d = typeof rec.date === 'string' ? rec.date : new Date(rec.date).toISOString().split('T')[0];
-        existingByDate.set(d, rec);
-      }
-
-      for (const record of dedupedRecords) {
-        const { date, status, check_in_time, check_out_time, notes } = record;
-        const dateStr = typeof date === 'string' ? date : new Date(date).toISOString().split('T')[0];
-        const existing = existingByDate.get(dateStr);
-
-        let checkInTime = null;
-        let checkOutTime = null;
-        
-        if (check_in_time) {
-          const [hours, minutes] = check_in_time.split(':').map(Number);
-          checkInTime = new Date(date);
-          checkInTime.setHours(hours, minutes, 0, 0);
-        }
-        
-        if (check_out_time) {
-          const [hours, minutes] = check_out_time.split(':').map(Number);
-          checkOutTime = new Date(date);
-          checkOutTime.setHours(hours, minutes, 0, 0);
+        if (!userId || !records || !Array.isArray(records)) {
+          return res.status(400).json({ message: "بيانات غير صحيحة" });
         }
 
-        let workHours = null;
-        if (checkInTime && checkOutTime) {
-          workHours = (checkOutTime.getTime() - checkInTime.getTime()) / (1000 * 60 * 60);
-          if (workHours < 0) workHours = 0;
+        let savedCount = 0;
+
+        if (records.length === 0) {
+          return res.json({
+            success: true,
+            message: "لا توجد سجلات لحفظها",
+            savedCount: 0,
+          });
         }
 
-        const attendanceData = {
-          user_id: userId,
-          date: dateStr,
-          status: status || 'غائب',
-          check_in_time: checkInTime,
-          check_out_time: checkOutTime,
-          work_hours: workHours,
-          notes: notes || null,
-        };
-
-        if (existing) {
-          await storage.updateAttendance(existing.id, attendanceData);
-        } else {
-          await storage.createAttendance(attendanceData);
+        const seenDates = new Set<string>();
+        const dedupedRecords = [];
+        for (const record of records) {
+          const dateStr =
+            typeof record.date === "string"
+              ? record.date
+              : new Date(record.date).toISOString().split("T")[0];
+          if (!seenDates.has(dateStr)) {
+            seenDates.add(dateStr);
+            dedupedRecords.push(record);
+          }
         }
-        
-        savedCount++;
+
+        const allDates = dedupedRecords.map((r: any) =>
+          typeof r.date === "string"
+            ? r.date
+            : new Date(r.date).toISOString().split("T")[0],
+        );
+        const minDate = allDates.reduce((a: string, b: string) =>
+          a < b ? a : b,
+        );
+        const maxDate = allDates.reduce((a: string, b: string) =>
+          a > b ? a : b,
+        );
+        const existingRecords = await storage.getAttendanceByUserAndDateRange(
+          userId,
+          minDate,
+          maxDate,
+        );
+        const existingByDate = new Map<string, any>();
+        for (const rec of existingRecords) {
+          const d =
+            typeof rec.date === "string"
+              ? rec.date
+              : new Date(rec.date).toISOString().split("T")[0];
+          existingByDate.set(d, rec);
+        }
+
+        for (const record of dedupedRecords) {
+          const { date, status, check_in_time, check_out_time, notes } = record;
+          const dateStr =
+            typeof date === "string"
+              ? date
+              : new Date(date).toISOString().split("T")[0];
+          const existing = existingByDate.get(dateStr);
+
+          let checkInTime = null;
+          let checkOutTime = null;
+
+          if (check_in_time) {
+            const [hours, minutes] = check_in_time.split(":").map(Number);
+            checkInTime = new Date(date);
+            checkInTime.setHours(hours, minutes, 0, 0);
+          }
+
+          if (check_out_time) {
+            const [hours, minutes] = check_out_time.split(":").map(Number);
+            checkOutTime = new Date(date);
+            checkOutTime.setHours(hours, minutes, 0, 0);
+          }
+
+          let workHours = null;
+          if (checkInTime && checkOutTime) {
+            workHours =
+              (checkOutTime.getTime() - checkInTime.getTime()) /
+              (1000 * 60 * 60);
+            if (workHours < 0) workHours = 0;
+          }
+
+          const attendanceData = {
+            user_id: userId,
+            date: dateStr,
+            status: status || "غائب",
+            check_in_time: checkInTime,
+            check_out_time: checkOutTime,
+            work_hours: workHours,
+            notes: notes || null,
+          };
+
+          if (existing) {
+            await storage.updateAttendance(existing.id, attendanceData);
+          } else {
+            await storage.createAttendance(attendanceData);
+          }
+
+          savedCount++;
+        }
+
+        res.json({
+          success: true,
+          message: `تم حفظ ${savedCount} سجل بنجاح`,
+          savedCount,
+        });
+      } catch (error) {
+        console.error("Error saving monthly attendance data:", error);
+        res.status(500).json({ message: "خطأ في حفظ بيانات الحضور" });
       }
-
-      res.json({ 
-        success: true, 
-        message: `تم حفظ ${savedCount} سجل بنجاح`,
-        savedCount 
-      });
-    } catch (error) {
-      console.error("Error saving monthly attendance data:", error);
-      res.status(500).json({ message: "خطأ في حفظ بيانات الحضور" });
-    }
-  });
+    },
+  );
 
   // Record break time
-  app.post("/api/attendance/:id/break", requireAuth, requirePermission("manage_attendance"), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      const { action } = req.body; // 'start' or 'end'
-      
-      const attendance = await storage.getAttendanceById(id);
-      if (!attendance) {
-        return res.status(404).json({ message: "سجل الحضور غير موجود" });
+  app.post(
+    "/api/attendance/:id/break",
+    requireAuth,
+    requirePermission("manage_attendance"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const { action } = req.body; // 'start' or 'end'
+
+        const attendance = await storage.getAttendanceById(id);
+        if (!attendance) {
+          return res.status(404).json({ message: "سجل الحضور غير موجود" });
+        }
+
+        const now = new Date();
+        const updateData: any = {};
+
+        if (action === "start") {
+          updateData.break_start_time = now;
+          updateData.status = "استراحة";
+        } else if (action === "end") {
+          updateData.break_end_time = now;
+          updateData.status = "حاضر";
+        }
+
+        const updated = await storage.updateAttendance(id, updateData);
+        res.json(updated);
+      } catch (error) {
+        console.error("Error recording break:", error);
+        res.status(500).json({ message: "خطأ في تسجيل الاستراحة" });
       }
-      
-      const now = new Date();
-      const updateData: any = {};
-      
-      if (action === 'start') {
-        updateData.break_start_time = now;
-        updateData.status = 'استراحة';
-      } else if (action === 'end') {
-        updateData.break_end_time = now;
-        updateData.status = 'حاضر';
-      }
-      
-      const updated = await storage.updateAttendance(id, updateData);
-      res.json(updated);
-    } catch (error) {
-      console.error("Error recording break:", error);
-      res.status(500).json({ message: "خطأ في تسجيل الاستراحة" });
-    }
-  });
+    },
+  );
 
   // ============ User Violations Management API ============
 
@@ -9128,16 +10948,21 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.delete("/api/violations/:id", requireAuth, requirePermission('manage_hr', 'manage_attendance'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      await storage.deleteViolation(id);
-      res.json({ message: "تم حذف المخالفة بنجاح" });
-    } catch (error) {
-      console.error("Error deleting violation:", error);
-      res.status(500).json({ message: "خطأ في حذف المخالفة" });
-    }
-  });
+  app.delete(
+    "/api/violations/:id",
+    requireAuth,
+    requirePermission("manage_hr", "manage_attendance"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        await storage.deleteViolation(id);
+        res.json({ message: "تم حذف المخالفة بنجاح" });
+      } catch (error) {
+        console.error("Error deleting violation:", error);
+        res.status(500).json({ message: "خطأ في حذف المخالفة" });
+      }
+    },
+  );
 
   // ============ User Requests Management API ============
 
@@ -9164,7 +10989,10 @@ Do not include quotes or explanations.`;
       if (!req.body.type) {
         return res.status(400).json({ message: "نوع الطلب مطلوب" });
       }
-      const request = await storage.createUserRequest({ ...req.body, user_id: userId });
+      const request = await storage.createUserRequest({
+        ...req.body,
+        user_id: userId,
+      });
       res.status(201).json(request);
     } catch (error) {
       console.error("Error creating user request:", error);
@@ -9172,38 +11000,53 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.put("/api/user-requests/:id", requireAuth, requirePermission('manage_hr'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      const request = await storage.updateUserRequest(id, req.body);
-      res.json(request);
-    } catch (error) {
-      console.error("Error updating user request:", error);
-      res.status(500).json({ message: "خطأ في تحديث الطلب" });
-    }
-  });
+  app.put(
+    "/api/user-requests/:id",
+    requireAuth,
+    requirePermission("manage_hr"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const request = await storage.updateUserRequest(id, req.body);
+        res.json(request);
+      } catch (error) {
+        console.error("Error updating user request:", error);
+        res.status(500).json({ message: "خطأ في تحديث الطلب" });
+      }
+    },
+  );
 
-  app.patch("/api/user-requests/:id", requireAuth, requirePermission('manage_hr'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      const request = await storage.updateUserRequest(id, req.body);
-      res.json(request);
-    } catch (error) {
-      console.error("Error updating user request:", error);
-      res.status(500).json({ message: "خطأ في تحديث الطلب" });
-    }
-  });
+  app.patch(
+    "/api/user-requests/:id",
+    requireAuth,
+    requirePermission("manage_hr"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const request = await storage.updateUserRequest(id, req.body);
+        res.json(request);
+      } catch (error) {
+        console.error("Error updating user request:", error);
+        res.status(500).json({ message: "خطأ في تحديث الطلب" });
+      }
+    },
+  );
 
-  app.delete("/api/user-requests/:id", requireAuth, requirePermission('manage_hr'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      await storage.deleteUserRequest(id);
-      res.json({ message: "تم حذف الطلب بنجاح" });
-    } catch (error) {
-      console.error("Error deleting user request:", error);
-      res.status(500).json({ message: "خطأ في حذف الطلب" });
-    }
-  });
+  app.delete(
+    "/api/user-requests/:id",
+    requireAuth,
+    requirePermission("manage_hr"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        await storage.deleteUserRequest(id);
+        res.json({ message: "تم حذف الطلب بنجاح" });
+      } catch (error) {
+        console.error("Error deleting user request:", error);
+        res.status(500).json({ message: "خطأ في حذف الطلب" });
+      }
+    },
+  );
 
   // ============ System Settings API ============
 
@@ -9233,34 +11076,53 @@ Do not include quotes or explanations.`;
   });
 
   // Update system setting
-  app.put("/api/system-settings/:key", requireAuth, requireAdmin, async (req, res) => {
-    try {
-      const { setting_value } = req.body;
-      if (!getAuthUserId(req)) {
-        return res.status(401).json({ message: "يجب تسجيل الدخول لتحديث الإعدادات" });
+  app.put(
+    "/api/system-settings/:key",
+    requireAuth,
+    requireAdmin,
+    async (req, res) => {
+      try {
+        const { setting_value } = req.body;
+        if (!getAuthUserId(req)) {
+          return res
+            .status(401)
+            .json({ message: "يجب تسجيل الدخول لتحديث الإعدادات" });
+        }
+        const updated = await storage.updateSystemSetting(
+          req.params.key,
+          setting_value,
+          getAuthUserId(req),
+        );
+        res.json(updated);
+      } catch (error) {
+        console.error("Error updating system setting:", error);
+        res.status(500).json({ message: "خطأ في تحديث الإعداد" });
       }
-      const updated = await storage.updateSystemSetting(req.params.key, setting_value, getAuthUserId(req));
-      res.json(updated);
-    } catch (error) {
-      console.error("Error updating system setting:", error);
-      res.status(500).json({ message: "خطأ في تحديث الإعداد" });
-    }
-  });
+    },
+  );
 
   // Create system setting
-  app.post("/api/system-settings", requireAuth, requireAdmin, async (req, res) => {
-    try {
-      const validation = insertSystemSettingSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({ message: "بيانات غير صحيحة", errors: validation.error.errors });
+  app.post(
+    "/api/system-settings",
+    requireAuth,
+    requireAdmin,
+    async (req, res) => {
+      try {
+        const validation = insertSystemSettingSchema.safeParse(req.body);
+        if (!validation.success) {
+          return res.status(400).json({
+            message: "بيانات غير صحيحة",
+            errors: validation.error.errors,
+          });
+        }
+        const setting = await storage.createSystemSetting(validation.data);
+        res.status(201).json(setting);
+      } catch (error) {
+        console.error("Error creating system setting:", error);
+        res.status(500).json({ message: "خطأ في إنشاء الإعداد" });
       }
-      const setting = await storage.createSystemSetting(validation.data);
-      res.status(201).json(setting);
-    } catch (error) {
-      console.error("Error creating system setting:", error);
-      res.status(500).json({ message: "خطأ في إنشاء الإعداد" });
-    }
-  });
+    },
+  );
 
   // ============ Factory Locations API ============
 
@@ -9328,16 +11190,21 @@ Do not include quotes or explanations.`;
   });
 
   // Delete factory location
-  app.delete("/api/factory-locations/:id", requireAuth, requirePermission('manage_definitions'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      await storage.deleteFactoryLocation(id);
-      res.json({ message: "تم حذف الموقع بنجاح" });
-    } catch (error) {
-      console.error("Error deleting factory location:", error);
-      res.status(500).json({ message: "خطأ في حذف الموقع" });
-    }
-  });
+  app.delete(
+    "/api/factory-locations/:id",
+    requireAuth,
+    requirePermission("manage_definitions"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        await storage.deleteFactoryLocation(id);
+        res.json({ message: "تم حذف الموقع بنجاح" });
+      } catch (error) {
+        console.error("Error deleting factory location:", error);
+        res.status(500).json({ message: "خطأ في حذف الموقع" });
+      }
+    },
+  );
 
   // ============ PRODUCTION FLOW API ENDPOINTS ============
 
@@ -9383,16 +11250,21 @@ Do not include quotes or explanations.`;
   });
 
   // Start Production
-  app.patch("/api/production-orders/:id/start-production", requireAuth, requirePermission('manage_production'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      const productionOrder = await storage.startProduction(id);
-      res.json(productionOrder);
-    } catch (error) {
-      console.error("Error starting production:", error);
-      res.status(400).json({ message: "خطأ في بدء الإنتاج" });
-    }
-  });
+  app.patch(
+    "/api/production-orders/:id/start-production",
+    requireAuth,
+    requirePermission("manage_production"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const productionOrder = await storage.startProduction(id);
+        res.json(productionOrder);
+      } catch (error) {
+        console.error("Error starting production:", error);
+        res.status(400).json({ message: "خطأ في بدء الإنتاج" });
+      }
+    },
+  );
 
   // Create Roll with QR
   app.post(
@@ -9442,12 +11314,14 @@ Do not include quotes or explanations.`;
         }
 
         // Check if order is paused - block production entry
-        const pauseCheck = await checkOrderNotPaused(validatedRollData.production_order_id);
+        const pauseCheck = await checkOrderNotPaused(
+          validatedRollData.production_order_id,
+        );
         if (pauseCheck.isPaused) {
-          return res.status(403).json({ 
+          return res.status(403).json({
             success: false,
             message: pauseCheck.message,
-            orderStatus: pauseCheck.orderStatus
+            orderStatus: pauseCheck.orderStatus,
           });
         }
 
@@ -9503,49 +11377,62 @@ Do not include quotes or explanations.`;
   );
 
   // Printing Operations
-  app.patch("/api/rolls/:id/print", requireAuth, requirePermission('manage_production', 'view_printing_dashboard'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      if (!getAuthUserId(req)) {
-        return res.status(401).json({ message: "غير مسجل الدخول" });
-      }
-      
-      // Get roll to check its production order
-      const existingRoll = await storage.getRollFullDetails(id);
-      if (!existingRoll) {
-        return res.status(404).json({ message: "الرول غير موجود" });
-      }
-      
-      // Check if order is paused - block production entry
-      const pauseCheck = await checkOrderNotPaused(existingRoll.production_order_id);
-      if (pauseCheck.isPaused) {
-        return res.status(403).json({ 
-          success: false,
-          message: pauseCheck.message,
-          orderStatus: pauseCheck.orderStatus
-        });
-      }
-      
-      const { printing_machine_id } = req.body;
-      
-      // Validate printing machine if provided
-      if (printing_machine_id) {
-        const machine = await storage.getMachineById(printing_machine_id);
-        if (!machine) {
-          return res.status(400).json({ message: "ماكينة الطباعة غير موجودة" });
+  app.patch(
+    "/api/rolls/:id/print",
+    requireAuth,
+    requirePermission("manage_production", "view_printing_dashboard"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        if (!getAuthUserId(req)) {
+          return res.status(401).json({ message: "غير مسجل الدخول" });
         }
-        if (machine.status !== "active") {
-          return res.status(400).json({ message: "ماكينة الطباعة غير نشطة" });
+
+        // Get roll to check its production order
+        const existingRoll = await storage.getRollFullDetails(id);
+        if (!existingRoll) {
+          return res.status(404).json({ message: "الرول غير موجود" });
         }
+
+        // Check if order is paused - block production entry
+        const pauseCheck = await checkOrderNotPaused(
+          existingRoll.production_order_id,
+        );
+        if (pauseCheck.isPaused) {
+          return res.status(403).json({
+            success: false,
+            message: pauseCheck.message,
+            orderStatus: pauseCheck.orderStatus,
+          });
+        }
+
+        const { printing_machine_id } = req.body;
+
+        // Validate printing machine if provided
+        if (printing_machine_id) {
+          const machine = await storage.getMachineById(printing_machine_id);
+          if (!machine) {
+            return res
+              .status(400)
+              .json({ message: "ماكينة الطباعة غير موجودة" });
+          }
+          if (machine.status !== "active") {
+            return res.status(400).json({ message: "ماكينة الطباعة غير نشطة" });
+          }
+        }
+
+        const roll = await storage.markRollPrinted(
+          id,
+          getAuthUserId(req),
+          printing_machine_id,
+        );
+        res.json(roll);
+      } catch (error) {
+        console.error("Error marking roll printed:", error);
+        res.status(400).json({ message: "خطأ في تسجيل طباعة الرول" });
       }
-      
-      const roll = await storage.markRollPrinted(id, getAuthUserId(req), printing_machine_id);
-      res.json(roll);
-    } catch (error) {
-      console.error("Error marking roll printed:", error);
-      res.status(400).json({ message: "خطأ في تسجيل طباعة الرول" });
-    }
-  });
+    },
+  );
 
   // Cutting Operations
   app.post("/api/cuts", requireAuth, async (req, res) => {
@@ -9564,23 +11451,25 @@ Do not include quotes or explanations.`;
       if (!getAuthUserId(req)) {
         return res.status(401).json({ message: "غير مسجل الدخول" });
       }
-      
+
       // Get roll to check its production order
       const existingRoll = await storage.getRollFullDetails(validated.roll_id);
       if (!existingRoll) {
         return res.status(404).json({ message: "الرول غير موجود" });
       }
-      
+
       // Check if order is paused - block production entry
-      const pauseCheck = await checkOrderNotPaused(existingRoll.production_order_id);
+      const pauseCheck = await checkOrderNotPaused(
+        existingRoll.production_order_id,
+      );
       if (pauseCheck.isPaused) {
-        return res.status(403).json({ 
+        return res.status(403).json({
           success: false,
           message: pauseCheck.message,
-          orderStatus: pauseCheck.orderStatus
+          orderStatus: pauseCheck.orderStatus,
         });
       }
-      
+
       // Validate cutting machine
       const { cutting_machine_id } = validated;
       if (cutting_machine_id) {
@@ -9592,7 +11481,7 @@ Do not include quotes or explanations.`;
           return res.status(400).json({ message: "ماكينة القطع غير نشطة" });
         }
       }
-      
+
       const cut = await storage.createCut({
         ...validated,
         performed_by: getAuthUserId(req),
@@ -9679,15 +11568,19 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.get("/api/production/grouped-cutting-queue", requireAuth, async (req, res) => {
-    try {
-      const queue = await storage.getGroupedCuttingQueue();
-      res.json(queue);
-    } catch (error) {
-      console.error("Error fetching grouped cutting queue:", error);
-      res.status(500).json({ message: "خطأ في جلب قائمة التقطيع المجمعة" });
-    }
-  });
+  app.get(
+    "/api/production/grouped-cutting-queue",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const queue = await storage.getGroupedCuttingQueue();
+        res.json(queue);
+      } catch (error) {
+        console.error("Error fetching grouped cutting queue:", error);
+        res.status(500).json({ message: "خطأ في جلب قائمة التقطيع المجمعة" });
+      }
+    },
+  );
 
   // Production hall - get production orders ready for warehouse receipt
   app.get("/api/warehouse/production-hall", requireAuth, async (req, res) => {
@@ -9700,20 +11593,23 @@ Do not include quotes or explanations.`;
     }
   });
 
-
-  app.get("/api/production/order-progress/:jobOrderId", requireAuth, async (req, res) => {
-    try {
-      const jobOrderId = parseInt(req.params.jobOrderId);
-      if (isNaN(jobOrderId) || jobOrderId <= 0) {
-        return res.status(400).json({ message: "معرف أمر العمل غير صحيح" });
+  app.get(
+    "/api/production/order-progress/:jobOrderId",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const jobOrderId = parseInt(req.params.jobOrderId);
+        if (isNaN(jobOrderId) || jobOrderId <= 0) {
+          return res.status(400).json({ message: "معرف أمر العمل غير صحيح" });
+        }
+        const progress = await storage.getOrderProgress(jobOrderId);
+        res.json(progress);
+      } catch (error) {
+        console.error("Error fetching order progress:", error);
+        res.status(500).json({ message: "خطأ في جلب تقدم الطلب" });
       }
-      const progress = await storage.getOrderProgress(jobOrderId);
-      res.json(progress);
-    } catch (error) {
-      console.error("Error fetching order progress:", error);
-      res.status(500).json({ message: "خطأ في جلب تقدم الطلب" });
-    }
-  });
+    },
+  );
 
   app.get("/api/rolls/:id/qr", requireAuth, async (req, res) => {
     try {
@@ -9749,11 +11645,31 @@ Do not include quotes or explanations.`;
         startDate: req.query.start_date as string,
         endDate: req.query.end_date as string,
         machineId: req.query.machine_id as string,
-        operatorId: req.query.operator_id ? parseIntSafe(req.query.operator_id as string, "Operator ID", { min: 1 }) : undefined,
-        minWeight: req.query.min_weight ? parseFloatSafe(req.query.min_weight as string, "Min Weight", { min: 0 }) : undefined,
-        maxWeight: req.query.max_weight ? parseFloatSafe(req.query.max_weight as string, "Max Weight", { min: 0 }) : undefined,
-        productionOrderId: req.query.production_order_id ? parseIntSafe(req.query.production_order_id as string, "Production Order ID", { min: 1 }) : undefined,
-        orderId: req.query.order_id ? parseIntSafe(req.query.order_id as string, "Order ID", { min: 1 }) : undefined,
+        operatorId: req.query.operator_id
+          ? parseIntSafe(req.query.operator_id as string, "Operator ID", {
+              min: 1,
+            })
+          : undefined,
+        minWeight: req.query.min_weight
+          ? parseFloatSafe(req.query.min_weight as string, "Min Weight", {
+              min: 0,
+            })
+          : undefined,
+        maxWeight: req.query.max_weight
+          ? parseFloatSafe(req.query.max_weight as string, "Max Weight", {
+              min: 0,
+            })
+          : undefined,
+        productionOrderId: req.query.production_order_id
+          ? parseIntSafe(
+              req.query.production_order_id as string,
+              "Production Order ID",
+              { min: 1 },
+            )
+          : undefined,
+        orderId: req.query.order_id
+          ? parseIntSafe(req.query.order_id as string, "Order ID", { min: 1 })
+          : undefined,
       };
 
       const results = await storage.searchRolls(query, filters);
@@ -9765,33 +11681,37 @@ Do not include quotes or explanations.`;
   });
 
   // البحث بالباركود
-  app.get("/api/rolls/search-by-barcode/:barcode", requireAuth, async (req, res) => {
-    try {
-      const barcode = req.params.barcode;
-      
-      if (!barcode || barcode.length < 3) {
-        return res.status(400).json({ message: "الباركود غير صحيح" });
-      }
+  app.get(
+    "/api/rolls/search-by-barcode/:barcode",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const barcode = req.params.barcode;
 
-      const roll = await storage.getRollByBarcode(barcode);
-      
-      if (!roll) {
-        return res.status(404).json({ message: "الرول غير موجود" });
-      }
+        if (!barcode || barcode.length < 3) {
+          return res.status(400).json({ message: "الباركود غير صحيح" });
+        }
 
-      res.json(roll);
-    } catch (error) {
-      console.error("Error searching roll by barcode:", error);
-      res.status(500).json({ message: "خطأ في البحث بالباركود" });
-    }
-  });
+        const roll = await storage.getRollByBarcode(barcode);
+
+        if (!roll) {
+          return res.status(404).json({ message: "الرول غير موجود" });
+        }
+
+        res.json(roll);
+      } catch (error) {
+        console.error("Error searching roll by barcode:", error);
+        res.status(500).json({ message: "خطأ في البحث بالباركود" });
+      }
+    },
+  );
 
   // جلب التفاصيل الكاملة للرول
   app.get("/api/rolls/:id/full-details", requireAuth, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id, "Roll ID", { min: 1 });
       const rollDetails = await storage.getRollFullDetails(id);
-      
+
       if (!rollDetails) {
         return res.status(404).json({ message: "الرول غير موجود" });
       }
@@ -9818,94 +11738,117 @@ Do not include quotes or explanations.`;
   // ============ Enhanced Cutting Operations API Routes ============
 
   // جلب رولات التقطيع مع الإحصائيات
-  app.get("/api/rolls/cutting-queue-by-section", requireAuth, async (req, res) => {
-    try {
-      const authReq = req as AuthRequest;
-      const sectionId = (authReq.user as any)?.section_id;
-      
-      const result = await storage.getRollsForCuttingBySection(sectionId);
-      res.json(result);
-    } catch (error) {
-      console.error("Error fetching cutting queue by section:", error);
-      res.status(500).json({ message: "خطأ في جلب قائمة التقطيع" });
-    }
-  });
+  app.get(
+    "/api/rolls/cutting-queue-by-section",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const authReq = req as AuthRequest;
+        const sectionId = (authReq.user as any)?.section_id;
+
+        const result = await storage.getRollsForCuttingBySection(sectionId);
+        res.json(result);
+      } catch (error) {
+        console.error("Error fetching cutting queue by section:", error);
+        res.status(500).json({ message: "خطأ في جلب قائمة التقطيع" });
+      }
+    },
+  );
 
   // إكمال عملية التقطيع
-  app.post("/api/rolls/:id/complete-cutting", requireAuth, requirePermission('manage_production', 'view_cutting_dashboard'), async (req, res) => {
-    try {
-      const authReq = req as AuthRequest;
-      const rollId = parseRouteParam(req.params.id, "id");
-      const { net_weight, cutting_machine_id } = req.body;
-      
-      if (!net_weight || net_weight <= 0) {
-        return res.status(400).json({ 
-          message: "الوزن الصافي مطلوب ويجب أن يكون أكبر من صفر" 
+  app.post(
+    "/api/rolls/:id/complete-cutting",
+    requireAuth,
+    requirePermission("manage_production", "view_cutting_dashboard"),
+    async (req, res) => {
+      try {
+        const authReq = req as AuthRequest;
+        const rollId = parseRouteParam(req.params.id, "id");
+        const { net_weight, cutting_machine_id } = req.body;
+
+        if (!net_weight || net_weight <= 0) {
+          return res.status(400).json({
+            message: "الوزن الصافي مطلوب ويجب أن يكون أكبر من صفر",
+          });
+        }
+
+        const operatorId = authReq.user?.id!;
+        const result = await storage.completeCutting(
+          rollId,
+          net_weight,
+          operatorId,
+          cutting_machine_id,
+        );
+
+        res.json({
+          ...result,
+          message: result.is_order_completed
+            ? "تم إكمال جميع رولات أمر الإنتاج"
+            : "تم تقطيع الرول بنجاح",
+        });
+      } catch (error: any) {
+        console.error("Error completing cutting:", error);
+        res.status(500).json({
+          message: "خطأ في إكمال عملية التقطيع",
         });
       }
-
-      const operatorId = authReq.user?.id!;
-      const result = await storage.completeCutting(rollId, net_weight, operatorId, cutting_machine_id);
-      
-      res.json({
-        ...result,
-        message: result.is_order_completed 
-          ? "تم إكمال جميع رولات أمر الإنتاج" 
-          : "تم تقطيع الرول بنجاح"
-      });
-    } catch (error: any) {
-      console.error("Error completing cutting:", error);
-      res.status(500).json({ 
-        message: "خطأ في إكمال عملية التقطيع" 
-      });
-    }
-  });
+    },
+  );
 
   // إحصائيات الهدر لأمر إنتاج
-  app.get("/api/production-orders/:id/waste-stats", requireAuth, async (req, res) => {
-    try {
-      const productionOrderId = parseInt(req.params.id);
-      
-      if (isNaN(productionOrderId)) {
-        return res.status(400).json({ 
-          message: "معرف أمر الإنتاج غير صحيح" 
+  app.get(
+    "/api/production-orders/:id/waste-stats",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const productionOrderId = parseInt(req.params.id);
+
+        if (isNaN(productionOrderId)) {
+          return res.status(400).json({
+            message: "معرف أمر الإنتاج غير صحيح",
+          });
+        }
+
+        const stats = await storage.calculateWasteStatistics(productionOrderId);
+        res.json(stats);
+      } catch (error) {
+        console.error("Error fetching waste statistics:", error);
+        res.status(500).json({
+          message: "خطأ في جلب إحصائيات الهدر",
         });
       }
-
-      const stats = await storage.calculateWasteStatistics(productionOrderId);
-      res.json(stats);
-    } catch (error) {
-      console.error("Error fetching waste statistics:", error);
-      res.status(500).json({ 
-        message: "خطأ في جلب إحصائيات الهدر" 
-      });
-    }
-  });
+    },
+  );
 
   // التحقق من اكتمال التقطيع
-  app.get("/api/production-orders/:id/cutting-status", requireAuth, async (req, res) => {
-    try {
-      const productionOrderId = parseInt(req.params.id);
-      
-      if (isNaN(productionOrderId)) {
-        return res.status(400).json({ 
-          message: "معرف أمر الإنتاج غير صحيح" 
+  app.get(
+    "/api/production-orders/:id/cutting-status",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const productionOrderId = parseInt(req.params.id);
+
+        if (isNaN(productionOrderId)) {
+          return res.status(400).json({
+            message: "معرف أمر الإنتاج غير صحيح",
+          });
+        }
+
+        const isCompleted =
+          await storage.checkCuttingCompletion(productionOrderId);
+        res.json({
+          productionOrderId,
+          cuttingCompleted: isCompleted,
+          status: isCompleted ? "completed" : "in_progress",
+        });
+      } catch (error) {
+        console.error("Error checking cutting completion:", error);
+        res.status(500).json({
+          message: "خطأ في التحقق من حالة التقطيع",
         });
       }
-
-      const isCompleted = await storage.checkCuttingCompletion(productionOrderId);
-      res.json({
-        productionOrderId,
-        cuttingCompleted: isCompleted,
-        status: isCompleted ? "completed" : "in_progress"
-      });
-    } catch (error) {
-      console.error("Error checking cutting completion:", error);
-      res.status(500).json({ 
-        message: "خطأ في التحقق من حالة التقطيع" 
-      });
-    }
-  });
+    },
+  );
 
   // ============ Production Monitoring Analytics API Routes ============
 
@@ -9992,17 +11935,21 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.get("/api/production/monitoring-dashboard", requireAuth, async (req: AuthRequest, res) => {
-    try {
-      const dateFrom = req.query.dateFrom as string;
-      const dateTo = req.query.dateTo as string;
-      const data = await storage.getMonitoringDashboard(dateFrom, dateTo);
-      res.json({ success: true, data });
-    } catch (error: any) {
-      console.error("Error fetching monitoring dashboard:", error);
-      res.status(500).json({ message: "خطأ في جلب بيانات لوحة المراقبة" });
-    }
-  });
+  app.get(
+    "/api/production/monitoring-dashboard",
+    requireAuth,
+    async (req: AuthRequest, res) => {
+      try {
+        const dateFrom = req.query.dateFrom as string;
+        const dateTo = req.query.dateTo as string;
+        const data = await storage.getMonitoringDashboard(dateFrom, dateTo);
+        res.json({ success: true, data });
+      } catch (error: any) {
+        console.error("Error fetching monitoring dashboard:", error);
+        res.status(500).json({ message: "خطأ في جلب بيانات لوحة المراقبة" });
+      }
+    },
+  );
 
   // Get real-time production statistics
   app.get("/api/production/real-time-stats", requireAuth, async (req, res) => {
@@ -10137,132 +12084,175 @@ Do not include quotes or explanations.`;
   // ============ لوحة مراقبة الإنتاج - APIs جديدة ============
 
   // Get production statistics by section
-  app.get("/api/production/stats-by-section/:section", requireAuth, async (req, res) => {
-    try {
-      const { section } = req.params;
-      const dateFrom = req.query.dateFrom as string;
-      const dateTo = req.query.dateTo as string;
+  app.get(
+    "/api/production/stats-by-section/:section",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const { section } = req.params;
+        const dateFrom = req.query.dateFrom as string;
+        const dateTo = req.query.dateTo as string;
 
-      // Validate section
-      if (!['film', 'printing', 'cutting'].includes(section)) {
-        return res.status(400).json({ message: "قسم غير صحيح" });
+        // Validate section
+        if (!["film", "printing", "cutting"].includes(section)) {
+          return res.status(400).json({ message: "قسم غير صحيح" });
+        }
+
+        // Get production statistics for the section
+        const stats = await storage.getProductionStatsBySection(
+          section,
+          dateFrom,
+          dateTo,
+        );
+
+        res.json(stats);
+      } catch (error: any) {
+        console.error("Error fetching section stats:", error);
+        res.status(500).json({ message: "خطأ في جلب إحصائيات القسم" });
       }
-
-      // Get production statistics for the section
-      const stats = await storage.getProductionStatsBySection(section, dateFrom, dateTo);
-
-      res.json(stats);
-    } catch (error: any) {
-      console.error("Error fetching section stats:", error);
-      res.status(500).json({ message: "خطأ في جلب إحصائيات القسم" });
-    }
-  });
+    },
+  );
 
   // Get users performance by section (production users only)
-  app.get("/api/production/users-performance/:section", requireAuth, async (req, res) => {
-    try {
-      const { section } = req.params;
-      const dateFrom = req.query.dateFrom as string;
-      const dateTo = req.query.dateTo as string;
+  app.get(
+    "/api/production/users-performance/:section",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const { section } = req.params;
+        const dateFrom = req.query.dateFrom as string;
+        const dateTo = req.query.dateTo as string;
 
-      // Validate section
-      if (!['film', 'printing', 'cutting'].includes(section)) {
-        return res.status(400).json({ message: "قسم غير صحيح" });
+        // Validate section
+        if (!["film", "printing", "cutting"].includes(section)) {
+          return res.status(400).json({ message: "قسم غير صحيح" });
+        }
+
+        // Get users performance for the section
+        const users = await storage.getUsersPerformanceBySection(
+          section,
+          dateFrom,
+          dateTo,
+        );
+
+        res.json({ data: users });
+      } catch (error: any) {
+        console.error("Error fetching users performance:", error);
+        res.status(500).json({ message: "خطأ في جلب أداء المستخدمين" });
       }
-
-      // Get users performance for the section
-      const users = await storage.getUsersPerformanceBySection(section, dateFrom, dateTo);
-
-      res.json({ data: users });
-    } catch (error: any) {
-      console.error("Error fetching users performance:", error);
-      res.status(500).json({ message: "خطأ في جلب أداء المستخدمين" });
-    }
-  });
+    },
+  );
 
   // Get machines production by section
-  app.get("/api/production/machines-production/:section", requireAuth, async (req, res) => {
-    try {
-      const { section } = req.params;
-      const dateFrom = req.query.dateFrom as string;
-      const dateTo = req.query.dateTo as string;
+  app.get(
+    "/api/production/machines-production/:section",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const { section } = req.params;
+        const dateFrom = req.query.dateFrom as string;
+        const dateTo = req.query.dateTo as string;
 
-      // Validate section
-      if (!['film', 'printing', 'cutting'].includes(section)) {
-        return res.status(400).json({ message: "قسم غير صحيح" });
+        // Validate section
+        if (!["film", "printing", "cutting"].includes(section)) {
+          return res.status(400).json({ message: "قسم غير صحيح" });
+        }
+
+        // Get machines production for the section
+        const machines = await storage.getMachinesProductionBySection(
+          section,
+          dateFrom,
+          dateTo,
+        );
+
+        res.json({ data: machines });
+      } catch (error: any) {
+        console.error("Error fetching machines production:", error);
+        res.status(500).json({ message: "خطأ في جلب إنتاج المكائن" });
       }
-
-      // Get machines production for the section
-      const machines = await storage.getMachinesProductionBySection(section, dateFrom, dateTo);
-
-      res.json({ data: machines });
-    } catch (error: any) {
-      console.error("Error fetching machines production:", error);
-      res.status(500).json({ message: "خطأ في جلب إنتاج المكائن" });
-    }
-  });
+    },
+  );
 
   // Get machine detail across all stages
-  app.get("/api/production/machine-detail/:machineId", requireAuth, async (req, res) => {
-    try {
-      const machineId = parseInt(req.params.machineId);
-      if (isNaN(machineId)) {
-        return res.status(400).json({ message: "معرف الماكينة غير صحيح" });
+  app.get(
+    "/api/production/machine-detail/:machineId",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const machineId = parseInt(req.params.machineId);
+        if (isNaN(machineId)) {
+          return res.status(400).json({ message: "معرف الماكينة غير صحيح" });
+        }
+        const dateFrom = req.query.dateFrom as string;
+        const dateTo = req.query.dateTo as string;
+        const detail = await storage.getMachineDetailAllStages(
+          machineId,
+          dateFrom,
+          dateTo,
+        );
+        if (!detail) {
+          return res.status(404).json({ message: "الماكينة غير موجودة" });
+        }
+        res.json({ data: detail });
+      } catch (error: any) {
+        console.error("Error fetching machine detail:", error);
+        res.status(500).json({ message: "خطأ في جلب تفاصيل الماكينة" });
       }
-      const dateFrom = req.query.dateFrom as string;
-      const dateTo = req.query.dateTo as string;
-      const detail = await storage.getMachineDetailAllStages(machineId, dateFrom, dateTo);
-      if (!detail) {
-        return res.status(404).json({ message: "الماكينة غير موجودة" });
-      }
-      res.json({ data: detail });
-    } catch (error: any) {
-      console.error("Error fetching machine detail:", error);
-      res.status(500).json({ message: "خطأ في جلب تفاصيل الماكينة" });
-    }
-  });
+    },
+  );
 
   // Get rolls tracking by section
-  app.get("/api/production/rolls-tracking/:section", requireAuth, async (req, res) => {
-    try {
-      const { section } = req.params;
-      const search = req.query.search as string;
+  app.get(
+    "/api/production/rolls-tracking/:section",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const { section } = req.params;
+        const search = req.query.search as string;
 
-      // Validate section
-      if (!['film', 'printing', 'cutting'].includes(section)) {
-        return res.status(400).json({ message: "قسم غير صحيح" });
+        // Validate section
+        if (!["film", "printing", "cutting"].includes(section)) {
+          return res.status(400).json({ message: "قسم غير صحيح" });
+        }
+
+        // Get rolls for the section
+        const rolls = await storage.getRollsBySection(section, search);
+
+        res.json({ data: rolls });
+      } catch (error: any) {
+        console.error("Error fetching rolls:", error);
+        res.status(500).json({ message: "خطأ في جلب الرولات" });
       }
-
-      // Get rolls for the section
-      const rolls = await storage.getRollsBySection(section, search);
-
-      res.json({ data: rolls });
-    } catch (error: any) {
-      console.error("Error fetching rolls:", error);
-      res.status(500).json({ message: "خطأ في جلب الرولات" });
-    }
-  });
+    },
+  );
 
   // Get production orders tracking by section
-  app.get("/api/production/orders-tracking/:section", requireAuth, async (req, res) => {
-    try {
-      const { section } = req.params;
-      const search = req.query.search as string;
+  app.get(
+    "/api/production/orders-tracking/:section",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const { section } = req.params;
+        const search = req.query.search as string;
 
-      // Validate section
-      if (!['film', 'printing', 'cutting'].includes(section)) {
-        return res.status(400).json({ message: "قسم غير صحيح" });
+        // Validate section
+        if (!["film", "printing", "cutting"].includes(section)) {
+          return res.status(400).json({ message: "قسم غير صحيح" });
+        }
+
+        // Get production orders for the section
+        const orders = await storage.getProductionOrdersBySection(
+          section,
+          search,
+        );
+
+        res.json({ data: orders });
+      } catch (error: any) {
+        console.error("Error fetching production orders:", error);
+        res.status(500).json({ message: "خطأ في جلب أوامر الإنتاج" });
       }
-
-      // Get production orders for the section
-      const orders = await storage.getProductionOrdersBySection(section, search);
-
-      res.json({ data: orders });
-    } catch (error: any) {
-      console.error("Error fetching production orders:", error);
-      res.status(500).json({ message: "خطأ في جلب أوامر الإنتاج" });
-    }
-  });
+    },
+  );
 
   // ============ نظام التحذيرات الذكية ============
 
@@ -10282,7 +12272,7 @@ Do not include quotes or explanations.`;
   // console.log("[SmartAlerts] نظام التحذيرات الذكية مُفعل ✅");
 
   // ============ Quick Notes API ============
-  
+
   // Get all notes (optionally filtered by user)
   app.get("/api/quick-notes", requireAuth, async (req, res) => {
     try {
@@ -10291,11 +12281,13 @@ Do not include quotes or explanations.`;
       if (req.query.user_id) {
         const requestedUserId = parseInt(req.query.user_id as string);
         if (requestedUserId !== req.user!.id && req.user!.role_id !== 1) {
-          return res.status(403).json({ message: "غير مصرح لك بعرض ملاحظات مستخدمين آخرين" });
+          return res
+            .status(403)
+            .json({ message: "غير مصرح لك بعرض ملاحظات مستخدمين آخرين" });
         }
         userId = requestedUserId;
       }
-      
+
       const notes = await storage.getQuickNotes(userId);
       res.json(notes);
     } catch (error: any) {
@@ -10309,18 +12301,22 @@ Do not include quotes or explanations.`;
     try {
       const id = parseRouteParam(req.params.id, "id");
       const note = await storage.getQuickNoteById(id);
-      
+
       if (!note) {
         return res.status(404).json({ message: "الملاحظة غير موجودة" });
       }
 
       // Authorization check - only creator, assignee, or manager can view
-      if (note.created_by !== req.user!.id && 
-          note.assigned_to !== req.user!.id && 
-          req.user!.role_id !== 1) {
-        return res.status(403).json({ message: "غير مصرح لك بعرض هذه الملاحظة" });
+      if (
+        note.created_by !== req.user!.id &&
+        note.assigned_to !== req.user!.id &&
+        req.user!.role_id !== 1
+      ) {
+        return res
+          .status(403)
+          .json({ message: "غير مصرح لك بعرض هذه الملاحظة" });
       }
-      
+
       res.json(note);
     } catch (error: any) {
       console.error("Error fetching note:", error);
@@ -10332,8 +12328,14 @@ Do not include quotes or explanations.`;
   app.post("/api/quick-notes", requireAuth, async (req, res) => {
     try {
       // Validate required fields
-      if (!req.body.content || typeof req.body.content !== 'string' || req.body.content.trim() === '') {
-        return res.status(400).json({ message: "المحتوى مطلوب ويجب أن يكون نصاً" });
+      if (
+        !req.body.content ||
+        typeof req.body.content !== "string" ||
+        req.body.content.trim() === ""
+      ) {
+        return res
+          .status(400)
+          .json({ message: "المحتوى مطلوب ويجب أن يكون نصاً" });
       }
 
       if (!req.body.note_type) {
@@ -10347,18 +12349,28 @@ Do not include quotes or explanations.`;
       // Validate assigned_to is a valid number
       const assignedToId = parseInt(req.body.assigned_to);
       if (isNaN(assignedToId) || assignedToId <= 0) {
-        return res.status(400).json({ message: "معرف المستخدم المعين غير صحيح" });
+        return res
+          .status(400)
+          .json({ message: "معرف المستخدم المعين غير صحيح" });
       }
 
       // Validate note_type
-      const validNoteTypes = ['order', 'design', 'statement', 'quote', 'delivery', 'call_customer', 'other'];
+      const validNoteTypes = [
+        "order",
+        "design",
+        "statement",
+        "quote",
+        "delivery",
+        "call_customer",
+        "other",
+      ];
       if (!validNoteTypes.includes(req.body.note_type)) {
         return res.status(400).json({ message: "نوع الملاحظة غير صحيح" });
       }
 
       // Validate priority
-      const validPriorities = ['low', 'normal', 'high', 'urgent'];
-      const priority = req.body.priority || 'normal';
+      const validPriorities = ["low", "normal", "high", "urgent"];
+      const priority = req.body.priority || "normal";
       if (!validPriorities.includes(priority)) {
         return res.status(400).json({ message: "الأولوية غير صحيحة" });
       }
@@ -10384,7 +12396,7 @@ Do not include quotes or explanations.`;
   app.patch("/api/quick-notes/:id", requireAuth, async (req, res) => {
     try {
       const id = parseRouteParam(req.params.id, "id");
-      
+
       // Get existing note to check authorization
       const existingNote = await storage.getQuickNoteById(id);
       if (!existingNote) {
@@ -10393,21 +12405,31 @@ Do not include quotes or explanations.`;
 
       // Only creator or manager can update
       if (existingNote.created_by !== req.user!.id && req.user!.role_id !== 1) {
-        return res.status(403).json({ message: "غير مصرح لك بتعديل هذه الملاحظة" });
+        return res
+          .status(403)
+          .json({ message: "غير مصرح لك بتعديل هذه الملاحظة" });
       }
 
       // Only allow updating specific fields
       const allowedUpdates: any = {};
       if (req.body.content) allowedUpdates.content = req.body.content.trim();
       if (req.body.note_type) {
-        const validNoteTypes = ['order', 'design', 'statement', 'quote', 'delivery', 'call_customer', 'other'];
+        const validNoteTypes = [
+          "order",
+          "design",
+          "statement",
+          "quote",
+          "delivery",
+          "call_customer",
+          "other",
+        ];
         if (!validNoteTypes.includes(req.body.note_type)) {
           return res.status(400).json({ message: "نوع الملاحظة غير صحيح" });
         }
         allowedUpdates.note_type = req.body.note_type;
       }
       if (req.body.priority) {
-        const validPriorities = ['low', 'normal', 'high', 'urgent'];
+        const validPriorities = ["low", "normal", "high", "urgent"];
         if (!validPriorities.includes(req.body.priority)) {
           return res.status(400).json({ message: "الأولوية غير صحيحة" });
         }
@@ -10416,11 +12438,13 @@ Do not include quotes or explanations.`;
       if (req.body.assigned_to) {
         const assignedTo = parseInt(req.body.assigned_to);
         if (isNaN(assignedTo) || assignedTo <= 0) {
-          return res.status(400).json({ message: "معرف المستخدم المعين غير صحيح" });
+          return res
+            .status(400)
+            .json({ message: "معرف المستخدم المعين غير صحيح" });
         }
         allowedUpdates.assigned_to = assignedTo;
       }
-      
+
       const updatedNote = await storage.updateQuickNote(id, allowedUpdates);
       res.json(updatedNote);
     } catch (error: any) {
@@ -10433,7 +12457,7 @@ Do not include quotes or explanations.`;
   app.patch("/api/quick-notes/:id/read", requireAuth, async (req, res) => {
     try {
       const id = parseRouteParam(req.params.id, "id");
-      
+
       // Get existing note to check authorization
       const existingNote = await storage.getQuickNoteById(id);
       if (!existingNote) {
@@ -10442,7 +12466,9 @@ Do not include quotes or explanations.`;
 
       // Only assignee can mark as read
       if (existingNote.assigned_to !== req.user!.id) {
-        return res.status(403).json({ message: "فقط المستخدم المعين يمكنه تحديث حالة القراءة" });
+        return res
+          .status(403)
+          .json({ message: "فقط المستخدم المعين يمكنه تحديث حالة القراءة" });
       }
 
       const updatedNote = await storage.markNoteAsRead(id);
@@ -10457,7 +12483,7 @@ Do not include quotes or explanations.`;
   app.delete("/api/quick-notes/:id", requireAuth, async (req, res) => {
     try {
       const id = parseRouteParam(req.params.id, "id");
-      
+
       // Get existing note to check authorization
       const existingNote = await storage.getQuickNoteById(id);
       if (!existingNote) {
@@ -10466,7 +12492,9 @@ Do not include quotes or explanations.`;
 
       // Only creator or manager can delete
       if (existingNote.created_by !== req.user!.id && req.user!.role_id !== 1) {
-        return res.status(403).json({ message: "غير مصرح لك بحذف هذه الملاحظة" });
+        return res
+          .status(403)
+          .json({ message: "غير مصرح لك بحذف هذه الملاحظة" });
       }
 
       await storage.deleteQuickNote(id);
@@ -10481,7 +12509,7 @@ Do not include quotes or explanations.`;
   app.get("/api/quick-notes/:id/attachments", requireAuth, async (req, res) => {
     try {
       const noteId = parseRouteParam(req.params.id, "id");
-      
+
       // Get note to check authorization
       const note = await storage.getQuickNoteById(noteId);
       if (!note) {
@@ -10489,10 +12517,14 @@ Do not include quotes or explanations.`;
       }
 
       // Authorization check
-      if (note.created_by !== req.user!.id && 
-          note.assigned_to !== req.user!.id && 
-          req.user!.role_id !== 1) {
-        return res.status(403).json({ message: "غير مصرح لك بعرض هذه المرفقات" });
+      if (
+        note.created_by !== req.user!.id &&
+        note.assigned_to !== req.user!.id &&
+        req.user!.role_id !== 1
+      ) {
+        return res
+          .status(403)
+          .json({ message: "غير مصرح لك بعرض هذه المرفقات" });
       }
 
       const attachments = await storage.getNoteAttachments(noteId);
@@ -10504,52 +12536,67 @@ Do not include quotes or explanations.`;
   });
 
   // Upload attachment (placeholder - will be implemented with actual file upload)
-  app.post("/api/quick-notes/:id/attachments", requireAuth, async (req, res) => {
-    try {
-      const noteId = parseRouteParam(req.params.id, "id");
-      
-      // Get note to check authorization
-      const note = await storage.getQuickNoteById(noteId);
-      if (!note) {
-        return res.status(404).json({ message: "الملاحظة غير موجودة" });
+  app.post(
+    "/api/quick-notes/:id/attachments",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const noteId = parseRouteParam(req.params.id, "id");
+
+        // Get note to check authorization
+        const note = await storage.getQuickNoteById(noteId);
+        if (!note) {
+          return res.status(404).json({ message: "الملاحظة غير موجودة" });
+        }
+
+        // Only creator or assignee can add attachments
+        if (
+          note.created_by !== req.user!.id &&
+          note.assigned_to !== req.user!.id
+        ) {
+          return res
+            .status(403)
+            .json({ message: "غير مصرح لك بإضافة مرفقات لهذه الملاحظة" });
+        }
+
+        // Validate required fields
+        if (
+          !req.body.file_name ||
+          !req.body.file_type ||
+          !req.body.file_size ||
+          !req.body.file_url
+        ) {
+          return res.status(400).json({ message: "بيانات المرفق ناقصة" });
+        }
+
+        const parsedFileSize = parseInt(req.body.file_size);
+        if (isNaN(parsedFileSize) || parsedFileSize < 0) {
+          return res.status(400).json({ message: "حجم الملف غير صحيح" });
+        }
+
+        const attachmentData = {
+          note_id: noteId,
+          file_name: req.body.file_name,
+          file_type: req.body.file_type,
+          file_size: parsedFileSize,
+          file_url: req.body.file_url,
+        };
+
+        const newAttachment =
+          await storage.createNoteAttachment(attachmentData);
+        res.status(201).json(newAttachment);
+      } catch (error: any) {
+        console.error("Error creating attachment:", error);
+        res.status(500).json({ message: "خطأ في رفع المرفق" });
       }
-
-      // Only creator or assignee can add attachments
-      if (note.created_by !== req.user!.id && note.assigned_to !== req.user!.id) {
-        return res.status(403).json({ message: "غير مصرح لك بإضافة مرفقات لهذه الملاحظة" });
-      }
-
-      // Validate required fields
-      if (!req.body.file_name || !req.body.file_type || !req.body.file_size || !req.body.file_url) {
-        return res.status(400).json({ message: "بيانات المرفق ناقصة" });
-      }
-
-      const parsedFileSize = parseInt(req.body.file_size);
-      if (isNaN(parsedFileSize) || parsedFileSize < 0) {
-        return res.status(400).json({ message: "حجم الملف غير صحيح" });
-      }
-
-      const attachmentData = {
-        note_id: noteId,
-        file_name: req.body.file_name,
-        file_type: req.body.file_type,
-        file_size: parsedFileSize,
-        file_url: req.body.file_url,
-      };
-
-      const newAttachment = await storage.createNoteAttachment(attachmentData);
-      res.status(201).json(newAttachment);
-    } catch (error: any) {
-      console.error("Error creating attachment:", error);
-      res.status(500).json({ message: "خطأ في رفع المرفق" });
-    }
-  });
+    },
+  );
 
   // Delete attachment
   app.delete("/api/note-attachments/:id", requireAuth, async (req, res) => {
     try {
       const id = parseRouteParam(req.params.id, "id");
-      
+
       const attachment = await storage.getNoteAttachmentById(id);
       if (!attachment) {
         return res.status(404).json({ message: "المرفق غير موجود" });
@@ -10590,11 +12637,11 @@ Do not include quotes or explanations.`;
     try {
       const id = parseRouteParam(req.params.id, "id");
       const batch = await storage.getMixingBatchById(id);
-      
+
       if (!batch) {
         return res.status(404).json({ message: "عملية الخلط غير موجودة" });
       }
-      
+
       res.json(batch);
     } catch (error: any) {
       console.error("Error getting mixing batch:", error);
@@ -10603,409 +12650,556 @@ Do not include quotes or explanations.`;
   });
 
   // Get mixing batches by operator
-  app.get("/api/mixing-batches/operator/:operatorId", requireAuth, async (req, res) => {
-    try {
-      const operatorId = parseInt(req.params.operatorId);
-      if (isNaN(operatorId) || operatorId <= 0) {
-        return res.status(400).json({ message: "معرف العامل غير صحيح" });
+  app.get(
+    "/api/mixing-batches/operator/:operatorId",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const operatorId = parseInt(req.params.operatorId);
+        if (isNaN(operatorId) || operatorId <= 0) {
+          return res.status(400).json({ message: "معرف العامل غير صحيح" });
+        }
+        const batches = await storage.getMixingBatchesByOperator(operatorId);
+        res.json({ data: batches });
+      } catch (error: any) {
+        console.error("Error getting operator batches:", error);
+        res.status(500).json({ message: "خطأ في جلب عمليات الخلط للعامل" });
       }
-      const batches = await storage.getMixingBatchesByOperator(operatorId);
-      res.json({ data: batches });
-    } catch (error: any) {
-      console.error("Error getting operator batches:", error);
-      res.status(500).json({ message: "خطأ في جلب عمليات الخلط للعامل" });
-    }
-  });
+    },
+  );
 
   // Get mixing batches by production order
-  app.get("/api/mixing-batches/production-order/:productionOrderId", requireAuth, async (req, res) => {
-    try {
-      const productionOrderId = parseInt(req.params.productionOrderId);
-      if (isNaN(productionOrderId) || productionOrderId <= 0) {
-        return res.status(400).json({ message: "معرف أمر الإنتاج غير صحيح" });
-      }
-      const batches = await storage.getMixingBatchesByProductionOrder(productionOrderId);
-      let totalMixedA = 0;
-      let totalMixedB = 0;
-      for (const batch of batches) {
-        const weight = parseFloat(batch.total_weight_kg as string) || 0;
-        if (batch.screw_assignment === 'A') {
-          totalMixedA += weight;
-        } else if (batch.screw_assignment === 'B') {
-          totalMixedB += weight;
+  app.get(
+    "/api/mixing-batches/production-order/:productionOrderId",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const productionOrderId = parseInt(req.params.productionOrderId);
+        if (isNaN(productionOrderId) || productionOrderId <= 0) {
+          return res.status(400).json({ message: "معرف أمر الإنتاج غير صحيح" });
         }
+        const batches =
+          await storage.getMixingBatchesByProductionOrder(productionOrderId);
+        let totalMixedA = 0;
+        let totalMixedB = 0;
+        for (const batch of batches) {
+          const weight = parseFloat(batch.total_weight_kg as string) || 0;
+          if (batch.screw_assignment === "A") {
+            totalMixedA += weight;
+          } else if (batch.screw_assignment === "B") {
+            totalMixedB += weight;
+          }
+        }
+        res.json({
+          data: batches,
+          summary: {
+            totalMixedA,
+            totalMixedB,
+            totalMixed: totalMixedA + totalMixedB,
+          },
+        });
+      } catch (error: any) {
+        console.error("Error getting production order batches:", error);
+        res
+          .status(500)
+          .json({ message: "خطأ في جلب عمليات الخلط لأمر الإنتاج" });
       }
-      res.json({ data: batches, summary: { totalMixedA, totalMixedB, totalMixed: totalMixedA + totalMixedB } });
-    } catch (error: any) {
-      console.error("Error getting production order batches:", error);
-      res.status(500).json({ message: "خطأ في جلب عمليات الخلط لأمر الإنتاج" });
-    }
-  });
+    },
+  );
 
   // Create mixing batch
-  app.post("/api/mixing-batches", requireAuth, requirePermission('manage_mixing', 'manage_production'), async (req, res) => {
-    try {
-      const { batch, ingredients } = req.body;
-      
-      if (!batch || !ingredients || !Array.isArray(ingredients) || ingredients.length === 0) {
-        return res.status(400).json({ message: "بيانات عملية الخلط أو المكونات ناقصة" });
-      }
+  app.post(
+    "/api/mixing-batches",
+    requireAuth,
+    requirePermission("manage_mixing", "manage_production"),
+    async (req, res) => {
+      try {
+        const { batch, ingredients } = req.body;
 
-      // Validate screw_assignment
-      if (!batch.screw_assignment || !['A', 'B'].includes(batch.screw_assignment)) {
-        return res.status(400).json({ message: "يجب تحديد البريمة (A أو B)" });
-      }
+        if (
+          !batch ||
+          !ingredients ||
+          !Array.isArray(ingredients) ||
+          ingredients.length === 0
+        ) {
+          return res
+            .status(400)
+            .json({ message: "بيانات عملية الخلط أو المكونات ناقصة" });
+        }
 
-      // Validate machine_id is provided
-      if (!batch.machine_id) {
-        return res.status(400).json({ message: "يجب تحديد الماكينة" });
-      }
+        // Validate screw_assignment
+        if (
+          !batch.screw_assignment ||
+          !["A", "B"].includes(batch.screw_assignment)
+        ) {
+          return res
+            .status(400)
+            .json({ message: "يجب تحديد البريمة (A أو B)" });
+        }
 
-      if (batch.production_order_id) {
-        const poId = parseInt(batch.production_order_id);
-        if (!isNaN(poId) && poId > 0) {
-          const po = await storage.getProductionOrderById(poId);
-          if (po) {
-            const orderQty = parseFloat((po as any).final_quantity_kg || (po as any).quantity_kg || '0');
-            const existingBatches = await storage.getMixingBatchesByProductionOrder(poId);
-            let existingTotal = 0;
-            for (const b of existingBatches) {
-              existingTotal += parseFloat(b.total_weight_kg as string) || 0;
-            }
-            const newWeight = parseFloat(batch.total_weight_kg || '0');
-            if (existingTotal + newWeight > orderQty) {
-              return res.status(400).json({
-                message: `مجموع كميات الخلط (${(existingTotal + newWeight).toFixed(2)} كغ) يتجاوز الكمية المطلوبة في أمر الإنتاج (${orderQty.toFixed(2)} كغ). المتبقي: ${(orderQty - existingTotal).toFixed(2)} كغ`,
-              });
+        // Validate machine_id is provided
+        if (!batch.machine_id) {
+          return res.status(400).json({ message: "يجب تحديد الماكينة" });
+        }
+
+        if (batch.production_order_id) {
+          const poId = parseInt(batch.production_order_id);
+          if (!isNaN(poId) && poId > 0) {
+            const po = await storage.getProductionOrderById(poId);
+            if (po) {
+              const orderQty = parseFloat(
+                (po as any).final_quantity_kg || (po as any).quantity_kg || "0",
+              );
+              const existingBatches =
+                await storage.getMixingBatchesByProductionOrder(poId);
+              let existingTotal = 0;
+              for (const b of existingBatches) {
+                existingTotal += parseFloat(b.total_weight_kg as string) || 0;
+              }
+              const newWeight = parseFloat(batch.total_weight_kg || "0");
+              if (existingTotal + newWeight > orderQty) {
+                return res.status(400).json({
+                  message: `مجموع كميات الخلط (${(existingTotal + newWeight).toFixed(2)} كغ) يتجاوز الكمية المطلوبة في أمر الإنتاج (${orderQty.toFixed(2)} كغ). المتبقي: ${(orderQty - existingTotal).toFixed(2)} كغ`,
+                });
+              }
             }
           }
         }
-      }
 
-      const { batch_number, formula_id, roll_id, started_at, ...cleanBatchData } = batch;
+        const {
+          batch_number,
+          formula_id,
+          roll_id,
+          started_at,
+          ...cleanBatchData
+        } = batch;
 
-      const allBatches = await storage.getAllMixingBatches();
-      let maxNum = 0;
-      for (const b of allBatches) {
-        const match = (b.batch_number || '').match(/MIX-(\d+)/);
-        if (match) {
-          const num = parseInt(match[1]);
-          if (num > maxNum) maxNum = num;
+        const allBatches = await storage.getAllMixingBatches();
+        let maxNum = 0;
+        for (const b of allBatches) {
+          const match = (b.batch_number || "").match(/MIX-(\d+)/);
+          if (match) {
+            const num = parseInt(match[1]);
+            if (num > maxNum) maxNum = num;
+          }
         }
+        const generatedBatchNumber = `MIX-${String(maxNum + 1).padStart(5, "0")}`;
+
+        const batchData = {
+          ...cleanBatchData,
+          batch_number: generatedBatchNumber,
+          operator_id: req.user!.id,
+          status: "in_progress",
+        };
+
+        const newBatch = await storage.createMixingBatch(
+          batchData,
+          ingredients,
+        );
+        res.status(201).json(newBatch);
+      } catch (error: any) {
+        console.error("Error creating mixing batch:", error);
+        res.status(500).json({ message: "خطأ في إنشاء عملية الخلط" });
       }
-      const generatedBatchNumber = `MIX-${String(maxNum + 1).padStart(5, '0')}`;
-
-      const batchData = {
-        ...cleanBatchData,
-        batch_number: generatedBatchNumber,
-        operator_id: req.user!.id,
-        status: "in_progress",
-      };
-
-      const newBatch = await storage.createMixingBatch(batchData, ingredients);
-      res.status(201).json(newBatch);
-    } catch (error: any) {
-      console.error("Error creating mixing batch:", error);
-      res.status(500).json({ message: "خطأ في إنشاء عملية الخلط" });
-    }
-  });
+    },
+  );
 
   // Update mixing batch
-  app.put("/api/mixing-batches/:id", requireAuth, requirePermission('manage_mixing', 'manage_production'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      const updates = req.body;
-      
-      const updatedBatch = await storage.updateMixingBatch(id, updates);
-      res.json(updatedBatch);
-    } catch (error: any) {
-      console.error("Error updating mixing batch:", error);
-      res.status(500).json({ message: "خطأ في تحديث عملية الخلط" });
-    }
-  });
+  app.put(
+    "/api/mixing-batches/:id",
+    requireAuth,
+    requirePermission("manage_mixing", "manage_production"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const updates = req.body;
+
+        const updatedBatch = await storage.updateMixingBatch(id, updates);
+        res.json(updatedBatch);
+      } catch (error: any) {
+        console.error("Error updating mixing batch:", error);
+        res.status(500).json({ message: "خطأ في تحديث عملية الخلط" });
+      }
+    },
+  );
 
   // Update batch ingredient actuals
-  app.put("/api/mixing-batches/:id/ingredients", requireAuth, requirePermission('manage_mixing', 'manage_production'), async (req, res) => {
-    try {
-      const batchId = parseRouteParam(req.params.id, "id");
-      const { ingredientUpdates } = req.body;
-      
-      if (!ingredientUpdates || !Array.isArray(ingredientUpdates)) {
-        return res.status(400).json({ message: "بيانات المكونات ناقصة" });
-      }
+  app.put(
+    "/api/mixing-batches/:id/ingredients",
+    requireAuth,
+    requirePermission("manage_mixing", "manage_production"),
+    async (req, res) => {
+      try {
+        const batchId = parseRouteParam(req.params.id, "id");
+        const { ingredientUpdates } = req.body;
 
-      await storage.updateBatchIngredientActuals(batchId, ingredientUpdates);
-      const updatedBatch = await storage.getMixingBatchById(batchId);
-      res.json(updatedBatch);
-    } catch (error: any) {
-      console.error("Error updating batch ingredients:", error);
-      res.status(500).json({ message: "خطأ في تحديث الكميات الفعلية" });
-    }
-  });
-
-  // Complete mixing batch
-  app.post("/api/mixing-batches/:id/complete", requireAuth, requirePermission('manage_mixing', 'manage_production'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      const completedBatch = await storage.completeMixingBatch(id);
-      res.json(completedBatch);
-    } catch (error: any) {
-      console.error("Error completing mixing batch:", error);
-      res.status(500).json({ message: "خطأ في إتمام عملية الخلط" });
-    }
-  });
-
-  // Record material consumption from mixing batch
-  app.post("/api/inventory/consumption", requireAuth, async (req: AuthRequest, res) => {
-    try {
-      const { batchId, consumptions } = req.body;
-      const userId = getAuthUserId(req);
-
-      if (!userId) {
-        return res.status(401).json({ message: "غير مصرح" });
-      }
-
-      if (!batchId || !consumptions || !Array.isArray(consumptions)) {
-        return res.status(400).json({ message: "بيانات الاستهلاك غير مكتملة" });
-      }
-
-      // Get batch details
-      const batch = await storage.getMixingBatchById(batchId);
-      if (!batch) {
-        return res.status(404).json({ message: "دفعة الخلط غير موجودة" });
-      }
-
-      // Record consumption for each ingredient
-      const results = [];
-      for (const consumption of consumptions) {
-        const { item_id, quantity_consumed, cost_at_consumption } = consumption;
-
-        // Get inventory item
-        const inventoryItem = await storage.getInventoryByItemId(item_id);
-        if (!inventoryItem) {
-          throw new Error(`الصنف ${item_id} غير موجود في المخزون`);
+        if (!ingredientUpdates || !Array.isArray(ingredientUpdates)) {
+          return res.status(400).json({ message: "بيانات المكونات ناقصة" });
         }
 
-        // Create inventory movement (out)
-        const movement = await storage.createInventoryMovement({
-          inventory_id: inventoryItem.id,
-          movement_type: "out",
-          quantity: quantity_consumed.toString(),
-          unit_cost: cost_at_consumption?.toString(),
-          total_cost: cost_at_consumption 
-            ? (parseFloat(quantity_consumed) * parseFloat(cost_at_consumption)).toString()
-            : undefined,
-          reference_number: `BATCH-${batch.batch_number}`,
-          reference_type: "production",
-          notes: `استهلاك من دفعة خلط ${batch.batch_number}`,
-          created_by: userId,
-        });
+        await storage.updateBatchIngredientActuals(batchId, ingredientUpdates);
+        const updatedBatch = await storage.getMixingBatchById(batchId);
+        res.json(updatedBatch);
+      } catch (error: any) {
+        console.error("Error updating batch ingredients:", error);
+        res.status(500).json({ message: "خطأ في تحديث الكميات الفعلية" });
+      }
+    },
+  );
 
-        results.push({
-          item_id,
-          quantity_consumed,
-          movement_id: movement.id,
-          new_quantity: parseFloat(inventoryItem.current_stock) - parseFloat(quantity_consumed),
+  // Complete mixing batch
+  app.post(
+    "/api/mixing-batches/:id/complete",
+    requireAuth,
+    requirePermission("manage_mixing", "manage_production"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const completedBatch = await storage.completeMixingBatch(id);
+        res.json(completedBatch);
+      } catch (error: any) {
+        console.error("Error completing mixing batch:", error);
+        res.status(500).json({ message: "خطأ في إتمام عملية الخلط" });
+      }
+    },
+  );
+
+  // Record material consumption from mixing batch
+  app.post(
+    "/api/inventory/consumption",
+    requireAuth,
+    async (req: AuthRequest, res) => {
+      try {
+        const { batchId, consumptions } = req.body;
+        const userId = getAuthUserId(req);
+
+        if (!userId) {
+          return res.status(401).json({ message: "غير مصرح" });
+        }
+
+        if (!batchId || !consumptions || !Array.isArray(consumptions)) {
+          return res
+            .status(400)
+            .json({ message: "بيانات الاستهلاك غير مكتملة" });
+        }
+
+        // Get batch details
+        const batch = await storage.getMixingBatchById(batchId);
+        if (!batch) {
+          return res.status(404).json({ message: "دفعة الخلط غير موجودة" });
+        }
+
+        // Record consumption for each ingredient
+        const results = [];
+        for (const consumption of consumptions) {
+          const { item_id, quantity_consumed, cost_at_consumption } =
+            consumption;
+
+          // Get inventory item
+          const inventoryItem = await storage.getInventoryByItemId(item_id);
+          if (!inventoryItem) {
+            throw new Error(`الصنف ${item_id} غير موجود في المخزون`);
+          }
+
+          // Create inventory movement (out)
+          const movement = await storage.createInventoryMovement({
+            inventory_id: inventoryItem.id,
+            movement_type: "out",
+            quantity: quantity_consumed.toString(),
+            unit_cost: cost_at_consumption?.toString(),
+            total_cost: cost_at_consumption
+              ? (
+                  parseFloat(quantity_consumed) *
+                  parseFloat(cost_at_consumption)
+                ).toString()
+              : undefined,
+            reference_number: `BATCH-${batch.batch_number}`,
+            reference_type: "production",
+            notes: `استهلاك من دفعة خلط ${batch.batch_number}`,
+            created_by: userId,
+          });
+
+          results.push({
+            item_id,
+            quantity_consumed,
+            movement_id: movement.id,
+            new_quantity:
+              parseFloat(inventoryItem.current_stock) -
+              parseFloat(quantity_consumed),
+          });
+        }
+
+        res.json({
+          success: true,
+          message: "تم تسجيل استهلاك المواد بنجاح",
+          results,
+        });
+      } catch (error: any) {
+        console.error("Error recording material consumption:", error);
+        res.status(500).json({
+          message: "خطأ في تسجيل استهلاك المواد",
         });
       }
-
-      res.json({
-        success: true,
-        message: "تم تسجيل استهلاك المواد بنجاح",
-        results,
-      });
-    } catch (error: any) {
-      console.error("Error recording material consumption:", error);
-      res.status(500).json({ 
-        message: "خطأ في تسجيل استهلاك المواد"
-      });
-    }
-  });
+    },
+  );
 
   // ============ Warehouse Vouchers API Routes ============
 
   // سندات إدخال المواد الخام
-  app.get("/api/warehouse/vouchers/raw-material-in", requireAuth, async (req, res) => {
-    try {
-      const vouchers = await storage.getRawMaterialVouchersIn();
-      res.json(vouchers);
-    } catch (error) {
-      console.error("Error fetching raw material in vouchers:", error);
-      res.status(500).json({ message: "خطأ في جلب سندات إدخال المواد الخام" });
-    }
-  });
-
-  app.post("/api/warehouse/vouchers/raw-material-in", requireAuth, async (req: AuthRequest, res) => {
-    try {
-      const userId = getAuthUserId(req);
-      if (!userId) {
-        return res.status(401).json({ message: "غير مصرح" });
+  app.get(
+    "/api/warehouse/vouchers/raw-material-in",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const vouchers = await storage.getRawMaterialVouchersIn();
+        res.json(vouchers);
+      } catch (error) {
+        console.error("Error fetching raw material in vouchers:", error);
+        res
+          .status(500)
+          .json({ message: "خطأ في جلب سندات إدخال المواد الخام" });
       }
+    },
+  );
 
-      const voucherData = {
-        ...req.body,
-        received_by: userId,
-      };
+  app.post(
+    "/api/warehouse/vouchers/raw-material-in",
+    requireAuth,
+    async (req: AuthRequest, res) => {
+      try {
+        const userId = getAuthUserId(req);
+        if (!userId) {
+          return res.status(401).json({ message: "غير مصرح" });
+        }
 
-      const voucher = await storage.createRawMaterialVoucherIn(voucherData);
-      res.status(201).json(voucher);
-    } catch (error: any) {
-      console.error("Error creating raw material in voucher:", error);
-      res.status(500).json({ message: "خطأ في إنشاء سند إدخال المواد الخام" });
-    }
-  });
+        const voucherData = {
+          ...req.body,
+          received_by: userId,
+        };
 
-  app.get("/api/warehouse/vouchers/raw-material-in/:id", requireAuth, async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      const voucher = await storage.getRawMaterialVoucherInById(id);
-      if (!voucher) {
-        return res.status(404).json({ message: "السند غير موجود" });
+        const voucher = await storage.createRawMaterialVoucherIn(voucherData);
+        res.status(201).json(voucher);
+      } catch (error: any) {
+        console.error("Error creating raw material in voucher:", error);
+        res
+          .status(500)
+          .json({ message: "خطأ في إنشاء سند إدخال المواد الخام" });
       }
-      res.json(voucher);
-    } catch (error) {
-      console.error("Error fetching raw material in voucher:", error);
-      res.status(500).json({ message: "خطأ في جلب سند إدخال المواد الخام" });
-    }
-  });
+    },
+  );
+
+  app.get(
+    "/api/warehouse/vouchers/raw-material-in/:id",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const voucher = await storage.getRawMaterialVoucherInById(id);
+        if (!voucher) {
+          return res.status(404).json({ message: "السند غير موجود" });
+        }
+        res.json(voucher);
+      } catch (error) {
+        console.error("Error fetching raw material in voucher:", error);
+        res.status(500).json({ message: "خطأ في جلب سند إدخال المواد الخام" });
+      }
+    },
+  );
 
   // سندات إخراج المواد الخام
-  app.get("/api/warehouse/vouchers/raw-material-out", requireAuth, async (req, res) => {
-    try {
-      const vouchers = await storage.getRawMaterialVouchersOut();
-      res.json(vouchers);
-    } catch (error) {
-      console.error("Error fetching raw material out vouchers:", error);
-      res.status(500).json({ message: "خطأ في جلب سندات إخراج المواد الخام" });
-    }
-  });
-
-  app.post("/api/warehouse/vouchers/raw-material-out", requireAuth, async (req: AuthRequest, res) => {
-    try {
-      const userId = getAuthUserId(req);
-      if (!userId) {
-        return res.status(401).json({ message: "غير مصرح" });
+  app.get(
+    "/api/warehouse/vouchers/raw-material-out",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const vouchers = await storage.getRawMaterialVouchersOut();
+        res.json(vouchers);
+      } catch (error) {
+        console.error("Error fetching raw material out vouchers:", error);
+        res
+          .status(500)
+          .json({ message: "خطأ في جلب سندات إخراج المواد الخام" });
       }
+    },
+  );
 
-      const voucherData = {
-        ...req.body,
-        issued_by: userId,
-      };
+  app.post(
+    "/api/warehouse/vouchers/raw-material-out",
+    requireAuth,
+    async (req: AuthRequest, res) => {
+      try {
+        const userId = getAuthUserId(req);
+        if (!userId) {
+          return res.status(401).json({ message: "غير مصرح" });
+        }
 
-      const voucher = await storage.createRawMaterialVoucherOut(voucherData);
-      res.status(201).json(voucher);
-    } catch (error: any) {
-      console.error("Error creating raw material out voucher:", error);
-      res.status(500).json({ message: "خطأ في إنشاء سند إخراج المواد الخام" });
-    }
-  });
+        const voucherData = {
+          ...req.body,
+          issued_by: userId,
+        };
 
-  app.get("/api/warehouse/vouchers/raw-material-out/:id", requireAuth, async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      const voucher = await storage.getRawMaterialVoucherOutById(id);
-      if (!voucher) {
-        return res.status(404).json({ message: "السند غير موجود" });
+        const voucher = await storage.createRawMaterialVoucherOut(voucherData);
+        res.status(201).json(voucher);
+      } catch (error: any) {
+        console.error("Error creating raw material out voucher:", error);
+        res
+          .status(500)
+          .json({ message: "خطأ في إنشاء سند إخراج المواد الخام" });
       }
-      res.json(voucher);
-    } catch (error) {
-      console.error("Error fetching raw material out voucher:", error);
-      res.status(500).json({ message: "خطأ في جلب سند إخراج المواد الخام" });
-    }
-  });
+    },
+  );
+
+  app.get(
+    "/api/warehouse/vouchers/raw-material-out/:id",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const voucher = await storage.getRawMaterialVoucherOutById(id);
+        if (!voucher) {
+          return res.status(404).json({ message: "السند غير موجود" });
+        }
+        res.json(voucher);
+      } catch (error) {
+        console.error("Error fetching raw material out voucher:", error);
+        res.status(500).json({ message: "خطأ في جلب سند إخراج المواد الخام" });
+      }
+    },
+  );
 
   // حذف سند إدخال مواد خام
-  app.delete("/api/warehouse/vouchers/raw-material-in/:id", requireAuth, requirePermission('manage_warehouse'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      await storage.deleteRawMaterialVoucherIn(id);
-      res.json({ message: "تم حذف السند وإرجاع الكميات بنجاح" });
-    } catch (error: any) {
-      console.error("Error deleting raw material in voucher:", error);
-      res.status(400).json({ message: "خطأ في حذف سند إدخال المواد الخام" });
-    }
-  });
+  app.delete(
+    "/api/warehouse/vouchers/raw-material-in/:id",
+    requireAuth,
+    requirePermission("manage_warehouse"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        await storage.deleteRawMaterialVoucherIn(id);
+        res.json({ message: "تم حذف السند وإرجاع الكميات بنجاح" });
+      } catch (error: any) {
+        console.error("Error deleting raw material in voucher:", error);
+        res.status(400).json({ message: "خطأ في حذف سند إدخال المواد الخام" });
+      }
+    },
+  );
 
   // حذف سند إخراج مواد خام
-  app.delete("/api/warehouse/vouchers/raw-material-out/:id", requireAuth, requirePermission('manage_warehouse'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      await storage.deleteRawMaterialVoucherOut(id);
-      res.json({ message: "تم حذف السند وإرجاع الكميات بنجاح" });
-    } catch (error: any) {
-      console.error("Error deleting raw material out voucher:", error);
-      res.status(400).json({ message: "خطأ في حذف سند إخراج المواد الخام" });
-    }
-  });
+  app.delete(
+    "/api/warehouse/vouchers/raw-material-out/:id",
+    requireAuth,
+    requirePermission("manage_warehouse"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        await storage.deleteRawMaterialVoucherOut(id);
+        res.json({ message: "تم حذف السند وإرجاع الكميات بنجاح" });
+      } catch (error: any) {
+        console.error("Error deleting raw material out voucher:", error);
+        res.status(400).json({ message: "خطأ في حذف سند إخراج المواد الخام" });
+      }
+    },
+  );
 
   // أوامر الإنتاج المتاحة للاستلام في المستودع
-  app.get("/api/warehouse/production-orders-for-receipt", requireAuth, async (req, res) => {
-    try {
-      const orders = await storage.getProductionOrdersForReceipt();
-      res.json(orders);
-    } catch (error) {
-      console.error("Error fetching production orders for receipt:", error);
-      res.status(500).json({ message: "خطأ في جلب أوامر الإنتاج" });
-    }
-  });
+  app.get(
+    "/api/warehouse/production-orders-for-receipt",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const orders = await storage.getProductionOrdersForReceipt();
+        res.json(orders);
+      } catch (error) {
+        console.error("Error fetching production orders for receipt:", error);
+        res.status(500).json({ message: "خطأ في جلب أوامر الإنتاج" });
+      }
+    },
+  );
 
   // سندات استلام المواد التامة
-  app.get("/api/warehouse/vouchers/finished-goods-in", requireAuth, async (req, res) => {
-    try {
-      const vouchers = await storage.getFinishedGoodsVouchersIn();
-      res.json(vouchers);
-    } catch (error) {
-      console.error("Error fetching finished goods in vouchers:", error);
-      res.status(500).json({ message: "خطأ في جلب سندات استلام المواد التامة" });
-    }
-  });
-
-  app.post("/api/warehouse/vouchers/finished-goods-in", requireAuth, async (req: AuthRequest, res) => {
-    try {
-      const userId = getAuthUserId(req);
-      if (!userId) {
-        return res.status(401).json({ message: "غير مصرح" });
+  app.get(
+    "/api/warehouse/vouchers/finished-goods-in",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const vouchers = await storage.getFinishedGoodsVouchersIn();
+        res.json(vouchers);
+      } catch (error) {
+        console.error("Error fetching finished goods in vouchers:", error);
+        res
+          .status(500)
+          .json({ message: "خطأ في جلب سندات استلام المواد التامة" });
       }
+    },
+  );
 
-      const voucherData = {
-        ...req.body,
-        created_by: userId,
-      };
+  app.post(
+    "/api/warehouse/vouchers/finished-goods-in",
+    requireAuth,
+    async (req: AuthRequest, res) => {
+      try {
+        const userId = getAuthUserId(req);
+        if (!userId) {
+          return res.status(401).json({ message: "غير مصرح" });
+        }
 
-      const voucher = await storage.createFinishedGoodsVoucherIn(voucherData);
-      res.status(201).json(voucher);
-    } catch (error: any) {
-      console.error("Error creating finished goods in voucher:", error);
-      const validationPatterns = ["تتجاوز", "تم استلام كامل", "غير موجود"];
-      const isValidation = error.message && validationPatterns.some((p: string) => error.message.includes(p));
-      res.status(isValidation ? 400 : 500).json({ message: isValidation ? error.message : "خطأ في إنشاء سند استلام المواد التامة" });
-    }
-  });
+        const voucherData = {
+          ...req.body,
+          created_by: userId,
+        };
 
-  app.get("/api/warehouse/vouchers/finished-goods-in/:id", requireAuth, async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      const voucher = await storage.getFinishedGoodsVoucherInById(id);
-      if (!voucher) {
-        return res.status(404).json({ message: "السند غير موجود" });
+        const voucher = await storage.createFinishedGoodsVoucherIn(voucherData);
+        res.status(201).json(voucher);
+      } catch (error: any) {
+        console.error("Error creating finished goods in voucher:", error);
+        const validationPatterns = ["تتجاوز", "تم استلام كامل", "غير موجود"];
+        const isValidation =
+          error.message &&
+          validationPatterns.some((p: string) => error.message.includes(p));
+        res.status(isValidation ? 400 : 500).json({
+          message: isValidation
+            ? error.message
+            : "خطأ في إنشاء سند استلام المواد التامة",
+        });
       }
-      res.json(voucher);
-    } catch (error) {
-      console.error("Error fetching finished goods in voucher:", error);
-      res.status(500).json({ message: "خطأ في جلب سند استلام المواد التامة" });
-    }
-  });
+    },
+  );
 
-  app.delete("/api/warehouse/vouchers/finished-goods-in/:id", requireAuth, requirePermission('manage_warehouse'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      await storage.deleteFinishedGoodsVoucherIn(id);
-      res.json({ message: "تم حذف السند وإرجاع الكميات بنجاح" });
-    } catch (error: any) {
-      console.error("Error deleting finished goods in voucher:", error);
-      res.status(400).json({ message: "خطأ في حذف سند الاستلام" });
-    }
-  });
+  app.get(
+    "/api/warehouse/vouchers/finished-goods-in/:id",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const voucher = await storage.getFinishedGoodsVoucherInById(id);
+        if (!voucher) {
+          return res.status(404).json({ message: "السند غير موجود" });
+        }
+        res.json(voucher);
+      } catch (error) {
+        console.error("Error fetching finished goods in voucher:", error);
+        res
+          .status(500)
+          .json({ message: "خطأ في جلب سند استلام المواد التامة" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/warehouse/vouchers/finished-goods-in/:id",
+    requireAuth,
+    requirePermission("manage_warehouse"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        await storage.deleteFinishedGoodsVoucherIn(id);
+        res.json({ message: "تم حذف السند وإرجاع الكميات بنجاح" });
+      } catch (error: any) {
+        console.error("Error deleting finished goods in voucher:", error);
+        res.status(400).json({ message: "خطأ في حذف سند الاستلام" });
+      }
+    },
+  );
 
   // سندات إخراج المواد التامة
   app.get("/api/warehouse/delivery-hall", requireAuth, async (req, res) => {
@@ -11018,61 +13212,85 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.get("/api/warehouse/vouchers/finished-goods-out", requireAuth, async (req, res) => {
-    try {
-      const vouchers = await storage.getFinishedGoodsVouchersOut();
-      res.json(vouchers);
-    } catch (error) {
-      console.error("Error fetching finished goods out vouchers:", error);
-      res.status(500).json({ message: "خطأ في جلب سندات إخراج المواد التامة" });
-    }
-  });
-
-  app.post("/api/warehouse/vouchers/finished-goods-out", requireAuth, async (req: AuthRequest, res) => {
-    try {
-      const userId = getAuthUserId(req);
-      if (!userId) {
-        return res.status(401).json({ message: "غير مصرح" });
+  app.get(
+    "/api/warehouse/vouchers/finished-goods-out",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const vouchers = await storage.getFinishedGoodsVouchersOut();
+        res.json(vouchers);
+      } catch (error) {
+        console.error("Error fetching finished goods out vouchers:", error);
+        res
+          .status(500)
+          .json({ message: "خطأ في جلب سندات إخراج المواد التامة" });
       }
+    },
+  );
 
-      const voucherData = {
-        ...req.body,
-        created_by: userId,
-      };
+  app.post(
+    "/api/warehouse/vouchers/finished-goods-out",
+    requireAuth,
+    async (req: AuthRequest, res) => {
+      try {
+        const userId = getAuthUserId(req);
+        if (!userId) {
+          return res.status(401).json({ message: "غير مصرح" });
+        }
 
-      const voucher = await storage.createFinishedGoodsVoucherOut(voucherData);
-      res.status(201).json(voucher);
-    } catch (error: any) {
-      console.error("Error creating finished goods out voucher:", error);
-      const isValidation = error.message?.includes("تتجاوز");
-      res.status(isValidation ? 400 : 500).json({ message: isValidation ? error.message : "خطأ في إنشاء سند إخراج المواد التامة" });
-    }
-  });
+        const voucherData = {
+          ...req.body,
+          created_by: userId,
+        };
 
-  app.get("/api/warehouse/vouchers/finished-goods-out/:id", requireAuth, async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      const voucher = await storage.getFinishedGoodsVoucherOutById(id);
-      if (!voucher) {
-        return res.status(404).json({ message: "السند غير موجود" });
+        const voucher =
+          await storage.createFinishedGoodsVoucherOut(voucherData);
+        res.status(201).json(voucher);
+      } catch (error: any) {
+        console.error("Error creating finished goods out voucher:", error);
+        const isValidation = error.message?.includes("تتجاوز");
+        res.status(isValidation ? 400 : 500).json({
+          message: isValidation
+            ? error.message
+            : "خطأ في إنشاء سند إخراج المواد التامة",
+        });
       }
-      res.json(voucher);
-    } catch (error) {
-      console.error("Error fetching finished goods out voucher:", error);
-      res.status(500).json({ message: "خطأ في جلب سند إخراج المواد التامة" });
-    }
-  });
+    },
+  );
 
-  app.delete("/api/warehouse/vouchers/finished-goods-out/:id", requireAuth, requirePermission('manage_warehouse'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      await storage.deleteFinishedGoodsVoucherOut(id);
-      res.json({ message: "تم حذف السند بنجاح" });
-    } catch (error: any) {
-      console.error("Error deleting finished goods out voucher:", error);
-      res.status(500).json({ message: "خطأ في حذف سند التسليم" });
-    }
-  });
+  app.get(
+    "/api/warehouse/vouchers/finished-goods-out/:id",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const voucher = await storage.getFinishedGoodsVoucherOutById(id);
+        if (!voucher) {
+          return res.status(404).json({ message: "السند غير موجود" });
+        }
+        res.json(voucher);
+      } catch (error) {
+        console.error("Error fetching finished goods out voucher:", error);
+        res.status(500).json({ message: "خطأ في جلب سند إخراج المواد التامة" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/warehouse/vouchers/finished-goods-out/:id",
+    requireAuth,
+    requirePermission("manage_warehouse"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        await storage.deleteFinishedGoodsVoucherOut(id);
+        res.json({ message: "تم حذف السند بنجاح" });
+      } catch (error: any) {
+        console.error("Error deleting finished goods out voucher:", error);
+        res.status(500).json({ message: "خطأ في حذف سند التسليم" });
+      }
+    },
+  );
 
   // إحصائيات السندات
   app.get("/api/warehouse/vouchers/stats", requireAuth, async (req, res) => {
@@ -11097,103 +13315,138 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/warehouse/inventory-counts", requireAuth, async (req: AuthRequest, res) => {
-    try {
-      const userId = getAuthUserId(req);
-      if (!userId) {
-        return res.status(401).json({ message: "غير مصرح" });
+  app.post(
+    "/api/warehouse/inventory-counts",
+    requireAuth,
+    async (req: AuthRequest, res) => {
+      try {
+        const userId = getAuthUserId(req);
+        if (!userId) {
+          return res.status(401).json({ message: "غير مصرح" });
+        }
+
+        const countData = {
+          ...req.body,
+          counted_by: userId,
+        };
+
+        const count = await storage.createInventoryCount(countData);
+        res.status(201).json(count);
+      } catch (error: any) {
+        console.error("Error creating inventory count:", error);
+        res.status(500).json({ message: "خطأ في إنشاء عملية الجرد" });
       }
+    },
+  );
 
-      const countData = {
-        ...req.body,
-        counted_by: userId,
-      };
-
-      const count = await storage.createInventoryCount(countData);
-      res.status(201).json(count);
-    } catch (error: any) {
-      console.error("Error creating inventory count:", error);
-      res.status(500).json({ message: "خطأ في إنشاء عملية الجرد" });
-    }
-  });
-
-  app.get("/api/warehouse/inventory-counts/:id", requireAuth, async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      const count = await storage.getInventoryCountById(id);
-      if (!count) {
-        return res.status(404).json({ message: "عملية الجرد غير موجودة" });
+  app.get(
+    "/api/warehouse/inventory-counts/:id",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const count = await storage.getInventoryCountById(id);
+        if (!count) {
+          return res.status(404).json({ message: "عملية الجرد غير موجودة" });
+        }
+        res.json(count);
+      } catch (error) {
+        console.error("Error fetching inventory count:", error);
+        res.status(500).json({ message: "خطأ في جلب عملية الجرد" });
       }
-      res.json(count);
-    } catch (error) {
-      console.error("Error fetching inventory count:", error);
-      res.status(500).json({ message: "خطأ في جلب عملية الجرد" });
-    }
-  });
+    },
+  );
 
-  app.post("/api/warehouse/inventory-counts/:id/items", requireAuth, async (req: AuthRequest, res) => {
-    try {
-      const countId = parseRouteParam(req.params.id, "id");
-      const itemData = {
-        ...req.body,
-        count_id: countId,
-      };
+  app.post(
+    "/api/warehouse/inventory-counts/:id/items",
+    requireAuth,
+    async (req: AuthRequest, res) => {
+      try {
+        const countId = parseRouteParam(req.params.id, "id");
+        const itemData = {
+          ...req.body,
+          count_id: countId,
+        };
 
-      const item = await storage.createInventoryCountItem(itemData);
-      res.status(201).json(item);
-    } catch (error: any) {
-      console.error("Error adding inventory count item:", error);
-      res.status(500).json({ message: "خطأ في إضافة صنف للجرد" });
-    }
-  });
-
-  app.post("/api/warehouse/inventory-counts/:id/complete", requireAuth, async (req: AuthRequest, res) => {
-    try {
-      const userId = getAuthUserId(req);
-      if (!userId) {
-        return res.status(401).json({ message: "غير مصرح" });
+        const item = await storage.createInventoryCountItem(itemData);
+        res.status(201).json(item);
+      } catch (error: any) {
+        console.error("Error adding inventory count item:", error);
+        res.status(500).json({ message: "خطأ في إضافة صنف للجرد" });
       }
+    },
+  );
 
-      const id = parseRouteParam(req.params.id, "id");
-      const count = await storage.completeInventoryCount(id, userId);
-      res.json(count);
-    } catch (error: any) {
-      console.error("Error completing inventory count:", error);
-      res.status(500).json({ message: "خطأ في إتمام عملية الجرد" });
-    }
-  });
+  app.post(
+    "/api/warehouse/inventory-counts/:id/complete",
+    requireAuth,
+    async (req: AuthRequest, res) => {
+      try {
+        const userId = getAuthUserId(req);
+        if (!userId) {
+          return res.status(401).json({ message: "غير مصرح" });
+        }
+
+        const id = parseRouteParam(req.params.id, "id");
+        const count = await storage.completeInventoryCount(id, userId);
+        res.json(count);
+      } catch (error: any) {
+        console.error("Error completing inventory count:", error);
+        res.status(500).json({ message: "خطأ في إتمام عملية الجرد" });
+      }
+    },
+  );
 
   // البحث بالباركود
-  app.get("/api/warehouse/barcode-lookup/:barcode", requireAuth, async (req, res) => {
-    try {
-      const barcode = req.params.barcode;
-      const result = await storage.lookupByBarcode(barcode);
-      if (!result) {
-        return res.status(404).json({ message: "الباركود غير موجود" });
+  app.get(
+    "/api/warehouse/barcode-lookup/:barcode",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const barcode = req.params.barcode;
+        const result = await storage.lookupByBarcode(barcode);
+        if (!result) {
+          return res.status(404).json({ message: "الباركود غير موجود" });
+        }
+        res.json(result);
+      } catch (error) {
+        console.error("Error looking up barcode:", error);
+        res.status(500).json({ message: "خطأ في البحث بالباركود" });
       }
-      res.json(result);
-    } catch (error) {
-      console.error("Error looking up barcode:", error);
-      res.status(500).json({ message: "خطأ في البحث بالباركود" });
-    }
-  });
+    },
+  );
 
   // توليد رقم سند جديد
-  app.get("/api/warehouse/vouchers/next-number/:type", requireAuth, async (req, res) => {
-    try {
-      const type = req.params.type as "RM-Rec" | "RM-Del" | "FP-Rec" | "FP-Del" | "RMI" | "RMO" | "FGI" | "FGO" | "IC";
-      const nextNumber = await storage.getNextVoucherNumber(type);
-      res.json({ next_number: nextNumber });
-    } catch (error) {
-      console.error("Error generating next voucher number:", error);
-      res.status(500).json({ message: "خطأ في توليد رقم السند" });
-    }
-  });
+  app.get(
+    "/api/warehouse/vouchers/next-number/:type",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const type = req.params.type as
+          | "RM-Rec"
+          | "RM-Del"
+          | "FP-Rec"
+          | "FP-Del"
+          | "RMI"
+          | "RMO"
+          | "FGI"
+          | "FGO"
+          | "IC";
+        const nextNumber = await storage.getNextVoucherNumber(type);
+        res.json({ next_number: nextNumber });
+      } catch (error) {
+        console.error("Error generating next voucher number:", error);
+        res.status(500).json({ message: "خطأ في توليد رقم السند" });
+      }
+    },
+  );
 
   // ============ Suppliers API Routes ============
   app.get("/api/suppliers", requireAuth, async (req, res) => {
     try {
-      const result = await db.execute(sql`SELECT * FROM suppliers WHERE is_active = true ORDER BY name_ar`);
+      const result = await db.execute(
+        sql`SELECT * FROM suppliers WHERE is_active = true ORDER BY name_ar`,
+      );
       res.json(result.rows || []);
     } catch (error) {
       console.error("Error fetching suppliers:", error);
@@ -11201,67 +13454,92 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/suppliers", requireAuth, requirePermission('manage_warehouse'), async (req, res) => {
-    try {
-      const { name, name_ar, phone, email, address, contact_person } = req.body;
-      const trimmedName = typeof name === 'string' ? name.trim() : '';
-      const trimmedNameAr = typeof name_ar === 'string' ? name_ar.trim() : '';
-      if (!trimmedName || !trimmedNameAr) {
-        return res.status(400).json({ message: "اسم المورد بالعربية والإنجليزية مطلوب" });
-      }
-      const result = await db.execute(sql`
+  app.post(
+    "/api/suppliers",
+    requireAuth,
+    requirePermission("manage_warehouse"),
+    async (req, res) => {
+      try {
+        const { name, name_ar, phone, email, address, contact_person } =
+          req.body;
+        const trimmedName = typeof name === "string" ? name.trim() : "";
+        const trimmedNameAr = typeof name_ar === "string" ? name_ar.trim() : "";
+        if (!trimmedName || !trimmedNameAr) {
+          return res
+            .status(400)
+            .json({ message: "اسم المورد بالعربية والإنجليزية مطلوب" });
+        }
+        const result = await db.execute(sql`
         INSERT INTO suppliers (name, name_ar, phone, email, address, contact_person)
         VALUES (${trimmedName}, ${trimmedNameAr}, ${phone || null}, ${email || null}, ${address || null}, ${contact_person || null})
         RETURNING *
       `);
-      res.status(201).json(result.rows[0]);
-    } catch (error) {
-      console.error("Error creating supplier:", error);
-      res.status(500).json({ message: "خطأ في إنشاء المورد" });
-    }
-  });
-
-  app.put("/api/suppliers/:id", requireAuth, requirePermission('manage_warehouse'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      const { name, name_ar, phone, email, address, contact_person } = req.body;
-      const trimmedName = typeof name === 'string' ? name.trim() : '';
-      const trimmedNameAr = typeof name_ar === 'string' ? name_ar.trim() : '';
-      if (!trimmedName || !trimmedNameAr) {
-        return res.status(400).json({ message: "اسم المورد بالعربية والإنجليزية مطلوب" });
+        res.status(201).json(result.rows[0]);
+      } catch (error) {
+        console.error("Error creating supplier:", error);
+        res.status(500).json({ message: "خطأ في إنشاء المورد" });
       }
-      const result = await db.execute(sql`
+    },
+  );
+
+  app.put(
+    "/api/suppliers/:id",
+    requireAuth,
+    requirePermission("manage_warehouse"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const { name, name_ar, phone, email, address, contact_person } =
+          req.body;
+        const trimmedName = typeof name === "string" ? name.trim() : "";
+        const trimmedNameAr = typeof name_ar === "string" ? name_ar.trim() : "";
+        if (!trimmedName || !trimmedNameAr) {
+          return res
+            .status(400)
+            .json({ message: "اسم المورد بالعربية والإنجليزية مطلوب" });
+        }
+        const result = await db.execute(sql`
         UPDATE suppliers 
         SET name = ${trimmedName}, name_ar = ${trimmedNameAr}, phone = ${phone || null}, 
             email = ${email || null}, address = ${address || null}, contact_person = ${contact_person || null}
         WHERE id = ${id}
         RETURNING *
       `);
-      if (!result.rows[0]) {
-        return res.status(404).json({ message: "المورد غير موجود" });
+        if (!result.rows[0]) {
+          return res.status(404).json({ message: "المورد غير موجود" });
+        }
+        res.json(result.rows[0]);
+      } catch (error) {
+        console.error("Error updating supplier:", error);
+        res.status(500).json({ message: "خطأ في تحديث المورد" });
       }
-      res.json(result.rows[0]);
-    } catch (error) {
-      console.error("Error updating supplier:", error);
-      res.status(500).json({ message: "خطأ في تحديث المورد" });
-    }
-  });
+    },
+  );
 
-  app.delete("/api/suppliers/:id", requireAuth, requirePermission('manage_warehouse'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      await db.execute(sql`UPDATE suppliers SET is_active = false WHERE id = ${id}`);
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error deleting supplier:", error);
-      res.status(500).json({ message: "خطأ في حذف المورد" });
-    }
-  });
+  app.delete(
+    "/api/suppliers/:id",
+    requireAuth,
+    requirePermission("manage_warehouse"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        await db.execute(
+          sql`UPDATE suppliers SET is_active = false WHERE id = ${id}`,
+        );
+        res.json({ success: true });
+      } catch (error) {
+        console.error("Error deleting supplier:", error);
+        res.status(500).json({ message: "خطأ في حذف المورد" });
+      }
+    },
+  );
 
   // ============ Units API Routes ============
   app.get("/api/units", requireAuth, async (req, res) => {
     try {
-      const result = await db.execute(sql`SELECT * FROM units WHERE is_active = true ORDER BY name_ar`);
+      const result = await db.execute(
+        sql`SELECT * FROM units WHERE is_active = true ORDER BY name_ar`,
+      );
       res.json(result.rows || []);
     } catch (error) {
       console.error("Error fetching units:", error);
@@ -11269,73 +13547,106 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/units", requireAuth, requirePermission('manage_warehouse', 'manage_definitions'), async (req, res) => {
-    try {
-      const { name, name_ar, symbol, conversion_factor } = req.body;
-      const trimmedName = typeof name === 'string' ? name.trim() : '';
-      const trimmedNameAr = typeof name_ar === 'string' ? name_ar.trim() : '';
-      if (!trimmedName || !trimmedNameAr) {
-        return res.status(400).json({ message: "اسم الوحدة بالعربية والإنجليزية مطلوب" });
-      }
-      const parsedFactor = parseFloat(conversion_factor);
-      if (conversion_factor !== undefined && conversion_factor !== null && (isNaN(parsedFactor) || parsedFactor <= 0)) {
-        return res.status(400).json({ message: "معامل التحويل يجب أن يكون رقماً موجباً" });
-      }
-      const result = await db.execute(sql`
+  app.post(
+    "/api/units",
+    requireAuth,
+    requirePermission("manage_warehouse", "manage_definitions"),
+    async (req, res) => {
+      try {
+        const { name, name_ar, symbol, conversion_factor } = req.body;
+        const trimmedName = typeof name === "string" ? name.trim() : "";
+        const trimmedNameAr = typeof name_ar === "string" ? name_ar.trim() : "";
+        if (!trimmedName || !trimmedNameAr) {
+          return res
+            .status(400)
+            .json({ message: "اسم الوحدة بالعربية والإنجليزية مطلوب" });
+        }
+        const parsedFactor = parseFloat(conversion_factor);
+        if (
+          conversion_factor !== undefined &&
+          conversion_factor !== null &&
+          (isNaN(parsedFactor) || parsedFactor <= 0)
+        ) {
+          return res
+            .status(400)
+            .json({ message: "معامل التحويل يجب أن يكون رقماً موجباً" });
+        }
+        const result = await db.execute(sql`
         INSERT INTO units (name, name_ar, symbol, conversion_factor)
         VALUES (${trimmedName}, ${trimmedNameAr}, ${symbol || null}, ${parsedFactor > 0 ? parsedFactor : 1})
         RETURNING *
       `);
-      res.status(201).json(result.rows[0]);
-    } catch (error) {
-      console.error("Error creating unit:", error);
-      res.status(500).json({ message: "خطأ في إنشاء الوحدة" });
-    }
-  });
+        res.status(201).json(result.rows[0]);
+      } catch (error) {
+        console.error("Error creating unit:", error);
+        res.status(500).json({ message: "خطأ في إنشاء الوحدة" });
+      }
+    },
+  );
 
-  app.put("/api/units/:id", requireAuth, requirePermission('manage_warehouse', 'manage_definitions'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      const { name, name_ar, symbol, conversion_factor } = req.body;
-      const trimmedName = typeof name === 'string' ? name.trim() : '';
-      const trimmedNameAr = typeof name_ar === 'string' ? name_ar.trim() : '';
-      if (!trimmedName || !trimmedNameAr) {
-        return res.status(400).json({ message: "اسم الوحدة بالعربية والإنجليزية مطلوب" });
-      }
-      const parsedFactor = parseFloat(conversion_factor);
-      if (conversion_factor !== undefined && conversion_factor !== null && (isNaN(parsedFactor) || parsedFactor <= 0)) {
-        return res.status(400).json({ message: "معامل التحويل يجب أن يكون رقماً موجباً" });
-      }
-      const result = await db.execute(sql`
+  app.put(
+    "/api/units/:id",
+    requireAuth,
+    requirePermission("manage_warehouse", "manage_definitions"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const { name, name_ar, symbol, conversion_factor } = req.body;
+        const trimmedName = typeof name === "string" ? name.trim() : "";
+        const trimmedNameAr = typeof name_ar === "string" ? name_ar.trim() : "";
+        if (!trimmedName || !trimmedNameAr) {
+          return res
+            .status(400)
+            .json({ message: "اسم الوحدة بالعربية والإنجليزية مطلوب" });
+        }
+        const parsedFactor = parseFloat(conversion_factor);
+        if (
+          conversion_factor !== undefined &&
+          conversion_factor !== null &&
+          (isNaN(parsedFactor) || parsedFactor <= 0)
+        ) {
+          return res
+            .status(400)
+            .json({ message: "معامل التحويل يجب أن يكون رقماً موجباً" });
+        }
+        const result = await db.execute(sql`
         UPDATE units 
         SET name = ${trimmedName}, name_ar = ${trimmedNameAr}, symbol = ${symbol || null}, 
             conversion_factor = ${parsedFactor > 0 ? parsedFactor : 1}
         WHERE id = ${id}
         RETURNING *
       `);
-      if (!result.rows[0]) {
-        return res.status(404).json({ message: "الوحدة غير موجودة" });
+        if (!result.rows[0]) {
+          return res.status(404).json({ message: "الوحدة غير موجودة" });
+        }
+        res.json(result.rows[0]);
+      } catch (error) {
+        console.error("Error updating unit:", error);
+        res.status(500).json({ message: "خطأ في تحديث الوحدة" });
       }
-      res.json(result.rows[0]);
-    } catch (error) {
-      console.error("Error updating unit:", error);
-      res.status(500).json({ message: "خطأ في تحديث الوحدة" });
-    }
-  });
+    },
+  );
 
-  app.delete("/api/units/:id", requireAuth, requirePermission('manage_warehouse', 'manage_definitions'), async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      await db.execute(sql`UPDATE units SET is_active = false WHERE id = ${id}`);
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error deleting unit:", error);
-      res.status(500).json({ message: "خطأ في حذف الوحدة" });
-    }
-  });
+  app.delete(
+    "/api/units/:id",
+    requireAuth,
+    requirePermission("manage_warehouse", "manage_definitions"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        await db.execute(
+          sql`UPDATE units SET is_active = false WHERE id = ${id}`,
+        );
+        res.json({ success: true });
+      } catch (error) {
+        console.error("Error deleting unit:", error);
+        res.status(500).json({ message: "خطأ في حذف الوحدة" });
+      }
+    },
+  );
 
   // ============ Excel Import/Export API Routes ============
-  
+
   // تصدير الأصناف إلى Excel
   app.get("/api/warehouse/export/items", requireAuth, async (req, res) => {
     try {
@@ -11346,12 +13657,18 @@ Do not include quotes or explanations.`;
         LEFT JOIN categories cat ON itm.category_id = cat.id
         WHERE itm.status = 'active' ORDER BY itm.name_ar
       `);
-      
+
       const wb = new ExcelJS.Workbook();
       addJsonSheet(wb, result.rows || [], "الأصناف");
       const buffer = Buffer.from(await wb.xlsx.writeBuffer());
-      res.setHeader("Content-Disposition", "attachment; filename=inventory_items.xlsx");
-      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=inventory_items.xlsx",
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
       res.send(buffer);
     } catch (error) {
       console.error("Error exporting items:", error);
@@ -11366,12 +13683,18 @@ Do not include quotes or explanations.`;
         SELECT id, name, name_ar, phone, email, address, contact_person
         FROM suppliers WHERE is_active = true ORDER BY name_ar
       `);
-      
+
       const wb = new ExcelJS.Workbook();
       addJsonSheet(wb, result.rows || [], "الموردين");
       const buffer = Buffer.from(await wb.xlsx.writeBuffer());
-      res.setHeader("Content-Disposition", "attachment; filename=suppliers.xlsx");
-      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=suppliers.xlsx",
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
       res.send(buffer);
     } catch (error) {
       console.error("Error exporting suppliers:", error);
@@ -11380,138 +13703,181 @@ Do not include quotes or explanations.`;
   });
 
   // تصدير سندات الإدخال/الإخراج إلى Excel - باستخدام استعلامات آمنة
-  app.get("/api/warehouse/export/vouchers/:type", requireAuth, async (req, res) => {
-    try {
-      const type = req.params.type;
-      let result;
-      let sheetName = "";
-      
-      switch(type) {
-        case "raw-material-in":
-          result = await db.execute(sql`SELECT * FROM raw_material_vouchers_in ORDER BY created_at DESC`);
-          sheetName = "سندات إدخال مواد خام";
-          break;
-        case "raw-material-out":
-          result = await db.execute(sql`SELECT * FROM raw_material_vouchers_out ORDER BY created_at DESC`);
-          sheetName = "سندات إخراج مواد خام";
-          break;
-        case "finished-goods-in":
-          result = await db.execute(sql`SELECT * FROM finished_goods_vouchers_in ORDER BY created_at DESC`);
-          sheetName = "سندات استلام مواد تامة";
-          break;
-        case "finished-goods-out":
-          result = await db.execute(sql`SELECT * FROM finished_goods_vouchers_out ORDER BY created_at DESC`);
-          sheetName = "سندات إخراج مواد تامة";
-          break;
-        default:
-          return res.status(400).json({ message: "نوع السند غير صحيح" });
+  app.get(
+    "/api/warehouse/export/vouchers/:type",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const type = req.params.type;
+        let result;
+        let sheetName = "";
+
+        switch (type) {
+          case "raw-material-in":
+            result = await db.execute(
+              sql`SELECT * FROM raw_material_vouchers_in ORDER BY created_at DESC`,
+            );
+            sheetName = "سندات إدخال مواد خام";
+            break;
+          case "raw-material-out":
+            result = await db.execute(
+              sql`SELECT * FROM raw_material_vouchers_out ORDER BY created_at DESC`,
+            );
+            sheetName = "سندات إخراج مواد خام";
+            break;
+          case "finished-goods-in":
+            result = await db.execute(
+              sql`SELECT * FROM finished_goods_vouchers_in ORDER BY created_at DESC`,
+            );
+            sheetName = "سندات استلام مواد تامة";
+            break;
+          case "finished-goods-out":
+            result = await db.execute(
+              sql`SELECT * FROM finished_goods_vouchers_out ORDER BY created_at DESC`,
+            );
+            sheetName = "سندات إخراج مواد تامة";
+            break;
+          default:
+            return res.status(400).json({ message: "نوع السند غير صحيح" });
+        }
+
+        const wb = new ExcelJS.Workbook();
+        addJsonSheet(wb, result.rows || [], sheetName);
+        const buffer = Buffer.from(await wb.xlsx.writeBuffer());
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename=${type}_vouchers.xlsx`,
+        );
+        res.setHeader(
+          "Content-Type",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        );
+        res.send(buffer);
+      } catch (error) {
+        console.error("Error exporting vouchers:", error);
+        res.status(500).json({ message: "خطأ في تصدير السندات" });
       }
-      
-      const wb = new ExcelJS.Workbook();
-      addJsonSheet(wb, result.rows || [], sheetName);
-      const buffer = Buffer.from(await wb.xlsx.writeBuffer());
-      res.setHeader("Content-Disposition", `attachment; filename=${type}_vouchers.xlsx`);
-      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-      res.send(buffer);
-    } catch (error) {
-      console.error("Error exporting vouchers:", error);
-      res.status(500).json({ message: "خطأ في تصدير السندات" });
-    }
-  });
+    },
+  );
 
   // استيراد أرصدة افتتاحية من Excel
-  app.post("/api/warehouse/import/opening-balance", requireAuth, upload.single("file"), async (req: AuthRequest, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ message: "لم يتم رفع ملف" });
-      }
+  app.post(
+    "/api/warehouse/import/opening-balance",
+    requireAuth,
+    upload.single("file"),
+    async (req: AuthRequest, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "لم يتم رفع ملف" });
+        }
 
-      const data = await parseExcelBuffer(req.file.buffer);
+        const data = await parseExcelBuffer(req.file.buffer);
 
-      let imported = 0;
-      let errors: string[] = [];
+        let imported = 0;
+        const errors: string[] = [];
 
-      for (const row of data) {
-        try {
-          const code = row["الكود"] || row["code"] || row["Code"];
-          const quantity = parseFloat(row["الكمية"] || row["quantity"] || row["Quantity"] || 0);
-          const unitCost = parseFloat(row["سعر_الوحدة"] || row["unit_cost"] || row["UnitCost"] || 0);
+        for (const row of data) {
+          try {
+            const code = row["الكود"] || row["code"] || row["Code"];
+            const quantity = parseFloat(
+              row["الكمية"] || row["quantity"] || row["Quantity"] || 0,
+            );
+            const unitCost = parseFloat(
+              row["سعر_الوحدة"] || row["unit_cost"] || row["UnitCost"] || 0,
+            );
 
-          if (!code) {
-            errors.push(`سطر بدون كود صنف`);
-            continue;
-          }
+            if (!code) {
+              errors.push(`سطر بدون كود صنف`);
+              continue;
+            }
 
-          await db.execute(sql`
+            await db.execute(sql`
             UPDATE inventory 
             SET current_stock = ${quantity}, cost_per_unit = ${unitCost}, last_updated = NOW()
             WHERE item_id = ${code}
           `);
-          imported++;
-        } catch (err: any) {
-          errors.push(`خطأ في الصنف ${row["الكود"] || row["code"]}: ${err.message}`);
+            imported++;
+          } catch (err: any) {
+            errors.push(
+              `خطأ في الصنف ${row["الكود"] || row["code"]}: ${err.message}`,
+            );
+          }
         }
-      }
 
-      res.json({
-        success: true,
-        message: `تم استيراد ${imported} صنف بنجاح`,
-        imported,
-        errors: errors.length > 0 ? errors : undefined
-      });
-    } catch (error: any) {
-      console.error("Error importing opening balance:", error);
-      res.status(500).json({ message: "خطأ في استيراد الأرصدة الافتتاحية" });
-    }
-  });
+        res.json({
+          success: true,
+          message: `تم استيراد ${imported} صنف بنجاح`,
+          imported,
+          errors: errors.length > 0 ? errors : undefined,
+        });
+      } catch (error: any) {
+        console.error("Error importing opening balance:", error);
+        res.status(500).json({ message: "خطأ في استيراد الأرصدة الافتتاحية" });
+      }
+    },
+  );
 
   // استيراد موردين من Excel
-  app.post("/api/warehouse/import/suppliers", requireAuth, upload.single("file"), async (req: AuthRequest, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ message: "لم يتم رفع ملف" });
-      }
+  app.post(
+    "/api/warehouse/import/suppliers",
+    requireAuth,
+    upload.single("file"),
+    async (req: AuthRequest, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "لم يتم رفع ملف" });
+        }
 
-      const data = await parseExcelBuffer(req.file.buffer);
+        const data = await parseExcelBuffer(req.file.buffer);
 
-      let imported = 0;
-      let errors: string[] = [];
+        let imported = 0;
+        const errors: string[] = [];
 
-      for (const row of data) {
-        try {
-          const name = row["الاسم_انجليزي"] || row["name"] || row["Name"] || "";
-          const name_ar = row["الاسم_عربي"] || row["name_ar"] || row["NameAr"] || "";
-          const phone = row["الهاتف"] || row["phone"] || row["Phone"] || null;
-          const email = row["البريد"] || row["email"] || row["Email"] || null;
-          const address = row["العنوان"] || row["address"] || row["Address"] || null;
-          const contact_person = row["جهة_الاتصال"] || row["contact_person"] || row["ContactPerson"] || null;
+        for (const row of data) {
+          try {
+            const name =
+              row["الاسم_انجليزي"] || row["name"] || row["Name"] || "";
+            const name_ar =
+              row["الاسم_عربي"] || row["name_ar"] || row["NameAr"] || "";
+            const phone = row["الهاتف"] || row["phone"] || row["Phone"] || null;
+            const email = row["البريد"] || row["email"] || row["Email"] || null;
+            const address =
+              row["العنوان"] || row["address"] || row["Address"] || null;
+            const contact_person =
+              row["جهة_الاتصال"] ||
+              row["contact_person"] ||
+              row["ContactPerson"] ||
+              null;
 
-          if (!name_ar) {
-            errors.push(`سطر بدون اسم مورد`);
-            continue;
-          }
+            if (!name_ar) {
+              errors.push(`سطر بدون اسم مورد`);
+              continue;
+            }
 
-          await db.execute(sql`
+            await db.execute(sql`
             INSERT INTO suppliers (name, name_ar, phone, email, address, contact_person)
             VALUES (${name}, ${name_ar}, ${phone}, ${email}, ${address}, ${contact_person})
           `);
-          imported++;
-        } catch (err: any) {
-          errors.push(`خطأ في المورد ${row["الاسم_عربي"] || row["name_ar"]}: ${err.message}`);
+            imported++;
+          } catch (err: any) {
+            errors.push(
+              `خطأ في المورد ${row["الاسم_عربي"] || row["name_ar"]}: ${err.message}`,
+            );
+          }
         }
-      }
 
-      res.json({
-        success: true,
-        message: `تم استيراد ${imported} مورد بنجاح`,
-        imported,
-        errors: errors.length > 0 ? errors : undefined
-      });
-    } catch (error: any) {
-      console.error("Error importing suppliers:", error);
-      res.status(500).json({ message: "خطأ في استيراد الموردين" });
-    }
-  });
+        res.json({
+          success: true,
+          message: `تم استيراد ${imported} مورد بنجاح`,
+          imported,
+          errors: errors.length > 0 ? errors : undefined,
+        });
+      } catch (error: any) {
+        console.error("Error importing suppliers:", error);
+        res.status(500).json({ message: "خطأ في استيراد الموردين" });
+      }
+    },
+  );
 
   // تحميل قالب Excel فارغ
   app.get("/api/warehouse/template/:type", requireAuth, async (req, res) => {
@@ -11519,30 +13885,52 @@ Do not include quotes or explanations.`;
       const type = req.params.type;
       let headers: string[] = [];
       let sheetName = "";
-      
-      switch(type) {
+
+      switch (type) {
         case "opening-balance":
           headers = ["الكود", "الكمية", "سعر_الوحدة"];
           sheetName = "أرصدة افتتاحية";
           break;
         case "suppliers":
-          headers = ["الاسم_عربي", "الاسم_انجليزي", "الهاتف", "البريد", "العنوان", "جهة_الاتصال"];
+          headers = [
+            "الاسم_عربي",
+            "الاسم_انجليزي",
+            "الهاتف",
+            "البريد",
+            "العنوان",
+            "جهة_الاتصال",
+          ];
           sheetName = "الموردين";
           break;
         case "items":
-          headers = ["الكود", "الاسم_عربي", "الاسم_انجليزي", "الباركود", "الوحدة", "التصنيف", "الحد_الأدنى", "الحد_الأقصى"];
+          headers = [
+            "الكود",
+            "الاسم_عربي",
+            "الاسم_انجليزي",
+            "الباركود",
+            "الوحدة",
+            "التصنيف",
+            "الحد_الأدنى",
+            "الحد_الأقصى",
+          ];
           sheetName = "الأصناف";
           break;
         default:
           return res.status(400).json({ message: "نوع القالب غير صحيح" });
       }
-      
+
       const wb = new ExcelJS.Workbook();
       const ws = wb.addWorksheet(sheetName);
       ws.addRow(headers);
       const buffer = Buffer.from(await wb.xlsx.writeBuffer());
-      res.setHeader("Content-Disposition", `attachment; filename=${type}_template.xlsx`);
-      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename=${type}_template.xlsx`,
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
       res.send(buffer);
     } catch (error) {
       console.error("Error generating template:", error);
@@ -11551,15 +13939,24 @@ Do not include quotes or explanations.`;
   });
 
   // ============ Warehouse Reports API Routes ============
-  
+
   // تقرير حركات المخزون - باستخدام استعلامات معلمة آمنة
   app.get("/api/warehouse/reports/movements", requireAuth, async (req, res) => {
     try {
-      const startDate = typeof req.query.startDate === 'string' ? req.query.startDate : null;
-      const endDate = typeof req.query.endDate === 'string' ? req.query.endDate : null;
-      const itemId = typeof req.query.itemId === 'string' ? parseInt(req.query.itemId) : null;
-      const movementType = typeof req.query.type === 'string' && ['in', 'out'].includes(req.query.type) ? req.query.type : null;
-      
+      const startDate =
+        typeof req.query.startDate === "string" ? req.query.startDate : null;
+      const endDate =
+        typeof req.query.endDate === "string" ? req.query.endDate : null;
+      const itemId =
+        typeof req.query.itemId === "string"
+          ? parseInt(req.query.itemId)
+          : null;
+      const movementType =
+        typeof req.query.type === "string" &&
+        ["in", "out"].includes(req.query.type)
+          ? req.query.type
+          : null;
+
       const result = await db.execute(sql`
         SELECT 
           im.id,
@@ -11591,12 +13988,16 @@ Do not include quotes or explanations.`;
   });
 
   // تقرير الأرصدة الحالية - باستخدام استعلامات معلمة آمنة
-  app.get("/api/warehouse/reports/stock-levels", requireAuth, async (req, res) => {
-    try {
-      const category = typeof req.query.category === 'string' ? req.query.category : null;
-      const belowMinimum = req.query.belowMinimum === "true";
-      
-      const result = await db.execute(sql`
+  app.get(
+    "/api/warehouse/reports/stock-levels",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const category =
+          typeof req.query.category === "string" ? req.query.category : null;
+        const belowMinimum = req.query.belowMinimum === "true";
+
+        const result = await db.execute(sql`
         SELECT 
           inv.id,
           itm.code,
@@ -11621,12 +14022,13 @@ Do not include quotes or explanations.`;
           AND (${belowMinimum} = false OR inv.current_stock <= inv.min_stock)
         ORDER BY itm.name_ar
       `);
-      res.json(result.rows || []);
-    } catch (error) {
-      console.error("Error fetching stock levels report:", error);
-      res.status(500).json({ message: "خطأ في جلب تقرير الأرصدة" });
-    }
-  });
+        res.json(result.rows || []);
+      } catch (error) {
+        console.error("Error fetching stock levels report:", error);
+        res.status(500).json({ message: "خطأ في جلب تقرير الأرصدة" });
+      }
+    },
+  );
 
   // تقرير التنبيهات (أصناف تحت الحد الأدنى)
   app.get("/api/warehouse/reports/alerts", requireAuth, async (req, res) => {
@@ -11657,18 +14059,27 @@ Do not include quotes or explanations.`;
   // ملخص إحصائيات المستودع
   app.get("/api/warehouse/reports/summary", requireAuth, async (req, res) => {
     try {
-      const [itemsCount, suppliersCount, lowStockCount, totalValue] = await Promise.all([
-        db.execute(sql`SELECT COUNT(*) as count FROM inventory inv JOIN items itm ON inv.item_id = itm.id WHERE itm.status = 'active'`),
-        db.execute(sql`SELECT COUNT(*) as count FROM suppliers WHERE is_active = true`),
-        db.execute(sql`SELECT COUNT(*) as count FROM inventory inv JOIN items itm ON inv.item_id = itm.id WHERE itm.status = 'active' AND inv.current_stock < inv.min_stock`),
-        db.execute(sql`SELECT COALESCE(SUM(inv.current_stock * COALESCE(inv.cost_per_unit, 0)), 0) as total FROM inventory inv JOIN items itm ON inv.item_id = itm.id WHERE itm.status = 'active'`)
-      ]);
-      
+      const [itemsCount, suppliersCount, lowStockCount, totalValue] =
+        await Promise.all([
+          db.execute(
+            sql`SELECT COUNT(*) as count FROM inventory inv JOIN items itm ON inv.item_id = itm.id WHERE itm.status = 'active'`,
+          ),
+          db.execute(
+            sql`SELECT COUNT(*) as count FROM suppliers WHERE is_active = true`,
+          ),
+          db.execute(
+            sql`SELECT COUNT(*) as count FROM inventory inv JOIN items itm ON inv.item_id = itm.id WHERE itm.status = 'active' AND inv.current_stock < inv.min_stock`,
+          ),
+          db.execute(
+            sql`SELECT COALESCE(SUM(inv.current_stock * COALESCE(inv.cost_per_unit, 0)), 0) as total FROM inventory inv JOIN items itm ON inv.item_id = itm.id WHERE itm.status = 'active'`,
+          ),
+        ]);
+
       res.json({
         totalItems: (itemsCount.rows[0] as any)?.count || 0,
         totalSuppliers: (suppliersCount.rows[0] as any)?.count || 0,
         lowStockItems: (lowStockCount.rows[0] as any)?.count || 0,
-        totalInventoryValue: (totalValue.rows[0] as any)?.total || 0
+        totalInventoryValue: (totalValue.rows[0] as any)?.total || 0,
       });
     } catch (error) {
       console.error("Error fetching warehouse summary:", error);
@@ -11687,63 +14098,107 @@ Do not include quotes or explanations.`;
       res.json({ data: settings, success: true });
     } catch (error) {
       console.error("Error fetching notification event settings:", error);
-      res.status(500).json({ message: "خطأ في جلب إعدادات أحداث الإشعارات", success: false });
+      res.status(500).json({
+        message: "خطأ في جلب إعدادات أحداث الإشعارات",
+        success: false,
+      });
     }
   });
 
   // Get notification event setting by ID
-  app.get("/api/notification-event-settings/:id", requireAuth, async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      const setting = await storage.getNotificationEventSettingById(id);
-      if (!setting) {
-        return res.status(404).json({ message: "إعداد الحدث غير موجود", success: false });
+  app.get(
+    "/api/notification-event-settings/:id",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const setting = await storage.getNotificationEventSettingById(id);
+        if (!setting) {
+          return res
+            .status(404)
+            .json({ message: "إعداد الحدث غير موجود", success: false });
+        }
+        res.json({ data: setting, success: true });
+      } catch (error) {
+        console.error("Error fetching notification event setting:", error);
+        res
+          .status(500)
+          .json({ message: "خطأ في جلب إعداد الحدث", success: false });
       }
-      res.json({ data: setting, success: true });
-    } catch (error) {
-      console.error("Error fetching notification event setting:", error);
-      res.status(500).json({ message: "خطأ في جلب إعداد الحدث", success: false });
-    }
-  });
+    },
+  );
 
   // Create notification event setting
-  app.post("/api/notification-event-settings", requireAuth, requireAdmin, async (req, res) => {
-    try {
-      const userId = req.user?.id;
-      const settingData = { ...req.body, created_by: userId };
-      const setting = await storage.createNotificationEventSetting(settingData);
-      res.status(201).json({ data: setting, message: "تم إنشاء إعداد الحدث بنجاح", success: true });
-    } catch (error) {
-      console.error("Error creating notification event setting:", error);
-      res.status(500).json({ message: "خطأ في إنشاء إعداد الحدث", success: false });
-    }
-  });
+  app.post(
+    "/api/notification-event-settings",
+    requireAuth,
+    requireAdmin,
+    async (req, res) => {
+      try {
+        const userId = req.user?.id;
+        const settingData = { ...req.body, created_by: userId };
+        const setting =
+          await storage.createNotificationEventSetting(settingData);
+        res.status(201).json({
+          data: setting,
+          message: "تم إنشاء إعداد الحدث بنجاح",
+          success: true,
+        });
+      } catch (error) {
+        console.error("Error creating notification event setting:", error);
+        res
+          .status(500)
+          .json({ message: "خطأ في إنشاء إعداد الحدث", success: false });
+      }
+    },
+  );
 
   // Update notification event setting
-  app.patch("/api/notification-event-settings/:id", requireAuth, requireAdmin, async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      const userId = req.user?.id;
-      const updates = { ...req.body, updated_by: userId };
-      const setting = await storage.updateNotificationEventSetting(id, updates);
-      res.json({ data: setting, message: "تم تحديث إعداد الحدث بنجاح", success: true });
-    } catch (error) {
-      console.error("Error updating notification event setting:", error);
-      res.status(500).json({ message: "خطأ في تحديث إعداد الحدث", success: false });
-    }
-  });
+  app.patch(
+    "/api/notification-event-settings/:id",
+    requireAuth,
+    requireAdmin,
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const userId = req.user?.id;
+        const updates = { ...req.body, updated_by: userId };
+        const setting = await storage.updateNotificationEventSetting(
+          id,
+          updates,
+        );
+        res.json({
+          data: setting,
+          message: "تم تحديث إعداد الحدث بنجاح",
+          success: true,
+        });
+      } catch (error) {
+        console.error("Error updating notification event setting:", error);
+        res
+          .status(500)
+          .json({ message: "خطأ في تحديث إعداد الحدث", success: false });
+      }
+    },
+  );
 
   // Delete notification event setting
-  app.delete("/api/notification-event-settings/:id", requireAuth, requireAdmin, async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      await storage.deleteNotificationEventSetting(id);
-      res.json({ message: "تم حذف إعداد الحدث بنجاح", success: true });
-    } catch (error) {
-      console.error("Error deleting notification event setting:", error);
-      res.status(500).json({ message: "خطأ في حذف إعداد الحدث", success: false });
-    }
-  });
+  app.delete(
+    "/api/notification-event-settings/:id",
+    requireAuth,
+    requireAdmin,
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        await storage.deleteNotificationEventSetting(id);
+        res.json({ message: "تم حذف إعداد الحدث بنجاح", success: true });
+      } catch (error) {
+        console.error("Error deleting notification event setting:", error);
+        res
+          .status(500)
+          .json({ message: "خطأ في حذف إعداد الحدث", success: false });
+      }
+    },
+  );
 
   // Get notification event logs
   app.get("/api/notification-event-logs", requireAuth, async (req, res) => {
@@ -11758,217 +14213,288 @@ Do not include quotes or explanations.`;
       res.json({ data: logs, success: true });
     } catch (error) {
       console.error("Error fetching notification event logs:", error);
-      res.status(500).json({ message: "خطأ في جلب سجلات الإشعارات", success: false });
+      res
+        .status(500)
+        .json({ message: "خطأ في جلب سجلات الإشعارات", success: false });
     }
   });
 
   // Test notification sending
-  app.post("/api/notification-event-settings/:id/test", requireAuth, requireAdmin, async (req, res) => {
-    try {
-      const id = parseRouteParam(req.params.id, "id");
-      const setting = await storage.getNotificationEventSettingById(id);
-      if (!setting) {
-        return res.status(404).json({ message: "إعداد الحدث غير موجود", success: false });
+  app.post(
+    "/api/notification-event-settings/:id/test",
+    requireAuth,
+    requireAdmin,
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const setting = await storage.getNotificationEventSettingById(id);
+        if (!setting) {
+          return res
+            .status(404)
+            .json({ message: "إعداد الحدث غير موجود", success: false });
+        }
+
+        // Get test data from request body
+        const { phone_number, test_variables } = req.body;
+
+        if (!phone_number) {
+          return res
+            .status(400)
+            .json({ message: "رقم الهاتف مطلوب للاختبار", success: false });
+        }
+
+        // Create log entry for the test
+        const log = await storage.createNotificationEventLog({
+          event_setting_id: id,
+          event_key: setting.event_key,
+          trigger_context_type: "test",
+          trigger_context_id: "test-" + Date.now(),
+          trigger_data: test_variables || {},
+          message_sent_ar: setting.message_template_ar,
+          recipient_phone: phone_number,
+          recipient_user_id: req.user?.id,
+          recipient_name: "Test User",
+          status: "pending",
+        });
+
+        res.json({
+          data: log,
+          message: "تم إرسال إشعار اختباري بنجاح",
+          success: true,
+        });
+      } catch (error) {
+        console.error("Error testing notification:", error);
+        res
+          .status(500)
+          .json({ message: "خطأ في إرسال الإشعار الاختباري", success: false });
       }
-
-      // Get test data from request body
-      const { phone_number, test_variables } = req.body;
-      
-      if (!phone_number) {
-        return res.status(400).json({ message: "رقم الهاتف مطلوب للاختبار", success: false });
-      }
-
-      // Create log entry for the test
-      const log = await storage.createNotificationEventLog({
-        event_setting_id: id,
-        event_key: setting.event_key,
-        trigger_context_type: "test",
-        trigger_context_id: "test-" + Date.now(),
-        trigger_data: test_variables || {},
-        message_sent_ar: setting.message_template_ar,
-        recipient_phone: phone_number,
-        recipient_user_id: req.user?.id,
-        recipient_name: "Test User",
-        status: "pending",
-      });
-
-      res.json({ 
-        data: log, 
-        message: "تم إرسال إشعار اختباري بنجاح", 
-        success: true 
-      });
-    } catch (error) {
-      console.error("Error testing notification:", error);
-      res.status(500).json({ message: "خطأ في إرسال الإشعار الاختباري", success: false });
-    }
-  });
+    },
+  );
 
   // ===============================
   // Face Verification API Endpoints
   // ===============================
 
-  app.get("/api/face-verification/status/:userId", requireAuth, async (req, res) => {
-    try {
-      const userId = parseInt(req.params.userId);
-      if (isNaN(userId) || userId <= 0) {
-        return res.status(400).json({ message: "معرف المستخدم غير صحيح", success: false });
-      }
-      const user = await storage.getUserById(userId);
-      
-      if (!user) {
-        return res.status(404).json({ message: "المستخدم غير موجود", success: false });
-      }
+  app.get(
+    "/api/face-verification/status/:userId",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const userId = parseInt(req.params.userId);
+        if (isNaN(userId) || userId <= 0) {
+          return res
+            .status(400)
+            .json({ message: "معرف المستخدم غير صحيح", success: false });
+        }
+        const user = await storage.getUserById(userId);
 
-      const [registration] = await db.select().from(face_registrations).where(eq(face_registrations.user_id, userId));
-      
-      res.json({ 
-        hasRegisteredFace: !!registration,
-        success: true 
-      });
-    } catch (error) {
-      console.error("Error checking face status:", error);
-      res.status(500).json({ message: "خطأ في التحقق من حالة البصمة", success: false });
-    }
-  });
+        if (!user) {
+          return res
+            .status(404)
+            .json({ message: "المستخدم غير موجود", success: false });
+        }
 
-  app.post("/api/face-verification/register", requireAuth, async (req: AuthRequest, res) => {
-    try {
-      const { user_id, image } = req.body;
-      
-      if (!user_id || !image) {
-        return res.status(400).json({ message: "بيانات غير مكتملة", success: false });
+        const [registration] = await db
+          .select()
+          .from(face_registrations)
+          .where(eq(face_registrations.user_id, userId));
+
+        res.json({
+          hasRegisteredFace: !!registration,
+          success: true,
+        });
+      } catch (error) {
+        console.error("Error checking face status:", error);
+        res
+          .status(500)
+          .json({ message: "خطأ في التحقق من حالة البصمة", success: false });
       }
+    },
+  );
 
-      const authUserId = getAuthUserId(req);
-      const userPerms = req.user?.permissions || [];
-      const isAdmin = userPerms.includes('admin');
-      if (user_id !== authUserId && !isAdmin) {
-        return res.status(403).json({ message: "لا يمكنك تسجيل بصمة وجه لمستخدم آخر", success: false });
-      }
+  app.post(
+    "/api/face-verification/register",
+    requireAuth,
+    async (req: AuthRequest, res) => {
+      try {
+        const { user_id, image } = req.body;
 
-      const user = await storage.getUserById(user_id);
-      if (!user) {
-        return res.status(404).json({ message: "المستخدم غير موجود", success: false });
-      }
+        if (!user_id || !image) {
+          return res
+            .status(400)
+            .json({ message: "بيانات غير مكتملة", success: false });
+        }
 
-      const imageHash = crypto.createHash("sha256").update(image).digest("hex");
-      
-      const [existing] = await db.select().from(face_registrations).where(eq(face_registrations.user_id, user_id));
-      
-      if (existing) {
-        await db.update(face_registrations)
-          .set({ face_hash: imageHash, updated_at: new Date() })
+        const authUserId = getAuthUserId(req);
+        const userPerms = req.user?.permissions || [];
+        const isAdmin = userPerms.includes("admin");
+        if (user_id !== authUserId && !isAdmin) {
+          return res.status(403).json({
+            message: "لا يمكنك تسجيل بصمة وجه لمستخدم آخر",
+            success: false,
+          });
+        }
+
+        const user = await storage.getUserById(user_id);
+        if (!user) {
+          return res
+            .status(404)
+            .json({ message: "المستخدم غير موجود", success: false });
+        }
+
+        const imageHash = crypto
+          .createHash("sha256")
+          .update(image)
+          .digest("hex");
+
+        const [existing] = await db
+          .select()
+          .from(face_registrations)
           .where(eq(face_registrations.user_id, user_id));
-      } else {
-        await db.insert(face_registrations).values({
-          user_id,
-          face_hash: imageHash,
+
+        if (existing) {
+          await db
+            .update(face_registrations)
+            .set({ face_hash: imageHash, updated_at: new Date() })
+            .where(eq(face_registrations.user_id, user_id));
+        } else {
+          await db.insert(face_registrations).values({
+            user_id,
+            face_hash: imageHash,
+          });
+        }
+
+        logger.info(`Face registered for user ${user_id}`, {
+          userId: user_id,
+          action: "face_register",
+          timestamp: new Date().toISOString(),
         });
+
+        res.json({
+          success: true,
+          message: "تم تسجيل بصمة الوجه بنجاح",
+          registered: true,
+        });
+      } catch (error) {
+        console.error("Error registering face:", error);
+        res
+          .status(500)
+          .json({ message: "خطأ في تسجيل بصمة الوجه", success: false });
       }
+    },
+  );
 
-      logger.info(`Face registered for user ${user_id}`, { 
-        userId: user_id, 
-        action: "face_register",
-        timestamp: new Date().toISOString() 
-      });
+  app.post(
+    "/api/face-verification/verify",
+    requireAuth,
+    async (req: AuthRequest, res) => {
+      try {
+        const { user_id, image, action_type, timestamp } = req.body;
 
-      res.json({ 
-        success: true, 
-        message: "تم تسجيل بصمة الوجه بنجاح",
-        registered: true 
-      });
-    } catch (error) {
-      console.error("Error registering face:", error);
-      res.status(500).json({ message: "خطأ في تسجيل بصمة الوجه", success: false });
-    }
-  });
+        if (!user_id || !image) {
+          return res.status(400).json({
+            message: "بيانات غير مكتملة",
+            success: false,
+            verified: false,
+          });
+        }
 
-  app.post("/api/face-verification/verify", requireAuth, async (req: AuthRequest, res) => {
-    try {
-      const { user_id, image, action_type, timestamp } = req.body;
-      
-      if (!user_id || !image) {
-        return res.status(400).json({ 
-          message: "بيانات غير مكتملة", 
+        const authUserId = getAuthUserId(req);
+        const userPerms = req.user?.permissions || [];
+        const isAdmin = userPerms.includes("admin");
+        if (user_id !== authUserId && !isAdmin) {
+          return res.status(403).json({
+            message: "لا يمكنك التحقق من بصمة وجه مستخدم آخر",
+            success: false,
+            verified: false,
+          });
+        }
+
+        const user = await storage.getUserById(user_id);
+        if (!user) {
+          return res.status(404).json({
+            message: "المستخدم غير موجود",
+            success: false,
+            verified: false,
+          });
+        }
+
+        const [faceData] = await db
+          .select()
+          .from(face_registrations)
+          .where(eq(face_registrations.user_id, user_id));
+        if (!faceData) {
+          return res.status(400).json({
+            message: "لم يتم تسجيل بصمة الوجه مسبقاً",
+            success: false,
+            verified: false,
+          });
+        }
+
+        const currentHash = crypto
+          .createHash("sha256")
+          .update(image)
+          .digest("hex");
+        const verified = crypto.timingSafeEqual(
+          Buffer.from(faceData.face_hash),
+          Buffer.from(currentHash),
+        );
+
+        logger.info(`Face verification attempt for user ${user_id}`, {
+          userId: user_id,
+          action: "face_verify",
+          actionType: action_type,
+          verified,
+          timestamp,
+        });
+
+        if (verified) {
+          res.json({
+            success: true,
+            verified: true,
+            message: "تم التحقق من الهوية بنجاح",
+          });
+        } else {
+          res.json({
+            success: true,
+            verified: false,
+            message: "لم يتم التعرف على الوجه - يرجى المحاولة مرة أخرى",
+          });
+        }
+      } catch (error) {
+        console.error("Error verifying face:", error);
+        res.status(500).json({
+          message: "خطأ في التحقق من بصمة الوجه",
           success: false,
-          verified: false 
-        });
-      }
-
-      const authUserId = getAuthUserId(req);
-      const userPerms = req.user?.permissions || [];
-      const isAdmin = userPerms.includes('admin');
-      if (user_id !== authUserId && !isAdmin) {
-        return res.status(403).json({ message: "لا يمكنك التحقق من بصمة وجه مستخدم آخر", success: false, verified: false });
-      }
-
-      const user = await storage.getUserById(user_id);
-      if (!user) {
-        return res.status(404).json({ 
-          message: "المستخدم غير موجود", 
-          success: false,
-          verified: false 
-        });
-      }
-
-      const [faceData] = await db.select().from(face_registrations).where(eq(face_registrations.user_id, user_id));
-      if (!faceData) {
-        return res.status(400).json({ 
-          message: "لم يتم تسجيل بصمة الوجه مسبقاً", 
-          success: false,
-          verified: false 
-        });
-      }
-
-      const currentHash = crypto.createHash("sha256").update(image).digest("hex");
-      const verified = crypto.timingSafeEqual(Buffer.from(faceData.face_hash), Buffer.from(currentHash));
-
-      logger.info(`Face verification attempt for user ${user_id}`, { 
-        userId: user_id, 
-        action: "face_verify",
-        actionType: action_type,
-        verified,
-        timestamp 
-      });
-
-      if (verified) {
-        res.json({ 
-          success: true, 
-          verified: true,
-          message: "تم التحقق من الهوية بنجاح"
-        });
-      } else {
-        res.json({ 
-          success: true, 
           verified: false,
-          message: "لم يتم التعرف على الوجه - يرجى المحاولة مرة أخرى"
         });
       }
-    } catch (error) {
-      console.error("Error verifying face:", error);
-      res.status(500).json({ 
-        message: "خطأ في التحقق من بصمة الوجه", 
-        success: false,
-        verified: false 
-      });
-    }
-  });
+    },
+  );
 
-  app.get("/api/face-verification/logs/:userId", requireAuth, async (req, res) => {
-    try {
-      const userId = parseInt(req.params.userId);
-      if (isNaN(userId) || userId <= 0) {
-        return res.status(400).json({ message: "معرف المستخدم غير صحيح", success: false });
+  app.get(
+    "/api/face-verification/logs/:userId",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const userId = parseInt(req.params.userId);
+        if (isNaN(userId) || userId <= 0) {
+          return res
+            .status(400)
+            .json({ message: "معرف المستخدم غير صحيح", success: false });
+        }
+        res.json({
+          logs: [],
+          success: true,
+        });
+      } catch (error) {
+        console.error("Error fetching face logs:", error);
+        res
+          .status(500)
+          .json({ message: "خطأ في جلب سجلات التحقق", success: false });
       }
-      res.json({ 
-        logs: [],
-        success: true 
-      });
-    } catch (error) {
-      console.error("Error fetching face logs:", error);
-      res.status(500).json({ message: "خطأ في جلب سجلات التحقق", success: false });
-    }
-  });
+    },
+  );
 
   // ============ Factory 3D Simulation API Routes ============
 
@@ -12004,7 +14530,7 @@ Do not include quotes or explanations.`;
         ORDER BY r.created_at DESC
         LIMIT 100
       `);
-      
+
       res.json(result.rows);
     } catch (error) {
       console.error("Error fetching active rolls for 3D:", error);
@@ -12013,26 +14539,29 @@ Do not include quotes or explanations.`;
   });
 
   // Get machine production statistics for 3D visualization
-  app.get("/api/factory-3d/machine-stats/:machineId", requireAuth, async (req, res) => {
-    try {
-      const machineId = req.params.machineId;
-      
-      // Get machine info
-      const machineResult = await db.execute(sql`
+  app.get(
+    "/api/factory-3d/machine-stats/:machineId",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const machineId = req.params.machineId;
+
+        // Get machine info
+        const machineResult = await db.execute(sql`
         SELECT * FROM machines WHERE id = ${machineId}
       `);
-      
-      if (machineResult.rows.length === 0) {
-        return res.status(404).json({ message: "الماكينة غير موجودة" });
-      }
-      
-      const machine = machineResult.rows[0];
-      
-      // Get today's statistics
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      const statsResult = await db.execute(sql`
+
+        if (machineResult.rows.length === 0) {
+          return res.status(404).json({ message: "الماكينة غير موجودة" });
+        }
+
+        const machine = machineResult.rows[0];
+
+        // Get today's statistics
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const statsResult = await db.execute(sql`
         SELECT 
           COUNT(*) as rolls_count,
           COALESCE(SUM(weight_kg::numeric), 0) as total_weight_kg,
@@ -12046,9 +14575,9 @@ Do not include quotes or explanations.`;
                OR cutting_machine_id = ${machineId})
           AND created_at >= ${today}
       `);
-      
-      // Get recent rolls for this machine
-      const recentRollsResult = await db.execute(sql`
+
+        // Get recent rolls for this machine
+        const recentRollsResult = await db.execute(sql`
         SELECT 
           r.id,
           r.roll_number,
@@ -12070,24 +14599,28 @@ Do not include quotes or explanations.`;
         ORDER BY r.created_at DESC
         LIMIT 10
       `);
-      
-      res.json({
-        machine,
-        todayStats: statsResult.rows[0] || {},
-        recentRolls: recentRollsResult.rows
-      });
-    } catch (error) {
-      console.error("Error fetching machine stats for 3D:", error);
-      res.status(500).json({ message: "خطأ في جلب إحصائيات الماكينة" });
-    }
-  });
 
+        res.json({
+          machine,
+          todayStats: statsResult.rows[0] || {},
+          recentRolls: recentRollsResult.rows,
+        });
+      } catch (error) {
+        console.error("Error fetching machine stats for 3D:", error);
+        res.status(500).json({ message: "خطأ في جلب إحصائيات الماكينة" });
+      }
+    },
+  );
 
   // ============ Factory Layout Save/Load API Routes ============
 
   app.get("/api/factory-3d/layout", requireAuth, async (req, res) => {
     try {
-      const result = await db.select().from(factory_layouts).where(eq(factory_layouts.name, "default")).limit(1);
+      const result = await db
+        .select()
+        .from(factory_layouts)
+        .where(eq(factory_layouts.name, "default"))
+        .limit(1);
       if (result.length > 0) {
         res.json(result[0]);
       } else {
@@ -12108,11 +14641,20 @@ Do not include quotes or explanations.`;
       const authReq = req as AuthRequest;
       const userId = authReq.user?.id;
 
-      const existing = await db.select().from(factory_layouts).where(eq(factory_layouts.name, "default")).limit(1);
+      const existing = await db
+        .select()
+        .from(factory_layouts)
+        .where(eq(factory_layouts.name, "default"))
+        .limit(1);
 
       if (existing.length > 0) {
-        await db.update(factory_layouts)
-          .set({ layout_data: machines, updated_at: new Date(), updated_by: userId })
+        await db
+          .update(factory_layouts)
+          .set({
+            layout_data: machines,
+            updated_at: new Date(),
+            updated_by: userId,
+          })
           .where(eq(factory_layouts.id, existing[0].id));
       } else {
         await db.insert(factory_layouts).values({
@@ -12130,7 +14672,7 @@ Do not include quotes or explanations.`;
   });
 
   // ============ Factory Snapshots ============
-  
+
   app.get("/api/factory-3d/snapshots", requireAuth, async (req, res) => {
     try {
       const snapshots = await storage.getFactorySnapshots();
@@ -12144,9 +14686,11 @@ Do not include quotes or explanations.`;
   app.get("/api/factory-3d/snapshots/share/:token", async (req, res) => {
     try {
       const { token } = req.params;
-      if (!token) return res.status(400).json({ message: "رمز المشاركة مطلوب" });
+      if (!token)
+        return res.status(400).json({ message: "رمز المشاركة مطلوب" });
       const snapshot = await storage.getFactorySnapshotByToken(token);
-      if (!snapshot) return res.status(404).json({ message: "اللقطة غير موجودة" });
+      if (!snapshot)
+        return res.status(404).json({ message: "اللقطة غير موجودة" });
       res.json(snapshot);
     } catch (error) {
       console.error("Error loading shared snapshot:", error);
@@ -12159,7 +14703,8 @@ Do not include quotes or explanations.`;
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "معرف غير صالح" });
       const snapshot = await storage.getFactorySnapshot(id);
-      if (!snapshot) return res.status(404).json({ message: "اللقطة غير موجودة" });
+      if (!snapshot)
+        return res.status(404).json({ message: "اللقطة غير موجودة" });
       res.json(snapshot);
     } catch (error) {
       console.error("Error loading snapshot:", error);
@@ -12171,19 +14716,21 @@ Do not include quotes or explanations.`;
     try {
       const authReq = req as AuthRequest;
       const userId = authReq.user?.id;
-      
+
       const parsed = insertFactorySnapshotSchema.parse({
         ...req.body,
         created_by: userId,
-        share_token: crypto.randomBytes(24).toString('hex'),
+        share_token: crypto.randomBytes(24).toString("hex"),
       });
-      
+
       const snapshot = await storage.createFactorySnapshot(parsed);
       res.status(201).json(snapshot);
     } catch (error) {
       console.error("Error creating snapshot:", error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "بيانات غير صالحة", errors: error.errors });
+        return res
+          .status(400)
+          .json({ message: "بيانات غير صالحة", errors: error.errors });
       }
       res.status(500).json({ message: "خطأ في إنشاء اللقطة" });
     }
@@ -12219,10 +14766,13 @@ Do not include quotes or explanations.`;
   });
 
   // Get last 5 production orders for a specific machine
-  app.get("/api/factory-3d/machine-orders/:machineId", requireAuth, async (req, res) => {
-    try {
-      const machineId = req.params.machineId;
-      const result = await db.execute(sql`
+  app.get(
+    "/api/factory-3d/machine-orders/:machineId",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const machineId = req.params.machineId;
+        const result = await db.execute(sql`
         SELECT 
           po.id,
           po.production_order_number,
@@ -12260,19 +14810,20 @@ Do not include quotes or explanations.`;
         ORDER BY po.created_at DESC
         LIMIT 5
       `);
-      res.json(result.rows);
-    } catch (error) {
-      console.error("Error fetching machine orders for 3D:", error);
-      res.status(500).json({ message: "خطأ في جلب أوامر الإنتاج" });
-    }
-  });
+        res.json(result.rows);
+      } catch (error) {
+        console.error("Error fetching machine orders for 3D:", error);
+        res.status(500).json({ message: "خطأ في جلب أوامر الإنتاج" });
+      }
+    },
+  );
 
   // Get production users with today's attendance status
   app.get("/api/factory-3d/production-users", requireAuth, async (req, res) => {
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       const result = await db.execute(sql`
         SELECT 
           u.id,
@@ -12305,15 +14856,20 @@ Do not include quotes or explanations.`;
 
   // ============ Display Screen API Routes ============
 
-  app.get("/api/display/slides", requireAuth, requirePermission('manage_display_screen'), async (req, res) => {
-    try {
-      const slides = await storage.getDisplaySlides();
-      res.json(slides);
-    } catch (error) {
-      console.error("Error fetching display slides:", error);
-      res.status(500).json({ message: "خطأ في جلب شرائح العرض" });
-    }
-  });
+  app.get(
+    "/api/display/slides",
+    requireAuth,
+    requirePermission("manage_display_screen"),
+    async (req, res) => {
+      try {
+        const slides = await storage.getDisplaySlides();
+        res.json(slides);
+      } catch (error) {
+        console.error("Error fetching display slides:", error);
+        res.status(500).json({ message: "خطأ في جلب شرائح العرض" });
+      }
+    },
+  );
 
   app.get("/api/display/slides/active", requireAuth, async (req, res) => {
     try {
@@ -12325,70 +14881,108 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/display/slides", requireAuth, requirePermission('manage_display_screen'), async (req: AuthRequest, res) => {
-    try {
-      const parseResult = insertDisplaySlideSchema.safeParse(req.body);
-      if (!parseResult.success) {
-        return res.status(400).json({ message: "بيانات غير صحيحة", errors: parseResult.error.errors });
+  app.post(
+    "/api/display/slides",
+    requireAuth,
+    requirePermission("manage_display_screen"),
+    async (req: AuthRequest, res) => {
+      try {
+        const parseResult = insertDisplaySlideSchema.safeParse(req.body);
+        if (!parseResult.success) {
+          return res.status(400).json({
+            message: "بيانات غير صحيحة",
+            errors: parseResult.error.errors,
+          });
+        }
+        const slide = await storage.createDisplaySlide({
+          ...parseResult.data,
+          created_by: getAuthUserId(req),
+        });
+        res.json(slide);
+      } catch (error) {
+        console.error("Error creating display slide:", error);
+        res.status(500).json({ message: "خطأ في إنشاء شريحة العرض" });
       }
-      const slide = await storage.createDisplaySlide({
-        ...parseResult.data,
-        created_by: getAuthUserId(req),
-      });
-      res.json(slide);
-    } catch (error) {
-      console.error("Error creating display slide:", error);
-      res.status(500).json({ message: "خطأ في إنشاء شريحة العرض" });
-    }
-  });
+    },
+  );
 
-  app.put("/api/display/slides/reorder", requireAuth, requirePermission('manage_display_screen'), async (req, res) => {
-    try {
-      const slideOrderSchema = z.array(z.object({
-        id: z.number().int().positive(),
-        sort_order: z.number().int().min(0),
-      }));
-      const parseResult = slideOrderSchema.safeParse(req.body?.slideOrders);
-      if (!parseResult.success) {
-        return res.status(400).json({ message: "بيانات الترتيب غير صحيحة" });
+  app.put(
+    "/api/display/slides/reorder",
+    requireAuth,
+    requirePermission("manage_display_screen"),
+    async (req, res) => {
+      try {
+        const slideOrderSchema = z.array(
+          z.object({
+            id: z.number().int().positive(),
+            sort_order: z.number().int().min(0),
+          }),
+        );
+        const parseResult = slideOrderSchema.safeParse(req.body?.slideOrders);
+        if (!parseResult.success) {
+          return res.status(400).json({ message: "بيانات الترتيب غير صحيحة" });
+        }
+        for (const item of parseResult.data) {
+          await storage.updateDisplaySlide(item.id, {
+            sort_order: item.sort_order,
+          });
+        }
+        res.json({ success: true });
+      } catch (error) {
+        console.error("Error reordering display slides:", error);
+        res.status(500).json({ message: "خطأ في إعادة ترتيب الشرائح" });
       }
-      for (const item of parseResult.data) {
-        await storage.updateDisplaySlide(item.id, { sort_order: item.sort_order });
+    },
+  );
+
+  app.put(
+    "/api/display/slides/:id",
+    requireAuth,
+    requirePermission("manage_display_screen"),
+    async (req, res) => {
+      try {
+        const parseResult = insertDisplaySlideSchema
+          .partial()
+          .safeParse(req.body);
+        if (!parseResult.success) {
+          return res.status(400).json({
+            message: "بيانات غير صحيحة",
+            errors: parseResult.error.errors,
+          });
+        }
+        const slide = await storage.updateDisplaySlide(
+          parseRouteParam(req.params.id, "id"),
+          parseResult.data,
+        );
+        res.json(slide);
+      } catch (error) {
+        console.error("Error updating display slide:", error);
+        res.status(500).json({ message: "خطأ في تحديث شريحة العرض" });
       }
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error reordering display slides:", error);
-      res.status(500).json({ message: "خطأ في إعادة ترتيب الشرائح" });
-    }
-  });
+    },
+  );
 
-  app.put("/api/display/slides/:id", requireAuth, requirePermission('manage_display_screen'), async (req, res) => {
-    try {
-      const parseResult = insertDisplaySlideSchema.partial().safeParse(req.body);
-      if (!parseResult.success) {
-        return res.status(400).json({ message: "بيانات غير صحيحة", errors: parseResult.error.errors });
+  app.delete(
+    "/api/display/slides/:id",
+    requireAuth,
+    requirePermission("manage_display_screen"),
+    async (req, res) => {
+      try {
+        await storage.deleteDisplaySlide(parseRouteParam(req.params.id, "id"));
+        res.json({ success: true });
+      } catch (error) {
+        console.error("Error deleting display slide:", error);
+        res.status(500).json({ message: "خطأ في حذف شريحة العرض" });
       }
-      const slide = await storage.updateDisplaySlide(parseRouteParam(req.params.id, "id"), parseResult.data);
-      res.json(slide);
-    } catch (error) {
-      console.error("Error updating display slide:", error);
-      res.status(500).json({ message: "خطأ في تحديث شريحة العرض" });
-    }
-  });
+    },
+  );
 
-  app.delete("/api/display/slides/:id", requireAuth, requirePermission('manage_display_screen'), async (req, res) => {
-    try {
-      await storage.deleteDisplaySlide(parseRouteParam(req.params.id, "id"));
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error deleting display slide:", error);
-      res.status(500).json({ message: "خطأ في حذف شريحة العرض" });
-    }
-  });
-
-  app.get("/api/display/live/recent-production", requireAuth, async (req, res) => {
-    try {
-      const result = await db.execute(sql`
+  app.get(
+    "/api/display/live/recent-production",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const result = await db.execute(sql`
         SELECT po.id, po.production_order_number, po.status, po.quantity_kg, po.produced_quantity_kg,
                po.film_completion_percentage, COALESCE(cp.size_caption, '') as size_caption,
                o.order_number, c.name as customer_name, c.name_ar as customer_name_ar
@@ -12399,12 +14993,13 @@ Do not include quotes or explanations.`;
         ORDER BY po.created_at DESC
         LIMIT 10
       `);
-      res.json(result.rows);
-    } catch (error) {
-      console.error("Error fetching recent production:", error);
-      res.status(500).json({ message: "خطأ في جلب بيانات الإنتاج" });
-    }
-  });
+        res.json(result.rows);
+      } catch (error) {
+        console.error("Error fetching recent production:", error);
+        res.status(500).json({ message: "خطأ في جلب بيانات الإنتاج" });
+      }
+    },
+  );
 
   app.get("/api/display/live/latest-rolls", requireAuth, async (req, res) => {
     try {
@@ -12426,11 +15021,14 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.get("/api/display/live/production-stats", requireAuth, async (req, res) => {
-    try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const result = await db.execute(sql`
+  app.get(
+    "/api/display/live/production-stats",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const result = await db.execute(sql`
         SELECT 
           COUNT(DISTINCT po.id) FILTER (WHERE po.status = 'in_progress') as active_orders,
           COUNT(r.id) FILTER (WHERE r.created_at >= ${today}) as rolls_today,
@@ -12439,16 +15037,18 @@ Do not include quotes or explanations.`;
         FROM production_orders po
         LEFT JOIN rolls r ON r.production_order_id = po.id
       `);
-      res.json(result.rows?.[0] || {});
-    } catch (error) {
-      console.error("Error fetching production stats:", error);
-      res.status(500).json({ message: "خطأ في جلب إحصائيات الإنتاج" });
-    }
-  });
+        res.json(result.rows?.[0] || {});
+      } catch (error) {
+        console.error("Error fetching production stats:", error);
+        res.status(500).json({ message: "خطأ في جلب إحصائيات الإنتاج" });
+      }
+    },
+  );
 
   app.get("/api/display/live/attendance", requireAuth, async (req, res) => {
     try {
-      const dateParam = req.query.date as string || new Date().toISOString().split('T')[0];
+      const dateParam =
+        (req.query.date as string) || new Date().toISOString().split("T")[0];
       const result = await db.execute(sql`
         SELECT a.id, a.user_id, a.status, a.check_in_time, a.check_out_time,
                a.work_hours, a.late_minutes, a.shift_type, a.date,
@@ -12458,9 +15058,19 @@ Do not include quotes or explanations.`;
         WHERE a.date = ${dateParam}
         ORDER BY a.check_in_time ASC NULLS LAST
       `);
-      const totalPresent = result.rows.filter((r: any) => r.status === 'حاضر' || r.status === 'present').length;
-      const totalAbsent = result.rows.filter((r: any) => r.status === 'غائب' || r.status === 'absent').length;
-      res.json({ records: result.rows, totalPresent, totalAbsent, total: result.rows.length, date: dateParam });
+      const totalPresent = result.rows.filter(
+        (r: any) => r.status === "حاضر" || r.status === "present",
+      ).length;
+      const totalAbsent = result.rows.filter(
+        (r: any) => r.status === "غائب" || r.status === "absent",
+      ).length;
+      res.json({
+        records: result.rows,
+        totalPresent,
+        totalAbsent,
+        total: result.rows.length,
+        date: dateParam,
+      });
     } catch (error) {
       console.error("Error fetching attendance:", error);
       res.status(500).json({ message: "خطأ في جلب بيانات الحضور" });
@@ -12475,7 +15085,8 @@ Do not include quotes or explanations.`;
       let dateFilter = sql``;
       const now = new Date();
       if (period === "today") {
-        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
         dateFilter = sql`AND r.created_at >= ${today}`;
       } else if (period === "week") {
         const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -12485,7 +15096,8 @@ Do not include quotes or explanations.`;
         dateFilter = sql`AND r.created_at >= ${monthAgo}`;
       }
 
-      const sections = stage === "all" ? ["film", "printing", "cutting"] : [stage];
+      const sections =
+        stage === "all" ? ["film", "printing", "cutting"] : [stage];
       const results: Record<string, any[]> = {};
 
       for (const sec of sections) {
@@ -12515,57 +15127,81 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.post("/api/display/upload-image", requireAuth, requirePermission('manage_display_screen'), upload.single("image"), async (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ message: "لم يتم رفع صورة" });
+  app.post(
+    "/api/display/upload-image",
+    requireAuth,
+    requirePermission("manage_display_screen"),
+    upload.single("image"),
+    async (req, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "لم يتم رفع صورة" });
+        }
+        const { ObjectStorageService, objectStorageClient } =
+          await import("./replit_integrations/object_storage");
+        const storageService = new ObjectStorageService();
+        const ext = req.file.originalname.split(".").pop() || "jpg";
+        const fileName = `display-slides/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const publicPaths = storageService.getPublicObjectSearchPaths();
+        const basePath = publicPaths[0];
+        const fullPath = `${basePath}/${fileName}`;
+
+        const normalizedPath = fullPath.startsWith("/")
+          ? fullPath
+          : `/${fullPath}`;
+        const pathParts = normalizedPath.split("/");
+        const bucketName = pathParts[1];
+        const objectPath = pathParts.slice(2).join("/");
+        const bucket = objectStorageClient.bucket(bucketName);
+        const file = bucket.file(objectPath);
+        await file.save(req.file.buffer, { contentType: req.file.mimetype });
+
+        const publicUrl = `/objects/${objectPath}`;
+        res.json({ url: publicUrl, fileName });
+      } catch (error) {
+        console.error("Error uploading image:", error);
+        res.status(500).json({ message: "خطأ في رفع الصورة" });
       }
-      const { ObjectStorageService, objectStorageClient } = await import("./replit_integrations/object_storage");
-      const storageService = new ObjectStorageService();
-      const ext = req.file.originalname.split('.').pop() || 'jpg';
-      const fileName = `display-slides/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const publicPaths = storageService.getPublicObjectSearchPaths();
-      const basePath = publicPaths[0];
-      const fullPath = `${basePath}/${fileName}`;
-
-      const normalizedPath = fullPath.startsWith('/') ? fullPath : `/${fullPath}`;
-      const pathParts = normalizedPath.split('/');
-      const bucketName = pathParts[1];
-      const objectPath = pathParts.slice(2).join('/');
-      const bucket = objectStorageClient.bucket(bucketName);
-      const file = bucket.file(objectPath);
-      await file.save(req.file.buffer, { contentType: req.file.mimetype });
-
-      const publicUrl = `/objects/${objectPath}`;
-      res.json({ url: publicUrl, fileName });
-    } catch (error) {
-      console.error("Error uploading image:", error);
-      res.status(500).json({ message: "خطأ في رفع الصورة" });
-    }
-  });
+    },
+  );
 
   // ==========================================
   // Mobile API - Token-based Authentication
   // ==========================================
 
-  const mobileLoginAttempts = new Map<string, { count: number; lastAttempt: number }>();
+  const mobileLoginAttempts = new Map<
+    string,
+    { count: number; lastAttempt: number }
+  >();
   const MOBILE_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
   const MOBILE_MAX_ATTEMPTS = 10;
 
-  setInterval(() => {
-    const now = Date.now();
-    for (const [key, value] of mobileLoginAttempts) {
-      if (now - value.lastAttempt > MOBILE_RATE_LIMIT_WINDOW_MS) {
-        mobileLoginAttempts.delete(key);
+  setInterval(
+    () => {
+      const now = Date.now();
+      for (const [key, value] of mobileLoginAttempts) {
+        if (now - value.lastAttempt > MOBILE_RATE_LIMIT_WINDOW_MS) {
+          mobileLoginAttempts.delete(key);
+        }
       }
-    }
-  }, 5 * 60 * 1000);
+    },
+    5 * 60 * 1000,
+  );
 
   app.post("/api/mobile/login", async (req, res) => {
     try {
-      const { username, password, device_id, device_name, platform, app_version } = req.body;
+      const {
+        username,
+        password,
+        device_id,
+        device_name,
+        platform,
+        app_version,
+      } = req.body;
       if (!username?.trim() || !password?.trim()) {
-        return res.status(400).json({ message: "اسم المستخدم وكلمة المرور مطلوبان" });
+        return res
+          .status(400)
+          .json({ message: "اسم المستخدم وكلمة المرور مطلوبان" });
       }
 
       const rateLimitKey = `${username.trim().toLowerCase()}`;
@@ -12574,25 +15210,46 @@ Do not include quotes or explanations.`;
         if (Date.now() - attempts.lastAttempt > MOBILE_RATE_LIMIT_WINDOW_MS) {
           mobileLoginAttempts.delete(rateLimitKey);
         } else if (attempts.count >= MOBILE_MAX_ATTEMPTS) {
-          return res.status(429).json({ 
-            message: "تم تجاوز عدد محاولات تسجيل الدخول المسموحة. حاول مرة أخرى بعد 15 دقيقة",
-            retry_after_seconds: Math.ceil((MOBILE_RATE_LIMIT_WINDOW_MS - (Date.now() - attempts.lastAttempt)) / 1000)
+          return res.status(429).json({
+            message:
+              "تم تجاوز عدد محاولات تسجيل الدخول المسموحة. حاول مرة أخرى بعد 15 دقيقة",
+            retry_after_seconds: Math.ceil(
+              (MOBILE_RATE_LIMIT_WINDOW_MS -
+                (Date.now() - attempts.lastAttempt)) /
+                1000,
+            ),
           });
         }
       }
 
       const user = await storage.getUserByUsername(username.trim());
       if (!user || !user.password) {
-        const current = mobileLoginAttempts.get(rateLimitKey) || { count: 0, lastAttempt: 0 };
-        mobileLoginAttempts.set(rateLimitKey, { count: current.count + 1, lastAttempt: Date.now() });
-        return res.status(401).json({ message: "بيانات تسجيل الدخول غير صحيحة" });
+        const current = mobileLoginAttempts.get(rateLimitKey) || {
+          count: 0,
+          lastAttempt: 0,
+        };
+        mobileLoginAttempts.set(rateLimitKey, {
+          count: current.count + 1,
+          lastAttempt: Date.now(),
+        });
+        return res
+          .status(401)
+          .json({ message: "بيانات تسجيل الدخول غير صحيحة" });
       }
 
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid || user.status !== "active") {
-        const current = mobileLoginAttempts.get(rateLimitKey) || { count: 0, lastAttempt: 0 };
-        mobileLoginAttempts.set(rateLimitKey, { count: current.count + 1, lastAttempt: Date.now() });
-        return res.status(401).json({ message: "بيانات تسجيل الدخول غير صحيحة" });
+        const current = mobileLoginAttempts.get(rateLimitKey) || {
+          count: 0,
+          lastAttempt: 0,
+        };
+        mobileLoginAttempts.set(rateLimitKey, {
+          count: current.count + 1,
+          lastAttempt: Date.now(),
+        });
+        return res
+          .status(401)
+          .json({ message: "بيانات تسجيل الدخول غير صحيحة" });
       }
 
       mobileLoginAttempts.delete(rateLimitKey);
@@ -12603,7 +15260,7 @@ Do not include quotes or explanations.`;
 
       if (user.role_id) {
         const roles = await getCachedRoles();
-        const userRole = roles.find(r => r.id === user.role_id);
+        const userRole = roles.find((r) => r.id === user.role_id);
         if (userRole) {
           roleName = userRole.name || "user";
           roleNameAr = userRole.name_ar || "مستخدم";
@@ -12622,11 +15279,17 @@ Do not include quotes or explanations.`;
         }
       }
 
-      if (roleName.toLowerCase() === "admin" && !permissions.includes("admin")) {
+      if (
+        roleName.toLowerCase() === "admin" &&
+        !permissions.includes("admin")
+      ) {
         permissions.push("admin");
       }
 
-      const ipAddress = req.headers["x-forwarded-for"]?.toString().split(",")[0]?.trim() || req.socket.remoteAddress || "";
+      const ipAddress =
+        req.headers["x-forwarded-for"]?.toString().split(",")[0]?.trim() ||
+        req.socket.remoteAddress ||
+        "";
       const session = await createMobileSession(user.id, {
         device_id: device_id || undefined,
         device_name: device_name || undefined,
@@ -12671,7 +15334,9 @@ Do not include quotes or explanations.`;
 
       const newSession = await refreshMobileSession(refresh_token);
       if (!newSession) {
-        return res.status(401).json({ message: "الجلسة منتهية. يرجى تسجيل الدخول مرة أخرى" });
+        return res
+          .status(401)
+          .json({ message: "الجلسة منتهية. يرجى تسجيل الدخول مرة أخرى" });
       }
 
       res.json({
@@ -12697,11 +15362,14 @@ Do not include quotes or explanations.`;
 
       const { device_token } = req.body || {};
       if (device_token && req.user?.id) {
-        await db.delete(mobile_device_tokens)
-          .where(and(
-            eq(mobile_device_tokens.user_id, req.user.id),
-            eq(mobile_device_tokens.device_token, device_token)
-          ));
+        await db
+          .delete(mobile_device_tokens)
+          .where(
+            and(
+              eq(mobile_device_tokens.user_id, req.user.id),
+              eq(mobile_device_tokens.device_token, device_token),
+            ),
+          );
       }
 
       res.json({ message: "تم تسجيل الخروج بنجاح" });
@@ -12711,231 +15379,300 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.get("/api/mobile/sessions", requireAuth, async (req: AuthRequest, res) => {
-    try {
-      const userId = req.user?.id;
-      if (!userId) return res.status(401).json({ message: "غير مصرح" });
+  app.get(
+    "/api/mobile/sessions",
+    requireAuth,
+    async (req: AuthRequest, res) => {
+      try {
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ message: "غير مصرح" });
 
-      const sessions = await db.select({
-        id: mobile_sessions.id,
-        device_id: mobile_sessions.device_id,
-        device_name: mobile_sessions.device_name,
-        platform: mobile_sessions.platform,
-        app_version: mobile_sessions.app_version,
-        ip_address: mobile_sessions.ip_address,
-        last_active_at: mobile_sessions.last_active_at,
-        created_at: mobile_sessions.created_at,
-        is_active: mobile_sessions.is_active,
-      }).from(mobile_sessions)
-        .where(and(
-          eq(mobile_sessions.user_id, userId),
-          eq(mobile_sessions.is_active, true),
-          gt(mobile_sessions.expires_at, new Date())
-        ));
-
-      res.json({ data: sessions });
-    } catch (error) {
-      logger.error("Get mobile sessions error", error);
-      res.status(500).json({ message: "خطأ في جلب الجلسات" });
-    }
-  });
-
-  app.delete("/api/mobile/sessions/:id", requireAuth, async (req: AuthRequest, res) => {
-    try {
-      const userId = req.user?.id;
-      if (!userId) return res.status(401).json({ message: "غير مصرح" });
-
-      await db.update(mobile_sessions)
-        .set({ is_active: false })
-        .where(and(
-          eq(mobile_sessions.id, parseInt(req.params.id)),
-          eq(mobile_sessions.user_id, userId)
-        ));
-
-      res.json({ message: "تم إنهاء الجلسة بنجاح" });
-    } catch (error) {
-      logger.error("Delete mobile session error", error);
-      res.status(500).json({ message: "خطأ في إنهاء الجلسة" });
-    }
-  });
-
-  app.post("/api/mobile/device-token", requireAuth, async (req: AuthRequest, res) => {
-    try {
-      const userId = req.user?.id;
-      if (!userId) return res.status(401).json({ message: "غير مصرح" });
-
-      const { device_token, platform, device_id, device_name, app_version } = req.body;
-      if (!device_token || !platform) {
-        return res.status(400).json({ message: "device_token و platform مطلوبان" });
-      }
-
-      if (!["ios", "android", "web"].includes(platform)) {
-        return res.status(400).json({ message: "platform يجب أن يكون ios أو android أو web" });
-      }
-
-      const existing = await db.select().from(mobile_device_tokens)
-        .where(and(
-          eq(mobile_device_tokens.user_id, userId),
-          eq(mobile_device_tokens.device_token, device_token)
-        )).limit(1);
-
-      if (existing.length > 0) {
-        await db.update(mobile_device_tokens)
-          .set({ 
-            is_active: true, 
-            updated_at: new Date(),
-            device_name: device_name || existing[0].device_name,
-            app_version: app_version || existing[0].app_version,
+        const sessions = await db
+          .select({
+            id: mobile_sessions.id,
+            device_id: mobile_sessions.device_id,
+            device_name: mobile_sessions.device_name,
+            platform: mobile_sessions.platform,
+            app_version: mobile_sessions.app_version,
+            ip_address: mobile_sessions.ip_address,
+            last_active_at: mobile_sessions.last_active_at,
+            created_at: mobile_sessions.created_at,
+            is_active: mobile_sessions.is_active,
           })
-          .where(eq(mobile_device_tokens.id, existing[0].id));
-      } else {
-        await db.insert(mobile_device_tokens).values({
-          user_id: userId,
-          device_token,
-          platform,
-          device_id: device_id || null,
-          device_name: device_name || null,
-          app_version: app_version || null,
-        });
+          .from(mobile_sessions)
+          .where(
+            and(
+              eq(mobile_sessions.user_id, userId),
+              eq(mobile_sessions.is_active, true),
+              gt(mobile_sessions.expires_at, new Date()),
+            ),
+          );
+
+        res.json({ data: sessions });
+      } catch (error) {
+        logger.error("Get mobile sessions error", error);
+        res.status(500).json({ message: "خطأ في جلب الجلسات" });
       }
+    },
+  );
 
-      res.json({ message: "تم تسجيل الجهاز بنجاح" });
-    } catch (error) {
-      logger.error("Register device token error", error);
-      res.status(500).json({ message: "خطأ في تسجيل الجهاز" });
-    }
-  });
+  app.delete(
+    "/api/mobile/sessions/:id",
+    requireAuth,
+    async (req: AuthRequest, res) => {
+      try {
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ message: "غير مصرح" });
 
-  app.delete("/api/mobile/device-token", requireAuth, async (req: AuthRequest, res) => {
-    try {
-      const userId = req.user?.id;
-      if (!userId) return res.status(401).json({ message: "غير مصرح" });
+        await db
+          .update(mobile_sessions)
+          .set({ is_active: false })
+          .where(
+            and(
+              eq(mobile_sessions.id, parseInt(req.params.id)),
+              eq(mobile_sessions.user_id, userId),
+            ),
+          );
 
-      const { device_token } = req.body;
-      if (!device_token) {
-        return res.status(400).json({ message: "device_token مطلوب" });
+        res.json({ message: "تم إنهاء الجلسة بنجاح" });
+      } catch (error) {
+        logger.error("Delete mobile session error", error);
+        res.status(500).json({ message: "خطأ في إنهاء الجلسة" });
       }
+    },
+  );
 
-      await db.delete(mobile_device_tokens)
-        .where(and(
-          eq(mobile_device_tokens.user_id, userId),
-          eq(mobile_device_tokens.device_token, device_token)
-        ));
+  app.post(
+    "/api/mobile/device-token",
+    requireAuth,
+    async (req: AuthRequest, res) => {
+      try {
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ message: "غير مصرح" });
 
-      res.json({ message: "تم إلغاء تسجيل الجهاز بنجاح" });
-    } catch (error) {
-      logger.error("Unregister device token error", error);
-      res.status(500).json({ message: "خطأ في إلغاء تسجيل الجهاز" });
-    }
-  });
+        const { device_token, platform, device_id, device_name, app_version } =
+          req.body;
+        if (!device_token || !platform) {
+          return res
+            .status(400)
+            .json({ message: "device_token و platform مطلوبان" });
+        }
 
-  app.get("/api/mobile/dashboard", requireAuth, async (req: AuthRequest, res) => {
-    try {
-      const userId = req.user?.id;
-      if (!userId) return res.status(401).json({ message: "غير مصرح" });
+        if (!["ios", "android", "web"].includes(platform)) {
+          return res
+            .status(400)
+            .json({ message: "platform يجب أن يكون ios أو android أو web" });
+        }
 
-      const [
-        ordersResult,
-        productionResult,
-        machinesResult,
-        attendanceResult,
-        notificationsResult,
-      ] = await Promise.all([
-        db.execute(sql`SELECT 
+        const existing = await db
+          .select()
+          .from(mobile_device_tokens)
+          .where(
+            and(
+              eq(mobile_device_tokens.user_id, userId),
+              eq(mobile_device_tokens.device_token, device_token),
+            ),
+          )
+          .limit(1);
+
+        if (existing.length > 0) {
+          await db
+            .update(mobile_device_tokens)
+            .set({
+              is_active: true,
+              updated_at: new Date(),
+              device_name: device_name || existing[0].device_name,
+              app_version: app_version || existing[0].app_version,
+            })
+            .where(eq(mobile_device_tokens.id, existing[0].id));
+        } else {
+          await db.insert(mobile_device_tokens).values({
+            user_id: userId,
+            device_token,
+            platform,
+            device_id: device_id || null,
+            device_name: device_name || null,
+            app_version: app_version || null,
+          });
+        }
+
+        res.json({ message: "تم تسجيل الجهاز بنجاح" });
+      } catch (error) {
+        logger.error("Register device token error", error);
+        res.status(500).json({ message: "خطأ في تسجيل الجهاز" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/mobile/device-token",
+    requireAuth,
+    async (req: AuthRequest, res) => {
+      try {
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ message: "غير مصرح" });
+
+        const { device_token } = req.body;
+        if (!device_token) {
+          return res.status(400).json({ message: "device_token مطلوب" });
+        }
+
+        await db
+          .delete(mobile_device_tokens)
+          .where(
+            and(
+              eq(mobile_device_tokens.user_id, userId),
+              eq(mobile_device_tokens.device_token, device_token),
+            ),
+          );
+
+        res.json({ message: "تم إلغاء تسجيل الجهاز بنجاح" });
+      } catch (error) {
+        logger.error("Unregister device token error", error);
+        res.status(500).json({ message: "خطأ في إلغاء تسجيل الجهاز" });
+      }
+    },
+  );
+
+  app.get(
+    "/api/mobile/dashboard",
+    requireAuth,
+    async (req: AuthRequest, res) => {
+      try {
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ message: "غير مصرح" });
+
+        const [
+          ordersResult,
+          productionResult,
+          machinesResult,
+          attendanceResult,
+          notificationsResult,
+        ] = await Promise.all([
+          db.execute(sql`SELECT 
           COUNT(*) as total,
           COUNT(*) FILTER (WHERE status = 'waiting') as waiting,
           COUNT(*) FILTER (WHERE status = 'in_production') as in_production,
           COUNT(*) FILTER (WHERE status = 'completed') as completed
           FROM orders`),
-        db.execute(sql`SELECT 
+          db.execute(sql`SELECT 
           COUNT(*) as total,
           COUNT(*) FILTER (WHERE status = 'active') as active,
           COUNT(*) FILTER (WHERE status = 'completed') as completed
           FROM production_orders`),
-        db.execute(sql`SELECT 
+          db.execute(sql`SELECT 
           COUNT(*) as total,
           COUNT(*) FILTER (WHERE status = 'active') as active,
           COUNT(*) FILTER (WHERE status = 'maintenance') as maintenance,
           COUNT(*) FILTER (WHERE status = 'down') as down
           FROM machines`),
-        db.execute(sql`SELECT status, check_in_time, check_out_time FROM attendance 
+          db.execute(sql`SELECT status, check_in_time, check_out_time FROM attendance 
           WHERE user_id = ${userId} AND date = CURRENT_DATE LIMIT 1`),
-        db.execute(sql`SELECT COUNT(*) as unread FROM notifications 
+          db.execute(sql`SELECT COUNT(*) as unread FROM notifications 
           WHERE (recipient_id = ${String(userId)} OR recipient_type = 'all') 
           AND status != 'read'`),
-      ]);
+        ]);
 
-      res.json({
-        orders: ordersResult.rows[0] || {},
-        production: productionResult.rows[0] || {},
-        machines: machinesResult.rows[0] || {},
-        today_attendance: attendanceResult.rows[0] || null,
-        unread_notifications: parseInt((notificationsResult.rows[0] as any)?.unread || "0"),
-      });
-    } catch (error) {
-      logger.error("Mobile dashboard error", error);
-      res.status(500).json({ message: "خطأ في جلب بيانات لوحة التحكم" });
-    }
-  });
+        res.json({
+          orders: ordersResult.rows[0] || {},
+          production: productionResult.rows[0] || {},
+          machines: machinesResult.rows[0] || {},
+          today_attendance: attendanceResult.rows[0] || null,
+          unread_notifications: parseInt(
+            (notificationsResult.rows[0] as any)?.unread || "0",
+          ),
+        });
+      } catch (error) {
+        logger.error("Mobile dashboard error", error);
+        res.status(500).json({ message: "خطأ في جلب بيانات لوحة التحكم" });
+      }
+    },
+  );
 
-  app.get("/api/mobile/sync/metadata", requireAuth, async (req: AuthRequest, res) => {
-    try {
-      const tables = ["orders", "production_orders", "rolls", "customers", "machines", 
-                       "attendance", "inventory", "maintenance_requests", "users"];
-      const metadata: Record<string, any> = {};
+  app.get(
+    "/api/mobile/sync/metadata",
+    requireAuth,
+    async (req: AuthRequest, res) => {
+      try {
+        const tables = [
+          "orders",
+          "production_orders",
+          "rolls",
+          "customers",
+          "machines",
+          "attendance",
+          "inventory",
+          "maintenance_requests",
+          "users",
+        ];
+        const metadata: Record<string, any> = {};
 
-      for (const table of tables) {
-        try {
-          const result = await db.execute(sql`
+        for (const table of tables) {
+          try {
+            const result = await db.execute(sql`
             SELECT COUNT(*) as count, MAX(created_at) as last_updated 
             FROM ${sql.identifier(table)}
           `);
-          metadata[table] = {
-            count: parseInt((result.rows[0] as any)?.count || "0"),
-            last_updated: (result.rows[0] as any)?.last_updated || null,
-          };
-        } catch {
-          metadata[table] = { count: 0, last_updated: null };
-        }
-      }
-
-      res.json({ data: metadata, server_time: new Date().toISOString() });
-    } catch (error) {
-      logger.error("Mobile sync metadata error", error);
-      res.status(500).json({ message: "خطأ في جلب بيانات المزامنة" });
-    }
-  });
-
-  app.post("/api/mobile/sync/attendance", requireAuth, async (req: AuthRequest, res) => {
-    try {
-      const userId = req.user?.id;
-      if (!userId) return res.status(401).json({ message: "غير مصرح" });
-
-      const { records } = req.body;
-      if (!Array.isArray(records) || records.length === 0) {
-        return res.status(400).json({ message: "لا توجد سجلات للمزامنة" });
-      }
-
-      const results: { client_id: string; status: string; server_id?: number; error?: string }[] = [];
-
-      const isAdmin = req.user?.permissions?.includes("admin");
-
-      for (const record of records) {
-        try {
-          if (!record.date) {
-            results.push({ client_id: record.client_id || "unknown", status: "error", error: "date is required" });
-            continue;
+            metadata[table] = {
+              count: parseInt((result.rows[0] as any)?.count || "0"),
+              last_updated: (result.rows[0] as any)?.last_updated || null,
+            };
+          } catch {
+            metadata[table] = { count: 0, last_updated: null };
           }
+        }
 
-          const targetUserId = (isAdmin && record.user_id) ? record.user_id : userId;
+        res.json({ data: metadata, server_time: new Date().toISOString() });
+      } catch (error) {
+        logger.error("Mobile sync metadata error", error);
+        res.status(500).json({ message: "خطأ في جلب بيانات المزامنة" });
+      }
+    },
+  );
 
-          const existing = await db.execute(sql`
+  app.post(
+    "/api/mobile/sync/attendance",
+    requireAuth,
+    async (req: AuthRequest, res) => {
+      try {
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ message: "غير مصرح" });
+
+        const { records } = req.body;
+        if (!Array.isArray(records) || records.length === 0) {
+          return res.status(400).json({ message: "لا توجد سجلات للمزامنة" });
+        }
+
+        const results: {
+          client_id: string;
+          status: string;
+          server_id?: number;
+          error?: string;
+        }[] = [];
+
+        const isAdmin = req.user?.permissions?.includes("admin");
+
+        for (const record of records) {
+          try {
+            if (!record.date) {
+              results.push({
+                client_id: record.client_id || "unknown",
+                status: "error",
+                error: "date is required",
+              });
+              continue;
+            }
+
+            const targetUserId =
+              isAdmin && record.user_id ? record.user_id : userId;
+
+            const existing = await db.execute(sql`
             SELECT id FROM attendance WHERE user_id = ${targetUserId} AND date = ${record.date} LIMIT 1
           `);
 
-          if (existing.rows.length > 0) {
-            const existingId = (existing.rows[0] as any).id;
-            await db.execute(sql`
+            if (existing.rows.length > 0) {
+              const existingId = (existing.rows[0] as any).id;
+              await db.execute(sql`
               UPDATE attendance SET
                 status = COALESCE(${record.status}, status),
                 check_in_time = COALESCE(${record.check_in_time}, check_in_time),
@@ -12948,9 +15685,13 @@ Do not include quotes or explanations.`;
                 updated_by = ${userId}
               WHERE id = ${existingId}
             `);
-            results.push({ client_id: record.client_id || record.date, status: "updated", server_id: existingId });
-          } else {
-            const inserted = await db.execute(sql`
+              results.push({
+                client_id: record.client_id || record.date,
+                status: "updated",
+                server_id: existingId,
+              });
+            } else {
+              const inserted = await db.execute(sql`
               INSERT INTO attendance (user_id, date, status, check_in_time, check_out_time, 
                 location_accuracy, distance_from_factory, device_info, notes, shift_type, created_by)
               VALUES (${targetUserId}, ${record.date}, ${record.status || "حاضر"}, 
@@ -12959,98 +15700,129 @@ Do not include quotes or explanations.`;
                 ${record.device_info}, ${record.notes}, ${record.shift_type || "صباحي"}, ${userId})
               RETURNING id
             `);
-            results.push({ client_id: record.client_id || record.date, status: "created", server_id: (inserted.rows[0] as any)?.id });
+              results.push({
+                client_id: record.client_id || record.date,
+                status: "created",
+                server_id: (inserted.rows[0] as any)?.id,
+              });
+            }
+          } catch (err: any) {
+            results.push({
+              client_id: record.client_id || record.date,
+              status: "error",
+              error: err?.message,
+            });
           }
-        } catch (err: any) {
-          results.push({ client_id: record.client_id || record.date, status: "error", error: err?.message });
         }
+
+        res.json({
+          data: results,
+          synced: results.filter((r) => r.status !== "error").length,
+          errors: results.filter((r) => r.status === "error").length,
+        });
+      } catch (error) {
+        logger.error("Mobile sync attendance error", error);
+        res.status(500).json({ message: "خطأ في مزامنة الحضور" });
       }
+    },
+  );
 
-      res.json({ 
-        data: results,
-        synced: results.filter(r => r.status !== "error").length,
-        errors: results.filter(r => r.status === "error").length,
-      });
-    } catch (error) {
-      logger.error("Mobile sync attendance error", error);
-      res.status(500).json({ message: "خطأ في مزامنة الحضور" });
-    }
-  });
+  app.post(
+    "/api/mobile/sync/actions",
+    requireAuth,
+    async (req: AuthRequest, res) => {
+      try {
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ message: "غير مصرح" });
 
-  app.post("/api/mobile/sync/actions", requireAuth, async (req: AuthRequest, res) => {
-    try {
-      const userId = req.user?.id;
-      if (!userId) return res.status(401).json({ message: "غير مصرح" });
+        const { actions } = req.body;
+        if (!Array.isArray(actions) || actions.length === 0) {
+          return res.status(400).json({ message: "لا توجد إجراءات للمزامنة" });
+        }
 
-      const { actions } = req.body;
-      if (!Array.isArray(actions) || actions.length === 0) {
-        return res.status(400).json({ message: "لا توجد إجراءات للمزامنة" });
+        const results: { client_id: string; status: string; error?: string }[] =
+          [];
+
+        for (const action of actions) {
+          try {
+            await db.insert(mobile_sync_queue).values({
+              user_id: userId,
+              action_type: action.action_type,
+              entity_type: action.entity_type,
+              entity_data: action.entity_data,
+              client_timestamp: new Date(action.client_timestamp),
+              status: "pending",
+            });
+            results.push({ client_id: action.client_id, status: "queued" });
+          } catch (err: any) {
+            results.push({
+              client_id: action.client_id,
+              status: "error",
+              error: err?.message,
+            });
+          }
+        }
+
+        res.json({
+          data: results,
+          queued: results.filter((r) => r.status === "queued").length,
+          errors: results.filter((r) => r.status === "error").length,
+        });
+      } catch (error) {
+        logger.error("Mobile sync actions error", error);
+        res.status(500).json({ message: "خطأ في مزامنة الإجراءات" });
       }
+    },
+  );
 
-      const results: { client_id: string; status: string; error?: string }[] = [];
+  app.post(
+    "/api/mobile/upload/image",
+    requireAuth,
+    mobileUpload.single("image"),
+    async (req: AuthRequest, res) => {
+      try {
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ message: "غير مصرح" });
 
-      for (const action of actions) {
-        try {
-          await db.insert(mobile_sync_queue).values({
-            user_id: userId,
-            action_type: action.action_type,
-            entity_type: action.entity_type,
-            entity_data: action.entity_data,
-            client_timestamp: new Date(action.client_timestamp),
-            status: "pending",
+        if (!req.file) {
+          return res.status(400).json({ message: "لم يتم إرسال صورة" });
+        }
+
+        const allowedTypes = [
+          "image/jpeg",
+          "image/png",
+          "image/webp",
+          "image/heic",
+        ];
+        if (!allowedTypes.includes(req.file.mimetype)) {
+          return res.status(400).json({
+            message:
+              "نوع الملف غير مدعوم. الأنواع المدعومة: JPEG, PNG, WebP, HEIC",
           });
-          results.push({ client_id: action.client_id, status: "queued" });
-        } catch (err: any) {
-          results.push({ client_id: action.client_id, status: "error", error: err?.message });
         }
+
+        const { purpose, entity_type, entity_id } = req.body;
+        const base64Data = req.file.buffer.toString("base64");
+        const dataUrl = `data:${req.file.mimetype};base64,${base64Data}`;
+
+        res.json({
+          success: true,
+          image: {
+            data_url: dataUrl,
+            mimetype: req.file.mimetype,
+            size: req.file.size,
+            original_name: req.file.originalname,
+            purpose: purpose || "general",
+            entity_type: entity_type || null,
+            entity_id: entity_id || null,
+          },
+        });
+      } catch (error) {
+        logger.error("Mobile upload image error", error);
+        res.status(500).json({ message: "خطأ في رفع الصورة" });
       }
-
-      res.json({
-        data: results,
-        queued: results.filter(r => r.status === "queued").length,
-        errors: results.filter(r => r.status === "error").length,
-      });
-    } catch (error) {
-      logger.error("Mobile sync actions error", error);
-      res.status(500).json({ message: "خطأ في مزامنة الإجراءات" });
-    }
-  });
-
-  app.post("/api/mobile/upload/image", requireAuth, mobileUpload.single("image"), async (req: AuthRequest, res) => {
-    try {
-      const userId = req.user?.id;
-      if (!userId) return res.status(401).json({ message: "غير مصرح" });
-
-      if (!req.file) {
-        return res.status(400).json({ message: "لم يتم إرسال صورة" });
-      }
-
-      const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/heic"];
-      if (!allowedTypes.includes(req.file.mimetype)) {
-        return res.status(400).json({ message: "نوع الملف غير مدعوم. الأنواع المدعومة: JPEG, PNG, WebP, HEIC" });
-      }
-
-      const { purpose, entity_type, entity_id } = req.body;
-      const base64Data = req.file.buffer.toString("base64");
-      const dataUrl = `data:${req.file.mimetype};base64,${base64Data}`;
-
-      res.json({
-        success: true,
-        image: {
-          data_url: dataUrl,
-          mimetype: req.file.mimetype,
-          size: req.file.size,
-          original_name: req.file.originalname,
-          purpose: purpose || "general",
-          entity_type: entity_type || null,
-          entity_id: entity_id || null,
-        },
-      });
-    } catch (error) {
-      logger.error("Mobile upload image error", error);
-      res.status(500).json({ message: "خطأ في رفع الصورة" });
-    }
-  });
+    },
+  );
 
   app.get("/api/mobile/status", (_req, res) => {
     res.json({
@@ -13086,10 +15858,12 @@ Do not include quotes or explanations.`;
   app.get("/api/experimental-blends", requireAuth, async (_req, res) => {
     try {
       const blends = await storage.getExperimentalBlends();
-      const result = await Promise.all(blends.map(async (b) => {
-        const items = await storage.getExperimentalBlendItems(b.id);
-        return { ...b, items };
-      }));
+      const result = await Promise.all(
+        blends.map(async (b) => {
+          const items = await storage.getExperimentalBlendItems(b.id);
+          return { ...b, items };
+        }),
+      );
       res.json(result);
     } catch (error) {
       console.error("Error fetching experimental blends:", error);
@@ -13115,7 +15889,9 @@ Do not include quotes or explanations.`;
     try {
       const { items, ...blendData } = req.body;
       if (!blendData.blend_number || !blendData.machine_id) {
-        return res.status(400).json({ message: "بيانات ناقصة: رقم الخلطة والماكينة مطلوبان" });
+        return res
+          .status(400)
+          .json({ message: "بيانات ناقصة: رقم الخلطة والماكينة مطلوبان" });
       }
       const blend = await storage.createExperimentalBlend(blendData);
       let createdItems: any[] = [];
@@ -13124,7 +15900,8 @@ Do not include quotes or explanations.`;
           ...item,
           blend_id: blend.id,
         }));
-        createdItems = await storage.createExperimentalBlendItems(itemsWithBlendId);
+        createdItems =
+          await storage.createExperimentalBlendItems(itemsWithBlendId);
       }
       res.json({ ...blend, items: createdItems });
     } catch (error) {
@@ -13138,10 +15915,17 @@ Do not include quotes or explanations.`;
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "معرف غير صالح" });
       const existing = await storage.getExperimentalBlendById(id);
-      if (!existing) return res.status(404).json({ message: "الخلطة غير موجودة" });
+      if (!existing)
+        return res.status(404).json({ message: "الخلطة غير موجودة" });
       const { items, ...blendData } = req.body;
-      const itemsWithBlendId = items ? items.map((item: any) => ({ ...item, blend_id: id })) : undefined;
-      const updated = await storage.updateExperimentalBlend(id, blendData, itemsWithBlendId);
+      const itemsWithBlendId = items
+        ? items.map((item: any) => ({ ...item, blend_id: id }))
+        : undefined;
+      const updated = await storage.updateExperimentalBlend(
+        id,
+        blendData,
+        itemsWithBlendId,
+      );
       const updatedItems = await storage.getExperimentalBlendItems(id);
       res.json({ ...updated, items: updatedItems });
     } catch (error) {
@@ -13182,7 +15966,9 @@ Do not include quotes or explanations.`;
       if (!userId) return res.status(401).json({ message: "Unauthorized" });
       const parsed = insertBagWeightRecordSchema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ message: "بيانات غير صالحة", errors: parsed.error.errors });
+        return res
+          .status(400)
+          .json({ message: "بيانات غير صالحة", errors: parsed.error.errors });
       }
       const created = await storage.createBagWeightRecord(userId, parsed.data);
       res.json(created);
@@ -13192,20 +15978,26 @@ Do not include quotes or explanations.`;
     }
   });
 
-  app.delete("/api/bag-weight-records/:id", requireAuth, async (req: any, res) => {
-    try {
-      const userId = getAuthUserId(req);
-      if (!userId) return res.status(401).json({ message: "Unauthorized" });
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "معرف غير صالح" });
-      const deleted = await storage.deleteBagWeightRecord(id, userId);
-      if (!deleted) return res.status(404).json({ message: "السجل غير موجود" });
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error deleting bag weight record:", error);
-      res.status(500).json({ message: "خطأ في حذف السجل" });
-    }
-  });
+  app.delete(
+    "/api/bag-weight-records/:id",
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const userId = getAuthUserId(req);
+        if (!userId) return res.status(401).json({ message: "Unauthorized" });
+        const id = parseInt(req.params.id);
+        if (isNaN(id))
+          return res.status(400).json({ message: "معرف غير صالح" });
+        const deleted = await storage.deleteBagWeightRecord(id, userId);
+        if (!deleted)
+          return res.status(404).json({ message: "السجل غير موجود" });
+        res.json({ success: true });
+      } catch (error) {
+        console.error("Error deleting bag weight record:", error);
+        res.status(500).json({ message: "خطأ في حذف السجل" });
+      }
+    },
+  );
 
   app.delete("/api/bag-weight-records", requireAuth, async (req: any, res) => {
     try {

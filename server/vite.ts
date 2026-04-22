@@ -1,10 +1,12 @@
-import express, { type Express } from "express";
 import fs from "fs";
-import path from "path";
-import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
-import viteConfig from "../vite.config";
+import path from "path";
+
+import express, { type Express } from "express";
 import { nanoid } from "nanoid";
+import { createServer as createViteServer, createLogger } from "vite";
+
+import viteConfig from "../vite.config";
 
 const viteLogger = createLogger();
 
@@ -112,7 +114,10 @@ export function serveStatic(app: Express) {
     if (!html.includes('rel="manifest"')) {
       html = html.replace("</head>", `${pwaSnippet}\n</head>`);
     }
-    if (!html.includes('register("/sw.js")') && !html.includes("register('/sw.js')")) {
+    if (
+      !html.includes('register("/sw.js")') &&
+      !html.includes("register('/sw.js')")
+    ) {
       html = html.replace("</body>", `${swSnippet}\n</body>`);
     }
 

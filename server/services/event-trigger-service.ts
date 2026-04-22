@@ -1,9 +1,18 @@
-import type { IStorage } from "../storage";
-import { NotificationService } from "./notification-service";
 import { logger } from "../lib/logger";
+
+import { NotificationService } from "./notification-service";
+
+import type { IStorage } from "../storage";
 import type { NotificationEventSetting } from "@shared/schema";
 
-export type EventCategory = "orders" | "production" | "quality" | "maintenance" | "hr" | "inventory" | "system";
+export type EventCategory =
+  | "orders"
+  | "production"
+  | "quality"
+  | "maintenance"
+  | "hr"
+  | "inventory"
+  | "system";
 
 export interface EventContext {
   type: string;
@@ -38,7 +47,7 @@ export class EventTriggerService {
 
   async triggerEvent(
     eventKey: string,
-    context: EventContext
+    context: EventContext,
   ): Promise<TriggerResult> {
     const result: TriggerResult = {
       success: true,
@@ -49,7 +58,8 @@ export class EventTriggerService {
     };
 
     try {
-      const eventSetting = await this.storage.getNotificationEventSettingByKey(eventKey);
+      const eventSetting =
+        await this.storage.getNotificationEventSettingByKey(eventKey);
 
       if (!eventSetting) {
         logger.warn(`Event setting not found for key: ${eventKey}`);
@@ -73,8 +83,11 @@ export class EventTriggerService {
 
       for (const recipient of recipients) {
         try {
-          const message = this.formatMessage(eventSetting.message_template_ar || "", context.data);
-          
+          const message = this.formatMessage(
+            eventSetting.message_template_ar || "",
+            context.data,
+          );
+
           const log = await this.storage.createNotificationEventLog({
             event_setting_id: eventSetting.id,
             event_key: eventKey,
@@ -89,16 +102,17 @@ export class EventTriggerService {
           });
 
           if (eventSetting.whatsapp_enabled) {
-            const sendResult = await this.notificationService.metaWhatsApp.sendTextMessage(
-              recipient.phone,
-              message,
-              {
-                title: eventSetting.event_name_ar,
-                priority: eventSetting.priority || undefined,
-                context_type: context.type,
-                context_id: String(context.id),
-              }
-            );
+            const sendResult =
+              await this.notificationService.metaWhatsApp.sendTextMessage(
+                recipient.phone,
+                message,
+                {
+                  title: eventSetting.event_name_ar,
+                  priority: eventSetting.priority || undefined,
+                  context_type: context.type,
+                  context_id: String(context.id),
+                },
+              );
 
             if (sendResult.success) {
               await this.storage.updateNotificationEventLog(log.id, {
@@ -143,12 +157,13 @@ export class EventTriggerService {
             status: "failed",
             error: error.message,
           });
-          logger.error(`Failed to send notification to ${recipient.name}: ${error.message}`);
+          logger.error(
+            `Failed to send notification to ${recipient.name}: ${error.message}`,
+          );
         }
       }
 
       result.success = result.failed_count === 0;
-
     } catch (error: any) {
       logger.error(`Error triggering event ${eventKey}: ${error.message}`);
       result.success = false;
@@ -159,7 +174,7 @@ export class EventTriggerService {
 
   private evaluateCondition(
     setting: NotificationEventSetting,
-    context: EventContext
+    context: EventContext,
   ): boolean {
     if (!setting.condition_enabled) {
       return true;
@@ -171,10 +186,14 @@ export class EventTriggerService {
         operator: setting.condition_operator,
         value: setting.condition_value,
       };
-      
-      if (condition.field && condition.operator && condition.value !== undefined) {
+
+      if (
+        condition.field &&
+        condition.operator &&
+        condition.value !== undefined
+      ) {
         const fieldValue = this.getNestedValue(context.data, condition.field);
-        
+
         switch (condition.operator) {
           case ">":
             return Number(fieldValue) > Number(condition.value);
@@ -193,9 +212,12 @@ export class EventTriggerService {
             return String(fieldValue).includes(String(condition.value));
           case "in":
             try {
-              const valueList = typeof condition.value === "string" 
-                ? condition.value.split(",").map(v => v.trim())
-                : Array.isArray(condition.value) ? condition.value : [];
+              const valueList =
+                typeof condition.value === "string"
+                  ? condition.value.split(",").map((v) => v.trim())
+                  : Array.isArray(condition.value)
+                    ? condition.value
+                    : [];
               return valueList.includes(String(fieldValue));
             } catch {
               return false;
@@ -218,11 +240,15 @@ export class EventTriggerService {
 
   private async resolveRecipients(
     setting: NotificationEventSetting,
-    context: EventContext
+    context: EventContext,
   ): Promise<Array<{ phone: string; user_id?: number; name: string }>> {
-    const recipients: Array<{ phone: string; user_id?: number; name: string }> = [];
+    const recipients: Array<{ phone: string; user_id?: number; name: string }> =
+      [];
 
-    if (setting.recipient_user_ids && Array.isArray(setting.recipient_user_ids)) {
+    if (
+      setting.recipient_user_ids &&
+      Array.isArray(setting.recipient_user_ids)
+    ) {
       for (const userId of setting.recipient_user_ids) {
         try {
           const user = await this.storage.getUser(userId);
@@ -239,13 +265,20 @@ export class EventTriggerService {
       }
     }
 
-    if (setting.recipient_role_ids && Array.isArray(setting.recipient_role_ids)) {
+    if (
+      setting.recipient_role_ids &&
+      Array.isArray(setting.recipient_role_ids)
+    ) {
       for (const roleId of setting.recipient_role_ids) {
         try {
           const users = await this.storage.getSafeUsersByRole(roleId);
           for (const user of users) {
             const fullUser = await this.storage.getUser(user.id);
-            if (fullUser && fullUser.phone && !recipients.find(r => r.phone === fullUser.phone)) {
+            if (
+              fullUser &&
+              fullUser.phone &&
+              !recipients.find((r) => r.phone === fullUser.phone)
+            ) {
               recipients.push({
                 phone: fullUser.phone,
                 user_id: fullUser.id,
@@ -262,7 +295,11 @@ export class EventTriggerService {
     if (setting.notify_customer && context.user_id) {
       try {
         const user = await this.storage.getUserById(context.user_id);
-        if (user && user.phone && !recipients.find(r => r.user_id === user.id)) {
+        if (
+          user &&
+          user.phone &&
+          !recipients.find((r) => r.user_id === user.id)
+        ) {
           recipients.push({
             phone: user.phone,
             user_id: user.id,
@@ -275,9 +312,12 @@ export class EventTriggerService {
     }
 
     // Add direct phone numbers from recipient_phone_numbers field
-    if (setting.recipient_phone_numbers && Array.isArray(setting.recipient_phone_numbers)) {
+    if (
+      setting.recipient_phone_numbers &&
+      Array.isArray(setting.recipient_phone_numbers)
+    ) {
       for (const phone of setting.recipient_phone_numbers) {
-        if (phone && !recipients.find(r => r.phone === phone)) {
+        if (phone && !recipients.find((r) => r.phone === phone)) {
           recipients.push({
             phone: phone,
             name: "رقم مباشر", // "Direct Number" in Arabic
@@ -293,7 +333,7 @@ export class EventTriggerService {
     let message = template;
 
     const placeholderPattern = /\{\{(\w+(?:\.\w+)*)\}\}/g;
-    
+
     message = message.replace(placeholderPattern, (match, path) => {
       const value = this.getNestedValue(data, path);
       return value !== undefined ? String(value) : match;
@@ -302,7 +342,10 @@ export class EventTriggerService {
     return message;
   }
 
-  async triggerOrderCreated(orderId: number, orderData: Record<string, any>): Promise<TriggerResult> {
+  async triggerOrderCreated(
+    orderId: number,
+    orderData: Record<string, any>,
+  ): Promise<TriggerResult> {
     return this.triggerEvent("order_created", {
       type: "order",
       id: orderId,
@@ -314,7 +357,7 @@ export class EventTriggerService {
     orderId: number,
     oldStatus: string,
     newStatus: string,
-    orderData: Record<string, any>
+    orderData: Record<string, any>,
   ): Promise<TriggerResult> {
     return this.triggerEvent("order_status_changed", {
       type: "order",
@@ -323,7 +366,10 @@ export class EventTriggerService {
     });
   }
 
-  async triggerOrderCompleted(orderId: number, orderData: Record<string, any>): Promise<TriggerResult> {
+  async triggerOrderCompleted(
+    orderId: number,
+    orderData: Record<string, any>,
+  ): Promise<TriggerResult> {
     return this.triggerEvent("order_completed", {
       type: "order",
       id: orderId,
@@ -331,7 +377,10 @@ export class EventTriggerService {
     });
   }
 
-  async triggerProductionStarted(productionOrderId: number, data: Record<string, any>): Promise<TriggerResult> {
+  async triggerProductionStarted(
+    productionOrderId: number,
+    data: Record<string, any>,
+  ): Promise<TriggerResult> {
     return this.triggerEvent("production_started", {
       type: "production_order",
       id: productionOrderId,
@@ -339,7 +388,10 @@ export class EventTriggerService {
     });
   }
 
-  async triggerProductionCompleted(productionOrderId: number, data: Record<string, any>): Promise<TriggerResult> {
+  async triggerProductionCompleted(
+    productionOrderId: number,
+    data: Record<string, any>,
+  ): Promise<TriggerResult> {
     return this.triggerEvent("production_completed", {
       type: "production_order",
       id: productionOrderId,
@@ -351,7 +403,7 @@ export class EventTriggerService {
     productionOrderId: number,
     wastePercentage: number,
     threshold: number,
-    data: Record<string, any>
+    data: Record<string, any>,
   ): Promise<TriggerResult> {
     return this.triggerEvent("waste_threshold_exceeded", {
       type: "production_order",
@@ -363,7 +415,7 @@ export class EventTriggerService {
   async triggerQualityIssue(
     inspectionId: number,
     issueType: string,
-    data: Record<string, any>
+    data: Record<string, any>,
   ): Promise<TriggerResult> {
     return this.triggerEvent("quality_issue_detected", {
       type: "quality_inspection",
@@ -375,7 +427,7 @@ export class EventTriggerService {
   async triggerMaintenanceRequest(
     requestId: number,
     machineId: number,
-    data: Record<string, any>
+    data: Record<string, any>,
   ): Promise<TriggerResult> {
     return this.triggerEvent("maintenance_request_created", {
       type: "maintenance_request",
@@ -386,7 +438,7 @@ export class EventTriggerService {
 
   async triggerMaintenanceCompleted(
     requestId: number,
-    data: Record<string, any>
+    data: Record<string, any>,
   ): Promise<TriggerResult> {
     return this.triggerEvent("maintenance_completed", {
       type: "maintenance_request",
@@ -399,25 +451,30 @@ export class EventTriggerService {
     itemId: number,
     currentQuantity: number,
     minimumLevel: number,
-    data: Record<string, any>
+    data: Record<string, any>,
   ): Promise<TriggerResult> {
     return this.triggerEvent("inventory_low", {
       type: "inventory_item",
       id: itemId,
-      data: { ...data, current_quantity: currentQuantity, minimum_level: minimumLevel },
+      data: {
+        ...data,
+        current_quantity: currentQuantity,
+        minimum_level: minimumLevel,
+      },
     });
   }
 
   async triggerHREvent(
     eventType: "leave_request" | "attendance_issue" | "performance_review",
     employeeId: number,
-    data: Record<string, any>
+    data: Record<string, any>,
   ): Promise<TriggerResult> {
-    const eventKey = eventType === "leave_request" 
-      ? "leave_request_submitted"
-      : eventType === "attendance_issue"
-      ? "attendance_alert"
-      : "performance_review_due";
+    const eventKey =
+      eventType === "leave_request"
+        ? "leave_request_submitted"
+        : eventType === "attendance_issue"
+          ? "attendance_alert"
+          : "performance_review_due";
 
     return this.triggerEvent(eventKey, {
       type: "hr_event",
@@ -429,7 +486,7 @@ export class EventTriggerService {
   async triggerSystemAlert(
     alertType: string,
     message: string,
-    data: Record<string, any>
+    data: Record<string, any>,
   ): Promise<TriggerResult> {
     return this.triggerEvent("system_alert", {
       type: "system",
@@ -443,9 +500,12 @@ let eventTriggerServiceInstance: EventTriggerService | null = null;
 
 export function initEventTriggerService(
   storage: IStorage,
-  notificationService: NotificationService
+  notificationService: NotificationService,
 ): EventTriggerService {
-  eventTriggerServiceInstance = new EventTriggerService(storage, notificationService);
+  eventTriggerServiceInstance = new EventTriggerService(
+    storage,
+    notificationService,
+  );
   return eventTriggerServiceInstance;
 }
 

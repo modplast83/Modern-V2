@@ -1,11 +1,12 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Package, Scissors, Archive, Plus, QrCode, Play } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
+
+import { useToast } from "../../hooks/use-toast";
 import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +15,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../ui/dialog";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
 import {
   Select,
   SelectContent,
@@ -21,8 +24,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
-import { Package, Scissors, Archive, Plus, QrCode, Play } from "lucide-react";
-import { useToast } from "../../hooks/use-toast";
 
 interface ProductionOrder {
   id: number;
@@ -106,15 +107,17 @@ export default function OrderProgress() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || t('production.orderProgress.receiptFailed'));
+        throw new Error(
+          error.message || t("production.orderProgress.receiptFailed"),
+        );
       }
 
       return response.json();
     },
     onSuccess: () => {
       toast({
-        title: t('production.orderProgress.receiptSuccess'),
-        description: t('production.orderProgress.receiptRegistered'),
+        title: t("production.orderProgress.receiptSuccess"),
+        description: t("production.orderProgress.receiptRegistered"),
       });
       queryClient.invalidateQueries({ queryKey: ["/api/warehouse/receipts"] });
       queryClient.invalidateQueries({
@@ -129,7 +132,7 @@ export default function OrderProgress() {
     },
     onError: (error: Error) => {
       toast({
-        title: t('common.error'),
+        title: t("common.error"),
         description: error.message,
         variant: "destructive",
       });
@@ -139,8 +142,8 @@ export default function OrderProgress() {
   const handleWarehouseReceipt = () => {
     if (!receiptData.production_order_id || !receiptData.received_weight_kg) {
       toast({
-        title: t('common.error'),
-        description: t('production.orderProgress.fillRequiredFields'),
+        title: t("common.error"),
+        description: t("production.orderProgress.fillRequiredFields"),
         variant: "destructive",
       });
       return;
@@ -158,7 +161,9 @@ export default function OrderProgress() {
       {/* Job Order Selection */}
       <Card>
         <CardHeader>
-          <CardTitle>{t('production.orderProgress.selectProductionOrder')}</CardTitle>
+          <CardTitle>
+            {t("production.orderProgress.selectProductionOrder")}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <Select
@@ -168,7 +173,11 @@ export default function OrderProgress() {
             }
           >
             <SelectTrigger data-testid="select-job-order">
-              <SelectValue placeholder={t('production.orderProgress.selectOrderPlaceholder')} />
+              <SelectValue
+                placeholder={t(
+                  "production.orderProgress.selectOrderPlaceholder",
+                )}
+              />
             </SelectTrigger>
             <SelectContent>
               {productionOrders
@@ -176,7 +185,7 @@ export default function OrderProgress() {
                 .map((order: any) => (
                   <SelectItem key={order.id} value={order.id.toString()}>
                     {order.production_order_number} - {order.quantity_required}{" "}
-                    {t('production.units.kg')}
+                    {t("production.units.kg")}
                   </SelectItem>
                 ))}
             </SelectContent>
@@ -191,7 +200,7 @@ export default function OrderProgress() {
           <Card>
             <CardHeader>
               <CardTitle>
-                {t('production.orderProgress.orderProgress')} -{" "}
+                {t("production.orderProgress.orderProgress")} -{" "}
                 {progress.production_order?.production_order_number}
               </CardTitle>
             </CardHeader>
@@ -199,9 +208,12 @@ export default function OrderProgress() {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="text-center">
                   <Package className="h-8 w-8 mx-auto mb-2 text-blue-500" />
-                  <p className="text-sm text-gray-600">{t('production.stages.film')}</p>
+                  <p className="text-sm text-gray-600">
+                    {t("production.stages.film")}
+                  </p>
                   <p className="font-bold text-lg">
-                    {progress.progress?.film_weight?.toFixed(2) || 0} {t('production.units.kg')}
+                    {progress.progress?.film_weight?.toFixed(2) || 0}{" "}
+                    {t("production.units.kg")}
                   </p>
                   <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                     <div
@@ -215,9 +227,12 @@ export default function OrderProgress() {
 
                 <div className="text-center">
                   <Play className="h-8 w-8 mx-auto mb-2 text-green-500" />
-                  <p className="text-sm text-gray-600">{t('production.stages.printing')}</p>
+                  <p className="text-sm text-gray-600">
+                    {t("production.stages.printing")}
+                  </p>
                   <p className="font-bold text-lg">
-                    {progress.progress?.printed_weight?.toFixed(2) || 0} {t('production.units.kg')}
+                    {progress.progress?.printed_weight?.toFixed(2) || 0}{" "}
+                    {t("production.units.kg")}
                   </p>
                   <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                     <div
@@ -231,9 +246,12 @@ export default function OrderProgress() {
 
                 <div className="text-center">
                   <Scissors className="h-8 w-8 mx-auto mb-2 text-orange-500" />
-                  <p className="text-sm text-gray-600">{t('production.stages.cutting')}</p>
+                  <p className="text-sm text-gray-600">
+                    {t("production.stages.cutting")}
+                  </p>
                   <p className="font-bold text-lg">
-                    {progress.progress?.cut_weight?.toFixed(2) || 0} {t('production.units.kg')}
+                    {progress.progress?.cut_weight?.toFixed(2) || 0}{" "}
+                    {t("production.units.kg")}
                   </p>
                   <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                     <div
@@ -247,9 +265,12 @@ export default function OrderProgress() {
 
                 <div className="text-center">
                   <Archive className="h-8 w-8 mx-auto mb-2 text-purple-500" />
-                  <p className="text-sm text-gray-600">{t('production.stages.warehouse')}</p>
+                  <p className="text-sm text-gray-600">
+                    {t("production.stages.warehouse")}
+                  </p>
                   <p className="font-bold text-lg">
-                    {progress.progress?.warehouse_weight?.toFixed(2) || 0} {t('production.units.kg')}
+                    {progress.progress?.warehouse_weight?.toFixed(2) || 0}{" "}
+                    {t("production.units.kg")}
                   </p>
                   <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                     <div
@@ -268,7 +289,7 @@ export default function OrderProgress() {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>{t('production.orderProgress.rolls')}</CardTitle>
+                <CardTitle>{t("production.orderProgress.rolls")}</CardTitle>
                 <Dialog
                   open={warehouseDialogOpen}
                   onOpenChange={setWarehouseDialogOpen}
@@ -283,19 +304,25 @@ export default function OrderProgress() {
                       }
                     >
                       <Plus className="h-4 w-4 mr-2" />
-                      {t('production.orderProgress.warehouseReceipt')}
+                      {t("production.orderProgress.warehouseReceipt")}
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-md">
                     <DialogHeader>
-                      <DialogTitle>{t('production.orderProgress.registerWarehouseReceipt')}</DialogTitle>
+                      <DialogTitle>
+                        {t("production.orderProgress.registerWarehouseReceipt")}
+                      </DialogTitle>
                       <DialogDescription>
-                        {t('production.orderProgress.registerReceiptDescription')}
+                        {t(
+                          "production.orderProgress.registerReceiptDescription",
+                        )}
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <Label>{t('production.orderProgress.receivedWeightLabel')}</Label>
+                        <Label>
+                          {t("production.orderProgress.receivedWeightLabel")}
+                        </Label>
                         <Input
                           type="number"
                           step="0.1"
@@ -319,7 +346,7 @@ export default function OrderProgress() {
                           onClick={() => setWarehouseDialogOpen(false)}
                           disabled={warehouseReceiptMutation.isPending}
                         >
-                          {t('common.cancel')}
+                          {t("common.cancel")}
                         </Button>
                         <Button
                           onClick={handleWarehouseReceipt}
@@ -327,8 +354,8 @@ export default function OrderProgress() {
                           data-testid="button-confirm-receipt"
                         >
                           {warehouseReceiptMutation.isPending
-                            ? t('production.orderProgress.registering')
-                            : t('production.orderProgress.registerReceipt')}
+                            ? t("production.orderProgress.registering")
+                            : t("production.orderProgress.registerReceipt")}
                         </Button>
                       </div>
                     </div>
@@ -353,7 +380,8 @@ export default function OrderProgress() {
                           {roll.roll_number}
                         </p>
                         <p className="text-sm text-gray-500">
-                          {roll.weight_kg?.toFixed(2)} {t('production.units.kg')} - {roll.machine_id}
+                          {roll.weight_kg?.toFixed(2)}{" "}
+                          {t("production.units.kg")} - {roll.machine_id}
                         </p>
                       </div>
                     </div>
@@ -369,16 +397,18 @@ export default function OrderProgress() {
                         }
                       >
                         {roll.stage === "film"
-                          ? t('production.stages.film')
+                          ? t("production.stages.film")
                           : roll.stage === "printing"
-                            ? t('production.stageLabels.printed')
-                            : t('production.stageLabels.cut')}
+                            ? t("production.stageLabels.printed")
+                            : t("production.stageLabels.cut")}
                       </Badge>
 
                       {roll.printed_at && (
                         <span className="text-xs text-gray-400">
-                          {t('production.orderProgress.printedAt')}:{" "}
-                          {new Date(roll.printed_at).toLocaleDateString("en-US")}
+                          {t("production.orderProgress.printedAt")}:{" "}
+                          {new Date(roll.printed_at).toLocaleDateString(
+                            "en-US",
+                          )}
                         </span>
                       )}
                     </div>
@@ -392,7 +422,9 @@ export default function OrderProgress() {
           {progress.warehouse_receipts?.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>{t('production.orderProgress.warehouseReceipts')}</CardTitle>
+                <CardTitle>
+                  {t("production.orderProgress.warehouseReceipts")}
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -402,13 +434,18 @@ export default function OrderProgress() {
                       className="flex items-center justify-between p-3 border rounded-lg"
                     >
                       <div>
-                        <p className="font-medium">{t('production.orderProgress.receipt')} #{receipt.id}</p>
+                        <p className="font-medium">
+                          {t("production.orderProgress.receipt")} #{receipt.id}
+                        </p>
                         <p className="text-sm text-gray-500">
-                          {receipt.received_weight_kg?.toFixed(2)} {t('production.units.kg')}
+                          {receipt.received_weight_kg?.toFixed(2)}{" "}
+                          {t("production.units.kg")}
                         </p>
                       </div>
                       <div className="text-xs text-gray-400">
-                        {new Date(receipt.created_at).toLocaleDateString("en-US")}
+                        {new Date(receipt.created_at).toLocaleDateString(
+                          "en-US",
+                        )}
                       </div>
                     </div>
                   ))}
@@ -423,7 +460,9 @@ export default function OrderProgress() {
         <Card>
           <CardContent className="p-6 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-2 text-sm text-gray-500">{t('production.orderProgress.loadingProgress')}</p>
+            <p className="mt-2 text-sm text-gray-500">
+              {t("production.orderProgress.loadingProgress")}
+            </p>
           </CardContent>
         </Card>
       )}

@@ -1,10 +1,15 @@
-import fs from 'fs/promises';
-import fsSync from 'fs';
-import path from 'path';
+import fsSync from "fs";
+import fs from "fs/promises";
+import path from "path";
 
 export interface CodeIssue {
-  type: 'duplicate_code' | 'unused_file' | 'large_file' | 'complex_file' | 'deprecated_pattern';
-  severity: 'low' | 'medium' | 'high';
+  type:
+    | "duplicate_code"
+    | "unused_file"
+    | "large_file"
+    | "complex_file"
+    | "deprecated_pattern";
+  severity: "low" | "medium" | "high";
   file: string;
   line?: number;
   message: string;
@@ -26,22 +31,25 @@ export interface CodeHealthReport {
 }
 
 export class CodeHealthChecker {
-  private static clientDir = path.join(process.cwd(), 'client', 'src');
-  private static serverDir = path.join(process.cwd(), 'server');
+  private static clientDir = path.join(process.cwd(), "client", "src");
+  private static serverDir = path.join(process.cwd(), "server");
 
   static async runFullHealthCheck(): Promise<CodeHealthReport> {
     const issues: CodeIssue[] = [];
 
     try {
       const files = await this.getAllFiles([this.clientDir, this.serverDir]);
-      const tsFiles = files.filter(f => f.endsWith('.ts') || f.endsWith('.tsx'));
+      const tsFiles = files.filter(
+        (f) => f.endsWith(".ts") || f.endsWith(".tsx"),
+      );
 
       const fileContents = await this.readFilesInBatches(tsFiles, 10);
 
       const largeFiles = this.checkLargeFilesFromContent(fileContents);
       issues.push(...largeFiles);
 
-      const deprecatedPatterns = this.checkDeprecatedPatternsFromContent(fileContents);
+      const deprecatedPatterns =
+        this.checkDeprecatedPatternsFromContent(fileContents);
       issues.push(...deprecatedPatterns);
 
       const backupFiles = this.checkBackupFilesFromList(files);
@@ -51,11 +59,13 @@ export class CodeHealthChecker {
       issues.push(...duplicates);
 
       const summary = {
-        duplicateCode: issues.filter(i => i.type === 'duplicate_code').length,
-        unusedFiles: issues.filter(i => i.type === 'unused_file').length,
-        largeFiles: issues.filter(i => i.type === 'large_file').length,
-        complexFiles: issues.filter(i => i.type === 'complex_file').length,
-        deprecatedPatterns: issues.filter(i => i.type === 'deprecated_pattern').length
+        duplicateCode: issues.filter((i) => i.type === "duplicate_code").length,
+        unusedFiles: issues.filter((i) => i.type === "unused_file").length,
+        largeFiles: issues.filter((i) => i.type === "large_file").length,
+        complexFiles: issues.filter((i) => i.type === "complex_file").length,
+        deprecatedPatterns: issues.filter(
+          (i) => i.type === "deprecated_pattern",
+        ).length,
       };
 
       const recommendations = this.generateRecommendations(summary);
@@ -65,15 +75,18 @@ export class CodeHealthChecker {
         totalFiles: tsFiles.length,
         issues,
         summary,
-        recommendations
+        recommendations,
       };
     } catch (error) {
-      console.error('Error running health check:', error);
+      console.error("Error running health check:", error);
       throw error;
     }
   }
 
-  private static async readFilesInBatches(files: string[], batchSize: number): Promise<Map<string, string>> {
+  private static async readFilesInBatches(
+    files: string[],
+    batchSize: number,
+  ): Promise<Map<string, string>> {
     const result = new Map<string, string>();
 
     for (let i = 0; i < files.length; i += batchSize) {
@@ -81,12 +94,12 @@ export class CodeHealthChecker {
       const contents = await Promise.all(
         batch.map(async (file) => {
           try {
-            const content = await fs.readFile(file, 'utf-8');
+            const content = await fs.readFile(file, "utf-8");
             return { file, content };
           } catch {
-            return { file, content: '' };
+            return { file, content: "" };
           }
-        })
+        }),
       );
       for (const { file, content } of contents) {
         result.set(file, content);
@@ -96,20 +109,22 @@ export class CodeHealthChecker {
     return result;
   }
 
-  private static checkLargeFilesFromContent(fileContents: Map<string, string>): CodeIssue[] {
+  private static checkLargeFilesFromContent(
+    fileContents: Map<string, string>,
+  ): CodeIssue[] {
     const issues: CodeIssue[] = [];
     const maxLines = 500;
 
     Array.from(fileContents.entries()).forEach(([file, content]) => {
-      const lines = content.split('\n').length;
+      const lines = content.split("\n").length;
 
       if (lines > maxLines) {
         issues.push({
-          type: 'large_file',
-          severity: lines > 1000 ? 'high' : 'medium',
+          type: "large_file",
+          severity: lines > 1000 ? "high" : "medium",
           file: this.relativePath(file),
           message: `الملف يحتوي ${lines} سطر (الحد المقترح: < ${maxLines})`,
-          suggestion: 'يُنصح بتقسيم الملف إلى وحدات أصغر'
+          suggestion: "يُنصح بتقسيم الملف إلى وحدات أصغر",
         });
       }
     });
@@ -117,35 +132,42 @@ export class CodeHealthChecker {
     return issues;
   }
 
-  private static checkDeprecatedPatternsFromContent(fileContents: Map<string, string>): CodeIssue[] {
+  private static checkDeprecatedPatternsFromContent(
+    fileContents: Map<string, string>,
+  ): CodeIssue[] {
     const issues: CodeIssue[] = [];
 
     const deprecatedPatterns = [
       {
         pattern: /onError[\s\S]*useQuery/,
-        message: 'TanStack Query v5: onError في useQuery مهجور',
-        suggestion: 'استخدم error state أو useEffect بدلاً من ذلك',
-        clientOnly: true
+        message: "TanStack Query v5: onError في useQuery مهجور",
+        suggestion: "استخدم error state أو useEffect بدلاً من ذلك",
+        clientOnly: true,
       },
       {
         pattern: /import React from ['"]react['"]/,
-        message: 'لا حاجة لاستيراد React صريحاً مع JSX transform الحديث',
+        message: "لا حاجة لاستيراد React صريحاً مع JSX transform الحديث",
         suggestion: 'أزل سطر "import React"',
-        clientOnly: true
-      }
+        clientOnly: true,
+      },
     ];
 
     Array.from(fileContents.entries()).forEach(([file, content]) => {
-      for (const { pattern, message, suggestion, clientOnly } of deprecatedPatterns) {
-        if (clientOnly && file.includes('server')) continue;
+      for (const {
+        pattern,
+        message,
+        suggestion,
+        clientOnly,
+      } of deprecatedPatterns) {
+        if (clientOnly && file.includes("server")) continue;
 
         if (pattern.test(content)) {
           issues.push({
-            type: 'deprecated_pattern',
-            severity: 'medium',
+            type: "deprecated_pattern",
+            severity: "medium",
             file: this.relativePath(file),
             message,
-            suggestion
+            suggestion,
           });
         }
       }
@@ -162,18 +184,18 @@ export class CodeHealthChecker {
       /\.backup\.(ts|tsx|js|jsx)$/,
       /-old\.(ts|tsx|js|jsx)$/,
       /\.old\.(ts|tsx|js|jsx)$/,
-      /-copy\.(ts|tsx|js|jsx)$/
+      /-copy\.(ts|tsx|js|jsx)$/,
     ];
 
     for (const file of files) {
       for (const pattern of backupPatterns) {
         if (pattern.test(file)) {
           issues.push({
-            type: 'unused_file',
-            severity: 'low',
+            type: "unused_file",
+            severity: "low",
             file: this.relativePath(file),
-            message: 'ملف نسخة احتياطية أو قديم',
-            suggestion: 'أزله إذا لم يعد مطلوباً لتقليل حجم الكود'
+            message: "ملف نسخة احتياطية أو قديم",
+            suggestion: "أزله إذا لم يعد مطلوباً لتقليل حجم الكود",
           });
           break;
         }
@@ -183,17 +205,20 @@ export class CodeHealthChecker {
     return issues;
   }
 
-  private static checkDuplicateCodeFromContent(fileContents: Map<string, string>): CodeIssue[] {
+  private static checkDuplicateCodeFromContent(
+    fileContents: Map<string, string>,
+  ): CodeIssue[] {
     const issues: CodeIssue[] = [];
     const functionHashes = new Map<string, string[]>();
 
     Array.from(fileContents.entries()).forEach(([file, content]) => {
       // تحسين البحث عن الدوال ليشمل المتن (بشكل مبسط عبر الهاش) لتجنب التشابه في الأسماء فقط
-      const functionRegex = /(?:function|const|let|var)\s+(\w+)\s*[=:]?\s*(?:\([^)]*\)|\([^)]*\)\s*=>)\s*\{([\s\S]*?)\}/g;
+      const functionRegex =
+        /(?:function|const|let|var)\s+(\w+)\s*[=:]?\s*(?:\([^)]*\)|\([^)]*\)\s*=>)\s*\{([\s\S]*?)\}/g;
       let match;
 
       while ((match = functionRegex.exec(content)) !== null) {
-        const body = match[2].replace(/\s+/g, ''); // إزالة المسافات للمقارنة
+        const body = match[2].replace(/\s+/g, ""); // إزالة المسافات للمقارنة
         if (body.length < 50) continue; // تجاهل الدوال القصيرة جداً
 
         if (!functionHashes.has(body)) {
@@ -208,11 +233,13 @@ export class CodeHealthChecker {
         const uniqueFiles = Array.from(new Set(filesList));
         if (uniqueFiles.length > 1) {
           issues.push({
-            type: 'duplicate_code',
-            severity: 'medium',
-            file: uniqueFiles.map((f: string) => this.relativePath(f)).join(', '),
+            type: "duplicate_code",
+            severity: "medium",
+            file: uniqueFiles
+              .map((f: string) => this.relativePath(f))
+              .join(", "),
             message: `كود مكرر (نفس المتن) موجود في ${uniqueFiles.length} ملفات`,
-            suggestion: 'يُنصح بإنشاء دالة مشتركة'
+            suggestion: "يُنصح بإنشاء دالة مشتركة",
           });
         }
       }
@@ -221,27 +248,37 @@ export class CodeHealthChecker {
     return issues;
   }
 
-  private static generateRecommendations(summary: CodeHealthReport['summary']): string[] {
+  private static generateRecommendations(
+    summary: CodeHealthReport["summary"],
+  ): string[] {
     const recommendations: string[] = [];
 
     if (summary.largeFiles > 0) {
-      recommendations.push(`تم العثور على ${summary.largeFiles} ملف كبير. يُنصح بتقسيمها لتسهيل الصيانة.`);
+      recommendations.push(
+        `تم العثور على ${summary.largeFiles} ملف كبير. يُنصح بتقسيمها لتسهيل الصيانة.`,
+      );
     }
 
     if (summary.deprecatedPatterns > 0) {
-      recommendations.push(`تم العثور على ${summary.deprecatedPatterns} نمط مهجور. يُنصح بالتحديث للممارسات الحديثة.`);
+      recommendations.push(
+        `تم العثور على ${summary.deprecatedPatterns} نمط مهجور. يُنصح بالتحديث للممارسات الحديثة.`,
+      );
     }
 
     if (summary.unusedFiles > 0) {
-      recommendations.push(`تم العثور على ${summary.unusedFiles} ملف غير مستخدم محتمل. أزلها لتقليل حجم المشروع.`);
+      recommendations.push(
+        `تم العثور على ${summary.unusedFiles} ملف غير مستخدم محتمل. أزلها لتقليل حجم المشروع.`,
+      );
     }
 
     if (summary.duplicateCode > 0) {
-      recommendations.push(`تم العثور على ${summary.duplicateCode} حالة كود مكرر. يُنصح بالدمج في وحدات مشتركة.`);
+      recommendations.push(
+        `تم العثور على ${summary.duplicateCode} حالة كود مكرر. يُنصح بالدمج في وحدات مشتركة.`,
+      );
     }
 
     if (recommendations.length === 0) {
-      recommendations.push('صحة الكود جيدة! لم يتم العثور على مشاكل رئيسية.');
+      recommendations.push("صحة الكود جيدة! لم يتم العثور على مشاكل رئيسية.");
     }
 
     return recommendations;
@@ -258,7 +295,11 @@ export class CodeHealthChecker {
           const fullPath = path.join(dir, entry.name);
 
           if (entry.isDirectory()) {
-            if (entry.name !== 'node_modules' && entry.name !== '.git' && entry.name !== 'dist') {
+            if (
+              entry.name !== "node_modules" &&
+              entry.name !== ".git" &&
+              entry.name !== "dist"
+            ) {
               await walk(fullPath);
             }
           } else {

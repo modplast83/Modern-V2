@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+
 import { hasPermission, type PermissionKey } from "../../shared/permissions";
 
 export interface AuthRequest extends Request {
@@ -15,7 +16,11 @@ export interface AuthRequest extends Request {
 }
 
 // Middleware to require authentication
-export function requireAuth(req: AuthRequest, res: Response, next: NextFunction) {
+export function requireAuth(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) {
   if (!req.user) {
     return res.status(401).json({ error: "Authentication required" });
   }
@@ -29,19 +34,19 @@ export function requirePermission(...permissions: PermissionKey[]) {
     }
 
     const userPerms = req.user.permissions || [];
-    if (userPerms.includes('admin')) {
+    if (userPerms.includes("admin")) {
       return next();
     }
 
-    const hasRequiredPermission = permissions.some(permission => 
-      hasPermission(userPerms, permission)
+    const hasRequiredPermission = permissions.some((permission) =>
+      hasPermission(userPerms, permission),
     );
 
     if (!hasRequiredPermission) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         error: "Insufficient permissions",
         required: permissions,
-        message: "ليس لديك الصلاحيات الكافية للقيام بهذا الإجراء"
+        message: "ليس لديك الصلاحيات الكافية للقيام بهذا الإجراء",
       });
     }
 
@@ -49,16 +54,20 @@ export function requirePermission(...permissions: PermissionKey[]) {
   };
 }
 
-export function requireAdmin(req: AuthRequest, res: Response, next: NextFunction) {
+export function requireAdmin(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) {
   if (!req.user) {
     return res.status(401).json({ error: "Authentication required" });
   }
 
   const userPerms = req.user.permissions || [];
-  if (!userPerms.includes('admin')) {
-    return res.status(403).json({ 
+  if (!userPerms.includes("admin")) {
+    return res.status(403).json({
       error: "Admin access required",
-      message: "هذا الإجراء متاح للمسؤولين فقط"
+      message: "هذا الإجراء متاح للمسؤولين فقط",
     });
   }
 

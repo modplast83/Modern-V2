@@ -1,25 +1,40 @@
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ClipboardCheck, Package } from "lucide-react";
 import { useState, lazy, Suspense } from "react";
 import { useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
-import { useTranslation } from 'react-i18next';
-import PageLayout from "../components/layout/PageLayout";
-import { useAuth } from "../hooks/use-auth";
-import { useToast } from "../hooks/use-toast";
+
 import { parseIntSafe } from "../../../shared/validation-utils";
-import { isUserAdmin } from "../utils/roleUtils";
-import { OrdersStats, OrdersTabs, OrderPrintTemplate, RollsTab } from "../components/orders";
+import PageLayout from "../components/layout/PageLayout";
+import {
+  OrdersStats,
+  OrdersTabs,
+  OrderPrintTemplate,
+  RollsTab,
+} from "../components/orders";
 import ViewOrderDialog from "../components/orders/ViewOrderDialog";
 import { Skeleton } from "../components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { ClipboardCheck, Package } from "lucide-react";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../components/ui/tabs";
+import { useAuth } from "../hooks/use-auth";
+import { useToast } from "../hooks/use-toast";
+import { isUserAdmin } from "../utils/roleUtils";
 
 function lazyWithRetry(importFn: () => Promise<any>) {
   return lazy(() =>
     importFn().catch((error: any) => {
-      if (error?.message?.includes("Failed to fetch dynamically imported module") ||
-          error?.message?.includes("Loading chunk") ||
-          error?.name === "ChunkLoadError") {
+      if (
+        error?.message?.includes(
+          "Failed to fetch dynamically imported module",
+        ) ||
+        error?.message?.includes("Loading chunk") ||
+        error?.name === "ChunkLoadError"
+      ) {
         const reloadKey = "chunk_reload_" + window.location.pathname;
         const lastReload = sessionStorage.getItem(reloadKey);
         const now = Date.now();
@@ -30,29 +45,31 @@ function lazyWithRetry(importFn: () => Promise<any>) {
         }
       }
       throw error;
-    })
+    }),
   );
 }
 
-const ProductionOrdersManagement = lazyWithRetry(() => import("./ProductionOrdersManagement"));
+const ProductionOrdersManagement = lazyWithRetry(
+  () => import("./ProductionOrdersManagement"),
+);
 
 export default function Orders() {
   const { t } = useTranslation();
   const [location, setLocation] = useLocation();
-  
+
   // الحصول على tab من query parameters
   const getActiveTab = () => {
     const params = new URLSearchParams(window.location.search);
     return params.get("tab") || "orders";
   };
-  
+
   const [activeTab, setActiveTab] = useState(getActiveTab());
-  
+
   // تحديث activeTab عند تغيير location
   useEffect(() => {
     setActiveTab(getActiveTab());
   }, [location]);
-  
+
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     if (value === "orders") {
@@ -61,36 +78,39 @@ export default function Orders() {
       setLocation(`/orders?tab=${value}`);
     }
   };
-  
+
   const [searchTerm, setSearchTerm] = useState("");
-  
+
   const [statusFilter, setStatusFilter] = useState("all");
   const [productionSearchTerm, setProductionSearchTerm] = useState("");
   const [productionStatusFilter, setProductionStatusFilter] = useState("all");
   const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false);
   // فتح مودال الإنشاء تلقائياً إذا كان url يحتوي على ?create=1
-    useEffect(() => {
-      try {
-        const params = new URLSearchParams(window.location.search);
-        const create = params.get("create");
-        if (create === "1" || create === "true") {
-          setIsOrderDialogOpen(true);
-          params.delete("create");
-          const newSearch = params.toString();
-          const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : "");
-          window.history.replaceState({}, "", newUrl);
-        }
-      } catch (err) {
-        // لا نفشل التطبيق بسبب هذا فقط
-        console.warn("error parsing query params", err);
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const create = params.get("create");
+      if (create === "1" || create === "true") {
+        setIsOrderDialogOpen(true);
+        params.delete("create");
+        const newSearch = params.toString();
+        const newUrl =
+          window.location.pathname + (newSearch ? `?${newSearch}` : "");
+        window.history.replaceState({}, "", newUrl);
       }
-    }, []);
+    } catch (err) {
+      // لا نفشل التطبيق بسبب هذا فقط
+      console.warn("error parsing query params", err);
+    }
+  }, []);
   const [isViewOrderDialogOpen, setIsViewOrderDialogOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<any>(null);
   const [viewingOrder, setViewingOrder] = useState<any>(null);
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   const [printingOrder, setPrintingOrder] = useState<any>(null);
-  const [printMode, setPrintMode] = useState<"html" | "pdf" | "standalone">("html");
+  const [printMode, setPrintMode] = useState<"html" | "pdf" | "standalone">(
+    "html",
+  );
 
   const { user } = useAuth();
   const { toast } = useToast();
@@ -103,7 +123,7 @@ export default function Orders() {
     queryKey: ["/api/orders", { limit: 500 }],
     queryFn: async () => {
       const response = await fetch("/api/orders?limit=500");
-      if (!response.ok) throw new Error(t('orders.fetchOrdersFailed'));
+      if (!response.ok) throw new Error(t("orders.fetchOrdersFailed"));
       const result = await response.json();
       const data = result.data || result;
       return Array.isArray(data) ? data : [];
@@ -115,7 +135,8 @@ export default function Orders() {
     queryKey: ["/api/production-orders"],
     queryFn: async () => {
       const response = await fetch("/api/production-orders");
-      if (!response.ok) throw new Error(t('orders.fetchProductionOrdersFailed'));
+      if (!response.ok)
+        throw new Error(t("orders.fetchProductionOrdersFailed"));
       const result = await response.json();
       const data = result.data || result;
       return Array.isArray(data) ? data : [];
@@ -127,7 +148,7 @@ export default function Orders() {
     queryKey: ["/api/customers", { all: true }],
     queryFn: async () => {
       const response = await fetch("/api/customers?all=true");
-      if (!response.ok) throw new Error(t('orders.fetchCustomersFailed'));
+      if (!response.ok) throw new Error(t("orders.fetchCustomersFailed"));
       const result = await response.json();
       const data = result.data || result;
       return Array.isArray(data) ? data : [];
@@ -135,7 +156,10 @@ export default function Orders() {
   });
 
   // Fetch customer products
-  const { data: customerProductsResponse } = useQuery<{ data: any[]; total: number }>({
+  const { data: customerProductsResponse } = useQuery<{
+    data: any[];
+    total: number;
+  }>({
     queryKey: ["/api/customer-products"],
     staleTime: 0,
   });
@@ -146,7 +170,7 @@ export default function Orders() {
     queryKey: ["/api/users"],
     queryFn: async () => {
       const response = await fetch("/api/users");
-      if (!response.ok) throw new Error(t('orders.fetchUsersFailed'));
+      if (!response.ok) throw new Error(t("orders.fetchUsersFailed"));
       const result = await response.json();
       const data = result.data || result;
       return Array.isArray(data) ? data : [];
@@ -158,7 +182,7 @@ export default function Orders() {
     queryKey: ["/api/items"],
     queryFn: async () => {
       const response = await fetch("/api/items");
-      if (!response.ok) throw new Error(t('orders.fetchItemsFailed'));
+      if (!response.ok) throw new Error(t("orders.fetchItemsFailed"));
       const result = await response.json();
       const data = result.data || result;
       return Array.isArray(data) ? data : [];
@@ -170,7 +194,7 @@ export default function Orders() {
     queryKey: ["/api/categories"],
     queryFn: async () => {
       const response = await fetch("/api/categories");
-      if (!response.ok) throw new Error(t('orders.fetchCategoriesFailed'));
+      if (!response.ok) throw new Error(t("orders.fetchCategoriesFailed"));
       const result = await response.json();
       const data = result.data || result;
       return Array.isArray(data) ? data : [];
@@ -180,7 +204,7 @@ export default function Orders() {
   // Filter orders by search term and status
   const ordersArray = Array.isArray(orders) ? orders : [];
   const customersArray = Array.isArray(customers) ? customers : [];
-  
+
   const filteredOrders = ordersArray.filter((order: any) => {
     // Search filter
     const matchesSearch =
@@ -211,16 +235,24 @@ export default function Orders() {
   });
 
   // Ensure arrays are valid before filtering
-  const safeCustomerProducts = Array.isArray(customerProducts) ? customerProducts : [];
+  const safeCustomerProducts = Array.isArray(customerProducts)
+    ? customerProducts
+    : [];
   const safeOrders = Array.isArray(orders) ? orders : [];
   const safeCustomers = Array.isArray(customers) ? customers : [];
-  const safeProductionOrders = Array.isArray(productionOrders) ? productionOrders : [];
+  const safeProductionOrders = Array.isArray(productionOrders)
+    ? productionOrders
+    : [];
 
   // Filter production orders by search term and status
   const filteredProductionOrders = safeProductionOrders.filter((po: any) => {
     const order = safeOrders.find((o: any) => o.id === po.order_id);
-    const customer = safeCustomers.find((c: any) => c.id === order?.customer_id);
-    const customerProduct = safeCustomerProducts.find((cp: any) => cp.id === po.customer_product_id);
+    const customer = safeCustomers.find(
+      (c: any) => c.id === order?.customer_id,
+    );
+    const customerProduct = safeCustomerProducts.find(
+      (cp: any) => cp.id === po.customer_product_id,
+    );
 
     // Search filter
     const matchesSearch =
@@ -256,16 +288,20 @@ export default function Orders() {
       console.warn("طلب قيد المعالجة بالفعل، تجاهل الطلب المكرر");
       return;
     }
-    
+
     try {
       setIsCreatingOrder(true);
-      console.log("بدء عملية حفظ الطلب...", { data, productionOrdersData, editingOrder });
+      console.log("بدء عملية حفظ الطلب...", {
+        data,
+        productionOrdersData,
+        editingOrder,
+      });
 
       // Check if user is authenticated
       if (!user?.id) {
         toast({
-          title: t('messages.error'),
-          description: t('orders.loginRequired'),
+          title: t("messages.error"),
+          description: t("orders.loginRequired"),
           variant: "destructive",
         });
         return;
@@ -294,15 +330,15 @@ export default function Orders() {
         if (!updateResponse.ok) {
           const errorText = await updateResponse.text();
           console.error("خطأ في تحديث الطلب:", errorText);
-          throw new Error(`${t('orders.updateOrderFailed')}: ${errorText}`);
+          throw new Error(`${t("orders.updateOrderFailed")}: ${errorText}`);
         }
 
         // Always delete existing production orders for this order
         // This ensures we recreate the entire set of production orders on save
         const existingProdOrders = productionOrders.filter(
-          (po: any) => po.order_id === editingOrder.id
+          (po: any) => po.order_id === editingOrder.id,
         );
-        
+
         for (const po of existingProdOrders) {
           try {
             await fetch(`/api/production-orders/${po.id}`, {
@@ -352,8 +388,8 @@ export default function Orders() {
         setEditingOrder(null);
 
         toast({
-          title: t('messages.updated'),
-          description: `${t('orders.editOrder')} ${editingOrder.order_number}`,
+          title: t("messages.updated"),
+          description: `${t("orders.editOrder")} ${editingOrder.order_number}`,
         });
         return;
       }
@@ -361,8 +397,8 @@ export default function Orders() {
       // Creating new order - check if at least one production order is added
       if (productionOrdersData.length === 0) {
         toast({
-          title: t('messages.error'),
-          description: t('orders.noProductionOrders'),
+          title: t("messages.error"),
+          description: t("orders.noProductionOrders"),
           variant: "destructive",
         });
         return;
@@ -379,8 +415,8 @@ export default function Orders() {
 
       if (invalidOrders.length > 0) {
         toast({
-          title: t('messages.error'),
-          description: t('messages.required'),
+          title: t("messages.error"),
+          description: t("messages.required"),
           variant: "destructive",
         });
         return;
@@ -389,7 +425,8 @@ export default function Orders() {
       // Generate order number
       console.log("توليد رقم الطلب...");
       const orderNumberResponse = await fetch("/api/orders/next-number");
-      if (!orderNumberResponse.ok) throw new Error(t('orders.generateOrderNumberFailed'));
+      if (!orderNumberResponse.ok)
+        throw new Error(t("orders.generateOrderNumberFailed"));
       const { orderNumber } = await orderNumberResponse.json();
       console.log("رقم الطلب المولد:", orderNumber);
 
@@ -415,7 +452,7 @@ export default function Orders() {
       if (!orderResponse.ok) {
         const errorText = await orderResponse.text();
         console.error("خطأ في إنشاء الطلب:", errorText);
-        throw new Error(`${t('orders.createOrderFailed')}: ${errorText}`);
+        throw new Error(`${t("orders.createOrderFailed")}: ${errorText}`);
       }
 
       const newOrder = await orderResponse.json();
@@ -433,12 +470,14 @@ export default function Orders() {
       console.log("أوامر الإنتاج الصالحة:", validProductionOrders);
 
       // Create production orders using batch endpoint for better performance
-      const batchProductionOrders = validProductionOrders.map((prodOrder: any) => ({
-        order_id: newOrder.data?.id || newOrder.id,
-        customer_product_id: prodOrder.customer_product_id,
-        quantity_kg: prodOrder.quantity_kg,
-        // overrun_percentage and final_quantity_kg will be calculated server-side for security
-      }));
+      const batchProductionOrders = validProductionOrders.map(
+        (prodOrder: any) => ({
+          order_id: newOrder.data?.id || newOrder.id,
+          customer_product_id: prodOrder.customer_product_id,
+          quantity_kg: prodOrder.quantity_kg,
+          // overrun_percentage and final_quantity_kg will be calculated server-side for security
+        }),
+      );
 
       console.log("بيانات أوامر الإنتاج:", batchProductionOrders);
 
@@ -452,7 +491,9 @@ export default function Orders() {
       if (!prodOrderResponse.ok) {
         const errorText = await prodOrderResponse.text();
         console.error("خطأ في إنشاء أوامر الإنتاج:", errorText);
-        throw new Error(`${t('orders.createProductionOrdersFailed')}: ${errorText}`);
+        throw new Error(
+          `${t("orders.createProductionOrdersFailed")}: ${errorText}`,
+        );
       }
 
       const batchResult = await prodOrderResponse.json();
@@ -464,12 +505,15 @@ export default function Orders() {
         // Continue with successful orders, but warn about failures
         if (batchResult.successful && batchResult.successful.length > 0) {
           toast({
-            title: t('orders.warning'),
-            description: t('orders.partialProductionOrdersCreated', { successful: batchResult.successful.length, total: batchProductionOrders.length }),
+            title: t("orders.warning"),
+            description: t("orders.partialProductionOrdersCreated", {
+              successful: batchResult.successful.length,
+              total: batchProductionOrders.length,
+            }),
             variant: "default",
           });
         } else {
-          throw new Error(t('orders.allProductionOrdersFailed'));
+          throw new Error(t("orders.allProductionOrdersFailed"));
         }
       } else {
         console.log("تم إنشاء جميع أوامر الإنتاج بنجاح");
@@ -488,15 +532,15 @@ export default function Orders() {
       setEditingOrder(null);
 
       toast({
-        title: t('messages.saved'),
-        description: `${t('orders.newOrder')} ${orderNumber}`,
+        title: t("messages.saved"),
+        description: `${t("orders.newOrder")} ${orderNumber}`,
       });
     } catch (error) {
       console.error("خطأ في حفظ الطلب:", error);
       toast({
-        title: t('messages.error'),
+        title: t("messages.error"),
         description:
-          error instanceof Error ? error.message : t('messages.error'),
+          error instanceof Error ? error.message : t("messages.error"),
         variant: "destructive",
       });
     } finally {
@@ -514,8 +558,8 @@ export default function Orders() {
   const handleEditOrder = (order: any) => {
     if (!isAdmin) {
       toast({
-        title: t('messages.error'),
-        description: t('messages.error'),
+        title: t("messages.error"),
+        description: t("messages.error"),
         variant: "destructive",
       });
       return;
@@ -527,18 +571,14 @@ export default function Orders() {
   const handleDeleteOrder = async (order: any) => {
     if (!isAdmin) {
       toast({
-        title: t('messages.error'),
-        description: t('messages.error'),
+        title: t("messages.error"),
+        description: t("messages.error"),
         variant: "destructive",
       });
       return;
     }
 
-    if (
-      !confirm(
-        `${t('messages.confirmDelete')} ${order.order_number}?`,
-      )
-    ) {
+    if (!confirm(`${t("messages.confirmDelete")} ${order.order_number}?`)) {
       return;
     }
 
@@ -549,7 +589,7 @@ export default function Orders() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || t('orders.deleteOrderFailed'));
+        throw new Error(errorData.message || t("orders.deleteOrderFailed"));
       }
 
       // Refresh all related data
@@ -561,14 +601,14 @@ export default function Orders() {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
 
       toast({
-        title: t('messages.deleted'),
-        description: `${t('orders.deleteOrder')} ${order.order_number}`,
+        title: t("messages.deleted"),
+        description: `${t("orders.deleteOrder")} ${order.order_number}`,
       });
     } catch (error) {
       toast({
-        title: t('messages.error'),
+        title: t("messages.error"),
         description:
-          error instanceof Error ? error.message : t('messages.error'),
+          error instanceof Error ? error.message : t("messages.error"),
         variant: "destructive",
       });
     }
@@ -586,7 +626,7 @@ export default function Orders() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || t('orders.statusUpdateFailed'));
+        throw new Error(errorData.message || t("orders.statusUpdateFailed"));
       }
 
       // Refresh all related data
@@ -598,14 +638,14 @@ export default function Orders() {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
 
       toast({
-        title: t('messages.updated'),
-        description: `${t('orders.changeStatus')} ${order.order_number}`,
+        title: t("messages.updated"),
+        description: `${t("orders.changeStatus")} ${order.order_number}`,
       });
     } catch (error) {
       toast({
-        title: t('messages.error'),
+        title: t("messages.error"),
         description:
-          error instanceof Error ? error.message : t('messages.error'),
+          error instanceof Error ? error.message : t("messages.error"),
         variant: "destructive",
       });
     }
@@ -615,8 +655,8 @@ export default function Orders() {
   const handleBulkDelete = async (orderIds: number[]) => {
     if (!isAdmin) {
       toast({
-        title: t('messages.error'),
-        description: t('messages.error'),
+        title: t("messages.error"),
+        description: t("messages.error"),
         variant: "destructive",
       });
       return;
@@ -639,14 +679,14 @@ export default function Orders() {
 
       if (failures.length > 0) {
         toast({
-          title: t('messages.error'),
+          title: t("messages.error"),
           description: `${failures.length} / ${orderIds.length}`,
           variant: "destructive",
         });
       } else {
         toast({
-          title: t('messages.deleted'),
-          description: `${orderIds.length} ${t('navigation.orders')}`,
+          title: t("messages.deleted"),
+          description: `${orderIds.length} ${t("navigation.orders")}`,
         });
       }
 
@@ -659,9 +699,9 @@ export default function Orders() {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
     } catch (error) {
       toast({
-        title: t('messages.error'),
+        title: t("messages.error"),
         description:
-          error instanceof Error ? error.message : t('messages.error'),
+          error instanceof Error ? error.message : t("messages.error"),
         variant: "destructive",
       });
     }
@@ -692,14 +732,14 @@ export default function Orders() {
 
       if (failures.length > 0) {
         toast({
-          title: t('messages.error'),
+          title: t("messages.error"),
           description: `${failures.length} / ${orderIds.length}`,
           variant: "destructive",
         });
       } else {
         toast({
-          title: t('messages.updated'),
-          description: `${orderIds.length} ${t('navigation.orders')}`,
+          title: t("messages.updated"),
+          description: `${orderIds.length} ${t("navigation.orders")}`,
         });
       }
 
@@ -712,9 +752,9 @@ export default function Orders() {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
     } catch (error) {
       toast({
-        title: t('messages.error'),
+        title: t("messages.error"),
         description:
-          error instanceof Error ? error.message : t('messages.error'),
+          error instanceof Error ? error.message : t("messages.error"),
         variant: "destructive",
       });
     }
@@ -732,26 +772,29 @@ export default function Orders() {
 
       if (!response.ok) {
         toast({
-          title: t('messages.error'),
-          description: result.message || t('messages.error'),
+          title: t("messages.error"),
+          description: result.message || t("messages.error"),
           variant: "destructive",
         });
         return;
       }
 
       toast({
-        title: t('orders.archiveSuccess'),
+        title: t("orders.archiveSuccess"),
         description: result.message,
       });
 
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       queryClient.invalidateQueries({ queryKey: ["/api/production-orders"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/production/hierarchical-orders"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/production/hierarchical-orders"],
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
     } catch (error) {
       toast({
-        title: t('messages.error'),
-        description: error instanceof Error ? error.message : t('messages.error'),
+        title: t("messages.error"),
+        description:
+          error instanceof Error ? error.message : t("messages.error"),
         variant: "destructive",
       });
     }
@@ -766,20 +809,23 @@ export default function Orders() {
       });
       const result = await response.json();
       if (!response.ok) {
-        throw new Error(result.message || t('messages.error'));
+        throw new Error(result.message || t("messages.error"));
       }
       toast({
-        title: t('orders.archiveSuccess'),
+        title: t("orders.archiveSuccess"),
         description: result.message,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       queryClient.invalidateQueries({ queryKey: ["/api/production-orders"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/production/hierarchical-orders"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/production/hierarchical-orders"],
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
     } catch (error) {
       toast({
-        title: t('messages.error'),
-        description: error instanceof Error ? error.message : t('messages.error'),
+        title: t("messages.error"),
+        description:
+          error instanceof Error ? error.message : t("messages.error"),
         variant: "destructive",
       });
     }
@@ -794,20 +840,23 @@ export default function Orders() {
       });
       const result = await response.json();
       if (!response.ok) {
-        throw new Error(result.message || t('messages.error'));
+        throw new Error(result.message || t("messages.error"));
       }
       toast({
-        title: t('orders.unarchiveSuccess'),
+        title: t("orders.unarchiveSuccess"),
         description: result.message,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       queryClient.invalidateQueries({ queryKey: ["/api/production-orders"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/production/hierarchical-orders"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/production/hierarchical-orders"],
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
     } catch (error) {
       toast({
-        title: t('messages.error'),
-        description: error instanceof Error ? error.message : t('messages.error'),
+        title: t("messages.error"),
+        description:
+          error instanceof Error ? error.message : t("messages.error"),
         variant: "destructive",
       });
     }
@@ -823,24 +872,27 @@ export default function Orders() {
       const result = await response.json();
       if (!response.ok) {
         toast({
-          title: t('messages.error'),
-          description: result.message || t('messages.error'),
+          title: t("messages.error"),
+          description: result.message || t("messages.error"),
           variant: "destructive",
         });
         return;
       }
       toast({
-        title: t('orders.unarchiveSuccess'),
+        title: t("orders.unarchiveSuccess"),
         description: result.message,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       queryClient.invalidateQueries({ queryKey: ["/api/production-orders"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/production/hierarchical-orders"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/production/hierarchical-orders"],
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
     } catch (error) {
       toast({
-        title: t('messages.error'),
-        description: error instanceof Error ? error.message : t('messages.error'),
+        title: t("messages.error"),
+        description:
+          error instanceof Error ? error.message : t("messages.error"),
         variant: "destructive",
       });
     }
@@ -851,17 +903,18 @@ export default function Orders() {
     setIsViewOrderDialogOpen(true);
   };
 
-  const handlePrintOrder = (order: any, mode: "html" | "pdf" | "standalone" = "html") => {
+  const handlePrintOrder = (
+    order: any,
+    mode: "html" | "pdf" | "standalone" = "html",
+  ) => {
     setPrintMode(mode);
     setPrintingOrder(order);
   };
 
-
-
   if (ordersLoading) {
     return (
-      <PageLayout title={t('orders.title')} description={t('common.loading')}>
-        <div className="text-center">{t('common.loading')}</div>
+      <PageLayout title={t("orders.title")} description={t("common.loading")}>
+        <div className="text-center">{t("common.loading")}</div>
       </PageLayout>
     );
   }
@@ -876,29 +929,37 @@ export default function Orders() {
   );
 
   return (
-    <PageLayout 
-      title={t('orders.title')} 
-      description={t('navigation.ordersManagement')}
+    <PageLayout
+      title={t("orders.title")}
+      description={t("navigation.ordersManagement")}
     >
       {isAdmin && (
         <div className="mb-4 text-sm text-green-600 dark:text-green-400 font-medium">
-          ✓ {t('common.edit')} & {t('common.delete')} {t('navigation.orders')}
+          ✓ {t("common.edit")} & {t("common.delete")} {t("navigation.orders")}
         </div>
       )}
 
       {/* التبويبات الرئيسية */}
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6" dir="rtl">
+      <Tabs
+        value={activeTab}
+        onValueChange={handleTabChange}
+        className="space-y-6"
+        dir="rtl"
+      >
         <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
           <TabsTrigger value="orders" data-testid="tab-orders">
-            {t('navigation.orders')}
+            {t("navigation.orders")}
           </TabsTrigger>
-          <TabsTrigger value="production-orders" data-testid="tab-production-orders">
+          <TabsTrigger
+            value="production-orders"
+            data-testid="tab-production-orders"
+          >
             <ClipboardCheck className="h-4 w-4 ml-2" />
-            <span>{t('navigation.productionOrders')}</span>
+            <span>{t("navigation.productionOrders")}</span>
           </TabsTrigger>
           <TabsTrigger value="rolls" data-testid="tab-rolls">
             <Package className="h-4 w-4 ml-2" />
-            <span>{t('navigation.rolls')}</span>
+            <span>{t("navigation.rolls")}</span>
           </TabsTrigger>
         </TabsList>
 
@@ -906,7 +967,10 @@ export default function Orders() {
         <TabsContent value="orders">
           {!ordersLoading && (
             <>
-              <OrdersStats orders={safeOrders} productionOrders={safeProductionOrders} />
+              <OrdersStats
+                orders={safeOrders}
+                productionOrders={safeProductionOrders}
+              />
               <div className="mt-6">
                 <OrdersTabs
                   orders={safeOrders}
@@ -961,12 +1025,11 @@ export default function Orders() {
 
         {/* محتوى الرولات */}
         <TabsContent value="rolls">
-          <RollsTab 
+          <RollsTab
             customers={safeCustomers}
             productionOrders={safeProductionOrders}
           />
         </TabsContent>
-
       </Tabs>
 
       {/* View Order Dialog */}
@@ -977,7 +1040,9 @@ export default function Orders() {
           setViewingOrder(null);
         }}
         order={viewingOrder}
-        customer={safeCustomers.find((c: any) => c.id === viewingOrder?.customer_id)}
+        customer={safeCustomers.find(
+          (c: any) => c.id === viewingOrder?.customer_id,
+        )}
         productionOrders={safeProductionOrders}
         customerProducts={safeCustomerProducts}
         items={Array.isArray(items) ? items : []}
@@ -988,8 +1053,12 @@ export default function Orders() {
       {printingOrder && (
         <OrderPrintTemplate
           order={printingOrder}
-          customer={safeCustomers.find((c: any) => c.id === printingOrder?.customer_id)}
-          productionOrders={safeProductionOrders.filter((po: any) => po.order_id === printingOrder?.id)}
+          customer={safeCustomers.find(
+            (c: any) => c.id === printingOrder?.customer_id,
+          )}
+          productionOrders={safeProductionOrders.filter(
+            (po: any) => po.order_id === printingOrder?.id,
+          )}
           customerProducts={safeCustomerProducts}
           items={Array.isArray(items) ? items : []}
           onClose={() => setPrintingOrder(null)}

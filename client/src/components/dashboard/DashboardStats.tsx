@@ -1,9 +1,4 @@
-import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Badge } from "../ui/badge";
-import { formatNumber } from "../../lib/formatNumber";
-import ErrorBoundary from "../ErrorBoundary";
 import {
   Clock,
   Factory,
@@ -14,6 +9,12 @@ import {
   Trophy,
   UserCheck,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
+
+import { formatNumber } from "../../lib/formatNumber";
+import ErrorBoundary from "../ErrorBoundary";
+import { Badge } from "../ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 
 interface TopWorker {
   id: number;
@@ -36,18 +37,18 @@ interface DashboardStatsData {
   };
 }
 
-function StatCard({ 
-  title, 
-  value, 
-  subtitle, 
-  icon, 
+function StatCard({
+  title,
+  value,
+  subtitle,
+  icon,
   color,
-  badge
-}: { 
-  title: string; 
-  value: string | number; 
-  subtitle?: string; 
-  icon: React.ReactNode; 
+  badge,
+}: {
+  title: string;
+  value: string | number;
+  subtitle?: string;
+  icon: React.ReactNode;
   color: string;
   badge?: { text: string; variant: "default" | "destructive" | "secondary" };
 }) {
@@ -64,7 +65,9 @@ function StatCard({
         </div>
         {badge && (
           <div className="mt-2">
-            <Badge variant={badge.variant} className="text-xs">{badge.text}</Badge>
+            <Badge variant={badge.variant} className="text-xs">
+              {badge.text}
+            </Badge>
           </div>
         )}
       </CardContent>
@@ -72,13 +75,13 @@ function StatCard({
   );
 }
 
-function TopWorkersCard({ 
-  title, 
-  workers, 
-  unit
-}: { 
-  title: string; 
-  workers: TopWorker[]; 
+function TopWorkersCard({
+  title,
+  workers,
+  unit,
+}: {
+  title: string;
+  workers: TopWorker[];
   unit: string;
 }) {
   const { t } = useTranslation();
@@ -92,17 +95,26 @@ function TopWorkersCard({
       </CardHeader>
       <CardContent className="pt-0">
         {workers.length === 0 ? (
-          <p className="text-xs text-gray-500 text-center py-2">{t('dashboard.stats.noData')}</p>
+          <p className="text-xs text-gray-500 text-center py-2">
+            {t("dashboard.stats.noData")}
+          </p>
         ) : (
           <div className="space-y-2">
             {workers.map((worker, index) => (
-              <div key={worker.id} className="flex items-center justify-between text-sm">
+              <div
+                key={worker.id}
+                className="flex items-center justify-between text-sm"
+              >
                 <div className="flex items-center gap-2">
-                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
-                    index === 0 ? 'bg-yellow-100 text-yellow-700' :
-                    index === 1 ? 'bg-gray-100 text-gray-700' :
-                    'bg-orange-100 text-orange-700'
-                  }`}>
+                  <span
+                    className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                      index === 0
+                        ? "bg-yellow-100 text-yellow-700"
+                        : index === 1
+                          ? "bg-gray-100 text-gray-700"
+                          : "bg-orange-100 text-orange-700"
+                    }`}
+                  >
                     {index + 1}
                   </span>
                   <span className="truncate max-w-[100px]">{worker.name}</span>
@@ -160,73 +172,93 @@ function DashboardStatsContent() {
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <StatCard
-          title={t('dashboard.stats.waitingOrders')}
+          title={t("dashboard.stats.waitingOrders")}
           value={waitingCount}
-          subtitle={`${formatNumber(waitingKg)} ${t('dashboard.stats.kg')}`}
+          subtitle={`${formatNumber(waitingKg)} ${t("dashboard.stats.kg")}`}
           icon={<Clock className="w-6 h-6" />}
           color="text-orange-600"
-          badge={waitingCount > 0 ? { text: t('dashboard.stats.waiting'), variant: "secondary" } : undefined}
+          badge={
+            waitingCount > 0
+              ? { text: t("dashboard.stats.waiting"), variant: "secondary" }
+              : undefined
+          }
         />
 
         <StatCard
-          title={t('dashboard.stats.activeOrders')}
+          title={t("dashboard.stats.activeOrders")}
           value={inProductionCount}
-          subtitle={`${formatNumber(inProductionKg)} ${t('dashboard.stats.kg')}`}
+          subtitle={`${formatNumber(inProductionKg)} ${t("dashboard.stats.kg")}`}
           icon={<Factory className="w-6 h-6" />}
           color="text-blue-600"
-          badge={inProductionCount > 0 ? { text: t('dashboard.stats.inProduction'), variant: "default" } : undefined}
+          badge={
+            inProductionCount > 0
+              ? { text: t("dashboard.stats.inProduction"), variant: "default" }
+              : undefined
+          }
         />
 
         <StatCard
-          title={t('dashboard.stats.monthlyProduction')}
-          value={`${formatNumber(monthlyProduction)} ${t('dashboard.stats.kg')}`}
-          subtitle={t('dashboard.stats.totalProduction')}
+          title={t("dashboard.stats.monthlyProduction")}
+          value={`${formatNumber(monthlyProduction)} ${t("dashboard.stats.kg")}`}
+          subtitle={t("dashboard.stats.totalProduction")}
           icon={<Scale className="w-6 h-6" />}
           color="text-green-600"
         />
 
         <StatCard
-          title={t('dashboard.stats.monthlyWaste')}
-          value={`${formatNumber(monthlyWaste)} ${t('dashboard.stats.kg')}`}
-          subtitle={t('dashboard.stats.totalWaste')}
+          title={t("dashboard.stats.monthlyWaste")}
+          value={`${formatNumber(monthlyWaste)} ${t("dashboard.stats.kg")}`}
+          subtitle={t("dashboard.stats.totalWaste")}
           icon={<Trash2 className="w-6 h-6" />}
           color={monthlyWaste > 100 ? "text-red-600" : "text-gray-600"}
-          badge={monthlyWaste > 100 ? { text: t('dashboard.stats.high'), variant: "destructive" } : undefined}
+          badge={
+            monthlyWaste > 100
+              ? { text: t("dashboard.stats.high"), variant: "destructive" }
+              : undefined
+          }
         />
 
         <StatCard
-          title={t('dashboard.stats.presentWorkers')}
+          title={t("dashboard.stats.presentWorkers")}
           value={`${presentEmployees}/${totalEmployees}`}
-          subtitle={`${attendanceRate}% ${t('dashboard.stats.attendanceRate')}`}
+          subtitle={`${attendanceRate}% ${t("dashboard.stats.attendanceRate")}`}
           icon={<UserCheck className="w-6 h-6" />}
           color="text-purple-600"
         />
 
         <StatCard
-          title={t('dashboard.stats.maintenanceAlerts')}
+          title={t("dashboard.stats.maintenanceAlerts")}
           value={maintenanceAlerts}
-          subtitle={maintenanceAlerts > 0 ? t('dashboard.stats.requiresAttention') : t('dashboard.stats.noAlerts')}
+          subtitle={
+            maintenanceAlerts > 0
+              ? t("dashboard.stats.requiresAttention")
+              : t("dashboard.stats.noAlerts")
+          }
           icon={<AlertTriangle className="w-6 h-6" />}
           color={maintenanceAlerts > 0 ? "text-red-600" : "text-green-600"}
-          badge={maintenanceAlerts > 0 ? { text: t('dashboard.stats.alert'), variant: "destructive" } : { text: t('dashboard.stats.normal'), variant: "default" }}
+          badge={
+            maintenanceAlerts > 0
+              ? { text: t("dashboard.stats.alert"), variant: "destructive" }
+              : { text: t("dashboard.stats.normal"), variant: "default" }
+          }
         />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <TopWorkersCard
-          title={t('dashboard.stats.topFilmWorkers')}
+          title={t("dashboard.stats.topFilmWorkers")}
           workers={stats?.topWorkers?.film || []}
-          unit={t('dashboard.stats.kg')}
+          unit={t("dashboard.stats.kg")}
         />
         <TopWorkersCard
-          title={t('dashboard.stats.topPrintingWorkers')}
+          title={t("dashboard.stats.topPrintingWorkers")}
           workers={stats?.topWorkers?.printing || []}
-          unit={t('dashboard.stats.kg')}
+          unit={t("dashboard.stats.kg")}
         />
         <TopWorkersCard
-          title={t('dashboard.stats.topCuttingWorkers')}
+          title={t("dashboard.stats.topCuttingWorkers")}
           workers={stats?.topWorkers?.cutting || []}
-          unit={t('dashboard.stats.kg')}
+          unit={t("dashboard.stats.kg")}
         />
       </div>
     </div>
@@ -238,8 +270,8 @@ export default function DashboardStats() {
   return (
     <ErrorBoundary
       fallback="component"
-      title={t('dashboard.stats.errorTitle')}
-      description={t('dashboard.stats.errorDescription')}
+      title={t("dashboard.stats.errorTitle")}
+      description={t("dashboard.stats.errorDescription")}
       onError={(error, errorInfo) => {
         console.error("Dashboard stats error:", error, errorInfo);
       }}

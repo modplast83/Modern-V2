@@ -1,29 +1,31 @@
-import { useLanguage } from '../../contexts/LanguageContext';
-import { Button } from './button';
-import { Globe } from 'lucide-react';
+import { Globe } from "lucide-react";
+import { useTranslation } from "react-i18next";
+
+import { useLanguage } from "../../contexts/LanguageContext";
+
+import { Button } from "./button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from './dropdown-menu';
-import { useTranslation } from 'react-i18next';
+} from "./dropdown-menu";
 
 interface LanguageSwitcherProps {
-  variant?: 'button' | 'dropdown' | 'toggle';
-  size?: 'sm' | 'default' | 'lg';
+  variant?: "button" | "dropdown" | "toggle";
+  size?: "sm" | "default" | "lg";
   showLabel?: boolean;
 }
 
-export function LanguageSwitcher({ 
-  variant = 'dropdown', 
-  size = 'default',
-  showLabel = false 
+export function LanguageSwitcher({
+  variant = "dropdown",
+  size = "default",
+  showLabel = false,
 }: LanguageSwitcherProps) {
   const { language, setLanguage, toggleLanguage } = useLanguage();
   const { t } = useTranslation();
 
-  if (variant === 'toggle') {
+  if (variant === "toggle") {
     return (
       <Button
         variant="ghost"
@@ -33,14 +35,12 @@ export function LanguageSwitcher({
         data-testid="button-language-toggle"
       >
         <Globe className="h-4 w-4" />
-        {showLabel && (
-          <span>{language === 'ar' ? 'EN' : 'عربي'}</span>
-        )}
+        {showLabel && <span>{language === "ar" ? "EN" : "عربي"}</span>}
       </Button>
     );
   }
 
-  if (variant === 'button') {
+  if (variant === "button") {
     return (
       <Button
         variant="outline"
@@ -50,7 +50,7 @@ export function LanguageSwitcher({
         data-testid="button-language-switch"
       >
         <Globe className="h-4 w-4" />
-        <span>{language === 'ar' ? 'English' : 'العربية'}</span>
+        <span>{language === "ar" ? "English" : "العربية"}</span>
       </Button>
     );
   }
@@ -58,8 +58,8 @@ export function LanguageSwitcher({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           size={size}
           className="gap-2"
           data-testid="button-language-dropdown"
@@ -67,23 +67,23 @@ export function LanguageSwitcher({
           <Globe className="h-4 w-4" />
           {showLabel && (
             <span className="hidden sm:inline">
-              {language === 'ar' ? 'العربية' : 'English'}
+              {language === "ar" ? "العربية" : "English"}
             </span>
           )}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem 
-          onClick={() => setLanguage('ar')}
-          className={language === 'ar' ? 'bg-accent' : ''}
+        <DropdownMenuItem
+          onClick={() => setLanguage("ar")}
+          className={language === "ar" ? "bg-accent" : ""}
           data-testid="menu-item-arabic"
         >
           <span className="mr-2">🇸🇦</span>
           العربية
         </DropdownMenuItem>
-        <DropdownMenuItem 
-          onClick={() => setLanguage('en')}
-          className={language === 'en' ? 'bg-accent' : ''}
+        <DropdownMenuItem
+          onClick={() => setLanguage("en")}
+          className={language === "en" ? "bg-accent" : ""}
           data-testid="menu-item-english"
         >
           <span className="mr-2">🇺🇸</span>

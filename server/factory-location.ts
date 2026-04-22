@@ -14,7 +14,8 @@ export function isInsideFactory(lat: number, lng: number): boolean {
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(toRad(FACTORY_CENTER.lat)) *
       Math.cos(toRad(lat)) *
-      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const distance = R * c;
   return distance <= FACTORY_RADIUS_METERS;

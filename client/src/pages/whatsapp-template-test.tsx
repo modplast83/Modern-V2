@@ -1,6 +1,17 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  Send,
+  MessageSquare,
+  CheckCircle,
+  XCircle,
+  Loader2,
+  Sparkles,
+} from "lucide-react";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
 import {
   Card,
   CardContent,
@@ -8,10 +19,8 @@ import {
   CardHeader,
   CardTitle,
 } from "../components/ui/card";
-import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
-import { Badge } from "../components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -21,14 +30,6 @@ import {
 } from "../components/ui/select";
 import { useToast } from "../hooks/use-toast";
 import { apiRequest, queryClient } from "../lib/queryClient";
-import {
-  Send,
-  MessageSquare,
-  CheckCircle,
-  XCircle,
-  Loader2,
-  Sparkles,
-} from "lucide-react";
 
 export default function WhatsAppTemplateTest() {
   const { t } = useTranslation();
@@ -94,7 +95,9 @@ export default function WhatsAppTemplateTest() {
     onSuccess: (data: any) => {
       toast({
         title: t("whatsapp.template.messageSentSuccess"),
-        description: t("whatsapp.template.messageSentTo", { phone: phoneNumber }),
+        description: t("whatsapp.template.messageSentTo", {
+          phone: phoneNumber,
+        }),
       });
 
       setTestResults((prev) => [
@@ -210,9 +213,7 @@ export default function WhatsAppTemplateTest() {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             {t("whatsapp.template.title")}
           </h1>
-          <p className="text-gray-600">
-            {t("whatsapp.template.description")}
-          </p>
+          <p className="text-gray-600">{t("whatsapp.template.description")}</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -228,7 +229,9 @@ export default function WhatsAppTemplateTest() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="phone">{t("whatsapp.template.phoneNumber")}</Label>
+                <Label htmlFor="phone">
+                  {t("whatsapp.template.phoneNumber")}
+                </Label>
                 <Input
                   id="phone"
                   value={phoneNumber}
@@ -240,13 +243,17 @@ export default function WhatsAppTemplateTest() {
               </div>
 
               <div>
-                <Label htmlFor="template">{t("whatsapp.template.template")}</Label>
+                <Label htmlFor="template">
+                  {t("whatsapp.template.template")}
+                </Label>
                 <Select
                   value={selectedTemplate}
                   onValueChange={setSelectedTemplate}
                 >
                   <SelectTrigger data-testid="select-template">
-                    <SelectValue placeholder={t("whatsapp.template.selectTemplate")} />
+                    <SelectValue
+                      placeholder={t("whatsapp.template.selectTemplate")}
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     {approvedTemplates
@@ -353,7 +360,9 @@ export default function WhatsAppTemplateTest() {
               {approvedTemplates.find((t) => t.id === selectedTemplate) && (
                 <div className="space-y-4">
                   <div>
-                    <Label className="text-sm font-medium">{t("whatsapp.template.templateName")}</Label>
+                    <Label className="text-sm font-medium">
+                      {t("whatsapp.template.templateName")}
+                    </Label>
                     <p className="text-sm text-gray-600 font-mono">
                       {
                         approvedTemplates.find((t) => t.id === selectedTemplate)
@@ -363,14 +372,18 @@ export default function WhatsAppTemplateTest() {
                   </div>
 
                   <div>
-                    <Label className="text-sm font-medium">{t("whatsapp.template.templateId")}</Label>
+                    <Label className="text-sm font-medium">
+                      {t("whatsapp.template.templateId")}
+                    </Label>
                     <p className="text-xs text-gray-500 font-mono break-all">
                       {selectedTemplate}
                     </p>
                   </div>
 
                   <div>
-                    <Label className="text-sm font-medium">{t("whatsapp.template.language")}</Label>
+                    <Label className="text-sm font-medium">
+                      {t("whatsapp.template.language")}
+                    </Label>
                     <Badge variant="outline">
                       {
                         approvedTemplates.find((t) => t.id === selectedTemplate)
@@ -380,7 +393,9 @@ export default function WhatsAppTemplateTest() {
                   </div>
 
                   <div>
-                    <Label className="text-sm font-medium">{t("whatsapp.template.variables")}</Label>
+                    <Label className="text-sm font-medium">
+                      {t("whatsapp.template.variables")}
+                    </Label>
                     <div className="text-sm text-gray-600">
                       {approvedTemplates
                         .find((t) => t.id === selectedTemplate)
@@ -389,7 +404,9 @@ export default function WhatsAppTemplateTest() {
                   </div>
 
                   <div>
-                    <Label className="text-sm font-medium">{t("whatsapp.template.example")}</Label>
+                    <Label className="text-sm font-medium">
+                      {t("whatsapp.template.example")}
+                    </Label>
                     <div className="bg-gray-50 p-3 rounded text-sm font-mono">
                       {
                         approvedTemplates.find((t) => t.id === selectedTemplate)
@@ -400,7 +417,8 @@ export default function WhatsAppTemplateTest() {
 
                   <div className="bg-blue-50 p-3 rounded">
                     <p className="text-xs text-blue-700">
-                      <strong>{t("whatsapp.template.templateStatus")}</strong> {t("whatsapp.template.approvedByMeta")}
+                      <strong>{t("whatsapp.template.templateStatus")}</strong>{" "}
+                      {t("whatsapp.template.approvedByMeta")}
                       <br />
                       {t("whatsapp.template.canSendToAnyNumber")}
                     </p>
@@ -447,11 +465,13 @@ export default function WhatsAppTemplateTest() {
 
                     <div className="space-y-1 text-sm">
                       <p>
-                        <strong>{t("whatsapp.template.templateKey")}</strong> {result.template}
+                        <strong>{t("whatsapp.template.templateKey")}</strong>{" "}
+                        {result.template}
                       </p>
                       <p>
                         <strong>{t("whatsapp.template.variablesKey")}</strong>{" "}
-                        {result.variables?.join(", ") || t("whatsapp.template.noVariables")}
+                        {result.variables?.join(", ") ||
+                          t("whatsapp.template.noVariables")}
                       </p>
                     </div>
 
@@ -476,8 +496,12 @@ export default function WhatsAppTemplateTest() {
         {notificationsList && notificationsList.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>{t("whatsapp.template.recentNotifications")}</CardTitle>
-              <CardDescription>{t("whatsapp.template.recentNotificationsDesc")}</CardDescription>
+              <CardTitle>
+                {t("whatsapp.template.recentNotifications")}
+              </CardTitle>
+              <CardDescription>
+                {t("whatsapp.template.recentNotificationsDesc")}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
@@ -498,7 +522,9 @@ export default function WhatsAppTemplateTest() {
                         </Badge>
                       </div>
                       <span className="text-sm text-gray-500">
-                        {new Date(notification.created_at).toLocaleString("en-US")}
+                        {new Date(notification.created_at).toLocaleString(
+                          "en-US",
+                        )}
                       </span>
                     </div>
 

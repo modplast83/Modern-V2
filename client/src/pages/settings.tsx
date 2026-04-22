@@ -1,35 +1,71 @@
-import { useState, useEffect, useRef } from "react";
-import { useLocation } from "wouter";
-import { useAuth } from "../hooks/use-auth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
-import PageLayout from "../components/layout/PageLayout";
 import {
-  Card, CardContent, CardHeader, CardTitle, CardDescription,
-} from "../components/ui/card";
+  Settings as SettingsIcon,
+  Bell,
+  Shield,
+  Database,
+  Download,
+  Upload,
+  Trash2,
+  HardDrive,
+  Save,
+  RefreshCw,
+  MapPin,
+  Smartphone,
+  Loader2,
+  Activity,
+  Clock,
+  ChevronLeft,
+  ChevronRight,
+  MessageCircle,
+  Building2,
+  Plus,
+  Eye,
+  EyeOff,
+  ImageIcon,
+} from "lucide-react";
+import { Plug, Gauge, Sparkles } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
+import { useLocation } from "wouter";
+
+import PageLayout from "../components/layout/PageLayout";
+import RoleManagementTab from "../components/RoleManagementTab";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../components/ui/alert-dialog";
+import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "../components/ui/card";
+import { useAuth } from "../hooks/use-auth";
+
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Switch } from "../components/ui/switch";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "../components/ui/select";
-import { Badge } from "../components/ui/badge";
 import { Separator } from "../components/ui/separator";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "../components/ui/alert-dialog";
+import { useCompanyLogo } from "../hooks/use-company-logo";
 import { useToast } from "../hooks/use-toast";
 import { apiRequest } from "../lib/queryClient";
-import {
-  Settings as SettingsIcon, Bell, Shield, Database, Download, Upload,
-  Trash2, HardDrive, Save, RefreshCw,
-  MapPin, Smartphone,
-  Loader2, Activity, Clock, ChevronLeft, ChevronRight,
-  MessageCircle, Building2, Plus, Eye, EyeOff, ImageIcon,
-} from "lucide-react";
-import RoleManagementTab from "../components/RoleManagementTab";
 import NotificationCenter from "../components/notifications/NotificationCenter";
 import WhatsAppWebhooksTab from "../components/settings/WhatsAppWebhooksTab";
 import SMSSettingsTab from "../components/settings/SMSSettingsTab";
@@ -37,11 +73,10 @@ import NotificationEventSettingsTab from "../components/settings/NotificationEve
 import LocationMapPicker from "../components/LocationMapPicker";
 import TableImportDialog from "../components/settings/TableImportDialog";
 import { canAccessSettingsTab } from "../utils/roleUtils";
-import { useCompanyLogo } from "../hooks/use-company-logo";
-import { Plug, Gauge, Sparkles } from "lucide-react";
+
+import { AiAgentSettingsContent } from "./ai-agent-settings";
 import { McpSettingsContent } from "./mcp-settings";
 import { SystemMonitoringContent } from "./system-monitoring";
-import { AiAgentSettingsContent } from "./ai-agent-settings";
 
 const SECTIONS = [
   { id: "system", icon: SettingsIcon, label: "النظام" },
@@ -73,11 +108,17 @@ export default function Settings() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const visibleSections = SECTIONS.filter((s) =>
-    canAccessSettingsTab(user, s.id === "whatsapp" ? "whatsapp-webhooks" : s.id)
+    canAccessSettingsTab(
+      user,
+      s.id === "whatsapp" ? "whatsapp-webhooks" : s.id,
+    ),
   );
 
   useEffect(() => {
-    if (visibleSections.length > 0 && !visibleSections.find((s) => s.id === activeSection)) {
+    if (
+      visibleSections.length > 0 &&
+      !visibleSections.find((s) => s.id === activeSection)
+    ) {
       setActiveSection(visibleSections[0].id);
     }
   }, [visibleSections, activeSection]);
@@ -94,7 +135,9 @@ export default function Settings() {
   return (
     <PageLayout title="الإعدادات" description="إدارة إعدادات النظام والتكامل">
       <div className="flex gap-6 min-h-[calc(100vh-200px)]">
-        <aside className={`shrink-0 transition-all duration-200 ${sidebarCollapsed ? "w-16" : "w-56"}`}>
+        <aside
+          className={`shrink-0 transition-all duration-200 ${sidebarCollapsed ? "w-16" : "w-56"}`}
+        >
           <Card className="sticky top-4">
             <div className="p-2">
               <Button
@@ -103,7 +146,11 @@ export default function Settings() {
                 className="w-full mb-1"
                 onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
               >
-                {sidebarCollapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                {sidebarCollapsed ? (
+                  <ChevronLeft className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
               </Button>
               <nav className="space-y-1">
                 {visibleSections.map((section) => {
@@ -120,7 +167,9 @@ export default function Settings() {
                       }`}
                     >
                       <Icon className="h-4 w-4 shrink-0" />
-                      {!sidebarCollapsed && <span className="truncate">{section.label}</span>}
+                      {!sidebarCollapsed && (
+                        <span className="truncate">{section.label}</span>
+                      )}
                     </button>
                   );
                 })}
@@ -143,7 +192,9 @@ export default function Settings() {
                 <Sparkles className="h-6 w-6 text-primary" />
                 <div>
                   <h2 className="text-xl font-bold">إعدادات الوكيل الذكي</h2>
-                  <p className="text-sm text-muted-foreground">إدارة المعرفة، التعليمات والقوالب الخاصة بالوكيل الذكي</p>
+                  <p className="text-sm text-muted-foreground">
+                    إدارة المعرفة، التعليمات والقوالب الخاصة بالوكيل الذكي
+                  </p>
                 </div>
               </div>
               <AiAgentSettingsContent />
@@ -155,7 +206,9 @@ export default function Settings() {
                 <Gauge className="h-6 w-6 text-blue-600" />
                 <div>
                   <h2 className="text-xl font-bold">مراقبة النظام</h2>
-                  <p className="text-sm text-muted-foreground">قياسات الأداء، الذاكرة، قاعدة البيانات وحلقة الأحداث</p>
+                  <p className="text-sm text-muted-foreground">
+                    قياسات الأداء، الذاكرة، قاعدة البيانات وحلقة الأحداث
+                  </p>
                 </div>
               </div>
               <SystemMonitoringContent />
@@ -167,7 +220,9 @@ export default function Settings() {
                 <Plug className="h-6 w-6 text-emerald-600" />
                 <div>
                   <h2 className="text-xl font-bold">إعدادات MCP</h2>
-                  <p className="text-sm text-muted-foreground">ربط النظام مع ChatGPT وإدارة مفاتيح API</p>
+                  <p className="text-sm text-muted-foreground">
+                    ربط النظام مع ChatGPT وإدارة مفاتيح API
+                  </p>
                 </div>
               </div>
               <McpSettingsContent />
@@ -195,7 +250,10 @@ function CompanyLogoUpload() {
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      toast({ title: "حجم الصورة يجب أن يكون أقل من 5 ميجابايت", variant: "destructive" });
+      toast({
+        title: "حجم الصورة يجب أن يكون أقل من 5 ميجابايت",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -203,7 +261,11 @@ function CompanyLogoUpload() {
     try {
       const urlRes = await apiRequest("/api/uploads/request-url", {
         method: "POST",
-        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+        body: JSON.stringify({
+          name: file.name,
+          size: file.size,
+          contentType: file.type,
+        }),
       });
       const { uploadURL, objectPath } = await urlRes.json();
 
@@ -234,7 +296,9 @@ function CompanyLogoUpload() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2"><ImageIcon className="h-5 w-5" /> شعار الشركة</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <ImageIcon className="h-5 w-5" /> شعار الشركة
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flex items-center gap-6">
@@ -247,7 +311,8 @@ function CompanyLogoUpload() {
           </div>
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">
-              يظهر الشعار في رأس التطبيق، صفحة تسجيل الدخول، وجميع التقارير والمستندات المطبوعة.
+              يظهر الشعار في رأس التطبيق، صفحة تسجيل الدخول، وجميع التقارير
+              والمستندات المطبوعة.
             </p>
             <input
               ref={fileInputRef}
@@ -262,9 +327,14 @@ function CompanyLogoUpload() {
               disabled={uploading}
             >
               {uploading ? (
-                <><Loader2 className="w-4 h-4 ml-2 animate-spin" /> جاري الرفع...</>
+                <>
+                  <Loader2 className="w-4 h-4 ml-2 animate-spin" /> جاري
+                  الرفع...
+                </>
               ) : (
-                <><Upload className="w-4 h-4 ml-2" /> تغيير الشعار</>
+                <>
+                  <Upload className="w-4 h-4 ml-2" /> تغيير الشعار
+                </>
               )}
             </Button>
           </div>
@@ -292,7 +362,10 @@ function SystemSection() {
 
   const convertSettingsArrayToObject = (arr: any[] | undefined) => {
     if (!Array.isArray(arr)) return {};
-    return arr.reduce((acc, s) => { acc[s.setting_key] = s.setting_value; return acc; }, {} as any);
+    return arr.reduce((acc, s) => {
+      acc[s.setting_key] = s.setting_value;
+      return acc;
+    }, {} as any);
   };
 
   const [systemSettings, setSystemSettings] = useState({
@@ -355,9 +428,13 @@ function SystemSection() {
           sound: o.notificationsSound === "true" || prev.notifications.sound,
         },
         dashboard: {
-          autoRefresh: o.dashboardAutoRefresh === "true" || prev.dashboard.autoRefresh,
-          refreshInterval: parseInt(o.dashboardRefreshInterval) || prev.dashboard.refreshInterval,
-          compactView: o.dashboardCompactView === "true" || prev.dashboard.compactView,
+          autoRefresh:
+            o.dashboardAutoRefresh === "true" || prev.dashboard.autoRefresh,
+          refreshInterval:
+            parseInt(o.dashboardRefreshInterval) ||
+            prev.dashboard.refreshInterval,
+          compactView:
+            o.dashboardCompactView === "true" || prev.dashboard.compactView,
         },
       }));
     }
@@ -406,14 +483,18 @@ function SystemSection() {
             notificationsPush: String(settings.notifications.push),
             notificationsSound: String(settings.notifications.sound),
             dashboardAutoRefresh: String(settings.dashboard.autoRefresh),
-            dashboardRefreshInterval: String(settings.dashboard.refreshInterval),
+            dashboardRefreshInterval: String(
+              settings.dashboard.refreshInterval,
+            ),
             dashboardCompactView: String(settings.dashboard.compactView),
           },
         }),
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/settings/user", user?.id] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/settings/user", user?.id],
+      });
       toast({ title: "تم حفظ إعدادات المستخدم بنجاح" });
     },
     onError: () => {
@@ -422,11 +503,16 @@ function SystemSection() {
   });
 
   const regions = [
-    { value: "الرياض", label: "الرياض" }, { value: "جدة", label: "جدة" },
-    { value: "الدمام", label: "الدمام" }, { value: "مكة المكرمة", label: "مكة المكرمة" },
-    { value: "المدينة المنورة", label: "المدينة المنورة" }, { value: "تبوك", label: "تبوك" },
-    { value: "أبها", label: "أبها" }, { value: "حائل", label: "حائل" },
-    { value: "الطائف", label: "الطائف" }, { value: "الخبر", label: "الخبر" },
+    { value: "الرياض", label: "الرياض" },
+    { value: "جدة", label: "جدة" },
+    { value: "الدمام", label: "الدمام" },
+    { value: "مكة المكرمة", label: "مكة المكرمة" },
+    { value: "المدينة المنورة", label: "المدينة المنورة" },
+    { value: "تبوك", label: "تبوك" },
+    { value: "أبها", label: "أبها" },
+    { value: "حائل", label: "حائل" },
+    { value: "الطائف", label: "الطائف" },
+    { value: "الخبر", label: "الخبر" },
   ];
 
   return (
@@ -435,7 +521,9 @@ function SystemSection() {
         <SettingsIcon className="h-6 w-6 text-primary" />
         <div>
           <h2 className="text-xl font-bold">إعدادات النظام</h2>
-          <p className="text-sm text-muted-foreground">الإعدادات العامة للنظام والشركة</p>
+          <p className="text-sm text-muted-foreground">
+            الإعدادات العامة للنظام والشركة
+          </p>
         </div>
       </div>
 
@@ -443,46 +531,114 @@ function SystemSection() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Building2 className="h-5 w-5" /> معلومات الشركة</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="h-5 w-5" /> معلومات الشركة
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>اسم الشركة</Label>
-              <Input value={systemSettings.companyName} onChange={(e) => setSystemSettings((p) => ({ ...p, companyName: e.target.value }))} />
+              <Input
+                value={systemSettings.companyName}
+                onChange={(e) =>
+                  setSystemSettings((p) => ({
+                    ...p,
+                    companyName: e.target.value,
+                  }))
+                }
+              />
             </div>
             <div className="space-y-2">
               <Label>الرقم الضريبي</Label>
-              <Input value={systemSettings.companyTaxNumber} placeholder="مثال: 300000000000003" onChange={(e) => setSystemSettings((p) => ({ ...p, companyTaxNumber: e.target.value }))} />
+              <Input
+                value={systemSettings.companyTaxNumber}
+                placeholder="مثال: 300000000000003"
+                onChange={(e) =>
+                  setSystemSettings((p) => ({
+                    ...p,
+                    companyTaxNumber: e.target.value,
+                  }))
+                }
+              />
             </div>
             <div className="space-y-2">
               <Label>رقم الهاتف</Label>
-              <Input value={systemSettings.companyPhone} placeholder="مثال: +966500000000" dir="ltr" onChange={(e) => setSystemSettings((p) => ({ ...p, companyPhone: e.target.value }))} />
+              <Input
+                value={systemSettings.companyPhone}
+                placeholder="مثال: +966500000000"
+                dir="ltr"
+                onChange={(e) =>
+                  setSystemSettings((p) => ({
+                    ...p,
+                    companyPhone: e.target.value,
+                  }))
+                }
+              />
             </div>
             <div className="space-y-2">
               <Label>البريد الإلكتروني</Label>
-              <Input type="email" value={systemSettings.companyEmail} placeholder="info@company.com" dir="ltr" onChange={(e) => setSystemSettings((p) => ({ ...p, companyEmail: e.target.value }))} />
+              <Input
+                type="email"
+                value={systemSettings.companyEmail}
+                placeholder="info@company.com"
+                dir="ltr"
+                onChange={(e) =>
+                  setSystemSettings((p) => ({
+                    ...p,
+                    companyEmail: e.target.value,
+                  }))
+                }
+              />
             </div>
             <div className="space-y-2 md:col-span-2">
               <Label>العنوان</Label>
-              <Input value={systemSettings.companyAddress} placeholder="المدينة، الحي، الشارع" onChange={(e) => setSystemSettings((p) => ({ ...p, companyAddress: e.target.value }))} />
+              <Input
+                value={systemSettings.companyAddress}
+                placeholder="المدينة، الحي، الشارع"
+                onChange={(e) =>
+                  setSystemSettings((p) => ({
+                    ...p,
+                    companyAddress: e.target.value,
+                  }))
+                }
+              />
             </div>
             <div className="space-y-2">
               <Label>الدولة</Label>
-              <Input value={systemSettings.country} readOnly className="bg-muted" />
+              <Input
+                value={systemSettings.country}
+                readOnly
+                className="bg-muted"
+              />
             </div>
             <div className="space-y-2">
               <Label>المنطقة</Label>
-              <Select value={systemSettings.region} onValueChange={(v) => setSystemSettings((p) => ({ ...p, region: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={systemSettings.region}
+                onValueChange={(v) =>
+                  setSystemSettings((p) => ({ ...p, region: v }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
-                  {regions.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+                  {regions.map((r) => (
+                    <SelectItem key={r.value} value={r.value}>
+                      {r.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label>المنطقة الزمنية</Label>
-              <Input value="Asia/Riyadh (GMT+3)" readOnly className="bg-muted" />
+              <Input
+                value="Asia/Riyadh (GMT+3)"
+                readOnly
+                className="bg-muted"
+              />
             </div>
             <div className="space-y-2">
               <Label>العملة</Label>
@@ -490,8 +646,15 @@ function SystemSection() {
             </div>
             <div className="space-y-2">
               <Label>لغة النظام</Label>
-              <Select value={systemSettings.language} onValueChange={(v) => setSystemSettings((p) => ({ ...p, language: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={systemSettings.language}
+                onValueChange={(v) =>
+                  setSystemSettings((p) => ({ ...p, language: v }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ar">العربية</SelectItem>
                   <SelectItem value="en">English</SelectItem>
@@ -504,34 +667,66 @@ function SystemSection() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Clock className="h-5 w-5" /> ساعات العمل والورديات</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" /> ساعات العمل والورديات
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>بداية الدوام</Label>
-              <Input type="time" value={systemSettings.workingHours.start} onChange={(e) => setSystemSettings((p) => ({ ...p, workingHours: { ...p.workingHours, start: e.target.value } }))} />
+              <Input
+                type="time"
+                value={systemSettings.workingHours.start}
+                onChange={(e) =>
+                  setSystemSettings((p) => ({
+                    ...p,
+                    workingHours: { ...p.workingHours, start: e.target.value },
+                  }))
+                }
+              />
             </div>
             <div className="space-y-2">
               <Label>نهاية الدوام</Label>
-              <Input type="time" value={systemSettings.workingHours.end} onChange={(e) => setSystemSettings((p) => ({ ...p, workingHours: { ...p.workingHours, end: e.target.value } }))} />
+              <Input
+                type="time"
+                value={systemSettings.workingHours.end}
+                onChange={(e) =>
+                  setSystemSettings((p) => ({
+                    ...p,
+                    workingHours: { ...p.workingHours, end: e.target.value },
+                  }))
+                }
+              />
             </div>
           </div>
           <Separator />
           <div className="space-y-2">
             {systemSettings.shifts.map((shift) => (
-              <div key={shift.id} className="flex items-center justify-between p-3 border rounded-lg">
+              <div
+                key={shift.id}
+                className="flex items-center justify-between p-3 border rounded-lg"
+              >
                 <div>
                   <span className="font-medium">{shift.name}</span>
-                  <p className="text-sm text-muted-foreground">من {shift.start} إلى {shift.end}</p>
+                  <p className="text-sm text-muted-foreground">
+                    من {shift.start} إلى {shift.end}
+                  </p>
                 </div>
                 <Badge variant="outline">نشطة</Badge>
               </div>
             ))}
           </div>
           <div className="flex justify-end">
-            <Button onClick={() => saveSystemMutation.mutate(systemSettings)} disabled={saveSystemMutation.isPending}>
-              {saveSystemMutation.isPending ? <RefreshCw className="w-4 h-4 ml-2 animate-spin" /> : <Save className="w-4 h-4 ml-2" />}
+            <Button
+              onClick={() => saveSystemMutation.mutate(systemSettings)}
+              disabled={saveSystemMutation.isPending}
+            >
+              {saveSystemMutation.isPending ? (
+                <RefreshCw className="w-4 h-4 ml-2 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 ml-2" />
+              )}
               حفظ إعدادات النظام
             </Button>
           </div>
@@ -540,14 +735,32 @@ function SystemSection() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Bell className="h-5 w-5" /> تفضيلات الإشعارات</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Bell className="h-5 w-5" /> تفضيلات الإشعارات
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {[
-            { key: "email" as const, label: "إشعارات البريد الإلكتروني", desc: "استلام الإشعارات عبر البريد" },
-            { key: "sms" as const, label: "إشعارات الرسائل النصية", desc: "استلام الإشعارات عبر SMS" },
-            { key: "push" as const, label: "إشعارات المتصفح", desc: "إشعارات فورية في المتصفح" },
-            { key: "sound" as const, label: "أصوات الإشعارات", desc: "تشغيل صوت عند وصول إشعار" },
+            {
+              key: "email" as const,
+              label: "إشعارات البريد الإلكتروني",
+              desc: "استلام الإشعارات عبر البريد",
+            },
+            {
+              key: "sms" as const,
+              label: "إشعارات الرسائل النصية",
+              desc: "استلام الإشعارات عبر SMS",
+            },
+            {
+              key: "push" as const,
+              label: "إشعارات المتصفح",
+              desc: "إشعارات فورية في المتصفح",
+            },
+            {
+              key: "sound" as const,
+              label: "أصوات الإشعارات",
+              desc: "تشغيل صوت عند وصول إشعار",
+            },
           ].map((item) => (
             <div key={item.key} className="flex items-center justify-between">
               <div>
@@ -559,7 +772,10 @@ function SystemSection() {
                 onCheckedChange={(checked) =>
                   setUserSettings((prev) => ({
                     ...prev,
-                    notifications: { ...prev.notifications, [item.key]: checked },
+                    notifications: {
+                      ...prev.notifications,
+                      [item.key]: checked,
+                    },
                   }))
                 }
               />
@@ -569,12 +785,17 @@ function SystemSection() {
           <div className="flex items-center justify-between">
             <div>
               <Label className="text-base">تحديث تلقائي للوحة التحكم</Label>
-              <p className="text-sm text-muted-foreground">تحديث البيانات تلقائياً</p>
+              <p className="text-sm text-muted-foreground">
+                تحديث البيانات تلقائياً
+              </p>
             </div>
             <Switch
               checked={userSettings.dashboard.autoRefresh}
               onCheckedChange={(checked) =>
-                setUserSettings((prev) => ({ ...prev, dashboard: { ...prev.dashboard, autoRefresh: checked } }))
+                setUserSettings((prev) => ({
+                  ...prev,
+                  dashboard: { ...prev.dashboard, autoRefresh: checked },
+                }))
               }
             />
           </div>
@@ -583,9 +804,19 @@ function SystemSection() {
               <Label>فترة التحديث</Label>
               <Select
                 value={userSettings.dashboard.refreshInterval.toString()}
-                onValueChange={(v) => setUserSettings((prev) => ({ ...prev, dashboard: { ...prev.dashboard, refreshInterval: parseInt(v) } }))}
+                onValueChange={(v) =>
+                  setUserSettings((prev) => ({
+                    ...prev,
+                    dashboard: {
+                      ...prev.dashboard,
+                      refreshInterval: parseInt(v),
+                    },
+                  }))
+                }
               >
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="15">15 ثانية</SelectItem>
                   <SelectItem value="30">30 ثانية</SelectItem>
@@ -596,8 +827,15 @@ function SystemSection() {
             </div>
           )}
           <div className="flex justify-end">
-            <Button onClick={() => saveUserMutation.mutate(userSettings)} disabled={saveUserMutation.isPending}>
-              {saveUserMutation.isPending ? <RefreshCw className="w-4 h-4 ml-2 animate-spin" /> : <Save className="w-4 h-4 ml-2" />}
+            <Button
+              onClick={() => saveUserMutation.mutate(userSettings)}
+              disabled={saveUserMutation.isPending}
+            >
+              {saveUserMutation.isPending ? (
+                <RefreshCw className="w-4 h-4 ml-2 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 ml-2" />
+              )}
               حفظ التفضيلات
             </Button>
           </div>
@@ -618,11 +856,19 @@ function NewCompanySetupCard() {
     <>
       <Card className="border-dashed border-2 border-orange-300">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Plus className="h-5 w-5 text-orange-500" /> تنصيب شركة جديدة</CardTitle>
-          <CardDescription>إعداد النظام لشركة جديدة - إدخال بيانات الشركة وإنشاء حساب المدير</CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <Plus className="h-5 w-5 text-orange-500" /> تنصيب شركة جديدة
+          </CardTitle>
+          <CardDescription>
+            إعداد النظام لشركة جديدة - إدخال بيانات الشركة وإنشاء حساب المدير
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button variant="outline" className="border-orange-400 text-orange-600 hover:bg-orange-50" onClick={() => setShowConfirm(true)}>
+          <Button
+            variant="outline"
+            className="border-orange-400 text-orange-600 hover:bg-orange-50"
+            onClick={() => setShowConfirm(true)}
+          >
             <Plus className="h-4 w-4 ml-2" />
             بدء إعداد شركة جديدة
           </Button>
@@ -634,8 +880,8 @@ function NewCompanySetupCard() {
           <AlertDialogHeader>
             <AlertDialogTitle>تنصيب شركة جديدة</AlertDialogTitle>
             <AlertDialogDescription>
-              سيتم فتح معالج إعداد شركة جديدة حيث يمكنك إدخال بيانات الشركة وإنشاء حساب المدير.
-              هل تريد المتابعة؟
+              سيتم فتح معالج إعداد شركة جديدة حيث يمكنك إدخال بيانات الشركة
+              وإنشاء حساب المدير. هل تريد المتابعة؟
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -657,7 +903,8 @@ function PwaInstallCard() {
   const [swStatus, setSwStatus] = useState<string>("جاري الفحص...");
 
   useEffect(() => {
-    const isStandalone = window.matchMedia("(display-mode: standalone)").matches ||
+    const isStandalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
       (navigator as any).standalone === true;
     if (isStandalone) {
       setIsInstalled(true);
@@ -699,7 +946,8 @@ function PwaInstallCard() {
     } else {
       toast({
         title: "تعليمات التثبيت",
-        description: "افتح القائمة (⋮) في Chrome واختر «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية»",
+        description:
+          "افتح القائمة (⋮) في Chrome واختر «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية»",
       });
     }
   };
@@ -712,7 +960,9 @@ function PwaInstallCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2"><Download className="h-5 w-5" /> تطبيق PWA</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <Download className="h-5 w-5" /> تطبيق PWA
+        </CardTitle>
         <CardDescription>تثبيت التطبيق على جهازك للوصول السريع</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -748,7 +998,9 @@ function WhatsAppSection() {
         <MessageCircle className="h-6 w-6 text-green-600" />
         <div>
           <h2 className="text-xl font-bold">واتساب</h2>
-          <p className="text-sm text-muted-foreground">إرسال واستقبال رسائل واتساب وإدارة الإعدادات</p>
+          <p className="text-sm text-muted-foreground">
+            إرسال واستقبال رسائل واتساب وإدارة الإعدادات
+          </p>
         </div>
       </div>
       <WhatsAppWebhooksTab />
@@ -763,7 +1015,9 @@ function SMSSection() {
         <Smartphone className="h-6 w-6 text-blue-600" />
         <div>
           <h2 className="text-xl font-bold">الرسائل النصية (SMS)</h2>
-          <p className="text-sm text-muted-foreground">إرسال رسائل نصية وإدارة خدمة Taqnyat SMS</p>
+          <p className="text-sm text-muted-foreground">
+            إرسال رسائل نصية وإدارة خدمة Taqnyat SMS
+          </p>
         </div>
       </div>
       <SMSSettingsTab />
@@ -778,16 +1032,27 @@ function DatabaseSection() {
   const { user } = useAuth();
   const backupFileInputRef = useRef<HTMLInputElement>(null);
   const [selectedTable, setSelectedTable] = useState("");
-  const [selectedBackupFile, setSelectedBackupFile] = useState<File | null>(null);
+  const [selectedBackupFile, setSelectedBackupFile] = useState<File | null>(
+    null,
+  );
   const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
   const [pendingBackupData, setPendingBackupData] = useState<any>(null);
   const [showImportDialog, setShowImportDialog] = useState(false);
 
-  const { data: databaseStatsData } = useQuery({ queryKey: ["/api/database/stats"], enabled: !!user });
+  const { data: databaseStatsData } = useQuery({
+    queryKey: ["/api/database/stats"],
+    enabled: !!user,
+  });
 
-  const databaseStats = (databaseStatsData && typeof databaseStatsData === "object")
-    ? databaseStatsData as any
-    : { tableCount: 0, totalRecords: 0, databaseSize: "---", lastBackup: "---" };
+  const databaseStats =
+    databaseStatsData && typeof databaseStatsData === "object"
+      ? (databaseStatsData as any)
+      : {
+          tableCount: 0,
+          totalRecords: 0,
+          databaseSize: "---",
+          lastBackup: "---",
+        };
 
   const createBackupMutation = useMutation({
     mutationFn: async () => {
@@ -795,7 +1060,9 @@ function DatabaseSection() {
       return await res.json();
     },
     onSuccess: (data: any) => {
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: "application/json",
+      });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -804,10 +1071,13 @@ function DatabaseSection() {
       URL.revokeObjectURL(url);
       toast({ title: "تم إنشاء النسخة الاحتياطية بنجاح" });
     },
-    onError: () => toast({ title: "فشل إنشاء النسخة الاحتياطية", variant: "destructive" }),
+    onError: () =>
+      toast({ title: "فشل إنشاء النسخة الاحتياطية", variant: "destructive" }),
   });
 
-  const handleBackupFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBackupFileSelect = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setSelectedBackupFile(file);
@@ -835,7 +1105,11 @@ function DatabaseSection() {
       setSelectedBackupFile(null);
       setPendingBackupData(null);
     },
-    onError: (error: any) => toast({ title: error?.message || "فشل استعادة النسخة", variant: "destructive" }),
+    onError: (error: any) =>
+      toast({
+        title: error?.message || "فشل استعادة النسخة",
+        variant: "destructive",
+      }),
   });
 
   const confirmRestore = () => {
@@ -846,14 +1120,24 @@ function DatabaseSection() {
   };
 
   const exportTableMutation = useMutation({
-    mutationFn: async ({ tableName, format }: { tableName: string; format: string }) => {
-      const res = await fetch(`/api/database/export/${tableName}?format=${format}`, { credentials: "include" });
+    mutationFn: async ({
+      tableName,
+      format,
+    }: {
+      tableName: string;
+      format: string;
+    }) => {
+      const res = await fetch(
+        `/api/database/export/${tableName}?format=${format}`,
+        { credentials: "include" },
+      );
       if (!res.ok) throw new Error("Export failed");
       const blob = await res.blob();
       return { blob, tableName, format };
     },
     onSuccess: ({ blob, tableName, format }) => {
-      const ext = format === "json" ? "json" : format === "excel" ? "xlsx" : "csv";
+      const ext =
+        format === "json" ? "json" : format === "excel" ? "xlsx" : "csv";
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -868,7 +1152,8 @@ function DatabaseSection() {
   });
 
   const optimizeTablesMutation = useMutation({
-    mutationFn: async () => apiRequest("/api/database/optimize", { method: "POST" }),
+    mutationFn: async () =>
+      apiRequest("/api/database/optimize", { method: "POST" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/database/stats"] });
       toast({ title: "تم تحسين قاعدة البيانات" });
@@ -876,7 +1161,8 @@ function DatabaseSection() {
   });
 
   const integrityCheckMutation = useMutation({
-    mutationFn: async () => apiRequest("/api/database/integrity-check", { method: "POST" }),
+    mutationFn: async () =>
+      apiRequest("/api/database/integrity-check", { method: "POST" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/database/stats"] });
       toast({ title: "تم فحص تكامل قاعدة البيانات بنجاح" });
@@ -885,7 +1171,11 @@ function DatabaseSection() {
   });
 
   const cleanupDataMutation = useMutation({
-    mutationFn: async () => apiRequest("/api/database/cleanup", { method: "POST", body: JSON.stringify({ daysOld: 90 }) }),
+    mutationFn: async () =>
+      apiRequest("/api/database/cleanup", {
+        method: "POST",
+        body: JSON.stringify({ daysOld: 90 }),
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/database/stats"] });
       toast({ title: "تم تنظيف البيانات القديمة بنجاح" });
@@ -894,23 +1184,60 @@ function DatabaseSection() {
   });
 
   const tableOptions = [
-    "customers", "categories", "sections", "items", "customer_products", "users", "roles",
-    "machines", "locations", "suppliers", "orders", "production_orders", "rolls", "cuts",
-    "inventory", "inventory_movements", "warehouse_receipts", "warehouse_transactions",
-    "maintenance_requests", "maintenance_actions", "spare_parts", "consumable_parts",
-    "waste", "quality_checks", "attendance", "notifications",
+    "customers",
+    "categories",
+    "sections",
+    "items",
+    "customer_products",
+    "users",
+    "roles",
+    "machines",
+    "locations",
+    "suppliers",
+    "orders",
+    "production_orders",
+    "rolls",
+    "cuts",
+    "inventory",
+    "inventory_movements",
+    "warehouse_receipts",
+    "warehouse_transactions",
+    "maintenance_requests",
+    "maintenance_actions",
+    "spare_parts",
+    "consumable_parts",
+    "waste",
+    "quality_checks",
+    "attendance",
+    "notifications",
   ];
 
   const tableLabels: Record<string, string> = {
-    customers: "العملاء", categories: "الفئات", sections: "الأقسام", items: "الأصناف",
-    customer_products: "منتجات العملاء", users: "المستخدمين", roles: "الأدوار",
-    machines: "الآلات", locations: "المواقع", suppliers: "الموردين", orders: "الطلبات",
-    production_orders: "أوامر الإنتاج", rolls: "الرولات", cuts: "القطع",
-    inventory: "المخزون", inventory_movements: "حركات المخزون",
-    warehouse_receipts: "سندات الاستلام", warehouse_transactions: "حركات المستودع",
-    maintenance_requests: "طلبات الصيانة", maintenance_actions: "إجراءات الصيانة",
-    spare_parts: "قطع الغيار", consumable_parts: "المستهلكات",
-    waste: "الهدر", quality_checks: "فحوصات الجودة", attendance: "الحضور",
+    customers: "العملاء",
+    categories: "الفئات",
+    sections: "الأقسام",
+    items: "الأصناف",
+    customer_products: "منتجات العملاء",
+    users: "المستخدمين",
+    roles: "الأدوار",
+    machines: "الآلات",
+    locations: "المواقع",
+    suppliers: "الموردين",
+    orders: "الطلبات",
+    production_orders: "أوامر الإنتاج",
+    rolls: "الرولات",
+    cuts: "القطع",
+    inventory: "المخزون",
+    inventory_movements: "حركات المخزون",
+    warehouse_receipts: "سندات الاستلام",
+    warehouse_transactions: "حركات المستودع",
+    maintenance_requests: "طلبات الصيانة",
+    maintenance_actions: "إجراءات الصيانة",
+    spare_parts: "قطع الغيار",
+    consumable_parts: "المستهلكات",
+    waste: "الهدر",
+    quality_checks: "فحوصات الجودة",
+    attendance: "الحضور",
     notifications: "الإشعارات",
   };
 
@@ -920,21 +1247,46 @@ function DatabaseSection() {
         <Database className="h-6 w-6 text-orange-600" />
         <div>
           <h2 className="text-xl font-bold">قاعدة البيانات</h2>
-          <p className="text-sm text-muted-foreground">إدارة قاعدة البيانات والنسخ الاحتياطي والتصدير</p>
+          <p className="text-sm text-muted-foreground">
+            إدارة قاعدة البيانات والنسخ الاحتياطي والتصدير
+          </p>
         </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "عدد الجداول", value: databaseStats.tableCount, color: "text-blue-600" },
-          { label: "إجمالي السجلات", value: typeof databaseStats.totalRecords === "number" ? databaseStats.totalRecords.toLocaleString("en-US") : databaseStats.totalRecords, color: "text-green-600" },
-          { label: "حجم قاعدة البيانات", value: databaseStats.databaseSize, color: "text-orange-600" },
-          { label: "آخر نسخة احتياطية", value: databaseStats.lastBackup, color: "text-purple-600" },
+          {
+            label: "عدد الجداول",
+            value: databaseStats.tableCount,
+            color: "text-blue-600",
+          },
+          {
+            label: "إجمالي السجلات",
+            value:
+              typeof databaseStats.totalRecords === "number"
+                ? databaseStats.totalRecords.toLocaleString("en-US")
+                : databaseStats.totalRecords,
+            color: "text-green-600",
+          },
+          {
+            label: "حجم قاعدة البيانات",
+            value: databaseStats.databaseSize,
+            color: "text-orange-600",
+          },
+          {
+            label: "آخر نسخة احتياطية",
+            value: databaseStats.lastBackup,
+            color: "text-purple-600",
+          },
         ].map((stat) => (
           <Card key={stat.label} className="p-4">
             <div className="text-center">
-              <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
-              <div className="text-xs text-muted-foreground mt-1">{stat.label}</div>
+              <div className={`text-2xl font-bold ${stat.color}`}>
+                {stat.value}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {stat.label}
+              </div>
             </div>
           </Card>
         ))}
@@ -943,26 +1295,60 @@ function DatabaseSection() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base"><Download className="h-4 w-4 text-blue-500" /> إنشاء نسخة احتياطية</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Download className="h-4 w-4 text-blue-500" /> إنشاء نسخة احتياطية
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground mb-3">تصدير كامل لقاعدة البيانات بصيغة JSON</p>
-            <Button className="w-full" disabled={createBackupMutation.isPending} onClick={() => createBackupMutation.mutate()}>
-              {createBackupMutation.isPending ? <RefreshCw className="w-4 h-4 ml-2 animate-spin" /> : <Download className="w-4 h-4 ml-2" />}
+            <p className="text-sm text-muted-foreground mb-3">
+              تصدير كامل لقاعدة البيانات بصيغة JSON
+            </p>
+            <Button
+              className="w-full"
+              disabled={createBackupMutation.isPending}
+              onClick={() => createBackupMutation.mutate()}
+            >
+              {createBackupMutation.isPending ? (
+                <RefreshCw className="w-4 h-4 ml-2 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4 ml-2" />
+              )}
               تصدير النسخة الاحتياطية
             </Button>
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base"><Upload className="h-4 w-4 text-green-500" /> استعادة نسخة احتياطية</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Upload className="h-4 w-4 text-green-500" /> استعادة نسخة
+              احتياطية
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground mb-3">استيراد نسخة احتياطية سابقة من ملف JSON</p>
-            <input type="file" ref={backupFileInputRef} onChange={handleBackupFileSelect} accept=".json" className="hidden" />
-            <Button variant="outline" className="w-full" disabled={restoreBackupMutation.isPending} onClick={() => backupFileInputRef.current?.click()}>
-              {restoreBackupMutation.isPending ? <RefreshCw className="w-4 h-4 ml-2 animate-spin" /> : <Upload className="w-4 h-4 ml-2" />}
-              {selectedBackupFile ? selectedBackupFile.name : "اختيار ملف واستعادة"}
+            <p className="text-sm text-muted-foreground mb-3">
+              استيراد نسخة احتياطية سابقة من ملف JSON
+            </p>
+            <input
+              type="file"
+              ref={backupFileInputRef}
+              onChange={handleBackupFileSelect}
+              accept=".json"
+              className="hidden"
+            />
+            <Button
+              variant="outline"
+              className="w-full"
+              disabled={restoreBackupMutation.isPending}
+              onClick={() => backupFileInputRef.current?.click()}
+            >
+              {restoreBackupMutation.isPending ? (
+                <RefreshCw className="w-4 h-4 ml-2 animate-spin" />
+              ) : (
+                <Upload className="w-4 h-4 ml-2" />
+              )}
+              {selectedBackupFile
+                ? selectedBackupFile.name
+                : "اختيار ملف واستعادة"}
             </Button>
           </CardContent>
         </Card>
@@ -970,15 +1356,23 @@ function DatabaseSection() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><HardDrive className="h-5 w-5" /> تصدير جدول</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <HardDrive className="h-5 w-5" /> تصدير جدول
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>اختر الجدول</Label>
             <Select value={selectedTable} onValueChange={setSelectedTable}>
-              <SelectTrigger><SelectValue placeholder="اختر جدول للتصدير" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="اختر جدول للتصدير" />
+              </SelectTrigger>
               <SelectContent className="max-h-[300px]">
-                {tableOptions.map((t) => <SelectItem key={t} value={t}>{tableLabels[t] || t}</SelectItem>)}
+                {tableOptions.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {tableLabels[t] || t}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -989,7 +1383,12 @@ function DatabaseSection() {
                 variant="outline"
                 size="sm"
                 disabled={!selectedTable || exportTableMutation.isPending}
-                onClick={() => exportTableMutation.mutate({ tableName: selectedTable, format: fmt })}
+                onClick={() =>
+                  exportTableMutation.mutate({
+                    tableName: selectedTable,
+                    format: fmt,
+                  })
+                }
               >
                 <Download className="w-4 h-4 ml-1" />
                 {fmt.toUpperCase()}
@@ -1001,10 +1400,16 @@ function DatabaseSection() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Upload className="h-5 w-5 text-green-600" /> استيراد بيانات إلى جدول</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Upload className="h-5 w-5 text-green-600" /> استيراد بيانات إلى
+            جدول
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">استيراد بيانات من ملف خارجي (CSV, Excel, JSON) إلى جدول مع ربط الأعمدة تلقائياً</p>
+          <p className="text-sm text-muted-foreground">
+            استيراد بيانات من ملف خارجي (CSV, Excel, JSON) إلى جدول مع ربط
+            الأعمدة تلقائياً
+          </p>
           <Button
             className="w-full"
             variant="outline"
@@ -1018,49 +1423,112 @@ function DatabaseSection() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><SettingsIcon className="h-5 w-5" /> صيانة قاعدة البيانات</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <SettingsIcon className="h-5 w-5" /> صيانة قاعدة البيانات
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <Button variant="outline" disabled={optimizeTablesMutation.isPending} onClick={() => optimizeTablesMutation.mutate()}>
-              {optimizeTablesMutation.isPending ? <RefreshCw className="w-4 h-4 ml-2 animate-spin" /> : <RefreshCw className="w-4 h-4 ml-2" />}
+            <Button
+              variant="outline"
+              disabled={optimizeTablesMutation.isPending}
+              onClick={() => optimizeTablesMutation.mutate()}
+            >
+              {optimizeTablesMutation.isPending ? (
+                <RefreshCw className="w-4 h-4 ml-2 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4 ml-2" />
+              )}
               تحسين الجداول
             </Button>
-            <Button variant="outline" disabled={integrityCheckMutation.isPending} onClick={() => integrityCheckMutation.mutate()}>
-              {integrityCheckMutation.isPending ? <RefreshCw className="w-4 h-4 ml-2 animate-spin" /> : <Database className="w-4 h-4 ml-2" />}
+            <Button
+              variant="outline"
+              disabled={integrityCheckMutation.isPending}
+              onClick={() => integrityCheckMutation.mutate()}
+            >
+              {integrityCheckMutation.isPending ? (
+                <RefreshCw className="w-4 h-4 ml-2 animate-spin" />
+              ) : (
+                <Database className="w-4 h-4 ml-2" />
+              )}
               فحص التكامل
             </Button>
-            <Button variant="destructive" disabled={cleanupDataMutation.isPending} onClick={() => cleanupDataMutation.mutate()}>
-              {cleanupDataMutation.isPending ? <RefreshCw className="w-4 h-4 ml-2 animate-spin" /> : <Trash2 className="w-4 h-4 ml-2" />}
+            <Button
+              variant="destructive"
+              disabled={cleanupDataMutation.isPending}
+              onClick={() => cleanupDataMutation.mutate()}
+            >
+              {cleanupDataMutation.isPending ? (
+                <RefreshCw className="w-4 h-4 ml-2 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4 ml-2" />
+              )}
               تنظيف البيانات القديمة
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      <AlertDialog open={showRestoreConfirm} onOpenChange={setShowRestoreConfirm}>
+      <AlertDialog
+        open={showRestoreConfirm}
+        onOpenChange={setShowRestoreConfirm}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>تأكيد استعادة النسخة الاحتياطية</AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
               <p>هل أنت متأكد من استعادة هذه النسخة الاحتياطية؟</p>
-              <p className="font-semibold text-red-600">سيتم استبدال جميع البيانات الحالية!</p>
+              <p className="font-semibold text-red-600">
+                سيتم استبدال جميع البيانات الحالية!
+              </p>
               {pendingBackupData?.metadata && (
                 <div className="mt-2 p-2 bg-muted rounded text-sm">
                   <p>الملف: {selectedBackupFile?.name}</p>
-                  <p>عدد الجداول: {pendingBackupData.metadata.table_count || pendingBackupData.metadata.totalTables || Object.keys(pendingBackupData).filter(k => Array.isArray(pendingBackupData[k])).length}</p>
-                  <p>عدد السجلات: {Object.values(pendingBackupData).reduce((sum: number, val: any) => sum + (Array.isArray(val) ? val.length : 0), 0)}</p>
-                  <p>التاريخ: {new Date(pendingBackupData.metadata.created_at || pendingBackupData.metadata.timestamp).toLocaleString("ar-SA")}</p>
+                  <p>
+                    عدد الجداول:{" "}
+                    {pendingBackupData.metadata.table_count ||
+                      pendingBackupData.metadata.totalTables ||
+                      Object.keys(pendingBackupData).filter((k) =>
+                        Array.isArray(pendingBackupData[k]),
+                      ).length}
+                  </p>
+                  <p>
+                    عدد السجلات:{" "}
+                    {Object.values(pendingBackupData).reduce(
+                      (sum: number, val: any) =>
+                        sum + (Array.isArray(val) ? val.length : 0),
+                      0,
+                    )}
+                  </p>
+                  <p>
+                    التاريخ:{" "}
+                    {new Date(
+                      pendingBackupData.metadata.created_at ||
+                        pendingBackupData.metadata.timestamp,
+                    ).toLocaleString("ar-SA")}
+                  </p>
                 </div>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => { setShowRestoreConfirm(false); setSelectedBackupFile(null); setPendingBackupData(null); }}>
+            <AlertDialogCancel
+              onClick={() => {
+                setShowRestoreConfirm(false);
+                setSelectedBackupFile(null);
+                setPendingBackupData(null);
+              }}
+            >
               إلغاء
             </AlertDialogCancel>
-            <AlertDialogAction onClick={confirmRestore} disabled={restoreBackupMutation.isPending} className="bg-red-600 hover:bg-red-700">
-              {restoreBackupMutation.isPending ? "جاري الاستعادة..." : "استعادة"}
+            <AlertDialogAction
+              onClick={confirmRestore}
+              disabled={restoreBackupMutation.isPending}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {restoreBackupMutation.isPending
+                ? "جاري الاستعادة..."
+                : "استعادة"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1069,7 +1537,16 @@ function DatabaseSection() {
       <TableImportDialog
         open={showImportDialog}
         onOpenChange={setShowImportDialog}
-        tableOptions={["customers", "categories", "sections", "items", "customer_products", "users", "machines", "locations"]}
+        tableOptions={[
+          "customers",
+          "categories",
+          "sections",
+          "items",
+          "customer_products",
+          "users",
+          "machines",
+          "locations",
+        ]}
         tableLabels={tableLabels}
         onImportComplete={() => {
           queryClient.invalidateQueries({ queryKey: ["/api/database/stats"] });
@@ -1086,7 +1563,9 @@ function RolesSection() {
         <Shield className="h-6 w-6 text-indigo-600" />
         <div>
           <h2 className="text-xl font-bold">الأدوار والصلاحيات</h2>
-          <p className="text-sm text-muted-foreground">إدارة أدوار المستخدمين وصلاحيات الوصول</p>
+          <p className="text-sm text-muted-foreground">
+            إدارة أدوار المستخدمين وصلاحيات الوصول
+          </p>
         </div>
       </div>
       <Card>
@@ -1107,15 +1586,27 @@ function NotificationsSection() {
         <Bell className="h-6 w-6 text-yellow-600" />
         <div>
           <h2 className="text-xl font-bold">مركز الإشعارات</h2>
-          <p className="text-sm text-muted-foreground">عرض الإشعارات وإدارة أحداث التنبيه</p>
+          <p className="text-sm text-muted-foreground">
+            عرض الإشعارات وإدارة أحداث التنبيه
+          </p>
         </div>
       </div>
 
       <div className="flex gap-2 border-b pb-2">
-        <Button variant={activeTab === "center" ? "default" : "ghost"} size="sm" onClick={() => setActiveTab("center")} className="gap-2">
+        <Button
+          variant={activeTab === "center" ? "default" : "ghost"}
+          size="sm"
+          onClick={() => setActiveTab("center")}
+          className="gap-2"
+        >
           <Bell className="h-4 w-4" /> الإشعارات
         </Button>
-        <Button variant={activeTab === "events" ? "default" : "ghost"} size="sm" onClick={() => setActiveTab("events")} className="gap-2">
+        <Button
+          variant={activeTab === "events" ? "default" : "ghost"}
+          size="sm"
+          onClick={() => setActiveTab("events")}
+          className="gap-2"
+        >
           <Activity className="h-4 w-4" /> أحداث التنبيه
         </Button>
       </div>
@@ -1139,47 +1630,103 @@ function LocationSection() {
   const [radius, setRadius] = useState(500);
   const [description, setDescription] = useState("");
 
-  const { data: locations, isLoading } = useQuery<any[]>({ queryKey: ["/api/factory-locations"] });
+  const { data: locations, isLoading } = useQuery<any[]>({
+    queryKey: ["/api/factory-locations"],
+  });
 
   const createMutation = useMutation({
-    mutationFn: async (data: any) => apiRequest("/api/factory-locations", { method: "POST", body: JSON.stringify(data) }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/factory-locations"] }); toast({ title: "تم إضافة الموقع" }); resetForm(); },
-    onError: () => toast({ title: "خطأ في إضافة الموقع", variant: "destructive" }),
+    mutationFn: async (data: any) =>
+      apiRequest("/api/factory-locations", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/factory-locations"] });
+      toast({ title: "تم إضافة الموقع" });
+      resetForm();
+    },
+    onError: () =>
+      toast({ title: "خطأ في إضافة الموقع", variant: "destructive" }),
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: any }) => apiRequest(`/api/factory-locations/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/factory-locations"] }); toast({ title: "تم تحديث الموقع" }); resetForm(); },
-    onError: () => toast({ title: "خطأ في تحديث الموقع", variant: "destructive" }),
+    mutationFn: async ({ id, data }: { id: number; data: any }) =>
+      apiRequest(`/api/factory-locations/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/factory-locations"] });
+      toast({ title: "تم تحديث الموقع" });
+      resetForm();
+    },
+    onError: () =>
+      toast({ title: "خطأ في تحديث الموقع", variant: "destructive" }),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: number) => apiRequest(`/api/factory-locations/${id}`, { method: "DELETE" }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/factory-locations"] }); toast({ title: "تم حذف الموقع" }); },
+    mutationFn: async (id: number) =>
+      apiRequest(`/api/factory-locations/${id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/factory-locations"] });
+      toast({ title: "تم حذف الموقع" });
+    },
     onError: () => toast({ title: "خطأ في الحذف", variant: "destructive" }),
   });
 
   const toggleActiveMutation = useMutation({
     mutationFn: async ({ id, isActive }: { id: number; isActive: boolean }) =>
-      apiRequest(`/api/factory-locations/${id}`, { method: "PUT", body: JSON.stringify({ is_active: !isActive }) }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/factory-locations"] }); toast({ title: "تم تحديث الحالة" }); },
+      apiRequest(`/api/factory-locations/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({ is_active: !isActive }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/factory-locations"] });
+      toast({ title: "تم تحديث الحالة" });
+    },
   });
 
   const resetForm = () => {
-    setShowForm(false); setEditingLocation(null); setName(""); setNameAr("");
-    setLatitude(24.7136); setLongitude(46.6753); setRadius(500); setDescription("");
+    setShowForm(false);
+    setEditingLocation(null);
+    setName("");
+    setNameAr("");
+    setLatitude(24.7136);
+    setLongitude(46.6753);
+    setRadius(500);
+    setDescription("");
   };
 
   const handleEdit = (loc: any) => {
-    setEditingLocation(loc); setName(loc.name); setNameAr(loc.name_ar);
-    setLatitude(parseFloat(loc.latitude)); setLongitude(parseFloat(loc.longitude));
-    setRadius(loc.allowed_radius); setDescription(loc.description || ""); setShowForm(true);
+    setEditingLocation(loc);
+    setName(loc.name);
+    setNameAr(loc.name_ar);
+    setLatitude(parseFloat(loc.latitude));
+    setLongitude(parseFloat(loc.longitude));
+    setRadius(loc.allowed_radius);
+    setDescription(loc.description || "");
+    setShowForm(true);
   };
 
   const handleSubmit = () => {
-    if (!name || !nameAr) { toast({ title: "أدخل الاسم بالعربية والإنجليزية", variant: "destructive" }); return; }
-    const data = { name, name_ar: nameAr, latitude: latitude.toString(), longitude: longitude.toString(), allowed_radius: radius, description, is_active: true };
-    if (editingLocation) updateMutation.mutate({ id: editingLocation.id, data });
+    if (!name || !nameAr) {
+      toast({
+        title: "أدخل الاسم بالعربية والإنجليزية",
+        variant: "destructive",
+      });
+      return;
+    }
+    const data = {
+      name,
+      name_ar: nameAr,
+      latitude: latitude.toString(),
+      longitude: longitude.toString(),
+      allowed_radius: radius,
+      description,
+      is_active: true,
+    };
+    if (editingLocation)
+      updateMutation.mutate({ id: editingLocation.id, data });
     else createMutation.mutate(data);
   };
 
@@ -1189,7 +1736,9 @@ function LocationSection() {
         <MapPin className="h-6 w-6 text-red-600" />
         <div>
           <h2 className="text-xl font-bold">مواقع المصنع</h2>
-          <p className="text-sm text-muted-foreground">إدارة مواقع المصنع والنطاق الجغرافي للحضور</p>
+          <p className="text-sm text-muted-foreground">
+            إدارة مواقع المصنع والنطاق الجغرافي للحضور
+          </p>
         </div>
       </div>
 
@@ -1202,7 +1751,9 @@ function LocationSection() {
       </div>
 
       {isLoading ? (
-        <div className="text-center py-8 text-muted-foreground">جاري التحميل...</div>
+        <div className="text-center py-8 text-muted-foreground">
+          جاري التحميل...
+        </div>
       ) : locations && locations.length > 0 ? (
         <div className="grid gap-4">
           {locations.map((loc: any) => (
@@ -1216,18 +1767,48 @@ function LocationSection() {
                         {loc.is_active ? "نشط" : "معطل"}
                       </Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground mb-2">{loc.description || loc.name}</p>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {loc.description || loc.name}
+                    </p>
                     <div className="text-sm space-y-1">
-                      <p><strong>الإحداثيات:</strong> {loc.latitude}, {loc.longitude}</p>
-                      <p><strong>نطاق الحضور:</strong> {loc.allowed_radius} متر</p>
+                      <p>
+                        <strong>الإحداثيات:</strong> {loc.latitude},{" "}
+                        {loc.longitude}
+                      </p>
+                      <p>
+                        <strong>نطاق الحضور:</strong> {loc.allowed_radius} متر
+                      </p>
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => toggleActiveMutation.mutate({ id: loc.id, isActive: loc.is_active })}>
-                      {loc.is_active ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        toggleActiveMutation.mutate({
+                          id: loc.id,
+                          isActive: loc.is_active,
+                        })
+                      }
+                    >
+                      {loc.is_active ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleEdit(loc)}>تعديل</Button>
-                    <Button variant="destructive" size="sm" onClick={() => deleteMutation.mutate(loc.id)}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEdit(loc)}
+                    >
+                      تعديل
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => deleteMutation.mutate(loc.id)}
+                    >
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
@@ -1237,53 +1818,98 @@ function LocationSection() {
           ))}
         </div>
       ) : (
-        <div className="text-center py-8 text-muted-foreground">لا توجد مواقع مسجلة</div>
+        <div className="text-center py-8 text-muted-foreground">
+          لا توجد مواقع مسجلة
+        </div>
       )}
 
       {showForm && (
         <Card>
           <CardHeader>
-            <CardTitle>{editingLocation ? "تعديل الموقع" : "إضافة موقع جديد"}</CardTitle>
+            <CardTitle>
+              {editingLocation ? "تعديل الموقع" : "إضافة موقع جديد"}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>الاسم بالإنجليزية</Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Main Factory" />
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Main Factory"
+                />
               </div>
               <div className="space-y-2">
                 <Label>الاسم بالعربية</Label>
-                <Input value={nameAr} onChange={(e) => setNameAr(e.target.value)} placeholder="المصنع الرئيسي" />
+                <Input
+                  value={nameAr}
+                  onChange={(e) => setNameAr(e.target.value)}
+                  placeholder="المصنع الرئيسي"
+                />
               </div>
             </div>
             <div className="space-y-2">
               <Label>الوصف (اختياري)</Label>
-              <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="وصف الموقع" />
+              <Input
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="وصف الموقع"
+              />
             </div>
             <div className="space-y-2">
               <Label>اختر من الخريطة</Label>
-              <LocationMapPicker latitude={latitude} longitude={longitude} radius={radius} onLocationChange={(lat, lng) => { setLatitude(lat); setLongitude(lng); }} editable={true} />
+              <LocationMapPicker
+                latitude={latitude}
+                longitude={longitude}
+                radius={radius}
+                onLocationChange={(lat, lng) => {
+                  setLatitude(lat);
+                  setLongitude(lng);
+                }}
+                editable={true}
+              />
             </div>
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label>خط العرض</Label>
-                <Input type="number" step="0.0001" value={latitude} onChange={(e) => setLatitude(parseFloat(e.target.value))} />
+                <Input
+                  type="number"
+                  step="0.0001"
+                  value={latitude}
+                  onChange={(e) => setLatitude(parseFloat(e.target.value))}
+                />
               </div>
               <div className="space-y-2">
                 <Label>خط الطول</Label>
-                <Input type="number" step="0.0001" value={longitude} onChange={(e) => setLongitude(parseFloat(e.target.value))} />
+                <Input
+                  type="number"
+                  step="0.0001"
+                  value={longitude}
+                  onChange={(e) => setLongitude(parseFloat(e.target.value))}
+                />
               </div>
               <div className="space-y-2">
                 <Label>النطاق (متر)</Label>
-                <Input type="number" value={radius} onChange={(e) => setRadius(parseInt(e.target.value))} />
+                <Input
+                  type="number"
+                  value={radius}
+                  onChange={(e) => setRadius(parseInt(e.target.value))}
+                />
               </div>
             </div>
             <div className="flex gap-2">
-              <Button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending} className="flex-1">
+              <Button
+                onClick={handleSubmit}
+                disabled={createMutation.isPending || updateMutation.isPending}
+                className="flex-1"
+              >
                 <Save className="w-4 h-4 ml-2" />
                 {editingLocation ? "تحديث الموقع" : "إضافة الموقع"}
               </Button>
-              <Button variant="outline" onClick={resetForm}>إلغاء</Button>
+              <Button variant="outline" onClick={resetForm}>
+                إلغاء
+              </Button>
             </div>
           </CardContent>
         </Card>

@@ -1,12 +1,13 @@
-import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
+import { Factory, Activity, CheckCircle2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
+
+import { formatNumber } from "../../../lib/formatNumber";
 import { Badge } from "../../ui/badge";
-import { Skeleton } from "../../ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
 import { Progress } from "../../ui/progress";
 import { ScrollArea } from "../../ui/scroll-area";
-import { Factory, Activity, CheckCircle2 } from "lucide-react";
-import { formatNumber } from "../../../lib/formatNumber";
+import { Skeleton } from "../../ui/skeleton";
 
 interface ProductionOrder {
   id: number;
@@ -23,7 +24,9 @@ interface ProductionOrder {
 export default function ProductionProgressWidget() {
   const { t } = useTranslation();
 
-  const { data: productionOrders = [], isLoading } = useQuery<ProductionOrder[]>({
+  const { data: productionOrders = [], isLoading } = useQuery<
+    ProductionOrder[]
+  >({
     queryKey: ["/api/production-orders"],
   });
 
@@ -52,7 +55,10 @@ export default function ProductionProgressWidget() {
 
   const orderList = Array.isArray(productionOrders) ? productionOrders : [];
   const activeOrders = orderList.filter(
-    (o) => o.status === "in_progress" || o.status === "active" || o.status === "in_production"
+    (o) =>
+      o.status === "in_progress" ||
+      o.status === "active" ||
+      o.status === "in_production",
   );
 
   return (
@@ -65,7 +71,8 @@ export default function ProductionProgressWidget() {
           </CardTitle>
           <Badge variant="secondary" className="text-xs">
             <Activity className="w-3 h-3 mr-1" />
-            {formatNumber(activeOrders.length)} {t("dashboard.widgets.active", "active")}
+            {formatNumber(activeOrders.length)}{" "}
+            {t("dashboard.widgets.active", "active")}
           </Badge>
         </div>
       </CardHeader>
@@ -74,9 +81,16 @@ export default function ProductionProgressWidget() {
           {activeOrders.length > 0 ? (
             <div className="p-4 space-y-3">
               {activeOrders.slice(0, 8).map((order) => {
-                const required = parseFloat(String(order.quantity_required || 0));
-                const produced = parseFloat(String(order.produced_quantity_kg || 0));
-                const progress = required > 0 ? Math.min(Math.round((produced / required) * 100), 100) : 0;
+                const required = parseFloat(
+                  String(order.quantity_required || 0),
+                );
+                const produced = parseFloat(
+                  String(order.produced_quantity_kg || 0),
+                );
+                const progress =
+                  required > 0
+                    ? Math.min(Math.round((produced / required) * 100), 100)
+                    : 0;
 
                 return (
                   <div
@@ -89,9 +103,15 @@ export default function ProductionProgressWidget() {
                           {order.production_order_number || `#${order.id}`}
                         </span>
                       </div>
-                      <span className={`text-xs font-medium ${
-                        progress >= 100 ? "text-green-600" : progress >= 50 ? "text-blue-600" : "text-orange-600"
-                      }`}>
+                      <span
+                        className={`text-xs font-medium ${
+                          progress >= 100
+                            ? "text-green-600"
+                            : progress >= 50
+                              ? "text-blue-600"
+                              : "text-orange-600"
+                        }`}
+                      >
                         {progress}%
                       </span>
                     </div>
@@ -102,14 +122,12 @@ export default function ProductionProgressWidget() {
                       </p>
                     )}
 
-                    <Progress
-                      value={progress}
-                      className="h-1.5"
-                    />
+                    <Progress value={progress} className="h-1.5" />
 
                     <div className="flex items-center justify-between mt-1 text-xs text-gray-500">
                       <span>
-                        {formatNumber(produced)} / {formatNumber(required)} {t("dashboard.widgets.kg", "kg")}
+                        {formatNumber(produced)} / {formatNumber(required)}{" "}
+                        {t("dashboard.widgets.kg", "kg")}
                       </span>
                       {progress >= 100 && (
                         <CheckCircle2 className="w-3 h-3 text-green-600" />
@@ -123,7 +141,10 @@ export default function ProductionProgressWidget() {
             <div className="p-8 text-center">
               <Factory className="w-8 h-8 text-gray-400 mx-auto mb-2" />
               <p className="text-xs text-gray-500">
-                {t("dashboard.widgets.noActiveProduction", "No active production orders")}
+                {t(
+                  "dashboard.widgets.noActiveProduction",
+                  "No active production orders",
+                )}
               </p>
             </div>
           )}

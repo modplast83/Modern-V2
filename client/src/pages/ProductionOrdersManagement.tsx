@@ -1,11 +1,34 @@
-import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useTranslation } from 'react-i18next';
-import { useLocalizedName } from "../hooks/use-localized-name";
-import { useAuth } from "../hooks/use-auth";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
-import { Button } from "../components/ui/button";
+import { format } from "date-fns";
+import { ar } from "date-fns/locale";
+import {
+  Loader2,
+  Printer,
+  Search,
+  Package,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  Factory,
+  TrendingUp,
+  Filter,
+  RefreshCw,
+  Eye,
+  Calendar,
+  Play,
+} from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+
+import ProductionOrderStatsCard from "../components/production/ProductionOrderStatsCard";
 import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Progress } from "../components/ui/progress";
 import {
@@ -23,51 +46,43 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import { 
-  Loader2, 
-  Printer,
-  Search,
-  Package,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  Factory,
-  TrendingUp,
-  Filter,
-  RefreshCw,
-  Eye,
-  Calendar,
-  Play
-} from "lucide-react";
-import ProductionOrderStatsCard from "../components/production/ProductionOrderStatsCard";
-import { format } from "date-fns";
-import { ar } from "date-fns/locale";
+import { useAuth } from "../hooks/use-auth";
+import { useLocalizedName } from "../hooks/use-localized-name";
 
 export default function ProductionOrdersManagement() {
   const { t } = useTranslation();
   const ln = useLocalizedName();
   const { user } = useAuth();
   const [showStats, setShowStats] = useState<number | null>(null);
-  const [printingProductionOrder, setPrintingProductionOrder] = useState<any>(null);
+  const [printingProductionOrder, setPrintingProductionOrder] =
+    useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
 
-  const { data: ordersData, isLoading: ordersLoading, refetch } = useQuery({
+  const {
+    data: ordersData,
+    isLoading: ordersLoading,
+    refetch,
+  } = useQuery({
     queryKey: ["/api/production-orders"],
     queryFn: async () => {
       const response = await fetch("/api/production-orders");
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || t('production.ordersManagement.noProductionOrders'));
+        throw new Error(
+          error.message || t("production.ordersManagement.noProductionOrders"),
+        );
       }
       const result = await response.json();
-      return Array.isArray(result) ? result : (result.data || []);
+      return Array.isArray(result) ? result : result.data || [];
     },
   });
 
   const filteredOrders = useMemo(() => {
-    const orders = Array.isArray(ordersData) ? ordersData : (ordersData?.data || []);
+    const orders = Array.isArray(ordersData)
+      ? ordersData
+      : ordersData?.data || [];
     return orders.filter((order: any) => {
       if (statusFilter !== "all" && order.status !== statusFilter) {
         return false;
@@ -81,7 +96,7 @@ export default function ProductionOrdersManagement() {
           order.customer_name?.toLowerCase().includes(searchLower) ||
           order.customer_name_ar?.toLowerCase().includes(searchLower) ||
           order.size_caption?.toLowerCase().includes(searchLower);
-        
+
         if (!matchesSearch) return false;
       }
 
@@ -90,35 +105,90 @@ export default function ProductionOrdersManagement() {
   }, [ordersData, statusFilter, searchTerm]);
 
   const stats = useMemo(() => {
-    const orders = Array.isArray(ordersData) ? ordersData : (ordersData?.data || []);
+    const orders = Array.isArray(ordersData)
+      ? ordersData
+      : ordersData?.data || [];
     const pending = orders.filter((o: any) => o.status === "pending").length;
-    const active = orders.filter((o: any) => o.status === "active" || o.status === "in_production").length;
-    const completed = orders.filter((o: any) => o.status === "completed").length;
-    const cancelled = orders.filter((o: any) => o.status === "cancelled").length;
+    const active = orders.filter(
+      (o: any) => o.status === "active" || o.status === "in_production",
+    ).length;
+    const completed = orders.filter(
+      (o: any) => o.status === "completed",
+    ).length;
+    const cancelled = orders.filter(
+      (o: any) => o.status === "cancelled",
+    ).length;
     const total = orders.length;
-    
-    const totalQuantity = orders.reduce((sum: number, o: any) => sum + parseFloat(o.quantity_kg || 0), 0);
+
+    const totalQuantity = orders.reduce(
+      (sum: number, o: any) => sum + parseFloat(o.quantity_kg || 0),
+      0,
+    );
     const completedQuantity = orders
       .filter((o: any) => o.status === "completed")
-      .reduce((sum: number, o: any) => sum + parseFloat(o.final_quantity_kg || o.quantity_kg || 0), 0);
+      .reduce(
+        (sum: number, o: any) =>
+          sum + parseFloat(o.final_quantity_kg || o.quantity_kg || 0),
+        0,
+      );
 
-    return { pending, active, completed, cancelled, total, totalQuantity, completedQuantity };
+    return {
+      pending,
+      active,
+      completed,
+      cancelled,
+      total,
+      totalQuantity,
+      completedQuantity,
+    };
   }, [ordersData]);
 
   const getStatusConfig = (status: string) => {
-    const configs: Record<string, { icon: any; color: string; bg: string; label: string }> = {
-      pending: { icon: Clock, color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950", label: t('production.status.pending') },
-      active: { icon: Play, color: "text-green-600", bg: "bg-green-50 dark:bg-green-950", label: t('production.status.active') },
-      in_production: { icon: Factory, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950", label: t('production.status.inProduction') },
-      completed: { icon: CheckCircle2, color: "text-gray-600", bg: "bg-gray-50 dark:bg-gray-800", label: t('production.status.completed') },
-      cancelled: { icon: XCircle, color: "text-red-600", bg: "bg-red-50 dark:bg-red-950", label: t('production.status.cancelled') },
+    const configs: Record<
+      string,
+      { icon: any; color: string; bg: string; label: string }
+    > = {
+      pending: {
+        icon: Clock,
+        color: "text-amber-600",
+        bg: "bg-amber-50 dark:bg-amber-950",
+        label: t("production.status.pending"),
+      },
+      active: {
+        icon: Play,
+        color: "text-green-600",
+        bg: "bg-green-50 dark:bg-green-950",
+        label: t("production.status.active"),
+      },
+      in_production: {
+        icon: Factory,
+        color: "text-blue-600",
+        bg: "bg-blue-50 dark:bg-blue-950",
+        label: t("production.status.inProduction"),
+      },
+      completed: {
+        icon: CheckCircle2,
+        color: "text-gray-600",
+        bg: "bg-gray-50 dark:bg-gray-800",
+        label: t("production.status.completed"),
+      },
+      cancelled: {
+        icon: XCircle,
+        color: "text-red-600",
+        bg: "bg-red-50 dark:bg-red-950",
+        label: t("production.status.cancelled"),
+      },
     };
     return configs[status] || configs.pending;
   };
 
   const getProgressPercentage = (order: any) => {
-    const quantity = parseFloat(order.final_quantity_kg || order.quantity_kg || 0);
-    const produced = parseFloat(order.produced_quantity_kg || order.produced_kg || 0);
+    const quantity = parseFloat(
+      order.final_quantity_kg || order.quantity_kg || 0,
+    );
+    const produced = parseFloat(
+      order.produced_quantity_kg || order.produced_kg || 0,
+    );
     if (quantity === 0) return 0;
     return Math.min(100, Math.round((produced / quantity) * 100));
   };
@@ -128,7 +198,9 @@ export default function ProductionOrdersManagement() {
       <div className="flex items-center justify-center py-12">
         <div className="text-center space-y-4">
           <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
-          <p className="text-muted-foreground">{t('production.loadingOrders')}</p>
+          <p className="text-muted-foreground">
+            {t("production.loadingOrders")}
+          </p>
         </div>
       </div>
     );
@@ -142,8 +214,12 @@ export default function ProductionOrdersManagement() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">{t('production.status.pending')}</p>
-                <p className="text-3xl font-bold text-amber-600">{stats.pending}</p>
+                <p className="text-sm text-muted-foreground">
+                  {t("production.status.pending")}
+                </p>
+                <p className="text-3xl font-bold text-amber-600">
+                  {stats.pending}
+                </p>
               </div>
               <div className="h-12 w-12 rounded-full bg-amber-100 dark:bg-amber-950 flex items-center justify-center">
                 <Clock className="h-6 w-6 text-amber-600" />
@@ -156,8 +232,12 @@ export default function ProductionOrdersManagement() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">{t('production.status.inExecution')}</p>
-                <p className="text-3xl font-bold text-green-600">{stats.active}</p>
+                <p className="text-sm text-muted-foreground">
+                  {t("production.status.inExecution")}
+                </p>
+                <p className="text-3xl font-bold text-green-600">
+                  {stats.active}
+                </p>
               </div>
               <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-950 flex items-center justify-center">
                 <Factory className="h-6 w-6 text-green-600" />
@@ -170,8 +250,12 @@ export default function ProductionOrdersManagement() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">{t('production.status.completedFem')}</p>
-                <p className="text-3xl font-bold text-blue-600">{stats.completed}</p>
+                <p className="text-sm text-muted-foreground">
+                  {t("production.status.completedFem")}
+                </p>
+                <p className="text-3xl font-bold text-blue-600">
+                  {stats.completed}
+                </p>
               </div>
               <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-950 flex items-center justify-center">
                 <CheckCircle2 className="h-6 w-6 text-blue-600" />
@@ -184,8 +268,13 @@ export default function ProductionOrdersManagement() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">{t('production.totalQuantity')}</p>
-                <p className="text-2xl font-bold text-purple-600">{stats.totalQuantity.toLocaleString("en-US")} {t('production.kg')}</p>
+                <p className="text-sm text-muted-foreground">
+                  {t("production.totalQuantity")}
+                </p>
+                <p className="text-2xl font-bold text-purple-600">
+                  {stats.totalQuantity.toLocaleString("en-US")}{" "}
+                  {t("production.kg")}
+                </p>
               </div>
               <div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-950 flex items-center justify-center">
                 <TrendingUp className="h-6 w-6 text-purple-600" />
@@ -202,7 +291,7 @@ export default function ProductionOrdersManagement() {
             <div className="relative flex-1">
               <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder={t('production.searchPlaceholder')}
+                placeholder={t("production.searchPlaceholder")}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pr-10"
@@ -210,15 +299,27 @@ export default function ProductionOrdersManagement() {
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder={t('production.statusLabel')} />
+                <SelectValue placeholder={t("production.statusLabel")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{t('production.allStatuses')}</SelectItem>
-                <SelectItem value="pending">{t('production.status.pending')}</SelectItem>
-                <SelectItem value="active">{t('production.status.active')}</SelectItem>
-                <SelectItem value="in_production">{t('production.status.inProduction')}</SelectItem>
-                <SelectItem value="completed">{t('production.status.completed')}</SelectItem>
-                <SelectItem value="cancelled">{t('production.status.cancelled')}</SelectItem>
+                <SelectItem value="all">
+                  {t("production.allStatuses")}
+                </SelectItem>
+                <SelectItem value="pending">
+                  {t("production.status.pending")}
+                </SelectItem>
+                <SelectItem value="active">
+                  {t("production.status.active")}
+                </SelectItem>
+                <SelectItem value="in_production">
+                  {t("production.status.inProduction")}
+                </SelectItem>
+                <SelectItem value="completed">
+                  {t("production.status.completed")}
+                </SelectItem>
+                <SelectItem value="cancelled">
+                  {t("production.status.cancelled")}
+                </SelectItem>
               </SelectContent>
             </Select>
             <Button variant="outline" size="icon" onClick={() => refetch()}>
@@ -234,7 +335,7 @@ export default function ProductionOrdersManagement() {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />
-              {t('production.productionOrders')}
+              {t("production.productionOrders")}
               <Badge variant="secondary">{filteredOrders.length}</Badge>
             </CardTitle>
           </div>
@@ -244,15 +345,33 @@ export default function ProductionOrdersManagement() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  <TableHead className="font-semibold">{t('production.table.productionOrderNumber')}</TableHead>
-                  <TableHead className="font-semibold">{t('production.table.orderNumber')}</TableHead>
-                  <TableHead className="font-semibold">{t('production.table.customer')}</TableHead>
-                  <TableHead className="font-semibold">{t('production.table.product')}</TableHead>
-                  <TableHead className="font-semibold text-center">{t('production.table.quantity')}</TableHead>
-                  <TableHead className="font-semibold text-center">{t('production.table.progress')}</TableHead>
-                  <TableHead className="font-semibold text-center">{t('production.table.status')}</TableHead>
-                  <TableHead className="font-semibold">{t('production.table.assignment')}</TableHead>
-                  <TableHead className="font-semibold text-center">{t('production.table.actions')}</TableHead>
+                  <TableHead className="font-semibold">
+                    {t("production.table.productionOrderNumber")}
+                  </TableHead>
+                  <TableHead className="font-semibold">
+                    {t("production.table.orderNumber")}
+                  </TableHead>
+                  <TableHead className="font-semibold">
+                    {t("production.table.customer")}
+                  </TableHead>
+                  <TableHead className="font-semibold">
+                    {t("production.table.product")}
+                  </TableHead>
+                  <TableHead className="font-semibold text-center">
+                    {t("production.table.quantity")}
+                  </TableHead>
+                  <TableHead className="font-semibold text-center">
+                    {t("production.table.progress")}
+                  </TableHead>
+                  <TableHead className="font-semibold text-center">
+                    {t("production.table.status")}
+                  </TableHead>
+                  <TableHead className="font-semibold">
+                    {t("production.table.assignment")}
+                  </TableHead>
+                  <TableHead className="font-semibold text-center">
+                    {t("production.table.actions")}
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -261,7 +380,7 @@ export default function ProductionOrdersManagement() {
                     <TableCell colSpan={9} className="text-center py-12">
                       <div className="flex flex-col items-center gap-2 text-muted-foreground">
                         <Package className="h-12 w-12 opacity-50" />
-                        <p>{t('production.noOrders')}</p>
+                        <p>{t("production.noOrders")}</p>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -270,9 +389,12 @@ export default function ProductionOrdersManagement() {
                     const statusConfig = getStatusConfig(order.status);
                     const StatusIcon = statusConfig.icon;
                     const progress = getProgressPercentage(order);
-                    
+
                     return (
-                      <TableRow key={order.id} className="hover:bg-muted/50 transition-colors">
+                      <TableRow
+                        key={order.id}
+                        className="hover:bg-muted/50 transition-colors"
+                      >
                         <TableCell className="font-mono font-medium">
                           {order.production_order_number}
                         </TableCell>
@@ -280,34 +402,43 @@ export default function ProductionOrdersManagement() {
                           {order.order_number}
                         </TableCell>
                         <TableCell>
-                          <div className="font-bold text-gray-900">{ln(order.customer_name_ar, order.customer_name)}</div>
+                          <div className="font-bold text-gray-900">
+                            {ln(order.customer_name_ar, order.customer_name)}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="space-y-1">
                             <div className="text-sm">{order.size_caption}</div>
                             {order.is_printed && (
                               <Badge variant="outline" className="text-xs">
-                                {t('production.printed')}
+                                {t("production.printed")}
                               </Badge>
                             )}
                           </div>
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="space-y-1">
-                            <div className="font-semibold">{order.quantity_kg} {t('production.kg')}</div>
+                            <div className="font-semibold">
+                              {order.quantity_kg} {t("production.kg")}
+                            </div>
                             <div className="text-xs text-muted-foreground">
-                              {t('production.final')}: {order.final_quantity_kg} {t('production.kg')}
+                              {t("production.final")}: {order.final_quantity_kg}{" "}
+                              {t("production.kg")}
                             </div>
                           </div>
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="w-24 mx-auto space-y-1">
                             <Progress value={progress} className="h-2" />
-                            <div className="text-xs text-muted-foreground">{progress}%</div>
+                            <div className="text-xs text-muted-foreground">
+                              {progress}%
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell className="text-center">
-                          <Badge className={`${statusConfig.bg} ${statusConfig.color} border-0`}>
+                          <Badge
+                            className={`${statusConfig.bg} ${statusConfig.color} border-0`}
+                          >
                             <StatusIcon className="h-3 w-3 ml-1" />
                             {statusConfig.label}
                           </Badge>
@@ -322,7 +453,8 @@ export default function ProductionOrdersManagement() {
                             )}
                             {order.assigned_operator_id && (
                               <Badge variant="secondary" className="text-xs">
-                                👷 {order.operator_name_ar || order.operator_name}
+                                👷{" "}
+                                {order.operator_name_ar || order.operator_name}
                               </Badge>
                             )}
                           </div>
@@ -332,8 +464,12 @@ export default function ProductionOrdersManagement() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => setShowStats(showStats === order.id ? null : order.id)}
-                              title={t('production.viewDetails')}
+                              onClick={() =>
+                                setShowStats(
+                                  showStats === order.id ? null : order.id,
+                                )
+                              }
+                              title={t("production.viewDetails")}
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
@@ -341,7 +477,7 @@ export default function ProductionOrdersManagement() {
                               size="sm"
                               variant="ghost"
                               onClick={() => setPrintingProductionOrder(order)}
-                              title={t('production.print')}
+                              title={t("production.print")}
                             >
                               <Printer className="h-4 w-4" />
                             </Button>
@@ -375,7 +511,13 @@ export default function ProductionOrdersManagement() {
   );
 }
 
-function PrintProductionOrderWrapper({ productionOrder, onClose }: { productionOrder: any, onClose: () => void }) {
+function PrintProductionOrderWrapper({
+  productionOrder,
+  onClose,
+}: {
+  productionOrder: any;
+  onClose: () => void;
+}) {
   const { t } = useTranslation();
   const { data: rollsData, isLoading: rollsLoading } = useQuery({
     queryKey: ["/api/rolls/search"],
@@ -388,27 +530,29 @@ function PrintProductionOrderWrapper({ productionOrder, onClose }: { productionO
 
   useEffect(() => {
     if (rollsLoading || !rollsData) return;
-    
-    const rolls = rollsData.filter((r: any) => r.production_order_id === productionOrder.id);
-    
+
+    const rolls = rollsData.filter(
+      (r: any) => r.production_order_id === productionOrder.id,
+    );
+
     const getStageLabel = (stage: string) => {
       const labels: Record<string, string> = {
-        film: t('production.stages.film'),
-        printing: t('production.stages.printing'),
-        cutting: t('production.stages.cutting'),
-        done: t('production.stages.done'),
-        archived: t('production.stages.archived')
+        film: t("production.stages.film"),
+        printing: t("production.stages.printing"),
+        cutting: t("production.stages.cutting"),
+        done: t("production.stages.done"),
+        archived: t("production.stages.archived"),
       };
       return labels[stage] || stage;
     };
 
     const getStatusLabel = (status: string) => {
       const labels: Record<string, string> = {
-        pending: t('production.status.pending'),
-        active: t('production.status.active'),
-        in_production: t('production.status.inProduction'),
-        completed: t('production.status.completed'),
-        cancelled: t('production.status.cancelled')
+        pending: t("production.status.pending"),
+        active: t("production.status.active"),
+        in_production: t("production.status.inProduction"),
+        completed: t("production.status.completed"),
+        cancelled: t("production.status.cancelled"),
       };
       return labels[status] || status;
     };
@@ -420,7 +564,7 @@ function PrintProductionOrderWrapper({ productionOrder, onClose }: { productionO
         in_production: "#3b82f6",
         completed: "#6b7280",
         cancelled: "#ef4444",
-        archived: "#9ca3af"
+        archived: "#9ca3af",
       };
       return colors[status] || "#6b7280";
     };
@@ -428,11 +572,17 @@ function PrintProductionOrderWrapper({ productionOrder, onClose }: { productionO
     const filmRolls = rolls.filter((r: any) => r.stage === "film");
     const printingRolls = rolls.filter((r: any) => r.stage === "printing");
     const cuttingRolls = rolls.filter((r: any) => r.stage === "cutting");
-    const doneRolls = rolls.filter((r: any) => r.stage === "done" || r.stage === "archived");
+    const doneRolls = rolls.filter(
+      (r: any) => r.stage === "done" || r.stage === "archived",
+    );
 
-    const totalWeight = rolls.reduce((sum: number, r: any) => sum + parseFloat(r.weight_kg || 0), 0);
+    const totalWeight = rolls.reduce(
+      (sum: number, r: any) => sum + parseFloat(r.weight_kg || 0),
+      0,
+    );
     const targetWeight = parseFloat(productionOrder.quantity_kg || 0);
-    const progress = targetWeight > 0 ? Math.min(100, (totalWeight / targetWeight) * 100) : 0;
+    const progress =
+      targetWeight > 0 ? Math.min(100, (totalWeight / targetWeight) * 100) : 0;
 
     const uniqueOperators = new Set<string>();
     rolls.forEach((r: any) => {
@@ -443,14 +593,23 @@ function PrintProductionOrderWrapper({ productionOrder, onClose }: { productionO
 
     const uniqueMachines = new Set<string>();
     rolls.forEach((r: any) => {
-      if (r.film_machine_name) uniqueMachines.add(`${t('production.stages.film')}: ${r.film_machine_name}`);
-      if (r.printing_machine_name) uniqueMachines.add(`${t('production.stages.printing')}: ${r.printing_machine_name}`);
-      if (r.cutting_machine_name) uniqueMachines.add(`${t('production.stages.cutting')}: ${r.cutting_machine_name}`);
+      if (r.film_machine_name)
+        uniqueMachines.add(
+          `${t("production.stages.film")}: ${r.film_machine_name}`,
+        );
+      if (r.printing_machine_name)
+        uniqueMachines.add(
+          `${t("production.stages.printing")}: ${r.printing_machine_name}`,
+        );
+      if (r.cutting_machine_name)
+        uniqueMachines.add(
+          `${t("production.stages.cutting")}: ${r.cutting_machine_name}`,
+        );
     });
 
     const printWindow = window.open("", "_blank", "width=900,height=700");
     if (!printWindow) {
-      alert(t('production.allowPopups'));
+      alert(t("production.allowPopups"));
       onClose();
       return;
     }
@@ -460,7 +619,7 @@ function PrintProductionOrderWrapper({ productionOrder, onClose }: { productionO
       <html dir="rtl" lang="ar">
       <head>
         <meta charset="UTF-8">
-        <title>${t('production.printTemplate.productionOrder')} - ${productionOrder.production_order_number}</title>
+        <title>${t("production.printTemplate.productionOrder")} - ${productionOrder.production_order_number}</title>
         <style>
           @page { size: A4; margin: 10mm; }
           * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -515,12 +674,12 @@ function PrintProductionOrderWrapper({ productionOrder, onClose }: { productionO
         </style>
       </head>
       <body>
-        <button class="print-btn" onclick="window.print()">🖨️ ${t('production.print')}</button>
+        <button class="print-btn" onclick="window.print()">🖨️ ${t("production.print")}</button>
         <div class="print-container">
           <div class="header">
             <div class="header-right">
-              <h1>${t('production.printTemplate.productionOrder')}</h1>
-              <p>${t('production.printTemplate.factoryName')}</p>
+              <h1>${t("production.printTemplate.productionOrder")}</h1>
+              <p>${t("production.printTemplate.factoryName")}</p>
             </div>
             <div class="order-number">${productionOrder.production_order_number}</div>
             <div>
@@ -533,114 +692,122 @@ function PrintProductionOrderWrapper({ productionOrder, onClose }: { productionO
           <div class="content">
             <div class="info-section">
               <div class="info-box">
-                <div class="info-label">${t('production.table.orderNumber')}</div>
-                <div class="info-value">${productionOrder.order_number || '-'}</div>
+                <div class="info-label">${t("production.table.orderNumber")}</div>
+                <div class="info-value">${productionOrder.order_number || "-"}</div>
               </div>
               <div class="info-box">
-                <div class="info-label">${t('production.table.customer')}</div>
-                <div class="info-value">${productionOrder.customer_name_ar || productionOrder.customer_name || '-'}</div>
+                <div class="info-label">${t("production.table.customer")}</div>
+                <div class="info-value">${productionOrder.customer_name_ar || productionOrder.customer_name || "-"}</div>
               </div>
               <div class="info-box">
-                <div class="info-label">${t('production.table.product')}</div>
-                <div class="info-value">${productionOrder.item_name_ar || productionOrder.item_name || '-'}</div>
+                <div class="info-label">${t("production.table.product")}</div>
+                <div class="info-value">${productionOrder.item_name_ar || productionOrder.item_name || "-"}</div>
               </div>
               <div class="info-box">
-                <div class="info-label">${t('production.printTemplate.size')}</div>
-                <div class="info-value">${productionOrder.size_caption || '-'}</div>
+                <div class="info-label">${t("production.printTemplate.size")}</div>
+                <div class="info-value">${productionOrder.size_caption || "-"}</div>
               </div>
               <div class="info-box highlight">
-                <div class="info-label">${t('production.printTemplate.requiredQuantity')}</div>
-                <div class="info-value">${targetWeight.toFixed(2)} ${t('production.kg')}</div>
+                <div class="info-label">${t("production.printTemplate.requiredQuantity")}</div>
+                <div class="info-value">${targetWeight.toFixed(2)} ${t("production.kg")}</div>
               </div>
               <div class="info-box">
-                <div class="info-label">${t('production.printTemplate.creationDate')}</div>
-                <div class="info-value">${productionOrder.created_at ? new Date(productionOrder.created_at).toLocaleDateString('en-US') : '-'}</div>
+                <div class="info-label">${t("production.printTemplate.creationDate")}</div>
+                <div class="info-value">${productionOrder.created_at ? new Date(productionOrder.created_at).toLocaleDateString("en-US") : "-"}</div>
               </div>
             </div>
 
-            <div class="section-title">📊 ${t('production.printTemplate.workflowAndStages')}</div>
+            <div class="section-title">📊 ${t("production.printTemplate.workflowAndStages")}</div>
             <div class="workflow-container">
               <div class="workflow-stage film">
                 <div class="stage-icon">🎬</div>
-                <div class="stage-name">${t('production.printTemplate.filmStage')}</div>
-                <div class="stage-count stage-film">${filmRolls.length} ${t('production.printTemplate.roll')}</div>
-                <div class="stage-weight">${filmRolls.reduce((s: number, r: any) => s + parseFloat(r.weight_kg || 0), 0).toFixed(2)} ${t('production.kg')}</div>
+                <div class="stage-name">${t("production.printTemplate.filmStage")}</div>
+                <div class="stage-count stage-film">${filmRolls.length} ${t("production.printTemplate.roll")}</div>
+                <div class="stage-weight">${filmRolls.reduce((s: number, r: any) => s + parseFloat(r.weight_kg || 0), 0).toFixed(2)} ${t("production.kg")}</div>
               </div>
               <div class="workflow-stage printing">
                 <div class="stage-icon">🖨️</div>
-                <div class="stage-name">${t('production.printTemplate.printingStage')}</div>
-                <div class="stage-count stage-printing">${printingRolls.length} ${t('production.printTemplate.roll')}</div>
-                <div class="stage-weight">${printingRolls.reduce((s: number, r: any) => s + parseFloat(r.weight_kg || 0), 0).toFixed(2)} ${t('production.kg')}</div>
+                <div class="stage-name">${t("production.printTemplate.printingStage")}</div>
+                <div class="stage-count stage-printing">${printingRolls.length} ${t("production.printTemplate.roll")}</div>
+                <div class="stage-weight">${printingRolls.reduce((s: number, r: any) => s + parseFloat(r.weight_kg || 0), 0).toFixed(2)} ${t("production.kg")}</div>
               </div>
               <div class="workflow-stage cutting">
                 <div class="stage-icon">✂️</div>
-                <div class="stage-name">${t('production.printTemplate.cuttingStage')}</div>
-                <div class="stage-count stage-cutting">${cuttingRolls.length} ${t('production.printTemplate.roll')}</div>
-                <div class="stage-weight">${cuttingRolls.reduce((s: number, r: any) => s + parseFloat(r.weight_kg || 0), 0).toFixed(2)} ${t('production.kg')}</div>
+                <div class="stage-name">${t("production.printTemplate.cuttingStage")}</div>
+                <div class="stage-count stage-cutting">${cuttingRolls.length} ${t("production.printTemplate.roll")}</div>
+                <div class="stage-weight">${cuttingRolls.reduce((s: number, r: any) => s + parseFloat(r.weight_kg || 0), 0).toFixed(2)} ${t("production.kg")}</div>
               </div>
               <div class="workflow-stage done">
                 <div class="stage-icon">✅</div>
-                <div class="stage-name">${t('production.stages.done')}</div>
-                <div class="stage-count stage-done">${doneRolls.length} ${t('production.printTemplate.roll')}</div>
-                <div class="stage-weight">${doneRolls.reduce((s: number, r: any) => s + parseFloat(r.weight_kg || 0), 0).toFixed(2)} ${t('production.kg')}</div>
+                <div class="stage-name">${t("production.stages.done")}</div>
+                <div class="stage-count stage-done">${doneRolls.length} ${t("production.printTemplate.roll")}</div>
+                <div class="stage-weight">${doneRolls.reduce((s: number, r: any) => s + parseFloat(r.weight_kg || 0), 0).toFixed(2)} ${t("production.kg")}</div>
               </div>
             </div>
 
             <div class="progress-bar">
               <div class="progress-fill" style="width: ${progress}%"></div>
-              <div class="progress-text">${progress.toFixed(1)}% (${totalWeight.toFixed(2)} / ${targetWeight.toFixed(2)} ${t('production.kg')})</div>
+              <div class="progress-text">${progress.toFixed(1)}% (${totalWeight.toFixed(2)} / ${targetWeight.toFixed(2)} ${t("production.kg")})</div>
             </div>
 
-            ${rolls.length > 0 ? `
-              <div class="section-title">📦 ${t('production.printTemplate.rollsList')} (${rolls.length} ${t('production.printTemplate.roll')})</div>
+            ${
+              rolls.length > 0
+                ? `
+              <div class="section-title">📦 ${t("production.printTemplate.rollsList")} (${rolls.length} ${t("production.printTemplate.roll")})</div>
               <table class="rolls-table">
                 <thead>
                   <tr>
                     <th>#</th>
-                    <th>${t('production.printTemplate.rollNumber')}</th>
-                    <th>${t('production.printTemplate.stage')}</th>
-                    <th>${t('production.printTemplate.weight')}</th>
-                    <th>${t('production.printTemplate.filmBy')}</th>
-                    <th>${t('production.printTemplate.printedBy')}</th>
-                    <th>${t('production.printTemplate.cutBy')}</th>
-                    <th>${t('production.printTemplate.productionDate')}</th>
+                    <th>${t("production.printTemplate.rollNumber")}</th>
+                    <th>${t("production.printTemplate.stage")}</th>
+                    <th>${t("production.printTemplate.weight")}</th>
+                    <th>${t("production.printTemplate.filmBy")}</th>
+                    <th>${t("production.printTemplate.printedBy")}</th>
+                    <th>${t("production.printTemplate.cutBy")}</th>
+                    <th>${t("production.printTemplate.productionDate")}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  ${rolls.map((roll: any, index: number) => `
+                  ${rolls
+                    .map(
+                      (roll: any, index: number) => `
                     <tr>
                       <td>${index + 1}</td>
                       <td><strong>${roll.roll_number}</strong></td>
                       <td class="stage-${roll.stage}"><strong>${getStageLabel(roll.stage)}</strong></td>
-                      <td>${parseFloat(roll.weight_kg || 0).toFixed(2)} ${t('production.kg')}</td>
-                      <td>${roll.created_by_name || '-'}</td>
-                      <td>${roll.printed_by_name || '-'}</td>
-                      <td>${roll.cut_by_name || '-'}</td>
-                      <td>${roll.created_at ? new Date(roll.created_at).toLocaleDateString('en-US') : '-'}</td>
+                      <td>${parseFloat(roll.weight_kg || 0).toFixed(2)} ${t("production.kg")}</td>
+                      <td>${roll.created_by_name || "-"}</td>
+                      <td>${roll.printed_by_name || "-"}</td>
+                      <td>${roll.cut_by_name || "-"}</td>
+                      <td>${roll.created_at ? new Date(roll.created_at).toLocaleDateString("en-US") : "-"}</td>
                     </tr>
-                  `).join('')}
+                  `,
+                    )
+                    .join("")}
                 </tbody>
               </table>
-            ` : `<p style="text-align:center;color:#64748b;padding:20px;">${t('production.printTemplate.noRollsYet')}</p>`}
+            `
+                : `<p style="text-align:center;color:#64748b;padding:20px;">${t("production.printTemplate.noRollsYet")}</p>`
+            }
 
             <div class="team-section">
               <div class="team-box">
-                <h4>👷 ${t('production.printTemplate.participatingWorkers')}</h4>
+                <h4>👷 ${t("production.printTemplate.participatingWorkers")}</h4>
                 <div class="team-list">
-                  ${uniqueOperators.size > 0 ? Array.from(uniqueOperators).join(' • ') : t('production.printTemplate.noRegisteredWorkers')}
+                  ${uniqueOperators.size > 0 ? Array.from(uniqueOperators).join(" • ") : t("production.printTemplate.noRegisteredWorkers")}
                 </div>
               </div>
               <div class="team-box">
-                <h4>🏭 ${t('production.printTemplate.usedMachines')}</h4>
+                <h4>🏭 ${t("production.printTemplate.usedMachines")}</h4>
                 <div class="team-list">
-                  ${uniqueMachines.size > 0 ? Array.from(uniqueMachines).join(' • ') : t('production.printTemplate.noRegisteredMachines')}
+                  ${uniqueMachines.size > 0 ? Array.from(uniqueMachines).join(" • ") : t("production.printTemplate.noRegisteredMachines")}
                 </div>
               </div>
             </div>
           </div>
 
           <div class="footer">
-            ${t('production.printTemplate.printedAt')}: ${new Date().toLocaleString('en-US')} | ${t('production.printTemplate.productionManagementSystem')}
+            ${t("production.printTemplate.printedAt")}: ${new Date().toLocaleString("en-US")} | ${t("production.printTemplate.productionManagementSystem")}
           </div>
         </div>
       </body>
@@ -649,13 +816,13 @@ function PrintProductionOrderWrapper({ productionOrder, onClose }: { productionO
 
     printWindow.document.write(printHTML);
     printWindow.document.close();
-    
+
     printWindow.onload = () => {
       setTimeout(() => {
         printWindow.print();
       }, 500);
     };
-    
+
     onClose();
   }, [rollsData, rollsLoading, productionOrder, onClose]);
 
@@ -664,7 +831,7 @@ function PrintProductionOrderWrapper({ productionOrder, onClose }: { productionO
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg p-6 text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
-          <p>{t('production.loadingData')}</p>
+          <p>{t("production.loadingData")}</p>
         </div>
       </div>
     );

@@ -1,6 +1,8 @@
-import type { IStorage } from "../storage";
-import { logger } from "../lib/logger";
 import { createHmac } from "crypto";
+
+import { logger } from "../lib/logger";
+
+import type { IStorage } from "../storage";
 
 export interface MetaWhatsAppConfig {
   accessToken: string;
@@ -60,7 +62,7 @@ export class MetaWhatsAppService {
 
     if (!this.config.accessToken || !this.config.phoneNumberId) {
       logger.warn(
-        "⚠️ Meta WhatsApp API credentials not configured. Set META_ACCESS_TOKEN and META_PHONE_NUMBER_ID environment variables."
+        "⚠️ Meta WhatsApp API credentials not configured. Set META_ACCESS_TOKEN and META_PHONE_NUMBER_ID environment variables.",
       );
     } else {
       logger.info("✅ Meta WhatsApp API service initialized successfully");
@@ -76,10 +78,17 @@ export class MetaWhatsAppService {
     }
   }
 
-  private isTokenExpiredError(errorMessage: string, errorCode?: number, errorSubcode?: number): boolean {
+  private isTokenExpiredError(
+    errorMessage: string,
+    errorCode?: number,
+    errorSubcode?: number,
+  ): boolean {
     if (errorCode === 190) return true;
     if (errorSubcode === 463 || errorSubcode === 467) return true;
-    return errorMessage.includes("validating access token") && errorMessage.includes("expired");
+    return (
+      errorMessage.includes("validating access token") &&
+      errorMessage.includes("expired")
+    );
   }
 
   private generateAppSecretProof(): string | null {
@@ -138,14 +147,13 @@ export class MetaWhatsAppService {
       };
 
       const apiUrl = this.appendAppSecretProof(
-        `${this.baseUrl}/${this.config.phoneNumberId}/messages`
+        `${this.baseUrl}/${this.config.phoneNumberId}/messages`,
       );
       const response = await fetch(apiUrl, {
-          method: "POST",
-          headers: this.getAuthHeaders(),
-          body: JSON.stringify(messageData),
-        },
-      );
+        method: "POST",
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(messageData),
+      });
 
       const result = await response.json();
 
@@ -179,7 +187,7 @@ export class MetaWhatsAppService {
       await this.storage.createNotification(notificationData);
 
       logger.info(
-        `📱 تم إرسال رسالة واتس اب مباشرة إلى ${to} - ID ${result.messages?.[0]?.id}`
+        `📱 تم إرسال رسالة واتس اب مباشرة إلى ${to} - ID ${result.messages?.[0]?.id}`,
       );
 
       return {
@@ -187,13 +195,18 @@ export class MetaWhatsAppService {
         messageId: result.messages?.[0]?.id,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "خطأ غير معروف";
+      const errorMessage =
+        error instanceof Error ? error.message : "خطأ غير معروف";
 
       const errObj = error as any;
-      if (this.isTokenExpiredError(errorMessage, errObj?.code, errObj?.subcode)) {
+      if (
+        this.isTokenExpiredError(errorMessage, errObj?.code, errObj?.subcode)
+      ) {
         this.tokenExpired = true;
         this.refreshToken();
-        logger.error("🔑 Meta WhatsApp access token has expired. Please update META_ACCESS_TOKEN with a new token.");
+        logger.error(
+          "🔑 Meta WhatsApp access token has expired. Please update META_ACCESS_TOKEN with a new token.",
+        );
       } else {
         logger.error("خطأ في إرسال رسالة واتس اب عبر Meta API", error);
       }
@@ -224,7 +237,11 @@ export class MetaWhatsAppService {
     return this.tokenExpired;
   }
 
-  async uploadMediaBuffer(buffer: Buffer, filename: string, mimeType: string): Promise<string> {
+  async uploadMediaBuffer(
+    buffer: Buffer,
+    filename: string,
+    mimeType: string,
+  ): Promise<string> {
     if (!this.config.accessToken || !this.config.phoneNumberId) {
       throw new Error("Meta WhatsApp API غير مُعد بشكل صحيح");
     }
@@ -236,21 +253,22 @@ export class MetaWhatsAppService {
     formData.append("file", blob, filename);
 
     const mediaUrl = this.appendAppSecretProof(
-      `${this.baseUrl}/${this.config.phoneNumberId}/media`
+      `${this.baseUrl}/${this.config.phoneNumberId}/media`,
     );
     const response = await fetch(mediaUrl, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${this.config.accessToken}`,
-        },
-        body: formData,
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.config.accessToken}`,
       },
-    );
+      body: formData,
+    });
 
     const result: any = await response.json();
 
     if (!response.ok) {
-      throw new Error(result.error?.message || `Media upload failed: HTTP ${response.status}`);
+      throw new Error(
+        result.error?.message || `Media upload failed: HTTP ${response.status}`,
+      );
     }
 
     logger.info(`📤 تم رفع ملف إلى Meta Media API - ID ${result.id}`);
@@ -282,7 +300,11 @@ export class MetaWhatsAppService {
       let documentPayload: any;
 
       if (options?.pdfBuffer) {
-        const mediaId = await this.uploadMediaBuffer(options.pdfBuffer, filename, "application/pdf");
+        const mediaId = await this.uploadMediaBuffer(
+          options.pdfBuffer,
+          filename,
+          "application/pdf",
+        );
         documentPayload = {
           id: mediaId,
           filename: filename,
@@ -305,14 +327,13 @@ export class MetaWhatsAppService {
       };
 
       const docApiUrl = this.appendAppSecretProof(
-        `${this.baseUrl}/${this.config.phoneNumberId}/messages`
+        `${this.baseUrl}/${this.config.phoneNumberId}/messages`,
       );
       const response = await fetch(docApiUrl, {
-          method: "POST",
-          headers: this.getAuthHeaders(),
-          body: JSON.stringify(messageData),
-        },
-      );
+        method: "POST",
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(messageData),
+      });
 
       const result = await response.json();
 
@@ -341,7 +362,7 @@ export class MetaWhatsAppService {
       await this.storage.createNotification(notificationData);
 
       logger.info(
-        `📄 تم إرسال مستند واتس اب إلى ${to} - ID ${result.messages?.[0]?.id}`
+        `📄 تم إرسال مستند واتس اب إلى ${to} - ID ${result.messages?.[0]?.id}`,
       );
 
       return {
@@ -349,7 +370,8 @@ export class MetaWhatsAppService {
         messageId: result.messages?.[0]?.id,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "خطأ غير معروف";
+      const errorMessage =
+        error instanceof Error ? error.message : "خطأ غير معروف";
       logger.error("خطأ في إرسال مستند واتس اب عبر Meta API", error);
 
       const notificationData = {
@@ -426,14 +448,13 @@ export class MetaWhatsAppService {
       }
 
       const tplApiUrl = this.appendAppSecretProof(
-        `${this.baseUrl}/${this.config.phoneNumberId}/messages`
+        `${this.baseUrl}/${this.config.phoneNumberId}/messages`,
       );
       const response = await fetch(tplApiUrl, {
-          method: "POST",
-          headers: this.getAuthHeaders(),
-          body: JSON.stringify(messageData),
-        },
-      );
+        method: "POST",
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(messageData),
+      });
 
       const result = await response.json();
 
@@ -463,7 +484,7 @@ export class MetaWhatsAppService {
       await this.storage.createNotification(notificationData);
 
       logger.info(
-        `📱 تم إرسال رسالة واتس اب (قالب Meta) إلى ${to} - ID ${result.messages?.[0]?.id}`
+        `📱 تم إرسال رسالة واتس اب (قالب Meta) إلى ${to} - ID ${result.messages?.[0]?.id}`,
       );
 
       return {
@@ -471,7 +492,8 @@ export class MetaWhatsAppService {
         messageId: result.messages?.[0]?.id,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "خطأ غير معروف";
+      const errorMessage =
+        error instanceof Error ? error.message : "خطأ غير معروف";
       logger.error("خطأ في إرسال رسالة واتس اب (قالب Meta)", error);
 
       const notificationData = {
@@ -506,14 +528,13 @@ export class MetaWhatsAppService {
       }
 
       const phoneInfoUrl = this.appendAppSecretProof(
-        `${this.baseUrl}/${this.config.phoneNumberId}?fields=display_phone_number,verified_name,quality_rating`
+        `${this.baseUrl}/${this.config.phoneNumberId}?fields=display_phone_number,verified_name,quality_rating`,
       );
       const response = await fetch(phoneInfoUrl, {
-          headers: {
-            Authorization: `Bearer ${this.config.accessToken}`,
-          },
+        headers: {
+          Authorization: `Bearer ${this.config.accessToken}`,
         },
-      );
+      });
 
       const result = await response.json();
 
@@ -538,14 +559,13 @@ export class MetaWhatsAppService {
       }
 
       const templatesUrl = this.appendAppSecretProof(
-        `${this.baseUrl}/${this.config.businessAccountId}/message_templates?fields=name,status,language,components`
+        `${this.baseUrl}/${this.config.businessAccountId}/message_templates?fields=name,status,language,components`,
       );
       const response = await fetch(templatesUrl, {
-          headers: {
-            Authorization: `Bearer ${this.config.accessToken}`,
-          },
+        headers: {
+          Authorization: `Bearer ${this.config.accessToken}`,
         },
-      );
+      });
 
       const result = await response.json();
 
@@ -580,7 +600,8 @@ export class MetaWhatsAppService {
         data: phoneInfo,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "فشل اختبار الاتصال";
+      const errorMessage =
+        error instanceof Error ? error.message : "فشل اختبار الاتصال";
       return {
         success: false,
         error: errorMessage,
@@ -634,7 +655,10 @@ export class MetaWhatsAppService {
         read_at: status === "read" ? new Date() : undefined,
       };
 
-      const updated = await this.storage.updateNotificationStatusByExternalId(messageId, updatePayload);
+      const updated = await this.storage.updateNotificationStatusByExternalId(
+        messageId,
+        updatePayload,
+      );
 
       if (updated) {
         logger.info(`📊 تم تحديث حالة الرسالة ${messageId} إلى ${status}`);
@@ -657,7 +681,9 @@ export class MetaWhatsAppService {
         text: message.text?.body || "غير نصية",
       });
 
-      const phoneFormatted = message.from?.startsWith("+") ? message.from : `+${message.from}`;
+      const phoneFormatted = message.from?.startsWith("+")
+        ? message.from
+        : `+${message.from}`;
       const notificationData = {
         title: "رسالة واردة",
         message: message.text?.body || "رسالة غير نصية",

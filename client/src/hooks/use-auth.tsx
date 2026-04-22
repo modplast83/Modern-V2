@@ -6,6 +6,7 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
+
 import type { AuthUser } from "@/types";
 
 interface AuthContextType {
@@ -59,7 +60,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
     };
     window.addEventListener("auth:session-expired", onSessionExpired);
-    return () => window.removeEventListener("auth:session-expired", onSessionExpired);
+    return () =>
+      window.removeEventListener("auth:session-expired", onSessionExpired);
   }, []);
 
   const login = async (username: string, password: string) => {

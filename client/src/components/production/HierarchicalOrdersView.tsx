@@ -1,14 +1,16 @@
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ChevronDown, ChevronRight, Plus, Search, Printer } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+
 import { useLocalizedName } from "../../hooks/use-localized-name";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { formatNumber, formatWeight } from "../../lib/formatNumber";
+import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Badge } from "../ui/badge";
-import { Progress } from "../ui/progress";
 import { Input } from "../ui/input";
-import { ChevronDown, ChevronRight, Plus, Search, Printer } from "lucide-react";
-import { formatNumber, formatWeight } from "../../lib/formatNumber";
+import { Progress } from "../ui/progress";
+
 import { printRollLabel } from "./RollLabelPrint";
 
 interface MasterBatchColor {
@@ -20,18 +22,24 @@ interface MasterBatchColor {
   aliases?: string;
 }
 
-const ColorBadge = ({ color, code, nameAr }: { color: string; code: string; nameAr: string }) => {
+const ColorBadge = ({
+  color,
+  code,
+  nameAr,
+}: {
+  color: string;
+  code: string;
+  nameAr: string;
+}) => {
   const displayColor = !color || color === "transparent" ? "#E0E0E0" : color;
-  
+
   return (
     <span className="inline-flex items-center gap-1.5">
       <span
         className="w-4 h-4 rounded-sm border border-gray-300 flex-shrink-0"
         style={{ backgroundColor: displayColor }}
       />
-      <span className="text-muted-foreground">
-        {nameAr}
-      </span>
+      <span className="text-muted-foreground">{nameAr}</span>
     </span>
   );
 };
@@ -76,24 +84,36 @@ export default function HierarchicalOrdersView({
     staleTime: 5 * 60 * 1000,
   });
 
-  const findColorByCode = useMemo(() => (code: string): MasterBatchColor | undefined => {
-    if (!code) return undefined;
-    const normalizedCode = code.toUpperCase().trim();
-    return masterBatchColors.find((c) => {
-      if (c.code.toUpperCase() === normalizedCode) return true;
-      if (c.aliases) {
-        const aliasArr = c.aliases.split(",").map((a) => a.trim().toUpperCase());
-        return aliasArr.includes(normalizedCode);
-      }
-      return false;
-    });
-  }, [masterBatchColors]);
+  const findColorByCode = useMemo(
+    () =>
+      (code: string): MasterBatchColor | undefined => {
+        if (!code) return undefined;
+        const normalizedCode = code.toUpperCase().trim();
+        return masterBatchColors.find((c) => {
+          if (c.code.toUpperCase() === normalizedCode) return true;
+          if (c.aliases) {
+            const aliasArr = c.aliases
+              .split(",")
+              .map((a) => a.trim().toUpperCase());
+            return aliasArr.includes(normalizedCode);
+          }
+          return false;
+        });
+      },
+    [masterBatchColors],
+  );
 
   const getMasterBatchDisplay = (masterBatchId: string) => {
     if (!masterBatchId) return null;
     const colorData = findColorByCode(masterBatchId);
     if (colorData) {
-      return <ColorBadge color={colorData.hex_color} code={colorData.code} nameAr={colorData.name_ar} />;
+      return (
+        <ColorBadge
+          color={colorData.hex_color}
+          code={colorData.code}
+          nameAr={colorData.name_ar}
+        />
+      );
     }
     return <span className="text-muted-foreground">{masterBatchId}</span>;
   };
@@ -182,7 +202,7 @@ export default function HierarchicalOrdersView({
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
         <Input
-          placeholder={t('production.searchOrdersPlaceholder')}
+          placeholder={t("production.searchOrdersPlaceholder")}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-10"
@@ -195,8 +215,8 @@ export default function HierarchicalOrdersView({
         <div className="text-center py-8">
           <p className="text-muted-foreground">
             {searchTerm
-              ? t('production.noSearchResults')
-              : t('production.noOrdersInProduction')}
+              ? t("production.noSearchResults")
+              : t("production.noOrdersInProduction")}
           </p>
         </div>
       ) : (
@@ -222,30 +242,31 @@ export default function HierarchicalOrdersView({
                       {order.order_number}
                     </CardTitle>
                     <p className="text-base font-bold text-blue-700">
-                      {t('production.customer')}:{" "}
+                      {t("production.customer")}:{" "}
                       {ln(order.customer_name_ar, order.customer_name) ||
-                        t('production.notSpecified')}
+                        t("production.notSpecified")}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline">
-                    {order.production_orders?.length || 0} {t('production.productionOrders')}
+                    {order.production_orders?.length || 0}{" "}
+                    {t("production.productionOrders")}
                   </Badge>
                   <Badge
                     variant="secondary"
                     data-testid={`badge-order-status-${order.id}`}
                   >
                     {order.status === "for_production"
-                      ? t('production.statuses.forProduction')
+                      ? t("production.statuses.forProduction")
                       : order.status === "pending"
-                        ? t('production.statuses.pending')
+                        ? t("production.statuses.pending")
                         : order.status === "in_production"
-                          ? t('production.statuses.inProduction')
+                          ? t("production.statuses.inProduction")
                           : order.status === "completed"
-                            ? t('production.statuses.completed')
+                            ? t("production.statuses.completed")
                             : order.status === "cancelled"
-                              ? t('production.statuses.cancelled')
+                              ? t("production.statuses.cancelled")
                               : order.status}
                   </Badge>
                 </div>
@@ -303,14 +324,16 @@ export default function HierarchicalOrdersView({
                                     {productionOrder.production_order_number}
                                   </h4>
                                   <p className="text-sm text-muted-foreground">
-                                    {ln(productionOrder.item_name_ar, productionOrder.item_name) ||
-                                      t('production.notSpecified')}
+                                    {ln(
+                                      productionOrder.item_name_ar,
+                                      productionOrder.item_name,
+                                    ) || t("production.notSpecified")}
                                   </p>
                                   <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-xs">
                                     {productionOrder.size_caption && (
                                       <div>
                                         <span className="font-medium">
-                                          {t('production.size')}:{" "}
+                                          {t("production.size")}:{" "}
                                         </span>
                                         <span className="text-muted-foreground">
                                           {productionOrder.size_caption}
@@ -320,7 +343,7 @@ export default function HierarchicalOrdersView({
                                     {productionOrder.thickness && (
                                       <div>
                                         <span className="font-medium">
-                                          {t('production.thickness')}:{" "}
+                                          {t("production.thickness")}:{" "}
                                         </span>
                                         <span className="text-muted-foreground">
                                           {productionOrder.thickness}
@@ -330,7 +353,7 @@ export default function HierarchicalOrdersView({
                                     {productionOrder.raw_material && (
                                       <div>
                                         <span className="font-medium">
-                                          {t('production.rawMaterial')}:{" "}
+                                          {t("production.rawMaterial")}:{" "}
                                         </span>
                                         <span className="text-muted-foreground">
                                           {productionOrder.raw_material}
@@ -340,19 +363,22 @@ export default function HierarchicalOrdersView({
                                     {productionOrder.master_batch_id && (
                                       <div className="flex items-center gap-1">
                                         <span className="font-medium">
-                                          {t('production.masterBatchColor')}:{" "}
+                                          {t("production.masterBatchColor")}
+                                          :{" "}
                                         </span>
-                                        {getMasterBatchDisplay(productionOrder.master_batch_id)}
+                                        {getMasterBatchDisplay(
+                                          productionOrder.master_batch_id,
+                                        )}
                                       </div>
                                     )}
                                     <div>
                                       <span className="font-medium">
-                                        {t('production.printing.label')}:{" "}
+                                        {t("production.printing.label")}:{" "}
                                       </span>
                                       <span className="text-muted-foreground">
                                         {productionOrder.is_printed
-                                          ? t('common.yes')
-                                          : t('common.no')}
+                                          ? t("common.yes")
+                                          : t("common.no")}
                                       </span>
                                     </div>
                                   </div>
@@ -361,7 +387,7 @@ export default function HierarchicalOrdersView({
                               <div className="flex items-center gap-4">
                                 <div className="text-sm">
                                   <span className="text-muted-foreground">
-                                    {t('production.quantity')}:{" "}
+                                    {t("production.quantity")}:{" "}
                                   </span>
                                   {formatWeight(produced)} /{" "}
                                   {formatWeight(required)}
@@ -389,11 +415,12 @@ export default function HierarchicalOrdersView({
                               productionOrder.rolls && (
                                 <div className="mt-4 ml-6 space-y-2">
                                   <h5 className="text-sm font-medium text-gray-700 mb-2">
-                                    {t('production.rolls')} ({productionOrder.rolls.length})
+                                    {t("production.rolls")} (
+                                    {productionOrder.rolls.length})
                                   </h5>
                                   {productionOrder.rolls.length === 0 ? (
                                     <p className="text-sm text-muted-foreground">
-                                      {t('production.noRollsYet')}
+                                      {t("production.noRollsYet")}
                                     </p>
                                   ) : (
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -410,7 +437,7 @@ export default function HierarchicalOrdersView({
                                                   {roll.roll_number}
                                                 </p>
                                                 <p className="text-xs text-muted-foreground">
-                                                  {t('production.weight')}:{" "}
+                                                  {t("production.weight")}:{" "}
                                                   {formatWeight(
                                                     parseFloat(
                                                       roll.weight_kg,
@@ -418,13 +445,19 @@ export default function HierarchicalOrdersView({
                                                   )}
                                                 </p>
                                                 <p className="text-xs text-muted-foreground">
-                                                  {t('production.stage')}:{" "}
+                                                  {t("production.stage")}:{" "}
                                                   {roll.stage === "film"
-                                                    ? t('production.stages.film')
+                                                    ? t(
+                                                        "production.stages.film",
+                                                      )
                                                     : roll.stage === "printing"
-                                                      ? t('production.stages.printing')
+                                                      ? t(
+                                                          "production.stages.printing",
+                                                        )
                                                       : roll.stage === "cutting"
-                                                        ? t('production.stages.cutting')
+                                                        ? t(
+                                                            "production.stages.cutting",
+                                                          )
                                                         : roll.stage}
                                                 </p>
                                               </div>
@@ -437,13 +470,19 @@ export default function HierarchicalOrdersView({
                                                 className="text-xs"
                                               >
                                                 {roll.stage === "done"
-                                                  ? t('production.stages.done')
+                                                  ? t("production.stages.done")
                                                   : roll.stage === "film"
-                                                    ? t('production.stages.film')
+                                                    ? t(
+                                                        "production.stages.film",
+                                                      )
                                                     : roll.stage === "printing"
-                                                      ? t('production.stages.printing')
+                                                      ? t(
+                                                          "production.stages.printing",
+                                                        )
                                                       : roll.stage === "cutting"
-                                                        ? t('production.stages.cutting')
+                                                        ? t(
+                                                            "production.stages.cutting",
+                                                          )
                                                         : roll.stage}
                                               </Badge>
                                             </div>
@@ -451,15 +490,18 @@ export default function HierarchicalOrdersView({
                                               variant="outline"
                                               size="sm"
                                               className="w-full text-xs"
-                                              onClick={() => printRollLabel({
-                                                roll: roll,
-                                                productionOrder: productionOrder,
-                                                order: order
-                                              })}
+                                              onClick={() =>
+                                                printRollLabel({
+                                                  roll: roll,
+                                                  productionOrder:
+                                                    productionOrder,
+                                                  order: order,
+                                                })
+                                              }
                                               data-testid={`button-print-label-${roll.id}`}
                                             >
                                               <Printer className="h-3 w-3 mr-1" />
-                                              {t('production.printLabel')}
+                                              {t("production.printLabel")}
                                             </Button>
                                           </div>
                                         ),
@@ -475,7 +517,7 @@ export default function HierarchicalOrdersView({
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground ml-6">
-                    {t('production.noProductionOrdersForOrder')}
+                    {t("production.noProductionOrdersForOrder")}
                   </p>
                 )}
               </CardContent>

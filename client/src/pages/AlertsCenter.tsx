@@ -1,15 +1,6 @@
-import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useTranslation } from 'react-i18next';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
-import { Button } from "../components/ui/button";
-import { Badge } from "../components/ui/badge";
-import { ScrollArea } from "../components/ui/scroll-area";
+import { formatDistanceToNow } from "date-fns";
+import { ar } from "date-fns/locale";
 import {
   AlertTriangle,
   Shield,
@@ -27,7 +18,19 @@ import {
   Search,
   ChevronRight,
 } from "lucide-react";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 import { Input } from "../components/ui/input";
+import { ScrollArea } from "../components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -35,10 +38,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import { apiRequest } from "../lib/queryClient";
 import { useToast } from "../hooks/use-toast";
-import { formatDistanceToNow } from "date-fns";
-import { ar } from "date-fns/locale";
+import { apiRequest } from "../lib/queryClient";
 
 interface SystemAlert {
   id: number;
@@ -136,13 +137,13 @@ export default function AlertsCenter() {
       queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/alerts/stats"] });
       toast({
-        title: t('system.alerts.resolveSuccess'),
-        description: t('system.alerts.resolveSuccessDesc'),
+        title: t("system.alerts.resolveSuccess"),
+        description: t("system.alerts.resolveSuccessDesc"),
       });
     },
     onError: (error: any) => {
       toast({
-        title: t('system.alerts.resolveError'),
+        title: t("system.alerts.resolveError"),
         description: error.message,
         variant: "destructive",
       });
@@ -159,13 +160,13 @@ export default function AlertsCenter() {
       queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/alerts/stats"] });
       toast({
-        title: t('system.alerts.dismissSuccess'),
-        description: t('system.alerts.dismissSuccessDesc'),
+        title: t("system.alerts.dismissSuccess"),
+        description: t("system.alerts.dismissSuccessDesc"),
       });
     },
     onError: (error: any) => {
       toast({
-        title: t('system.alerts.dismissError'),
+        title: t("system.alerts.dismissError"),
         description: error.message,
         variant: "destructive",
       });
@@ -223,25 +224,31 @@ export default function AlertsCenter() {
   };
 
   const getSeverityLabel = (severity: string) => {
-    const severityKey = severity as 'critical' | 'high' | 'medium' | 'low';
+    const severityKey = severity as "critical" | "high" | "medium" | "low";
     return t(`system.alerts.severity.${severityKey}`, severity);
   };
 
   const getTypeLabel = (type: string) => {
-    const typeKey = type as 'system' | 'production' | 'inventory' | 'quality' | 'maintenance' | 'security';
+    const typeKey = type as
+      | "system"
+      | "production"
+      | "inventory"
+      | "quality"
+      | "maintenance"
+      | "security";
     return t(`system.alerts.types.${typeKey}`, type);
   };
 
   const getStatusLabel = (status: string) => {
-    const statusKey = status as 'active' | 'resolved' | 'dismissed';
+    const statusKey = status as "active" | "resolved" | "dismissed";
     return t(`system.alerts.status.${statusKey}`, status);
   };
 
   const getHealthStatusLabel = (status: string) => {
-    const statusKey = status as 'healthy' | 'warning' | 'danger';
-    if (status === 'healthy') return t('system.alerts.status.healthy');
-    if (status === 'warning') return t('system.alerts.status.warning');
-    return t('system.alerts.status.danger');
+    const statusKey = status as "healthy" | "warning" | "danger";
+    if (status === "healthy") return t("system.alerts.status.healthy");
+    if (status === "warning") return t("system.alerts.status.warning");
+    return t("system.alerts.status.danger");
   };
 
   return (
@@ -249,16 +256,16 @@ export default function AlertsCenter() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            {t('system.alerts.title')}
+            {t("system.alerts.title")}
           </h1>
           <p className="text-gray-600 dark:text-gray-300 mt-2">
-            {t('system.alerts.description')}
+            {t("system.alerts.description")}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-sm">
             <Activity className="w-4 h-4 ml-1" />
-            {t('system.alerts.liveMonitoring')}
+            {t("system.alerts.liveMonitoring")}
           </Badge>
         </div>
       </div>
@@ -268,7 +275,7 @@ export default function AlertsCenter() {
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2">
               <Shield className="w-5 h-5" />
-              {t('system.alerts.systemStatus')}
+              {t("system.alerts.systemStatus")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -286,7 +293,7 @@ export default function AlertsCenter() {
                   {getHealthStatusLabel(healthStatus.overall_status)}
                 </div>
                 <div className="text-sm text-gray-600 dark:text-gray-300">
-                  {t('system.alerts.overallStatus')}
+                  {t("system.alerts.overallStatus")}
                 </div>
               </div>
               <div className="text-center">
@@ -294,7 +301,7 @@ export default function AlertsCenter() {
                   {healthStatus.healthy_checks}
                 </div>
                 <div className="text-sm text-gray-600 dark:text-gray-300">
-                  {t('system.alerts.healthyChecks')}
+                  {t("system.alerts.healthyChecks")}
                 </div>
               </div>
               <div className="text-center">
@@ -302,7 +309,7 @@ export default function AlertsCenter() {
                   {healthStatus.warning_checks}
                 </div>
                 <div className="text-sm text-gray-600 dark:text-gray-300">
-                  {t('system.alerts.warnings')}
+                  {t("system.alerts.warnings")}
                 </div>
               </div>
               <div className="text-center">
@@ -310,7 +317,7 @@ export default function AlertsCenter() {
                   {healthStatus.critical_checks}
                 </div>
                 <div className="text-sm text-gray-600 dark:text-gray-300">
-                  {t('system.alerts.criticalCases')}
+                  {t("system.alerts.criticalCases")}
                 </div>
               </div>
             </div>
@@ -325,7 +332,7 @@ export default function AlertsCenter() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                    {t('system.alerts.totalAlerts')}
+                    {t("system.alerts.totalAlerts")}
                   </p>
                   <p className="text-2xl font-bold">{stats.total_alerts}</p>
                 </div>
@@ -339,7 +346,7 @@ export default function AlertsCenter() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                    {t('system.alerts.activeAlerts')}
+                    {t("system.alerts.activeAlerts")}
                   </p>
                   <p className="text-2xl font-bold text-orange-600">
                     {stats.active_alerts}
@@ -355,7 +362,7 @@ export default function AlertsCenter() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                    {t('system.alerts.criticalAlerts')}
+                    {t("system.alerts.criticalAlerts")}
                   </p>
                   <p className="text-2xl font-bold text-red-600">
                     {stats.critical_alerts}
@@ -371,7 +378,7 @@ export default function AlertsCenter() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                    {t('system.alerts.resolvedToday')}
+                    {t("system.alerts.resolvedToday")}
                   </p>
                   <p className="text-2xl font-bold text-green-600">
                     {stats.resolved_today}
@@ -391,7 +398,7 @@ export default function AlertsCenter() {
               <div className="relative">
                 <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
-                  placeholder={t('system.alerts.searchPlaceholder')}
+                  placeholder={t("system.alerts.searchPlaceholder")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pr-10"
@@ -408,10 +415,18 @@ export default function AlertsCenter() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{t('system.alerts.filters.allStatuses')}</SelectItem>
-                <SelectItem value="active">{t('system.alerts.filters.active')}</SelectItem>
-                <SelectItem value="resolved">{t('system.alerts.filters.resolved')}</SelectItem>
-                <SelectItem value="dismissed">{t('system.alerts.filters.dismissed')}</SelectItem>
+                <SelectItem value="all">
+                  {t("system.alerts.filters.allStatuses")}
+                </SelectItem>
+                <SelectItem value="active">
+                  {t("system.alerts.filters.active")}
+                </SelectItem>
+                <SelectItem value="resolved">
+                  {t("system.alerts.filters.resolved")}
+                </SelectItem>
+                <SelectItem value="dismissed">
+                  {t("system.alerts.filters.dismissed")}
+                </SelectItem>
               </SelectContent>
             </Select>
 
@@ -420,13 +435,27 @@ export default function AlertsCenter() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{t('system.alerts.filters.allTypes')}</SelectItem>
-                <SelectItem value="system">{t('system.alerts.filters.system')}</SelectItem>
-                <SelectItem value="production">{t('system.alerts.filters.production')}</SelectItem>
-                <SelectItem value="inventory">{t('system.alerts.filters.inventory')}</SelectItem>
-                <SelectItem value="quality">{t('system.alerts.filters.quality')}</SelectItem>
-                <SelectItem value="maintenance">{t('system.alerts.filters.maintenance')}</SelectItem>
-                <SelectItem value="security">{t('system.alerts.filters.security')}</SelectItem>
+                <SelectItem value="all">
+                  {t("system.alerts.filters.allTypes")}
+                </SelectItem>
+                <SelectItem value="system">
+                  {t("system.alerts.filters.system")}
+                </SelectItem>
+                <SelectItem value="production">
+                  {t("system.alerts.filters.production")}
+                </SelectItem>
+                <SelectItem value="inventory">
+                  {t("system.alerts.filters.inventory")}
+                </SelectItem>
+                <SelectItem value="quality">
+                  {t("system.alerts.filters.quality")}
+                </SelectItem>
+                <SelectItem value="maintenance">
+                  {t("system.alerts.filters.maintenance")}
+                </SelectItem>
+                <SelectItem value="security">
+                  {t("system.alerts.filters.security")}
+                </SelectItem>
               </SelectContent>
             </Select>
 
@@ -438,11 +467,21 @@ export default function AlertsCenter() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{t('system.alerts.filters.allLevels')}</SelectItem>
-                <SelectItem value="critical">{t('system.alerts.filters.critical')}</SelectItem>
-                <SelectItem value="high">{t('system.alerts.filters.high')}</SelectItem>
-                <SelectItem value="medium">{t('system.alerts.filters.medium')}</SelectItem>
-                <SelectItem value="low">{t('system.alerts.filters.low')}</SelectItem>
+                <SelectItem value="all">
+                  {t("system.alerts.filters.allLevels")}
+                </SelectItem>
+                <SelectItem value="critical">
+                  {t("system.alerts.filters.critical")}
+                </SelectItem>
+                <SelectItem value="high">
+                  {t("system.alerts.filters.high")}
+                </SelectItem>
+                <SelectItem value="medium">
+                  {t("system.alerts.filters.medium")}
+                </SelectItem>
+                <SelectItem value="low">
+                  {t("system.alerts.filters.low")}
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -453,7 +492,7 @@ export default function AlertsCenter() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AlertTriangle className="w-5 h-5" />
-            {t('system.alerts.alertsList')} ({filteredAlerts.length})
+            {t("system.alerts.alertsList")} ({filteredAlerts.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -463,7 +502,7 @@ export default function AlertsCenter() {
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                   <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                    {t('system.alerts.loadingAlerts')}
+                    {t("system.alerts.loadingAlerts")}
                   </p>
                 </div>
               </div>
@@ -471,10 +510,10 @@ export default function AlertsCenter() {
               <div className="text-center py-8">
                 <CheckCircle2 className="w-16 h-16 text-green-600 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                  {t('system.alerts.noAlerts')}
+                  {t("system.alerts.noAlerts")}
                 </h3>
                 <p className="text-gray-600 dark:text-gray-300">
-                  {t('system.alerts.noAlertsMessage')}
+                  {t("system.alerts.noAlertsMessage")}
                 </p>
               </div>
             ) : (
@@ -509,7 +548,9 @@ export default function AlertsCenter() {
                                   {alert.title_ar}
                                 </h3>
                                 <Badge
-                                  variant={getSeverityColor(alert.severity) as any}
+                                  variant={
+                                    getSeverityColor(alert.severity) as any
+                                  }
                                 >
                                   {getSeverityLabel(alert.severity)}
                                 </Badge>
@@ -540,7 +581,9 @@ export default function AlertsCenter() {
                                 {alert.occurrences > 1 && (
                                   <div className="flex items-center gap-1">
                                     <TrendingUp className="w-4 h-4" />
-                                    {t('system.alerts.occurrences', { count: alert.occurrences })}
+                                    {t("system.alerts.occurrences", {
+                                      count: alert.occurrences,
+                                    })}
                                   </div>
                                 )}
                               </div>
@@ -549,7 +592,7 @@ export default function AlertsCenter() {
                                 alert.suggested_actions.length > 0 && (
                                   <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
                                     <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
-                                      {t('system.alerts.suggestedActions')}
+                                      {t("system.alerts.suggestedActions")}
                                     </p>
                                     <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
                                       {alert.suggested_actions.map(
@@ -582,7 +625,7 @@ export default function AlertsCenter() {
                                 disabled={resolveAlertMutation.isPending}
                                 data-testid={`button-resolve-${alert.id}`}
                               >
-                                {t('system.alerts.resolve')}
+                                {t("system.alerts.resolve")}
                               </Button>
                               <Button
                                 size="sm"
@@ -593,7 +636,7 @@ export default function AlertsCenter() {
                                 disabled={dismissAlertMutation.isPending}
                                 data-testid={`button-dismiss-${alert.id}`}
                               >
-                                {t('system.alerts.dismiss')}
+                                {t("system.alerts.dismiss")}
                               </Button>
                             </div>
                           )}

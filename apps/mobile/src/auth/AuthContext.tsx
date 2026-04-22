@@ -1,9 +1,21 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+  Endpoints,
+  type MobileLoginRequest,
+  type MobileLoginResponse,
+  type User,
+} from "@mpbf/shared";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import { Platform } from "react-native";
+
 import { api } from "@/api/client";
-import { AuthStorage } from "@/auth/storage";
 import { authForcedLogout } from "@/auth/events";
-import { Endpoints, type MobileLoginRequest, type MobileLoginResponse, type User } from "@mpbf/shared";
+import { AuthStorage } from "@/auth/storage";
 
 interface AuthContextValue {
   user: User | null;
@@ -42,9 +54,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       platform: Platform.OS as MobileLoginRequest["platform"],
       app_version: "1.0.0",
     };
-    const res = await api.post<MobileLoginResponse>(Endpoints.mobileLogin, body, {
-      _skipAuth: true,
-    });
+    const res = await api.post<MobileLoginResponse>(
+      Endpoints.mobileLogin,
+      body,
+      {
+        _skipAuth: true,
+      },
+    );
     await AuthStorage.setTokens(res.data.token, res.data.refresh_token);
     await AuthStorage.setUser(res.data.user);
     setUser(res.data.user as User);
@@ -75,7 +91,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, isLoading, isAuthenticated: !!user, login, logout, refreshUser }}
+      value={{
+        user,
+        isLoading,
+        isAuthenticated: !!user,
+        login,
+        logout,
+        refreshUser,
+      }}
     >
       {children}
     </AuthContext.Provider>

@@ -1,5 +1,6 @@
-import type { Express, Request, Response } from "express";
 import { openai } from "./client";
+
+import type { Express, Request, Response } from "express";
 
 export function registerImageRoutes(app: Express): void {
   app.post("/api/generate-image", async (req: Request, res: Response) => {
@@ -28,4 +29,3 @@ export function registerImageRoutes(app: Express): void {
     }
   });
 }
-

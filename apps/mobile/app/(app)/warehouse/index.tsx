@@ -1,16 +1,16 @@
 import { useMemo, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
+import { StyleSheet, Text, View } from "react-native";
 
-import { Screen } from "@/components/layout/Screen";
-import { Card } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
-import { Badge } from "@/components/ui/Badge";
-import { Loader } from "@/components/ui/Loader";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { useInventory } from "@/api/hooks/useInventory";
-import { useTheme } from "@/utils/useTheme";
+import { Screen } from "@/components/layout/Screen";
+import { Badge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Input } from "@/components/ui/Input";
+import { Loader } from "@/components/ui/Loader";
 import { FontSize, Spacing } from "@/constants/spacing";
+import { useTheme } from "@/utils/useTheme";
 
 export default function WarehouseIndex() {
   const { t, i18n } = useTranslation();
@@ -36,9 +36,17 @@ export default function WarehouseIndex() {
   return (
     <Screen
       refreshing={refreshing}
-      onRefresh={async () => { setRefreshing(true); await refetch(); setRefreshing(false); }}
+      onRefresh={async () => {
+        setRefreshing(true);
+        await refetch();
+        setRefreshing(false);
+      }}
     >
-      <Input placeholder={t("warehouse.search")} value={search} onChangeText={setSearch} />
+      <Input
+        placeholder={t("warehouse.search")}
+        value={search}
+        onChangeText={setSearch}
+      />
       <View style={{ height: Spacing.md }} />
       {isLoading ? (
         <Loader />
@@ -53,8 +61,18 @@ export default function WarehouseIndex() {
           return (
             <Card key={item.id}>
               <View style={styles.row}>
-                <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>{name}</Text>
-                {isLow ? <Badge label={t("warehouse.lowStock")} color={colors.danger} /> : null}
+                <Text
+                  style={[styles.name, { color: colors.text }]}
+                  numberOfLines={1}
+                >
+                  {name}
+                </Text>
+                {isLow ? (
+                  <Badge
+                    label={t("warehouse.lowStock")}
+                    color={colors.danger}
+                  />
+                ) : null}
               </View>
               <Text style={[styles.meta, { color: colors.textMuted }]}>
                 {t("warehouse.quantity")}: {qty} {item.unit ?? ""}
@@ -68,7 +86,12 @@ export default function WarehouseIndex() {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.sm },
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: Spacing.sm,
+  },
   name: { fontSize: FontSize.base, fontWeight: "700", flex: 1 },
   meta: { fontSize: FontSize.sm },
 });

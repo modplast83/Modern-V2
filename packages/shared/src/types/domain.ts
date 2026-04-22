@@ -89,7 +89,12 @@ export interface Roll {
 }
 
 export type RollStage = "film" | "printing" | "cutting" | "done";
-export type RollStatus = "for_printing" | "for_cutting" | "in_production" | "ready" | "completed";
+export type RollStatus =
+  | "for_printing"
+  | "for_cutting"
+  | "in_production"
+  | "ready"
+  | "completed";
 
 export interface Machine {
   id: number;

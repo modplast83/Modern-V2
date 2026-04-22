@@ -1,8 +1,16 @@
 import { ReactNode } from "react";
-import { ScrollView, StyleSheet, View, RefreshControl, type StyleProp, type ViewStyle } from "react-native";
+import {
+  ScrollView,
+  StyleSheet,
+  View,
+  RefreshControl,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useTheme } from "@/utils/useTheme";
+
 import { Spacing } from "@/constants/spacing";
+import { useTheme } from "@/utils/useTheme";
 
 interface Props {
   children: ReactNode;
@@ -24,11 +32,16 @@ export function Screen({
   const { colors } = useTheme();
   if (scroll) {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={edges}>
+      <SafeAreaView
+        style={[styles.safe, { backgroundColor: colors.background }]}
+        edges={edges}
+      >
         <ScrollView
           contentContainerStyle={[styles.content, contentStyle]}
           refreshControl={
-            onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} /> : undefined
+            onRefresh ? (
+              <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} />
+            ) : undefined
           }
           showsVerticalScrollIndicator={false}
         >
@@ -38,7 +51,10 @@ export function Screen({
     );
   }
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={edges}>
+    <SafeAreaView
+      style={[styles.safe, { backgroundColor: colors.background }]}
+      edges={edges}
+    >
       <View style={[styles.content, contentStyle]}>{children}</View>
     </SafeAreaView>
   );

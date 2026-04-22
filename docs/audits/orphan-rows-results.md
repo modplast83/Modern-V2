@@ -14,18 +14,18 @@ customer_id, program_id, roll_id, section_id`.
 
 ## Summary
 
-| # | Column                | Child table → Parent table              | Orphan rows |
-|---|-----------------------|------------------------------------------|-------------|
-| 1 | `user_id`             | `attendance` → `users.id`                | **0** ✅    |
-| 2 | `production_order_id` | `rolls` → `production_orders.id`         | **0** ✅    |
-| 3 | `item_id`             | `inventory` → `items.id`                 | **0** ✅    |
-| 4 | `employee_id`         | `violations` → `users.id`                | **0** ✅    |
-| 5 | `machine_id`          | `maintenance_requests` → `machines.id`   | **0** ✅    |
-| 6 | `location_id`         | `inventory` → `locations.id`             | **0** ✅    |
-| 7 | `customer_id`         | `orders` → `customers.id`                | **0** ✅    |
-| 8 | `program_id`          | `training_enrollments` → `training_programs.id` | **0** ✅ |
-| 9 | `roll_id`             | `cuts` → `rolls.id`                      | **0** ✅    |
-|10 | `section_id`          | `users` → `sections.id`                  | **64** ⚠️   |
+| #   | Column                | Child table → Parent table                      | Orphan rows |
+| --- | --------------------- | ----------------------------------------------- | ----------- |
+| 1   | `user_id`             | `attendance` → `users.id`                       | **0** ✅    |
+| 2   | `production_order_id` | `rolls` → `production_orders.id`                | **0** ✅    |
+| 3   | `item_id`             | `inventory` → `items.id`                        | **0** ✅    |
+| 4   | `employee_id`         | `violations` → `users.id`                       | **0** ✅    |
+| 5   | `machine_id`          | `maintenance_requests` → `machines.id`          | **0** ✅    |
+| 6   | `location_id`         | `inventory` → `locations.id`                    | **0** ✅    |
+| 7   | `customer_id`         | `orders` → `customers.id`                       | **0** ✅    |
+| 8   | `program_id`          | `training_enrollments` → `training_programs.id` | **0** ✅    |
+| 9   | `roll_id`             | `cuts` → `rolls.id`                             | **0** ✅    |
+| 10  | `section_id`          | `users` → `sections.id`                         | **64** ⚠️   |
 
 **Result:** 9 of 10 required relationships are clean.
 One blocker for Phase-2 FK rollout: `users.section_id` → `sections.id` has

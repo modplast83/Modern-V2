@@ -1,26 +1,4 @@
-import { useState } from "react";
-import { useTranslation } from "react-i18next";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "../ui/dialog";
-import { Button } from "../ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
-import { Label } from "../ui/label";
-import { Slider } from "../ui/slider";
-import { Alert, AlertDescription } from "../ui/alert";
-import { Badge } from "../ui/badge";
-import { Progress } from "../ui/progress";
-import { ScrollArea } from "../ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import { apiRequest, queryClient } from "../../lib/queryClient";
-import { useToast } from "../../hooks/use-toast";
 import {
   Sparkles,
   Scale,
@@ -38,6 +16,29 @@ import {
   Clock,
   Weight,
 } from "lucide-react";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+
+import { useToast } from "../../hooks/use-toast";
+import { apiRequest, queryClient } from "../../lib/queryClient";
+import { Alert, AlertDescription } from "../ui/alert";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "../ui/dialog";
+import { Label } from "../ui/label";
+import { Progress } from "../ui/progress";
+import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
+import { ScrollArea } from "../ui/scroll-area";
+import { Slider } from "../ui/slider";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 
 interface SmartDistributionModalProps {
   isOpen: boolean;
@@ -157,28 +158,36 @@ export default function SmartDistributionModal({
   ];
 
   // Fetch distribution preview
-  const { data: preview, isLoading: isPreviewLoading } = useQuery<DistributionPreviewResponse>({
-    queryKey: ["/api/machine-queues/distribution-preview", selectedAlgorithm, hybridParams],
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        algorithm: selectedAlgorithm,
-        ...(selectedAlgorithm === "hybrid" 
-          ? {
-              loadWeight: String(hybridParams.loadWeight),
-              capacityWeight: String(hybridParams.capacityWeight),
-              priorityWeight: String(hybridParams.priorityWeight),
-              typeWeight: String(hybridParams.typeWeight),
-            }
-          : {}),
-      });
-      const response = await fetch(`/api/machine-queues/distribution-preview?${params}`, {
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to fetch preview");
-      return response.json();
-    },
-    enabled: isOpen,
-  });
+  const { data: preview, isLoading: isPreviewLoading } =
+    useQuery<DistributionPreviewResponse>({
+      queryKey: [
+        "/api/machine-queues/distribution-preview",
+        selectedAlgorithm,
+        hybridParams,
+      ],
+      queryFn: async () => {
+        const params = new URLSearchParams({
+          algorithm: selectedAlgorithm,
+          ...(selectedAlgorithm === "hybrid"
+            ? {
+                loadWeight: String(hybridParams.loadWeight),
+                capacityWeight: String(hybridParams.capacityWeight),
+                priorityWeight: String(hybridParams.priorityWeight),
+                typeWeight: String(hybridParams.typeWeight),
+              }
+            : {}),
+        });
+        const response = await fetch(
+          `/api/machine-queues/distribution-preview?${params}`,
+          {
+            credentials: "include",
+          },
+        );
+        if (!response.ok) throw new Error("Failed to fetch preview");
+        return response.json();
+      },
+      enabled: isOpen,
+    });
 
   // Fetch machine capacity stats
   const { data: capacityStats } = useQuery<CapacityStatsResponse>({
@@ -189,19 +198,22 @@ export default function SmartDistributionModal({
   // Apply distribution mutation
   const distributeMutation = useMutation({
     mutationFn: async (): Promise<DistributionResult> => {
-      const response = await apiRequest("/api/machine-queues/smart-distribute", {
-        method: "POST",
-        body: JSON.stringify({
-          algorithm: selectedAlgorithm,
-          params: selectedAlgorithm === "hybrid" ? hybridParams : {},
-        }),
-      });
+      const response = await apiRequest(
+        "/api/machine-queues/smart-distribute",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            algorithm: selectedAlgorithm,
+            params: selectedAlgorithm === "hybrid" ? hybridParams : {},
+          }),
+        },
+      );
       return response.json();
     },
     onSuccess: (result) => {
       if (result.success) {
         toast({
-          title: t('modals.smartDistribution.distributionSuccess'),
+          title: t("modals.smartDistribution.distributionSuccess"),
           description: result.message,
         });
         queryClient.invalidateQueries({ queryKey: ["/api/machine-queues"] });
@@ -212,8 +224,9 @@ export default function SmartDistributionModal({
     },
     onError: (error: any) => {
       toast({
-        title: t('modals.smartDistribution.distributionError'),
-        description: error.message || t('modals.smartDistribution.distributionFailed'),
+        title: t("modals.smartDistribution.distributionError"),
+        description:
+          error.message || t("modals.smartDistribution.distributionFailed"),
         variant: "destructive",
       });
     },
@@ -241,13 +254,13 @@ export default function SmartDistributionModal({
   const getCapacityStatusLabel = (status: string) => {
     switch (status) {
       case "low":
-        return t('modals.smartDistribution.statusLow');
+        return t("modals.smartDistribution.statusLow");
       case "moderate":
-        return t('modals.smartDistribution.statusModerate');
+        return t("modals.smartDistribution.statusModerate");
       case "high":
-        return t('modals.smartDistribution.statusHigh');
+        return t("modals.smartDistribution.statusHigh");
       default:
-        return t('modals.smartDistribution.statusOverloaded');
+        return t("modals.smartDistribution.statusOverloaded");
     }
   };
 
@@ -264,18 +277,24 @@ export default function SmartDistributionModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Sparkles className="h-6 w-6 text-purple-600" />
-            {t('modals.smartDistribution.title')}
+            {t("modals.smartDistribution.title")}
           </DialogTitle>
           <DialogDescription>
-            {t('modals.smartDistribution.description')}
+            {t("modals.smartDistribution.description")}
           </DialogDescription>
         </DialogHeader>
 
         <Tabs defaultValue="algorithm" className="flex-1 overflow-hidden">
           <TabsList className="grid grid-cols-3 w-full">
-            <TabsTrigger value="algorithm" data-testid="tab-algorithm">{t('modals.smartDistribution.tabAlgorithm')}</TabsTrigger>
-            <TabsTrigger value="preview" data-testid="tab-preview">{t('modals.smartDistribution.tabPreview')}</TabsTrigger>
-            <TabsTrigger value="stats" data-testid="tab-stats">{t('modals.smartDistribution.tabStats')}</TabsTrigger>
+            <TabsTrigger value="algorithm" data-testid="tab-algorithm">
+              {t("modals.smartDistribution.tabAlgorithm")}
+            </TabsTrigger>
+            <TabsTrigger value="preview" data-testid="tab-preview">
+              {t("modals.smartDistribution.tabPreview")}
+            </TabsTrigger>
+            <TabsTrigger value="stats" data-testid="tab-stats">
+              {t("modals.smartDistribution.tabStats")}
+            </TabsTrigger>
           </TabsList>
 
           <ScrollArea className="flex-1 h-[500px] mt-4">
@@ -297,7 +316,11 @@ export default function SmartDistributionModal({
                   >
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
-                        <RadioGroupItem value={algo.id} id={algo.id} data-testid={`radio-algorithm-${algo.id}`} />
+                        <RadioGroupItem
+                          value={algo.id}
+                          id={algo.id}
+                          data-testid={`radio-algorithm-${algo.id}`}
+                        />
                         <div className="flex-1">
                           <Label
                             htmlFor={algo.id}
@@ -319,12 +342,16 @@ export default function SmartDistributionModal({
               {selectedAlgorithm === "hybrid" && (
                 <Card className="mt-4">
                   <CardHeader>
-                    <CardTitle className="text-sm">{t('modals.smartDistribution.hybridCriteria')}</CardTitle>
+                    <CardTitle className="text-sm">
+                      {t("modals.smartDistribution.hybridCriteria")}
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
                       <div className="flex justify-between mb-2">
-                        <Label>{t('modals.smartDistribution.loadWeightLabel')}</Label>
+                        <Label>
+                          {t("modals.smartDistribution.loadWeightLabel")}
+                        </Label>
                         <span className="text-sm font-medium">
                           {hybridParams.loadWeight}%
                         </span>
@@ -332,7 +359,10 @@ export default function SmartDistributionModal({
                       <Slider
                         value={[hybridParams.loadWeight]}
                         onValueChange={([value]) =>
-                          setHybridParams({ ...hybridParams, loadWeight: value })
+                          setHybridParams({
+                            ...hybridParams,
+                            loadWeight: value,
+                          })
                         }
                         max={100}
                         step={10}
@@ -341,7 +371,9 @@ export default function SmartDistributionModal({
 
                     <div>
                       <div className="flex justify-between mb-2">
-                        <Label>{t('modals.smartDistribution.capacityWeightLabel')}</Label>
+                        <Label>
+                          {t("modals.smartDistribution.capacityWeightLabel")}
+                        </Label>
                         <span className="text-sm font-medium">
                           {hybridParams.capacityWeight}%
                         </span>
@@ -349,7 +381,10 @@ export default function SmartDistributionModal({
                       <Slider
                         value={[hybridParams.capacityWeight]}
                         onValueChange={([value]) =>
-                          setHybridParams({ ...hybridParams, capacityWeight: value })
+                          setHybridParams({
+                            ...hybridParams,
+                            capacityWeight: value,
+                          })
                         }
                         max={100}
                         step={10}
@@ -358,7 +393,9 @@ export default function SmartDistributionModal({
 
                     <div>
                       <div className="flex justify-between mb-2">
-                        <Label>{t('modals.smartDistribution.priorityWeightLabel')}</Label>
+                        <Label>
+                          {t("modals.smartDistribution.priorityWeightLabel")}
+                        </Label>
                         <span className="text-sm font-medium">
                           {hybridParams.priorityWeight}%
                         </span>
@@ -366,7 +403,10 @@ export default function SmartDistributionModal({
                       <Slider
                         value={[hybridParams.priorityWeight]}
                         onValueChange={([value]) =>
-                          setHybridParams({ ...hybridParams, priorityWeight: value })
+                          setHybridParams({
+                            ...hybridParams,
+                            priorityWeight: value,
+                          })
                         }
                         max={100}
                         step={10}
@@ -375,7 +415,9 @@ export default function SmartDistributionModal({
 
                     <div>
                       <div className="flex justify-between mb-2">
-                        <Label>{t('modals.smartDistribution.productTypeWeightLabel')}</Label>
+                        <Label>
+                          {t("modals.smartDistribution.productTypeWeightLabel")}
+                        </Label>
                         <span className="text-sm font-medium">
                           {hybridParams.typeWeight}%
                         </span>
@@ -383,7 +425,10 @@ export default function SmartDistributionModal({
                       <Slider
                         value={[hybridParams.typeWeight]}
                         onValueChange={([value]) =>
-                          setHybridParams({ ...hybridParams, typeWeight: value })
+                          setHybridParams({
+                            ...hybridParams,
+                            typeWeight: value,
+                          })
                         }
                         max={100}
                         step={10}
@@ -406,10 +451,14 @@ export default function SmartDistributionModal({
                     <AlertDescription>
                       <div className="flex items-center justify-between">
                         <span>
-                          {t('modals.smartDistribution.willDistribute', { orders: preview.data.totalOrders, machines: preview.data.machineCount })}
+                          {t("modals.smartDistribution.willDistribute", {
+                            orders: preview.data.totalOrders,
+                            machines: preview.data.machineCount,
+                          })}
                         </span>
                         <Badge variant="outline">
-                          {t('modals.smartDistribution.distributionEfficiency')}: {preview.data.efficiency}%
+                          {t("modals.smartDistribution.distributionEfficiency")}
+                          : {preview.data.efficiency}%
                         </Badge>
                       </div>
                     </AlertDescription>
@@ -427,13 +476,16 @@ export default function SmartDistributionModal({
                             <div className="flex items-center gap-2">
                               <Badge
                                 className={getCapacityStatusColor(
-                                  machine.newCapacityStatus
+                                  machine.newCapacityStatus,
                                 )}
                               >
-                                {getCapacityStatusLabel(machine.newCapacityStatus)}
+                                {getCapacityStatusLabel(
+                                  machine.newCapacityStatus,
+                                )}
                               </Badge>
                               <Badge variant="outline">
-                                {machine.proposedOrders?.length || 0} {t('modals.smartDistribution.newOrder')}
+                                {machine.proposedOrders?.length || 0}{" "}
+                                {t("modals.smartDistribution.newOrder")}
                               </Badge>
                             </div>
                           </div>
@@ -441,20 +493,31 @@ export default function SmartDistributionModal({
                         <CardContent>
                           <div className="space-y-3">
                             <div className="flex items-center justify-between text-sm">
-                              <span>{t('modals.smartDistribution.currentLoad')}:</span>
+                              <span>
+                                {t("modals.smartDistribution.currentLoad")}:
+                              </span>
                               <span className="font-medium">
-                                {machine.currentLoad?.toFixed(2)} {t('modals.smartDistribution.kg')}
+                                {machine.currentLoad?.toFixed(2)}{" "}
+                                {t("modals.smartDistribution.kg")}
                               </span>
                             </div>
                             <div className="flex items-center justify-between text-sm">
-                              <span>{t('modals.smartDistribution.proposedLoad')}:</span>
+                              <span>
+                                {t("modals.smartDistribution.proposedLoad")}:
+                              </span>
                               <span className="font-medium">
-                                {machine.proposedLoad?.toFixed(2)} {t('modals.smartDistribution.kg')}
+                                {machine.proposedLoad?.toFixed(2)}{" "}
+                                {t("modals.smartDistribution.kg")}
                               </span>
                             </div>
                             <div className="space-y-1">
                               <div className="flex justify-between text-sm">
-                                <span>{t('modals.smartDistribution.utilizationRate')}:</span>
+                                <span>
+                                  {t(
+                                    "modals.smartDistribution.utilizationRate",
+                                  )}
+                                  :
+                                </span>
                                 <span>
                                   {machine.proposedUtilization?.toFixed(1)}%
                                 </span>
@@ -468,7 +531,7 @@ export default function SmartDistributionModal({
                               >
                                 <div
                                   className={`h-full transition-all ${getUtilizationColor(
-                                    machine.proposedUtilization || 0
+                                    machine.proposedUtilization || 0,
                                   )}`}
                                   style={{
                                     width: `${machine.proposedUtilization || 0}%`,
@@ -479,10 +542,15 @@ export default function SmartDistributionModal({
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                               <Clock className="h-3 w-3" />
                               <span>
-                                {t('modals.smartDistribution.expectedProductionTime')}:{" "}
-                                {((machine.currentLoad + machine.proposedLoad) /
-                                  machine.productionRate).toFixed(1)}{" "}
-                                {t('modals.smartDistribution.hour')}
+                                {t(
+                                  "modals.smartDistribution.expectedProductionTime",
+                                )}
+                                :{" "}
+                                {(
+                                  (machine.currentLoad + machine.proposedLoad) /
+                                  machine.productionRate
+                                ).toFixed(1)}{" "}
+                                {t("modals.smartDistribution.hour")}
                               </span>
                             </div>
                           </div>
@@ -495,7 +563,7 @@ export default function SmartDistributionModal({
                 <Alert>
                   <AlertTriangle className="h-4 w-4" />
                   <AlertDescription>
-                    {t('modals.smartDistribution.noUnassignedOrders')}
+                    {t("modals.smartDistribution.noUnassignedOrders")}
                   </AlertDescription>
                 </Alert>
               )}
@@ -513,7 +581,9 @@ export default function SmartDistributionModal({
                             {stat.machineNameAr || stat.machineName}
                           </CardTitle>
                           <Badge
-                            className={getCapacityStatusColor(stat.capacityStatus)}
+                            className={getCapacityStatusColor(
+                              stat.capacityStatus,
+                            )}
                           >
                             {stat.utilizationPercentage?.toFixed(1)}%
                           </Badge>
@@ -523,32 +593,35 @@ export default function SmartDistributionModal({
                         <div className="grid grid-cols-2 gap-4 text-sm">
                           <div>
                             <span className="text-muted-foreground">
-                              {t('modals.smartDistribution.currentLoad')}:
+                              {t("modals.smartDistribution.currentLoad")}:
                             </span>
                             <p className="font-medium">
-                              {stat.currentLoad?.toFixed(2)} {t('modals.smartDistribution.kg')}
+                              {stat.currentLoad?.toFixed(2)}{" "}
+                              {t("modals.smartDistribution.kg")}
                             </p>
                           </div>
                           <div>
                             <span className="text-muted-foreground">
-                              {t('modals.smartDistribution.maxCapacity')}:
+                              {t("modals.smartDistribution.maxCapacity")}:
                             </span>
                             <p className="font-medium">
-                              {stat.maxCapacity?.toFixed(2)} {t('modals.smartDistribution.kg')}
+                              {stat.maxCapacity?.toFixed(2)}{" "}
+                              {t("modals.smartDistribution.kg")}
                             </p>
                           </div>
                           <div>
                             <span className="text-muted-foreground">
-                              {t('modals.smartDistribution.orderCount')}:
+                              {t("modals.smartDistribution.orderCount")}:
                             </span>
                             <p className="font-medium">{stat.orderCount}</p>
                           </div>
                           <div>
                             <span className="text-muted-foreground">
-                              {t('modals.smartDistribution.productionRate')}:
+                              {t("modals.smartDistribution.productionRate")}:
                             </span>
                             <p className="font-medium">
-                              {stat.productionRate} {t('modals.smartDistribution.kgPerHour')}
+                              {stat.productionRate}{" "}
+                              {t("modals.smartDistribution.kgPerHour")}
                             </p>
                           </div>
                         </div>
@@ -565,7 +638,7 @@ export default function SmartDistributionModal({
               ) : (
                 <div className="flex items-center justify-center h-64">
                   <p className="text-muted-foreground">
-                    {t('modals.smartDistribution.loadingCapacityStats')}
+                    {t("modals.smartDistribution.loadingCapacityStats")}
                   </p>
                 </div>
               )}
@@ -580,22 +653,24 @@ export default function SmartDistributionModal({
             disabled={distributeMutation.isPending}
             data-testid="button-cancel-distribution"
           >
-            {t('modals.smartDistribution.cancel')}
+            {t("modals.smartDistribution.cancel")}
           </Button>
           <Button
             onClick={handleApply}
-            disabled={distributeMutation.isPending || !preview?.data?.preview?.length}
+            disabled={
+              distributeMutation.isPending || !preview?.data?.preview?.length
+            }
             data-testid="button-apply-distribution"
           >
             {distributeMutation.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {t('modals.smartDistribution.applying')}
+                {t("modals.smartDistribution.applying")}
               </>
             ) : (
               <>
                 <CheckCircle className="mr-2 h-4 w-4" />
-                {t('modals.smartDistribution.applyDistribution')}
+                {t("modals.smartDistribution.applyDistribution")}
               </>
             )}
           </Button>

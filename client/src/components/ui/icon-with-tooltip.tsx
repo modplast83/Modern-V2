@@ -26,8 +26,8 @@ export function IconWithTooltip({
     <TooltipProvider delayDuration={200}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span 
-            className={`cursor-pointer ${className}`} 
+          <span
+            className={`cursor-pointer ${className}`}
             onClick={onClick}
             data-testid={dataTestId}
           >

@@ -14,26 +14,28 @@ export function safeParseFloat(
   value: any,
   defaultValue: number = 0,
   min?: number,
-  max?: number
+  max?: number,
 ): number {
-  if (value === null || value === undefined || value === '') {
+  if (value === null || value === undefined || value === "") {
     return defaultValue;
   }
 
   // Convert to string and handle comma as decimal separator
-  const stringValue = String(value).replace(',', '.');
-  
+  const stringValue = String(value).replace(",", ".");
+
   // Remove any non-numeric characters except . and -
-  const cleanValue = stringValue.replace(/[^0-9.-]/g, '');
-  
+  const cleanValue = stringValue.replace(/[^0-9.-]/g, "");
+
   const parsed = Number.parseFloat(cleanValue);
-  
+
   // Check if parsing resulted in a valid number
   if (Number.isNaN(parsed) || !Number.isFinite(parsed)) {
-    console.warn(`Invalid number value: ${value}, using default: ${defaultValue}`);
+    console.warn(
+      `Invalid number value: ${value}, using default: ${defaultValue}`,
+    );
     return defaultValue;
   }
-  
+
   // Apply min/max constraints
   let result = parsed;
   if (min !== undefined && result < min) {
@@ -44,7 +46,7 @@ export function safeParseFloat(
     console.warn(`Value ${result} is above maximum ${max}, using maximum`);
     result = max;
   }
-  
+
   return result;
 }
 
@@ -60,7 +62,7 @@ export function safeParseInt(
   value: any,
   defaultValue: number = 0,
   min?: number,
-  max?: number
+  max?: number,
 ): number {
   const floatValue = safeParseFloat(value, defaultValue, min, max);
   return Math.round(floatValue);
@@ -74,9 +76,9 @@ export function safeParseInt(
  */
 export function formatNumberAr(value: number, decimals: number = 2): string {
   if (!Number.isFinite(value)) {
-    return '0';
+    return "0";
   }
-  
+
   return value.toFixed(decimals);
 }
 
@@ -97,11 +99,15 @@ export function isPositiveNumber(value: any): boolean {
  * @param decimals - Number of decimal places
  * @returns Percentage or 0 if total is 0
  */
-export function safePercentage(value: number, total: number, decimals: number = 2): number {
+export function safePercentage(
+  value: number,
+  total: number,
+  decimals: number = 2,
+): number {
   if (total === 0 || !Number.isFinite(total) || !Number.isFinite(value)) {
     return 0;
   }
-  
+
   const percentage = (value / total) * 100;
   return Number(percentage.toFixed(decimals));
 }
@@ -116,12 +122,16 @@ export function safePercentage(value: number, total: number, decimals: number = 
 export function safeDivide(
   numerator: number,
   denominator: number,
-  defaultValue: number = 0
+  defaultValue: number = 0,
 ): number {
-  if (denominator === 0 || !Number.isFinite(denominator) || !Number.isFinite(numerator)) {
+  if (
+    denominator === 0 ||
+    !Number.isFinite(denominator) ||
+    !Number.isFinite(numerator)
+  ) {
     return defaultValue;
   }
-  
+
   return numerator / denominator;
 }
 
@@ -135,7 +145,7 @@ export function roundToDecimals(value: number, decimals: number = 2): number {
   if (!Number.isFinite(value)) {
     return 0;
   }
-  
+
   const factor = Math.pow(10, decimals);
   return Math.round(value * factor) / factor;
 }

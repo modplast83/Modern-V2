@@ -1,10 +1,32 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { format, addDays, subDays } from "date-fns";
+import { ar } from "date-fns/locale";
+import {
+  Calendar as CalendarIcon,
+  Save,
+  UserCheck,
+  UserX,
+  Clock,
+  LogOut,
+  ChevronLeft,
+  ChevronRight,
+  Users,
+  RefreshCw,
+  Search,
+  Download,
+  Upload,
+} from "lucide-react";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
+
+import { useToast } from "../../hooks/use-toast";
+import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
-import { Input } from "../ui/input";
+import { Calendar } from "../ui/calendar";
+import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
 import { Checkbox } from "../ui/checkbox";
+import { Input } from "../ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import {
   Select,
   SelectContent,
@@ -20,27 +42,6 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
-import { Calendar } from "../ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { 
-  Calendar as CalendarIcon, 
-  Save, 
-  UserCheck, 
-  UserX, 
-  Clock, 
-  LogOut,
-  ChevronLeft,
-  ChevronRight,
-  Users,
-  RefreshCw,
-  Search,
-  Download,
-  Upload
-} from "lucide-react";
-import { useToast } from "../../hooks/use-toast";
-import { format, addDays, subDays } from "date-fns";
-import { ar } from "date-fns/locale";
-import { cn } from "../../lib/utils";
 
 interface AttendanceEntry {
   user_id: number;
@@ -76,13 +77,15 @@ interface ModifiedEntry {
 export default function AttendanceManagement() {
   const { t } = useTranslation();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [modifiedEntries, setModifiedEntries] = useState<Map<number, ModifiedEntry>>(new Map());
+  const [modifiedEntries, setModifiedEntries] = useState<
+    Map<number, ModifiedEntry>
+  >(new Map());
   const [selectAll, setSelectAll] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [uploadingUserId, setUploadingUserId] = useState<number | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
+
   const fileInputRef = useState<{ [key: number]: HTMLInputElement | null }>({});
 
   const dateString = format(selectedDate, "yyyy-MM-dd");
@@ -119,7 +122,9 @@ export default function AttendanceManagement() {
       return response.json();
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/attendance/manual", dateString] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/attendance/manual", dateString],
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
       setModifiedEntries(new Map());
       setSelectAll(false);
@@ -142,7 +147,7 @@ export default function AttendanceManagement() {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("userId", userId.toString());
-      
+
       const response = await fetch("/api/attendance/import", {
         method: "POST",
         body: formData,
@@ -159,7 +164,11 @@ export default function AttendanceManagement() {
       setUploadingUserId(null);
       toast({
         title: t("hr.attendance.importSuccess"),
-        description: data.message || t("hr.attendance.importedRecords", { count: data.importedCount || 0 }),
+        description:
+          data.message ||
+          t("hr.attendance.importedRecords", {
+            count: data.importedCount || 0,
+          }),
       });
     },
     onError: (error: Error) => {
@@ -175,11 +184,13 @@ export default function AttendanceManagement() {
   const handleExportTemplate = async (userId: number, userName: string) => {
     try {
       const month = format(selectedDate, "yyyy-MM");
-      const response = await fetch(`/api/attendance/template/${userId}?month=${month}`);
+      const response = await fetch(
+        `/api/attendance/template/${userId}?month=${month}`,
+      );
       if (!response.ok) {
         throw new Error(t("hr.attendance.templateError"));
       }
-      
+
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -189,7 +200,7 @@ export default function AttendanceManagement() {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      
+
       toast({
         title: t("hr.attendance.templateSuccess"),
         description: t("hr.attendance.templateDesc", { name: userName, month }),
@@ -197,7 +208,8 @@ export default function AttendanceManagement() {
     } catch (error) {
       toast({
         title: t("hr.attendance.templateError"),
-        description: error instanceof Error ? error.message : t("common.errorOccurred"),
+        description:
+          error instanceof Error ? error.message : t("common.errorOccurred"),
         variant: "destructive",
       });
     }
@@ -240,7 +252,7 @@ export default function AttendanceManagement() {
 
     const newMap = new Map(modifiedEntries);
     const existing = modifiedEntries.get(userId);
-    
+
     newMap.set(userId, {
       user_id: userId,
       date: dateString,
@@ -250,29 +262,41 @@ export default function AttendanceManagement() {
       notes: existing?.notes ?? entry.notes,
       selected: checked,
     });
-    
+
     setModifiedEntries(newMap);
   };
 
-  const handleTimeChange = (userId: number, field: "check_in_time" | "check_out_time", value: string) => {
+  const handleTimeChange = (
+    userId: number,
+    field: "check_in_time" | "check_out_time",
+    value: string,
+  ) => {
     const entry = attendanceData?.data.find((e) => e.user_id === userId);
     if (!entry) return;
 
     const newMap = new Map(modifiedEntries);
     const existing = modifiedEntries.get(userId);
-    
+
     const dateTimeValue = value ? `${dateString}T${value}:00` : null;
-    
+
     newMap.set(userId, {
       user_id: userId,
       date: dateString,
-      check_in_time: field === "check_in_time" ? dateTimeValue : (existing?.check_in_time ?? entry.check_in_time),
-      check_out_time: field === "check_out_time" ? dateTimeValue : (existing?.check_out_time ?? entry.check_out_time),
-      status: existing?.status ?? (value && field === "check_in_time" ? "حاضر" : entry.status),
+      check_in_time:
+        field === "check_in_time"
+          ? dateTimeValue
+          : (existing?.check_in_time ?? entry.check_in_time),
+      check_out_time:
+        field === "check_out_time"
+          ? dateTimeValue
+          : (existing?.check_out_time ?? entry.check_out_time),
+      status:
+        existing?.status ??
+        (value && field === "check_in_time" ? "حاضر" : entry.status),
       notes: existing?.notes ?? entry.notes,
       selected: existing?.selected ?? false,
     });
-    
+
     setModifiedEntries(newMap);
   };
 
@@ -282,7 +306,7 @@ export default function AttendanceManagement() {
 
     const newMap = new Map(modifiedEntries);
     const existing = modifiedEntries.get(userId);
-    
+
     newMap.set(userId, {
       user_id: userId,
       date: dateString,
@@ -292,14 +316,14 @@ export default function AttendanceManagement() {
       notes: existing?.notes ?? entry.notes,
       selected: existing?.selected ?? false,
     });
-    
+
     setModifiedEntries(newMap);
   };
 
   const handleMarkSelectedPresent = () => {
     const now = format(new Date(), "HH:mm");
     const newMap = new Map(modifiedEntries);
-    
+
     modifiedEntries.forEach((entry, userId) => {
       if (entry.selected) {
         newMap.set(userId, {
@@ -309,13 +333,13 @@ export default function AttendanceManagement() {
         });
       }
     });
-    
+
     setModifiedEntries(newMap);
   };
 
   const handleMarkSelectedAbsent = () => {
     const newMap = new Map(modifiedEntries);
-    
+
     modifiedEntries.forEach((entry, userId) => {
       if (entry.selected) {
         newMap.set(userId, {
@@ -326,23 +350,27 @@ export default function AttendanceManagement() {
         });
       }
     });
-    
+
     setModifiedEntries(newMap);
   };
 
   const handleSave = () => {
-    const entriesToSave = Array.from(modifiedEntries.values()).filter((modified) => {
-      const original = attendanceData?.data.find((e) => e.user_id === modified.user_id);
-      if (!original) return false;
-      
-      const hasChanged = 
-        modified.status !== original.status ||
-        modified.check_in_time !== original.check_in_time ||
-        modified.check_out_time !== original.check_out_time;
-      
-      return hasChanged;
-    });
-    
+    const entriesToSave = Array.from(modifiedEntries.values()).filter(
+      (modified) => {
+        const original = attendanceData?.data.find(
+          (e) => e.user_id === modified.user_id,
+        );
+        if (!original) return false;
+
+        const hasChanged =
+          modified.status !== original.status ||
+          modified.check_in_time !== original.check_in_time ||
+          modified.check_out_time !== original.check_out_time;
+
+        return hasChanged;
+      },
+    );
+
     if (entriesToSave.length === 0) {
       toast({
         title: t("hr.attendance.noChanges"),
@@ -351,7 +379,7 @@ export default function AttendanceManagement() {
       });
       return;
     }
-    
+
     saveMutation.mutate(entriesToSave);
   };
 
@@ -389,15 +417,23 @@ export default function AttendanceManagement() {
     );
   });
 
-  const selectedCount = Array.from(modifiedEntries.values()).filter((e) => e.selected).length;
-  const modifiedCount = Array.from(modifiedEntries.values()).filter((modified) => {
-    const original = attendanceData?.data.find((e) => e.user_id === modified.user_id);
-    if (!original) return false;
-    return modified.status !== original.status ||
-      modified.check_in_time !== original.check_in_time ||
-      modified.check_out_time !== original.check_out_time;
-  }).length;
-  
+  const selectedCount = Array.from(modifiedEntries.values()).filter(
+    (e) => e.selected,
+  ).length;
+  const modifiedCount = Array.from(modifiedEntries.values()).filter(
+    (modified) => {
+      const original = attendanceData?.data.find(
+        (e) => e.user_id === modified.user_id,
+      );
+      if (!original) return false;
+      return (
+        modified.status !== original.status ||
+        modified.check_in_time !== original.check_in_time ||
+        modified.check_out_time !== original.check_out_time
+      );
+    },
+  ).length;
+
   const stats = {
     present: filteredData.filter((e) => {
       const mod = modifiedEntries.get(e.user_id);
@@ -423,7 +459,7 @@ export default function AttendanceManagement() {
               <Users className="h-5 w-5" />
               {t("hr.attendance.manualEntry")}
             </CardTitle>
-            
+
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
@@ -433,10 +469,14 @@ export default function AttendanceManagement() {
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
-              
+
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="min-w-[200px]" data-testid="button-date-picker">
+                  <Button
+                    variant="outline"
+                    className="min-w-[200px]"
+                    data-testid="button-date-picker"
+                  >
                     <CalendarIcon className="h-4 w-4 ml-2" />
                     {format(selectedDate, "EEEE، dd MMMM yyyy", { locale: ar })}
                   </Button>
@@ -450,7 +490,7 @@ export default function AttendanceManagement() {
                   />
                 </PopoverContent>
               </Popover>
-              
+
               <Button
                 variant="outline"
                 size="icon"
@@ -471,27 +511,37 @@ export default function AttendanceManagement() {
             </div>
           </div>
         </CardHeader>
-        
+
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
               <UserCheck className="h-5 w-5 text-green-600 mx-auto mb-1" />
-              <div className="text-2xl font-bold text-green-700">{stats.present}</div>
+              <div className="text-2xl font-bold text-green-700">
+                {stats.present}
+              </div>
               <div className="text-xs text-green-600">{t("hr.present")}</div>
             </div>
             <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
               <UserX className="h-5 w-5 text-red-600 mx-auto mb-1" />
-              <div className="text-2xl font-bold text-red-700">{stats.absent}</div>
+              <div className="text-2xl font-bold text-red-700">
+                {stats.absent}
+              </div>
               <div className="text-xs text-red-600">{t("hr.absent")}</div>
             </div>
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
               <LogOut className="h-5 w-5 text-gray-600 mx-auto mb-1" />
-              <div className="text-2xl font-bold text-gray-700">{stats.left}</div>
-              <div className="text-xs text-gray-600">{t("hr.attendance.left")}</div>
+              <div className="text-2xl font-bold text-gray-700">
+                {stats.left}
+              </div>
+              <div className="text-xs text-gray-600">
+                {t("hr.attendance.left")}
+              </div>
             </div>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
               <Users className="h-5 w-5 text-blue-600 mx-auto mb-1" />
-              <div className="text-2xl font-bold text-blue-700">{stats.total}</div>
+              <div className="text-2xl font-bold text-blue-700">
+                {stats.total}
+              </div>
               <div className="text-xs text-blue-600">{t("common.total")}</div>
             </div>
           </div>
@@ -507,7 +557,7 @@ export default function AttendanceManagement() {
                 data-testid="input-search"
               />
             </div>
-            
+
             <div className="flex items-center gap-2 flex-wrap">
               {selectedCount > 0 && (
                 <>
@@ -533,7 +583,7 @@ export default function AttendanceManagement() {
                   </Button>
                 </>
               )}
-              
+
               <Button
                 onClick={handleSave}
                 disabled={modifiedCount === 0 || saveMutation.isPending}
@@ -541,7 +591,9 @@ export default function AttendanceManagement() {
                 data-testid="button-save"
               >
                 <Save className="h-4 w-4 ml-1" />
-                {saveMutation.isPending ? t("common.pleaseWait") : `${t("hr.attendance.saveChanges")} (${modifiedCount})`}
+                {saveMutation.isPending
+                  ? t("common.pleaseWait")
+                  : `${t("hr.attendance.saveChanges")} (${modifiedCount})`}
               </Button>
             </div>
           </div>
@@ -555,54 +607,81 @@ export default function AttendanceManagement() {
                   checked={selectAll}
                   onCheckedChange={handleSelectAll}
                 />
-                <span className="text-sm font-medium">{t("common.selectAll")} ({filteredData.length})</span>
+                <span className="text-sm font-medium">
+                  {t("common.selectAll")} ({filteredData.length})
+                </span>
               </div>
             )}
             {isLoading ? (
-              <div className="text-center py-8 text-gray-500">{t("common.loading")}</div>
+              <div className="text-center py-8 text-gray-500">
+                {t("common.loading")}
+              </div>
             ) : filteredData.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">{t("common.noData")}</div>
+              <div className="text-center py-8 text-gray-500">
+                {t("common.noData")}
+              </div>
             ) : (
               filteredData.map((entry) => {
                 const modified = modifiedEntries.get(entry.user_id);
                 const currentStatus = modified?.status ?? entry.status;
-                const currentCheckIn = modified?.check_in_time ?? entry.check_in_time;
-                const currentCheckOut = modified?.check_out_time ?? entry.check_out_time;
+                const currentCheckIn =
+                  modified?.check_in_time ?? entry.check_in_time;
+                const currentCheckOut =
+                  modified?.check_out_time ?? entry.check_out_time;
                 const isSelected = modified?.selected ?? false;
                 const isModified = modified !== undefined;
-                
+
                 return (
-                  <div 
+                  <div
                     key={entry.user_id}
                     className={cn(
                       "border rounded-lg p-4 shadow-sm",
                       isModified && "bg-yellow-50 border-yellow-200",
                       isSelected && "bg-blue-50 border-blue-200",
-                      !isModified && !isSelected && "bg-white"
+                      !isModified && !isSelected && "bg-white",
                     )}
                   >
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex items-center gap-3">
                         <Checkbox
                           checked={isSelected}
-                          onCheckedChange={(checked) => handleSelectRow(entry.user_id, !!checked)}
+                          onCheckedChange={(checked) =>
+                            handleSelectRow(entry.user_id, !!checked)
+                          }
                         />
                         <div>
-                          <div className="font-bold">{entry.display_name_ar || entry.display_name || entry.username}</div>
-                          <div className="text-sm text-gray-500">{entry.role_name_ar || entry.role_name || "-"}</div>
+                          <div className="font-bold">
+                            {entry.display_name_ar ||
+                              entry.display_name ||
+                              entry.username}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {entry.role_name_ar || entry.role_name || "-"}
+                          </div>
                         </div>
                       </div>
                       <Select
                         value={currentStatus}
-                        onValueChange={(value) => handleStatusChange(entry.user_id, value)}
+                        onValueChange={(value) =>
+                          handleStatusChange(entry.user_id, value)
+                        }
                       >
-                        <SelectTrigger className={cn("w-24 h-8 text-xs", getStatusBadgeClass(currentStatus))}>
+                        <SelectTrigger
+                          className={cn(
+                            "w-24 h-8 text-xs",
+                            getStatusBadgeClass(currentStatus),
+                          )}
+                        >
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="حاضر">{t("hr.present")}</SelectItem>
+                          <SelectItem value="حاضر">
+                            {t("hr.present")}
+                          </SelectItem>
                           <SelectItem value="غائب">{t("hr.absent")}</SelectItem>
-                          <SelectItem value="مغادر">{t("hr.attendance.left")}</SelectItem>
+                          <SelectItem value="مغادر">
+                            {t("hr.attendance.left")}
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -614,7 +693,13 @@ export default function AttendanceManagement() {
                         <Input
                           type="time"
                           value={formatTimeForInput(currentCheckIn)}
-                          onChange={(e) => handleTimeChange(entry.user_id, "check_in_time", e.target.value)}
+                          onChange={(e) =>
+                            handleTimeChange(
+                              entry.user_id,
+                              "check_in_time",
+                              e.target.value,
+                            )
+                          }
                           className="h-10 text-center"
                         />
                       </div>
@@ -625,14 +710,33 @@ export default function AttendanceManagement() {
                         <Input
                           type="time"
                           value={formatTimeForInput(currentCheckOut)}
-                          onChange={(e) => handleTimeChange(entry.user_id, "check_out_time", e.target.value)}
+                          onChange={(e) =>
+                            handleTimeChange(
+                              entry.user_id,
+                              "check_out_time",
+                              e.target.value,
+                            )
+                          }
                           className="h-10 text-center"
                         />
                       </div>
                     </div>
                     <div className="flex justify-between mt-3 text-sm">
-                      <span>{t("hr.workHours")}: <span className="text-blue-600 font-semibold">{entry.work_hours?.toFixed(1) || "-"} {t("hr.hoursAbbr")}</span></span>
-                      <span>{t("hr.overtime")}: <span className="text-purple-600 font-semibold">{entry.overtime_hours && entry.overtime_hours > 0 ? `${entry.overtime_hours.toFixed(1)} ${t("hr.hoursAbbr")}` : "-"}</span></span>
+                      <span>
+                        {t("hr.workHours")}:{" "}
+                        <span className="text-blue-600 font-semibold">
+                          {entry.work_hours?.toFixed(1) || "-"}{" "}
+                          {t("hr.hoursAbbr")}
+                        </span>
+                      </span>
+                      <span>
+                        {t("hr.overtime")}:{" "}
+                        <span className="text-purple-600 font-semibold">
+                          {entry.overtime_hours && entry.overtime_hours > 0
+                            ? `${entry.overtime_hours.toFixed(1)} ${t("hr.hoursAbbr")}`
+                            : "-"}
+                        </span>
+                      </span>
                     </div>
                   </div>
                 );
@@ -653,9 +757,15 @@ export default function AttendanceManagement() {
                         data-testid="checkbox-select-all"
                       />
                     </TableHead>
-                    <TableHead className="text-right min-w-[150px]">{t("hr.employee")}</TableHead>
-                    <TableHead className="text-right min-w-[100px]">{t("hr.position")}</TableHead>
-                    <TableHead className="text-center min-w-[100px]">{t("common.status")}</TableHead>
+                    <TableHead className="text-right min-w-[150px]">
+                      {t("hr.employee")}
+                    </TableHead>
+                    <TableHead className="text-right min-w-[100px]">
+                      {t("hr.position")}
+                    </TableHead>
+                    <TableHead className="text-center min-w-[100px]">
+                      {t("common.status")}
+                    </TableHead>
                     <TableHead className="text-center min-w-[120px]">
                       <div className="flex items-center justify-center gap-1">
                         <Clock className="h-3 w-3" />
@@ -682,13 +792,19 @@ export default function AttendanceManagement() {
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                      <TableCell
+                        colSpan={9}
+                        className="text-center py-8 text-gray-500"
+                      >
                         {t("common.loading")}
                       </TableCell>
                     </TableRow>
                   ) : filteredData.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                      <TableCell
+                        colSpan={9}
+                        className="text-center py-8 text-gray-500"
+                      >
                         {t("common.noData")}
                       </TableCell>
                     </TableRow>
@@ -696,28 +812,34 @@ export default function AttendanceManagement() {
                     filteredData.map((entry) => {
                       const modified = modifiedEntries.get(entry.user_id);
                       const currentStatus = modified?.status ?? entry.status;
-                      const currentCheckIn = modified?.check_in_time ?? entry.check_in_time;
-                      const currentCheckOut = modified?.check_out_time ?? entry.check_out_time;
+                      const currentCheckIn =
+                        modified?.check_in_time ?? entry.check_in_time;
+                      const currentCheckOut =
+                        modified?.check_out_time ?? entry.check_out_time;
                       const isSelected = modified?.selected ?? false;
                       const isModified = modified !== undefined;
-                      
+
                       return (
-                        <TableRow 
+                        <TableRow
                           key={entry.user_id}
                           className={cn(
                             isModified && "bg-yellow-50",
-                            isSelected && "bg-blue-50"
+                            isSelected && "bg-blue-50",
                           )}
                         >
                           <TableCell className="text-center">
                             <Checkbox
                               checked={isSelected}
-                              onCheckedChange={(checked) => handleSelectRow(entry.user_id, !!checked)}
+                              onCheckedChange={(checked) =>
+                                handleSelectRow(entry.user_id, !!checked)
+                              }
                               data-testid={`checkbox-user-${entry.user_id}`}
                             />
                           </TableCell>
                           <TableCell className="font-medium">
-                            {entry.display_name_ar || entry.display_name || entry.username}
+                            {entry.display_name_ar ||
+                              entry.display_name ||
+                              entry.username}
                           </TableCell>
                           <TableCell className="text-gray-600 text-sm">
                             {entry.role_name_ar || entry.role_name || "-"}
@@ -725,21 +847,29 @@ export default function AttendanceManagement() {
                           <TableCell className="text-center">
                             <Select
                               value={currentStatus}
-                              onValueChange={(value) => handleStatusChange(entry.user_id, value)}
+                              onValueChange={(value) =>
+                                handleStatusChange(entry.user_id, value)
+                              }
                             >
-                              <SelectTrigger 
+                              <SelectTrigger
                                 className={cn(
                                   "w-24 h-8 text-xs",
-                                  getStatusBadgeClass(currentStatus)
+                                  getStatusBadgeClass(currentStatus),
                                 )}
                                 data-testid={`select-status-${entry.user_id}`}
                               >
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="حاضر">{t("hr.present")}</SelectItem>
-                                <SelectItem value="غائب">{t("hr.absent")}</SelectItem>
-                                <SelectItem value="مغادر">{t("hr.attendance.left")}</SelectItem>
+                                <SelectItem value="حاضر">
+                                  {t("hr.present")}
+                                </SelectItem>
+                                <SelectItem value="غائب">
+                                  {t("hr.absent")}
+                                </SelectItem>
+                                <SelectItem value="مغادر">
+                                  {t("hr.attendance.left")}
+                                </SelectItem>
                               </SelectContent>
                             </Select>
                           </TableCell>
@@ -747,7 +877,13 @@ export default function AttendanceManagement() {
                             <Input
                               type="time"
                               value={formatTimeForInput(currentCheckIn)}
-                              onChange={(e) => handleTimeChange(entry.user_id, "check_in_time", e.target.value)}
+                              onChange={(e) =>
+                                handleTimeChange(
+                                  entry.user_id,
+                                  "check_in_time",
+                                  e.target.value,
+                                )
+                              }
                               className="w-28 h-8 text-center mx-auto"
                               data-testid={`input-checkin-${entry.user_id}`}
                             />
@@ -756,21 +892,34 @@ export default function AttendanceManagement() {
                             <Input
                               type="time"
                               value={formatTimeForInput(currentCheckOut)}
-                              onChange={(e) => handleTimeChange(entry.user_id, "check_out_time", e.target.value)}
+                              onChange={(e) =>
+                                handleTimeChange(
+                                  entry.user_id,
+                                  "check_out_time",
+                                  e.target.value,
+                                )
+                              }
                               className="w-28 h-8 text-center mx-auto"
                               data-testid={`input-checkout-${entry.user_id}`}
                             />
                           </TableCell>
                           <TableCell className="text-center font-mono text-sm">
                             {entry.work_hours ? (
-                              <span className="text-blue-600">{entry.work_hours.toFixed(1)} {t("hr.hoursAbbr")}</span>
+                              <span className="text-blue-600">
+                                {entry.work_hours.toFixed(1)}{" "}
+                                {t("hr.hoursAbbr")}
+                              </span>
                             ) : (
                               <span className="text-gray-400">-</span>
                             )}
                           </TableCell>
                           <TableCell className="text-center font-mono text-sm">
-                            {entry.overtime_hours && entry.overtime_hours > 0 ? (
-                              <span className="text-purple-600 font-semibold">{entry.overtime_hours.toFixed(1)} {t("hr.hoursAbbr")}</span>
+                            {entry.overtime_hours &&
+                            entry.overtime_hours > 0 ? (
+                              <span className="text-purple-600 font-semibold">
+                                {entry.overtime_hours.toFixed(1)}{" "}
+                                {t("hr.hoursAbbr")}
+                              </span>
                             ) : (
                               <span className="text-gray-400">-</span>
                             )}
@@ -780,7 +929,12 @@ export default function AttendanceManagement() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => handleExportTemplate(entry.user_id, entry.display_name_ar || entry.username)}
+                                onClick={() =>
+                                  handleExportTemplate(
+                                    entry.user_id,
+                                    entry.display_name_ar || entry.username,
+                                  )
+                                }
                                 title={t("hr.attendance.exportTemplate")}
                                 className="h-7 px-2"
                               >

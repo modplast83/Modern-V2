@@ -53,22 +53,22 @@ npx expo start              # opens the Metro dev server
 
 `src/api/hooks/*` provides typed React-Query hooks for the screens we need now:
 
-| Hook                    | Endpoint                                |
-|-------------------------|-----------------------------------------|
-| `useDashboard`          | `/api/mobile/dashboard`                 |
-| `useDashboardStats`     | `/api/dashboard/stats`                  |
-| `useOrders`             | `/api/orders`                           |
-| `useMyOrders`           | `/api/my-orders`                        |
-| `useOrder(id)`          | `/api/orders/:id`                       |
-| `useProductionOrders`   | `/api/production-orders`                |
-| `useRolls`              | `/api/rolls?stage=…`                    |
-| `useUpdateRoll`         | `PATCH /api/rolls/:id`                  |
-| `useMarkPrinted`        | `POST /api/rolls/:id/mark-printed`      |
-| `useInventory`          | `/api/inventory`                        |
-| `useNotifications`      | `/api/notifications/user`               |
-| `useDeleteNotification` | `DELETE /api/notifications/delete/:id`  |
-| `useMaintenanceRequests`| `/api/maintenance-requests`             |
-| `useQualityIssues`      | `/api/quality-issues`                   |
+| Hook                     | Endpoint                               |
+| ------------------------ | -------------------------------------- |
+| `useDashboard`           | `/api/mobile/dashboard`                |
+| `useDashboardStats`      | `/api/dashboard/stats`                 |
+| `useOrders`              | `/api/orders`                          |
+| `useMyOrders`            | `/api/my-orders`                       |
+| `useOrder(id)`           | `/api/orders/:id`                      |
+| `useProductionOrders`    | `/api/production-orders`               |
+| `useRolls`               | `/api/rolls?stage=…`                   |
+| `useUpdateRoll`          | `PATCH /api/rolls/:id`                 |
+| `useMarkPrinted`         | `POST /api/rolls/:id/mark-printed`     |
+| `useInventory`           | `/api/inventory`                       |
+| `useNotifications`       | `/api/notifications/user`              |
+| `useDeleteNotification`  | `DELETE /api/notifications/delete/:id` |
+| `useMaintenanceRequests` | `/api/maintenance-requests`            |
+| `useQualityIssues`       | `/api/quality-issues`                  |
 
 Each hook normalizes the backend's various response shapes
 (`[]` vs `{ data: [] }` vs `{ success, data }`) so screens never have to.

@@ -1,21 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { useTranslation } from "react-i18next";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Textarea } from "../ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Badge } from "../ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
-import { Alert } from "../ui/alert";
-import { Switch } from "../ui/switch";
 import {
   Bell,
   MessageSquare,
@@ -36,9 +19,27 @@ import {
   Zap,
   Loader2,
 } from "lucide-react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
+
+import { useSSE, type SSENotification } from "../../hooks/use-sse";
 import { useToast } from "../../hooks/use-toast";
 import { apiRequest, queryClient } from "../../lib/queryClient";
-import { useSSE, type SSENotification } from "../../hooks/use-sse";
+import { Alert } from "../ui/alert";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Input } from "../ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
+import { Switch } from "../ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import { Textarea } from "../ui/textarea";
 
 interface Notification {
   id: number;
@@ -127,7 +128,7 @@ export default function NotificationCenter() {
       if (notification.type === "system") {
         return;
       }
-      
+
       // Add to realtime notifications
       setRealtimeNotifications((prev) => [notification, ...prev]);
 
@@ -156,7 +157,7 @@ export default function NotificationCenter() {
     (data: { notifications: SSENotification[]; count: number }) => {
       // Filter out system notifications
       const filteredNotifications = data.notifications.filter(
-        n => n.type !== "system"
+        (n) => n.type !== "system",
       );
       setRealtimeNotifications(filteredNotifications);
       console.log(
@@ -211,8 +212,8 @@ export default function NotificationCenter() {
     },
     onSuccess: () => {
       toast({
-        title: t('notifications.toasts.notificationSent'),
-        description: t('notifications.toasts.systemNotificationSuccess'),
+        title: t("notifications.toasts.notificationSent"),
+        description: t("notifications.toasts.systemNotificationSuccess"),
       });
       setSystemTitle("");
       setSystemMessage("");
@@ -221,8 +222,9 @@ export default function NotificationCenter() {
     },
     onError: (error: any) => {
       toast({
-        title: t('notifications.toasts.sendError'),
-        description: error.message || t('notifications.toasts.systemNotificationFailed'),
+        title: t("notifications.toasts.sendError"),
+        description:
+          error.message || t("notifications.toasts.systemNotificationFailed"),
         variant: "destructive",
       });
     },
@@ -244,8 +246,8 @@ export default function NotificationCenter() {
     },
     onError: (error: any) => {
       toast({
-        title: t('common.error'),
-        description: error.message || t('notifications.toasts.markReadFailed'),
+        title: t("common.error"),
+        description: error.message || t("notifications.toasts.markReadFailed"),
         variant: "destructive",
       });
     },
@@ -262,14 +264,15 @@ export default function NotificationCenter() {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications/user"] });
       setRealtimeNotifications([]);
       toast({
-        title: t('notifications.toasts.updated'),
-        description: t('notifications.toasts.allMarkedRead'),
+        title: t("notifications.toasts.updated"),
+        description: t("notifications.toasts.allMarkedRead"),
       });
     },
     onError: (error: any) => {
       toast({
-        title: t('common.error'),
-        description: error.message || t('notifications.toasts.markAllReadFailed'),
+        title: t("common.error"),
+        description:
+          error.message || t("notifications.toasts.markAllReadFailed"),
         variant: "destructive",
       });
     },
@@ -286,14 +289,14 @@ export default function NotificationCenter() {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications/user"] });
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       toast({
-        title: t('notifications.toasts.deleted'),
-        description: t('notifications.toasts.notificationDeleted'),
+        title: t("notifications.toasts.deleted"),
+        description: t("notifications.toasts.notificationDeleted"),
       });
     },
     onError: (error: any) => {
       toast({
-        title: t('notifications.toasts.deleteError'),
-        description: error.message || t('notifications.toasts.deleteFailed'),
+        title: t("notifications.toasts.deleteError"),
+        description: error.message || t("notifications.toasts.deleteFailed"),
         variant: "destructive",
       });
     },
@@ -315,8 +318,8 @@ export default function NotificationCenter() {
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       toast({
-        title: t('notifications.toasts.messageSent'),
-        description: t('notifications.toasts.whatsappSentSuccess'),
+        title: t("notifications.toasts.messageSent"),
+        description: t("notifications.toasts.whatsappSentSuccess"),
       });
       setMessage("");
       setTitle("");
@@ -324,8 +327,9 @@ export default function NotificationCenter() {
     },
     onError: (error: any) => {
       toast({
-        title: t('notifications.toasts.sendError'),
-        description: error.message || t('notifications.toasts.whatsappSendFailed'),
+        title: t("notifications.toasts.sendError"),
+        description:
+          error.message || t("notifications.toasts.whatsappSendFailed"),
         variant: "destructive",
       });
     },
@@ -342,14 +346,14 @@ export default function NotificationCenter() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       toast({
-        title: t('notifications.toasts.testMessage'),
-        description: t('notifications.toasts.testSentSuccess'),
+        title: t("notifications.toasts.testMessage"),
+        description: t("notifications.toasts.testSentSuccess"),
       });
     },
     onError: (error: any) => {
       toast({
-        title: t('notifications.toasts.testError'),
-        description: error.message || t('notifications.toasts.testSendFailed'),
+        title: t("notifications.toasts.testError"),
+        description: error.message || t("notifications.toasts.testSendFailed"),
         variant: "destructive",
       });
     },
@@ -359,8 +363,8 @@ export default function NotificationCenter() {
   const handleSendMessage = () => {
     if (!phoneNumber || !message) {
       toast({
-        title: t('notifications.toasts.missingData'),
-        description: t('notifications.toasts.enterPhoneAndMessage'),
+        title: t("notifications.toasts.missingData"),
+        description: t("notifications.toasts.enterPhoneAndMessage"),
         variant: "destructive",
       });
       return;
@@ -377,8 +381,8 @@ export default function NotificationCenter() {
   const handleSendSystemNotification = () => {
     if (!systemTitle || !systemMessage) {
       toast({
-        title: t('notifications.toasts.missingData'),
-        description: t('notifications.toasts.enterTitleAndMessage'),
+        title: t("notifications.toasts.missingData"),
+        description: t("notifications.toasts.enterTitleAndMessage"),
         variant: "destructive",
       });
       return;
@@ -386,8 +390,8 @@ export default function NotificationCenter() {
 
     if (recipientType !== "all" && !recipientId) {
       toast({
-        title: t('notifications.toasts.recipientRequired'),
-        description: t('notifications.toasts.enterUserOrRoleId'),
+        title: t("notifications.toasts.recipientRequired"),
+        description: t("notifications.toasts.enterUserOrRoleId"),
         variant: "destructive",
       });
       return;
@@ -428,8 +432,8 @@ export default function NotificationCenter() {
   const handleSendTest = () => {
     if (!phoneNumber) {
       toast({
-        title: t('notifications.toasts.phoneRequired'),
-        description: t('notifications.toasts.enterPhoneForTest'),
+        title: t("notifications.toasts.phoneRequired"),
+        description: t("notifications.toasts.enterPhoneForTest"),
         variant: "destructive",
       });
       return;
@@ -490,7 +494,7 @@ export default function NotificationCenter() {
       <div className="flex items-center gap-2 mb-6">
         <Bell className="h-6 w-6 text-blue-600" />
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          {t('notifications.center')}
+          {t("notifications.center")}
         </h1>
       </div>
 
@@ -508,10 +512,10 @@ export default function NotificationCenter() {
               )}
               <span className="text-sm font-medium">
                 {connectionState.isConnected
-                  ? t('notifications.connected')
+                  ? t("notifications.connected")
                   : connectionState.isConnecting
-                    ? t('notifications.connecting')
-                    : t('notifications.disconnected')}
+                    ? t("notifications.connecting")
+                    : t("notifications.disconnected")}
               </span>
             </div>
             {connectionState.error && (
@@ -524,7 +528,7 @@ export default function NotificationCenter() {
                   variant="outline"
                   onClick={handleReconnectSSE}
                 >
-                  {t('notifications.reconnect')}
+                  {t("notifications.reconnect")}
                 </Button>
               </div>
             )}
@@ -540,7 +544,7 @@ export default function NotificationCenter() {
             data-testid="tab-realtime"
           >
             <Bell className="h-4 w-4" />
-            {t('notifications.tabs.realtime')}
+            {t("notifications.tabs.realtime")}
           </TabsTrigger>
           <TabsTrigger
             value="send"
@@ -548,7 +552,7 @@ export default function NotificationCenter() {
             data-testid="tab-send"
           >
             <MessageSquare className="h-4 w-4" />
-            {t('notifications.tabs.sendMessages')}
+            {t("notifications.tabs.sendMessages")}
           </TabsTrigger>
           <TabsTrigger
             value="system"
@@ -556,7 +560,7 @@ export default function NotificationCenter() {
             data-testid="tab-system"
           >
             <Settings className="h-4 w-4" />
-            {t('notifications.tabs.system')}
+            {t("notifications.tabs.system")}
           </TabsTrigger>
           <TabsTrigger
             value="history"
@@ -564,7 +568,7 @@ export default function NotificationCenter() {
             data-testid="tab-history"
           >
             <Clock className="h-4 w-4" />
-            {t('notifications.tabs.history')}
+            {t("notifications.tabs.history")}
           </TabsTrigger>
         </TabsList>
 
@@ -575,7 +579,7 @@ export default function NotificationCenter() {
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <Zap className="h-5 w-5 text-blue-600" />
-                  {t('notifications.tabs.realtime')}
+                  {t("notifications.tabs.realtime")}
                   {userNotificationsData?.unread_count &&
                     userNotificationsData.unread_count > 0 && (
                       <Badge variant="destructive" className="ml-2">
@@ -591,7 +595,7 @@ export default function NotificationCenter() {
                       data-testid="switch-unread-only"
                     />
                     <span className="text-sm text-gray-600">
-                      {t('notifications.unreadOnly')}
+                      {t("notifications.unreadOnly")}
                     </span>
                   </div>
                   {(userNotificationsData?.unread_count || 0) > 0 && (
@@ -605,7 +609,7 @@ export default function NotificationCenter() {
                       {markAllAsReadMutation.isPending && (
                         <Loader2 className="h-4 w-4 animate-spin ml-1" />
                       )}
-                      {t('notifications.markAllRead')}
+                      {t("notifications.markAllRead")}
                     </Button>
                   )}
                 </div>
@@ -615,102 +619,114 @@ export default function NotificationCenter() {
               {userNotificationsLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-                  <span className="ml-2">{t('notifications.loadingNotifications')}</span>
+                  <span className="ml-2">
+                    {t("notifications.loadingNotifications")}
+                  </span>
                 </div>
               ) : (
                 <div className="space-y-4 max-h-96 overflow-y-auto">
                   {userNotificationsData?.notifications &&
-                  userNotificationsData.notifications.filter(n => n.type !== "system").length > 0 ? (
+                  userNotificationsData.notifications.filter(
+                    (n) => n.type !== "system",
+                  ).length > 0 ? (
                     userNotificationsData.notifications
-                      .filter(n => n.type !== "system")
+                      .filter((n) => n.type !== "system")
                       .map((notification) => (
-                      <div
-                        key={notification.id}
-                        className={`p-4 border rounded-lg transition-all ${
-                          !notification.read_at
-                            ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
-                            : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
-                        }`}
-                        data-testid={`notification-${notification.id}`}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-medium text-gray-900 dark:text-white">
-                                {notification.title_ar || notification.title}
-                              </span>
-                              <Badge
-                                className={getPriorityColor(
-                                  notification.priority,
-                                )}
-                              >
-                                {notification.priority}
-                              </Badge>
-                              <Badge
-                                className={getStatusColor(notification.status)}
-                              >
-                                {getStatusIcon(notification.status)}
-                                {notification.status}
-                              </Badge>
-                              {!notification.read_at && (
+                        <div
+                          key={notification.id}
+                          className={`p-4 border rounded-lg transition-all ${
+                            !notification.read_at
+                              ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
+                              : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                          }`}
+                          data-testid={`notification-${notification.id}`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-medium text-gray-900 dark:text-white">
+                                  {notification.title_ar || notification.title}
+                                </span>
                                 <Badge
-                                  variant="secondary"
-                                  className="bg-blue-100 text-blue-800"
+                                  className={getPriorityColor(
+                                    notification.priority,
+                                  )}
                                 >
-                                  {t('notifications.new')}
+                                  {notification.priority}
                                 </Badge>
-                              )}
+                                <Badge
+                                  className={getStatusColor(
+                                    notification.status,
+                                  )}
+                                >
+                                  {getStatusIcon(notification.status)}
+                                  {notification.status}
+                                </Badge>
+                                {!notification.read_at && (
+                                  <Badge
+                                    variant="secondary"
+                                    className="bg-blue-100 text-blue-800"
+                                  >
+                                    {t("notifications.new")}
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-gray-700 dark:text-gray-300 text-sm mb-2">
+                                {notification.message_ar ||
+                                  notification.message}
+                              </p>
+                              <div className="flex items-center gap-4 text-xs text-gray-500">
+                                <span>
+                                  {t("notifications.type")}: {notification.type}
+                                </span>
+                                <span>
+                                  {t("notifications.date")}:{" "}
+                                  {new Date(
+                                    notification.created_at,
+                                  ).toLocaleString("en-US")}
+                                </span>
+                                {notification.context_type && (
+                                  <span>
+                                    {t("notifications.context")}:{" "}
+                                    {notification.context_type}
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                            <p className="text-gray-700 dark:text-gray-300 text-sm mb-2">
-                              {notification.message_ar || notification.message}
-                            </p>
-                            <div className="flex items-center gap-4 text-xs text-gray-500">
-                              <span>{t('notifications.type')}: {notification.type}</span>
-                              <span>
-                                {t('notifications.date')}:{" "}
-                                {new Date(
-                                  notification.created_at,
-                                ).toLocaleString("en-US")}
-                              </span>
-                              {notification.context_type && (
-                                <span>{t('notifications.context')}: {notification.context_type}</span>
+                            <div className="flex items-center gap-1">
+                              {!notification.read_at && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() =>
+                                    handleMarkAsRead(notification.id)
+                                  }
+                                  disabled={markAsReadMutation.isPending}
+                                  data-testid={`button-mark-read-${notification.id}`}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
                               )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            {!notification.read_at && (
                               <Button
                                 size="sm"
                                 variant="ghost"
+                                className="text-red-600 hover:text-red-700"
                                 onClick={() =>
-                                  handleMarkAsRead(notification.id)
+                                  handleDeleteNotification(notification.id)
                                 }
-                                disabled={markAsReadMutation.isPending}
-                                data-testid={`button-mark-read-${notification.id}`}
+                                disabled={deleteNotificationMutation.isPending}
+                                data-testid={`button-delete-${notification.id}`}
                               >
-                                <Eye className="h-4 w-4" />
+                                <Trash2 className="h-4 w-4" />
                               </Button>
-                            )}
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-red-600 hover:text-red-700"
-                              onClick={() =>
-                                handleDeleteNotification(notification.id)
-                              }
-                              disabled={deleteNotificationMutation.isPending}
-                              data-testid={`button-delete-${notification.id}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))
+                      ))
                   ) : (
                     <div className="text-center py-8 text-gray-500">
                       <Bell className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                      <p>{t('notifications.noNotifications')}</p>
+                      <p>{t("notifications.noNotifications")}</p>
                     </div>
                   )}
                 </div>
@@ -725,22 +741,26 @@ export default function NotificationCenter() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Settings className="h-5 w-5 text-purple-600" />
-                {t('notifications.createSystemNotification')}
+                {t("notifications.createSystemNotification")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">{t('notifications.notificationTitle')} *</label>
+                  <label className="text-sm font-medium">
+                    {t("notifications.notificationTitle")} *
+                  </label>
                   <Input
-                    placeholder={t('notifications.notificationTitle')}
+                    placeholder={t("notifications.notificationTitle")}
                     value={systemTitle}
                     onChange={(e) => setSystemTitle(e.target.value)}
                     data-testid="input-system-title"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">{t('notifications.notificationType')}</label>
+                  <label className="text-sm font-medium">
+                    {t("notifications.notificationType")}
+                  </label>
                   <Select
                     value={systemType ?? ""}
                     onValueChange={(value: any) => setSystemType(value)}
@@ -749,21 +769,35 @@ export default function NotificationCenter() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="system">{t('notifications.types.system')}</SelectItem>
-                      <SelectItem value="order">{t('notifications.types.order')}</SelectItem>
-                      <SelectItem value="production">{t('notifications.types.production')}</SelectItem>
-                      <SelectItem value="maintenance">{t('notifications.types.maintenance')}</SelectItem>
-                      <SelectItem value="quality">{t('notifications.types.quality')}</SelectItem>
-                      <SelectItem value="hr">{t('notifications.types.hr')}</SelectItem>
+                      <SelectItem value="system">
+                        {t("notifications.types.system")}
+                      </SelectItem>
+                      <SelectItem value="order">
+                        {t("notifications.types.order")}
+                      </SelectItem>
+                      <SelectItem value="production">
+                        {t("notifications.types.production")}
+                      </SelectItem>
+                      <SelectItem value="maintenance">
+                        {t("notifications.types.maintenance")}
+                      </SelectItem>
+                      <SelectItem value="quality">
+                        {t("notifications.types.quality")}
+                      </SelectItem>
+                      <SelectItem value="hr">
+                        {t("notifications.types.hr")}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">{t('notifications.notificationContent')} *</label>
+                <label className="text-sm font-medium">
+                  {t("notifications.notificationContent")} *
+                </label>
                 <Textarea
-                  placeholder={t('notifications.writeContentPlaceholder')}
+                  placeholder={t("notifications.writeContentPlaceholder")}
                   value={systemMessage}
                   onChange={(e) => setSystemMessage(e.target.value)}
                   rows={3}
@@ -773,7 +807,9 @@ export default function NotificationCenter() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">{t('notifications.priority')}</label>
+                  <label className="text-sm font-medium">
+                    {t("notifications.priority")}
+                  </label>
                   <Select
                     value={systemPriority ?? ""}
                     onValueChange={(value: any) => setSystemPriority(value)}
@@ -782,16 +818,26 @@ export default function NotificationCenter() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="low">{t('notifications.priorities.low')}</SelectItem>
-                      <SelectItem value="normal">{t('notifications.priorities.normal')}</SelectItem>
-                      <SelectItem value="high">{t('notifications.priorities.high')}</SelectItem>
-                      <SelectItem value="urgent">{t('notifications.priorities.urgent')}</SelectItem>
+                      <SelectItem value="low">
+                        {t("notifications.priorities.low")}
+                      </SelectItem>
+                      <SelectItem value="normal">
+                        {t("notifications.priorities.normal")}
+                      </SelectItem>
+                      <SelectItem value="high">
+                        {t("notifications.priorities.high")}
+                      </SelectItem>
+                      <SelectItem value="urgent">
+                        {t("notifications.priorities.urgent")}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">{t('notifications.recipient')}</label>
+                  <label className="text-sm font-medium">
+                    {t("notifications.recipient")}
+                  </label>
                   <Select
                     value={recipientType ?? ""}
                     onValueChange={(value: any) => setRecipientType(value)}
@@ -800,21 +846,29 @@ export default function NotificationCenter() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">{t('notifications.recipientTypes.all')}</SelectItem>
-                      <SelectItem value="user">{t('notifications.recipientTypes.user')}</SelectItem>
-                      <SelectItem value="role">{t('notifications.recipientTypes.role')}</SelectItem>
+                      <SelectItem value="all">
+                        {t("notifications.recipientTypes.all")}
+                      </SelectItem>
+                      <SelectItem value="user">
+                        {t("notifications.recipientTypes.user")}
+                      </SelectItem>
+                      <SelectItem value="role">
+                        {t("notifications.recipientTypes.role")}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 {recipientType !== "all" && (
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">{t('notifications.recipientId')}</label>
+                    <label className="text-sm font-medium">
+                      {t("notifications.recipientId")}
+                    </label>
                     <Input
                       placeholder={
                         recipientType === "user"
-                          ? t('notifications.userId')
-                          : t('notifications.roleId')
+                          ? t("notifications.userId")
+                          : t("notifications.roleId")
                       }
                       value={recipientId}
                       onChange={(e) => setRecipientId(e.target.value)}
@@ -831,7 +885,9 @@ export default function NotificationCenter() {
                   onCheckedChange={setNotificationSound}
                   data-testid="switch-notification-sound"
                 />
-                <label className="text-sm">{t('notifications.playSound')}</label>
+                <label className="text-sm">
+                  {t("notifications.playSound")}
+                </label>
               </div>
 
               <div className="flex gap-2 pt-4">
@@ -845,7 +901,7 @@ export default function NotificationCenter() {
                     <Loader2 className="h-4 w-4 animate-spin ml-1" />
                   )}
                   <Send className="h-4 w-4 ml-1" />
-                  {t('notifications.sendNotification')}
+                  {t("notifications.sendNotification")}
                 </Button>
               </div>
             </CardContent>
@@ -857,13 +913,15 @@ export default function NotificationCenter() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <MessageSquare className="h-5 w-5 text-green-600" />
-                {t('notifications.sendWhatsapp')}
+                {t("notifications.sendWhatsapp")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">{t('notifications.phoneNumber')} *</label>
+                  <label className="text-sm font-medium">
+                    {t("notifications.phoneNumber")} *
+                  </label>
                   <div className="flex gap-2">
                     <Input
                       placeholder="+966501234567"
@@ -882,14 +940,16 @@ export default function NotificationCenter() {
                     </Button>
                   </div>
                   <p className="text-xs text-gray-500">
-                    {t('notifications.phoneExample')}
+                    {t("notifications.phoneExample")}
                   </p>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">{t('notifications.messageTitle')}</label>
+                  <label className="text-sm font-medium">
+                    {t("notifications.messageTitle")}
+                  </label>
                   <Input
-                    placeholder={t('notifications.notificationTitle')}
+                    placeholder={t("notifications.notificationTitle")}
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                   />
@@ -897,9 +957,11 @@ export default function NotificationCenter() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">{t('notifications.messageContent')} *</label>
+                <label className="text-sm font-medium">
+                  {t("notifications.messageContent")} *
+                </label>
                 <Textarea
-                  placeholder={t('notifications.writeMessagePlaceholder')}
+                  placeholder={t("notifications.writeMessagePlaceholder")}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   rows={4}
@@ -908,16 +970,26 @@ export default function NotificationCenter() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">{t('notifications.priority')}</label>
+                <label className="text-sm font-medium">
+                  {t("notifications.priority")}
+                </label>
                 <select
                   value={priority}
                   onChange={(e) => setPriority(e.target.value)}
                   className="w-full p-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-800"
                 >
-                  <option value="low">{t('notifications.priorities.low')}</option>
-                  <option value="normal">{t('notifications.priorities.normal')}</option>
-                  <option value="high">{t('notifications.priorities.high')}</option>
-                  <option value="urgent">{t('notifications.priorities.urgent')}</option>
+                  <option value="low">
+                    {t("notifications.priorities.low")}
+                  </option>
+                  <option value="normal">
+                    {t("notifications.priorities.normal")}
+                  </option>
+                  <option value="high">
+                    {t("notifications.priorities.high")}
+                  </option>
+                  <option value="urgent">
+                    {t("notifications.priorities.urgent")}
+                  </option>
                 </select>
               </div>
 
@@ -929,8 +1001,8 @@ export default function NotificationCenter() {
                 >
                   <Send className="h-4 w-4" />
                   {sendWhatsAppMutation.isPending
-                    ? t('notifications.sending')
-                    : t('notifications.sendMessage')}
+                    ? t("notifications.sending")
+                    : t("notifications.sendMessage")}
                 </Button>
 
                 <Button
@@ -940,7 +1012,7 @@ export default function NotificationCenter() {
                   className="flex items-center gap-2"
                 >
                   <TestTube className="h-4 w-4" />
-                  {t('notifications.testMessage')}
+                  {t("notifications.testMessage")}
                 </Button>
               </div>
             </CardContent>
@@ -950,13 +1022,15 @@ export default function NotificationCenter() {
         <TabsContent value="history" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>{t('notifications.tabs.history')}</CardTitle>
+              <CardTitle>{t("notifications.tabs.history")}</CardTitle>
             </CardHeader>
             <CardContent>
               {whatsappLoading ? (
                 <div className="text-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="text-gray-600 mt-2">{t('notifications.loadingNotifications')}</p>
+                  <p className="text-gray-600 mt-2">
+                    {t("notifications.loadingNotifications")}
+                  </p>
                 </div>
               ) : whatsappNotifications && whatsappNotifications.length > 0 ? (
                 <div className="space-y-3">
@@ -968,7 +1042,8 @@ export default function NotificationCenter() {
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
-                            {notification.context_type === "incoming_message" ? (
+                            {notification.context_type ===
+                            "incoming_message" ? (
                               <MessageSquare className="h-4 w-4 text-purple-500" />
                             ) : (
                               getStatusIcon(notification.status)
@@ -976,7 +1051,8 @@ export default function NotificationCenter() {
                             <h3 className="font-medium text-gray-900 dark:text-white">
                               {notification.title_ar || notification.title}
                             </h3>
-                            {notification.context_type === "incoming_message" && (
+                            {notification.context_type ===
+                              "incoming_message" && (
                               <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
                                 واردة
                               </Badge>
@@ -985,16 +1061,22 @@ export default function NotificationCenter() {
                               className={getStatusColor(notification.status)}
                             >
                               {notification.status === "sent"
-                                ? t('notifications.statuses.sent')
+                                ? t("notifications.statuses.sent")
                                 : notification.status === "delivered"
-                                  ? t('notifications.statuses.delivered')
+                                  ? t("notifications.statuses.delivered")
                                   : notification.status === "failed"
-                                    ? t('notifications.statuses.failed')
+                                    ? t("notifications.statuses.failed")
                                     : notification.status === "received"
-                                      ? t('notifications.statuses.received', 'مستلمة')
+                                      ? t(
+                                          "notifications.statuses.received",
+                                          "مستلمة",
+                                        )
                                       : notification.status === "read"
-                                        ? t('notifications.statuses.read', 'مقروءة')
-                                        : t('notifications.statuses.pending')}
+                                        ? t(
+                                            "notifications.statuses.read",
+                                            "مقروءة",
+                                          )
+                                        : t("notifications.statuses.pending")}
                             </Badge>
                             <Badge
                               className={getPriorityColor(
@@ -1002,12 +1084,12 @@ export default function NotificationCenter() {
                               )}
                             >
                               {notification.priority === "urgent"
-                                ? t('notifications.priorities.urgent')
+                                ? t("notifications.priorities.urgent")
                                 : notification.priority === "high"
-                                  ? t('notifications.priorities.high')
+                                  ? t("notifications.priorities.high")
                                   : notification.priority === "low"
-                                    ? t('notifications.priorities.low')
-                                    : t('notifications.priorities.normal')}
+                                    ? t("notifications.priorities.low")
+                                    : t("notifications.priorities.normal")}
                             </Badge>
                           </div>
                           <p className="text-gray-600 dark:text-gray-400 mb-2">
@@ -1033,7 +1115,7 @@ export default function NotificationCenter() {
                       {notification.error_message && (
                         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded p-2">
                           <p className="text-red-700 dark:text-red-300 text-sm">
-                            {t('common.error')}: {notification.error_message}
+                            {t("common.error")}: {notification.error_message}
                           </p>
                         </div>
                       )}
@@ -1044,7 +1126,7 @@ export default function NotificationCenter() {
                 <div className="text-center py-8">
                   <Bell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-600 dark:text-gray-400">
-                    {t('notifications.noNotificationsYet')}
+                    {t("notifications.noNotificationsYet")}
                   </p>
                 </div>
               )}

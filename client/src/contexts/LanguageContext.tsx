@@ -1,8 +1,15 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import i18n from '../i18n/config';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 
-type Language = 'ar' | 'en';
-type Direction = 'rtl' | 'ltr';
+import i18n from "../i18n/config";
+
+type Language = "ar" | "en";
+type Direction = "rtl" | "ltr";
 
 interface LanguageContextType {
   language: Language;
@@ -12,33 +19,35 @@ interface LanguageContextType {
   isRTL: boolean;
 }
 
-const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+const LanguageContext = createContext<LanguageContextType | undefined>(
+  undefined,
+);
 
 const getStoredLanguage = (): Language => {
-  if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem('i18nextLng');
-    return stored === 'en' ? 'en' : 'ar';
+  if (typeof window !== "undefined") {
+    const stored = localStorage.getItem("i18nextLng");
+    return stored === "en" ? "en" : "ar";
   }
-  return 'ar';
+  return "ar";
 };
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>(getStoredLanguage);
 
-  const direction: Direction = language === 'ar' ? 'rtl' : 'ltr';
-  const isRTL = direction === 'rtl';
+  const direction: Direction = language === "ar" ? "rtl" : "ltr";
+  const isRTL = direction === "rtl";
 
   useEffect(() => {
     document.documentElement.lang = language;
     document.documentElement.dir = direction;
     document.body.style.direction = direction;
-    
-    if (language === 'ar') {
-      document.body.classList.add('font-arabic');
-      document.body.classList.remove('font-english');
+
+    if (language === "ar") {
+      document.body.classList.add("font-arabic");
+      document.body.classList.remove("font-english");
     } else {
-      document.body.classList.add('font-english');
-      document.body.classList.remove('font-arabic');
+      document.body.classList.add("font-english");
+      document.body.classList.remove("font-arabic");
     }
   }, [language, direction]);
 
@@ -51,18 +60,20 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
     i18n.changeLanguage(lang);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('i18nextLng', lang);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("i18nextLng", lang);
     }
   };
 
   const toggleLanguage = () => {
-    const newLang = language === 'ar' ? 'en' : 'ar';
+    const newLang = language === "ar" ? "en" : "ar";
     setLanguage(newLang);
   };
 
   return (
-    <LanguageContext.Provider value={{ language, direction, setLanguage, toggleLanguage, isRTL }}>
+    <LanguageContext.Provider
+      value={{ language, direction, setLanguage, toggleLanguage, isRTL }}
+    >
       {children}
     </LanguageContext.Provider>
   );
@@ -71,7 +82,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 export function useLanguage() {
   const context = useContext(LanguageContext);
   if (context === undefined) {
-    throw new Error('useLanguage must be used within a LanguageProvider');
+    throw new Error("useLanguage must be used within a LanguageProvider");
   }
   return context;
 }

@@ -1,9 +1,11 @@
-import { Request, Response, NextFunction } from "express";
 import crypto from "crypto";
-import { storage } from "../storage";
-import { db } from "../db";
+
 import { mobile_sessions } from "@shared/schema";
 import { eq, and, gt } from "drizzle-orm";
+import { Request, Response, NextFunction } from "express";
+
+import { db } from "../db";
+import { storage } from "../storage";
 
 declare module "express-serve-static-core" {
   interface Request {
@@ -26,7 +28,10 @@ const TOKEN_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000;
 const TOKEN_CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
 
 const ROLES_CACHE_TTL_MS = 60 * 1000;
-let rolesCache: { data: any[] | null; fetchedAt: number } = { data: null, fetchedAt: 0 };
+let rolesCache: { data: any[] | null; fetchedAt: number } = {
+  data: null,
+  fetchedAt: 0,
+};
 
 export async function getCachedRoles() {
   const now = Date.now();
@@ -70,13 +75,21 @@ function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
-export async function createMobileSession(userId: number, deviceInfo: {
-  device_id?: string;
-  device_name?: string;
-  platform?: string;
-  app_version?: string;
-  ip_address?: string;
-}): Promise<{ token: string; refresh_token: string; expires_at: Date; refresh_expires_at: Date }> {
+export async function createMobileSession(
+  userId: number,
+  deviceInfo: {
+    device_id?: string;
+    device_name?: string;
+    platform?: string;
+    app_version?: string;
+    ip_address?: string;
+  },
+): Promise<{
+  token: string;
+  refresh_token: string;
+  expires_at: Date;
+  refresh_expires_at: Date;
+}> {
   const token = crypto.randomBytes(48).toString("hex");
   const refreshToken = crypto.randomBytes(48).toString("hex");
   const now = new Date();
@@ -97,21 +110,37 @@ export async function createMobileSession(userId: number, deviceInfo: {
     is_active: true,
   });
 
-  return { token, refresh_token: refreshToken, expires_at: expiresAt, refresh_expires_at: refreshExpiresAt };
+  return {
+    token,
+    refresh_token: refreshToken,
+    expires_at: expiresAt,
+    refresh_expires_at: refreshExpiresAt,
+  };
 }
 
-export async function refreshMobileSession(refreshToken: string): Promise<{ token: string; refresh_token: string; expires_at: Date; refresh_expires_at: Date } | null> {
+export async function refreshMobileSession(refreshToken: string): Promise<{
+  token: string;
+  refresh_token: string;
+  expires_at: Date;
+  refresh_expires_at: Date;
+} | null> {
   const hashedRefresh = hashToken(refreshToken);
-  const [session] = await db.select().from(mobile_sessions)
-    .where(and(
-      eq(mobile_sessions.refresh_token, hashedRefresh),
-      eq(mobile_sessions.is_active, true),
-      gt(mobile_sessions.refresh_expires_at, new Date())
-    )).limit(1);
+  const [session] = await db
+    .select()
+    .from(mobile_sessions)
+    .where(
+      and(
+        eq(mobile_sessions.refresh_token, hashedRefresh),
+        eq(mobile_sessions.is_active, true),
+        gt(mobile_sessions.refresh_expires_at, new Date()),
+      ),
+    )
+    .limit(1);
 
   if (!session) return null;
 
-  await db.update(mobile_sessions)
+  await db
+    .update(mobile_sessions)
     .set({ is_active: false })
     .where(eq(mobile_sessions.id, session.id));
 
@@ -126,23 +155,30 @@ export async function refreshMobileSession(refreshToken: string): Promise<{ toke
 
 export async function revokeMobileSession(token: string): Promise<void> {
   const hashedToken = hashToken(token);
-  await db.update(mobile_sessions)
+  await db
+    .update(mobile_sessions)
     .set({ is_active: false })
     .where(eq(mobile_sessions.token, hashedToken));
 }
 
 async function getUserIdFromDbToken(token: string): Promise<number | null> {
   const hashedToken = hashToken(token);
-  const [session] = await db.select().from(mobile_sessions)
-    .where(and(
-      eq(mobile_sessions.token, hashedToken),
-      eq(mobile_sessions.is_active, true),
-      gt(mobile_sessions.expires_at, new Date())
-    )).limit(1);
+  const [session] = await db
+    .select()
+    .from(mobile_sessions)
+    .where(
+      and(
+        eq(mobile_sessions.token, hashedToken),
+        eq(mobile_sessions.is_active, true),
+        gt(mobile_sessions.expires_at, new Date()),
+      ),
+    )
+    .limit(1);
 
   if (!session) return null;
 
-  await db.update(mobile_sessions)
+  await db
+    .update(mobile_sessions)
     .set({ last_active_at: new Date() })
     .where(eq(mobile_sessions.id, session.id));
 
@@ -159,7 +195,11 @@ function getUserIdFromToken(token: string): number | null {
   return entry.userId;
 }
 
-export async function populateUserFromSession(req: Request, res: Response, next: NextFunction) {
+export async function populateUserFromSession(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   const authHeader = req.headers.authorization;
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.slice(7);
@@ -195,7 +235,7 @@ export async function populateUserFromSession(req: Request, res: Response, next:
 
   try {
     const resolvedUser = await resolveUserById(req.session.userId);
-    
+
     if (!resolvedUser) {
       if (req.session?.destroy) {
         req.session.destroy((err) => {
@@ -222,7 +262,7 @@ async function resolveUserById(userId: number) {
 
   if (user.role_id) {
     const roles = await getCachedRoles();
-    const userRole = roles.find(r => r.id === user.role_id);
+    const userRole = roles.find((r) => r.id === user.role_id);
 
     if (userRole) {
       roleName = userRole.name || "user";
@@ -230,12 +270,15 @@ async function resolveUserById(userId: number) {
         try {
           if (Array.isArray(userRole.permissions)) {
             permissions = userRole.permissions;
-          } else if (typeof userRole.permissions === 'string') {
+          } else if (typeof userRole.permissions === "string") {
             const parsed = JSON.parse(userRole.permissions);
             permissions = Array.isArray(parsed) ? parsed : [];
           }
         } catch (e) {
-          if (typeof userRole.permissions === 'string' && (userRole.permissions as string).trim()) {
+          if (
+            typeof userRole.permissions === "string" &&
+            (userRole.permissions as string).trim()
+          ) {
             permissions = [(userRole.permissions as string).trim()];
           } else {
             permissions = [];
@@ -245,8 +288,8 @@ async function resolveUserById(userId: number) {
     }
   }
 
-  if (roleName.toLowerCase() === 'admin' && !permissions.includes('admin')) {
-    permissions.push('admin');
+  if (roleName.toLowerCase() === "admin" && !permissions.includes("admin")) {
+    permissions.push("admin");
   }
 
   return {
@@ -257,6 +300,6 @@ async function resolveUserById(userId: number) {
     role_id: user.role_id || 0,
     department: user.section_id ? String(user.section_id) : null,
     status: user.status || "active",
-    permissions
+    permissions,
   };
 }

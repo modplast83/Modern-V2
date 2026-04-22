@@ -4,9 +4,10 @@
 // يراقب أداء جميع API endpoints ويسجل العمليات البطيئة
 // ===============================================
 
-import { Request, Response, NextFunction } from 'express';
-import { db } from '../db';
-import { system_performance_metrics } from '../../shared/schema';
+import { Request, Response, NextFunction } from "express";
+
+import { system_performance_metrics } from "../../shared/schema";
+import { db } from "../db";
 
 interface PerformanceMetrics {
   endpoint: string;
@@ -25,16 +26,18 @@ export class PerformanceMonitor {
   private static bufferSize = 100;
 
   private static devAssetPaths = [
-    '/client/src/',
-    '/node_modules/',
-    '/@vite/',
-    '/@fs/',
-    '/__vite_ping',
-    '/src/',
+    "/client/src/",
+    "/node_modules/",
+    "/@vite/",
+    "/@fs/",
+    "/__vite_ping",
+    "/src/",
   ];
 
   private static isDevAsset(path: string): boolean {
-    return PerformanceMonitor.devAssetPaths.some(prefix => path.startsWith(prefix));
+    return PerformanceMonitor.devAssetPaths.some((prefix) =>
+      path.startsWith(prefix),
+    );
   }
 
   static middleware() {
@@ -67,33 +70,47 @@ export class PerformanceMonitor {
           statusCode: res.statusCode,
           timestamp: new Date(),
           memoryUsage: memoryDelta,
-          warnings: []
+          warnings: [],
         };
 
         // فحص الأداء وإضافة التحذيرات
         if (duration > this.verySlowThreshold) {
-          metrics.warnings?.push(`CRITICAL: Very slow response (${duration}ms)`);
-          console.warn(`⚠️ [CRITICAL] ${req.method} ${req.path} took ${duration}ms`);
+          metrics.warnings?.push(
+            `CRITICAL: Very slow response (${duration}ms)`,
+          );
+          console.warn(
+            `⚠️ [CRITICAL] ${req.method} ${req.path} took ${duration}ms`,
+          );
         } else if (duration > this.slowThreshold) {
           metrics.warnings?.push(`WARNING: Slow response (${duration}ms)`);
-          console.warn(`⚠️ [WARNING] ${req.method} ${req.path} took ${duration}ms`);
+          console.warn(
+            `⚠️ [WARNING] ${req.method} ${req.path} took ${duration}ms`,
+          );
         }
 
-        if (memoryDelta > 50 * 1024 * 1024) { // 50MB
-          metrics.warnings?.push(`High memory usage: ${(memoryDelta / 1024 / 1024).toFixed(2)}MB`);
-          console.warn(`⚠️ [MEMORY] ${req.method} ${req.path} used ${(memoryDelta / 1024 / 1024).toFixed(2)}MB`);
+        if (memoryDelta > 50 * 1024 * 1024) {
+          // 50MB
+          metrics.warnings?.push(
+            `High memory usage: ${(memoryDelta / 1024 / 1024).toFixed(2)}MB`,
+          );
+          console.warn(
+            `⚠️ [MEMORY] ${req.method} ${req.path} used ${(memoryDelta / 1024 / 1024).toFixed(2)}MB`,
+          );
         }
 
         // حفظ في الذاكرة المؤقتة
         this.metricsBuffer.push(metrics);
 
         // حفظ في قاعدة البيانات عند امتلاء الذاكرة المؤقتة أو للعمليات البطيئة
-        if (this.metricsBuffer.length >= this.bufferSize || duration > this.slowThreshold) {
+        if (
+          this.metricsBuffer.length >= this.bufferSize ||
+          duration > this.slowThreshold
+        ) {
           await this.flushMetrics();
         }
       };
 
-      res.on('finish', finishRequest);
+      res.on("finish", finishRequest);
 
       next();
     };
@@ -108,25 +125,31 @@ export class PerformanceMonitor {
     try {
       // حفظ في قاعدة البيانات
       for (const metric of metricsToSave) {
-        if (metric.duration > this.slowThreshold / 2) { // حفظ العمليات البطيئة فقط
+        if (metric.duration > this.slowThreshold / 2) {
+          // حفظ العمليات البطيئة فقط
           await db.insert(system_performance_metrics).values({
-            metric_name: `${metric.method} ${metric.endpoint}`.substring(0, 255),
-            metric_category: 'application',
+            metric_name: `${metric.method} ${metric.endpoint}`.substring(
+              0,
+              255,
+            ),
+            metric_category: "application",
             value: metric.duration.toString(),
-            unit: 'ms',
-            source: 'server',
+            unit: "ms",
+            source: "server",
             tags: {
               endpoint: metric.endpoint,
               method: metric.method,
               statusCode: metric.statusCode.toString(),
-              memoryUsageMB: metric.memoryUsage ? (metric.memoryUsage / 1024 / 1024).toFixed(2) : '0',
-              warnings: metric.warnings?.join(', ') || ''
-            }
+              memoryUsageMB: metric.memoryUsage
+                ? (metric.memoryUsage / 1024 / 1024).toFixed(2)
+                : "0",
+              warnings: metric.warnings?.join(", ") || "",
+            },
           });
         }
       }
     } catch (error) {
-      console.error('❌ Failed to save performance metrics:', error);
+      console.error("❌ Failed to save performance metrics:", error);
     }
   }
 
@@ -135,12 +158,12 @@ export class PerformanceMonitor {
   }
 
   static getSlowEndpoints(threshold = 500): PerformanceMetrics[] {
-    return this.metricsBuffer.filter(m => m.duration > threshold);
+    return this.metricsBuffer.filter((m) => m.duration > threshold);
   }
 
   static async getPerformanceReport() {
     const recent = this.metricsBuffer.slice(-100);
-    
+
     if (recent.length === 0) {
       return {
         totalRequests: 0,
@@ -148,41 +171,48 @@ export class PerformanceMonitor {
         slowRequests: 0,
         fastestEndpoint: null,
         slowestEndpoint: null,
-        endpoints: {}
+        endpoints: {},
       };
     }
 
-    const byEndpoint = recent.reduce((acc, m) => {
-      const key = `${m.method} ${m.endpoint}`;
-      if (!acc[key]) {
-        acc[key] = { count: 0, totalTime: 0, maxTime: 0, minTime: Infinity };
-      }
-      acc[key].count++;
-      acc[key].totalTime += m.duration;
-      acc[key].maxTime = Math.max(acc[key].maxTime, m.duration);
-      acc[key].minTime = Math.min(acc[key].minTime, m.duration);
-      return acc;
-    }, {} as Record<string, any>);
+    const byEndpoint = recent.reduce(
+      (acc, m) => {
+        const key = `${m.method} ${m.endpoint}`;
+        if (!acc[key]) {
+          acc[key] = { count: 0, totalTime: 0, maxTime: 0, minTime: Infinity };
+        }
+        acc[key].count++;
+        acc[key].totalTime += m.duration;
+        acc[key].maxTime = Math.max(acc[key].maxTime, m.duration);
+        acc[key].minTime = Math.min(acc[key].minTime, m.duration);
+        return acc;
+      },
+      {} as Record<string, any>,
+    );
 
     const totalTime = recent.reduce((sum, m) => sum + m.duration, 0);
-    const slowRequests = recent.filter(m => m.duration > this.slowThreshold).length;
+    const slowRequests = recent.filter(
+      (m) => m.duration > this.slowThreshold,
+    ).length;
 
     return {
       totalRequests: recent.length,
       averageResponseTime: Math.round(totalTime / recent.length),
       slowRequests,
       slowRequestsPercent: Math.round((slowRequests / recent.length) * 100),
-      fastestEndpoint: Object.entries(byEndpoint)
-        .sort(([, a], [, b]) => (a.totalTime / a.count) - (b.totalTime / b.count))[0],
-      slowestEndpoint: Object.entries(byEndpoint)
-        .sort(([, a], [, b]) => (b.totalTime / b.count) - (a.totalTime / a.count))[0],
+      fastestEndpoint: Object.entries(byEndpoint).sort(
+        ([, a], [, b]) => a.totalTime / a.count - b.totalTime / b.count,
+      )[0],
+      slowestEndpoint: Object.entries(byEndpoint).sort(
+        ([, a], [, b]) => b.totalTime / b.count - a.totalTime / a.count,
+      )[0],
       endpoints: Object.entries(byEndpoint).map(([key, stats]) => ({
         endpoint: key,
         count: stats.count,
         avgTime: Math.round(stats.totalTime / stats.count),
         maxTime: stats.maxTime,
-        minTime: stats.minTime === Infinity ? 0 : stats.minTime
-      }))
+        minTime: stats.minTime === Infinity ? 0 : stats.minTime,
+      })),
     };
   }
 }

@@ -3,6 +3,7 @@
 ## المصادقة (Authentication)
 
 ### تسجيل الدخول
+
 ```
 POST /api/mobile/login
 Content-Type: application/json
@@ -31,18 +32,22 @@ Response 200:
 ```
 
 ### استخدام التوكن في كل الطلبات
+
 ```
 Authorization: Bearer <TOKEN>
 ```
+
 يجب إرسال هذا الـ Header مع **كل طلب API** بعد تسجيل الدخول.
 
 ### تسجيل الخروج
+
 ```
 POST /api/mobile/logout
 Authorization: Bearer <TOKEN>
 ```
 
 ### حالة السيرفر
+
 ```
 GET /api/mobile/status
 Response: { "status": "online", "version": "1.0.0" }
@@ -53,6 +58,7 @@ Response: { "status": "online", "version": "1.0.0" }
 ## الصفحة 1: إدارة الطلبات (Orders)
 
 ### 1.1 عرض جميع الطلبات
+
 ```
 GET /api/orders
 Authorization: Bearer <TOKEN>
@@ -78,13 +84,16 @@ Response 200:
 ```
 
 ### 1.2 عرض الطلبات المحسّنة (مع بيانات العميل والمنتجات)
+
 ```
 GET /api/orders/enhanced
 Authorization: Bearer <TOKEN>
 ```
+
 هذا يرجع الطلبات مع تفاصيل العميل وأوامر الإنتاج المرتبطة.
 
 ### 1.3 الحصول على رقم الطلب التالي
+
 ```
 GET /api/orders/next-number
 Authorization: Bearer <TOKEN>
@@ -92,9 +101,11 @@ Authorization: Bearer <TOKEN>
 Response 200:
 { "orderNumber": "ORD004" }
 ```
+
 **مهم:** استدعِ هذا قبل فتح نموذج إنشاء طلب جديد لضمان رقم فريد.
 
 ### 1.4 إنشاء طلب جديد
+
 ```
 POST /api/orders
 Authorization: Bearer <TOKEN>
@@ -116,9 +127,11 @@ Response 201:
   "success": true
 }
 ```
+
 **الصلاحية المطلوبة:** `manage_orders`
 
 ### 1.5 عرض قائمة العملاء (للقائمة المنسدلة)
+
 ```
 GET /api/customers?all=true
 Authorization: Bearer <TOKEN>
@@ -136,6 +149,7 @@ Response 200: [
 ```
 
 ### 1.6 عرض منتجات العميل (لربطها بأوامر الإنتاج)
+
 ```
 GET /api/customer-products
 Authorization: Bearer <TOKEN>
@@ -163,6 +177,7 @@ Response 200:
 ```
 
 ### 1.7 تحديث حالة الطلب
+
 ```
 PATCH /api/orders/:id/status
 Authorization: Bearer <TOKEN>
@@ -180,13 +195,16 @@ Body:
   completed     → (لا يمكن التغيير)
   cancelled     → (لا يمكن التغيير)
 ```
+
 **الصلاحية المطلوبة:** `admin`
 
 ### 1.8 حذف طلب
+
 ```
 DELETE /api/orders/:id
 Authorization: Bearer <TOKEN>
 ```
+
 **الصلاحية المطلوبة:** `admin`
 
 ---
@@ -194,6 +212,7 @@ Authorization: Bearer <TOKEN>
 ## الصفحة 2: لوحة الإنتاج (Production Dashboard)
 
 ### 2.1 إحصائيات لوحة المعلومات
+
 ```
 GET /api/dashboard/stats
 Authorization: Bearer <TOKEN>
@@ -209,6 +228,7 @@ Response 200:
 ```
 
 ### 2.2 جميع أوامر الإنتاج
+
 ```
 GET /api/production-orders
 Authorization: Bearer <TOKEN>
@@ -244,6 +264,7 @@ Response 200:
 ```
 
 ### 2.3 إنشاء أمر إنتاج
+
 ```
 POST /api/production-orders
 Authorization: Bearer <TOKEN>
@@ -261,9 +282,11 @@ Body:
   - بنانة (Banana): 10%
   - علاقي (Hook): 20%
 ```
+
 **الصلاحية المطلوبة:** `manage_production`
 
 ### 2.4 إنشاء أوامر إنتاج دفعة واحدة
+
 ```
 POST /api/production-orders/batch
 Authorization: Bearer <TOKEN>
@@ -279,6 +302,7 @@ Body:
 ```
 
 ### 2.5 تتبع تقدم أمر إنتاج
+
 ```
 GET /api/production/order-progress/:jobOrderId
 Authorization: Bearer <TOKEN>
@@ -294,6 +318,7 @@ Response 200:
 ```
 
 ### 2.6 الإحصائيات الفورية
+
 ```
 GET /api/production/real-time-stats
 Authorization: Bearer <TOKEN>
@@ -309,6 +334,7 @@ Response 200:
 ```
 
 ### 2.7 الأوامر الهرمية (طلب ← أوامر إنتاج ← رولات)
+
 ```
 GET /api/production/hierarchical-orders
 Authorization: Bearer <TOKEN>
@@ -319,6 +345,7 @@ Authorization: Bearer <TOKEN>
 ## الصفحة 2.1: لوحة الفيلم (Film Queue)
 
 ### عرض قائمة انتظار الفيلم
+
 ```
 GET /api/production/film-queue
 Authorization: Bearer <TOKEN>
@@ -339,6 +366,7 @@ Response 200: [
 ```
 
 ### عرض الرولات (للماكينة / للعامل)
+
 ```
 GET /api/rolls
 Authorization: Bearer <TOKEN>
@@ -359,6 +387,7 @@ Response 200: [
 ```
 
 ### إنشاء رول جديد (مرحلة الفيلم)
+
 ```
 POST /api/rolls/create-with-timing
 Authorization: Bearer <TOKEN>
@@ -375,6 +404,7 @@ Body:
 ```
 
 ### إنشاء رول نهائي (آخر رول في أمر الإنتاج)
+
 ```
 POST /api/rolls/create-final
 Authorization: Bearer <TOKEN>
@@ -393,24 +423,28 @@ Body:
 ## الصفحة 2.2: لوحة الطباعة (Printing Queue)
 
 ### عرض قائمة انتظار الطباعة
+
 ```
 GET /api/production/printing-queue
 Authorization: Bearer <TOKEN>
 ```
 
 ### عرض الرولات الجاهزة للطباعة
+
 ```
 GET /api/rolls/active-for-printing
 Authorization: Bearer <TOKEN>
 ```
 
 ### عرض قائمة الطباعة حسب القسم
+
 ```
 GET /api/rolls/printing-queue-by-section
 Authorization: Bearer <TOKEN>
 ```
 
 ### تسجيل طباعة رول
+
 ```
 PATCH /api/rolls/:id/print
 Authorization: Bearer <TOKEN>
@@ -424,6 +458,7 @@ Body:
 ```
 
 ### تعليم رول كمطبوع
+
 ```
 POST /api/rolls/:id/mark-printed
 Authorization: Bearer <TOKEN>
@@ -439,30 +474,35 @@ Body:
 ## الصفحة 2.3: لوحة التقطيع (Cutting Queue)
 
 ### عرض قائمة انتظار التقطيع
+
 ```
 GET /api/production/cutting-queue
 Authorization: Bearer <TOKEN>
 ```
 
 ### عرض قائمة التقطيع المجمّعة
+
 ```
 GET /api/production/grouped-cutting-queue
 Authorization: Bearer <TOKEN>
 ```
 
 ### عرض الرولات الجاهزة للتقطيع
+
 ```
 GET /api/rolls/active-for-cutting
 Authorization: Bearer <TOKEN>
 ```
 
 ### عرض قائمة التقطيع حسب القسم
+
 ```
 GET /api/rolls/cutting-queue-by-section
 Authorization: Bearer <TOKEN>
 ```
 
 ### إتمام تقطيع رول
+
 ```
 POST /api/rolls/:id/complete-cutting
 Authorization: Bearer <TOKEN>
@@ -481,6 +521,7 @@ Body:
 ## الصفحة 2.4: نقاط إضافية للإنتاج
 
 ### الماكينات المتاحة
+
 ```
 GET /api/machines
 Authorization: Bearer <TOKEN>
@@ -500,6 +541,7 @@ Response 200:
 ```
 
 ### إحصائيات القسم
+
 ```
 GET /api/production/stats-by-section/:section
 Authorization: Bearer <TOKEN>
@@ -507,42 +549,49 @@ Authorization: Bearer <TOKEN>
 ```
 
 ### أداء العمال حسب القسم
+
 ```
 GET /api/production/users-performance/:section
 Authorization: Bearer <TOKEN>
 ```
 
 ### إنتاج الماكينات حسب القسم
+
 ```
 GET /api/production/machines-production/:section
 Authorization: Bearer <TOKEN>
 ```
 
 ### تتبع الرولات حسب القسم
+
 ```
 GET /api/production/rolls-tracking/:section
 Authorization: Bearer <TOKEN>
 ```
 
 ### بحث رول بالباركود
+
 ```
 GET /api/rolls/search-by-barcode/:barcode
 Authorization: Bearer <TOKEN>
 ```
 
 ### تفاصيل رول كاملة
+
 ```
 GET /api/rolls/:id/full-details
 Authorization: Bearer <TOKEN>
 ```
 
 ### سجل رول
+
 ```
 GET /api/rolls/:id/history
 Authorization: Bearer <TOKEN>
 ```
 
 ### بيانات QR Code لرول
+
 ```
 GET /api/rolls/:id/qr
 Authorization: Bearer <TOKEN>
@@ -555,6 +604,7 @@ Authorization: Bearer <TOKEN>
 ### 3.1 ألوان الطباعة (Master Batch Colors)
 
 #### عرض جميع الألوان
+
 ```
 GET /api/master-batch-colors
 Authorization: Bearer <TOKEN>
@@ -575,6 +625,7 @@ Response 200: [
 ```
 
 #### عرض لون بالمعرف
+
 ```
 GET /api/master-batch-colors/:id
 Authorization: Bearer <TOKEN>
@@ -594,10 +645,10 @@ Authorization: Bearer <TOKEN>
 أنواع الأكياس:
   1. كيس مسطح (flat):
      العرض الفعال = العرض
-  
+
   2. كيس بطية جانبية (side-gusset):
      العرض الفعال = العرض + (2 × عمق الطية الجانبية)
-  
+
   3. مفرش طاولة (table-cover):
      العرض الفعال = العرض
 
@@ -610,7 +661,7 @@ Authorization: Bearer <TOKEN>
   - السماكة: 18 ميكرون
   - عدد الطبقات: 2
   - الكثافة: 0.95 (LDPE)
-  
+
 كثافات المواد الخام:
   - HDPE: 0.95
   - LDPE: 0.92
@@ -640,13 +691,17 @@ Authorization: Bearer <TOKEN>
 ## ملاحظات مهمة للمطوّر
 
 ### 1. معالجة الأخطاء
+
 كل طلبات API ترجع رسائل خطأ بالعربية:
+
 ```json
 { "message": "رسالة الخطأ بالعربية" }
 ```
+
 أكواد الحالة:
+
 - `200` - نجاح
-- `201` - تم الإنشاء بنجاح  
+- `201` - تم الإنشاء بنجاح
 - `400` - بيانات غير صحيحة
 - `401` - غير مصرح (التوكن منتهي أو غير موجود)
 - `403` - لا توجد صلاحية
@@ -654,19 +709,25 @@ Authorization: Bearer <TOKEN>
 - `500` - خطأ في السيرفر
 
 ### 2. التعامل مع انتهاء التوكن
+
 التوكن صالح لمدة **30 يوم**. عند استقبال `401`:
+
 ```
 أعِد توجيه المستخدم لصفحة تسجيل الدخول
 ```
 
 ### 3. الأرقام العشرية
+
 كل الأرقام العشرية ترجع كـ **string** من السيرفر (مثل `"500.00"`). يجب تحويلها لأرقام عند العرض:
+
 ```javascript
-parseFloat(item.quantity_kg)
+parseFloat(item.quantity_kg);
 ```
 
 ### 4. الصلاحيات
+
 تحقق من `user.permissions` بعد تسجيل الدخول لإظهار/إخفاء الأزرار:
+
 - `manage_orders` - إنشاء وتعديل الطلبات
 - `manage_production` - إنشاء أوامر إنتاج
 - `manage_attendance` - إدارة الحضور
@@ -674,12 +735,15 @@ parseFloat(item.quantity_kg)
 - `admin` - كل الصلاحيات
 
 ### 5. Base URL
+
 استخدم نفس الـ URL الحالي للسيرفر:
+
 ```
 https://<REPLIT_DOMAIN>
 ```
 
 ### 6. تسجيل الحضور (الموجود مسبقاً)
+
 ```
 POST /api/attendance/check-in   (أو POST /api/attendance)
 Authorization: Bearer <TOKEN>

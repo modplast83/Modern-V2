@@ -29,7 +29,10 @@
       rel="preload"
       href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap"
       as="style"
-      onload="this.onload=null;this.rel='stylesheet'"
+      onload="
+        this.onload = null;
+        this.rel = 'stylesheet';
+      "
     />
     <noscript
       ><link
@@ -41,7 +44,10 @@
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#3984F6" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
     <meta name="apple-mobile-web-app-title" content="MPBF Next" />
     <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -94,7 +100,11 @@
 
       /* Smooth font swap - no visibility hidden to avoid flicker */
       .fonts-loaded body {
-        font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+        font-family:
+          "Cairo",
+          system-ui,
+          -apple-system,
+          sans-serif;
       }
     </style>
 
@@ -170,12 +180,12 @@
             .register("/sw.js")
             .then(function (registration) {
               console.log("SW registered: ", registration);
-              registration.addEventListener('updatefound', function() {
+              registration.addEventListener("updatefound", function () {
                 var newWorker = registration.installing;
                 if (newWorker) {
-                  newWorker.addEventListener('statechange', function() {
-                    if (newWorker.state === 'activated') {
-                      console.log('New service worker activated');
+                  newWorker.addEventListener("statechange", function () {
+                    if (newWorker.state === "activated") {
+                      console.log("New service worker activated");
                     }
                   });
                 }

@@ -1,7 +1,10 @@
-import { useAuth } from "../hooks/use-auth";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Factory } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
+import { z } from "zod";
+
 import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
 import {
   Card,
   CardContent,
@@ -16,13 +19,11 @@ import {
   FormLabel,
   FormMessage,
 } from "../components/ui/form";
-import { useToast } from "../hooks/use-toast";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Factory } from "lucide-react";
-import { useTranslation } from 'react-i18next';
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { useAuth } from "../hooks/use-auth";
 import { useCompanyLogo } from "../hooks/use-company-logo";
+import { useToast } from "../hooks/use-toast";
 
 export default function Login() {
   const { t } = useTranslation();
@@ -33,12 +34,12 @@ export default function Login() {
   const loginSchema = z.object({
     username: z
       .string()
-      .min(1, t('auth.usernameRequired'))
-      .min(3, t('auth.usernameMinLength')),
+      .min(1, t("auth.usernameRequired"))
+      .min(3, t("auth.usernameMinLength")),
     password: z
       .string()
-      .min(1, t('auth.passwordRequired'))
-      .min(6, t('auth.passwordMinLength')),
+      .min(1, t("auth.passwordRequired"))
+      .min(6, t("auth.passwordMinLength")),
   });
 
   type LoginFormValues = z.infer<typeof loginSchema>;
@@ -55,11 +56,11 @@ export default function Login() {
     try {
       await login(values.username, values.password);
       toast({
-        title: t('auth.welcomeBack'),
-        description: t('auth.loginSuccess'),
+        title: t("auth.welcomeBack"),
+        description: t("auth.loginSuccess"),
       });
     } catch (error) {
-      let errorMessage = t('auth.unexpectedError');
+      let errorMessage = t("auth.unexpectedError");
 
       if (error instanceof Error) {
         errorMessage = error.message;
@@ -69,11 +70,11 @@ export default function Login() {
         errorMessage.includes("Network error") ||
         errorMessage.includes("Failed to fetch")
       ) {
-        errorMessage = t('auth.networkError');
+        errorMessage = t("auth.networkError");
       }
 
       toast({
-        title: t('auth.loginError'),
+        title: t("auth.loginError"),
         description: errorMessage,
         variant: "destructive",
       });
@@ -85,16 +86,16 @@ export default function Login() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto w-20 h-20 mb-4 flex items-center justify-center">
-            <img 
-              src={logoUrl} 
-              alt={t('auth.factoryLogoAlt')} 
+            <img
+              src={logoUrl}
+              alt={t("auth.factoryLogoAlt")}
               className="w-full h-full object-contain"
             />
           </div>
-          <CardTitle className="text-2xl font-bold">{t('auth.systemTitle')}</CardTitle>
-          <p className="text-muted-foreground">
-            {t('auth.systemDescription')}
-          </p>
+          <CardTitle className="text-2xl font-bold">
+            {t("auth.systemTitle")}
+          </CardTitle>
+          <p className="text-muted-foreground">{t("auth.systemDescription")}</p>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -104,10 +105,10 @@ export default function Login() {
                 name="username"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('auth.username')}</FormLabel>
+                    <FormLabel>{t("auth.username")}</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder={t('auth.enterUsername')}
+                        placeholder={t("auth.enterUsername")}
                         className="text-right"
                         disabled={isLoading}
                         data-testid="input-username"
@@ -124,11 +125,11 @@ export default function Login() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('auth.password')}</FormLabel>
+                    <FormLabel>{t("auth.password")}</FormLabel>
                     <FormControl>
                       <Input
                         type="password"
-                        placeholder={t('auth.enterPassword')}
+                        placeholder={t("auth.enterPassword")}
                         className="text-right"
                         disabled={isLoading}
                         data-testid="input-password"
@@ -146,7 +147,7 @@ export default function Login() {
                 disabled={isLoading}
                 data-testid="button-login"
               >
-                {isLoading ? t('auth.loggingIn') : t('auth.login')}
+                {isLoading ? t("auth.loggingIn") : t("auth.login")}
               </Button>
             </form>
           </Form>
@@ -157,7 +158,7 @@ export default function Login() {
             </div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-background px-2 text-muted-foreground">
-                {t('auth.or')}
+                {t("auth.or")}
               </span>
             </div>
           </div>
@@ -171,20 +172,20 @@ export default function Login() {
               }}
               data-testid="button-login-replit"
             >
-              <svg 
-                className="w-5 h-5 mr-2" 
-                viewBox="0 0 24 24" 
+              <svg
+                className="w-5 h-5 mr-2"
+                viewBox="0 0 24 24"
                 fill="currentColor"
               >
-                <path d="M2 2v20h20V2H2zm18 18H4V4h16v16z"/>
+                <path d="M2 2v20h20V2H2zm18 18H4V4h16v16z" />
               </svg>
-              {t('auth.loginWithReplit')}
+              {t("auth.loginWithReplit")}
             </Button>
           </div>
 
           <div className="mt-6 pt-6 border-t">
             <p className="text-xs text-muted-foreground text-center">
-              {t('auth.copyright')}
+              {t("auth.copyright")}
             </p>
           </div>
         </CardContent>

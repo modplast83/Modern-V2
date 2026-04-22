@@ -1,12 +1,13 @@
-import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
-import { useLocalizedName } from "../../hooks/use-localized-name";
-import { Card, CardContent } from "../ui/card";
-import { Button } from "../ui/button";
-import { Badge } from "../ui/badge";
 import { QrCode, Play, Scissors, Clock } from "lucide-react";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+
+import { useLocalizedName } from "../../hooks/use-localized-name";
 import { useToast } from "../../hooks/use-toast";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Card, CardContent } from "../ui/card";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../ui/dialog";
+import { Label } from "../ui/label";
 import {
   Select,
   SelectContent,
@@ -21,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
-import { Label } from "../ui/label";
+
 import type { Machine } from "../../../../shared/schema";
 
 interface ProductionQueueProps {
@@ -40,7 +42,8 @@ export default function ProductionQueue({
   const [processingId, setProcessingId] = useState<number | null>(null);
   const [printingModalOpen, setPrintingModalOpen] = useState(false);
   const [selectedRollId, setSelectedRollId] = useState<number | null>(null);
-  const [selectedPrintingMachine, setSelectedPrintingMachine] = useState<string>("");
+  const [selectedPrintingMachine, setSelectedPrintingMachine] =
+    useState<string>("");
 
   // Fetch machines for printing selection
   const { data: machines = [] } = useQuery<Machine[]>({
@@ -60,16 +63,23 @@ export default function ProductionQueue({
       [s.name, s.name_ar]
         .filter(Boolean)
         .map((x: string) => x.toLowerCase())
-        .some((n: string) => n.includes("print") || n.includes("طباع"))
+        .some((n: string) => n.includes("print") || n.includes("طباع")),
     );
     if (!printingSection) return [];
     return machines.filter(
-      (m: Machine) => m.section_id === printingSection.id && m.status === "active"
+      (m: Machine) =>
+        m.section_id === printingSection.id && m.status === "active",
     );
   })();
 
   const processItemMutation = useMutation({
-    mutationFn: async ({ rollId, printingMachineId }: { rollId: number; printingMachineId?: string }) => {
+    mutationFn: async ({
+      rollId,
+      printingMachineId,
+    }: {
+      rollId: number;
+      printingMachineId?: string;
+    }) => {
       if (queueType === "printing") {
         const response = await fetch(`/api/rolls/${rollId}/print`, {
           method: "PATCH",
@@ -81,7 +91,9 @@ export default function ProductionQueue({
 
         if (!response.ok) {
           const error = await response.json();
-          throw new Error(error.message || t("production.queue.printingFailed"));
+          throw new Error(
+            error.message || t("production.queue.printingFailed"),
+          );
         }
 
         return response.json();
@@ -111,13 +123,17 @@ export default function ProductionQueue({
       toast({
         title: t("messages.success"),
         description:
-          queueType === "printing" ? t("production.queue.printingRegistered") : t("production.queue.cuttingRegistered"),
+          queueType === "printing"
+            ? t("production.queue.printingRegistered")
+            : t("production.queue.cuttingRegistered"),
       });
       queryClient.invalidateQueries({
         queryKey: ["/api/production/" + queueType + "-queue"],
       });
       queryClient.invalidateQueries({ queryKey: ["/api/rolls"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/production/hierarchical-orders"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/production/hierarchical-orders"],
+      });
       setProcessingId(null);
       setPrintingModalOpen(false);
       setSelectedRollId(null);
@@ -163,9 +179,15 @@ export default function ProductionQueue({
 
   const getStatusBadge = (item: any) => {
     if (queueType === "printing") {
-      return <Badge variant="outline">{t("production.queue.readyForPrinting")}</Badge>;
+      return (
+        <Badge variant="outline">
+          {t("production.queue.readyForPrinting")}
+        </Badge>
+      );
     } else if (queueType === "cutting") {
-      return <Badge variant="outline">{t("production.queue.readyForCutting")}</Badge>;
+      return (
+        <Badge variant="outline">{t("production.queue.readyForCutting")}</Badge>
+      );
     }
     return null;
   };
@@ -182,7 +204,9 @@ export default function ProductionQueue({
           data-testid={`button-print-${item.id}`}
         >
           <Play className="h-4 w-4 mr-1" />
-          {isProcessing ? t("production.queue.printing") : t("production.stages.printing")}
+          {isProcessing
+            ? t("production.queue.printing")
+            : t("production.stages.printing")}
         </Button>
       );
     } else if (queueType === "cutting") {
@@ -194,7 +218,9 @@ export default function ProductionQueue({
           data-testid={`button-cut-${item.id}`}
         >
           <Scissors className="h-4 w-4 mr-1" />
-          {isProcessing ? t("production.queue.cutting") : t("production.stages.cutting")}
+          {isProcessing
+            ? t("production.queue.cutting")
+            : t("production.stages.cutting")}
         </Button>
       );
     }
@@ -232,12 +258,15 @@ export default function ProductionQueue({
                     </p>
                     <p className="text-sm text-gray-500">
                       {t("common.weight")}:{" "}
-                      {parseFloat(item.weight_kg || item.weight || 0).toFixed(2)}{" "}
+                      {parseFloat(item.weight_kg || item.weight || 0).toFixed(
+                        2,
+                      )}{" "}
                       {t("common.kg")}
                     </p>
                     {item.film_machine_id && (
                       <p className="text-xs text-gray-400">
-                        {t("production.queue.filmMachine")}: {item.film_machine_id}
+                        {t("production.queue.filmMachine")}:{" "}
+                        {item.film_machine_id}
                       </p>
                     )}
                   </div>
@@ -255,9 +284,14 @@ export default function ProductionQueue({
 
       {/* Printing Machine Selection Modal */}
       <Dialog open={printingModalOpen} onOpenChange={setPrintingModalOpen}>
-        <DialogContent className="max-w-md" aria-describedby="printing-machine-description">
+        <DialogContent
+          className="max-w-md"
+          aria-describedby="printing-machine-description"
+        >
           <DialogHeader>
-            <DialogTitle>{t("production.queue.selectPrintingMachineTitle")}</DialogTitle>
+            <DialogTitle>
+              {t("production.queue.selectPrintingMachineTitle")}
+            </DialogTitle>
             <DialogDescription id="printing-machine-description">
               {t("production.queue.selectMachineDescription")}
             </DialogDescription>
@@ -265,14 +299,25 @@ export default function ProductionQueue({
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="printing-machine">{t("production.queue.printingMachineLabel")} *</Label>
+              <Label htmlFor="printing-machine">
+                {t("production.queue.printingMachineLabel")} *
+              </Label>
               <Select
                 value={selectedPrintingMachine}
                 onValueChange={setSelectedPrintingMachine}
                 disabled={printingMachines.length === 0}
               >
-                <SelectTrigger id="printing-machine" data-testid="select-printing-machine">
-                  <SelectValue placeholder={printingMachines.length === 0 ? t("production.queue.noPrintingMachines") : t("production.queue.selectPrintingMachine")} />
+                <SelectTrigger
+                  id="printing-machine"
+                  data-testid="select-printing-machine"
+                >
+                  <SelectValue
+                    placeholder={
+                      printingMachines.length === 0
+                        ? t("production.queue.noPrintingMachines")
+                        : t("production.queue.selectPrintingMachine")
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {printingMachines.length > 0 ? (
@@ -309,10 +354,14 @@ export default function ProductionQueue({
             </Button>
             <Button
               onClick={handlePrintConfirm}
-              disabled={!selectedPrintingMachine || processItemMutation.isPending}
+              disabled={
+                !selectedPrintingMachine || processItemMutation.isPending
+              }
               data-testid="button-confirm-printing"
             >
-              {processItemMutation.isPending ? t("production.queue.printing") : t("production.queue.confirmPrinting")}
+              {processItemMutation.isPending
+                ? t("production.queue.printing")
+                : t("production.queue.confirmPrinting")}
             </Button>
           </div>
         </DialogContent>

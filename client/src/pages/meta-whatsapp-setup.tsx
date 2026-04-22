@@ -1,20 +1,4 @@
-import { useState } from "react";
-import { useTranslation } from "react-i18next";
 import { useMutation } from "@tanstack/react-query";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
-import { Badge } from "../components/ui/badge";
-import { Alert, AlertDescription } from "../components/ui/alert";
-import { useToast } from "../hooks/use-toast";
-import { apiRequest } from "../lib/queryClient";
 import {
   CheckCircle,
   AlertTriangle,
@@ -24,6 +8,23 @@ import {
   Settings,
   Key,
 } from "lucide-react";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+
+import { Alert, AlertDescription } from "../components/ui/alert";
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { useToast } from "../hooks/use-toast";
+import { apiRequest } from "../lib/queryClient";
 
 export default function MetaWhatsAppSetup() {
   const { t } = useTranslation();
@@ -206,21 +207,22 @@ export default function MetaWhatsAppSetup() {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             {t("whatsapp.metaSetup.title")}
           </h1>
-          <p className="text-gray-600">
-            {t("whatsapp.metaSetup.description")}
-          </p>
+          <p className="text-gray-600">{t("whatsapp.metaSetup.description")}</p>
         </div>
 
         <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            <strong>{t("whatsapp.metaSetup.importantNote")}</strong> {t("whatsapp.metaSetup.importantNoteDesc")}
+            <strong>{t("whatsapp.metaSetup.importantNote")}</strong>{" "}
+            {t("whatsapp.metaSetup.importantNoteDesc")}
           </AlertDescription>
         </Alert>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="space-y-4">
-            <h2 className="text-2xl font-bold text-gray-900">{t("whatsapp.metaSetup.setupSteps")}</h2>
+            <h2 className="text-2xl font-bold text-gray-900">
+              {t("whatsapp.metaSetup.setupSteps")}
+            </h2>
 
             {setupSteps.map((step, index) => (
               <Card key={step.id} className="relative">
@@ -285,7 +287,9 @@ export default function MetaWhatsAppSetup() {
                       <Badge
                         variant={secret.required ? "destructive" : "secondary"}
                       >
-                        {secret.required ? t("whatsapp.metaSetup.required") : t("whatsapp.metaSetup.optional")}
+                        {secret.required
+                          ? t("whatsapp.metaSetup.required")
+                          : t("whatsapp.metaSetup.optional")}
                       </Badge>
                     </div>
                     <p className="text-xs text-gray-600 mb-2">
@@ -311,7 +315,9 @@ export default function MetaWhatsAppSetup() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label htmlFor="testPhone">{t("whatsapp.metaSetup.phoneNumber")}</Label>
+                  <Label htmlFor="testPhone">
+                    {t("whatsapp.metaSetup.phoneNumber")}
+                  </Label>
                   <Input
                     id="testPhone"
                     value={phoneNumber}
@@ -323,7 +329,9 @@ export default function MetaWhatsAppSetup() {
                 </div>
 
                 <div>
-                  <Label htmlFor="testMessage">{t("whatsapp.metaSetup.message")}</Label>
+                  <Label htmlFor="testMessage">
+                    {t("whatsapp.metaSetup.message")}
+                  </Label>
                   <Input
                     id="testMessage"
                     value={message}
@@ -348,7 +356,9 @@ export default function MetaWhatsAppSetup() {
 
                 {useTemplate && (
                   <div>
-                    <Label htmlFor="templateName">{t("whatsapp.metaSetup.templateName")}</Label>
+                    <Label htmlFor="templateName">
+                      {t("whatsapp.metaSetup.templateName")}
+                    </Label>
                     <Input
                       id="templateName"
                       value={templateName}
@@ -408,7 +418,9 @@ export default function MetaWhatsAppSetup() {
                       rel="noopener noreferrer"
                     >
                       <div className="text-right">
-                        <div className="font-medium">{t("whatsapp.metaSetup.metaForDevelopers")}</div>
+                        <div className="font-medium">
+                          {t("whatsapp.metaSetup.metaForDevelopers")}
+                        </div>
                         <div className="text-sm text-gray-500">
                           {t("whatsapp.metaSetup.createNewMetaApp")}
                         </div>
@@ -427,7 +439,9 @@ export default function MetaWhatsAppSetup() {
                       rel="noopener noreferrer"
                     >
                       <div className="text-right">
-                        <div className="font-medium">{t("whatsapp.metaSetup.metaBusinessManager")}</div>
+                        <div className="font-medium">
+                          {t("whatsapp.metaSetup.metaBusinessManager")}
+                        </div>
                         <div className="text-sm text-gray-500">
                           {t("whatsapp.metaSetup.manageBusinessAccounts")}
                         </div>
@@ -467,7 +481,9 @@ export default function MetaWhatsAppSetup() {
                       rel="noopener noreferrer"
                     >
                       <div className="text-right">
-                        <div className="font-medium">{t("whatsapp.metaSetup.webhookConfiguration")}</div>
+                        <div className="font-medium">
+                          {t("whatsapp.metaSetup.webhookConfiguration")}
+                        </div>
                         <div className="text-sm text-gray-500">
                           {t("whatsapp.metaSetup.setupWebhooks")}
                         </div>
@@ -489,7 +505,9 @@ export default function MetaWhatsAppSetup() {
               <div className="flex items-start gap-3">
                 <CheckCircle className="h-5 w-5 text-green-600 mt-1" />
                 <div>
-                  <h4 className="font-medium">{t("whatsapp.metaSetup.lowerCost")}</h4>
+                  <h4 className="font-medium">
+                    {t("whatsapp.metaSetup.lowerCost")}
+                  </h4>
                   <p className="text-sm text-gray-600">
                     {t("whatsapp.metaSetup.lowerCostDesc")}
                   </p>
@@ -499,7 +517,9 @@ export default function MetaWhatsAppSetup() {
               <div className="flex items-start gap-3">
                 <CheckCircle className="h-5 w-5 text-green-600 mt-1" />
                 <div>
-                  <h4 className="font-medium">{t("whatsapp.metaSetup.fullControl")}</h4>
+                  <h4 className="font-medium">
+                    {t("whatsapp.metaSetup.fullControl")}
+                  </h4>
                   <p className="text-sm text-gray-600">
                     {t("whatsapp.metaSetup.fullControlDesc")}
                   </p>
@@ -509,7 +529,9 @@ export default function MetaWhatsAppSetup() {
               <div className="flex items-start gap-3">
                 <CheckCircle className="h-5 w-5 text-green-600 mt-1" />
                 <div>
-                  <h4 className="font-medium">{t("whatsapp.metaSetup.advancedFeatures")}</h4>
+                  <h4 className="font-medium">
+                    {t("whatsapp.metaSetup.advancedFeatures")}
+                  </h4>
                   <p className="text-sm text-gray-600">
                     {t("whatsapp.metaSetup.advancedFeaturesDesc")}
                   </p>
@@ -519,7 +541,9 @@ export default function MetaWhatsAppSetup() {
               <div className="flex items-start gap-3">
                 <CheckCircle className="h-5 w-5 text-green-600 mt-1" />
                 <div>
-                  <h4 className="font-medium">{t("whatsapp.metaSetup.higherStability")}</h4>
+                  <h4 className="font-medium">
+                    {t("whatsapp.metaSetup.higherStability")}
+                  </h4>
                   <p className="text-sm text-gray-600">
                     {t("whatsapp.metaSetup.higherStabilityDesc")}
                   </p>
@@ -529,7 +553,9 @@ export default function MetaWhatsAppSetup() {
               <div className="flex items-start gap-3">
                 <CheckCircle className="h-5 w-5 text-green-600 mt-1" />
                 <div>
-                  <h4 className="font-medium">{t("whatsapp.metaSetup.instantUpdates")}</h4>
+                  <h4 className="font-medium">
+                    {t("whatsapp.metaSetup.instantUpdates")}
+                  </h4>
                   <p className="text-sm text-gray-600">
                     {t("whatsapp.metaSetup.instantUpdatesDesc")}
                   </p>
@@ -539,8 +565,12 @@ export default function MetaWhatsAppSetup() {
               <div className="flex items-start gap-3">
                 <CheckCircle className="h-5 w-5 text-green-600 mt-1" />
                 <div>
-                  <h4 className="font-medium">{t("whatsapp.metaSetup.betterSupport")}</h4>
-                  <p className="text-sm text-gray-600">{t("whatsapp.metaSetup.betterSupportDesc")}</p>
+                  <h4 className="font-medium">
+                    {t("whatsapp.metaSetup.betterSupport")}
+                  </h4>
+                  <p className="text-sm text-gray-600">
+                    {t("whatsapp.metaSetup.betterSupportDesc")}
+                  </p>
                 </div>
               </div>
             </div>

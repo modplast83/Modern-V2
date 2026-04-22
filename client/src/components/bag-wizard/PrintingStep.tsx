@@ -1,16 +1,35 @@
-import { useState, useRef, useEffect } from "react";
-import { type BagConfiguration, getBagTypeRules, checkPrintContrast } from "../../lib/bag-rules-engine";
-import { PRINT_COLORS_PALETTE, BAG_COLORS } from "../../lib/bag-rules";
-import { removeBackground, extractColors, type ExtractedColor } from "../../lib/image-utils";
-import { Label } from "../ui/label";
-import { Input } from "../ui/input";
-import { Button } from "../ui/button";
-import { Slider } from "../ui/slider";
 import {
-  Upload, Type, Trash2, ImageIcon, Loader2,
-  Palette, X, Plus, Eraser, ScanSearch,
-  Move, ChevronDown, ChevronUp,
+  Upload,
+  Type,
+  Trash2,
+  ImageIcon,
+  Loader2,
+  Palette,
+  X,
+  Plus,
+  Eraser,
+  ScanSearch,
+  Move,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+
+import { PRINT_COLORS_PALETTE, BAG_COLORS } from "../../lib/bag-rules";
+import {
+  type BagConfiguration,
+  getBagTypeRules,
+  checkPrintContrast,
+} from "../../lib/bag-rules-engine";
+import {
+  removeBackground,
+  extractColors,
+  type ExtractedColor,
+} from "../../lib/image-utils";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import { Slider } from "../ui/slider";
 
 interface PrintingStepProps {
   config: BagConfiguration;
@@ -24,14 +43,22 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
   const maxColors = rules.print_colors.max;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [newText, setNewText] = useState("");
-  const [selectedTextColor, setSelectedTextColor] = useState(config.printColors[0] || "black");
+  const [selectedTextColor, setSelectedTextColor] = useState(
+    config.printColors[0] || "black",
+  );
   const [isRemovingBg, setIsRemovingBg] = useState(false);
   const [isExtractingColors, setIsExtractingColors] = useState(false);
   const [extractedColors, setExtractedColors] = useState<ExtractedColor[]>([]);
   const [bgThreshold, setBgThreshold] = useState(30);
   const [expandedTextIdx, setExpandedTextIdx] = useState<number | null>(null);
 
-  const design = config.printDesign || { texts: [], scale: 1, rotation: 0, offsetX: 0, offsetY: 0 };
+  const design = config.printDesign || {
+    texts: [],
+    scale: 1,
+    rotation: 0,
+    offsetX: 0,
+    offsetY: 0,
+  };
   const prevLogoUrlRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
@@ -39,11 +66,13 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
       setSelectedTextColor(config.printColors[0] || "black");
     }
 
-    const invalidTexts = design.texts.filter(t => !config.printColors.includes(t.color));
+    const invalidTexts = design.texts.filter(
+      (t) => !config.printColors.includes(t.color),
+    );
     if (invalidTexts.length > 0) {
       const fallback = config.printColors[0] || "black";
-      const fixedTexts = design.texts.map(t =>
-        config.printColors.includes(t.color) ? t : { ...t, color: fallback }
+      const fixedTexts = design.texts.map((t) =>
+        config.printColors.includes(t.color) ? t : { ...t, color: fallback },
       );
       onChange({ printDesign: { ...design, texts: fixedTexts } });
     }
@@ -58,7 +87,11 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
   }, []);
 
   const updateDesign = (updates: Partial<typeof design>) => {
-    if (updates.logoUrl !== undefined && prevLogoUrlRef.current?.startsWith("blob:") && prevLogoUrlRef.current !== updates.logoUrl) {
+    if (
+      updates.logoUrl !== undefined &&
+      prevLogoUrlRef.current?.startsWith("blob:") &&
+      prevLogoUrlRef.current !== updates.logoUrl
+    ) {
       URL.revokeObjectURL(prevLogoUrlRef.current);
     }
     if (updates.logoUrl !== undefined) {
@@ -76,7 +109,11 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
         current.splice(idx, 1);
         const newShades = { ...config.printColorShades };
         delete newShades[colorId];
-        onChange({ printColors: current, printColorsCount: current.length, printColorShades: newShades });
+        onChange({
+          printColors: current,
+          printColorsCount: current.length,
+          printColorShades: newShades,
+        });
       }
     } else if (current.length < maxColors) {
       current.push(colorId);
@@ -94,7 +131,13 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/svg+xml", "image/webp"];
+    const validTypes = [
+      "image/png",
+      "image/jpeg",
+      "image/jpg",
+      "image/svg+xml",
+      "image/webp",
+    ];
     if (!validTypes.includes(file.type)) {
       alert("يرجى رفع ملف بصيغة PNG أو JPG أو SVG أو WebP فقط");
       return;
@@ -149,13 +192,16 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
   const addText = () => {
     if (!newText.trim()) return;
     const yOffset = 30 + design.texts.length * 15;
-    const texts = [...design.texts, {
-      value: newText.trim(),
-      x: 50,
-      y: Math.min(yOffset, 85),
-      size: 24,
-      color: selectedTextColor,
-    }];
+    const texts = [
+      ...design.texts,
+      {
+        value: newText.trim(),
+        x: 50,
+        y: Math.min(yOffset, 85),
+        size: 24,
+        color: selectedTextColor,
+      },
+    ];
     updateDesign({ texts });
     setNewText("");
     setExpandedTextIdx(texts.length - 1);
@@ -167,7 +213,11 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
     if (expandedTextIdx === index) setExpandedTextIdx(null);
   };
 
-  const updateTextProp = (index: number, prop: string, value: string | number) => {
+  const updateTextProp = (
+    index: number,
+    prop: string,
+    value: string | number,
+  ) => {
     const texts = [...design.texts];
     texts[index] = { ...texts[index], [prop]: value };
     updateDesign({ texts });
@@ -176,17 +226,21 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
   const bagColor = BAG_COLORS[config.bagColor];
 
   const availableTextColors = config.printColors
-    .map(id => PRINT_COLORS_PALETTE.find(c => c.id === id))
+    .map((id) => PRINT_COLORS_PALETTE.find((c) => c.id === id))
     .filter(Boolean);
 
   return (
     <div>
       <h2 className="text-xl font-bold text-gray-900 mb-2">إعداد الطباعة</h2>
-      <p className="text-gray-500 text-sm mb-6">حدد ألوان الطباعة وأضف النصوص والتصميم</p>
+      <p className="text-gray-500 text-sm mb-6">
+        حدد ألوان الطباعة وأضف النصوص والتصميم
+      </p>
 
       <div className="space-y-8">
         <div>
-          <Label className="font-semibold text-gray-700 mb-3 block">جهة الطباعة</Label>
+          <Label className="font-semibold text-gray-700 mb-3 block">
+            جهة الطباعة
+          </Label>
           <div className="flex gap-3">
             {[
               { value: "front" as const, label: "وجه واحد" },
@@ -213,22 +267,29 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
               <Palette className="h-4 w-4 inline ml-1.5" />
               ألوان الطباعة
             </Label>
-            <span className={`text-sm font-medium px-2.5 py-1 rounded-full ${
-              config.printColors.length >= maxColors
-                ? "bg-amber-100 text-amber-700"
-                : "bg-blue-100 text-blue-700"
-            }`}>
+            <span
+              className={`text-sm font-medium px-2.5 py-1 rounded-full ${
+                config.printColors.length >= maxColors
+                  ? "bg-amber-100 text-amber-700"
+                  : "bg-blue-100 text-blue-700"
+              }`}
+            >
               {config.printColors.length} / {maxColors}
             </span>
           </div>
 
-          <p className="text-xs text-gray-400 mb-3">اضغط لاختيار الألوان (بحد أقصى {maxColors} ألوان)</p>
+          <p className="text-xs text-gray-400 mb-3">
+            اضغط لاختيار الألوان (بحد أقصى {maxColors} ألوان)
+          </p>
 
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
             {PRINT_COLORS_PALETTE.map((color) => {
               const isSelected = config.printColors.includes(color.id);
-              const contrast = bagColor ? checkPrintContrast(config.bagColor, color.hex) : { good: true, message: "" };
-              const isDisabled = !isSelected && config.printColors.length >= maxColors;
+              const contrast = bagColor
+                ? checkPrintContrast(config.bagColor, color.hex)
+                : { good: true, message: "" };
+              const isDisabled =
+                !isSelected && config.printColors.length >= maxColors;
 
               return (
                 <button
@@ -239,24 +300,30 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
                     isSelected
                       ? "border-blue-500 bg-blue-50 shadow-sm"
                       : isDisabled
-                      ? "border-gray-100 opacity-40 cursor-not-allowed"
-                      : "border-gray-200 hover:border-blue-300"
+                        ? "border-gray-100 opacity-40 cursor-not-allowed"
+                        : "border-gray-200 hover:border-blue-300"
                   }`}
                 >
                   <div
                     className="w-6 h-6 rounded-full border shadow-sm flex-shrink-0"
                     style={{
-                      backgroundColor: config.printColorShades?.[color.id] || color.hex,
-                      borderColor: color.hex === "#FFFFFF" ? "#d1d5db" : color.hex,
+                      backgroundColor:
+                        config.printColorShades?.[color.id] || color.hex,
+                      borderColor:
+                        color.hex === "#FFFFFF" ? "#d1d5db" : color.hex,
                     }}
                   />
-                  <span className="text-gray-700 truncate">{color.label_ar}</span>
+                  <span className="text-gray-700 truncate">
+                    {color.label_ar}
+                  </span>
                   {isSelected && (
                     <span className="absolute -top-1.5 -left-1.5 w-5 h-5 bg-blue-500 text-white rounded-full text-[10px] flex items-center justify-center font-bold shadow-sm">
                       {config.printColors.indexOf(color.id) + 1}
                     </span>
                   )}
-                  {isSelected && !contrast.good && <span className="text-amber-500 text-xs">⚠️</span>}
+                  {isSelected && !contrast.good && (
+                    <span className="text-amber-500 text-xs">⚠️</span>
+                  )}
                 </button>
               );
             })}
@@ -266,24 +333,38 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
             <div className="mt-4 space-y-2">
               <Label className="text-sm text-gray-500">ضبط درجة اللون</Label>
               {config.printColors.map((pc) => {
-                const colorEntry = PRINT_COLORS_PALETTE.find(c => c.id === pc);
+                const colorEntry = PRINT_COLORS_PALETTE.find(
+                  (c) => c.id === pc,
+                );
                 if (!colorEntry) return null;
-                const currentShade = config.printColorShades?.[pc] || colorEntry.hex;
+                const currentShade =
+                  config.printColorShades?.[pc] || colorEntry.hex;
 
                 return (
-                  <div key={pc} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+                  <div
+                    key={pc}
+                    className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg border border-gray-100"
+                  >
                     <div
                       className="w-7 h-7 rounded-full border-2 shadow-sm flex-shrink-0"
-                      style={{ backgroundColor: currentShade, borderColor: currentShade === "#FFFFFF" ? "#d1d5db" : currentShade }}
+                      style={{
+                        backgroundColor: currentShade,
+                        borderColor:
+                          currentShade === "#FFFFFF" ? "#d1d5db" : currentShade,
+                      }}
                     />
-                    <span className="text-sm font-medium text-gray-700 min-w-[50px]">{colorEntry.label_ar}</span>
+                    <span className="text-sm font-medium text-gray-700 min-w-[50px]">
+                      {colorEntry.label_ar}
+                    </span>
                     <Input
                       type="color"
                       value={currentShade}
                       onChange={(e) => handleShadeChange(pc, e.target.value)}
                       className="w-10 h-7 p-0 border-0 cursor-pointer"
                     />
-                    <span className="text-xs text-gray-400 font-mono">{currentShade}</span>
+                    <span className="text-xs text-gray-400 font-mono">
+                      {currentShade}
+                    </span>
                     {currentShade !== colorEntry.hex && (
                       <button
                         onClick={() => handleShadeChange(pc, colorEntry.hex)}
@@ -299,13 +380,16 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
           )}
 
           {config.printColors.map((pc) => {
-            const colorEntry = PRINT_COLORS_PALETTE.find(c => c.id === pc);
+            const colorEntry = PRINT_COLORS_PALETTE.find((c) => c.id === pc);
             if (!colorEntry) return null;
             const shade = config.printColorShades?.[pc] || colorEntry.hex;
             const contrast = checkPrintContrast(config.bagColor, shade);
             if (contrast.good) return null;
             return (
-              <div key={pc} className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
+              <div
+                key={pc}
+                className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700"
+              >
                 ⚠️ {colorEntry.label_ar}: {contrast.message}
               </div>
             );
@@ -328,20 +412,33 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
             />
             {availableTextColors.length > 0 && (
               <div className="flex items-center gap-1 border rounded-md px-2 bg-white">
-                {availableTextColors.map((c) => c && (
-                  <button
-                    key={c.id}
-                    onClick={() => setSelectedTextColor(c.id)}
-                    className={`w-6 h-6 rounded-full border-2 transition-all flex-shrink-0 ${
-                      selectedTextColor === c.id ? "border-blue-500 scale-110 shadow-sm" : "border-gray-200"
-                    }`}
-                    style={{ backgroundColor: config.printColorShades?.[c.id] || c.hex }}
-                    title={c.label_ar}
-                  />
-                ))}
+                {availableTextColors.map(
+                  (c) =>
+                    c && (
+                      <button
+                        key={c.id}
+                        onClick={() => setSelectedTextColor(c.id)}
+                        className={`w-6 h-6 rounded-full border-2 transition-all flex-shrink-0 ${
+                          selectedTextColor === c.id
+                            ? "border-blue-500 scale-110 shadow-sm"
+                            : "border-gray-200"
+                        }`}
+                        style={{
+                          backgroundColor:
+                            config.printColorShades?.[c.id] || c.hex,
+                        }}
+                        title={c.label_ar}
+                      />
+                    ),
+                )}
               </div>
             )}
-            <Button onClick={addText} size="sm" className="gap-1 shrink-0" disabled={!newText.trim()}>
+            <Button
+              onClick={addText}
+              size="sm"
+              className="gap-1 shrink-0"
+              disabled={!newText.trim()}
+            >
               <Plus className="h-3 w-3" />
               إضافة
             </Button>
@@ -350,38 +447,70 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
           {design.texts.length > 0 && (
             <div className="space-y-2">
               {design.texts.map((text, i) => {
-                const colorInfo = PRINT_COLORS_PALETTE.find(c => c.id === text.color);
-                const shade = config.printColorShades?.[text.color] || colorInfo?.hex || "#000";
+                const colorInfo = PRINT_COLORS_PALETTE.find(
+                  (c) => c.id === text.color,
+                );
+                const shade =
+                  config.printColorShades?.[text.color] ||
+                  colorInfo?.hex ||
+                  "#000";
                 const isExpanded = expandedTextIdx === i;
                 return (
-                  <div key={i} className="bg-gray-50 rounded-lg border border-gray-100 overflow-hidden">
+                  <div
+                    key={i}
+                    className="bg-gray-50 rounded-lg border border-gray-100 overflow-hidden"
+                  >
                     <div className="flex items-center gap-3 p-3">
-                      <div className="w-5 h-5 rounded-full border flex-shrink-0" style={{ backgroundColor: shade }} />
-                      <span className="font-medium text-gray-800 flex-1 truncate">{text.value}</span>
+                      <div
+                        className="w-5 h-5 rounded-full border flex-shrink-0"
+                        style={{ backgroundColor: shade }}
+                      />
+                      <span className="font-medium text-gray-800 flex-1 truncate">
+                        {text.value}
+                      </span>
 
                       <div className="flex items-center gap-1">
-                        {availableTextColors.map((c) => c && (
-                          <button
-                            key={c.id}
-                            onClick={() => updateTextProp(i, "color", c.id)}
-                            className={`w-5 h-5 rounded-full border-2 transition-all flex-shrink-0 ${
-                              text.color === c.id ? "border-blue-500 scale-110" : "border-gray-200 opacity-60"
-                            }`}
-                            style={{ backgroundColor: config.printColorShades?.[c.id] || c.hex }}
-                            title={c.label_ar}
-                          />
-                        ))}
+                        {availableTextColors.map(
+                          (c) =>
+                            c && (
+                              <button
+                                key={c.id}
+                                onClick={() => updateTextProp(i, "color", c.id)}
+                                className={`w-5 h-5 rounded-full border-2 transition-all flex-shrink-0 ${
+                                  text.color === c.id
+                                    ? "border-blue-500 scale-110"
+                                    : "border-gray-200 opacity-60"
+                                }`}
+                                style={{
+                                  backgroundColor:
+                                    config.printColorShades?.[c.id] || c.hex,
+                                }}
+                                title={c.label_ar}
+                              />
+                            ),
+                        )}
                       </div>
 
                       <button
-                        onClick={() => setExpandedTextIdx(isExpanded ? null : i)}
+                        onClick={() =>
+                          setExpandedTextIdx(isExpanded ? null : i)
+                        }
                         className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
                         title="تحريك وتحجيم"
                       >
-                        {isExpanded ? <ChevronUp className="h-4 w-4" /> : <Move className="h-4 w-4" />}
+                        {isExpanded ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <Move className="h-4 w-4" />
+                        )}
                       </button>
 
-                      <Button size="sm" variant="ghost" className="text-red-400 h-7 w-7 p-0" onClick={() => removeText(i)}>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-red-400 h-7 w-7 p-0"
+                        onClick={() => removeText(i)}
+                      >
                         <X className="h-3.5 w-3.5" />
                       </Button>
                     </div>
@@ -390,24 +519,56 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
                       <div className="px-3 pb-3 space-y-3 border-t border-gray-200 pt-3 bg-white/50">
                         <div>
                           <div className="flex items-center justify-between mb-1">
-                            <Label className="text-xs text-gray-500">الموضع الأفقي</Label>
-                            <span className="text-xs text-gray-400">{text.x}%</span>
+                            <Label className="text-xs text-gray-500">
+                              الموضع الأفقي
+                            </Label>
+                            <span className="text-xs text-gray-400">
+                              {text.x}%
+                            </span>
                           </div>
-                          <Slider min={5} max={95} step={1} value={[text.x]} onValueChange={([v]) => updateTextProp(i, "x", v)} />
+                          <Slider
+                            min={5}
+                            max={95}
+                            step={1}
+                            value={[text.x]}
+                            onValueChange={([v]) => updateTextProp(i, "x", v)}
+                          />
                         </div>
                         <div>
                           <div className="flex items-center justify-between mb-1">
-                            <Label className="text-xs text-gray-500">الموضع الرأسي</Label>
-                            <span className="text-xs text-gray-400">{text.y}%</span>
+                            <Label className="text-xs text-gray-500">
+                              الموضع الرأسي
+                            </Label>
+                            <span className="text-xs text-gray-400">
+                              {text.y}%
+                            </span>
                           </div>
-                          <Slider min={5} max={95} step={1} value={[text.y]} onValueChange={([v]) => updateTextProp(i, "y", v)} />
+                          <Slider
+                            min={5}
+                            max={95}
+                            step={1}
+                            value={[text.y]}
+                            onValueChange={([v]) => updateTextProp(i, "y", v)}
+                          />
                         </div>
                         <div>
                           <div className="flex items-center justify-between mb-1">
-                            <Label className="text-xs text-gray-500">حجم الخط</Label>
-                            <span className="text-xs text-gray-400">{text.size}px</span>
+                            <Label className="text-xs text-gray-500">
+                              حجم الخط
+                            </Label>
+                            <span className="text-xs text-gray-400">
+                              {text.size}px
+                            </span>
                           </div>
-                          <Slider min={10} max={60} step={2} value={[text.size]} onValueChange={([v]) => updateTextProp(i, "size", v)} />
+                          <Slider
+                            min={10}
+                            max={60}
+                            step={2}
+                            value={[text.size]}
+                            onValueChange={([v]) =>
+                              updateTextProp(i, "size", v)
+                            }
+                          />
                         </div>
                       </div>
                     )}
@@ -432,11 +593,18 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
                     src={design.logoUrl}
                     alt="التصميم"
                     className="max-h-36 mx-auto object-contain rounded-lg"
-                    style={{ background: "repeating-conic-gradient(#e5e7eb 0% 25%, transparent 0% 50%) 50%/16px 16px" }}
+                    style={{
+                      background:
+                        "repeating-conic-gradient(#e5e7eb 0% 25%, transparent 0% 50%) 50%/16px 16px",
+                    }}
                   />
                 </div>
                 <div className="flex flex-wrap justify-center gap-2">
-                  <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
                     تغيير الصورة
                   </Button>
                   <Button
@@ -446,7 +614,11 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
                     disabled={isRemovingBg}
                     className="gap-1.5"
                   >
-                    {isRemovingBg ? <Loader2 className="h-3 w-3 animate-spin" /> : <Eraser className="h-3 w-3" />}
+                    {isRemovingBg ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Eraser className="h-3 w-3" />
+                    )}
                     إزالة الخلفية
                   </Button>
                   <Button
@@ -456,7 +628,11 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
                     disabled={isExtractingColors}
                     className="gap-1.5"
                   >
-                    {isExtractingColors ? <Loader2 className="h-3 w-3 animate-spin" /> : <ScanSearch className="h-3 w-3" />}
+                    {isExtractingColors ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <ScanSearch className="h-3 w-3" />
+                    )}
                     تحليل الألوان
                   </Button>
                   <Button
@@ -474,7 +650,9 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
                 </div>
 
                 <div className="flex items-center gap-2 justify-center">
-                  <Label className="text-xs text-gray-400">حساسية إزالة الخلفية</Label>
+                  <Label className="text-xs text-gray-400">
+                    حساسية إزالة الخلفية
+                  </Label>
                   <input
                     type="range"
                     min={10}
@@ -483,15 +661,26 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
                     onChange={(e) => setBgThreshold(Number(e.target.value))}
                     className="w-24 h-1.5 accent-blue-500"
                   />
-                  <span className="text-xs text-gray-400 w-6">{bgThreshold}</span>
+                  <span className="text-xs text-gray-400 w-6">
+                    {bgThreshold}
+                  </span>
                 </div>
               </div>
             ) : (
-              <button onClick={() => fileInputRef.current?.click()} className="py-8 w-full group">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="py-8 w-full group"
+              >
                 <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2 group-hover:text-blue-500 transition-colors" />
-                <p className="text-gray-600 font-medium group-hover:text-blue-600 transition-colors">ارفع صورة التصميم</p>
-                <p className="text-xs text-gray-400 mt-1">PNG, JPG, SVG, WebP — حتى 10 ميجابايت</p>
-                <p className="text-xs text-gray-400">سيتم تحليل ألوان الصورة تلقائياً</p>
+                <p className="text-gray-600 font-medium group-hover:text-blue-600 transition-colors">
+                  ارفع صورة التصميم
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  PNG, JPG, SVG, WebP — حتى 10 ميجابايت
+                </p>
+                <p className="text-xs text-gray-400">
+                  سيتم تحليل ألوان الصورة تلقائياً
+                </p>
               </button>
             )}
             <input
@@ -509,20 +698,36 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
                 <Label className="text-sm text-gray-600 font-medium">
                   ألوان مستخرجة من الصورة ({extractedColors.length})
                 </Label>
-                <span className="text-xs text-gray-400">عدد ألوان الطباعة المطلوب: {Math.min(extractedColors.length, maxColors)}</span>
+                <span className="text-xs text-gray-400">
+                  عدد ألوان الطباعة المطلوب:{" "}
+                  {Math.min(extractedColors.length, maxColors)}
+                </span>
               </div>
               <div className="flex flex-wrap gap-2">
                 {extractedColors.map((ec, i) => (
-                  <div key={i} className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-lg border border-gray-200">
-                    <div className="w-5 h-5 rounded-full border shadow-sm" style={{ backgroundColor: ec.hex }} />
-                    <span className="text-xs font-mono text-gray-500">{ec.hex}</span>
-                    <span className="text-xs text-gray-400">{ec.percentage}%</span>
+                  <div
+                    key={i}
+                    className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-lg border border-gray-200"
+                  >
+                    <div
+                      className="w-5 h-5 rounded-full border shadow-sm"
+                      style={{ backgroundColor: ec.hex }}
+                    />
+                    <span className="text-xs font-mono text-gray-500">
+                      {ec.hex}
+                    </span>
+                    <span className="text-xs text-gray-400">
+                      {ec.percentage}%
+                    </span>
                   </div>
                 ))}
               </div>
               <p className="text-xs text-gray-400 mt-2">
-                عدد ألوان الطباعة المستخرج: <strong className="text-gray-600">{Math.min(extractedColors.length, maxColors)}</strong> —
-                حدد الألوان المطابقة من القائمة أعلاه
+                عدد ألوان الطباعة المستخرج:{" "}
+                <strong className="text-gray-600">
+                  {Math.min(extractedColors.length, maxColors)}
+                </strong>{" "}
+                — حدد الألوان المطابقة من القائمة أعلاه
               </p>
             </div>
           )}
@@ -530,40 +735,73 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
 
         {(design.logoUrl || design.texts.length > 0) && (
           <div>
-            <Label className="font-semibold text-gray-700 mb-3 block">ضبط موضع التصميم العام</Label>
+            <Label className="font-semibold text-gray-700 mb-3 block">
+              ضبط موضع التصميم العام
+            </Label>
             <div className="space-y-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <Label className="text-sm text-gray-600">حجم التصميم</Label>
-                  <span className="text-xs text-gray-400">{Math.round(design.scale * 100)}%</span>
+                  <span className="text-xs text-gray-400">
+                    {Math.round(design.scale * 100)}%
+                  </span>
                 </div>
-                <Slider min={30} max={200} step={5} value={[design.scale * 100]} onValueChange={([v]) => updateDesign({ scale: v / 100 })} />
+                <Slider
+                  min={30}
+                  max={200}
+                  step={5}
+                  value={[design.scale * 100]}
+                  onValueChange={([v]) => updateDesign({ scale: v / 100 })}
+                />
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <Label className="text-sm text-gray-600">التموضع الأفقي</Label>
-                  <span className="text-xs text-gray-400">{design.offsetX}%</span>
+                  <Label className="text-sm text-gray-600">
+                    التموضع الأفقي
+                  </Label>
+                  <span className="text-xs text-gray-400">
+                    {design.offsetX}%
+                  </span>
                 </div>
-                <Slider min={-50} max={50} step={1} value={[design.offsetX]} onValueChange={([v]) => updateDesign({ offsetX: v })} />
+                <Slider
+                  min={-50}
+                  max={50}
+                  step={1}
+                  value={[design.offsetX]}
+                  onValueChange={([v]) => updateDesign({ offsetX: v })}
+                />
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <Label className="text-sm text-gray-600">التموضع الرأسي</Label>
-                  <span className="text-xs text-gray-400">{design.offsetY}%</span>
+                  <Label className="text-sm text-gray-600">
+                    التموضع الرأسي
+                  </Label>
+                  <span className="text-xs text-gray-400">
+                    {design.offsetY}%
+                  </span>
                 </div>
-                <Slider min={-50} max={50} step={1} value={[design.offsetY]} onValueChange={([v]) => updateDesign({ offsetY: v })} />
+                <Slider
+                  min={-50}
+                  max={50}
+                  step={1}
+                  value={[design.offsetY]}
+                  onValueChange={([v]) => updateDesign({ offsetY: v })}
+                />
               </div>
             </div>
           </div>
         )}
 
-        {!design.logoUrl && design.texts.length === 0 && config.printColors.length > 0 && (
-          <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-600 text-center border border-blue-100">
-            يمكنك إضافة نصوص أو صورة تصميم، أو تخطي هذا الجزء إذا لم تكن التفاصيل متوفرة حالياً
-          </div>
-        )}
+        {!design.logoUrl &&
+          design.texts.length === 0 &&
+          config.printColors.length > 0 && (
+            <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-600 text-center border border-blue-100">
+              يمكنك إضافة نصوص أو صورة تصميم، أو تخطي هذا الجزء إذا لم تكن
+              التفاصيل متوفرة حالياً
+            </div>
+          )}
       </div>
     </div>
   );

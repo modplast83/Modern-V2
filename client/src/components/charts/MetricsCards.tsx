@@ -1,5 +1,6 @@
-import { Card, CardContent } from "../ui/card";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+
+import { Card, CardContent } from "../ui/card";
 
 interface MetricCardProps {
   title: string;

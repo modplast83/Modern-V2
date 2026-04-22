@@ -1,9 +1,28 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  User,
+  AlertTriangle,
+  FileText,
+  CheckCircle,
+  XCircle,
+  Camera,
+  Shield,
+  TrendingUp,
+} from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useTranslation } from 'react-i18next';
-import PageLayout from "../components/layout/PageLayout";
-import UserProfile from "../components/dashboard/UserProfile";
+import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
+
 import AttendanceStats from "../components/dashboard/AttendanceStats";
 import FaceVerification from "../components/dashboard/FaceVerification";
+import UserProfile from "../components/dashboard/UserProfile";
+import PageLayout from "../components/layout/PageLayout";
+import LocationMapPicker from "../components/LocationMapPicker";
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
 import {
   Card,
   CardContent,
@@ -11,14 +30,6 @@ import {
   CardHeader,
   CardTitle,
 } from "../components/ui/card";
-import { Badge } from "../components/ui/badge";
-import { Button } from "../components/ui/button";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "../components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -36,7 +47,6 @@ import {
   FormMessage,
 } from "../components/ui/form";
 import { Input } from "../components/ui/input";
-import { Textarea } from "../components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -45,31 +55,22 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import {
-  Calendar,
-  Clock,
-  MapPin,
-  User,
-  AlertTriangle,
-  FileText,
-  CheckCircle,
-  XCircle,
-  Camera,
-  Shield,
-  TrendingUp,
-} from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { useToast } from "../hooks/use-toast";
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../components/ui/tabs";
+import { Textarea } from "../components/ui/textarea";
 import { useAuth } from "../hooks/use-auth";
+import { useToast } from "../hooks/use-toast";
 import { formatNumber } from "../lib/formatNumber";
-import LocationMapPicker from "../components/LocationMapPicker";
 
 // دالة حساب المسافة بين نقطتين جغرافيتين (Haversine formula)
 function calculateDistance(
   lat1: number,
   lon1: number,
   lat2: number,
-  lon2: number
+  lon2: number,
 ): number {
   const R = 6371e3; // نصف قطر الأرض بالأمتار
   const φ1 = (lat1 * Math.PI) / 180;
@@ -147,8 +148,10 @@ export default function UserDashboard() {
   const [locationError, setLocationError] = useState<string>("");
   const [isLoadingLocation, setIsLoadingLocation] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [lastLocationUpdate, setLastLocationUpdate] = useState<Date | null>(null);
-  
+  const [lastLocationUpdate, setLastLocationUpdate] = useState<Date | null>(
+    null,
+  );
+
   // Refs للتحكم في حالة المكون والتتبع
   const isMountedRef = useRef(true);
   const watchIdRef = useRef<number | null>(null);
@@ -156,23 +159,31 @@ export default function UserDashboard() {
   const lastErrorToastRef = useRef<number>(0);
 
   // جلب مواقع المصانع النشطة من قاعدة البيانات
-  const { data: activeLocations, isLoading: isLoadingLocations } = useQuery<any[]>({
+  const { data: activeLocations, isLoading: isLoadingLocations } = useQuery<
+    any[]
+  >({
     queryKey: ["/api/factory-locations/active"],
   });
 
-
   // دالة لعرض toast مع debounce لتجنب تكرار الرسائل
-  const showLocationToast = useCallback((title: string, description: string, variant?: "default" | "destructive") => {
-    const now = Date.now();
-    // تجنب عرض نفس الخطأ خلال 5 ثوان
-    if (variant === "destructive" && now - lastErrorToastRef.current < 5000) {
-      return;
-    }
-    if (variant === "destructive") {
-      lastErrorToastRef.current = now;
-    }
-    toast({ title, description, variant });
-  }, [toast]);
+  const showLocationToast = useCallback(
+    (
+      title: string,
+      description: string,
+      variant?: "default" | "destructive",
+    ) => {
+      const now = Date.now();
+      // تجنب عرض نفس الخطأ خلال 5 ثوان
+      if (variant === "destructive" && now - lastErrorToastRef.current < 5000) {
+        return;
+      }
+      if (variant === "destructive") {
+        lastErrorToastRef.current = now;
+      }
+      toast({ title, description, variant });
+    },
+    [toast],
+  );
 
   // تنظيف جميع الموارد
   const cleanupLocation = useCallback(() => {
@@ -182,24 +193,24 @@ export default function UserDashboard() {
       watchIdRef.current = null;
     }
     // إلغاء جميع المؤقتات
-    timeoutIdsRef.current.forEach(id => clearTimeout(id));
+    timeoutIdsRef.current.forEach((id) => clearTimeout(id));
     timeoutIdsRef.current = [];
   }, []);
 
   // دالة احتياطية: تحديد الموقع عبر IP (دقة أقل لكن تعمل دائماً)
   const tryIPGeolocation = useCallback(async () => {
     if (!isMountedRef.current) return false;
-    
+
     try {
-      console.log('🌐 جاري تحديد الموقع عبر IP...');
-      const response = await fetch('https://ipapi.co/json/', { 
-        signal: AbortSignal.timeout(10000) 
+      console.log("🌐 جاري تحديد الموقع عبر IP...");
+      const response = await fetch("https://ipapi.co/json/", {
+        signal: AbortSignal.timeout(10000),
       });
-      
-      if (!response.ok) throw new Error('IP API failed');
-      
+
+      if (!response.ok) throw new Error("IP API failed");
+
       const data = await response.json();
-      
+
       if (data.latitude && data.longitude && isMountedRef.current) {
         const newLocation = {
           lat: data.latitude,
@@ -207,8 +218,8 @@ export default function UserDashboard() {
           accuracy: 5000, // دقة تقريبية 5 كم
           timestamp: Date.now(),
         };
-        
-        console.log('✅ تم الحصول على الموقع عبر IP:', {
+
+        console.log("✅ تم الحصول على الموقع عبر IP:", {
           lat: newLocation.lat.toFixed(6),
           lng: newLocation.lng.toFixed(6),
           city: data.city,
@@ -219,15 +230,17 @@ export default function UserDashboard() {
         setLastLocationUpdate(new Date());
         setLocationError("");
         setIsLoadingLocation(false);
-        
+
         showLocationToast(
-          t('userDashboard.location.approximateLocation'),
-          t('userDashboard.location.regionInfo', { region: data.city || data.region || 'N/A' })
+          t("userDashboard.location.approximateLocation"),
+          t("userDashboard.location.regionInfo", {
+            region: data.city || data.region || "N/A",
+          }),
         );
         return true;
       }
     } catch (err) {
-      console.error('❌ فشل تحديد الموقع عبر IP:', err);
+      console.error("❌ فشل تحديد الموقع عبر IP:", err);
     }
     return false;
   }, [showLocationToast]);
@@ -241,10 +254,10 @@ export default function UserDashboard() {
 
     // إذا لم يكن GPS متاحاً، استخدم IP مباشرة
     if (!navigator.geolocation) {
-      console.log('⚠️ GPS غير متاح، جاري استخدام IP...');
-      tryIPGeolocation().then(success => {
+      console.log("⚠️ GPS غير متاح، جاري استخدام IP...");
+      tryIPGeolocation().then((success) => {
         if (!success && isMountedRef.current) {
-          setLocationError(t('userDashboard.location.cantGetLocation'));
+          setLocationError(t("userDashboard.location.cantGetLocation"));
           setIsLoadingLocation(false);
         }
       });
@@ -254,19 +267,19 @@ export default function UserDashboard() {
     // محاولة GPS أولاً، ثم IP كاحتياطي
     const tryGPS = () => {
       if (!isMountedRef.current) return;
-      
+
       navigator.geolocation.getCurrentPosition(
         (position) => {
           if (!isMountedRef.current) return;
-          
+
           const newLocation = {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
             accuracy: position.coords.accuracy,
             timestamp: position.timestamp,
           };
-          
-          console.log('✅ تم الحصول على الموقع GPS:', {
+
+          console.log("✅ تم الحصول على الموقع GPS:", {
             lat: newLocation.lat.toFixed(6),
             lng: newLocation.lng.toFixed(6),
             accuracy: Math.round(newLocation.accuracy),
@@ -276,54 +289,62 @@ export default function UserDashboard() {
           setLastLocationUpdate(new Date());
           setLocationError("");
           setIsLoadingLocation(false);
-          
-          const accuracyMessage = newLocation.accuracy <= 50 
-            ? t('userDashboard.location.accuracyExcellent')
-            : newLocation.accuracy <= 200 
-              ? t('userDashboard.location.accuracyGood')
-              : newLocation.accuracy <= 1000
-                ? t('userDashboard.location.accuracyMedium')
-                : t('userDashboard.location.accuracyLow');
-          
+
+          const accuracyMessage =
+            newLocation.accuracy <= 50
+              ? t("userDashboard.location.accuracyExcellent")
+              : newLocation.accuracy <= 200
+                ? t("userDashboard.location.accuracyGood")
+                : newLocation.accuracy <= 1000
+                  ? t("userDashboard.location.accuracyMedium")
+                  : t("userDashboard.location.accuracyLow");
+
           showLocationToast(
-            t('userDashboard.location.locationUpdated'),
-            t('userDashboard.location.accuracy', { accuracy: Math.round(newLocation.accuracy), quality: accuracyMessage })
+            t("userDashboard.location.locationUpdated"),
+            t("userDashboard.location.accuracy", {
+              accuracy: Math.round(newLocation.accuracy),
+              quality: accuracyMessage,
+            }),
           );
         },
         async (error) => {
           if (!isMountedRef.current) return;
-          
-          console.warn('⚠️ فشل GPS:', error.code, error.message);
-          
+
+          console.warn("⚠️ فشل GPS:", error.code, error.message);
+
           // جرب IP كاحتياطي
-          console.log('🔄 جاري المحاولة عبر IP...');
+          console.log("🔄 جاري المحاولة عبر IP...");
           const ipSuccess = await tryIPGeolocation();
-          
+
           if (!ipSuccess && isMountedRef.current) {
             setIsLoadingLocation(false);
-            let errorMessage = t('userDashboard.location.cantGetLocation');
-            
+            let errorMessage = t("userDashboard.location.cantGetLocation");
+
             switch (error.code) {
               case error.PERMISSION_DENIED:
-                errorMessage = t('userDashboard.location.permissionDenied');
+                errorMessage = t("userDashboard.location.permissionDenied");
                 break;
               case error.POSITION_UNAVAILABLE:
-                errorMessage = t('userDashboard.location.unavailable');
+                errorMessage = t("userDashboard.location.unavailable");
                 break;
               case error.TIMEOUT:
-                errorMessage = t('userDashboard.location.timeout');
+                errorMessage = t("userDashboard.location.timeout");
                 break;
             }
-            
+
             setLocationError(errorMessage);
-            showLocationToast(t('userDashboard.location.locationError'), errorMessage, "destructive");
+            showLocationToast(
+              t("userDashboard.location.locationError"),
+              errorMessage,
+              "destructive",
+            );
           }
         },
         {
-          enableHighAccuracy: false,  // نبدأ بدقة منخفضة للسرعة
+          enableHighAccuracy: false, // نبدأ بدقة منخفضة للسرعة
           timeout: 8000,
-          maximumAge: 300000  // قبول موقع حتى 5 دقائق قديم
-        }
+          maximumAge: 300000, // قبول موقع حتى 5 دقائق قديم
+        },
       );
     };
 
@@ -342,25 +363,25 @@ export default function UserDashboard() {
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
         if (!isMountedRef.current) return;
-        
+
         const newLocation = {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
           accuracy: position.coords.accuracy,
           timestamp: position.timestamp,
         };
-        
+
         // تحديث الموقع فقط إذا كانت القراءة أفضل
         setCurrentLocation((prevLocation) => {
           if (!isMountedRef.current) return prevLocation;
-          
-          const shouldUpdate = 
-            !prevLocation || 
-            newLocation.accuracy < (prevLocation.accuracy || Infinity) * 0.9 ||  // دقة أفضل بـ 10% على الأقل
-            (Date.now() - (prevLocation.timestamp || 0)) > 120000;  // أو مر دقيقتان
-          
+
+          const shouldUpdate =
+            !prevLocation ||
+            newLocation.accuracy < (prevLocation.accuracy || Infinity) * 0.9 || // دقة أفضل بـ 10% على الأقل
+            Date.now() - (prevLocation.timestamp || 0) > 120000; // أو مر دقيقتان
+
           if (shouldUpdate) {
-            console.log('📍 تحديث تلقائي:', {
+            console.log("📍 تحديث تلقائي:", {
               lat: newLocation.lat.toFixed(6),
               lng: newLocation.lng.toFixed(6),
               accuracy: Math.round(newLocation.accuracy),
@@ -374,20 +395,20 @@ export default function UserDashboard() {
       },
       (error) => {
         // لا نعرض أخطاء التتبع التلقائي للمستخدم - فقط نسجلها
-        console.warn('⚠️ خطأ في التتبع التلقائي:', error.code, error.message);
+        console.warn("⚠️ خطأ في التتبع التلقائي:", error.code, error.message);
       },
       {
-        enableHighAccuracy: false,  // استخدام دقة منخفضة للتتبع المستمر لتوفير البطارية
+        enableHighAccuracy: false, // استخدام دقة منخفضة للتتبع المستمر لتوفير البطارية
         timeout: 30000,
-        maximumAge: 30000
-      }
+        maximumAge: 30000,
+      },
     );
   }, []);
 
   // تهيئة الموقع عند تحميل المكون
   useEffect(() => {
     isMountedRef.current = true;
-    
+
     // تأخير بسيط لتجنب التشغيل المزدوج في StrictMode
     const initTimeout = setTimeout(() => {
       if (isMountedRef.current) {
@@ -477,9 +498,9 @@ export default function UserDashboard() {
     }) => {
       const response = await fetch("/api/attendance", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          "timezone": Intl.DateTimeFormat().resolvedOptions().timeZone
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         },
         body: JSON.stringify({
           user_id: user?.id,
@@ -493,7 +514,9 @@ export default function UserDashboard() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || t('userDashboard.attendance.failedToRegister'));
+        throw new Error(
+          errorData.message || t("userDashboard.attendance.failedToRegister"),
+        );
       }
 
       return response.json();
@@ -503,11 +526,11 @@ export default function UserDashboard() {
       queryClient.invalidateQueries({
         queryKey: ["/api/attendance/daily-status", user?.id],
       });
-      toast({ title: t('userDashboard.attendance.attendanceSuccess') });
+      toast({ title: t("userDashboard.attendance.attendanceSuccess") });
     },
     onError: (error: Error) => {
       toast({
-        title: t('userDashboard.attendance.attendanceError'),
+        title: t("userDashboard.attendance.attendanceError"),
         description: error.message,
         variant: "destructive",
       });
@@ -669,7 +692,7 @@ export default function UserDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/user-requests"] });
-      toast({ title: t('userDashboard.requests.submitSuccess') });
+      toast({ title: t("userDashboard.requests.submitSuccess") });
       requestForm.reset();
     },
   });
@@ -679,8 +702,8 @@ export default function UserDashboard() {
     // التحقق من وجود الموقع الحالي
     if (!currentLocation) {
       toast({
-        title: t('userDashboard.location.error'),
-        description: t('userDashboard.location.allowAccess'),
+        title: t("userDashboard.location.error"),
+        description: t("userDashboard.location.allowAccess"),
         variant: "destructive",
       });
       return;
@@ -692,8 +715,8 @@ export default function UserDashboard() {
       const tenMinutes = 10 * 60 * 1000;
       if (locationAge > tenMinutes) {
         toast({
-          title: t('userDashboard.location.outdated'),
-          description: t('userDashboard.location.refreshLocation'),
+          title: t("userDashboard.location.outdated"),
+          description: t("userDashboard.location.refreshLocation"),
           variant: "destructive",
         });
         return;
@@ -703,8 +726,8 @@ export default function UserDashboard() {
     // انتظار تحميل المواقع
     if (isLoadingLocations) {
       toast({
-        title: t('common.loading'),
-        description: t('common.pleaseWait'),
+        title: t("common.loading"),
+        description: t("common.pleaseWait"),
       });
       return;
     }
@@ -712,8 +735,8 @@ export default function UserDashboard() {
     // التحقق من وجود مواقع نشطة
     if (!activeLocations || activeLocations.length === 0) {
       toast({
-        title: t('common.error'),
-        description: t('userDashboard.location.notNearFactory'),
+        title: t("common.error"),
+        description: t("userDashboard.location.notNearFactory"),
         variant: "destructive",
       });
       return;
@@ -730,7 +753,7 @@ export default function UserDashboard() {
         currentLocation.lat,
         currentLocation.lng,
         parseFloat(factoryLocation.latitude),
-        parseFloat(factoryLocation.longitude)
+        parseFloat(factoryLocation.longitude),
       );
 
       if (distance < closestDistance) {
@@ -750,23 +773,26 @@ export default function UserDashboard() {
     if (!isWithinRange) {
       // تحذير إضافي إذا كانت الدقة منخفضة
       const accuracyValue = currentLocation.accuracy;
-      const hasHighAccuracy = accuracyValue !== undefined && accuracyValue <= 1000;
-      
-      const accuracyNote = !hasHighAccuracy 
-        ? ` (${t('userDashboard.location.gpsAccuracy')}: ${Math.round(accuracyValue || 0)} ${t('userDashboard.location.meters')} - ${t('userDashboard.location.tryRefresh')})`
+      const hasHighAccuracy =
+        accuracyValue !== undefined && accuracyValue <= 1000;
+
+      const accuracyNote = !hasHighAccuracy
+        ? ` (${t("userDashboard.location.gpsAccuracy")}: ${Math.round(accuracyValue || 0)} ${t("userDashboard.location.meters")} - ${t("userDashboard.location.tryRefresh")})`
         : "";
-      
+
       toast({
-        title: t('userDashboard.location.notNearFactory'),
-        description: t('userDashboard.location.distanceInfo', { distance: Math.round(closestDistance) }),
+        title: t("userDashboard.location.notNearFactory"),
+        description: t("userDashboard.location.distanceInfo", {
+          distance: Math.round(closestDistance),
+        }),
         variant: "destructive",
       });
       return;
     }
 
     // إرسال الطلب مع الموقع الجغرافي والمعلومات الأمنية
-    attendanceMutation.mutate({ 
-      status, 
+    attendanceMutation.mutate({
+      status,
       action,
       location: {
         lat: currentLocation.lat,
@@ -775,8 +801,8 @@ export default function UserDashboard() {
         distance: Math.round(validDistance),
         timestamp: currentLocation.timestamp,
         // كشف Mock Location - في المتصفحات الحديثة يمكن كشف بعض أنواع التزوير
-        isMocked: false // سيتم التحقق إضافياً على الخادم
-      }
+        isMocked: false, // سيتم التحقق إضافياً على الخادم
+      },
     });
   };
 
@@ -808,1300 +834,1481 @@ export default function UserDashboard() {
   };
 
   return (
-    <PageLayout title={t('userDashboard.title')} description={`${t('dashboard.welcome')} ${userData?.full_name || userData?.username}`}>
+    <PageLayout
+      title={t("userDashboard.title")}
+      description={`${t("dashboard.welcome")} ${userData?.full_name || userData?.username}`}
+    >
       <div className="max-w-7xl mx-auto px-2 sm:px-4">
         <Tabs defaultValue="overview" className="space-y-4 sm:space-y-6">
-              <TabsList className="grid w-full grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-1 h-auto p-1">
-                <TabsTrigger value="overview" className="text-xs sm:text-sm px-2 py-1.5">{t('userDashboard.tabs.quickActions')}</TabsTrigger>
-                <TabsTrigger value="stats" className="text-xs sm:text-sm px-2 py-1.5">
-                  <TrendingUp className="h-3 w-3 sm:ml-1 hidden sm:inline" />
-                  {t('userDashboard.tabs.statistics')}
-                </TabsTrigger>
-                <TabsTrigger value="profile" className="text-xs sm:text-sm px-2 py-1.5">{t('userDashboard.tabs.profile')}</TabsTrigger>
-                <TabsTrigger value="attendance" className="text-xs sm:text-sm px-2 py-1.5">{t('userDashboard.tabs.attendance')}</TabsTrigger>
-                <TabsTrigger value="violations" className="text-xs sm:text-sm px-2 py-1.5">{t('userDashboard.tabs.violations')}</TabsTrigger>
-                <TabsTrigger value="requests" className="text-xs sm:text-sm px-2 py-1.5">{t('userDashboard.tabs.requests')}</TabsTrigger>
-                <TabsTrigger value="location" className="text-xs sm:text-sm px-2 py-1.5">{t('settings.tabs.location')}</TabsTrigger>
-              </TabsList>
+          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-1 h-auto p-1">
+            <TabsTrigger
+              value="overview"
+              className="text-xs sm:text-sm px-2 py-1.5"
+            >
+              {t("userDashboard.tabs.quickActions")}
+            </TabsTrigger>
+            <TabsTrigger
+              value="stats"
+              className="text-xs sm:text-sm px-2 py-1.5"
+            >
+              <TrendingUp className="h-3 w-3 sm:ml-1 hidden sm:inline" />
+              {t("userDashboard.tabs.statistics")}
+            </TabsTrigger>
+            <TabsTrigger
+              value="profile"
+              className="text-xs sm:text-sm px-2 py-1.5"
+            >
+              {t("userDashboard.tabs.profile")}
+            </TabsTrigger>
+            <TabsTrigger
+              value="attendance"
+              className="text-xs sm:text-sm px-2 py-1.5"
+            >
+              {t("userDashboard.tabs.attendance")}
+            </TabsTrigger>
+            <TabsTrigger
+              value="violations"
+              className="text-xs sm:text-sm px-2 py-1.5"
+            >
+              {t("userDashboard.tabs.violations")}
+            </TabsTrigger>
+            <TabsTrigger
+              value="requests"
+              className="text-xs sm:text-sm px-2 py-1.5"
+            >
+              {t("userDashboard.tabs.requests")}
+            </TabsTrigger>
+            <TabsTrigger
+              value="location"
+              className="text-xs sm:text-sm px-2 py-1.5"
+            >
+              {t("settings.tabs.location")}
+            </TabsTrigger>
+          </TabsList>
 
-              {/* Overview Tab */}
-              <TabsContent value="overview" className="space-y-6">
-                {/* Current Date Display */}
-                <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-xl font-bold text-blue-900 dark:text-blue-100">
-                        {new Date().toLocaleDateString("en-US", {
-                          weekday: "long",
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })}
-                      </h2>
-                      <p className="text-sm text-blue-600 dark:text-blue-300">
-                        {new Date().toLocaleTimeString("en-US", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          hour12: true,
-                        })}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-600 dark:text-gray-300">
-                        {t('userDashboard.attendance.currentStatus')}
-                      </p>
-                      <span
-                        className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
-                          dailyAttendanceStatus?.currentStatus === "حاضر"
-                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-                            : dailyAttendanceStatus?.currentStatus ===
-                                "في الاستراحة"
-                              ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
-                              : dailyAttendanceStatus?.currentStatus === "يعمل"
-                                ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
-                                : dailyAttendanceStatus?.currentStatus ===
-                                    "مغادر"
-                                  ? "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300"
-                                  : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
-                        }`}
-                      >
-                        {dailyAttendanceStatus?.currentStatus || t('userDashboard.attendance.absent')}
-                      </span>
-                    </div>
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="space-y-6">
+            {/* Current Date Display */}
+            <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-blue-900 dark:text-blue-100">
+                    {new Date().toLocaleDateString("en-US", {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </h2>
+                  <p className="text-sm text-blue-600 dark:text-blue-300">
+                    {new Date().toLocaleTimeString("en-US", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: true,
+                    })}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                    {t("userDashboard.attendance.currentStatus")}
+                  </p>
+                  <span
+                    className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
+                      dailyAttendanceStatus?.currentStatus === "حاضر"
+                        ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                        : dailyAttendanceStatus?.currentStatus ===
+                            "في الاستراحة"
+                          ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
+                          : dailyAttendanceStatus?.currentStatus === "يعمل"
+                            ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+                            : dailyAttendanceStatus?.currentStatus === "مغادر"
+                              ? "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300"
+                              : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+                    }`}
+                  >
+                    {dailyAttendanceStatus?.currentStatus ||
+                      t("userDashboard.attendance.absent")}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    {t("userDashboard.attendance.todayStatus")}
+                  </CardTitle>
+                  <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {dailyAttendanceStatus?.currentStatus ? (
+                      <div className="flex flex-col gap-2">
+                        <Badge
+                          className={getStatusColor(
+                            dailyAttendanceStatus.currentStatus,
+                          )}
+                        >
+                          {dailyAttendanceStatus.currentStatus}
+                        </Badge>
+                        {(dailyAttendanceStatus.currentStatus === "حاضر" ||
+                          dailyAttendanceStatus.currentStatus ===
+                            "في الاستراحة" ||
+                          dailyAttendanceStatus.currentStatus === "يعمل" ||
+                          dailyAttendanceStatus.currentStatus === "مغادر") &&
+                          dailyAttendanceStatus.hasCheckedIn && (
+                            <span className="text-sm text-gray-600 dark:text-gray-300">
+                              {(() => {
+                                const todayRecord = attendanceRecords?.find(
+                                  (record) =>
+                                    record.date ===
+                                      new Date().toISOString().split("T")[0] &&
+                                    record.user_id === user?.id &&
+                                    record.check_in_time,
+                                );
+
+                                if (!todayRecord?.check_in_time) return "";
+
+                                const checkIn = new Date(
+                                  todayRecord.check_in_time,
+                                );
+                                const now = todayRecord.check_out_time
+                                  ? new Date(todayRecord.check_out_time)
+                                  : currentTime;
+                                const diff = now.getTime() - checkIn.getTime();
+                                const hours = Math.floor(
+                                  diff / (1000 * 60 * 60),
+                                );
+                                const minutes = Math.floor(
+                                  (diff % (1000 * 60 * 60)) / (1000 * 60),
+                                );
+
+                                return `${hours} ${t("userDashboard.attendance.hour")} ${minutes} ${t("userDashboard.attendance.minute")}`;
+                              })()}
+                            </span>
+                          )}
+                      </div>
+                    ) : (
+                      <Badge variant="outline">
+                        {t("userDashboard.attendance.notRegistered")}
+                      </Badge>
+                    )}
                   </div>
-                </div>
+                </CardContent>
+              </Card>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">
-                        {t('userDashboard.attendance.todayStatus')}
-                      </CardTitle>
-                      <CheckCircle className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">
-                        {dailyAttendanceStatus?.currentStatus ? (
-                          <div className="flex flex-col gap-2">
-                            <Badge
-                              className={getStatusColor(
-                                dailyAttendanceStatus.currentStatus,
-                              )}
-                            >
-                              {dailyAttendanceStatus.currentStatus}
-                            </Badge>
-                            {(dailyAttendanceStatus.currentStatus === "حاضر" ||
-                              dailyAttendanceStatus.currentStatus ===
-                                "في الاستراحة" ||
-                              dailyAttendanceStatus.currentStatus === "يعمل" ||
-                              dailyAttendanceStatus.currentStatus ===
-                                "مغادر") &&
-                              dailyAttendanceStatus.hasCheckedIn && (
-                                <span className="text-sm text-gray-600 dark:text-gray-300">
-                                  {(() => {
-                                    const todayRecord = attendanceRecords?.find(
-                                      (record) =>
-                                        record.date ===
-                                          new Date()
-                                            .toISOString()
-                                            .split("T")[0] &&
-                                        record.user_id === user?.id &&
-                                        record.check_in_time,
-                                    );
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    {t("userDashboard.attendance.attendanceDays")}
+                  </CardTitle>
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {formatNumber(
+                      attendanceRecords?.filter((r) => r.check_in_time !== null)
+                        .length || 0,
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {t("userDashboard.attendance.thisMonth")}
+                  </p>
+                </CardContent>
+              </Card>
 
-                                    if (!todayRecord?.check_in_time) return "";
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    {t("userDashboard.violations.activeViolations")}
+                  </CardTitle>
+                  <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {formatNumber(
+                      violations?.filter((v) => v.status === "معلق").length ||
+                        0,
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {t("userDashboard.violations.pendingViolation")}
+                  </p>
+                </CardContent>
+              </Card>
 
-                                    const checkIn = new Date(
-                                      todayRecord.check_in_time,
-                                    );
-                                    const now = todayRecord.check_out_time
-                                      ? new Date(todayRecord.check_out_time)
-                                      : currentTime;
-                                    const diff =
-                                      now.getTime() - checkIn.getTime();
-                                    const hours = Math.floor(
-                                      diff / (1000 * 60 * 60),
-                                    );
-                                    const minutes = Math.floor(
-                                      (diff % (1000 * 60 * 60)) / (1000 * 60),
-                                    );
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    {t("userDashboard.requests.pendingRequests")}
+                  </CardTitle>
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {formatNumber(
+                      userRequests?.filter((r) => r.status === "معلق").length ||
+                        0,
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {t("userDashboard.requests.awaitingResponse")}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
 
-                                    return `${hours} ${t('userDashboard.attendance.hour')} ${minutes} ${t('userDashboard.attendance.minute')}`;
-                                  })()}
-                                </span>
-                              )}
-                          </div>
-                        ) : (
-                          <Badge variant="outline">{t('userDashboard.attendance.notRegistered')}</Badge>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">
-                        {t('userDashboard.attendance.attendanceDays')}
-                      </CardTitle>
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">
-                        {formatNumber(
-                          attendanceRecords?.filter(
-                            (r) => r.check_in_time !== null,
-                          ).length || 0,
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground">{t('userDashboard.attendance.thisMonth')}</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">
-                        {t('userDashboard.violations.activeViolations')}
-                      </CardTitle>
-                      <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">
-                        {formatNumber(
-                          violations?.filter((v) => v.status === "معلق")
-                            .length || 0,
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {t('userDashboard.violations.pendingViolation')}
-                      </p>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">
-                        {t('userDashboard.requests.pendingRequests')}
-                      </CardTitle>
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">
-                        {formatNumber(
-                          userRequests?.filter((r) => r.status === "معلق")
-                            .length || 0,
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {t('userDashboard.requests.awaitingResponse')}
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Quick Actions */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>{t('userDashboard.attendance.quickActions')}</CardTitle>
-                    <CardDescription>
-                      {t('userDashboard.attendance.currentStatus')}:{" "}
-                      {dailyAttendanceStatus?.currentStatus ||
-                        t('userDashboard.attendance.notCheckedIn')}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {/* Check In Button */}
-                      <div className="flex flex-col items-center">
-                        <Button
-                          onClick={() => handleAttendanceAction("حاضر")}
-                          className="bg-green-600 hover:bg-green-700 w-full"
-                          disabled={
-                            dailyAttendanceStatus?.hasCheckedIn ||
-                            attendanceMutation.isPending
-                          }
-                        >
-                          {dailyAttendanceStatus?.hasCheckedIn
-                            ? `✓ ${t('userDashboard.attendance.checkedIn')}`
-                            : t('userDashboard.attendance.checkIn')}
-                        </Button>
-                        <div className="text-xs text-gray-500 mt-1 h-4 text-center">
-                          {(() => {
-                            const todayRecords = attendanceRecords?.filter(
-                              (record) =>
-                                record.date ===
-                                  new Date().toISOString().split("T")[0] &&
-                                record.user_id === user?.id,
-                            );
-                            const checkInRecord = todayRecords?.find(
-                              (record) => record.check_in_time,
-                            );
-                            return checkInRecord?.check_in_time
-                              ? new Date(checkInRecord.check_in_time)
-                                  .toLocaleTimeString("ar-SA", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    hour12: true,
-                                  })
-                                  .replace("ص", "ص")
-                                  .replace("م", "م")
-                              : "";
-                          })()}
-                        </div>
-                      </div>
-
-                      {/* Lunch Start Button */}
-                      <div className="flex flex-col items-center">
-                        <Button
-                          onClick={() => handleAttendanceAction("في الاستراحة")}
-                          className="bg-yellow-600 hover:bg-yellow-700 w-full"
-                          disabled={
-                            !dailyAttendanceStatus?.hasCheckedIn ||
-                            dailyAttendanceStatus?.hasStartedLunch ||
-                            attendanceMutation.isPending
-                          }
-                        >
-                          {dailyAttendanceStatus?.hasStartedLunch
-                            ? `✓ ${t('userDashboard.attendance.breakTaken')}`
-                            : t('userDashboard.attendance.startBreak')}
-                        </Button>
-                        <div className="text-xs text-gray-500 mt-1 h-4 text-center">
-                          {(() => {
-                            const todayRecords = attendanceRecords?.filter(
-                              (record) =>
-                                record.date ===
-                                  new Date().toISOString().split("T")[0] &&
-                                record.user_id === user?.id,
-                            );
-                            const lunchStartRecord = todayRecords?.find(
-                              (record) => record.lunch_start_time,
-                            );
-                            return lunchStartRecord?.lunch_start_time
-                              ? new Date(lunchStartRecord.lunch_start_time)
-                                  .toLocaleTimeString("ar-SA", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    hour12: true,
-                                  })
-                                  .replace("ص", "ص")
-                                  .replace("م", "م")
-                              : "";
-                          })()}
-                        </div>
-                      </div>
-
-                      {/* Lunch End Button */}
-                      <div className="flex flex-col items-center">
-                        <Button
-                          onClick={() =>
-                            handleAttendanceAction("يعمل", "end_lunch")
-                          }
-                          className="bg-blue-600 hover:bg-blue-700 w-full"
-                          disabled={
-                            !dailyAttendanceStatus?.hasStartedLunch ||
-                            dailyAttendanceStatus?.hasEndedLunch ||
-                            attendanceMutation.isPending
-                          }
-                        >
-                          {dailyAttendanceStatus?.hasEndedLunch
-                            ? `✓ ${t('userDashboard.attendance.breakEnded')}`
-                            : t('userDashboard.attendance.endBreak')}
-                        </Button>
-                        <div className="text-xs text-gray-500 mt-1 h-4 text-center">
-                          {(() => {
-                            const todayRecords = attendanceRecords?.filter(
-                              (record) =>
-                                record.date ===
-                                  new Date().toISOString().split("T")[0] &&
-                                record.user_id === user?.id,
-                            );
-                            const lunchEndRecord = todayRecords?.find(
-                              (record) => record.lunch_end_time,
-                            );
-                            return lunchEndRecord?.lunch_end_time
-                              ? new Date(lunchEndRecord.lunch_end_time)
-                                  .toLocaleTimeString("ar-SA", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    hour12: true,
-                                  })
-                                  .replace("ص", "ص")
-                                  .replace("م", "م")
-                              : "";
-                          })()}
-                        </div>
-                      </div>
-
-                      {/* Check Out Button */}
-                      <div className="flex flex-col items-center">
-                        <Button
-                          onClick={() => handleAttendanceAction("مغادر")}
-                          className="bg-gray-600 hover:bg-gray-700 w-full"
-                          disabled={
-                            !dailyAttendanceStatus?.hasCheckedIn ||
-                            dailyAttendanceStatus?.hasCheckedOut ||
-                            attendanceMutation.isPending
-                          }
-                        >
-                          {dailyAttendanceStatus?.hasCheckedOut
-                            ? `✓ ${t('userDashboard.attendance.checkedOut')}`
-                            : t('userDashboard.attendance.checkOut')}
-                        </Button>
-                        <div className="text-xs text-gray-500 mt-1 h-4 text-center">
-                          {(() => {
-                            const todayRecords = attendanceRecords?.filter(
-                              (record) =>
-                                record.date ===
-                                  new Date().toISOString().split("T")[0] &&
-                                record.user_id === user?.id,
-                            );
-                            const checkOutRecord = todayRecords?.find(
-                              (record) => record.check_out_time,
-                            );
-                            return checkOutRecord?.check_out_time
-                              ? new Date(checkOutRecord.check_out_time)
-                                  .toLocaleTimeString("ar-SA", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    hour12: true,
-                                  })
-                                  .replace("ص", "ص")
-                                  .replace("م", "م")
-                              : "";
-                          })()}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Status indicator with timestamps */}
-                    <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                      <h4 className="font-semibold text-sm mb-2">{t('userDashboard.attendance.todayLog')}:</h4>
-                      {attendanceRecords
-                        ?.filter(
+            {/* Quick Actions */}
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  {t("userDashboard.attendance.quickActions")}
+                </CardTitle>
+                <CardDescription>
+                  {t("userDashboard.attendance.currentStatus")}:{" "}
+                  {dailyAttendanceStatus?.currentStatus ||
+                    t("userDashboard.attendance.notCheckedIn")}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {/* Check In Button */}
+                  <div className="flex flex-col items-center">
+                    <Button
+                      onClick={() => handleAttendanceAction("حاضر")}
+                      className="bg-green-600 hover:bg-green-700 w-full"
+                      disabled={
+                        dailyAttendanceStatus?.hasCheckedIn ||
+                        attendanceMutation.isPending
+                      }
+                    >
+                      {dailyAttendanceStatus?.hasCheckedIn
+                        ? `✓ ${t("userDashboard.attendance.checkedIn")}`
+                        : t("userDashboard.attendance.checkIn")}
+                    </Button>
+                    <div className="text-xs text-gray-500 mt-1 h-4 text-center">
+                      {(() => {
+                        const todayRecords = attendanceRecords?.filter(
                           (record) =>
                             record.date ===
                               new Date().toISOString().split("T")[0] &&
                             record.user_id === user?.id,
-                        )
-                        .map((record, index) => (
-                          <div key={record.id} className="mb-2 last:mb-0">
-                            {record.check_in_time && (
-                              <div className="flex items-center justify-between text-sm py-1">
-                                <span className="text-green-600">
-                                  ✓ {t('userDashboard.attendance.checkInRecord')}
-                                </span>
-                                <span className="text-gray-600">
-                                  {new Date(
-                                    record.check_in_time,
-                                  ).toLocaleTimeString("en-US", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    hour12: true,
-                                  })}
-                                </span>
-                              </div>
-                            )}
-                            {record.lunch_start_time && (
-                              <div className="flex items-center justify-between text-sm py-1">
-                                <span className="text-yellow-600">
-                                  ✓ {t('userDashboard.attendance.breakStart')}
-                                </span>
-                                <span className="text-gray-600">
-                                  {new Date(
-                                    record.lunch_start_time,
-                                  ).toLocaleTimeString("en-US", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    hour12: true,
-                                  })}
-                                </span>
-                              </div>
-                            )}
-                            {record.lunch_end_time && (
-                              <div className="flex items-center justify-between text-sm py-1">
-                                <span className="text-blue-600">
-                                  ✓ {t('userDashboard.attendance.breakEnd')}
-                                </span>
-                                <span className="text-gray-600">
-                                  {new Date(
-                                    record.lunch_end_time,
-                                  ).toLocaleTimeString("en-US", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    hour12: true,
-                                  })}
-                                </span>
-                              </div>
-                            )}
-                            {record.check_out_time && (
-                              <div className="flex items-center justify-between text-sm py-1">
-                                <span className="text-gray-600">
-                                  ✓ {t('userDashboard.attendance.checkOutRecord')}
-                                </span>
-                                <span className="text-gray-600">
-                                  {new Date(
-                                    record.check_out_time,
-                                  ).toLocaleTimeString("en-US", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    hour12: true,
-                                  })}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-
-                      {/* Working Hours Summary */}
-                      {dailyAttendanceStatus?.hasCheckedIn && (
-                        <div className="mt-3 pt-3 border-t">
-                          <h5 className="font-medium text-sm mb-2 text-blue-700 dark:text-blue-300">
-                            📊 {t('userDashboard.attendance.workingSummary')}{" "}
-                            {dailyHours.isFriday ? `(${t('userDashboard.attendance.friday')})` : ""}:
-                          </h5>
-                          <div className="grid grid-cols-2 gap-2 text-xs">
-                            {/* Working Hours */}
-                            <div className="bg-green-50 dark:bg-green-900/20 p-2 rounded">
-                              <div className="flex items-center justify-between">
-                                <span className="text-green-700 dark:text-green-300">
-                                  ⏰ {t('userDashboard.attendance.workingHours')}
-                                </span>
-                                <span className="font-medium text-green-800 dark:text-green-200">
-                                  {dailyHours.workingHours.toFixed(1)} {t('userDashboard.attendance.hour')}
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Overtime Hours */}
-                            <div className="bg-orange-50 dark:bg-orange-900/20 p-2 rounded">
-                              <div className="flex items-center justify-between">
-                                <span className="text-orange-700 dark:text-orange-300">
-                                  ⚡ {t('userDashboard.attendance.overtimeHours')}
-                                </span>
-                                <span className="font-medium text-orange-800 dark:text-orange-200">
-                                  {dailyHours.overtimeHours.toFixed(1)} {t('userDashboard.attendance.hour')}
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Break Time */}
-                            <div className="bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded">
-                              <div className="flex items-center justify-between">
-                                <span className="text-yellow-700 dark:text-yellow-300">
-                                  ☕ {t('userDashboard.attendance.breakTime')}
-                                </span>
-                                <span className="font-medium text-yellow-800 dark:text-yellow-200">
-                                  {dailyHours.breakMinutes} {t('userDashboard.attendance.minute')}
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Deficit Hours (if any) */}
-                            {dailyHours.deficitHours > 0 && (
-                              <div className="bg-red-50 dark:bg-red-900/20 p-2 rounded">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-red-700 dark:text-red-300">
-                                    ⚠️ {t('userDashboard.attendance.deficitHours')}
-                                  </span>
-                                  <span className="font-medium text-red-800 dark:text-red-200">
-                                    {dailyHours.deficitHours.toFixed(1)} {t('userDashboard.attendance.hour')}
-                                  </span>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Additional Info */}
-                          <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">
-                            <div className="flex justify-between">
-                              <span>{t('userDashboard.attendance.totalTime')}:</span>
-                              <span>
-                                {Math.floor(dailyHours.totalMinutes / 60)}:
-                                {(dailyHours.totalMinutes % 60)
-                                  .toString()
-                                  .padStart(2, "0")}
-                              </span>
-                            </div>
-                            {dailyHours.isFriday && (
-                              <div className="text-orange-600 dark:text-orange-400 mt-1 font-medium">
-                                * {t('userDashboard.attendance.fridayNote')}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Status indicators for missing actions */}
-                      <div className="mt-2 pt-2 border-t">
-                        {!dailyAttendanceStatus?.hasCheckedIn && (
-                          <div className="flex items-center justify-between text-sm py-1">
-                            <span className="text-gray-400">
-                              ⏳ {t('userDashboard.attendance.checkInRecord')}
-                            </span>
-                            <span className="text-gray-400">{t('userDashboard.attendance.notDone')}</span>
-                          </div>
-                        )}
-                        {!dailyAttendanceStatus?.hasStartedLunch &&
-                          dailyAttendanceStatus?.hasCheckedIn && (
-                            <div className="flex items-center justify-between text-sm py-1">
-                              <span className="text-gray-400">
-                                ⏳ {t('userDashboard.attendance.breakStart')}
-                              </span>
-                              <span className="text-gray-400">{t('userDashboard.attendance.notDone')}</span>
-                            </div>
-                          )}
-                        {!dailyAttendanceStatus?.hasEndedLunch &&
-                          dailyAttendanceStatus?.hasStartedLunch && (
-                            <div className="flex items-center justify-between text-sm py-1">
-                              <span className="text-gray-400">
-                                ⏳ {t('userDashboard.attendance.breakEnd')}
-                              </span>
-                              <span className="text-gray-400">{t('userDashboard.attendance.notDone')}</span>
-                            </div>
-                          )}
-                        {!dailyAttendanceStatus?.hasCheckedOut &&
-                          dailyAttendanceStatus?.hasCheckedIn && (
-                            <div className="flex items-center justify-between text-sm py-1">
-                              <span className="text-gray-400">
-                                ⏳ {t('userDashboard.attendance.checkOutRecord')}
-                              </span>
-                              <span className="text-gray-400">{t('userDashboard.attendance.notDone')}</span>
-                            </div>
-                          )}
-                      </div>
+                        );
+                        const checkInRecord = todayRecords?.find(
+                          (record) => record.check_in_time,
+                        );
+                        return checkInRecord?.check_in_time
+                          ? new Date(checkInRecord.check_in_time)
+                              .toLocaleTimeString("ar-SA", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: true,
+                              })
+                              .replace("ص", "ص")
+                              .replace("م", "م")
+                          : "";
+                      })()}
                     </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
+                  </div>
 
-              {/* Statistics Tab */}
-              <TabsContent value="stats" className="space-y-4">
-                {user?.id && <AttendanceStats userId={user.id} />}
-                
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Shield className="h-5 w-5 text-primary" />
-                      {t('userDashboard.security.title')}
-                    </CardTitle>
-                    <CardDescription>
-                      {t('userDashboard.security.description')}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {user?.id && (
-                        <>
-                          <FaceVerification
-                            userId={user.id}
-                            actionType="check_in"
-                            onVerificationSuccess={() => handleAttendanceAction("حاضر")}
-                            onVerificationFail={() => toast({ title: t('userDashboard.security.verificationFailed'), variant: "destructive" })}
-                          />
-                        </>
-                      )}
+                  {/* Lunch Start Button */}
+                  <div className="flex flex-col items-center">
+                    <Button
+                      onClick={() => handleAttendanceAction("في الاستراحة")}
+                      className="bg-yellow-600 hover:bg-yellow-700 w-full"
+                      disabled={
+                        !dailyAttendanceStatus?.hasCheckedIn ||
+                        dailyAttendanceStatus?.hasStartedLunch ||
+                        attendanceMutation.isPending
+                      }
+                    >
+                      {dailyAttendanceStatus?.hasStartedLunch
+                        ? `✓ ${t("userDashboard.attendance.breakTaken")}`
+                        : t("userDashboard.attendance.startBreak")}
+                    </Button>
+                    <div className="text-xs text-gray-500 mt-1 h-4 text-center">
+                      {(() => {
+                        const todayRecords = attendanceRecords?.filter(
+                          (record) =>
+                            record.date ===
+                              new Date().toISOString().split("T")[0] &&
+                            record.user_id === user?.id,
+                        );
+                        const lunchStartRecord = todayRecords?.find(
+                          (record) => record.lunch_start_time,
+                        );
+                        return lunchStartRecord?.lunch_start_time
+                          ? new Date(lunchStartRecord.lunch_start_time)
+                              .toLocaleTimeString("ar-SA", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: true,
+                              })
+                              .replace("ص", "ص")
+                              .replace("م", "م")
+                          : "";
+                      })()}
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 text-center">
-                      <Camera className="h-3 w-3 inline ml-1" />
-                      {t('userDashboard.security.faceVerificationNote')}
-                    </p>
-                  </CardContent>
-                </Card>
-              </TabsContent>
+                  </div>
 
-              {/* Profile Tab */}
-              <TabsContent value="profile">
-                <UserProfile />
-              </TabsContent>
-
-              {/* Attendance Tab */}
-              <TabsContent value="attendance">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>{t('userDashboard.attendance.detailedLog')}</CardTitle>
-                    <CardDescription>
-                      {t('userDashboard.attendance.detailedLogDesc')}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {attendanceRecords?.slice(0, 15).map((record) => (
-                        <div
-                          key={record.id}
-                          className="p-4 border rounded-lg bg-white dark:bg-gray-800 shadow-sm"
-                        >
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-3">
-                              <Badge
-                                className={getStatusColor(record.status)}
-                                variant="outline"
-                              >
-                                {record.status}
-                              </Badge>
-                              <span className="font-medium text-gray-700 dark:text-gray-300">
-                                {new Date(record.date).toLocaleDateString(
-                                  "en-US",
-                                  {
-                                    weekday: "short",
-                                    month: "short",
-                                    day: "numeric",
-                                    year: "numeric",
-                                  },
-                                )}
-                              </span>
-                            </div>
-                            {record.notes && (
-                              <span className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
-                                {record.notes}
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                            {record.check_in_time && (
-                              <div className="flex flex-col">
-                                <span className="text-gray-500 text-xs">
-                                  {t('userDashboard.attendance.entry')}
-                                </span>
-                                <span className="font-medium text-green-600">
-                                  {new Date(
-                                    record.check_in_time,
-                                  ).toLocaleTimeString("en-US", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    hour12: true,
-                                  })}
-                                </span>
-                              </div>
-                            )}
-
-                            {record.lunch_start_time && (
-                              <div className="flex flex-col">
-                                <span className="text-gray-500 text-xs">
-                                  {t('userDashboard.attendance.breakStart')}
-                                </span>
-                                <span className="font-medium text-yellow-600">
-                                  {new Date(
-                                    record.lunch_start_time,
-                                  ).toLocaleTimeString("en-US", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    hour12: true,
-                                  })}
-                                </span>
-                              </div>
-                            )}
-
-                            {record.lunch_end_time && (
-                              <div className="flex flex-col">
-                                <span className="text-gray-500 text-xs">
-                                  {t('userDashboard.attendance.breakEnd')}
-                                </span>
-                                <span className="font-medium text-blue-600">
-                                  {new Date(
-                                    record.lunch_end_time,
-                                  ).toLocaleTimeString("en-US", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    hour12: true,
-                                  })}
-                                </span>
-                              </div>
-                            )}
-
-                            {record.check_out_time && (
-                              <div className="flex flex-col">
-                                <span className="text-gray-500 text-xs">
-                                  {t('userDashboard.attendance.exit')}
-                                </span>
-                                <span className="font-medium text-gray-600">
-                                  {new Date(
-                                    record.check_out_time,
-                                  ).toLocaleTimeString("en-US", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    hour12: true,
-                                  })}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Calculate working hours if both check-in and check-out exist */}
-                          {record.check_in_time && record.check_out_time && (
-                            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
-                              <div className="flex justify-between items-center text-sm">
-                                <span className="text-gray-500">
-                                  {t('userDashboard.attendance.totalWorkHours')}:
-                                </span>
-                                <span className="font-medium text-blue-700 dark:text-blue-300">
-                                  {(() => {
-                                    const checkIn = new Date(
-                                      record.check_in_time!,
-                                    );
-                                    const checkOut = new Date(
-                                      record.check_out_time!,
-                                    );
-                                    const diff =
-                                      checkOut.getTime() - checkIn.getTime();
-                                    const hours = Math.floor(
-                                      diff / (1000 * 60 * 60),
-                                    );
-                                    const minutes = Math.floor(
-                                      (diff % (1000 * 60 * 60)) / (1000 * 60),
-                                    );
-                                    return `${hours} ${t('userDashboard.attendance.hour')} ${minutes} ${t('userDashboard.attendance.minute')}`;
-                                  })()}
-                                </span>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-
-                      {(!attendanceRecords ||
-                        attendanceRecords.length === 0) && (
-                        <div className="text-center text-gray-500 py-8">
-                          <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                          <p>{t('userDashboard.attendance.noRecords')}</p>
-                        </div>
-                      )}
+                  {/* Lunch End Button */}
+                  <div className="flex flex-col items-center">
+                    <Button
+                      onClick={() =>
+                        handleAttendanceAction("يعمل", "end_lunch")
+                      }
+                      className="bg-blue-600 hover:bg-blue-700 w-full"
+                      disabled={
+                        !dailyAttendanceStatus?.hasStartedLunch ||
+                        dailyAttendanceStatus?.hasEndedLunch ||
+                        attendanceMutation.isPending
+                      }
+                    >
+                      {dailyAttendanceStatus?.hasEndedLunch
+                        ? `✓ ${t("userDashboard.attendance.breakEnded")}`
+                        : t("userDashboard.attendance.endBreak")}
+                    </Button>
+                    <div className="text-xs text-gray-500 mt-1 h-4 text-center">
+                      {(() => {
+                        const todayRecords = attendanceRecords?.filter(
+                          (record) =>
+                            record.date ===
+                              new Date().toISOString().split("T")[0] &&
+                            record.user_id === user?.id,
+                        );
+                        const lunchEndRecord = todayRecords?.find(
+                          (record) => record.lunch_end_time,
+                        );
+                        return lunchEndRecord?.lunch_end_time
+                          ? new Date(lunchEndRecord.lunch_end_time)
+                              .toLocaleTimeString("ar-SA", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: true,
+                              })
+                              .replace("ص", "ص")
+                              .replace("م", "م")
+                          : "";
+                      })()}
                     </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
+                  </div>
 
-              {/* Violations Tab */}
-              <TabsContent value="violations">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>{t('userDashboard.violations.title')}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {violations?.map((violation) => (
-                        <div
-                          key={violation.id}
-                          className="p-4 border rounded-lg"
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <h3 className="font-medium">{violation.type}</h3>
-                            <Badge
-                              variant={getStatusBadgeVariant(violation.status)}
-                            >
-                              {violation.status}
-                            </Badge>
-                          </div>
-                          <p className="text-gray-600 mb-2">
-                            {violation.description}
-                          </p>
-                          <p className="text-sm text-red-600 mb-2">
-                            <strong>{t('userDashboard.violations.penalty')}:</strong> {violation.penalty}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {t('userDashboard.violations.date')}:{" "}
-                            {new Date(violation.date).toLocaleDateString("en-US")}
-                          </p>
-                        </div>
-                      ))}
-                      {(!violations || violations.length === 0) && (
-                        <p className="text-center text-gray-500 py-8">
-                          {t('userDashboard.violations.noViolations')}
-                        </p>
-                      )}
+                  {/* Check Out Button */}
+                  <div className="flex flex-col items-center">
+                    <Button
+                      onClick={() => handleAttendanceAction("مغادر")}
+                      className="bg-gray-600 hover:bg-gray-700 w-full"
+                      disabled={
+                        !dailyAttendanceStatus?.hasCheckedIn ||
+                        dailyAttendanceStatus?.hasCheckedOut ||
+                        attendanceMutation.isPending
+                      }
+                    >
+                      {dailyAttendanceStatus?.hasCheckedOut
+                        ? `✓ ${t("userDashboard.attendance.checkedOut")}`
+                        : t("userDashboard.attendance.checkOut")}
+                    </Button>
+                    <div className="text-xs text-gray-500 mt-1 h-4 text-center">
+                      {(() => {
+                        const todayRecords = attendanceRecords?.filter(
+                          (record) =>
+                            record.date ===
+                              new Date().toISOString().split("T")[0] &&
+                            record.user_id === user?.id,
+                        );
+                        const checkOutRecord = todayRecords?.find(
+                          (record) => record.check_out_time,
+                        );
+                        return checkOutRecord?.check_out_time
+                          ? new Date(checkOutRecord.check_out_time)
+                              .toLocaleTimeString("ar-SA", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: true,
+                              })
+                              .replace("ص", "ص")
+                              .replace("م", "م")
+                          : "";
+                      })()}
                     </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* Requests Tab */}
-              <TabsContent value="requests">
-                <div className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>{t('userDashboard.requests.newRequest')}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Form {...requestForm}>
-                        <form
-                          onSubmit={requestForm.handleSubmit((data) =>
-                            submitRequestMutation.mutate(data),
-                          )}
-                          className="space-y-4"
-                        >
-                          <FormField
-                            control={requestForm.control}
-                            name="type"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>{t('userDashboard.requests.requestType')}</FormLabel>
-                                <Select
-                                  onValueChange={field.onChange}
-                                  value={field.value || ""}
-                                >
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder={t('userDashboard.requests.selectType')} />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    <SelectItem value="إجازة">
-                                      {t('userDashboard.requests.leaveRequest')}
-                                    </SelectItem>
-                                    <SelectItem value="شكوى">
-                                      {t('userDashboard.requests.complaint')}
-                                    </SelectItem>
-                                    <SelectItem value="طلب خاص">
-                                      {t('userDashboard.requests.specialRequest')}
-                                    </SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={requestForm.control}
-                            name="title"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>{t('userDashboard.requests.requestTitle')}</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    placeholder={t('userDashboard.requests.enterTitle')}
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={requestForm.control}
-                            name="description"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>{t('userDashboard.requests.requestDetails')}</FormLabel>
-                                <FormControl>
-                                  <Textarea
-                                    placeholder={t('userDashboard.requests.enterDetails')}
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <Button
-                            type="submit"
-                            disabled={submitRequestMutation.isPending}
-                          >
-                            {submitRequestMutation.isPending
-                              ? t('userDashboard.requests.submitting')
-                              : t('userDashboard.requests.submitRequest')}
-                          </Button>
-                        </form>
-                      </Form>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>{t('userDashboard.requests.previousRequests')}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {userRequests?.map((request) => (
-                          <div
-                            key={request.id}
-                            className="p-4 border rounded-lg"
-                          >
-                            <div className="flex items-center justify-between mb-2">
-                              <h3 className="font-medium">{request.title}</h3>
-                              <Badge
-                                variant={getStatusBadgeVariant(request.status)}
-                              >
-                                {request.status}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-gray-600 mb-2">
-                              <strong>{t('userDashboard.requests.type')}:</strong> {request.type}
-                            </p>
-                            <p className="text-gray-600 mb-2">
-                              {request.description}
-                            </p>
-                            {request.response && (
-                              <p className="text-sm text-blue-600 mb-2">
-                                <strong>{t('userDashboard.requests.response')}:</strong> {request.response}
-                              </p>
-                            )}
-                            <p className="text-xs text-gray-500">
-                              {t('userDashboard.requests.date')}:{" "}
-                              {new Date(request.date).toLocaleDateString("en-US")}
-                            </p>
-                          </div>
-                        ))}
-                        {(!userRequests || userRequests.length === 0) && (
-                          <p className="text-center text-gray-500 py-8">
-                            {t('userDashboard.requests.noRequests')}
-                          </p>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
+                  </div>
                 </div>
-              </TabsContent>
 
-              {/* Location Tab */}
-              <TabsContent value="location">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>{t('userDashboard.location.currentLocation')}</CardTitle>
-                    <CardDescription>
-                      {t('userDashboard.location.determineLocation')}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {isLoadingLocation ? (
-                      <div className="text-center py-8">
-                        <div className="animate-pulse">
-                          <MapPin className="h-12 w-12 text-blue-500 mx-auto mb-4" />
-                        </div>
-                        <p className="text-gray-600 dark:text-gray-400">
-                          {t('userDashboard.location.determiningLocation')}
-                        </p>
-                        <p className="text-sm text-gray-500 mt-2">
-                          {t('userDashboard.location.pleaseAllowAccess')}
-                        </p>
+                {/* Status indicator with timestamps */}
+                <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <h4 className="font-semibold text-sm mb-2">
+                    {t("userDashboard.attendance.todayLog")}:
+                  </h4>
+                  {attendanceRecords
+                    ?.filter(
+                      (record) =>
+                        record.date ===
+                          new Date().toISOString().split("T")[0] &&
+                        record.user_id === user?.id,
+                    )
+                    .map((record, index) => (
+                      <div key={record.id} className="mb-2 last:mb-0">
+                        {record.check_in_time && (
+                          <div className="flex items-center justify-between text-sm py-1">
+                            <span className="text-green-600">
+                              ✓ {t("userDashboard.attendance.checkInRecord")}
+                            </span>
+                            <span className="text-gray-600">
+                              {new Date(
+                                record.check_in_time,
+                              ).toLocaleTimeString("en-US", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: true,
+                              })}
+                            </span>
+                          </div>
+                        )}
+                        {record.lunch_start_time && (
+                          <div className="flex items-center justify-between text-sm py-1">
+                            <span className="text-yellow-600">
+                              ✓ {t("userDashboard.attendance.breakStart")}
+                            </span>
+                            <span className="text-gray-600">
+                              {new Date(
+                                record.lunch_start_time,
+                              ).toLocaleTimeString("en-US", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: true,
+                              })}
+                            </span>
+                          </div>
+                        )}
+                        {record.lunch_end_time && (
+                          <div className="flex items-center justify-between text-sm py-1">
+                            <span className="text-blue-600">
+                              ✓ {t("userDashboard.attendance.breakEnd")}
+                            </span>
+                            <span className="text-gray-600">
+                              {new Date(
+                                record.lunch_end_time,
+                              ).toLocaleTimeString("en-US", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: true,
+                              })}
+                            </span>
+                          </div>
+                        )}
+                        {record.check_out_time && (
+                          <div className="flex items-center justify-between text-sm py-1">
+                            <span className="text-gray-600">
+                              ✓ {t("userDashboard.attendance.checkOutRecord")}
+                            </span>
+                            <span className="text-gray-600">
+                              {new Date(
+                                record.check_out_time,
+                              ).toLocaleTimeString("en-US", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: true,
+                              })}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                    ) : currentLocation ? (
-                      <div className="space-y-6">
-                        {/* GPS Status Header */}
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
-                              <MapPin className="h-5 w-5" />
-                              <span className="font-medium">
-                                {t('userDashboard.location.locationDetermined')}
+                    ))}
+
+                  {/* Working Hours Summary */}
+                  {dailyAttendanceStatus?.hasCheckedIn && (
+                    <div className="mt-3 pt-3 border-t">
+                      <h5 className="font-medium text-sm mb-2 text-blue-700 dark:text-blue-300">
+                        📊 {t("userDashboard.attendance.workingSummary")}{" "}
+                        {dailyHours.isFriday
+                          ? `(${t("userDashboard.attendance.friday")})`
+                          : ""}
+                        :
+                      </h5>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        {/* Working Hours */}
+                        <div className="bg-green-50 dark:bg-green-900/20 p-2 rounded">
+                          <div className="flex items-center justify-between">
+                            <span className="text-green-700 dark:text-green-300">
+                              ⏰ {t("userDashboard.attendance.workingHours")}
+                            </span>
+                            <span className="font-medium text-green-800 dark:text-green-200">
+                              {dailyHours.workingHours.toFixed(1)}{" "}
+                              {t("userDashboard.attendance.hour")}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Overtime Hours */}
+                        <div className="bg-orange-50 dark:bg-orange-900/20 p-2 rounded">
+                          <div className="flex items-center justify-between">
+                            <span className="text-orange-700 dark:text-orange-300">
+                              ⚡ {t("userDashboard.attendance.overtimeHours")}
+                            </span>
+                            <span className="font-medium text-orange-800 dark:text-orange-200">
+                              {dailyHours.overtimeHours.toFixed(1)}{" "}
+                              {t("userDashboard.attendance.hour")}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Break Time */}
+                        <div className="bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded">
+                          <div className="flex items-center justify-between">
+                            <span className="text-yellow-700 dark:text-yellow-300">
+                              ☕ {t("userDashboard.attendance.breakTime")}
+                            </span>
+                            <span className="font-medium text-yellow-800 dark:text-yellow-200">
+                              {dailyHours.breakMinutes}{" "}
+                              {t("userDashboard.attendance.minute")}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Deficit Hours (if any) */}
+                        {dailyHours.deficitHours > 0 && (
+                          <div className="bg-red-50 dark:bg-red-900/20 p-2 rounded">
+                            <div className="flex items-center justify-between">
+                              <span className="text-red-700 dark:text-red-300">
+                                ⚠️ {t("userDashboard.attendance.deficitHours")}
                               </span>
-                            </div>
-                            {lastLocationUpdate && (
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                {t('userDashboard.location.lastUpdate')}: {lastLocationUpdate.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex flex-col gap-2">
-                            <Button
-                              onClick={requestLocation}
-                              variant="outline"
-                              size="sm"
-                              disabled={isLoadingLocation}
-                              data-testid="button-refresh-location-top"
-                            >
-                              {isLoadingLocation ? t('userDashboard.location.updating') : `🔄 ${t('userDashboard.location.refreshBtn')}`}
-                            </Button>
-                            <Badge variant={watchIdRef.current !== null ? "default" : "secondary"} className="text-xs text-center">
-                              {watchIdRef.current !== null ? `✅ ${t('userDashboard.location.autoTrackingOn')}` : t('userDashboard.location.autoTracking')}
-                            </Badge>
-                          </div>
-                        </div>
-
-                        {/* GPS Diagnostics Card */}
-                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 p-4 rounded-lg space-y-3">
-                          <h3 className="font-semibold text-blue-900 dark:text-blue-100 flex items-center gap-2">
-                            <MapPin className="h-4 w-4" />
-                            {t('userDashboard.location.gpsDetails')}
-                          </h3>
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {/* Latitude */}
-                            <div className="bg-white dark:bg-gray-800 p-3 rounded border border-blue-100 dark:border-blue-900">
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('userDashboard.location.latitude')}</p>
-                              <p className="font-mono text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                {currentLocation.lat.toFixed(8)}°
-                              </p>
-                            </div>
-
-                            {/* Longitude */}
-                            <div className="bg-white dark:bg-gray-800 p-3 rounded border border-blue-100 dark:border-blue-900">
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('userDashboard.location.longitude')}</p>
-                              <p className="font-mono text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                {currentLocation.lng.toFixed(8)}°
-                              </p>
-                            </div>
-
-                            {/* Accuracy */}
-                            <div className="bg-white dark:bg-gray-800 p-3 rounded border border-blue-100 dark:border-blue-900">
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('userDashboard.location.gpsAccuracy')}</p>
-                              <div className="flex items-center gap-2">
-                                <p className="font-mono text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                  {currentLocation.accuracy 
-                                    ? `±${Math.round(currentLocation.accuracy)} ${t('userDashboard.location.meters')}`
-                                    : t('userDashboard.location.notAvailable')}
-                                </p>
-                                {currentLocation.accuracy && currentLocation.accuracy > 100 && (
-                                  <Badge variant="destructive" className="text-xs">
-                                    {t('userDashboard.location.lowAccuracy')}
-                                  </Badge>
-                                )}
-                                {currentLocation.accuracy && currentLocation.accuracy <= 20 && (
-                                  <Badge className="bg-green-500 text-xs">
-                                    {t('userDashboard.location.highAccuracy')}
-                                  </Badge>
-                                )}
-                                {currentLocation.accuracy && currentLocation.accuracy > 20 && currentLocation.accuracy <= 100 && (
-                                  <Badge variant="secondary" className="text-xs">
-                                    {t('userDashboard.location.mediumAccuracy')}
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Timestamp */}
-                            <div className="bg-white dark:bg-gray-800 p-3 rounded border border-blue-100 dark:border-blue-900">
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('userDashboard.location.lastUpdate')}</p>
-                              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                {currentLocation.timestamp 
-                                  ? new Date(currentLocation.timestamp).toLocaleTimeString("ar-SA", {
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                      second: "2-digit",
-                                    })
-                                  : t('userDashboard.location.notAvailable')}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* GPS Quality Warning */}
-                          {currentLocation.accuracy && currentLocation.accuracy > 100 && (
-                            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-3 rounded">
-                              <p className="text-xs text-yellow-800 dark:text-yellow-200">
-                                ⚠️ <strong>{t('userDashboard.location.warning')}:</strong> {t('userDashboard.location.lowAccuracyWarning', { accuracy: Math.round(currentLocation.accuracy) })}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Map Display */}
-                        <div className="space-y-2">
-                          <h3 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                            <MapPin className="h-4 w-4" />
-                            {t('userDashboard.location.yourLocationOnMap')}
-                          </h3>
-                          <LocationMapPicker
-                            latitude={currentLocation.lat}
-                            longitude={currentLocation.lng}
-                            radius={currentLocation.accuracy ? Math.round(currentLocation.accuracy) : 50}
-                            onLocationChange={() => {}}
-                            editable={false}
-                            factoryLocations={activeLocations?.map((loc: any) => ({
-                              id: loc.id,
-                              name: loc.name_ar || loc.name,
-                              latitude: parseFloat(loc.latitude),
-                              longitude: parseFloat(loc.longitude),
-                              radius: loc.allowed_radius,
-                            }))}
-                          />
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            🔵 {t('userDashboard.location.yourCurrentLocation')} | 🏭 {t('userDashboard.location.registeredFactories')}
-                          </p>
-                        </div>
-                        
-                        {/* Factory Locations Distance Table */}
-                        {activeLocations && activeLocations.length > 0 && (
-                          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                            <div className="bg-gray-50 dark:bg-gray-900 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                              <h4 className="font-semibold text-gray-900 dark:text-gray-100">
-                                {t('userDashboard.location.distanceFromFactories')}
-                              </h4>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                {t('userDashboard.location.haversineNote')}
-                              </p>
-                            </div>
-                            
-                            <div className="overflow-x-auto">
-                              <table className="w-full">
-                                <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-                                  <tr>
-                                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">
-                                      {t('userDashboard.location.locationName')}
-                                    </th>
-                                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400">
-                                      {t('userDashboard.location.allowedRange')}
-                                    </th>
-                                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400">
-                                      {t('userDashboard.location.actualDistance')}
-                                    </th>
-                                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400">
-                                      {t('userDashboard.location.difference')}
-                                    </th>
-                                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400">
-                                      {t('userDashboard.location.status')}
-                                    </th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                                  {activeLocations.map((location) => {
-                                    const distance = calculateDistance(
-                                      currentLocation.lat,
-                                      currentLocation.lng,
-                                      parseFloat(location.latitude),
-                                      parseFloat(location.longitude)
-                                    );
-                                    const isInRange = distance <= location.allowed_radius;
-                                    const difference = Math.abs(distance - location.allowed_radius);
-                                    
-                                    return (
-                                      <tr 
-                                        key={location.id}
-                                        className={`${
-                                          isInRange 
-                                            ? 'bg-green-50 dark:bg-green-900/10' 
-                                            : 'bg-red-50 dark:bg-red-900/10'
-                                        }`}
-                                      >
-                                        <td className="px-4 py-3">
-                                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                            {location.name_ar || location.name}
-                                          </div>
-                                          <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-                                            {parseFloat(location.latitude).toFixed(6)}°, {parseFloat(location.longitude).toFixed(6)}°
-                                          </div>
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
-                                          <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                                            {formatNumber(location.allowed_radius)} م
-                                          </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
-                                          <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                                            {formatNumber(Math.round(distance))} م
-                                          </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
-                                          <span className={`text-sm font-semibold ${
-                                            isInRange 
-                                              ? 'text-green-600 dark:text-green-400'
-                                              : 'text-red-600 dark:text-red-400'
-                                          }`}>
-                                            {isInRange ? '-' : '+'}{formatNumber(Math.round(difference))} م
-                                          </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
-                                          {isInRange ? (
-                                            <Badge className="bg-green-500">
-                                              ✓ {t('userDashboard.location.withinRange')}
-                                            </Badge>
-                                          ) : (
-                                            <Badge variant="destructive">
-                                              ✗ {t('userDashboard.location.outOfRange')}
-                                            </Badge>
-                                          )}
-                                        </td>
-                                      </tr>
-                                    );
-                                  })}
-                                </tbody>
-                              </table>
-                            </div>
-
-                            {/* Summary Card */}
-                            <div className="bg-gray-50 dark:bg-gray-900 px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-                              {(() => {
-                                const closestLocation = activeLocations.reduce((closest, location) => {
-                                  const distance = calculateDistance(
-                                    currentLocation.lat,
-                                    currentLocation.lng,
-                                    parseFloat(location.latitude),
-                                    parseFloat(location.longitude)
-                                  );
-                                  if (!closest || distance < closest.distance) {
-                                    return { location, distance };
-                                  }
-                                  return closest;
-                                }, null as { location: any; distance: number } | null);
-
-                                const isAnyInRange = activeLocations.some((location) => {
-                                  const distance = calculateDistance(
-                                    currentLocation.lat,
-                                    currentLocation.lng,
-                                    parseFloat(location.latitude),
-                                    parseFloat(location.longitude)
-                                  );
-                                  return distance <= location.allowed_radius;
-                                });
-
-                                return (
-                                  <div className="text-sm">
-                                    <p className="text-gray-700 dark:text-gray-300">
-                                      <strong>{t('userDashboard.location.closestLocation')}:</strong> {closestLocation?.location.name_ar || closestLocation?.location.name} 
-                                      <span className="font-mono text-xs mr-2">
-                                        ({formatNumber(Math.round(closestLocation?.distance || 0))} {t('userDashboard.location.meters')})
-                                      </span>
-                                    </p>
-                                    {!isAnyInRange && closestLocation && (
-                                      <p className="text-red-600 dark:text-red-400 text-xs mt-1">
-                                        ⚠️ {t('userDashboard.location.outsideAllLocations', { distance: formatNumber(Math.round(closestLocation.distance - closestLocation.location.allowed_radius)) })}
-                                      </p>
-                                    )}
-                                  </div>
-                                );
-                              })()}
+                              <span className="font-medium text-red-800 dark:text-red-200">
+                                {dailyHours.deficitHours.toFixed(1)}{" "}
+                                {t("userDashboard.attendance.hour")}
+                              </span>
                             </div>
                           </div>
                         )}
-                        
-                        <div className="flex gap-2">
-                          <Button
-                            onClick={() => handleAttendanceAction("حاضر")}
-                            className="flex-1"
-                            disabled={
-                              !dailyAttendanceStatus || 
-                              dailyAttendanceStatus.hasCheckedIn
-                            }
-                            data-testid="button-checkin-location"
-                          >
-                            {dailyAttendanceStatus?.hasCheckedIn 
-                              ? `✓ ${t('userDashboard.attendance.checkedIn')}` 
-                              : t('userDashboard.attendance.checkIn')}
-                          </Button>
-                          <Button
-                            onClick={requestLocation}
-                            variant="outline"
-                            data-testid="button-refresh-location"
-                          >
-                            {t('userDashboard.location.refreshBtn')}
-                          </Button>
-                        </div>
                       </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <MapPin className="h-12 w-12 text-red-400 mx-auto mb-4" />
-                        <p className="text-red-600 dark:text-red-400 mb-2 font-medium">
-                          {locationError || t('userDashboard.location.cantGetLocation')}
-                        </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                          {t('userDashboard.location.toAllowAccess')}:
-                        </p>
-                        <ul className="text-xs text-gray-600 dark:text-gray-400 text-right mb-4 space-y-1">
-                          <li>• {t('userDashboard.location.step1')}</li>
-                          <li>• {t('userDashboard.location.step2')}</li>
-                          <li>• {t('userDashboard.location.step3')}</li>
-                        </ul>
-                        <Button
-                          onClick={requestLocation}
-                          variant="default"
-                          className="mt-2"
-                          data-testid="button-retry-location"
-                        >
-                          {t('userDashboard.location.retry')}
-                        </Button>
+
+                      {/* Additional Info */}
+                      <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+                        <div className="flex justify-between">
+                          <span>
+                            {t("userDashboard.attendance.totalTime")}:
+                          </span>
+                          <span>
+                            {Math.floor(dailyHours.totalMinutes / 60)}:
+                            {(dailyHours.totalMinutes % 60)
+                              .toString()
+                              .padStart(2, "0")}
+                          </span>
+                        </div>
+                        {dailyHours.isFriday && (
+                          <div className="text-orange-600 dark:text-orange-400 mt-1 font-medium">
+                            * {t("userDashboard.attendance.fridayNote")}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Status indicators for missing actions */}
+                  <div className="mt-2 pt-2 border-t">
+                    {!dailyAttendanceStatus?.hasCheckedIn && (
+                      <div className="flex items-center justify-between text-sm py-1">
+                        <span className="text-gray-400">
+                          ⏳ {t("userDashboard.attendance.checkInRecord")}
+                        </span>
+                        <span className="text-gray-400">
+                          {t("userDashboard.attendance.notDone")}
+                        </span>
                       </div>
                     )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
+                    {!dailyAttendanceStatus?.hasStartedLunch &&
+                      dailyAttendanceStatus?.hasCheckedIn && (
+                        <div className="flex items-center justify-between text-sm py-1">
+                          <span className="text-gray-400">
+                            ⏳ {t("userDashboard.attendance.breakStart")}
+                          </span>
+                          <span className="text-gray-400">
+                            {t("userDashboard.attendance.notDone")}
+                          </span>
+                        </div>
+                      )}
+                    {!dailyAttendanceStatus?.hasEndedLunch &&
+                      dailyAttendanceStatus?.hasStartedLunch && (
+                        <div className="flex items-center justify-between text-sm py-1">
+                          <span className="text-gray-400">
+                            ⏳ {t("userDashboard.attendance.breakEnd")}
+                          </span>
+                          <span className="text-gray-400">
+                            {t("userDashboard.attendance.notDone")}
+                          </span>
+                        </div>
+                      )}
+                    {!dailyAttendanceStatus?.hasCheckedOut &&
+                      dailyAttendanceStatus?.hasCheckedIn && (
+                        <div className="flex items-center justify-between text-sm py-1">
+                          <span className="text-gray-400">
+                            ⏳ {t("userDashboard.attendance.checkOutRecord")}
+                          </span>
+                          <span className="text-gray-400">
+                            {t("userDashboard.attendance.notDone")}
+                          </span>
+                        </div>
+                      )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Statistics Tab */}
+          <TabsContent value="stats" className="space-y-4">
+            {user?.id && <AttendanceStats userId={user.id} />}
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Shield className="h-5 w-5 text-primary" />
+                  {t("userDashboard.security.title")}
+                </CardTitle>
+                <CardDescription>
+                  {t("userDashboard.security.description")}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {user?.id && (
+                    <>
+                      <FaceVerification
+                        userId={user.id}
+                        actionType="check_in"
+                        onVerificationSuccess={() =>
+                          handleAttendanceAction("حاضر")
+                        }
+                        onVerificationFail={() =>
+                          toast({
+                            title: t(
+                              "userDashboard.security.verificationFailed",
+                            ),
+                            variant: "destructive",
+                          })
+                        }
+                      />
+                    </>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 text-center">
+                  <Camera className="h-3 w-3 inline ml-1" />
+                  {t("userDashboard.security.faceVerificationNote")}
+                </p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Profile Tab */}
+          <TabsContent value="profile">
+            <UserProfile />
+          </TabsContent>
+
+          {/* Attendance Tab */}
+          <TabsContent value="attendance">
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  {t("userDashboard.attendance.detailedLog")}
+                </CardTitle>
+                <CardDescription>
+                  {t("userDashboard.attendance.detailedLogDesc")}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {attendanceRecords?.slice(0, 15).map((record) => (
+                    <div
+                      key={record.id}
+                      className="p-4 border rounded-lg bg-white dark:bg-gray-800 shadow-sm"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <Badge
+                            className={getStatusColor(record.status)}
+                            variant="outline"
+                          >
+                            {record.status}
+                          </Badge>
+                          <span className="font-medium text-gray-700 dark:text-gray-300">
+                            {new Date(record.date).toLocaleDateString("en-US", {
+                              weekday: "short",
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </span>
+                        </div>
+                        {record.notes && (
+                          <span className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                            {record.notes}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                        {record.check_in_time && (
+                          <div className="flex flex-col">
+                            <span className="text-gray-500 text-xs">
+                              {t("userDashboard.attendance.entry")}
+                            </span>
+                            <span className="font-medium text-green-600">
+                              {new Date(
+                                record.check_in_time,
+                              ).toLocaleTimeString("en-US", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: true,
+                              })}
+                            </span>
+                          </div>
+                        )}
+
+                        {record.lunch_start_time && (
+                          <div className="flex flex-col">
+                            <span className="text-gray-500 text-xs">
+                              {t("userDashboard.attendance.breakStart")}
+                            </span>
+                            <span className="font-medium text-yellow-600">
+                              {new Date(
+                                record.lunch_start_time,
+                              ).toLocaleTimeString("en-US", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: true,
+                              })}
+                            </span>
+                          </div>
+                        )}
+
+                        {record.lunch_end_time && (
+                          <div className="flex flex-col">
+                            <span className="text-gray-500 text-xs">
+                              {t("userDashboard.attendance.breakEnd")}
+                            </span>
+                            <span className="font-medium text-blue-600">
+                              {new Date(
+                                record.lunch_end_time,
+                              ).toLocaleTimeString("en-US", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: true,
+                              })}
+                            </span>
+                          </div>
+                        )}
+
+                        {record.check_out_time && (
+                          <div className="flex flex-col">
+                            <span className="text-gray-500 text-xs">
+                              {t("userDashboard.attendance.exit")}
+                            </span>
+                            <span className="font-medium text-gray-600">
+                              {new Date(
+                                record.check_out_time,
+                              ).toLocaleTimeString("en-US", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: true,
+                              })}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Calculate working hours if both check-in and check-out exist */}
+                      {record.check_in_time && record.check_out_time && (
+                        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-500">
+                              {t("userDashboard.attendance.totalWorkHours")}:
+                            </span>
+                            <span className="font-medium text-blue-700 dark:text-blue-300">
+                              {(() => {
+                                const checkIn = new Date(record.check_in_time!);
+                                const checkOut = new Date(
+                                  record.check_out_time!,
+                                );
+                                const diff =
+                                  checkOut.getTime() - checkIn.getTime();
+                                const hours = Math.floor(
+                                  diff / (1000 * 60 * 60),
+                                );
+                                const minutes = Math.floor(
+                                  (diff % (1000 * 60 * 60)) / (1000 * 60),
+                                );
+                                return `${hours} ${t("userDashboard.attendance.hour")} ${minutes} ${t("userDashboard.attendance.minute")}`;
+                              })()}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {(!attendanceRecords || attendanceRecords.length === 0) && (
+                    <div className="text-center text-gray-500 py-8">
+                      <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>{t("userDashboard.attendance.noRecords")}</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Violations Tab */}
+          <TabsContent value="violations">
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("userDashboard.violations.title")}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {violations?.map((violation) => (
+                    <div key={violation.id} className="p-4 border rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-medium">{violation.type}</h3>
+                        <Badge
+                          variant={getStatusBadgeVariant(violation.status)}
+                        >
+                          {violation.status}
+                        </Badge>
+                      </div>
+                      <p className="text-gray-600 mb-2">
+                        {violation.description}
+                      </p>
+                      <p className="text-sm text-red-600 mb-2">
+                        <strong>
+                          {t("userDashboard.violations.penalty")}:
+                        </strong>{" "}
+                        {violation.penalty}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {t("userDashboard.violations.date")}:{" "}
+                        {new Date(violation.date).toLocaleDateString("en-US")}
+                      </p>
+                    </div>
+                  ))}
+                  {(!violations || violations.length === 0) && (
+                    <p className="text-center text-gray-500 py-8">
+                      {t("userDashboard.violations.noViolations")}
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Requests Tab */}
+          <TabsContent value="requests">
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>
+                    {t("userDashboard.requests.newRequest")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Form {...requestForm}>
+                    <form
+                      onSubmit={requestForm.handleSubmit((data) =>
+                        submitRequestMutation.mutate(data),
+                      )}
+                      className="space-y-4"
+                    >
+                      <FormField
+                        control={requestForm.control}
+                        name="type"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              {t("userDashboard.requests.requestType")}
+                            </FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value || ""}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue
+                                    placeholder={t(
+                                      "userDashboard.requests.selectType",
+                                    )}
+                                  />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="إجازة">
+                                  {t("userDashboard.requests.leaveRequest")}
+                                </SelectItem>
+                                <SelectItem value="شكوى">
+                                  {t("userDashboard.requests.complaint")}
+                                </SelectItem>
+                                <SelectItem value="طلب خاص">
+                                  {t("userDashboard.requests.specialRequest")}
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={requestForm.control}
+                        name="title"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              {t("userDashboard.requests.requestTitle")}
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder={t(
+                                  "userDashboard.requests.enterTitle",
+                                )}
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={requestForm.control}
+                        name="description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              {t("userDashboard.requests.requestDetails")}
+                            </FormLabel>
+                            <FormControl>
+                              <Textarea
+                                placeholder={t(
+                                  "userDashboard.requests.enterDetails",
+                                )}
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button
+                        type="submit"
+                        disabled={submitRequestMutation.isPending}
+                      >
+                        {submitRequestMutation.isPending
+                          ? t("userDashboard.requests.submitting")
+                          : t("userDashboard.requests.submitRequest")}
+                      </Button>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>
+                    {t("userDashboard.requests.previousRequests")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {userRequests?.map((request) => (
+                      <div key={request.id} className="p-4 border rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="font-medium">{request.title}</h3>
+                          <Badge
+                            variant={getStatusBadgeVariant(request.status)}
+                          >
+                            {request.status}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-2">
+                          <strong>{t("userDashboard.requests.type")}:</strong>{" "}
+                          {request.type}
+                        </p>
+                        <p className="text-gray-600 mb-2">
+                          {request.description}
+                        </p>
+                        {request.response && (
+                          <p className="text-sm text-blue-600 mb-2">
+                            <strong>
+                              {t("userDashboard.requests.response")}:
+                            </strong>{" "}
+                            {request.response}
+                          </p>
+                        )}
+                        <p className="text-xs text-gray-500">
+                          {t("userDashboard.requests.date")}:{" "}
+                          {new Date(request.date).toLocaleDateString("en-US")}
+                        </p>
+                      </div>
+                    ))}
+                    {(!userRequests || userRequests.length === 0) && (
+                      <p className="text-center text-gray-500 py-8">
+                        {t("userDashboard.requests.noRequests")}
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Location Tab */}
+          <TabsContent value="location">
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  {t("userDashboard.location.currentLocation")}
+                </CardTitle>
+                <CardDescription>
+                  {t("userDashboard.location.determineLocation")}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoadingLocation ? (
+                  <div className="text-center py-8">
+                    <div className="animate-pulse">
+                      <MapPin className="h-12 w-12 text-blue-500 mx-auto mb-4" />
+                    </div>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      {t("userDashboard.location.determiningLocation")}
+                    </p>
+                    <p className="text-sm text-gray-500 mt-2">
+                      {t("userDashboard.location.pleaseAllowAccess")}
+                    </p>
+                  </div>
+                ) : currentLocation ? (
+                  <div className="space-y-6">
+                    {/* GPS Status Header */}
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                          <MapPin className="h-5 w-5" />
+                          <span className="font-medium">
+                            {t("userDashboard.location.locationDetermined")}
+                          </span>
+                        </div>
+                        {lastLocationUpdate && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {t("userDashboard.location.lastUpdate")}:{" "}
+                            {lastLocationUpdate.toLocaleTimeString("ar-SA", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              second: "2-digit",
+                            })}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <Button
+                          onClick={requestLocation}
+                          variant="outline"
+                          size="sm"
+                          disabled={isLoadingLocation}
+                          data-testid="button-refresh-location-top"
+                        >
+                          {isLoadingLocation
+                            ? t("userDashboard.location.updating")
+                            : `🔄 ${t("userDashboard.location.refreshBtn")}`}
+                        </Button>
+                        <Badge
+                          variant={
+                            watchIdRef.current !== null
+                              ? "default"
+                              : "secondary"
+                          }
+                          className="text-xs text-center"
+                        >
+                          {watchIdRef.current !== null
+                            ? `✅ ${t("userDashboard.location.autoTrackingOn")}`
+                            : t("userDashboard.location.autoTracking")}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    {/* GPS Diagnostics Card */}
+                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 p-4 rounded-lg space-y-3">
+                      <h3 className="font-semibold text-blue-900 dark:text-blue-100 flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        {t("userDashboard.location.gpsDetails")}
+                      </h3>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {/* Latitude */}
+                        <div className="bg-white dark:bg-gray-800 p-3 rounded border border-blue-100 dark:border-blue-900">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                            {t("userDashboard.location.latitude")}
+                          </p>
+                          <p className="font-mono text-sm font-semibold text-gray-900 dark:text-gray-100">
+                            {currentLocation.lat.toFixed(8)}°
+                          </p>
+                        </div>
+
+                        {/* Longitude */}
+                        <div className="bg-white dark:bg-gray-800 p-3 rounded border border-blue-100 dark:border-blue-900">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                            {t("userDashboard.location.longitude")}
+                          </p>
+                          <p className="font-mono text-sm font-semibold text-gray-900 dark:text-gray-100">
+                            {currentLocation.lng.toFixed(8)}°
+                          </p>
+                        </div>
+
+                        {/* Accuracy */}
+                        <div className="bg-white dark:bg-gray-800 p-3 rounded border border-blue-100 dark:border-blue-900">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                            {t("userDashboard.location.gpsAccuracy")}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-mono text-sm font-semibold text-gray-900 dark:text-gray-100">
+                              {currentLocation.accuracy
+                                ? `±${Math.round(currentLocation.accuracy)} ${t("userDashboard.location.meters")}`
+                                : t("userDashboard.location.notAvailable")}
+                            </p>
+                            {currentLocation.accuracy &&
+                              currentLocation.accuracy > 100 && (
+                                <Badge
+                                  variant="destructive"
+                                  className="text-xs"
+                                >
+                                  {t("userDashboard.location.lowAccuracy")}
+                                </Badge>
+                              )}
+                            {currentLocation.accuracy &&
+                              currentLocation.accuracy <= 20 && (
+                                <Badge className="bg-green-500 text-xs">
+                                  {t("userDashboard.location.highAccuracy")}
+                                </Badge>
+                              )}
+                            {currentLocation.accuracy &&
+                              currentLocation.accuracy > 20 &&
+                              currentLocation.accuracy <= 100 && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {t("userDashboard.location.mediumAccuracy")}
+                                </Badge>
+                              )}
+                          </div>
+                        </div>
+
+                        {/* Timestamp */}
+                        <div className="bg-white dark:bg-gray-800 p-3 rounded border border-blue-100 dark:border-blue-900">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                            {t("userDashboard.location.lastUpdate")}
+                          </p>
+                          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                            {currentLocation.timestamp
+                              ? new Date(
+                                  currentLocation.timestamp,
+                                ).toLocaleTimeString("ar-SA", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  second: "2-digit",
+                                })
+                              : t("userDashboard.location.notAvailable")}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* GPS Quality Warning */}
+                      {currentLocation.accuracy &&
+                        currentLocation.accuracy > 100 && (
+                          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-3 rounded">
+                            <p className="text-xs text-yellow-800 dark:text-yellow-200">
+                              ⚠️{" "}
+                              <strong>
+                                {t("userDashboard.location.warning")}:
+                              </strong>{" "}
+                              {t("userDashboard.location.lowAccuracyWarning", {
+                                accuracy: Math.round(currentLocation.accuracy),
+                              })}
+                            </p>
+                          </div>
+                        )}
+                    </div>
+
+                    {/* Map Display */}
+                    <div className="space-y-2">
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        {t("userDashboard.location.yourLocationOnMap")}
+                      </h3>
+                      <LocationMapPicker
+                        latitude={currentLocation.lat}
+                        longitude={currentLocation.lng}
+                        radius={
+                          currentLocation.accuracy
+                            ? Math.round(currentLocation.accuracy)
+                            : 50
+                        }
+                        onLocationChange={() => {}}
+                        editable={false}
+                        factoryLocations={activeLocations?.map((loc: any) => ({
+                          id: loc.id,
+                          name: loc.name_ar || loc.name,
+                          latitude: parseFloat(loc.latitude),
+                          longitude: parseFloat(loc.longitude),
+                          radius: loc.allowed_radius,
+                        }))}
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        🔵 {t("userDashboard.location.yourCurrentLocation")} |
+                        🏭 {t("userDashboard.location.registeredFactories")}
+                      </p>
+                    </div>
+
+                    {/* Factory Locations Distance Table */}
+                    {activeLocations && activeLocations.length > 0 && (
+                      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                        <div className="bg-gray-50 dark:bg-gray-900 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                          <h4 className="font-semibold text-gray-900 dark:text-gray-100">
+                            {t("userDashboard.location.distanceFromFactories")}
+                          </h4>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            {t("userDashboard.location.haversineNote")}
+                          </p>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                              <tr>
+                                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">
+                                  {t("userDashboard.location.locationName")}
+                                </th>
+                                <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400">
+                                  {t("userDashboard.location.allowedRange")}
+                                </th>
+                                <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400">
+                                  {t("userDashboard.location.actualDistance")}
+                                </th>
+                                <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400">
+                                  {t("userDashboard.location.difference")}
+                                </th>
+                                <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400">
+                                  {t("userDashboard.location.status")}
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                              {activeLocations.map((location) => {
+                                const distance = calculateDistance(
+                                  currentLocation.lat,
+                                  currentLocation.lng,
+                                  parseFloat(location.latitude),
+                                  parseFloat(location.longitude),
+                                );
+                                const isInRange =
+                                  distance <= location.allowed_radius;
+                                const difference = Math.abs(
+                                  distance - location.allowed_radius,
+                                );
+
+                                return (
+                                  <tr
+                                    key={location.id}
+                                    className={`${
+                                      isInRange
+                                        ? "bg-green-50 dark:bg-green-900/10"
+                                        : "bg-red-50 dark:bg-red-900/10"
+                                    }`}
+                                  >
+                                    <td className="px-4 py-3">
+                                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                        {location.name_ar || location.name}
+                                      </div>
+                                      <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                                        {parseFloat(location.latitude).toFixed(
+                                          6,
+                                        )}
+                                        °,{" "}
+                                        {parseFloat(location.longitude).toFixed(
+                                          6,
+                                        )}
+                                        °
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                      <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                        {formatNumber(location.allowed_radius)}{" "}
+                                        م
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                      <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                                        {formatNumber(Math.round(distance))} م
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                      <span
+                                        className={`text-sm font-semibold ${
+                                          isInRange
+                                            ? "text-green-600 dark:text-green-400"
+                                            : "text-red-600 dark:text-red-400"
+                                        }`}
+                                      >
+                                        {isInRange ? "-" : "+"}
+                                        {formatNumber(Math.round(difference))} م
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                      {isInRange ? (
+                                        <Badge className="bg-green-500">
+                                          ✓{" "}
+                                          {t(
+                                            "userDashboard.location.withinRange",
+                                          )}
+                                        </Badge>
+                                      ) : (
+                                        <Badge variant="destructive">
+                                          ✗{" "}
+                                          {t(
+                                            "userDashboard.location.outOfRange",
+                                          )}
+                                        </Badge>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Summary Card */}
+                        <div className="bg-gray-50 dark:bg-gray-900 px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+                          {(() => {
+                            const closestLocation = activeLocations.reduce(
+                              (closest, location) => {
+                                const distance = calculateDistance(
+                                  currentLocation.lat,
+                                  currentLocation.lng,
+                                  parseFloat(location.latitude),
+                                  parseFloat(location.longitude),
+                                );
+                                if (!closest || distance < closest.distance) {
+                                  return { location, distance };
+                                }
+                                return closest;
+                              },
+                              null as {
+                                location: any;
+                                distance: number;
+                              } | null,
+                            );
+
+                            const isAnyInRange = activeLocations.some(
+                              (location) => {
+                                const distance = calculateDistance(
+                                  currentLocation.lat,
+                                  currentLocation.lng,
+                                  parseFloat(location.latitude),
+                                  parseFloat(location.longitude),
+                                );
+                                return distance <= location.allowed_radius;
+                              },
+                            );
+
+                            return (
+                              <div className="text-sm">
+                                <p className="text-gray-700 dark:text-gray-300">
+                                  <strong>
+                                    {t(
+                                      "userDashboard.location.closestLocation",
+                                    )}
+                                    :
+                                  </strong>{" "}
+                                  {closestLocation?.location.name_ar ||
+                                    closestLocation?.location.name}
+                                  <span className="font-mono text-xs mr-2">
+                                    (
+                                    {formatNumber(
+                                      Math.round(
+                                        closestLocation?.distance || 0,
+                                      ),
+                                    )}{" "}
+                                    {t("userDashboard.location.meters")})
+                                  </span>
+                                </p>
+                                {!isAnyInRange && closestLocation && (
+                                  <p className="text-red-600 dark:text-red-400 text-xs mt-1">
+                                    ⚠️{" "}
+                                    {t(
+                                      "userDashboard.location.outsideAllLocations",
+                                      {
+                                        distance: formatNumber(
+                                          Math.round(
+                                            closestLocation.distance -
+                                              closestLocation.location
+                                                .allowed_radius,
+                                          ),
+                                        ),
+                                      },
+                                    )}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => handleAttendanceAction("حاضر")}
+                        className="flex-1"
+                        disabled={
+                          !dailyAttendanceStatus ||
+                          dailyAttendanceStatus.hasCheckedIn
+                        }
+                        data-testid="button-checkin-location"
+                      >
+                        {dailyAttendanceStatus?.hasCheckedIn
+                          ? `✓ ${t("userDashboard.attendance.checkedIn")}`
+                          : t("userDashboard.attendance.checkIn")}
+                      </Button>
+                      <Button
+                        onClick={requestLocation}
+                        variant="outline"
+                        data-testid="button-refresh-location"
+                      >
+                        {t("userDashboard.location.refreshBtn")}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <MapPin className="h-12 w-12 text-red-400 mx-auto mb-4" />
+                    <p className="text-red-600 dark:text-red-400 mb-2 font-medium">
+                      {locationError ||
+                        t("userDashboard.location.cantGetLocation")}
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                      {t("userDashboard.location.toAllowAccess")}:
+                    </p>
+                    <ul className="text-xs text-gray-600 dark:text-gray-400 text-right mb-4 space-y-1">
+                      <li>• {t("userDashboard.location.step1")}</li>
+                      <li>• {t("userDashboard.location.step2")}</li>
+                      <li>• {t("userDashboard.location.step3")}</li>
+                    </ul>
+                    <Button
+                      onClick={requestLocation}
+                      variant="default"
+                      className="mt-2"
+                      data-testid="button-retry-location"
+                    >
+                      {t("userDashboard.location.retry")}
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </PageLayout>
   );

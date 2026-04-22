@@ -4,12 +4,13 @@
  * Handles database schema deployment with data preservation
  */
 
+import { spawn } from "child_process";
+import { promisify } from "util";
+
 import { Pool, neonConfig } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import { migrate } from "drizzle-orm/neon-serverless/migrator";
 import ws from "ws";
-import { spawn } from "child_process";
-import { promisify } from "util";
 
 // Configure WebSocket for Neon
 neonConfig.webSocketConstructor = ws;

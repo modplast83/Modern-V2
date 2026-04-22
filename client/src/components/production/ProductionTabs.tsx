@@ -1,23 +1,26 @@
-import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Play, Package, Scissors, RefreshCw } from "lucide-react";
+import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useProductionSSE } from "../../hooks/use-production-sse";
+
 import { useAuth } from "../../hooks/use-auth";
-import type { Section } from "@/types";
+import { useProductionSSE } from "../../hooks/use-production-sse";
+import CuttingOperatorDashboard from "../../pages/CuttingOperatorDashboard";
+import PrintingOperatorDashboard from "../../pages/PrintingOperatorDashboard";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import { Button } from "../ui/button";
-import { Badge } from "../ui/badge";
-import { Play, Package, Scissors, RefreshCw } from "lucide-react";
-import ProductionOrdersTable from "./ProductionOrdersTable";
+
 import RollsTable from "./RollsTable";
 import ProductionQueue from "./ProductionQueue";
 import GroupedPrintingQueue from "./GroupedPrintingQueue";
 import GroupedCuttingQueue from "./GroupedCuttingQueue";
 import HierarchicalOrdersView from "./HierarchicalOrdersView";
+import ProductionOrdersTable from "./ProductionOrdersTable";
 import ProductionStageStats from "./ProductionStageStats";
-import PrintingOperatorDashboard from "../../pages/PrintingOperatorDashboard";
-import CuttingOperatorDashboard from "../../pages/CuttingOperatorDashboard";
+
+import type { Section } from "@/types";
 
 interface ProductionTabsProps {
   onCreateRoll: (productionOrderId?: number) => void;
@@ -72,7 +75,9 @@ export default function ProductionTabs({ onCreateRoll }: ProductionTabsProps) {
 
     // Get section information to match with production stages
     const userSection = sections.find(
-      (section) => Number(section.id) === userSectionId || section.id === String(userSectionId),
+      (section) =>
+        Number(section.id) === userSectionId ||
+        section.id === String(userSectionId),
     );
     const sectionName = userSection?.name?.toLowerCase();
 
@@ -195,7 +200,9 @@ export default function ProductionTabs({ onCreateRoll }: ProductionTabsProps) {
                 >
                   <Icon className="h-5 w-5 md:h-6 md:w-6" />
                   <span className="hidden sm:inline">{stageName}</span>
-                  <span className="sm:hidden">{stageName.split(' ')[1] || stageName}</span>
+                  <span className="sm:hidden">
+                    {stageName.split(" ")[1] || stageName}
+                  </span>
                   {queueCount > 0 && (
                     <Badge variant="secondary" className="text-xs md:text-sm">
                       {queueCount}
@@ -226,17 +233,21 @@ export default function ProductionTabs({ onCreateRoll }: ProductionTabsProps) {
             {/* Check if user is specifically in printing section */}
             {(() => {
               const userSection = sections.find(
-                (section) => section.id === String(currentUser?.section_id)
+                (section) => section.id === String(currentUser?.section_id),
               );
-              const isPrintingOperator = 
-                userSection?.name?.toLowerCase().includes("print") || 
+              const isPrintingOperator =
+                userSection?.name?.toLowerCase().includes("print") ||
                 userSection?.name?.toLowerCase().includes("طباعة");
-              
+
               // Show dedicated dashboard for printing operators
-              if (isPrintingOperator && currentUser?.role_id !== 1 && currentUser?.role_id !== 2) {
+              if (
+                isPrintingOperator &&
+                currentUser?.role_id !== 1 &&
+                currentUser?.role_id !== 2
+              ) {
                 return <PrintingOperatorDashboard />;
               }
-              
+
               // Show standard view for managers
               return (
                 <CardContent className="p-2 md:p-4">
@@ -254,21 +265,28 @@ export default function ProductionTabs({ onCreateRoll }: ProductionTabsProps) {
             {/* Check if user is specifically in cutting section */}
             {(() => {
               const userSection = sections.find(
-                (section) => section.id === String(currentUser?.section_id)
+                (section) => section.id === String(currentUser?.section_id),
               );
-              const isCuttingOperator = 
-                userSection?.name?.toLowerCase().includes("cut") || 
+              const isCuttingOperator =
+                userSection?.name?.toLowerCase().includes("cut") ||
                 userSection?.name?.toLowerCase().includes("تقطيع");
-              
+
               // Show dedicated dashboard for cutting operators
-              if (isCuttingOperator && currentUser?.role_id !== 1 && currentUser?.role_id !== 2) {
+              if (
+                isCuttingOperator &&
+                currentUser?.role_id !== 1 &&
+                currentUser?.role_id !== 2
+              ) {
                 return <CuttingOperatorDashboard />;
               }
-              
+
               // Show standard view for managers
               return (
                 <CardContent className="p-2 md:p-4">
-                  <ProductionStageStats stage="cutting" data={groupedCuttingQueue} />
+                  <ProductionStageStats
+                    stage="cutting"
+                    data={groupedCuttingQueue}
+                  />
                   <GroupedCuttingQueue items={groupedCuttingQueue} />
                 </CardContent>
               );

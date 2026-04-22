@@ -21,7 +21,8 @@ export const Endpoints = {
   notifications: "/api/notifications",
   notificationsUser: "/api/notifications/user",
   notificationsStream: "/api/notifications/stream",
-  notificationDelete: (id: number | string) => `/api/notifications/delete/${id}`,
+  notificationDelete: (id: number | string) =>
+    `/api/notifications/delete/${id}`,
   orders: "/api/orders",
   ordersEnhanced: "/api/orders/enhanced",
   orderById: (id: number | string) => `/api/orders/${id}`,

@@ -1,8 +1,10 @@
-import { StyleSheet, Text, View } from "react-native";
-import { Card } from "./Card";
-import { useTheme } from "@/utils/useTheme";
-import { FontSize, Spacing } from "@/constants/spacing";
 import { Ionicons } from "@expo/vector-icons";
+import { StyleSheet, Text, View } from "react-native";
+
+import { Card } from "./Card";
+
+import { FontSize, Spacing } from "@/constants/spacing";
+import { useTheme } from "@/utils/useTheme";
 
 interface Props {
   label: string;
@@ -22,7 +24,10 @@ export function StatTile({ label, value, icon, accent }: Props) {
       <Text style={[styles.value, { color: colors.text }]} numberOfLines={1}>
         {value}
       </Text>
-      <Text style={[styles.label, { color: colors.textMuted }]} numberOfLines={1}>
+      <Text
+        style={[styles.label, { color: colors.textMuted }]}
+        numberOfLines={1}
+      >
         {label}
       </Text>
     </Card>
@@ -30,7 +35,12 @@ export function StatTile({ label, value, icon, accent }: Props) {
 }
 
 const styles = StyleSheet.create({
-  tile: { flex: 1, minWidth: 140, alignItems: "flex-start", marginHorizontal: Spacing.xs },
+  tile: {
+    flex: 1,
+    minWidth: 140,
+    alignItems: "flex-start",
+    marginHorizontal: Spacing.xs,
+  },
   iconWrap: {
     width: 36,
     height: 36,

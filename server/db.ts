@@ -1,7 +1,7 @@
 import { Pool, neonConfig } from "@neondatabase/serverless";
+import * as schema from "@shared/schema";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import ws from "ws";
-import * as schema from "@shared/schema";
 
 neonConfig.webSocketConstructor = ws;
 
@@ -17,10 +17,12 @@ export const pool = new Pool({
   idleTimeoutMillis: 5000,
 });
 
-pool.on('error', (err: Error) => {
-  console.error('🔴 Database pool error (non-fatal):', err.message);
-  console.error('📍 Error code:', (err as any).code || 'Unknown');
-  console.error('💡 The application will continue running and attempt to reconnect on next query');
+pool.on("error", (err: Error) => {
+  console.error("🔴 Database pool error (non-fatal):", err.message);
+  console.error("📍 Error code:", (err as any).code || "Unknown");
+  console.error(
+    "💡 The application will continue running and attempt to reconnect on next query",
+  );
 });
 
 export const db = drizzle({ client: pool, schema });

@@ -1,5 +1,6 @@
 // @refresh reset
 import { useState, useEffect, useRef, useCallback } from "react";
+
 import { useAuth } from "./use-auth";
 
 // SSE event types
@@ -69,9 +70,13 @@ export function useSSE(eventHandlers?: SSEEventHandlers) {
   const audioContextRef = useRef<AudioContext | null>(null);
 
   const getAudioContext = useCallback(() => {
-    if (!audioContextRef.current || audioContextRef.current.state === "closed") {
-      audioContextRef.current = new (window.AudioContext ||
-        (window as any).webkitAudioContext)();
+    if (
+      !audioContextRef.current ||
+      audioContextRef.current.state === "closed"
+    ) {
+      audioContextRef.current = new (
+        window.AudioContext || (window as any).webkitAudioContext
+      )();
     }
     if (audioContextRef.current.state === "suspended") {
       audioContextRef.current.resume();
@@ -360,7 +365,10 @@ export function useSSE(eventHandlers?: SSEEventHandlers) {
   useEffect(() => {
     return () => {
       cleanup();
-      if (audioContextRef.current && audioContextRef.current.state !== "closed") {
+      if (
+        audioContextRef.current &&
+        audioContextRef.current.state !== "closed"
+      ) {
         audioContextRef.current.close().catch(() => {});
         audioContextRef.current = null;
       }

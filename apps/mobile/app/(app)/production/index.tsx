@@ -1,17 +1,17 @@
-import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { router } from "expo-router";
-import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { Screen } from "@/components/layout/Screen";
-import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
-import { Loader } from "@/components/ui/Loader";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { useProductionOrders } from "@/api/hooks/useProduction";
-import { useTheme } from "@/utils/useTheme";
+import { Screen } from "@/components/layout/Screen";
+import { Badge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Loader } from "@/components/ui/Loader";
 import { FontSize, Spacing } from "@/constants/spacing";
+import { useTheme } from "@/utils/useTheme";
 
 export default function ProductionIndex() {
   const { t } = useTranslation();
@@ -22,14 +22,28 @@ export default function ProductionIndex() {
   return (
     <Screen
       refreshing={refreshing}
-      onRefresh={async () => { setRefreshing(true); await refetch(); setRefreshing(false); }}
+      onRefresh={async () => {
+        setRefreshing(true);
+        await refetch();
+        setRefreshing(false);
+      }}
     >
-      <Pressable onPress={() => router.push("/(app)/production/rolls")} style={({ pressed }) => [styles.cta, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}>
+      <Pressable
+        onPress={() => router.push("/(app)/production/rolls")}
+        style={({ pressed }) => [
+          styles.cta,
+          { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 },
+        ]}
+      >
         <Ionicons name="albums-outline" size={20} color={colors.primaryText} />
-        <Text style={[styles.ctaText, { color: colors.primaryText }]}>{t("production.rolls")}</Text>
+        <Text style={[styles.ctaText, { color: colors.primaryText }]}>
+          {t("production.rolls")}
+        </Text>
       </Pressable>
 
-      <Text style={[styles.section, { color: colors.text }]}>{t("production.productionOrders")}</Text>
+      <Text style={[styles.section, { color: colors.text }]}>
+        {t("production.productionOrders")}
+      </Text>
 
       {isLoading ? (
         <Loader />
@@ -39,7 +53,9 @@ export default function ProductionIndex() {
         data.map((p) => (
           <Card key={p.id}>
             <View style={styles.row}>
-              <Text style={[styles.no, { color: colors.text }]}>#{p.production_order_number}</Text>
+              <Text style={[styles.no, { color: colors.text }]}>
+                #{p.production_order_number}
+              </Text>
               <Badge label={p.status} color={colors.info} />
             </View>
             <Text style={[styles.meta, { color: colors.textMuted }]}>
@@ -63,8 +79,17 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   ctaText: { fontSize: FontSize.base, fontWeight: "700" },
-  section: { fontSize: FontSize.md, fontWeight: "700", marginBottom: Spacing.md },
-  row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.sm },
+  section: {
+    fontSize: FontSize.md,
+    fontWeight: "700",
+    marginBottom: Spacing.md,
+  },
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: Spacing.sm,
+  },
   no: { fontSize: FontSize.md, fontWeight: "700" },
   meta: { fontSize: FontSize.sm },
 });

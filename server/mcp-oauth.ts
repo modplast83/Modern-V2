@@ -1,14 +1,31 @@
-import type { Express, Request, Response } from "express";
 import crypto from "crypto";
-import { db } from "./db";
-import { mcp_api_keys, mcp_oauth_tokens, mcp_oauth_clients } from "@shared/schema";
+
+import {
+  mcp_api_keys,
+  mcp_oauth_tokens,
+  mcp_oauth_clients,
+} from "@shared/schema";
 import { eq, and, lt, sql } from "drizzle-orm";
+
+import { db } from "./db";
+
+import type { Express, Request, Response } from "express";
 
 function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
-const authCodes = new Map<string, { apiKey: string; clientId: string; redirectUri: string; expiresAt: number; codeChallenge?: string; codeChallengeMethod?: string }>();
+const authCodes = new Map<
+  string,
+  {
+    apiKey: string;
+    clientId: string;
+    redirectUri: string;
+    expiresAt: number;
+    codeChallenge?: string;
+    codeChallengeMethod?: string;
+  }
+>();
 
 const CODE_EXPIRY_MS = 5 * 60 * 1000;
 const ACCESS_TOKEN_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
@@ -21,16 +38,19 @@ setInterval(() => {
   }
 }, 60_000);
 
-setInterval(() => {
-  db.delete(mcp_oauth_tokens)
-    .where(
-      and(
-        eq(mcp_oauth_tokens.revoked, true),
-        lt(mcp_oauth_tokens.access_token_expires_at, new Date())
+setInterval(
+  () => {
+    db.delete(mcp_oauth_tokens)
+      .where(
+        and(
+          eq(mcp_oauth_tokens.revoked, true),
+          lt(mcp_oauth_tokens.access_token_expires_at, new Date()),
+        ),
       )
-    )
-    .catch(() => {});
-}, 60 * 60 * 1000);
+      .catch(() => {});
+  },
+  60 * 60 * 1000,
+);
 
 export async function validateOAuthToken(token: string): Promise<boolean> {
   try {
@@ -41,8 +61,8 @@ export async function validateOAuthToken(token: string): Promise<boolean> {
       .where(
         and(
           eq(mcp_oauth_tokens.access_token_hash, tokenHash),
-          eq(mcp_oauth_tokens.revoked, false)
-        )
+          eq(mcp_oauth_tokens.revoked, false),
+        ),
       )
       .limit(1);
 
@@ -56,7 +76,12 @@ export async function validateOAuthToken(token: string): Promise<boolean> {
     const apiKeyResult = await db
       .select()
       .from(mcp_api_keys)
-      .where(and(eq(mcp_api_keys.key_hash, tokenRow.api_key_hash), eq(mcp_api_keys.is_active, true)))
+      .where(
+        and(
+          eq(mcp_api_keys.key_hash, tokenRow.api_key_hash),
+          eq(mcp_api_keys.is_active, true),
+        ),
+      )
       .limit(1);
 
     if (apiKeyResult.length > 0) {
@@ -75,40 +100,58 @@ export async function validateOAuthToken(token: string): Promise<boolean> {
 
 function getBaseUrl(req: Request): string {
   const proto = req.headers["x-forwarded-proto"] || req.protocol || "https";
-  const host = req.headers["x-forwarded-host"] || req.headers.host || "localhost";
+  const host =
+    req.headers["x-forwarded-host"] || req.headers.host || "localhost";
   return `${proto}://${host}`;
 }
 
-function verifyCodeChallenge(codeVerifier: string, codeChallenge: string, method: string): boolean {
+function verifyCodeChallenge(
+  codeVerifier: string,
+  codeChallenge: string,
+  method: string,
+): boolean {
   if (method === "S256") {
-    const computed = crypto.createHash("sha256").update(codeVerifier).digest("base64url");
+    const computed = crypto
+      .createHash("sha256")
+      .update(codeVerifier)
+      .digest("base64url");
     return computed === codeChallenge;
   }
   return codeVerifier === codeChallenge;
 }
 
 export function registerMcpOAuthRoutes(app: Express) {
-  app.get("/.well-known/oauth-authorization-server", (req: Request, res: Response) => {
-    const baseUrl = getBaseUrl(req);
-    res.json({
-      issuer: baseUrl,
-      authorization_endpoint: `${baseUrl}/oauth/authorize`,
-      token_endpoint: `${baseUrl}/oauth/token`,
-      registration_endpoint: `${baseUrl}/oauth/register`,
-      response_types_supported: ["code"],
-      grant_types_supported: ["authorization_code", "refresh_token"],
-      token_endpoint_auth_methods_supported: ["client_secret_post", "none"],
-      code_challenge_methods_supported: ["S256", "plain"],
-      scopes_supported: ["mcp:read"],
-    });
-  });
+  app.get(
+    "/.well-known/oauth-authorization-server",
+    (req: Request, res: Response) => {
+      const baseUrl = getBaseUrl(req);
+      res.json({
+        issuer: baseUrl,
+        authorization_endpoint: `${baseUrl}/oauth/authorize`,
+        token_endpoint: `${baseUrl}/oauth/token`,
+        registration_endpoint: `${baseUrl}/oauth/register`,
+        response_types_supported: ["code"],
+        grant_types_supported: ["authorization_code", "refresh_token"],
+        token_endpoint_auth_methods_supported: ["client_secret_post", "none"],
+        code_challenge_methods_supported: ["S256", "plain"],
+        scopes_supported: ["mcp:read"],
+      });
+    },
+  );
 
   app.post("/oauth/register", async (req: Request, res: Response) => {
     try {
       const { redirect_uris, client_name } = req.body;
 
-      if (!redirect_uris || !Array.isArray(redirect_uris) || redirect_uris.length === 0) {
-        res.status(400).json({ error: "invalid_request", error_description: "redirect_uris is required" });
+      if (
+        !redirect_uris ||
+        !Array.isArray(redirect_uris) ||
+        redirect_uris.length === 0
+      ) {
+        res.status(400).json({
+          error: "invalid_request",
+          error_description: "redirect_uris is required",
+        });
         return;
       }
 
@@ -139,7 +182,15 @@ export function registerMcpOAuthRoutes(app: Express) {
   });
 
   app.get("/oauth/authorize", (req: Request, res: Response) => {
-    const { client_id, redirect_uri, state, response_type, code_challenge, code_challenge_method, scope } = req.query as Record<string, string>;
+    const {
+      client_id,
+      redirect_uri,
+      state,
+      response_type,
+      code_challenge,
+      code_challenge_method,
+      scope,
+    } = req.query as Record<string, string>;
 
     if (response_type !== "code") {
       res.status(400).send("unsupported response_type");
@@ -266,16 +317,26 @@ export function registerMcpOAuthRoutes(app: Express) {
   </script>
 </body>
 </html>`;
-    
+
     res.type("html").send(html);
   });
 
   app.post("/oauth/authorize", async (req: Request, res: Response) => {
     try {
-      const { api_key, client_id, redirect_uri, state, code_challenge, code_challenge_method } = req.body;
+      const {
+        api_key,
+        client_id,
+        redirect_uri,
+        state,
+        code_challenge,
+        code_challenge_method,
+      } = req.body;
 
       if (!api_key) {
-        res.status(400).json({ error: "invalid_request", error_description: "مفتاح API مطلوب" });
+        res.status(400).json({
+          error: "invalid_request",
+          error_description: "مفتاح API مطلوب",
+        });
         return;
       }
 
@@ -287,14 +348,23 @@ export function registerMcpOAuthRoutes(app: Express) {
           .limit(1);
 
         if (clientResults.length === 0) {
-          res.status(400).json({ error: "invalid_client", error_description: "Client not registered" });
+          res.status(400).json({
+            error: "invalid_client",
+            error_description: "Client not registered",
+          });
           return;
         }
 
         if (redirect_uri) {
           const registeredUris = clientResults[0].redirect_uris as string[];
-          if (!Array.isArray(registeredUris) || !registeredUris.includes(redirect_uri)) {
-            res.status(400).json({ error: "invalid_request", error_description: "redirect_uri not registered for this client" });
+          if (
+            !Array.isArray(registeredUris) ||
+            !registeredUris.includes(redirect_uri)
+          ) {
+            res.status(400).json({
+              error: "invalid_request",
+              error_description: "redirect_uri not registered for this client",
+            });
             return;
           }
         }
@@ -304,11 +374,19 @@ export function registerMcpOAuthRoutes(app: Express) {
       const result = await db
         .select()
         .from(mcp_api_keys)
-        .where(and(eq(mcp_api_keys.key_hash, keyHash), eq(mcp_api_keys.is_active, true)))
+        .where(
+          and(
+            eq(mcp_api_keys.key_hash, keyHash),
+            eq(mcp_api_keys.is_active, true),
+          ),
+        )
         .limit(1);
 
       if (result.length === 0) {
-        res.status(401).json({ error: "invalid_grant", error_description: "مفتاح API غير صالح أو غير نشط" });
+        res.status(401).json({
+          error: "invalid_grant",
+          error_description: "مفتاح API غير صالح أو غير نشط",
+        });
         return;
       }
 
@@ -338,7 +416,15 @@ export function registerMcpOAuthRoutes(app: Express) {
 
   app.post("/oauth/token", async (req: Request, res: Response) => {
     try {
-      const { grant_type, code, redirect_uri, client_id, client_secret, code_verifier, refresh_token } = req.body;
+      const {
+        grant_type,
+        code,
+        redirect_uri,
+        client_id,
+        client_secret,
+        code_verifier,
+        refresh_token,
+      } = req.body;
 
       if (client_id && client_secret) {
         const clientResults = await db
@@ -347,15 +433,24 @@ export function registerMcpOAuthRoutes(app: Express) {
           .where(eq(mcp_oauth_clients.client_id, client_id))
           .limit(1);
 
-        if (clientResults.length === 0 || clientResults[0].client_secret_hash !== hashToken(client_secret)) {
-          res.status(401).json({ error: "invalid_client", error_description: "Invalid client credentials" });
+        if (
+          clientResults.length === 0 ||
+          clientResults[0].client_secret_hash !== hashToken(client_secret)
+        ) {
+          res.status(401).json({
+            error: "invalid_client",
+            error_description: "Invalid client credentials",
+          });
           return;
         }
       }
 
       if (grant_type === "refresh_token") {
         if (!refresh_token) {
-          res.status(400).json({ error: "invalid_request", error_description: "refresh_token is required" });
+          res.status(400).json({
+            error: "invalid_request",
+            error_description: "refresh_token is required",
+          });
           return;
         }
 
@@ -366,46 +461,73 @@ export function registerMcpOAuthRoutes(app: Express) {
           .where(
             and(
               eq(mcp_oauth_tokens.refresh_token_hash, refreshHash),
-              eq(mcp_oauth_tokens.revoked, false)
-            )
+              eq(mcp_oauth_tokens.revoked, false),
+            ),
           )
           .limit(1);
 
         if (tokenResults.length === 0) {
-          res.status(400).json({ error: "invalid_grant", error_description: "Invalid or expired refresh token" });
+          res.status(400).json({
+            error: "invalid_grant",
+            error_description: "Invalid or expired refresh token",
+          });
           return;
         }
 
         const oldToken = tokenResults[0];
 
-        if (client_id && oldToken.client_id && oldToken.client_id !== client_id) {
-          res.status(400).json({ error: "invalid_grant", error_description: "Token was not issued to this client" });
+        if (
+          client_id &&
+          oldToken.client_id &&
+          oldToken.client_id !== client_id
+        ) {
+          res.status(400).json({
+            error: "invalid_grant",
+            error_description: "Token was not issued to this client",
+          });
           return;
         }
 
-        if (oldToken.refresh_token_expires_at && new Date(oldToken.refresh_token_expires_at) < new Date()) {
-          await db.update(mcp_oauth_tokens)
+        if (
+          oldToken.refresh_token_expires_at &&
+          new Date(oldToken.refresh_token_expires_at) < new Date()
+        ) {
+          await db
+            .update(mcp_oauth_tokens)
             .set({ revoked: true })
             .where(eq(mcp_oauth_tokens.id, oldToken.id));
-          res.status(400).json({ error: "invalid_grant", error_description: "Refresh token expired" });
+          res.status(400).json({
+            error: "invalid_grant",
+            error_description: "Refresh token expired",
+          });
           return;
         }
 
         const apiKeyResult = await db
           .select()
           .from(mcp_api_keys)
-          .where(and(eq(mcp_api_keys.key_hash, oldToken.api_key_hash), eq(mcp_api_keys.is_active, true)))
+          .where(
+            and(
+              eq(mcp_api_keys.key_hash, oldToken.api_key_hash),
+              eq(mcp_api_keys.is_active, true),
+            ),
+          )
           .limit(1);
 
         if (apiKeyResult.length === 0) {
-          await db.update(mcp_oauth_tokens)
+          await db
+            .update(mcp_oauth_tokens)
             .set({ revoked: true })
             .where(eq(mcp_oauth_tokens.id, oldToken.id));
-          res.status(400).json({ error: "invalid_grant", error_description: "Associated API key is no longer active" });
+          res.status(400).json({
+            error: "invalid_grant",
+            error_description: "Associated API key is no longer active",
+          });
           return;
         }
 
-        await db.update(mcp_oauth_tokens)
+        await db
+          .update(mcp_oauth_tokens)
           .set({ revoked: true })
           .where(eq(mcp_oauth_tokens.id, oldToken.id));
 
@@ -440,38 +562,66 @@ export function registerMcpOAuthRoutes(app: Express) {
       }
 
       if (!code) {
-        res.status(400).json({ error: "invalid_request", error_description: "code is required" });
+        res.status(400).json({
+          error: "invalid_request",
+          error_description: "code is required",
+        });
         return;
       }
 
       const codeData = authCodes.get(code);
       if (!codeData) {
-        res.status(400).json({ error: "invalid_grant", error_description: "Invalid or expired authorization code" });
+        res.status(400).json({
+          error: "invalid_grant",
+          error_description: "Invalid or expired authorization code",
+        });
         return;
       }
 
       if (codeData.expiresAt < Date.now()) {
         authCodes.delete(code);
-        res.status(400).json({ error: "invalid_grant", error_description: "Authorization code expired" });
+        res.status(400).json({
+          error: "invalid_grant",
+          error_description: "Authorization code expired",
+        });
         return;
       }
 
       if (client_id && codeData.clientId && client_id !== codeData.clientId) {
         authCodes.delete(code);
-        res.status(400).json({ error: "invalid_grant", error_description: "client_id mismatch" });
+        res.status(400).json({
+          error: "invalid_grant",
+          error_description: "client_id mismatch",
+        });
         return;
       }
 
-      if (redirect_uri && codeData.redirectUri && redirect_uri !== codeData.redirectUri) {
+      if (
+        redirect_uri &&
+        codeData.redirectUri &&
+        redirect_uri !== codeData.redirectUri
+      ) {
         authCodes.delete(code);
-        res.status(400).json({ error: "invalid_grant", error_description: "redirect_uri mismatch" });
+        res.status(400).json({
+          error: "invalid_grant",
+          error_description: "redirect_uri mismatch",
+        });
         return;
       }
 
       if (codeData.codeChallenge && code_verifier) {
-        if (!verifyCodeChallenge(code_verifier, codeData.codeChallenge, codeData.codeChallengeMethod || "plain")) {
+        if (
+          !verifyCodeChallenge(
+            code_verifier,
+            codeData.codeChallenge,
+            codeData.codeChallengeMethod || "plain",
+          )
+        ) {
           authCodes.delete(code);
-          res.status(400).json({ error: "invalid_grant", error_description: "code_verifier mismatch" });
+          res.status(400).json({
+            error: "invalid_grant",
+            error_description: "code_verifier mismatch",
+          });
           return;
         }
       }

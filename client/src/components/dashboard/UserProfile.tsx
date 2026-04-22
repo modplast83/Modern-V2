@@ -1,28 +1,4 @@
-import { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
-import { useAuth } from "../../hooks/use-auth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "../ui/card";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
-import { Switch } from "../ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
-import { Separator } from "../ui/separator";
-import { useToast } from "../../hooks/use-toast";
-import { apiRequest } from "../../lib/queryClient";
 import {
   User,
   Sun,
@@ -34,7 +10,32 @@ import {
   Phone,
   Globe,
 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+
 import { useTheme } from "../../contexts/ThemeContext";
+import { useAuth } from "../../hooks/use-auth";
+import { useToast } from "../../hooks/use-toast";
+import { apiRequest } from "../../lib/queryClient";
+import { Button } from "../ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "../ui/card";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
+import { Separator } from "../ui/separator";
+import { Switch } from "../ui/switch";
 
 export default function UserProfile() {
   const { t } = useTranslation();
@@ -90,7 +91,9 @@ export default function UserProfile() {
         },
         dashboard: {
           autoRefresh: settingsMap.dashboardAutoRefresh === "true",
-          refreshInterval: parseInt(settingsMap.dashboardRefreshInterval || "30"),
+          refreshInterval: parseInt(
+            settingsMap.dashboardRefreshInterval || "30",
+          ),
           compactView: settingsMap.dashboardCompactView === "true",
         },
       }));
@@ -125,14 +128,14 @@ export default function UserProfile() {
         queryKey: ["/api/settings/user", user?.id],
       });
       toast({
-        title: t('dashboard.profile.saveSuccess'),
-        description: t('dashboard.profile.saveSuccessDesc'),
+        title: t("dashboard.profile.saveSuccess"),
+        description: t("dashboard.profile.saveSuccessDesc"),
       });
     },
     onError: () => {
       toast({
-        title: t('dashboard.profile.saveError'),
-        description: t('dashboard.profile.saveErrorDesc'),
+        title: t("dashboard.profile.saveError"),
+        description: t("dashboard.profile.saveErrorDesc"),
         variant: "destructive",
       });
     },
@@ -148,20 +151,25 @@ export default function UserProfile() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <User className="w-5 h-5" />
-            {t('dashboard.profile.title')}
+            {t("dashboard.profile.title")}
           </CardTitle>
           <CardDescription>
-            {t('dashboard.profile.description')}
+            {t("dashboard.profile.description")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-4">
-            <h4 className="text-sm font-medium">{t('dashboard.profile.personalInfo')}</h4>
+            <h4 className="text-sm font-medium">
+              {t("dashboard.profile.personalInfo")}
+            </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="displayName" className="flex items-center gap-2">
+                <Label
+                  htmlFor="displayName"
+                  className="flex items-center gap-2"
+                >
                   <User className="w-4 h-4" />
-                  {t('dashboard.profile.displayName')}
+                  {t("dashboard.profile.displayName")}
                 </Label>
                 <Input
                   id="displayName"
@@ -178,7 +186,7 @@ export default function UserProfile() {
               <div className="space-y-2">
                 <Label htmlFor="email" className="flex items-center gap-2">
                   <Mail className="w-4 h-4" />
-                  {t('dashboard.profile.email')}
+                  {t("dashboard.profile.email")}
                 </Label>
                 <Input
                   id="email"
@@ -196,7 +204,7 @@ export default function UserProfile() {
               <div className="space-y-2">
                 <Label htmlFor="phone" className="flex items-center gap-2">
                   <Phone className="w-4 h-4" />
-                  {t('dashboard.profile.phone')}
+                  {t("dashboard.profile.phone")}
                 </Label>
                 <Input
                   id="phone"
@@ -214,7 +222,7 @@ export default function UserProfile() {
               <div className="space-y-2">
                 <Label htmlFor="language" className="flex items-center gap-2">
                   <Globe className="w-4 h-4" />
-                  {t('dashboard.profile.preferredLanguage')}
+                  {t("dashboard.profile.preferredLanguage")}
                 </Label>
                 <Select
                   value={userSettings.language ?? "ar"}
@@ -229,7 +237,9 @@ export default function UserProfile() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ar">{t('dashboard.profile.arabic')}</SelectItem>
+                    <SelectItem value="ar">
+                      {t("dashboard.profile.arabic")}
+                    </SelectItem>
                     <SelectItem value="en">English</SelectItem>
                   </SelectContent>
                 </Select>
@@ -240,7 +250,9 @@ export default function UserProfile() {
           <Separator />
 
           <div className="space-y-4">
-            <h4 className="text-sm font-medium">{t('dashboard.profile.appearance')}</h4>
+            <h4 className="text-sm font-medium">
+              {t("dashboard.profile.appearance")}
+            </h4>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {userSettings.theme === "light" ? (
@@ -248,7 +260,7 @@ export default function UserProfile() {
                 ) : (
                   <Moon className="w-4 h-4" />
                 )}
-                <Label>{t('dashboard.profile.darkMode')}</Label>
+                <Label>{t("dashboard.profile.darkMode")}</Label>
               </div>
               <Switch
                 checked={userSettings.theme === "dark"}
@@ -266,7 +278,7 @@ export default function UserProfile() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Monitor className="w-4 h-4" />
-                <Label>{t('dashboard.profile.compactView')}</Label>
+                <Label>{t("dashboard.profile.compactView")}</Label>
               </div>
               <Switch
                 checked={userSettings.dashboard.compactView}
@@ -287,12 +299,16 @@ export default function UserProfile() {
           <Separator />
 
           <div className="space-y-4">
-            <h4 className="text-sm font-medium">{t('dashboard.profile.dashboardSettings')}</h4>
+            <h4 className="text-sm font-medium">
+              {t("dashboard.profile.dashboardSettings")}
+            </h4>
             <div className="flex items-center justify-between">
               <div>
-                <Label className="text-base">{t('dashboard.profile.autoRefresh')}</Label>
+                <Label className="text-base">
+                  {t("dashboard.profile.autoRefresh")}
+                </Label>
                 <p className="text-sm text-muted-foreground">
-                  {t('dashboard.profile.autoRefreshDesc')}
+                  {t("dashboard.profile.autoRefreshDesc")}
                 </p>
               </div>
               <Switch
@@ -313,7 +329,7 @@ export default function UserProfile() {
             {userSettings.dashboard.autoRefresh && (
               <div className="space-y-2">
                 <Label htmlFor="refreshInterval">
-                  {t('dashboard.profile.refreshInterval')}
+                  {t("dashboard.profile.refreshInterval")}
                 </Label>
                 <Select
                   value={(
@@ -333,10 +349,18 @@ export default function UserProfile() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="15">{t('dashboard.profile.seconds15')}</SelectItem>
-                    <SelectItem value="30">{t('dashboard.profile.seconds30')}</SelectItem>
-                    <SelectItem value="60">{t('dashboard.profile.minute1')}</SelectItem>
-                    <SelectItem value="300">{t('dashboard.profile.minutes5')}</SelectItem>
+                    <SelectItem value="15">
+                      {t("dashboard.profile.seconds15")}
+                    </SelectItem>
+                    <SelectItem value="30">
+                      {t("dashboard.profile.seconds30")}
+                    </SelectItem>
+                    <SelectItem value="60">
+                      {t("dashboard.profile.minute1")}
+                    </SelectItem>
+                    <SelectItem value="300">
+                      {t("dashboard.profile.minutes5")}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -354,7 +378,7 @@ export default function UserProfile() {
               ) : (
                 <Save className="w-4 h-4 mr-2" />
               )}
-              {t('dashboard.profile.saveChanges')}
+              {t("dashboard.profile.saveChanges")}
             </Button>
           </div>
         </CardContent>

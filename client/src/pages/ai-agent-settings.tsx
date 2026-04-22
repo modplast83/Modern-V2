@@ -1,19 +1,54 @@
-import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Save,
+  Settings,
+  BookOpen,
+  Sparkles,
+  FileText,
+  Lightbulb,
+} from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+
 import PageLayout from "../components/layout/PageLayout";
 import { Button } from "../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../components/ui/dialog";
 import { Input } from "../components/ui/input";
-import { Textarea } from "../components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
-import { Switch } from "../components/ui/switch";
 import { Label } from "../components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
+import { Switch } from "../components/ui/switch";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../components/ui/tabs";
+import { Textarea } from "../components/ui/textarea";
 import { useToast } from "../hooks/use-toast";
 import { apiRequest } from "../lib/queryClient";
-import { Plus, Edit, Trash2, Save, Settings, BookOpen, Sparkles, FileText, Lightbulb } from "lucide-react";
 
 interface Setting {
   id: number;
@@ -76,9 +111,19 @@ export function AiAgentSettingsContent() {
   const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [editingSetting, setEditingSetting] = useState<{ key: string; value: string; description: string } | null>(null);
-  const [newKnowledge, setNewKnowledge] = useState({ title: "", content: "", category: "general" });
-  const [editingKnowledge, setEditingKnowledge] = useState<Knowledge | null>(null);
+  const [editingSetting, setEditingSetting] = useState<{
+    key: string;
+    value: string;
+    description: string;
+  } | null>(null);
+  const [newKnowledge, setNewKnowledge] = useState({
+    title: "",
+    content: "",
+    category: "general",
+  });
+  const [editingKnowledge, setEditingKnowledge] = useState<Knowledge | null>(
+    null,
+  );
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isAddTemplateDialogOpen, setIsAddTemplateDialogOpen] = useState(false);
   const [customInstructions, setCustomInstructions] = useState("");
@@ -90,61 +135,107 @@ export function AiAgentSettingsContent() {
     unit_price: "",
     unit: "kg",
     min_quantity: "",
-    category: ""
+    category: "",
   });
-  const [editingTemplate, setEditingTemplate] = useState<QuoteTemplate | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<QuoteTemplate | null>(
+    null,
+  );
   const [isAddFeatureDialogOpen, setIsAddFeatureDialogOpen] = useState(false);
-  const [newFeatureInstruction, setNewFeatureInstruction] = useState({ feature_name: "", instructions: "", priority: 0 });
-  const [editingFeatureInstruction, setEditingFeatureInstruction] = useState<FeatureInstruction | null>(null);
+  const [newFeatureInstruction, setNewFeatureInstruction] = useState({
+    feature_name: "",
+    instructions: "",
+    priority: 0,
+  });
+  const [editingFeatureInstruction, setEditingFeatureInstruction] =
+    useState<FeatureInstruction | null>(null);
 
-  const { data: settings = [], isLoading: loadingSettings } = useQuery<Setting[]>({
-    queryKey: ["/api/ai-agent/settings"]
+  const { data: settings = [], isLoading: loadingSettings } = useQuery<
+    Setting[]
+  >({
+    queryKey: ["/api/ai-agent/settings"],
   });
 
-  const { data: knowledge = [], isLoading: loadingKnowledge } = useQuery<Knowledge[]>({
-    queryKey: ["/api/ai-agent/knowledge"]
+  const { data: knowledge = [], isLoading: loadingKnowledge } = useQuery<
+    Knowledge[]
+  >({
+    queryKey: ["/api/ai-agent/knowledge"],
   });
 
-  const { data: templates = [], isLoading: loadingTemplates } = useQuery<QuoteTemplate[]>({
-    queryKey: ["/api/quote-templates"]
+  const { data: templates = [], isLoading: loadingTemplates } = useQuery<
+    QuoteTemplate[]
+  >({
+    queryKey: ["/api/quote-templates"],
   });
 
-  const { data: featureInstructions = [], isLoading: loadingFeatureInstructions } = useQuery<FeatureInstruction[]>({
-    queryKey: ["/api/ai-agent/feature-instructions"]
+  const {
+    data: featureInstructions = [],
+    isLoading: loadingFeatureInstructions,
+  } = useQuery<FeatureInstruction[]>({
+    queryKey: ["/api/ai-agent/feature-instructions"],
   });
 
   const updateSettingMutation = useMutation({
-    mutationFn: async ({ key, value, description }: { key: string; value: string; description: string }) => {
-      return apiRequest(`/api/ai-agent/settings/${key}`, { method: "PUT", body: JSON.stringify({ value, description }) });
+    mutationFn: async ({
+      key,
+      value,
+      description,
+    }: {
+      key: string;
+      value: string;
+      description: string;
+    }) => {
+      return apiRequest(`/api/ai-agent/settings/${key}`, {
+        method: "PUT",
+        body: JSON.stringify({ value, description }),
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/ai-agent/settings"] });
       setEditingSetting(null);
-      toast({ title: t("aiAgent.toasts.saved"), description: t("aiAgent.toasts.settingUpdated") });
-    }
+      toast({
+        title: t("aiAgent.toasts.saved"),
+        description: t("aiAgent.toasts.settingUpdated"),
+      });
+    },
   });
 
   const addKnowledgeMutation = useMutation({
-    mutationFn: async (data: { title: string; content: string; category: string }) => {
-      return apiRequest("/api/ai-agent/knowledge", { method: "POST", body: JSON.stringify(data) });
+    mutationFn: async (data: {
+      title: string;
+      content: string;
+      category: string;
+    }) => {
+      return apiRequest("/api/ai-agent/knowledge", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/ai-agent/knowledge"] });
       setNewKnowledge({ title: "", content: "", category: "general" });
       setIsAddDialogOpen(false);
-      toast({ title: t("aiAgent.toasts.added"), description: t("aiAgent.toasts.knowledgeAdded") });
-    }
+      toast({
+        title: t("aiAgent.toasts.added"),
+        description: t("aiAgent.toasts.knowledgeAdded"),
+      });
+    },
   });
 
   const updateKnowledgeMutation = useMutation({
     mutationFn: async (data: Knowledge) => {
-      return apiRequest(`/api/ai-agent/knowledge/${data.id}`, { method: "PUT", body: JSON.stringify(data) });
+      return apiRequest(`/api/ai-agent/knowledge/${data.id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/ai-agent/knowledge"] });
       setEditingKnowledge(null);
-      toast({ title: t("aiAgent.toasts.updated"), description: t("aiAgent.toasts.knowledgeUpdated") });
-    }
+      toast({
+        title: t("aiAgent.toasts.updated"),
+        description: t("aiAgent.toasts.knowledgeUpdated"),
+      });
+    },
   });
 
   const deleteKnowledgeMutation = useMutation({
@@ -153,31 +244,55 @@ export function AiAgentSettingsContent() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/ai-agent/knowledge"] });
-      toast({ title: t("aiAgent.toasts.deleted"), description: t("aiAgent.toasts.knowledgeDeleted") });
-    }
+      toast({
+        title: t("aiAgent.toasts.deleted"),
+        description: t("aiAgent.toasts.knowledgeDeleted"),
+      });
+    },
   });
 
   const addTemplateMutation = useMutation({
     mutationFn: async (data: typeof newTemplate) => {
-      return apiRequest("/api/quote-templates", { method: "POST", body: JSON.stringify(data) });
+      return apiRequest("/api/quote-templates", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/quote-templates"] });
-      setNewTemplate({ name: "", description: "", product_name: "", product_description: "", unit_price: "", unit: "kg", min_quantity: "", category: "" });
+      setNewTemplate({
+        name: "",
+        description: "",
+        product_name: "",
+        product_description: "",
+        unit_price: "",
+        unit: "kg",
+        min_quantity: "",
+        category: "",
+      });
       setIsAddTemplateDialogOpen(false);
-      toast({ title: t("aiAgent.toasts.added"), description: t("aiAgent.toasts.templateAdded") });
-    }
+      toast({
+        title: t("aiAgent.toasts.added"),
+        description: t("aiAgent.toasts.templateAdded"),
+      });
+    },
   });
 
   const updateTemplateMutation = useMutation({
     mutationFn: async (data: QuoteTemplate) => {
-      return apiRequest(`/api/quote-templates/${data.id}`, { method: "PUT", body: JSON.stringify(data) });
+      return apiRequest(`/api/quote-templates/${data.id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/quote-templates"] });
       setEditingTemplate(null);
-      toast({ title: t("aiAgent.toasts.updated"), description: t("aiAgent.toasts.templateUpdated") });
-    }
+      toast({
+        title: t("aiAgent.toasts.updated"),
+        description: t("aiAgent.toasts.templateUpdated"),
+      });
+    },
   });
 
   const deleteTemplateMutation = useMutation({
@@ -186,41 +301,75 @@ export function AiAgentSettingsContent() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/quote-templates"] });
-      toast({ title: t("aiAgent.toasts.deleted"), description: t("aiAgent.toasts.templateDeleted") });
-    }
+      toast({
+        title: t("aiAgent.toasts.deleted"),
+        description: t("aiAgent.toasts.templateDeleted"),
+      });
+    },
   });
 
   const addFeatureInstructionMutation = useMutation({
-    mutationFn: async (data: { feature_name: string; instructions: string; priority: number }) => {
-      return apiRequest("/api/ai-agent/feature-instructions", { method: "POST", body: JSON.stringify(data) });
+    mutationFn: async (data: {
+      feature_name: string;
+      instructions: string;
+      priority: number;
+    }) => {
+      return apiRequest("/api/ai-agent/feature-instructions", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/ai-agent/feature-instructions"] });
-      setNewFeatureInstruction({ feature_name: "", instructions: "", priority: 0 });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/ai-agent/feature-instructions"],
+      });
+      setNewFeatureInstruction({
+        feature_name: "",
+        instructions: "",
+        priority: 0,
+      });
       setIsAddFeatureDialogOpen(false);
-      toast({ title: t("aiAgent.toasts.added"), description: t("aiAgent.toasts.featureInstructionAdded") });
-    }
+      toast({
+        title: t("aiAgent.toasts.added"),
+        description: t("aiAgent.toasts.featureInstructionAdded"),
+      });
+    },
   });
 
   const updateFeatureInstructionMutation = useMutation({
     mutationFn: async (data: FeatureInstruction) => {
-      return apiRequest(`/api/ai-agent/feature-instructions/${data.id}`, { method: "PUT", body: JSON.stringify(data) });
+      return apiRequest(`/api/ai-agent/feature-instructions/${data.id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/ai-agent/feature-instructions"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/ai-agent/feature-instructions"],
+      });
       setEditingFeatureInstruction(null);
-      toast({ title: t("aiAgent.toasts.updated"), description: t("aiAgent.toasts.featureInstructionUpdated") });
-    }
+      toast({
+        title: t("aiAgent.toasts.updated"),
+        description: t("aiAgent.toasts.featureInstructionUpdated"),
+      });
+    },
   });
 
   const deleteFeatureInstructionMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest(`/api/ai-agent/feature-instructions/${id}`, { method: "DELETE" });
+      return apiRequest(`/api/ai-agent/feature-instructions/${id}`, {
+        method: "DELETE",
+      });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/ai-agent/feature-instructions"] });
-      toast({ title: t("aiAgent.toasts.deleted"), description: t("aiAgent.toasts.featureInstructionDeleted") });
-    }
+      queryClient.invalidateQueries({
+        queryKey: ["/api/ai-agent/feature-instructions"],
+      });
+      toast({
+        title: t("aiAgent.toasts.deleted"),
+        description: t("aiAgent.toasts.featureInstructionDeleted"),
+      });
+    },
   });
 
   const categoryLabels: Record<string, string> = {
@@ -233,14 +382,30 @@ export function AiAgentSettingsContent() {
     hr: "الموارد البشرية",
     maintenance: "الصيانة",
     quality: "الجودة",
-    warehouse: "المستودعات"
+    warehouse: "المستودعات",
   };
 
   const defaultSettings = [
-    { key: "agent_name", label: t("aiAgent.settings.agentName"), description: t("aiAgent.settings.agentNameDesc") },
-    { key: "company_name", label: t("aiAgent.settings.companyName"), description: t("aiAgent.settings.companyNameDesc") },
-    { key: "default_greeting", label: t("aiAgent.settings.defaultGreeting"), description: t("aiAgent.settings.defaultGreetingDesc") },
-    { key: "response_style", label: t("aiAgent.settings.responseStyle"), description: t("aiAgent.settings.responseStyleDesc") }
+    {
+      key: "agent_name",
+      label: t("aiAgent.settings.agentName"),
+      description: t("aiAgent.settings.agentNameDesc"),
+    },
+    {
+      key: "company_name",
+      label: t("aiAgent.settings.companyName"),
+      description: t("aiAgent.settings.companyNameDesc"),
+    },
+    {
+      key: "default_greeting",
+      label: t("aiAgent.settings.defaultGreeting"),
+      description: t("aiAgent.settings.defaultGreetingDesc"),
+    },
+    {
+      key: "response_style",
+      label: t("aiAgent.settings.responseStyle"),
+      description: t("aiAgent.settings.responseStyleDesc"),
+    },
   ];
 
   return (
@@ -250,7 +415,9 @@ export function AiAgentSettingsContent() {
           <Sparkles className="h-8 w-8 text-primary" />
           <div>
             <h1 className="text-2xl font-bold">{t("aiAgent.pageTitle")}</h1>
-            <p className="text-muted-foreground">{t("aiAgent.headerDescription")}</p>
+            <p className="text-muted-foreground">
+              {t("aiAgent.headerDescription")}
+            </p>
           </div>
         </div>
 
@@ -260,7 +427,10 @@ export function AiAgentSettingsContent() {
               <Settings className="h-4 w-4" />
               {t("aiAgent.tabs.settings")}
             </TabsTrigger>
-            <TabsTrigger value="feature-instructions" className="flex items-center gap-2">
+            <TabsTrigger
+              value="feature-instructions"
+              className="flex items-center gap-2"
+            >
               <Lightbulb className="h-4 w-4" />
               {t("aiAgent.tabs.featureInstructions")}
             </TabsTrigger>
@@ -278,29 +448,41 @@ export function AiAgentSettingsContent() {
             <Card>
               <CardHeader>
                 <CardTitle>{t("aiAgent.settings.basicSettings")}</CardTitle>
-                <CardDescription>{t("aiAgent.settings.basicSettingsDesc")}</CardDescription>
+                <CardDescription>
+                  {t("aiAgent.settings.basicSettingsDesc")}
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 {defaultSettings.map((setting) => {
-                  const currentSetting = settings.find(s => s.key === setting.key);
+                  const currentSetting = settings.find(
+                    (s) => s.key === setting.key,
+                  );
                   const isEditing = editingSetting?.key === setting.key;
 
                   return (
                     <div key={setting.key} className="border rounded-lg p-4">
                       <div className="flex items-start justify-between mb-2">
                         <div>
-                          <Label className="text-base font-medium">{setting.label}</Label>
-                          <p className="text-sm text-muted-foreground">{setting.description}</p>
+                          <Label className="text-base font-medium">
+                            {setting.label}
+                          </Label>
+                          <p className="text-sm text-muted-foreground">
+                            {setting.description}
+                          </p>
                         </div>
                         {!isEditing && (
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setEditingSetting({
-                              key: setting.key,
-                              value: currentSetting?.value || "",
-                              description: currentSetting?.description || setting.description
-                            })}
+                            onClick={() =>
+                              setEditingSetting({
+                                key: setting.key,
+                                value: currentSetting?.value || "",
+                                description:
+                                  currentSetting?.description ||
+                                  setting.description,
+                              })
+                            }
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -311,16 +493,27 @@ export function AiAgentSettingsContent() {
                         <div className="space-y-3 mt-3">
                           <Input
                             value={editingSetting.value}
-                            onChange={(e) => setEditingSetting({ ...editingSetting, value: e.target.value })}
+                            onChange={(e) =>
+                              setEditingSetting({
+                                ...editingSetting,
+                                value: e.target.value,
+                              })
+                            }
                             placeholder={t("aiAgent.settings.enterValue")}
                           />
                           <div className="flex gap-2 justify-end">
-                            <Button variant="outline" size="sm" onClick={() => setEditingSetting(null)}>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setEditingSetting(null)}
+                            >
                               {t("common.cancel")}
                             </Button>
                             <Button
                               size="sm"
-                              onClick={() => updateSettingMutation.mutate(editingSetting)}
+                              onClick={() =>
+                                updateSettingMutation.mutate(editingSetting)
+                              }
                               disabled={updateSettingMutation.isPending}
                             >
                               <Save className="h-4 w-4 ml-2" />
@@ -330,7 +523,8 @@ export function AiAgentSettingsContent() {
                         </div>
                       ) : (
                         <p className="text-sm bg-muted/50 p-2 rounded mt-2">
-                          {currentSetting?.value || t("aiAgent.settings.noValueSet")}
+                          {currentSetting?.value ||
+                            t("aiAgent.settings.noValueSet")}
                         </p>
                       )}
                     </div>
@@ -338,14 +532,23 @@ export function AiAgentSettingsContent() {
                 })}
 
                 <div className="border rounded-lg p-4 bg-blue-50 dark:bg-blue-900/20">
-                  <Label className="text-base font-medium">{t("aiAgent.settings.customInstructions")}</Label>
+                  <Label className="text-base font-medium">
+                    {t("aiAgent.settings.customInstructions")}
+                  </Label>
                   <p className="text-sm text-muted-foreground mb-3">
                     {t("aiAgent.settings.customInstructionsDesc")}
                   </p>
                   <Textarea
                     className="min-h-[150px]"
-                    placeholder={t("aiAgent.settings.customInstructionsPlaceholder")}
-                    value={customInstructions || settings.find(s => s.key === "custom_instructions")?.value || ""}
+                    placeholder={t(
+                      "aiAgent.settings.customInstructionsPlaceholder",
+                    )}
+                    value={
+                      customInstructions ||
+                      settings.find((s) => s.key === "custom_instructions")
+                        ?.value ||
+                      ""
+                    }
                     onChange={(e) => setCustomInstructions(e.target.value)}
                   />
                   <div className="flex justify-end mt-3">
@@ -353,8 +556,15 @@ export function AiAgentSettingsContent() {
                       onClick={() => {
                         updateSettingMutation.mutate({
                           key: "custom_instructions",
-                          value: customInstructions || settings.find(s => s.key === "custom_instructions")?.value || "",
-                          description: t("aiAgent.settings.customInstructionsLabel")
+                          value:
+                            customInstructions ||
+                            settings.find(
+                              (s) => s.key === "custom_instructions",
+                            )?.value ||
+                            "",
+                          description: t(
+                            "aiAgent.settings.customInstructionsLabel",
+                          ),
                         });
                       }}
                       disabled={updateSettingMutation.isPending}
@@ -372,10 +582,17 @@ export function AiAgentSettingsContent() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle>{t("aiAgent.featureInstructions.title")}</CardTitle>
-                  <CardDescription>{t("aiAgent.featureInstructions.description")}</CardDescription>
+                  <CardTitle>
+                    {t("aiAgent.featureInstructions.title")}
+                  </CardTitle>
+                  <CardDescription>
+                    {t("aiAgent.featureInstructions.description")}
+                  </CardDescription>
                 </div>
-                <Dialog open={isAddFeatureDialogOpen} onOpenChange={setIsAddFeatureDialogOpen}>
+                <Dialog
+                  open={isAddFeatureDialogOpen}
+                  onOpenChange={setIsAddFeatureDialogOpen}
+                >
                   <DialogTrigger asChild>
                     <Button>
                       <Plus className="h-4 w-4 ml-2" />
@@ -384,44 +601,88 @@ export function AiAgentSettingsContent() {
                   </DialogTrigger>
                   <DialogContent className="max-w-lg" dir="rtl">
                     <DialogHeader>
-                      <DialogTitle>{t("aiAgent.featureInstructions.addNewInstruction")}</DialogTitle>
-                      <DialogDescription>{t("aiAgent.featureInstructions.addInstructionDescription")}</DialogDescription>
+                      <DialogTitle>
+                        {t("aiAgent.featureInstructions.addNewInstruction")}
+                      </DialogTitle>
+                      <DialogDescription>
+                        {t(
+                          "aiAgent.featureInstructions.addInstructionDescription",
+                        )}
+                      </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 mt-4">
                       <div>
-                        <Label>{t("aiAgent.featureInstructions.featureName")}</Label>
+                        <Label>
+                          {t("aiAgent.featureInstructions.featureName")}
+                        </Label>
                         <Input
                           value={newFeatureInstruction.feature_name}
-                          onChange={(e) => setNewFeatureInstruction({ ...newFeatureInstruction, feature_name: e.target.value })}
-                          placeholder={t("aiAgent.featureInstructions.featureNamePlaceholder")}
+                          onChange={(e) =>
+                            setNewFeatureInstruction({
+                              ...newFeatureInstruction,
+                              feature_name: e.target.value,
+                            })
+                          }
+                          placeholder={t(
+                            "aiAgent.featureInstructions.featureNamePlaceholder",
+                          )}
                         />
                       </div>
                       <div>
-                        <Label>{t("aiAgent.featureInstructions.instructions")}</Label>
+                        <Label>
+                          {t("aiAgent.featureInstructions.instructions")}
+                        </Label>
                         <Textarea
                           className="min-h-[200px]"
                           value={newFeatureInstruction.instructions}
-                          onChange={(e) => setNewFeatureInstruction({ ...newFeatureInstruction, instructions: e.target.value })}
-                          placeholder={t("aiAgent.featureInstructions.instructionsPlaceholder")}
+                          onChange={(e) =>
+                            setNewFeatureInstruction({
+                              ...newFeatureInstruction,
+                              instructions: e.target.value,
+                            })
+                          }
+                          placeholder={t(
+                            "aiAgent.featureInstructions.instructionsPlaceholder",
+                          )}
                         />
                       </div>
                       <div>
-                        <Label>{t("aiAgent.featureInstructions.priority")}</Label>
+                        <Label>
+                          {t("aiAgent.featureInstructions.priority")}
+                        </Label>
                         <Input
                           type="number"
                           value={newFeatureInstruction.priority}
-                          onChange={(e) => setNewFeatureInstruction({ ...newFeatureInstruction, priority: parseInt(e.target.value) || 0 })}
+                          onChange={(e) =>
+                            setNewFeatureInstruction({
+                              ...newFeatureInstruction,
+                              priority: parseInt(e.target.value) || 0,
+                            })
+                          }
                           min={0}
                         />
-                        <p className="text-xs text-muted-foreground mt-1">{t("aiAgent.featureInstructions.priorityHelp")}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {t("aiAgent.featureInstructions.priorityHelp")}
+                        </p>
                       </div>
                       <div className="flex justify-end gap-2">
-                        <Button variant="outline" onClick={() => setIsAddFeatureDialogOpen(false)}>
+                        <Button
+                          variant="outline"
+                          onClick={() => setIsAddFeatureDialogOpen(false)}
+                        >
                           {t("common.cancel")}
                         </Button>
                         <Button
-                          onClick={() => addFeatureInstructionMutation.mutate(newFeatureInstruction)}
-                          disabled={addFeatureInstructionMutation.isPending || !newFeatureInstruction.feature_name || !newFeatureInstruction.instructions}
+                          onClick={() =>
+                            addFeatureInstructionMutation.mutate(
+                              newFeatureInstruction,
+                            )
+                          }
+                          disabled={
+                            addFeatureInstructionMutation.isPending ||
+                            !newFeatureInstruction.feature_name ||
+                            !newFeatureInstruction.instructions
+                          }
                         >
                           {t("aiAgent.featureInstructions.add")}
                         </Button>
@@ -432,12 +693,18 @@ export function AiAgentSettingsContent() {
               </CardHeader>
               <CardContent>
                 {loadingFeatureInstructions ? (
-                  <div className="text-center py-8 text-muted-foreground">{t("aiAgent.featureInstructions.loading")}</div>
+                  <div className="text-center py-8 text-muted-foreground">
+                    {t("aiAgent.featureInstructions.loading")}
+                  </div>
                 ) : featureInstructions.length === 0 ? (
                   <div className="text-center py-12 border-2 border-dashed rounded-lg">
                     <Lightbulb className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">{t("aiAgent.featureInstructions.noInstructions")}</p>
-                    <p className="text-sm text-muted-foreground">{t("aiAgent.featureInstructions.noInstructionsDesc")}</p>
+                    <p className="text-muted-foreground">
+                      {t("aiAgent.featureInstructions.noInstructions")}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {t("aiAgent.featureInstructions.noInstructionsDesc")}
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -449,26 +716,47 @@ export function AiAgentSettingsContent() {
                         {editingFeatureInstruction?.id === item.id ? (
                           <div className="space-y-4">
                             <div>
-                              <Label>{t("aiAgent.featureInstructions.featureName")}</Label>
+                              <Label>
+                                {t("aiAgent.featureInstructions.featureName")}
+                              </Label>
                               <Input
                                 value={editingFeatureInstruction.feature_name}
-                                onChange={(e) => setEditingFeatureInstruction({ ...editingFeatureInstruction, feature_name: e.target.value })}
+                                onChange={(e) =>
+                                  setEditingFeatureInstruction({
+                                    ...editingFeatureInstruction,
+                                    feature_name: e.target.value,
+                                  })
+                                }
                               />
                             </div>
                             <div>
-                              <Label>{t("aiAgent.featureInstructions.instructions")}</Label>
+                              <Label>
+                                {t("aiAgent.featureInstructions.instructions")}
+                              </Label>
                               <Textarea
                                 className="min-h-[150px]"
                                 value={editingFeatureInstruction.instructions}
-                                onChange={(e) => setEditingFeatureInstruction({ ...editingFeatureInstruction, instructions: e.target.value })}
+                                onChange={(e) =>
+                                  setEditingFeatureInstruction({
+                                    ...editingFeatureInstruction,
+                                    instructions: e.target.value,
+                                  })
+                                }
                               />
                             </div>
                             <div>
-                              <Label>{t("aiAgent.featureInstructions.priority")}</Label>
+                              <Label>
+                                {t("aiAgent.featureInstructions.priority")}
+                              </Label>
                               <Input
                                 type="number"
                                 value={editingFeatureInstruction.priority}
-                                onChange={(e) => setEditingFeatureInstruction({ ...editingFeatureInstruction, priority: parseInt(e.target.value) || 0 })}
+                                onChange={(e) =>
+                                  setEditingFeatureInstruction({
+                                    ...editingFeatureInstruction,
+                                    priority: parseInt(e.target.value) || 0,
+                                  })
+                                }
                                 min={0}
                               />
                             </div>
@@ -476,18 +764,37 @@ export function AiAgentSettingsContent() {
                               <div className="flex items-center gap-2">
                                 <Switch
                                   checked={editingFeatureInstruction.is_active}
-                                  onCheckedChange={(checked) => setEditingFeatureInstruction({ ...editingFeatureInstruction, is_active: checked })}
+                                  onCheckedChange={(checked) =>
+                                    setEditingFeatureInstruction({
+                                      ...editingFeatureInstruction,
+                                      is_active: checked,
+                                    })
+                                  }
                                 />
-                                <Label>{t("aiAgent.featureInstructions.active")}</Label>
+                                <Label>
+                                  {t("aiAgent.featureInstructions.active")}
+                                </Label>
                               </div>
                               <div className="flex-1" />
-                              <Button variant="outline" size="sm" onClick={() => setEditingFeatureInstruction(null)}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  setEditingFeatureInstruction(null)
+                                }
+                              >
                                 {t("common.cancel")}
                               </Button>
                               <Button
                                 size="sm"
-                                onClick={() => updateFeatureInstructionMutation.mutate(editingFeatureInstruction)}
-                                disabled={updateFeatureInstructionMutation.isPending}
+                                onClick={() =>
+                                  updateFeatureInstructionMutation.mutate(
+                                    editingFeatureInstruction,
+                                  )
+                                }
+                                disabled={
+                                  updateFeatureInstructionMutation.isPending
+                                }
                               >
                                 {t("common.save")}
                               </Button>
@@ -499,11 +806,14 @@ export function AiAgentSettingsContent() {
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">
                                   <Lightbulb className="h-4 w-4 text-amber-500" />
-                                  <h4 className="font-medium">{item.feature_name}</h4>
+                                  <h4 className="font-medium">
+                                    {item.feature_name}
+                                  </h4>
                                 </div>
                                 {item.priority > 0 && (
                                   <span className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded">
-                                    {t("aiAgent.featureInstructions.priority")}: {item.priority}
+                                    {t("aiAgent.featureInstructions.priority")}:{" "}
+                                    {item.priority}
                                   </span>
                                 )}
                               </div>
@@ -511,7 +821,9 @@ export function AiAgentSettingsContent() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => setEditingFeatureInstruction(item)}
+                                  onClick={() =>
+                                    setEditingFeatureInstruction(item)
+                                  }
                                 >
                                   <Edit className="h-4 w-4" />
                                 </Button>
@@ -520,8 +832,16 @@ export function AiAgentSettingsContent() {
                                   size="icon"
                                   className="text-destructive"
                                   onClick={() => {
-                                    if (confirm(t("aiAgent.featureInstructions.confirmDelete"))) {
-                                      deleteFeatureInstructionMutation.mutate(item.id);
+                                    if (
+                                      confirm(
+                                        t(
+                                          "aiAgent.featureInstructions.confirmDelete",
+                                        ),
+                                      )
+                                    ) {
+                                      deleteFeatureInstructionMutation.mutate(
+                                        item.id,
+                                      );
                                     }
                                   }}
                                 >
@@ -530,7 +850,9 @@ export function AiAgentSettingsContent() {
                               </div>
                             </div>
                             <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap bg-muted/30 p-3 rounded-md">
-                              {item.instructions.length > 300 ? item.instructions.slice(0, 300) + "..." : item.instructions}
+                              {item.instructions.length > 300
+                                ? item.instructions.slice(0, 300) + "..."
+                                : item.instructions}
                             </p>
                           </>
                         )}
@@ -547,9 +869,14 @@ export function AiAgentSettingsContent() {
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                   <CardTitle>{t("aiAgent.tabs.knowledge")}</CardTitle>
-                  <CardDescription>{t("aiAgent.knowledge.description")}</CardDescription>
+                  <CardDescription>
+                    {t("aiAgent.knowledge.description")}
+                  </CardDescription>
                 </div>
-                <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                <Dialog
+                  open={isAddDialogOpen}
+                  onOpenChange={setIsAddDialogOpen}
+                >
                   <DialogTrigger asChild>
                     <Button>
                       <Plus className="h-4 w-4 ml-2" />
@@ -558,15 +885,24 @@ export function AiAgentSettingsContent() {
                   </DialogTrigger>
                   <DialogContent className="max-w-lg" dir="rtl">
                     <DialogHeader>
-                      <DialogTitle>{t("aiAgent.knowledge.addNewKnowledge")}</DialogTitle>
-                      <DialogDescription className="sr-only">{t("aiAgent.knowledge.addKnowledgeDescription")}</DialogDescription>
+                      <DialogTitle>
+                        {t("aiAgent.knowledge.addNewKnowledge")}
+                      </DialogTitle>
+                      <DialogDescription className="sr-only">
+                        {t("aiAgent.knowledge.addKnowledgeDescription")}
+                      </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 mt-4">
                       <div>
                         <Label>{t("aiAgent.knowledge.knowledgeTitle")}</Label>
                         <Input
                           value={newKnowledge.title}
-                          onChange={(e) => setNewKnowledge({ ...newKnowledge, title: e.target.value })}
+                          onChange={(e) =>
+                            setNewKnowledge({
+                              ...newKnowledge,
+                              title: e.target.value,
+                            })
+                          }
                           placeholder={t("aiAgent.knowledge.titlePlaceholder")}
                         />
                       </div>
@@ -574,15 +910,24 @@ export function AiAgentSettingsContent() {
                         <Label>{t("aiAgent.knowledge.category")}</Label>
                         <Select
                           value={newKnowledge.category}
-                          onValueChange={(value) => setNewKnowledge({ ...newKnowledge, category: value })}
+                          onValueChange={(value) =>
+                            setNewKnowledge({
+                              ...newKnowledge,
+                              category: value,
+                            })
+                          }
                         >
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {Object.entries(categoryLabels).map(([value, label]) => (
-                              <SelectItem key={value} value={value}>{label}</SelectItem>
-                            ))}
+                            {Object.entries(categoryLabels).map(
+                              ([value, label]) => (
+                                <SelectItem key={value} value={value}>
+                                  {label}
+                                </SelectItem>
+                              ),
+                            )}
                           </SelectContent>
                         </Select>
                       </div>
@@ -591,17 +936,33 @@ export function AiAgentSettingsContent() {
                         <Textarea
                           className="min-h-[150px]"
                           value={newKnowledge.content}
-                          onChange={(e) => setNewKnowledge({ ...newKnowledge, content: e.target.value })}
-                          placeholder={t("aiAgent.knowledge.contentPlaceholder")}
+                          onChange={(e) =>
+                            setNewKnowledge({
+                              ...newKnowledge,
+                              content: e.target.value,
+                            })
+                          }
+                          placeholder={t(
+                            "aiAgent.knowledge.contentPlaceholder",
+                          )}
                         />
                       </div>
                       <div className="flex justify-end gap-2">
-                        <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                        <Button
+                          variant="outline"
+                          onClick={() => setIsAddDialogOpen(false)}
+                        >
                           {t("common.cancel")}
                         </Button>
                         <Button
-                          onClick={() => addKnowledgeMutation.mutate(newKnowledge)}
-                          disabled={addKnowledgeMutation.isPending || !newKnowledge.title || !newKnowledge.content}
+                          onClick={() =>
+                            addKnowledgeMutation.mutate(newKnowledge)
+                          }
+                          disabled={
+                            addKnowledgeMutation.isPending ||
+                            !newKnowledge.title ||
+                            !newKnowledge.content
+                          }
                         >
                           {t("aiAgent.knowledge.add")}
                         </Button>
@@ -612,12 +973,18 @@ export function AiAgentSettingsContent() {
               </CardHeader>
               <CardContent>
                 {loadingKnowledge ? (
-                  <div className="text-center py-8 text-muted-foreground">{t("aiAgent.knowledge.loading")}</div>
+                  <div className="text-center py-8 text-muted-foreground">
+                    {t("aiAgent.knowledge.loading")}
+                  </div>
                 ) : knowledge.length === 0 ? (
                   <div className="text-center py-12 border-2 border-dashed rounded-lg">
                     <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">{t("aiAgent.knowledge.noKnowledge")}</p>
-                    <p className="text-sm text-muted-foreground">{t("aiAgent.knowledge.noKnowledgeDesc")}</p>
+                    <p className="text-muted-foreground">
+                      {t("aiAgent.knowledge.noKnowledge")}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {t("aiAgent.knowledge.noKnowledgeDesc")}
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -630,41 +997,73 @@ export function AiAgentSettingsContent() {
                           <div className="space-y-4">
                             <Input
                               value={editingKnowledge.title}
-                              onChange={(e) => setEditingKnowledge({ ...editingKnowledge, title: e.target.value })}
+                              onChange={(e) =>
+                                setEditingKnowledge({
+                                  ...editingKnowledge,
+                                  title: e.target.value,
+                                })
+                              }
                             />
                             <Select
                               value={editingKnowledge.category}
-                              onValueChange={(value) => setEditingKnowledge({ ...editingKnowledge, category: value })}
+                              onValueChange={(value) =>
+                                setEditingKnowledge({
+                                  ...editingKnowledge,
+                                  category: value,
+                                })
+                              }
                             >
                               <SelectTrigger>
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                {Object.entries(categoryLabels).map(([value, label]) => (
-                                  <SelectItem key={value} value={value}>{label}</SelectItem>
-                                ))}
+                                {Object.entries(categoryLabels).map(
+                                  ([value, label]) => (
+                                    <SelectItem key={value} value={value}>
+                                      {label}
+                                    </SelectItem>
+                                  ),
+                                )}
                               </SelectContent>
                             </Select>
                             <Textarea
                               className="min-h-[100px]"
                               value={editingKnowledge.content}
-                              onChange={(e) => setEditingKnowledge({ ...editingKnowledge, content: e.target.value })}
+                              onChange={(e) =>
+                                setEditingKnowledge({
+                                  ...editingKnowledge,
+                                  content: e.target.value,
+                                })
+                              }
                             />
                             <div className="flex items-center gap-4">
                               <div className="flex items-center gap-2">
                                 <Switch
                                   checked={editingKnowledge.is_active}
-                                  onCheckedChange={(checked) => setEditingKnowledge({ ...editingKnowledge, is_active: checked })}
+                                  onCheckedChange={(checked) =>
+                                    setEditingKnowledge({
+                                      ...editingKnowledge,
+                                      is_active: checked,
+                                    })
+                                  }
                                 />
                                 <Label>{t("aiAgent.knowledge.active")}</Label>
                               </div>
                               <div className="flex-1" />
-                              <Button variant="outline" size="sm" onClick={() => setEditingKnowledge(null)}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setEditingKnowledge(null)}
+                              >
                                 {t("common.cancel")}
                               </Button>
                               <Button
                                 size="sm"
-                                onClick={() => updateKnowledgeMutation.mutate(editingKnowledge)}
+                                onClick={() =>
+                                  updateKnowledgeMutation.mutate(
+                                    editingKnowledge,
+                                  )
+                                }
                                 disabled={updateKnowledgeMutation.isPending}
                               >
                                 {t("common.save")}
@@ -677,7 +1076,8 @@ export function AiAgentSettingsContent() {
                               <div>
                                 <h4 className="font-medium">{item.title}</h4>
                                 <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
-                                  {categoryLabels[item.category] || item.category}
+                                  {categoryLabels[item.category] ||
+                                    item.category}
                                 </span>
                               </div>
                               <div className="flex gap-1">
@@ -693,7 +1093,11 @@ export function AiAgentSettingsContent() {
                                   size="icon"
                                   className="text-destructive"
                                   onClick={() => {
-                                    if (confirm(t("aiAgent.knowledge.confirmDelete"))) {
+                                    if (
+                                      confirm(
+                                        t("aiAgent.knowledge.confirmDelete"),
+                                      )
+                                    ) {
                                       deleteKnowledgeMutation.mutate(item.id);
                                     }
                                   }}
@@ -703,7 +1107,9 @@ export function AiAgentSettingsContent() {
                               </div>
                             </div>
                             <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap">
-                              {item.content.length > 200 ? item.content.slice(0, 200) + "..." : item.content}
+                              {item.content.length > 200
+                                ? item.content.slice(0, 200) + "..."
+                                : item.content}
                             </p>
                           </>
                         )}
@@ -720,9 +1126,14 @@ export function AiAgentSettingsContent() {
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                   <CardTitle>{t("aiAgent.templates.quoteTemplates")}</CardTitle>
-                  <CardDescription>{t("aiAgent.templates.description")}</CardDescription>
+                  <CardDescription>
+                    {t("aiAgent.templates.description")}
+                  </CardDescription>
                 </div>
-                <Dialog open={isAddTemplateDialogOpen} onOpenChange={setIsAddTemplateDialogOpen}>
+                <Dialog
+                  open={isAddTemplateDialogOpen}
+                  onOpenChange={setIsAddTemplateDialogOpen}
+                >
                   <DialogTrigger asChild>
                     <Button>
                       <Plus className="h-4 w-4 ml-2" />
@@ -731,32 +1142,59 @@ export function AiAgentSettingsContent() {
                   </DialogTrigger>
                   <DialogContent className="max-w-lg" dir="rtl">
                     <DialogHeader>
-                      <DialogTitle>{t("aiAgent.templates.addQuoteTemplate")}</DialogTitle>
-                      <DialogDescription className="sr-only">{t("aiAgent.templates.addTemplateDescription")}</DialogDescription>
+                      <DialogTitle>
+                        {t("aiAgent.templates.addQuoteTemplate")}
+                      </DialogTitle>
+                      <DialogDescription className="sr-only">
+                        {t("aiAgent.templates.addTemplateDescription")}
+                      </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 mt-4 max-h-[60vh] overflow-y-auto">
                       <div>
                         <Label>{t("aiAgent.templates.templateName")}</Label>
                         <Input
                           value={newTemplate.name}
-                          onChange={(e) => setNewTemplate({ ...newTemplate, name: e.target.value })}
-                          placeholder={t("aiAgent.templates.templateNamePlaceholder")}
+                          onChange={(e) =>
+                            setNewTemplate({
+                              ...newTemplate,
+                              name: e.target.value,
+                            })
+                          }
+                          placeholder={t(
+                            "aiAgent.templates.templateNamePlaceholder",
+                          )}
                         />
                       </div>
                       <div>
                         <Label>{t("aiAgent.templates.productName")}</Label>
                         <Input
                           value={newTemplate.product_name}
-                          onChange={(e) => setNewTemplate({ ...newTemplate, product_name: e.target.value })}
-                          placeholder={t("aiAgent.templates.productNamePlaceholder")}
+                          onChange={(e) =>
+                            setNewTemplate({
+                              ...newTemplate,
+                              product_name: e.target.value,
+                            })
+                          }
+                          placeholder={t(
+                            "aiAgent.templates.productNamePlaceholder",
+                          )}
                         />
                       </div>
                       <div>
-                        <Label>{t("aiAgent.templates.productDescription")}</Label>
+                        <Label>
+                          {t("aiAgent.templates.productDescription")}
+                        </Label>
                         <Textarea
                           value={newTemplate.product_description}
-                          onChange={(e) => setNewTemplate({ ...newTemplate, product_description: e.target.value })}
-                          placeholder={t("aiAgent.templates.productDescPlaceholder")}
+                          onChange={(e) =>
+                            setNewTemplate({
+                              ...newTemplate,
+                              product_description: e.target.value,
+                            })
+                          }
+                          placeholder={t(
+                            "aiAgent.templates.productDescPlaceholder",
+                          )}
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-4">
@@ -765,7 +1203,12 @@ export function AiAgentSettingsContent() {
                           <Input
                             type="number"
                             value={newTemplate.unit_price}
-                            onChange={(e) => setNewTemplate({ ...newTemplate, unit_price: e.target.value })}
+                            onChange={(e) =>
+                              setNewTemplate({
+                                ...newTemplate,
+                                unit_price: e.target.value,
+                              })
+                            }
                             placeholder="0.00"
                           />
                         </div>
@@ -773,17 +1216,29 @@ export function AiAgentSettingsContent() {
                           <Label>{t("aiAgent.templates.unit")}</Label>
                           <Select
                             value={newTemplate.unit}
-                            onValueChange={(value) => setNewTemplate({ ...newTemplate, unit: value })}
+                            onValueChange={(value) =>
+                              setNewTemplate({ ...newTemplate, unit: value })
+                            }
                           >
                             <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="kg">{t("aiAgent.units.kg")}</SelectItem>
-                              <SelectItem value="ton">{t("aiAgent.units.ton")}</SelectItem>
-                              <SelectItem value="piece">{t("aiAgent.units.piece")}</SelectItem>
-                              <SelectItem value="carton">{t("aiAgent.units.carton")}</SelectItem>
-                              <SelectItem value="roll">{t("aiAgent.units.roll")}</SelectItem>
+                              <SelectItem value="kg">
+                                {t("aiAgent.units.kg")}
+                              </SelectItem>
+                              <SelectItem value="ton">
+                                {t("aiAgent.units.ton")}
+                              </SelectItem>
+                              <SelectItem value="piece">
+                                {t("aiAgent.units.piece")}
+                              </SelectItem>
+                              <SelectItem value="carton">
+                                {t("aiAgent.units.carton")}
+                              </SelectItem>
+                              <SelectItem value="roll">
+                                {t("aiAgent.units.roll")}
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -793,7 +1248,12 @@ export function AiAgentSettingsContent() {
                         <Input
                           type="number"
                           value={newTemplate.min_quantity}
-                          onChange={(e) => setNewTemplate({ ...newTemplate, min_quantity: e.target.value })}
+                          onChange={(e) =>
+                            setNewTemplate({
+                              ...newTemplate,
+                              min_quantity: e.target.value,
+                            })
+                          }
                           placeholder={t("aiAgent.templates.optional")}
                         />
                       </div>
@@ -801,17 +1261,34 @@ export function AiAgentSettingsContent() {
                         <Label>{t("aiAgent.knowledge.category")}</Label>
                         <Input
                           value={newTemplate.category}
-                          onChange={(e) => setNewTemplate({ ...newTemplate, category: e.target.value })}
-                          placeholder={t("aiAgent.templates.categoryPlaceholder")}
+                          onChange={(e) =>
+                            setNewTemplate({
+                              ...newTemplate,
+                              category: e.target.value,
+                            })
+                          }
+                          placeholder={t(
+                            "aiAgent.templates.categoryPlaceholder",
+                          )}
                         />
                       </div>
                       <div className="flex justify-end gap-2">
-                        <Button variant="outline" onClick={() => setIsAddTemplateDialogOpen(false)}>
+                        <Button
+                          variant="outline"
+                          onClick={() => setIsAddTemplateDialogOpen(false)}
+                        >
                           {t("common.cancel")}
                         </Button>
                         <Button
-                          onClick={() => addTemplateMutation.mutate(newTemplate)}
-                          disabled={addTemplateMutation.isPending || !newTemplate.name || !newTemplate.product_name || !newTemplate.unit_price}
+                          onClick={() =>
+                            addTemplateMutation.mutate(newTemplate)
+                          }
+                          disabled={
+                            addTemplateMutation.isPending ||
+                            !newTemplate.name ||
+                            !newTemplate.product_name ||
+                            !newTemplate.unit_price
+                          }
                         >
                           {t("aiAgent.knowledge.add")}
                         </Button>
@@ -822,12 +1299,18 @@ export function AiAgentSettingsContent() {
               </CardHeader>
               <CardContent>
                 {loadingTemplates ? (
-                  <div className="text-center py-8 text-muted-foreground">{t("aiAgent.knowledge.loading")}</div>
+                  <div className="text-center py-8 text-muted-foreground">
+                    {t("aiAgent.knowledge.loading")}
+                  </div>
                 ) : templates.length === 0 ? (
                   <div className="text-center py-12 border-2 border-dashed rounded-lg">
                     <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">{t("aiAgent.templates.noTemplates")}</p>
-                    <p className="text-sm text-muted-foreground">{t("aiAgent.templates.noTemplatesDesc")}</p>
+                    <p className="text-muted-foreground">
+                      {t("aiAgent.templates.noTemplates")}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {t("aiAgent.templates.noTemplatesDesc")}
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -840,34 +1323,64 @@ export function AiAgentSettingsContent() {
                           <div className="space-y-4">
                             <Input
                               value={editingTemplate.name}
-                              onChange={(e) => setEditingTemplate({ ...editingTemplate, name: e.target.value })}
+                              onChange={(e) =>
+                                setEditingTemplate({
+                                  ...editingTemplate,
+                                  name: e.target.value,
+                                })
+                              }
                               placeholder={t("aiAgent.templates.templateName")}
                             />
                             <Input
                               value={editingTemplate.product_name}
-                              onChange={(e) => setEditingTemplate({ ...editingTemplate, product_name: e.target.value })}
+                              onChange={(e) =>
+                                setEditingTemplate({
+                                  ...editingTemplate,
+                                  product_name: e.target.value,
+                                })
+                              }
                               placeholder={t("aiAgent.templates.productName")}
                             />
                             <div className="grid grid-cols-2 gap-4">
                               <Input
                                 type="number"
                                 value={editingTemplate.unit_price}
-                                onChange={(e) => setEditingTemplate({ ...editingTemplate, unit_price: e.target.value })}
+                                onChange={(e) =>
+                                  setEditingTemplate({
+                                    ...editingTemplate,
+                                    unit_price: e.target.value,
+                                  })
+                                }
                                 placeholder={t("aiAgent.templates.price")}
                               />
                               <Select
                                 value={editingTemplate.unit}
-                                onValueChange={(value) => setEditingTemplate({ ...editingTemplate, unit: value })}
+                                onValueChange={(value) =>
+                                  setEditingTemplate({
+                                    ...editingTemplate,
+                                    unit: value,
+                                  })
+                                }
                               >
                                 <SelectTrigger>
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="kg">{t("aiAgent.units.kg")}</SelectItem>
-                                  <SelectItem value="ton">{t("aiAgent.units.ton")}</SelectItem>
-                                  <SelectItem value="piece">{t("aiAgent.units.piece")}</SelectItem>
-                                  <SelectItem value="carton">{t("aiAgent.units.carton")}</SelectItem>
-                                  <SelectItem value="roll">{t("aiAgent.units.roll")}</SelectItem>
+                                  <SelectItem value="kg">
+                                    {t("aiAgent.units.kg")}
+                                  </SelectItem>
+                                  <SelectItem value="ton">
+                                    {t("aiAgent.units.ton")}
+                                  </SelectItem>
+                                  <SelectItem value="piece">
+                                    {t("aiAgent.units.piece")}
+                                  </SelectItem>
+                                  <SelectItem value="carton">
+                                    {t("aiAgent.units.carton")}
+                                  </SelectItem>
+                                  <SelectItem value="roll">
+                                    {t("aiAgent.units.roll")}
+                                  </SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
@@ -875,17 +1388,28 @@ export function AiAgentSettingsContent() {
                               <div className="flex items-center gap-2">
                                 <Switch
                                   checked={editingTemplate.is_active}
-                                  onCheckedChange={(checked) => setEditingTemplate({ ...editingTemplate, is_active: checked })}
+                                  onCheckedChange={(checked) =>
+                                    setEditingTemplate({
+                                      ...editingTemplate,
+                                      is_active: checked,
+                                    })
+                                  }
                                 />
                                 <Label>{t("aiAgent.knowledge.active")}</Label>
                               </div>
                               <div className="flex-1" />
-                              <Button variant="outline" size="sm" onClick={() => setEditingTemplate(null)}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setEditingTemplate(null)}
+                              >
                                 {t("common.cancel")}
                               </Button>
                               <Button
                                 size="sm"
-                                onClick={() => updateTemplateMutation.mutate(editingTemplate)}
+                                onClick={() =>
+                                  updateTemplateMutation.mutate(editingTemplate)
+                                }
                                 disabled={updateTemplateMutation.isPending}
                               >
                                 {t("common.save")}
@@ -897,14 +1421,21 @@ export function AiAgentSettingsContent() {
                             <div className="flex items-start justify-between">
                               <div>
                                 <h4 className="font-medium">{template.name}</h4>
-                                <p className="text-sm text-muted-foreground">{template.product_name}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {template.product_name}
+                                </p>
                                 <div className="flex gap-2 mt-2">
                                   <span className="text-sm font-medium text-primary">
-                                    {Number(template.unit_price).toLocaleString("en-US")} {t("aiAgent.templates.currency")}/{template.unit}
+                                    {Number(template.unit_price).toLocaleString(
+                                      "en-US",
+                                    )}{" "}
+                                    {t("aiAgent.templates.currency")}/
+                                    {template.unit}
                                   </span>
                                   {template.min_quantity && (
                                     <span className="text-xs text-muted-foreground">
-                                      ({t("aiAgent.templates.minQty")}: {template.min_quantity} {template.unit})
+                                      ({t("aiAgent.templates.minQty")}:{" "}
+                                      {template.min_quantity} {template.unit})
                                     </span>
                                   )}
                                 </div>
@@ -922,8 +1453,14 @@ export function AiAgentSettingsContent() {
                                   size="icon"
                                   className="text-destructive"
                                   onClick={() => {
-                                    if (confirm(t("aiAgent.templates.confirmDelete"))) {
-                                      deleteTemplateMutation.mutate(template.id);
+                                    if (
+                                      confirm(
+                                        t("aiAgent.templates.confirmDelete"),
+                                      )
+                                    ) {
+                                      deleteTemplateMutation.mutate(
+                                        template.id,
+                                      );
                                     }
                                   }}
                                 >

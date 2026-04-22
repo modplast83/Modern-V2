@@ -1,8 +1,13 @@
-import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from "axios";
-import { Config } from "@/constants/config";
-import { AuthStorage } from "@/auth/storage";
-import { authForcedLogout } from "@/auth/events";
 import { Endpoints, type MobileRefreshResponse } from "@mpbf/shared";
+import axios, {
+  AxiosError,
+  AxiosInstance,
+  InternalAxiosRequestConfig,
+} from "axios";
+
+import { authForcedLogout } from "@/auth/events";
+import { AuthStorage } from "@/auth/storage";
+import { Config } from "@/constants/config";
 
 // Shared axios instance.
 //  - Attaches the bearer token on every request (unless _skipAuth is set).

@@ -1,10 +1,11 @@
-import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
-import { Badge } from "../../ui/badge";
-import { Skeleton } from "../../ui/skeleton";
 import { Package, Warehouse, AlertTriangle, TrendingDown } from "lucide-react";
+import { useTranslation } from "react-i18next";
+
 import { formatNumber } from "../../../lib/formatNumber";
+import { Badge } from "../../ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
+import { Skeleton } from "../../ui/skeleton";
 
 interface WarehouseItem {
   id: number;
@@ -49,7 +50,8 @@ export default function InventoryWidget() {
   const itemList = Array.isArray(items) ? items : [];
   const totalItems = itemList.length;
   const lowStockItems = itemList.filter(
-    (item) => item.min_quantity && item.quantity && item.quantity <= item.min_quantity
+    (item) =>
+      item.min_quantity && item.quantity && item.quantity <= item.min_quantity,
   );
 
   return (
@@ -71,12 +73,16 @@ export default function InventoryWidget() {
             <div className="flex items-center gap-2 mb-2">
               <AlertTriangle className="w-4 h-4 text-amber-600" />
               <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
-                {t("dashboard.widgets.lowStock", "Low Stock Items")} ({lowStockItems.length})
+                {t("dashboard.widgets.lowStock", "Low Stock Items")} (
+                {lowStockItems.length})
               </span>
             </div>
             <div className="space-y-1">
               {lowStockItems.slice(0, 3).map((item) => (
-                <div key={item.id} className="flex items-center justify-between text-xs">
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between text-xs"
+                >
                   <span className="text-amber-800 dark:text-amber-200 truncate max-w-[120px]">
                     {item.name_ar || item.name || `#${item.id}`}
                   </span>
@@ -93,7 +99,10 @@ export default function InventoryWidget() {
           <div className="text-center py-4">
             <Package className="w-8 h-8 text-gray-400 mx-auto mb-2" />
             <p className="text-xs text-gray-500">
-              {t("dashboard.widgets.noInventoryData", "No inventory data available")}
+              {t(
+                "dashboard.widgets.noInventoryData",
+                "No inventory data available",
+              )}
             </p>
           </div>
         )}

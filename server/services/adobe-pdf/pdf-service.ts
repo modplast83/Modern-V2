@@ -1,3 +1,6 @@
+import fs from "fs";
+import path from "path";
+
 import {
   ServicePrincipalCredentials,
   PDFServices,
@@ -10,8 +13,6 @@ import {
   ServiceUsageError,
   ServiceApiError,
 } from "@adobe/pdfservices-node-sdk";
-import fs from "fs";
-import path from "path";
 
 let pdfServicesInstance: PDFServices | null = null;
 
@@ -21,7 +22,9 @@ function getPDFServices(): PDFServices {
     const clientSecret = process.env.ADOBE_CLIENT_SECRET;
 
     if (!clientId || !clientSecret) {
-      throw new Error("Adobe PDF Services credentials not configured. Set ADOBE_CLIENT_ID and ADOBE_CLIENT_SECRET.");
+      throw new Error(
+        "Adobe PDF Services credentials not configured. Set ADOBE_CLIENT_ID and ADOBE_CLIENT_SECRET.",
+      );
     }
 
     const credentials = new ServicePrincipalCredentials({
@@ -41,7 +44,9 @@ export interface DocumentMergeOptions {
   outputPath?: string;
 }
 
-export async function mergeDocumentToPDF(options: DocumentMergeOptions): Promise<Buffer> {
+export async function mergeDocumentToPDF(
+  options: DocumentMergeOptions,
+): Promise<Buffer> {
   const { templatePath, jsonData, outputFormat = "pdf" } = options;
 
   const pdfServices = getPDFServices();
@@ -56,7 +61,8 @@ export async function mergeDocumentToPDF(options: DocumentMergeOptions): Promise
 
     const params = new DocumentMergeParams({
       jsonDataForMerge: jsonData,
-      outputFormat: outputFormat === "pdf" ? OutputFormat.PDF : OutputFormat.DOCX,
+      outputFormat:
+        outputFormat === "pdf" ? OutputFormat.PDF : OutputFormat.DOCX,
     });
 
     const job = new DocumentMergeJob({ inputAsset, params });
@@ -87,9 +93,15 @@ export async function mergeDocumentToPDF(options: DocumentMergeOptions): Promise
 export async function generatePDFFromTemplate(
   templateName: string,
   data: Record<string, any>,
-  outputFormat: "pdf" | "docx" = "pdf"
+  outputFormat: "pdf" | "docx" = "pdf",
 ): Promise<Buffer> {
-  const templatesDir = path.join(process.cwd(), "server", "services", "adobe-pdf", "templates");
+  const templatesDir = path.join(
+    process.cwd(),
+    "server",
+    "services",
+    "adobe-pdf",
+    "templates",
+  );
   const templatePath = path.join(templatesDir, templateName);
 
   if (!fs.existsSync(templatePath)) {

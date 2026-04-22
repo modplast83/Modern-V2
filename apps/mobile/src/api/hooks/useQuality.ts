@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@/api/client";
 import { Endpoints, type QualityIssue } from "@mpbf/shared";
+import { useQuery } from "@tanstack/react-query";
+
+import { api } from "@/api/client";
 
 function unwrapList<T>(payload: any): T[] {
   if (Array.isArray(payload)) return payload as T[];

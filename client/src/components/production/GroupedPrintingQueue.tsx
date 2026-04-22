@@ -1,14 +1,14 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Play, ChevronDown, ChevronRight, Printer } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+
 import { useLocalizedName } from "../../hooks/use-localized-name";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Button } from "../ui/button";
-import { Badge } from "../ui/badge";
-import { Play, ChevronDown, ChevronRight, Printer } from "lucide-react";
-import { Progress } from "../ui/progress";
 import { useToast } from "../../hooks/use-toast";
 import { formatWeight } from "../../lib/formatNumber";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import {
   Collapsible,
   CollapsibleContent,
@@ -23,6 +23,7 @@ import {
   DialogFooter,
 } from "../ui/dialog";
 import { Label } from "../ui/label";
+import { Progress } from "../ui/progress";
 import {
   Select,
   SelectContent,
@@ -30,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
+
 import { printRollLabel } from "./RollLabelPrint";
 
 interface GroupedPrintingQueueProps {
@@ -88,10 +90,12 @@ export default function GroupedPrintingQueue({
   const [expandedProductionOrders, setExpandedProductionOrders] = useState<
     Set<number>
   >(new Set());
-  
+
   // State for machine selection dialog
-  const [selectedRollForPrinting, setSelectedRollForPrinting] = useState<GroupedRoll | null>(null);
-  const [selectedPrintingMachine, setSelectedPrintingMachine] = useState<string>("");
+  const [selectedRollForPrinting, setSelectedRollForPrinting] =
+    useState<GroupedRoll | null>(null);
+  const [selectedPrintingMachine, setSelectedPrintingMachine] =
+    useState<string>("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   // Fetch machines
@@ -107,15 +111,17 @@ export default function GroupedPrintingQueue({
   });
 
   // Filter printing machines (active only)
-  const printingSection = sections.find(s => 
-    s.name?.toLowerCase().includes("طباعة") || 
-    s.name?.toLowerCase().includes("printing") ||
-    s.name_ar?.includes("طباعة")
+  const printingSection = sections.find(
+    (s) =>
+      s.name?.toLowerCase().includes("طباعة") ||
+      s.name?.toLowerCase().includes("printing") ||
+      s.name_ar?.includes("طباعة"),
   );
-  
-  const printingMachines = machines.filter(m => 
-    m.status === "active" && 
-    (m.type === "printing" || m.section_id === printingSection?.id)
+
+  const printingMachines = machines.filter(
+    (m) =>
+      m.status === "active" &&
+      (m.type === "printing" || m.section_id === printingSection?.id),
   );
 
   // Helper function to calculate completion percentage
@@ -149,11 +155,14 @@ export default function GroupedPrintingQueue({
       orderGroup = {
         order_id: item.order_id,
         order_number: item.order_number || `ORD-${item.order_id}`,
-        customer_name: item.customer_name || t('production.notSpecified'),
+        customer_name: item.customer_name || t("production.notSpecified"),
         customer_name_ar:
-          item.customer_name_ar || item.customer_name || t('production.notSpecified'),
-        item_name: item.item_name || t('production.notSpecified'),
-        item_name_ar: item.item_name_ar || item.item_name || t('production.notSpecified'),
+          item.customer_name_ar ||
+          item.customer_name ||
+          t("production.notSpecified"),
+        item_name: item.item_name || t("production.notSpecified"),
+        item_name_ar:
+          item.item_name_ar || item.item_name || t("production.notSpecified"),
         size_caption: item.size_caption || "",
         production_orders: [],
         total_weight: 0,
@@ -200,7 +209,13 @@ export default function GroupedPrintingQueue({
   }, [] as OrderGroup[]);
 
   const processRollMutation = useMutation({
-    mutationFn: async ({ rollId, printingMachineId }: { rollId: number; printingMachineId: string }) => {
+    mutationFn: async ({
+      rollId,
+      printingMachineId,
+    }: {
+      rollId: number;
+      printingMachineId: string;
+    }) => {
       const response = await fetch(`/api/rolls/${rollId}/print`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -209,15 +224,17 @@ export default function GroupedPrintingQueue({
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || t('production.printing.registrationFailed'));
+        throw new Error(
+          error.message || t("production.printing.registrationFailed"),
+        );
       }
 
       return response.json();
     },
     onSuccess: () => {
       toast({
-        title: t('messages.success'),
-        description: t('production.printing.registeredSuccess'),
+        title: t("messages.success"),
+        description: t("production.printing.registeredSuccess"),
       });
       queryClient.invalidateQueries({
         queryKey: ["/api/production/printing-queue"],
@@ -230,7 +247,7 @@ export default function GroupedPrintingQueue({
     },
     onError: (error: Error) => {
       toast({
-        title: t('common.error'),
+        title: t("common.error"),
         description: error.message,
         variant: "destructive",
       });
@@ -247,8 +264,8 @@ export default function GroupedPrintingQueue({
   const handleConfirmPrint = () => {
     if (!selectedRollForPrinting || !selectedPrintingMachine) {
       toast({
-        title: t('common.error'),
-        description: t('production.printing.selectMachineRequired'),
+        title: t("common.error"),
+        description: t("production.printing.selectMachineRequired"),
         variant: "destructive",
       });
       return;
@@ -287,7 +304,7 @@ export default function GroupedPrintingQueue({
         <CardContent className="p-6 text-center">
           <div className="text-gray-500">
             <Play className="h-12 w-12 mx-auto mb-2 opacity-50" />
-            <p>{t('production.printing.noRollsInQueue')}</p>
+            <p>{t("production.printing.noRollsInQueue")}</p>
           </div>
         </CardContent>
       </Card>
@@ -319,7 +336,10 @@ export default function GroupedPrintingQueue({
                         <CardTitle className="text-lg">
                           {orderGroup.order_number} -{" "}
                           <span className="font-bold text-blue-700">
-                            {ln(orderGroup.customer_name_ar, orderGroup.customer_name)}
+                            {ln(
+                              orderGroup.customer_name_ar,
+                              orderGroup.customer_name,
+                            )}
                           </span>
                         </CardTitle>
                         <p className="text-sm text-gray-600">
@@ -342,10 +362,11 @@ export default function GroupedPrintingQueue({
                         </div>
                       </div>
                       <Badge variant="secondary">
-                        {orderGroup.total_rolls} {t('production.roll')}
+                        {orderGroup.total_rolls} {t("production.roll")}
                       </Badge>
                       <Badge variant="outline">
-                        {orderGroup.total_weight.toFixed(2)} {t('production.units.kg')}
+                        {orderGroup.total_weight.toFixed(2)}{" "}
+                        {t("production.units.kg")}
                       </Badge>
                     </div>
                   </div>
@@ -355,151 +376,183 @@ export default function GroupedPrintingQueue({
               <CollapsibleContent>
                 <CardContent className="pt-0">
                   <div className="space-y-3">
-                    {orderGroup.production_orders.map((productionOrderGroup) => (
-                      <Card
-                        key={`production-${productionOrderGroup.production_order_id}`}
-                        className="bg-gray-50 border-l-2 border-l-orange-400"
-                      >
-                        <Collapsible
-                          open={expandedProductionOrders.has(
-                            productionOrderGroup.production_order_id,
-                          )}
-                          onOpenChange={() =>
-                            toggleProductionOrderExpanded(
-                              productionOrderGroup.production_order_id,
-                            )
-                          }
+                    {orderGroup.production_orders.map(
+                      (productionOrderGroup) => (
+                        <Card
+                          key={`production-${productionOrderGroup.production_order_id}`}
+                          className="bg-gray-50 border-l-2 border-l-orange-400"
                         >
-                          <CollapsibleTrigger className="w-full">
-                            <CardHeader className="pb-2">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-2 space-x-reverse">
-                                  {expandedProductionOrders.has(
-                                    productionOrderGroup.production_order_id,
-                                  ) ? (
-                                    <ChevronDown className="h-4 w-4" />
-                                  ) : (
-                                    <ChevronRight className="h-4 w-4" />
-                                  )}
-                                  <span className="font-medium">
-                                    {productionOrderGroup.production_order_number}
-                                  </span>
-                                </div>
-                                <div className="flex items-center space-x-3 space-x-reverse">
-                                  <div className="text-sm text-muted-foreground">
-                                    <div className="w-16">
-                                      <Progress
-                                        value={calculateProductionOrderProgress(
-                                          productionOrderGroup,
-                                        )}
-                                        className="h-2"
-                                      />
-                                      <span className="text-xs">
-                                        {calculateProductionOrderProgress(
-                                          productionOrderGroup,
-                                        )}
-                                        %
-                                      </span>
-                                    </div>
+                          <Collapsible
+                            open={expandedProductionOrders.has(
+                              productionOrderGroup.production_order_id,
+                            )}
+                            onOpenChange={() =>
+                              toggleProductionOrderExpanded(
+                                productionOrderGroup.production_order_id,
+                              )
+                            }
+                          >
+                            <CollapsibleTrigger className="w-full">
+                              <CardHeader className="pb-2">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-2 space-x-reverse">
+                                    {expandedProductionOrders.has(
+                                      productionOrderGroup.production_order_id,
+                                    ) ? (
+                                      <ChevronDown className="h-4 w-4" />
+                                    ) : (
+                                      <ChevronRight className="h-4 w-4" />
+                                    )}
+                                    <span className="font-medium">
+                                      {
+                                        productionOrderGroup.production_order_number
+                                      }
+                                    </span>
                                   </div>
-                                  <Badge variant="secondary" className="text-xs">
-                                    {productionOrderGroup.rolls_count} {t('production.roll')}
-                                  </Badge>
-                                  <Badge variant="outline" className="text-xs">
-                                    {productionOrderGroup.total_weight.toFixed(2)}{" "}
-                                    {t('production.units.kg')}
-                                  </Badge>
-                                </div>
-                              </div>
-                            </CardHeader>
-                          </CollapsibleTrigger>
-
-                          <CollapsibleContent>
-                            <CardContent className="pt-0">
-                              <div className="mt-4 ml-6 space-y-2">
-                                <h5 className="text-sm font-medium text-gray-700 mb-2">
-                                  {t('production.rolls')} ({productionOrderGroup.rolls_count})
-                                </h5>
-                                {productionOrderGroup.rolls.length === 0 ? (
-                                  <p className="text-sm text-muted-foreground">
-                                    {t('production.noRollsYet')}
-                                  </p>
-                                ) : (
-                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                                    {productionOrderGroup.rolls.map((roll) => (
-                                      <div
-                                        key={`roll-${roll.id}`}
-                                        className="border rounded p-3 bg-gray-50 hover:bg-gray-100 transition-colors"
-                                        data-testid={`roll-item-${roll.id}`}
-                                      >
-                                        <div className="flex flex-col gap-2">
-                                          <div className="flex justify-between items-start">
-                                            <div className="flex-1">
-                                              <p className="font-medium text-sm">
-                                                {roll.roll_number}
-                                              </p>
-                                              <p className="text-xs text-muted-foreground">
-                                                {t('production.weight')}: {formatWeight(roll.weight_kg)}
-                                              </p>
-                                              <p className="text-xs text-muted-foreground">
-                                                {t('production.machine')}: {roll.machine_id}
-                                              </p>
-                                            </div>
-                                            <Button
-                                              size="sm"
-                                              variant="default"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                if (processingId !== null) return;
-                                                handleOpenPrintDialog(roll);
-                                              }}
-                                              disabled={processingId !== null}
-                                              data-testid={`button-print-roll-${roll.id}`}
-                                            >
-                                              {processingId === roll.id ? (
-                                                <span className="text-xs">{t('common.processing')}</span>
-                                              ) : (
-                                                <Play className="h-3 w-3" />
-                                              )}
-                                            </Button>
-                                          </div>
-                                          <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="w-full text-xs"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              printRollLabel({
-                                                roll: roll,
-                                                productionOrder: {
-                                                  production_order_number: productionOrderGroup.production_order_number,
-                                                  item_name_ar: orderGroup.item_name_ar,
-                                                  item_name: orderGroup.item_name,
-                                                  size_caption: orderGroup.size_caption
-                                                },
-                                                order: {
-                                                  order_number: orderGroup.order_number,
-                                                  customer_name_ar: orderGroup.customer_name_ar,
-                                                  customer_name: orderGroup.customer_name
-                                                }
-                                              });
-                                            }}
-                                            data-testid={`button-print-label-${roll.id}`}
-                                          >
-                                            <Printer className="h-3 w-3 mr-1" />
-                                            {t('production.printLabel')}
-                                          </Button>
-                                        </div>
+                                  <div className="flex items-center space-x-3 space-x-reverse">
+                                    <div className="text-sm text-muted-foreground">
+                                      <div className="w-16">
+                                        <Progress
+                                          value={calculateProductionOrderProgress(
+                                            productionOrderGroup,
+                                          )}
+                                          className="h-2"
+                                        />
+                                        <span className="text-xs">
+                                          {calculateProductionOrderProgress(
+                                            productionOrderGroup,
+                                          )}
+                                          %
+                                        </span>
                                       </div>
-                                    ))}
+                                    </div>
+                                    <Badge
+                                      variant="secondary"
+                                      className="text-xs"
+                                    >
+                                      {productionOrderGroup.rolls_count}{" "}
+                                      {t("production.roll")}
+                                    </Badge>
+                                    <Badge
+                                      variant="outline"
+                                      className="text-xs"
+                                    >
+                                      {productionOrderGroup.total_weight.toFixed(
+                                        2,
+                                      )}{" "}
+                                      {t("production.units.kg")}
+                                    </Badge>
                                   </div>
-                                )}
-                              </div>
-                            </CardContent>
-                          </CollapsibleContent>
-                        </Collapsible>
-                      </Card>
-                    ))}
+                                </div>
+                              </CardHeader>
+                            </CollapsibleTrigger>
+
+                            <CollapsibleContent>
+                              <CardContent className="pt-0">
+                                <div className="mt-4 ml-6 space-y-2">
+                                  <h5 className="text-sm font-medium text-gray-700 mb-2">
+                                    {t("production.rolls")} (
+                                    {productionOrderGroup.rolls_count})
+                                  </h5>
+                                  {productionOrderGroup.rolls.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground">
+                                      {t("production.noRollsYet")}
+                                    </p>
+                                  ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                                      {productionOrderGroup.rolls.map(
+                                        (roll) => (
+                                          <div
+                                            key={`roll-${roll.id}`}
+                                            className="border rounded p-3 bg-gray-50 hover:bg-gray-100 transition-colors"
+                                            data-testid={`roll-item-${roll.id}`}
+                                          >
+                                            <div className="flex flex-col gap-2">
+                                              <div className="flex justify-between items-start">
+                                                <div className="flex-1">
+                                                  <p className="font-medium text-sm">
+                                                    {roll.roll_number}
+                                                  </p>
+                                                  <p className="text-xs text-muted-foreground">
+                                                    {t("production.weight")}:{" "}
+                                                    {formatWeight(
+                                                      roll.weight_kg,
+                                                    )}
+                                                  </p>
+                                                  <p className="text-xs text-muted-foreground">
+                                                    {t("production.machine")}:{" "}
+                                                    {roll.machine_id}
+                                                  </p>
+                                                </div>
+                                                <Button
+                                                  size="sm"
+                                                  variant="default"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (processingId !== null)
+                                                      return;
+                                                    handleOpenPrintDialog(roll);
+                                                  }}
+                                                  disabled={
+                                                    processingId !== null
+                                                  }
+                                                  data-testid={`button-print-roll-${roll.id}`}
+                                                >
+                                                  {processingId === roll.id ? (
+                                                    <span className="text-xs">
+                                                      {t("common.processing")}
+                                                    </span>
+                                                  ) : (
+                                                    <Play className="h-3 w-3" />
+                                                  )}
+                                                </Button>
+                                              </div>
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="w-full text-xs"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  printRollLabel({
+                                                    roll: roll,
+                                                    productionOrder: {
+                                                      production_order_number:
+                                                        productionOrderGroup.production_order_number,
+                                                      item_name_ar:
+                                                        orderGroup.item_name_ar,
+                                                      item_name:
+                                                        orderGroup.item_name,
+                                                      size_caption:
+                                                        orderGroup.size_caption,
+                                                    },
+                                                    order: {
+                                                      order_number:
+                                                        orderGroup.order_number,
+                                                      customer_name_ar:
+                                                        orderGroup.customer_name_ar,
+                                                      customer_name:
+                                                        orderGroup.customer_name,
+                                                    },
+                                                  });
+                                                }}
+                                                data-testid={`button-print-label-${roll.id}`}
+                                              >
+                                                <Printer className="h-3 w-3 mr-1" />
+                                                {t("production.printLabel")}
+                                              </Button>
+                                            </div>
+                                          </div>
+                                        ),
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </CardContent>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        </Card>
+                      ),
+                    )}
                   </div>
                 </CardContent>
               </CollapsibleContent>
@@ -512,35 +565,54 @@ export default function GroupedPrintingQueue({
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-md" dir="rtl">
           <DialogHeader>
-            <DialogTitle>{t('production.printing.selectMachineTitle')}</DialogTitle>
+            <DialogTitle>
+              {t("production.printing.selectMachineTitle")}
+            </DialogTitle>
             <DialogDescription>
-              {t('production.printing.selectMachineDescription')}
+              {t("production.printing.selectMachineDescription")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             {selectedRollForPrinting && (
               <div className="p-3 bg-gray-50 rounded-md border">
-                <p className="text-sm font-medium">{t('production.printing.selectedRoll')}:</p>
-                <p className="text-sm text-gray-600">{selectedRollForPrinting.roll_number}</p>
+                <p className="text-sm font-medium">
+                  {t("production.printing.selectedRoll")}:
+                </p>
+                <p className="text-sm text-gray-600">
+                  {selectedRollForPrinting.roll_number}
+                </p>
                 <p className="text-xs text-gray-500">
-                  {t('production.weight')}: {formatWeight(selectedRollForPrinting.weight_kg)}
+                  {t("production.weight")}:{" "}
+                  {formatWeight(selectedRollForPrinting.weight_kg)}
                 </p>
               </div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="printing-machine">{t('production.printing.printingMachine')} *</Label>
+              <Label htmlFor="printing-machine">
+                {t("production.printing.printingMachine")} *
+              </Label>
               {printingMachines.length === 0 ? (
                 <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
                   <p className="text-sm text-yellow-800">
-                    {t('production.printing.noActiveMachines')}
+                    {t("production.printing.noActiveMachines")}
                   </p>
                 </div>
               ) : (
-                <Select value={selectedPrintingMachine} onValueChange={setSelectedPrintingMachine}>
-                  <SelectTrigger id="printing-machine" data-testid="select-printing-machine">
-                    <SelectValue placeholder={t('production.printing.selectPrintingMachine')} />
+                <Select
+                  value={selectedPrintingMachine}
+                  onValueChange={setSelectedPrintingMachine}
+                >
+                  <SelectTrigger
+                    id="printing-machine"
+                    data-testid="select-printing-machine"
+                  >
+                    <SelectValue
+                      placeholder={t(
+                        "production.printing.selectPrintingMachine",
+                      )}
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     {printingMachines.map((machine) => (
@@ -564,14 +636,18 @@ export default function GroupedPrintingQueue({
               }}
               data-testid="button-cancel-print"
             >
-              {t('common.cancel')}
+              {t("common.cancel")}
             </Button>
             <Button
               onClick={handleConfirmPrint}
-              disabled={!selectedPrintingMachine || processRollMutation.isPending}
+              disabled={
+                !selectedPrintingMachine || processRollMutation.isPending
+              }
               data-testid="button-confirm-print"
             >
-              {processRollMutation.isPending ? t('production.printing.registering') : t('production.printing.registerPrinting')}
+              {processRollMutation.isPending
+                ? t("production.printing.registering")
+                : t("production.printing.registerPrinting")}
             </Button>
           </DialogFooter>
         </DialogContent>

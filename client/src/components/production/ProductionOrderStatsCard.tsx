@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Badge } from "../ui/badge";
-import { Progress } from "../ui/progress";
 import { Loader2 } from "lucide-react";
+
+import { Badge } from "../ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Progress } from "../ui/progress";
 
 interface ProductionOrderStatsCardProps {
   productionOrderId: number;
@@ -55,7 +56,9 @@ export default function ProductionOrderStatsCard({
           <div>
             <div className="flex justify-between text-sm mb-2">
               <span className="text-gray-600">نسبة الإكمال</span>
-              <span className="font-medium">{completionPercentage.toFixed(1)}%</span>
+              <span className="font-medium">
+                {completionPercentage.toFixed(1)}%
+              </span>
             </div>
             <Progress value={completionPercentage} className="h-2" />
           </div>
@@ -68,21 +71,29 @@ export default function ProductionOrderStatsCard({
             </div>
             <div className="bg-gray-50 rounded-lg p-3">
               <div className="text-xs text-gray-600">الوزن الإجمالي</div>
-              <div className="text-xl font-bold">{data.total_weight} <span className="text-sm">كجم</span></div>
+              <div className="text-xl font-bold">
+                {data.total_weight} <span className="text-sm">كجم</span>
+              </div>
             </div>
             <div className="bg-gray-50 rounded-lg p-3">
               <div className="text-xs text-gray-600">الكمية المتبقية</div>
-              <div className="text-xl font-bold">{data.remaining_quantity} <span className="text-sm">كجم</span></div>
+              <div className="text-xl font-bold">
+                {data.remaining_quantity} <span className="text-sm">كجم</span>
+              </div>
             </div>
             <div className="bg-gray-50 rounded-lg p-3">
               <div className="text-xs text-gray-600">الهدر</div>
-              <div className="text-xl font-bold">{data.total_waste} <span className="text-sm">كجم</span></div>
+              <div className="text-xl font-bold">
+                {data.total_waste} <span className="text-sm">كجم</span>
+              </div>
             </div>
           </div>
 
           {/* توزيع الرولات حسب المرحلة */}
           <div>
-            <div className="text-sm font-medium text-gray-700 mb-2">توزيع الرولات حسب المرحلة</div>
+            <div className="text-sm font-medium text-gray-700 mb-2">
+              توزيع الرولات حسب المرحلة
+            </div>
             <div className="grid grid-cols-4 gap-2">
               <div className="text-center">
                 <div className="bg-blue-100 text-blue-800 rounded-lg p-2">
@@ -116,19 +127,25 @@ export default function ProductionOrderStatsCard({
             <div className="border-t pt-4">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">وقت الإنتاج</span>
-                <span className="font-medium">{data.production_time_hours} ساعة</span>
+                <span className="font-medium">
+                  {data.production_time_hours} ساعة
+                </span>
               </div>
               <div className="flex justify-between text-sm mt-2">
                 <span className="text-gray-600">تاريخ البدء</span>
                 <span className="font-medium">
-                  {new Date(data.production_order.production_start_time).toLocaleString("en-US")}
+                  {new Date(
+                    data.production_order.production_start_time,
+                  ).toLocaleString("en-US")}
                 </span>
               </div>
               {data.production_order.production_end_time && (
                 <div className="flex justify-between text-sm mt-2">
                   <span className="text-gray-600">تاريخ الانتهاء</span>
                   <span className="font-medium">
-                    {new Date(data.production_order.production_end_time).toLocaleString("en-US")}
+                    {new Date(
+                      data.production_order.production_end_time,
+                    ).toLocaleString("en-US")}
                   </span>
                 </div>
               )}
@@ -139,15 +156,21 @@ export default function ProductionOrderStatsCard({
           <div className="border-t pt-4 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">الكمية المطلوبة</span>
-              <span className="font-medium">{data.production_order?.quantity_kg} كجم</span>
+              <span className="font-medium">
+                {data.production_order?.quantity_kg} كجم
+              </span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">الكمية النهائية</span>
-              <span className="font-medium">{data.production_order?.final_quantity_kg} كجم</span>
+              <span className="font-medium">
+                {data.production_order?.final_quantity_kg} كجم
+              </span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">نسبة الزيادة</span>
-              <span className="font-medium">{data.production_order?.overrun_percentage}%</span>
+              <span className="font-medium">
+                {data.production_order?.overrun_percentage}%
+              </span>
             </div>
           </div>
         </div>

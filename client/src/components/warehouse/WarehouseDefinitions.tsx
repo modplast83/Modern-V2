@@ -1,15 +1,23 @@
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { useTranslation } from 'react-i18next';
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../ui/card";
+  Plus,
+  Edit,
+  Trash2,
+  Building2,
+  Package,
+  Scale,
+  Boxes,
+} from "lucide-react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
+import { z } from "zod";
+
+import { useToast } from "../../hooks/use-toast";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +34,14 @@ import {
   FormLabel,
   FormMessage,
 } from "../ui/form";
+import { Input } from "../ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 import {
   Table,
   TableBody,
@@ -34,24 +50,7 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "../ui/tabs";
-import { Input } from "../ui/input";
-import { Button } from "../ui/button";
-import { Badge } from "../ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
-import { useToast } from "../../hooks/use-toast";
-import { Plus, Edit, Trash2, Building2, Package, Scale, Boxes } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 
 function SuppliersTab() {
   const { t } = useTranslation();
@@ -61,8 +60,8 @@ function SuppliersTab() {
   const [editingItem, setEditingItem] = useState<any>(null);
 
   const supplierSchema = z.object({
-    name: z.string().min(1, t('warehouse.validation.nameEnRequired')),
-    name_ar: z.string().min(1, t('warehouse.validation.nameArRequired')),
+    name: z.string().min(1, t("warehouse.validation.nameEnRequired")),
+    name_ar: z.string().min(1, t("warehouse.validation.nameArRequired")),
     phone: z.string().optional(),
     email: z.string().email().optional().or(z.literal("")),
     address: z.string().optional(),
@@ -93,36 +92,38 @@ function SuppliersTab() {
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
-      const url = editingItem ? `/api/suppliers/${editingItem.id}` : "/api/suppliers";
+      const url = editingItem
+        ? `/api/suppliers/${editingItem.id}`
+        : "/api/suppliers";
       const method = editingItem ? "PUT" : "POST";
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error(t('warehouse.errors.saveFailed'));
+      if (!res.ok) throw new Error(t("warehouse.errors.saveFailed"));
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/suppliers"] });
-      toast({ title: t('warehouse.toast.savedSuccess') });
+      toast({ title: t("warehouse.toast.savedSuccess") });
       setIsOpen(false);
       setEditingItem(null);
       form.reset();
     },
     onError: () => {
-      toast({ title: t('warehouse.toast.saveError'), variant: "destructive" });
+      toast({ title: t("warehouse.toast.saveError"), variant: "destructive" });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       const res = await fetch(`/api/suppliers/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error(t('warehouse.errors.deleteFailed'));
+      if (!res.ok) throw new Error(t("warehouse.errors.deleteFailed"));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/suppliers"] });
-      toast({ title: t('warehouse.toast.deletedSuccess') });
+      toast({ title: t("warehouse.toast.deletedSuccess") });
     },
   });
 
@@ -151,29 +152,40 @@ function SuppliersTab() {
         <div className="flex justify-between items-center">
           <CardTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5" />
-            {t('warehouse.definitions.suppliers')}
+            {t("warehouse.definitions.suppliers")}
           </CardTitle>
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
               <Button onClick={handleAdd}>
                 <Plus className="h-4 w-4 ml-2" />
-                {t('warehouse.definitions.addSupplier')}
+                {t("warehouse.definitions.addSupplier")}
               </Button>
             </DialogTrigger>
             <DialogContent className="w-[95vw] sm:w-full">
               <DialogHeader>
-                <DialogTitle>{editingItem ? t('warehouse.definitions.editSupplier') : t('warehouse.definitions.addNewSupplier')}</DialogTitle>
-                <DialogDescription className="sr-only">{t('warehouse.definitions.supplierFormDesc')}</DialogDescription>
+                <DialogTitle>
+                  {editingItem
+                    ? t("warehouse.definitions.editSupplier")
+                    : t("warehouse.definitions.addNewSupplier")}
+                </DialogTitle>
+                <DialogDescription className="sr-only">
+                  {t("warehouse.definitions.supplierFormDesc")}
+                </DialogDescription>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
+                <form
+                  onSubmit={form.handleSubmit((data) => mutation.mutate(data))}
+                  className="space-y-4"
+                >
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('warehouse.definitions.nameEn')}</FormLabel>
+                          <FormLabel>
+                            {t("warehouse.definitions.nameEn")}
+                          </FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
@@ -186,7 +198,9 @@ function SuppliersTab() {
                       name="name_ar"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('warehouse.definitions.nameAr')}</FormLabel>
+                          <FormLabel>
+                            {t("warehouse.definitions.nameAr")}
+                          </FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
@@ -201,7 +215,9 @@ function SuppliersTab() {
                       name="phone"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('warehouse.definitions.phone')}</FormLabel>
+                          <FormLabel>
+                            {t("warehouse.definitions.phone")}
+                          </FormLabel>
                           <FormControl>
                             <Input {...field} type="tel" dir="ltr" />
                           </FormControl>
@@ -213,7 +229,9 @@ function SuppliersTab() {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('warehouse.definitions.email')}</FormLabel>
+                          <FormLabel>
+                            {t("warehouse.definitions.email")}
+                          </FormLabel>
                           <FormControl>
                             <Input {...field} type="email" dir="ltr" />
                           </FormControl>
@@ -226,7 +244,9 @@ function SuppliersTab() {
                     name="contact_person"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('warehouse.definitions.contactPerson')}</FormLabel>
+                        <FormLabel>
+                          {t("warehouse.definitions.contactPerson")}
+                        </FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
@@ -238,7 +258,9 @@ function SuppliersTab() {
                     name="address"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('warehouse.definitions.address')}</FormLabel>
+                        <FormLabel>
+                          {t("warehouse.definitions.address")}
+                        </FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
@@ -246,9 +268,17 @@ function SuppliersTab() {
                     )}
                   />
                   <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>{t('warehouse.buttons.cancel')}</Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      {t("warehouse.buttons.cancel")}
+                    </Button>
                     <Button type="submit" disabled={mutation.isPending}>
-                      {mutation.isPending ? t('warehouse.buttons.saving') : t('warehouse.buttons.save')}
+                      {mutation.isPending
+                        ? t("warehouse.buttons.saving")
+                        : t("warehouse.buttons.save")}
                     </Button>
                   </div>
                 </form>
@@ -259,19 +289,29 @@ function SuppliersTab() {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="text-center py-4">{t('warehouse.loading')}</div>
+          <div className="text-center py-4">{t("warehouse.loading")}</div>
         ) : suppliers.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">{t('warehouse.definitions.noSuppliers')}</div>
+          <div className="text-center py-8 text-gray-500">
+            {t("warehouse.definitions.noSuppliers")}
+          </div>
         ) : (
           <>
             <div className="hidden sm:block">
               <Table className="min-w-[500px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-right whitespace-nowrap">{t('warehouse.definitions.name')}</TableHead>
-                    <TableHead className="text-right whitespace-nowrap">{t('warehouse.definitions.phone')}</TableHead>
-                    <TableHead className="text-right whitespace-nowrap">{t('warehouse.definitions.contactPerson')}</TableHead>
-                    <TableHead className="text-right whitespace-nowrap">{t('warehouse.definitions.actions')}</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">
+                      {t("warehouse.definitions.name")}
+                    </TableHead>
+                    <TableHead className="text-right whitespace-nowrap">
+                      {t("warehouse.definitions.phone")}
+                    </TableHead>
+                    <TableHead className="text-right whitespace-nowrap">
+                      {t("warehouse.definitions.contactPerson")}
+                    </TableHead>
+                    <TableHead className="text-right whitespace-nowrap">
+                      {t("warehouse.definitions.actions")}
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -282,8 +322,21 @@ function SuppliersTab() {
                       <TableCell>{supplier.contact_person || "-"}</TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(supplier)}><Edit className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="sm" onClick={() => deleteMutation.mutate(supplier.id)} disabled={deleteMutation.isPending}><Trash2 className="h-4 w-4 text-red-500" /></Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(supplier)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteMutation.mutate(supplier.id)}
+                            disabled={deleteMutation.isPending}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -293,17 +346,45 @@ function SuppliersTab() {
             </div>
             <div className="sm:hidden space-y-2">
               {suppliers.map((supplier: any) => (
-                <div key={supplier.id} className="border rounded-lg p-3 space-y-1">
+                <div
+                  key={supplier.id}
+                  className="border rounded-lg p-3 space-y-1"
+                >
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm">{supplier.name_ar || supplier.name}</span>
+                    <span className="font-bold text-sm">
+                      {supplier.name_ar || supplier.name}
+                    </span>
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => handleEdit(supplier)}><Edit className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="sm" onClick={() => deleteMutation.mutate(supplier.id)} disabled={deleteMutation.isPending}><Trash2 className="h-4 w-4 text-red-500" /></Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(supplier)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteMutation.mutate(supplier.id)}
+                        disabled={deleteMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-x-4 text-xs">
-                    <div className="flex justify-between"><span className="text-gray-500">{t('warehouse.definitions.phone')}:</span><span dir="ltr">{supplier.phone || "-"}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-500">{t('warehouse.definitions.contactPerson')}:</span><span>{supplier.contact_person || "-"}</span></div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">
+                        {t("warehouse.definitions.phone")}:
+                      </span>
+                      <span dir="ltr">{supplier.phone || "-"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">
+                        {t("warehouse.definitions.contactPerson")}:
+                      </span>
+                      <span>{supplier.contact_person || "-"}</span>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -323,10 +404,12 @@ function ItemsTab() {
   const [editingItem, setEditingItem] = useState<any>(null);
 
   const itemSchema = z.object({
-    category_id: z.string().min(1, t('warehouse.validation.mainCategoryRequired')),
-    code: z.string().min(1, t('warehouse.validation.codeRequired')),
-    name: z.string().min(1, t('warehouse.validation.nameEnRequired')),
-    name_ar: z.string().min(1, t('warehouse.validation.nameArRequired')),
+    category_id: z
+      .string()
+      .min(1, t("warehouse.validation.mainCategoryRequired")),
+    code: z.string().min(1, t("warehouse.validation.codeRequired")),
+    name: z.string().min(1, t("warehouse.validation.nameEnRequired")),
+    name_ar: z.string().min(1, t("warehouse.validation.nameArRequired")),
     unit: z.string().default("كيلو"),
     min_stock: z.string().optional(),
     barcode: z.string().optional(),
@@ -372,29 +455,29 @@ function ItemsTab() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error(t('warehouse.errors.saveFailed'));
+      if (!res.ok) throw new Error(t("warehouse.errors.saveFailed"));
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/items"] });
-      toast({ title: t('warehouse.toast.savedSuccess') });
+      toast({ title: t("warehouse.toast.savedSuccess") });
       setIsOpen(false);
       setEditingItem(null);
       form.reset();
     },
     onError: () => {
-      toast({ title: t('warehouse.toast.saveError'), variant: "destructive" });
+      toast({ title: t("warehouse.toast.saveError"), variant: "destructive" });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/items/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error(t('warehouse.errors.deleteFailed'));
+      if (!res.ok) throw new Error(t("warehouse.errors.deleteFailed"));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/items"] });
-      toast({ title: t('warehouse.toast.deletedSuccess') });
+      toast({ title: t("warehouse.toast.deletedSuccess") });
     },
   });
 
@@ -424,32 +507,50 @@ function ItemsTab() {
         <div className="flex justify-between items-center">
           <CardTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
-            {t('warehouse.definitions.items')}
+            {t("warehouse.definitions.items")}
           </CardTitle>
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
               <Button onClick={handleAdd}>
                 <Plus className="h-4 w-4 ml-2" />
-                {t('warehouse.definitions.addItem')}
+                {t("warehouse.definitions.addItem")}
               </Button>
             </DialogTrigger>
             <DialogContent className="w-[95vw] sm:w-full">
               <DialogHeader>
-                <DialogTitle>{editingItem ? t('warehouse.definitions.editItem') : t('warehouse.definitions.addNewItem')}</DialogTitle>
-                <DialogDescription className="sr-only">{t('warehouse.definitions.itemFormDesc')}</DialogDescription>
+                <DialogTitle>
+                  {editingItem
+                    ? t("warehouse.definitions.editItem")
+                    : t("warehouse.definitions.addNewItem")}
+                </DialogTitle>
+                <DialogDescription className="sr-only">
+                  {t("warehouse.definitions.itemFormDesc")}
+                </DialogDescription>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
+                <form
+                  onSubmit={form.handleSubmit((data) => mutation.mutate(data))}
+                  className="space-y-4"
+                >
                   <FormField
                     control={form.control}
                     name="category_id"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('warehouse.definitions.mainCategory')} *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <FormLabel>
+                          {t("warehouse.definitions.mainCategory")} *
+                        </FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder={t('warehouse.definitions.selectMainCategory')} />
+                              <SelectValue
+                                placeholder={t(
+                                  "warehouse.definitions.selectMainCategory",
+                                )}
+                              />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -469,7 +570,7 @@ function ItemsTab() {
                     name="code"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('warehouse.definitions.code')}</FormLabel>
+                        <FormLabel>{t("warehouse.definitions.code")}</FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
@@ -483,7 +584,9 @@ function ItemsTab() {
                       name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('warehouse.definitions.nameEn')}</FormLabel>
+                          <FormLabel>
+                            {t("warehouse.definitions.nameEn")}
+                          </FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
@@ -496,7 +599,9 @@ function ItemsTab() {
                       name="name_ar"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('warehouse.definitions.nameAr')}</FormLabel>
+                          <FormLabel>
+                            {t("warehouse.definitions.nameAr")}
+                          </FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
@@ -511,7 +616,7 @@ function ItemsTab() {
                       name="unit"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('warehouse.labels.unit')}</FormLabel>
+                          <FormLabel>{t("warehouse.labels.unit")}</FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
@@ -523,7 +628,9 @@ function ItemsTab() {
                       name="min_stock"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('warehouse.definitions.minStock')}</FormLabel>
+                          <FormLabel>
+                            {t("warehouse.definitions.minStock")}
+                          </FormLabel>
                           <FormControl>
                             <Input {...field} type="number" />
                           </FormControl>
@@ -536,7 +643,7 @@ function ItemsTab() {
                     name="barcode"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('warehouse.labels.barcode')}</FormLabel>
+                        <FormLabel>{t("warehouse.labels.barcode")}</FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
@@ -544,9 +651,17 @@ function ItemsTab() {
                     )}
                   />
                   <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>{t('warehouse.buttons.cancel')}</Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      {t("warehouse.buttons.cancel")}
+                    </Button>
                     <Button type="submit" disabled={mutation.isPending}>
-                      {mutation.isPending ? t('warehouse.buttons.saving') : t('warehouse.buttons.save')}
+                      {mutation.isPending
+                        ? t("warehouse.buttons.saving")
+                        : t("warehouse.buttons.save")}
                     </Button>
                   </div>
                 </form>
@@ -557,20 +672,32 @@ function ItemsTab() {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="text-center py-4">{t('warehouse.loading')}</div>
+          <div className="text-center py-4">{t("warehouse.loading")}</div>
         ) : items.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">{t('warehouse.definitions.noItems')}</div>
+          <div className="text-center py-8 text-gray-500">
+            {t("warehouse.definitions.noItems")}
+          </div>
         ) : (
           <>
             <div className="hidden sm:block">
               <Table className="min-w-[600px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-right whitespace-nowrap">{t('warehouse.definitions.code')}</TableHead>
-                    <TableHead className="text-right whitespace-nowrap">{t('warehouse.definitions.name')}</TableHead>
-                    <TableHead className="text-right whitespace-nowrap">{t('warehouse.labels.unit')}</TableHead>
-                    <TableHead className="text-right whitespace-nowrap">{t('warehouse.labels.barcode')}</TableHead>
-                    <TableHead className="text-right whitespace-nowrap">{t('warehouse.definitions.actions')}</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">
+                      {t("warehouse.definitions.code")}
+                    </TableHead>
+                    <TableHead className="text-right whitespace-nowrap">
+                      {t("warehouse.definitions.name")}
+                    </TableHead>
+                    <TableHead className="text-right whitespace-nowrap">
+                      {t("warehouse.labels.unit")}
+                    </TableHead>
+                    <TableHead className="text-right whitespace-nowrap">
+                      {t("warehouse.labels.barcode")}
+                    </TableHead>
+                    <TableHead className="text-right whitespace-nowrap">
+                      {t("warehouse.definitions.actions")}
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -582,8 +709,21 @@ function ItemsTab() {
                       <TableCell dir="ltr">{item.barcode || "-"}</TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(item)}><Edit className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="sm" onClick={() => deleteMutation.mutate(item.id)} disabled={deleteMutation.isPending}><Trash2 className="h-4 w-4 text-red-500" /></Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(item)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteMutation.mutate(item.id)}
+                            disabled={deleteMutation.isPending}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -596,17 +736,46 @@ function ItemsTab() {
                 <div key={item.id} className="border rounded-lg p-3 space-y-1">
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="font-bold text-sm">{item.name_ar || item.name}</span>
-                      <span className="text-xs text-gray-500 mr-2">({item.code})</span>
+                      <span className="font-bold text-sm">
+                        {item.name_ar || item.name}
+                      </span>
+                      <span className="text-xs text-gray-500 mr-2">
+                        ({item.code})
+                      </span>
                     </div>
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => handleEdit(item)}><Edit className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="sm" onClick={() => deleteMutation.mutate(item.id)} disabled={deleteMutation.isPending}><Trash2 className="h-4 w-4 text-red-500" /></Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(item)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteMutation.mutate(item.id)}
+                        disabled={deleteMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-x-4 text-xs">
-                    <div className="flex justify-between"><span className="text-gray-500">{t('warehouse.labels.unit')}:</span><span>{item.unit || "-"}</span></div>
-                    {item.barcode && <div className="flex justify-between"><span className="text-gray-500">{t('warehouse.labels.barcode')}:</span><span dir="ltr">{item.barcode}</span></div>}
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">
+                        {t("warehouse.labels.unit")}:
+                      </span>
+                      <span>{item.unit || "-"}</span>
+                    </div>
+                    {item.barcode && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">
+                          {t("warehouse.labels.barcode")}:
+                        </span>
+                        <span dir="ltr">{item.barcode}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -615,7 +784,7 @@ function ItemsTab() {
         )}
         {items.length > 50 && (
           <p className="text-sm text-gray-500 mt-2 text-center">
-            {t('warehouse.definitions.showingFirst50', { total: items.length })}
+            {t("warehouse.definitions.showingFirst50", { total: items.length })}
           </p>
         )}
       </CardContent>
@@ -631,9 +800,9 @@ function UnitsTab() {
   const [editingItem, setEditingItem] = useState<any>(null);
 
   const unitSchema = z.object({
-    name: z.string().min(1, t('warehouse.validation.nameEnRequired')),
-    name_ar: z.string().min(1, t('warehouse.validation.nameArRequired')),
-    symbol: z.string().min(1, t('warehouse.validation.symbolRequired')),
+    name: z.string().min(1, t("warehouse.validation.nameEnRequired")),
+    name_ar: z.string().min(1, t("warehouse.validation.nameArRequired")),
+    symbol: z.string().min(1, t("warehouse.validation.symbolRequired")),
     conversion_factor: z.string().default("1"),
   });
 
@@ -665,29 +834,29 @@ function UnitsTab() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error(t('warehouse.errors.saveFailed'));
+      if (!res.ok) throw new Error(t("warehouse.errors.saveFailed"));
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/units"] });
-      toast({ title: t('warehouse.toast.savedSuccess') });
+      toast({ title: t("warehouse.toast.savedSuccess") });
       setIsOpen(false);
       setEditingItem(null);
       form.reset();
     },
     onError: () => {
-      toast({ title: t('warehouse.toast.saveError'), variant: "destructive" });
+      toast({ title: t("warehouse.toast.saveError"), variant: "destructive" });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       const res = await fetch(`/api/units/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error(t('warehouse.errors.deleteFailed'));
+      if (!res.ok) throw new Error(t("warehouse.errors.deleteFailed"));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/units"] });
-      toast({ title: t('warehouse.toast.deletedSuccess') });
+      toast({ title: t("warehouse.toast.deletedSuccess") });
     },
   });
 
@@ -725,29 +894,40 @@ function UnitsTab() {
         <div className="flex justify-between items-center">
           <CardTitle className="flex items-center gap-2">
             <Scale className="h-5 w-5" />
-            {t('warehouse.definitions.units')}
+            {t("warehouse.definitions.units")}
           </CardTitle>
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
               <Button onClick={handleAdd}>
                 <Plus className="h-4 w-4 ml-2" />
-                {t('warehouse.definitions.addUnit')}
+                {t("warehouse.definitions.addUnit")}
               </Button>
             </DialogTrigger>
             <DialogContent className="w-[95vw] sm:w-full">
               <DialogHeader>
-                <DialogTitle>{editingItem ? t('warehouse.definitions.editUnit') : t('warehouse.definitions.addNewUnit')}</DialogTitle>
-                <DialogDescription className="sr-only">{t('warehouse.definitions.unitFormDesc')}</DialogDescription>
+                <DialogTitle>
+                  {editingItem
+                    ? t("warehouse.definitions.editUnit")
+                    : t("warehouse.definitions.addNewUnit")}
+                </DialogTitle>
+                <DialogDescription className="sr-only">
+                  {t("warehouse.definitions.unitFormDesc")}
+                </DialogDescription>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
+                <form
+                  onSubmit={form.handleSubmit((data) => mutation.mutate(data))}
+                  className="space-y-4"
+                >
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('warehouse.definitions.nameEn')}</FormLabel>
+                          <FormLabel>
+                            {t("warehouse.definitions.nameEn")}
+                          </FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
@@ -760,7 +940,9 @@ function UnitsTab() {
                       name="name_ar"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('warehouse.definitions.nameAr')}</FormLabel>
+                          <FormLabel>
+                            {t("warehouse.definitions.nameAr")}
+                          </FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
@@ -775,7 +957,9 @@ function UnitsTab() {
                       name="symbol"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('warehouse.definitions.symbol')}</FormLabel>
+                          <FormLabel>
+                            {t("warehouse.definitions.symbol")}
+                          </FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
@@ -788,7 +972,9 @@ function UnitsTab() {
                       name="conversion_factor"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('warehouse.definitions.conversionFactor')}</FormLabel>
+                          <FormLabel>
+                            {t("warehouse.definitions.conversionFactor")}
+                          </FormLabel>
                           <FormControl>
                             <Input {...field} type="number" step="0.001" />
                           </FormControl>
@@ -797,9 +983,17 @@ function UnitsTab() {
                     />
                   </div>
                   <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>{t('warehouse.buttons.cancel')}</Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      {t("warehouse.buttons.cancel")}
+                    </Button>
                     <Button type="submit" disabled={mutation.isPending}>
-                      {mutation.isPending ? t('warehouse.buttons.saving') : t('warehouse.buttons.save')}
+                      {mutation.isPending
+                        ? t("warehouse.buttons.saving")
+                        : t("warehouse.buttons.save")}
                     </Button>
                   </div>
                 </form>
@@ -810,27 +1004,50 @@ function UnitsTab() {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="text-center py-4">{t('warehouse.loading')}</div>
+          <div className="text-center py-4">{t("warehouse.loading")}</div>
         ) : (
           <>
             <div className="hidden sm:block">
               <Table className="min-w-[400px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-right whitespace-nowrap">{t('warehouse.definitions.name')}</TableHead>
-                    <TableHead className="text-right whitespace-nowrap">{t('warehouse.definitions.symbol')}</TableHead>
-                    <TableHead className="text-right whitespace-nowrap">{t('warehouse.definitions.actions')}</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">
+                      {t("warehouse.definitions.name")}
+                    </TableHead>
+                    <TableHead className="text-right whitespace-nowrap">
+                      {t("warehouse.definitions.symbol")}
+                    </TableHead>
+                    <TableHead className="text-right whitespace-nowrap">
+                      {t("warehouse.definitions.actions")}
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {allUnits.map((unit: any) => (
                     <TableRow key={unit.id}>
                       <TableCell>{unit.name_ar || unit.name}</TableCell>
-                      <TableCell><Badge variant="outline">{unit.symbol}</Badge></TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{unit.symbol}</Badge>
+                      </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(unit)}><Edit className="h-4 w-4" /></Button>
-                          {!unit.id.toString().startsWith("default") && <Button variant="ghost" size="sm" onClick={() => deleteMutation.mutate(unit.id)} disabled={deleteMutation.isPending}><Trash2 className="h-4 w-4 text-red-500" /></Button>}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(unit)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          {!unit.id.toString().startsWith("default") && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deleteMutation.mutate(unit.id)}
+                              disabled={deleteMutation.isPending}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -840,14 +1057,34 @@ function UnitsTab() {
             </div>
             <div className="sm:hidden space-y-2">
               {allUnits.map((unit: any) => (
-                <div key={unit.id} className="border rounded-lg p-3 flex items-center justify-between">
+                <div
+                  key={unit.id}
+                  className="border rounded-lg p-3 flex items-center justify-between"
+                >
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm">{unit.name_ar || unit.name}</span>
+                    <span className="font-bold text-sm">
+                      {unit.name_ar || unit.name}
+                    </span>
                     <Badge variant="outline">{unit.symbol}</Badge>
                   </div>
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => handleEdit(unit)}><Edit className="h-4 w-4" /></Button>
-                    {!unit.id.toString().startsWith("default") && <Button variant="ghost" size="sm" onClick={() => deleteMutation.mutate(unit.id)} disabled={deleteMutation.isPending}><Trash2 className="h-4 w-4 text-red-500" /></Button>}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEdit(unit)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    {!unit.id.toString().startsWith("default") && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteMutation.mutate(unit.id)}
+                        disabled={deleteMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -867,8 +1104,8 @@ function CategoriesTab() {
   const [editingItem, setEditingItem] = useState<any>(null);
 
   const categorySchema = z.object({
-    name: z.string().min(1, t('warehouse.validation.nameEnRequired')),
-    name_ar: z.string().min(1, t('warehouse.validation.nameArRequired')),
+    name: z.string().min(1, t("warehouse.validation.nameEnRequired")),
+    name_ar: z.string().min(1, t("warehouse.validation.nameArRequired")),
     type: z.enum(["raw_material", "finished_goods"]).default("raw_material"),
   });
 
@@ -892,25 +1129,27 @@ function CategoriesTab() {
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
-      const url = editingItem ? `/api/material-groups/${editingItem.id}` : "/api/material-groups";
+      const url = editingItem
+        ? `/api/material-groups/${editingItem.id}`
+        : "/api/material-groups";
       const method = editingItem ? "PUT" : "POST";
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error(t('warehouse.errors.saveFailed'));
+      if (!res.ok) throw new Error(t("warehouse.errors.saveFailed"));
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/material-groups"] });
-      toast({ title: t('warehouse.toast.savedSuccess') });
+      toast({ title: t("warehouse.toast.savedSuccess") });
       setIsOpen(false);
       setEditingItem(null);
       form.reset();
     },
     onError: () => {
-      toast({ title: t('warehouse.toast.saveError'), variant: "destructive" });
+      toast({ title: t("warehouse.toast.saveError"), variant: "destructive" });
     },
   });
 
@@ -936,29 +1175,40 @@ function CategoriesTab() {
         <div className="flex justify-between items-center">
           <CardTitle className="flex items-center gap-2">
             <Boxes className="h-5 w-5" />
-            {t('warehouse.definitions.materialGroups')}
+            {t("warehouse.definitions.materialGroups")}
           </CardTitle>
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
               <Button onClick={handleAdd}>
                 <Plus className="h-4 w-4 ml-2" />
-                {t('warehouse.definitions.addGroup')}
+                {t("warehouse.definitions.addGroup")}
               </Button>
             </DialogTrigger>
             <DialogContent className="w-[95vw] sm:w-full">
               <DialogHeader>
-                <DialogTitle>{editingItem ? t('warehouse.definitions.editGroup') : t('warehouse.definitions.addNewGroup')}</DialogTitle>
-                <DialogDescription className="sr-only">{t('warehouse.definitions.groupFormDesc')}</DialogDescription>
+                <DialogTitle>
+                  {editingItem
+                    ? t("warehouse.definitions.editGroup")
+                    : t("warehouse.definitions.addNewGroup")}
+                </DialogTitle>
+                <DialogDescription className="sr-only">
+                  {t("warehouse.definitions.groupFormDesc")}
+                </DialogDescription>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
+                <form
+                  onSubmit={form.handleSubmit((data) => mutation.mutate(data))}
+                  className="space-y-4"
+                >
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('warehouse.definitions.nameEn')}</FormLabel>
+                          <FormLabel>
+                            {t("warehouse.definitions.nameEn")}
+                          </FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
@@ -971,7 +1221,9 @@ function CategoriesTab() {
                       name="name_ar"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('warehouse.definitions.nameAr')}</FormLabel>
+                          <FormLabel>
+                            {t("warehouse.definitions.nameAr")}
+                          </FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
@@ -981,9 +1233,17 @@ function CategoriesTab() {
                     />
                   </div>
                   <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>{t('warehouse.buttons.cancel')}</Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      {t("warehouse.buttons.cancel")}
+                    </Button>
                     <Button type="submit" disabled={mutation.isPending}>
-                      {mutation.isPending ? t('warehouse.buttons.saving') : t('warehouse.buttons.save')}
+                      {mutation.isPending
+                        ? t("warehouse.buttons.saving")
+                        : t("warehouse.buttons.save")}
                     </Button>
                   </div>
                 </form>
@@ -994,24 +1254,38 @@ function CategoriesTab() {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="text-center py-4">{t('warehouse.loading')}</div>
+          <div className="text-center py-4">{t("warehouse.loading")}</div>
         ) : categories.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">{t('warehouse.definitions.noGroups')}</div>
+          <div className="text-center py-8 text-gray-500">
+            {t("warehouse.definitions.noGroups")}
+          </div>
         ) : (
           <>
             <div className="hidden sm:block">
               <Table className="min-w-[350px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-right whitespace-nowrap">{t('warehouse.definitions.name')}</TableHead>
-                    <TableHead className="text-right whitespace-nowrap">{t('warehouse.definitions.actions')}</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">
+                      {t("warehouse.definitions.name")}
+                    </TableHead>
+                    <TableHead className="text-right whitespace-nowrap">
+                      {t("warehouse.definitions.actions")}
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {categories.map((cat: any) => (
                     <TableRow key={cat.id}>
                       <TableCell>{cat.name_ar || cat.name}</TableCell>
-                      <TableCell><Button variant="ghost" size="sm" onClick={() => handleEdit(cat)}><Edit className="h-4 w-4" /></Button></TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(cat)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -1019,9 +1293,20 @@ function CategoriesTab() {
             </div>
             <div className="sm:hidden space-y-2">
               {categories.map((cat: any) => (
-                <div key={cat.id} className="border rounded-lg p-3 flex items-center justify-between">
-                  <span className="font-bold text-sm">{cat.name_ar || cat.name}</span>
-                  <Button variant="ghost" size="sm" onClick={() => handleEdit(cat)}><Edit className="h-4 w-4" /></Button>
+                <div
+                  key={cat.id}
+                  className="border rounded-lg p-3 flex items-center justify-between"
+                >
+                  <span className="font-bold text-sm">
+                    {cat.name_ar || cat.name}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEdit(cat)}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
                 </div>
               ))}
             </div>
@@ -1038,21 +1323,33 @@ export function WarehouseDefinitions() {
     <div className="space-y-4">
       <Tabs defaultValue="suppliers" className="space-y-4">
         <TabsList className="flex flex-wrap h-auto gap-1 p-1 sm:inline-flex sm:flex-nowrap sm:h-10">
-          <TabsTrigger value="suppliers" className="flex items-center gap-1 text-xs px-2 py-1.5 sm:text-sm sm:px-3">
+          <TabsTrigger
+            value="suppliers"
+            className="flex items-center gap-1 text-xs px-2 py-1.5 sm:text-sm sm:px-3"
+          >
             <Building2 className="h-4 w-4 shrink-0" />
-            {t('warehouse.definitions.suppliers')}
+            {t("warehouse.definitions.suppliers")}
           </TabsTrigger>
-          <TabsTrigger value="items" className="flex items-center gap-1 text-xs px-2 py-1.5 sm:text-sm sm:px-3">
+          <TabsTrigger
+            value="items"
+            className="flex items-center gap-1 text-xs px-2 py-1.5 sm:text-sm sm:px-3"
+          >
             <Package className="h-4 w-4 shrink-0" />
-            {t('warehouse.definitions.items')}
+            {t("warehouse.definitions.items")}
           </TabsTrigger>
-          <TabsTrigger value="units" className="flex items-center gap-1 text-xs px-2 py-1.5 sm:text-sm sm:px-3">
+          <TabsTrigger
+            value="units"
+            className="flex items-center gap-1 text-xs px-2 py-1.5 sm:text-sm sm:px-3"
+          >
             <Scale className="h-4 w-4 shrink-0" />
-            {t('warehouse.definitions.units')}
+            {t("warehouse.definitions.units")}
           </TabsTrigger>
-          <TabsTrigger value="categories" className="flex items-center gap-1 text-xs px-2 py-1.5 sm:text-sm sm:px-3">
+          <TabsTrigger
+            value="categories"
+            className="flex items-center gap-1 text-xs px-2 py-1.5 sm:text-sm sm:px-3"
+          >
             <Boxes className="h-4 w-4 shrink-0" />
-            {t('warehouse.definitions.groups')}
+            {t("warehouse.definitions.groups")}
           </TabsTrigger>
         </TabsList>
 

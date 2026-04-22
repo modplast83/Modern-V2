@@ -1,14 +1,18 @@
+import { LogOut } from "lucide-react";
+import { Redirect, Link } from "wouter";
+
 import { useAuth } from "../hooks/use-auth";
 import { canAccessRoute } from "../utils/roleUtils";
-import { Redirect, Link } from "wouter";
-import { LogOut } from "lucide-react";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   path: string;
 }
 
-export default function ProtectedRoute({ children, path }: ProtectedRouteProps) {
+export default function ProtectedRoute({
+  children,
+  path,
+}: ProtectedRouteProps) {
   const { user, isLoading, logout } = useAuth();
 
   // Wait for auth to load
@@ -39,16 +43,22 @@ export default function ProtectedRoute({ children, path }: ProtectedRouteProps) 
           <div className="text-lg text-gray-600 mb-6">
             ليس لديك الصلاحيات اللازمة للوصول لهذه الصفحة
           </div>
-          
+
           <div className="border-t pt-4 mb-4">
             <p className="text-sm text-gray-500 mb-2">
-              المستخدم الحالي: <strong>{user.display_name_ar || user.display_name || user.username}</strong>
+              المستخدم الحالي:{" "}
+              <strong>
+                {user.display_name_ar || user.display_name || user.username}
+              </strong>
             </p>
             <p className="text-sm text-gray-500">
-              الدور: <strong>{user.role_name_ar || user.role_name || 'غير محدد'}</strong>
+              الدور:{" "}
+              <strong>
+                {user.role_name_ar || user.role_name || "غير محدد"}
+              </strong>
             </p>
           </div>
-          
+
           <div className="flex flex-col gap-3">
             <Link
               href="/"
@@ -56,7 +66,7 @@ export default function ProtectedRoute({ children, path }: ProtectedRouteProps) 
             >
               العودة للصفحة الرئيسية
             </Link>
-            
+
             <button
               onClick={handleLogout}
               className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center justify-center gap-2"

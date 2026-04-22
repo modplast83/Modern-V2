@@ -1,11 +1,18 @@
-import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
-import { Badge } from "../../ui/badge";
-import { Skeleton } from "../../ui/skeleton";
-import { ScrollArea } from "../../ui/scroll-area";
-import { Wrench, AlertTriangle, CheckCircle, Clock, AlertCircle } from "lucide-react";
+import {
+  Wrench,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+} from "lucide-react";
+import { useTranslation } from "react-i18next";
+
 import { formatNumber } from "../../../lib/formatNumber";
+import { Badge } from "../../ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
+import { ScrollArea } from "../../ui/scroll-area";
+import { Skeleton } from "../../ui/skeleton";
 
 interface MaintenanceRequest {
   id: number;
@@ -49,10 +56,16 @@ export default function MaintenanceWidget() {
 
   const requestList = Array.isArray(requests) ? requests : [];
   const pendingRequests = requestList.filter(
-    (r) => r.status === "pending" || r.status === "open" || r.status === "in_progress"
+    (r) =>
+      r.status === "pending" ||
+      r.status === "open" ||
+      r.status === "in_progress",
   );
   const urgentRequests = pendingRequests.filter(
-    (r) => r.priority === "high" || r.priority === "urgent" || r.priority === "critical"
+    (r) =>
+      r.priority === "high" ||
+      r.priority === "urgent" ||
+      r.priority === "critical",
   );
 
   const getPriorityColor = (priority?: string) => {
@@ -97,7 +110,8 @@ export default function MaintenanceWidget() {
           {urgentRequests.length > 0 && (
             <Badge variant="destructive" className="text-xs">
               <AlertTriangle className="w-3 h-3 mr-1" />
-              {formatNumber(urgentRequests.length)} {t("dashboard.widgets.urgent", "urgent")}
+              {formatNumber(urgentRequests.length)}{" "}
+              {t("dashboard.widgets.urgent", "urgent")}
             </Badge>
           )}
         </div>
@@ -136,10 +150,14 @@ export default function MaintenanceWidget() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-sm font-medium truncate">
-                            {request.title_ar || request.title || `#${request.id}`}
+                            {request.title_ar ||
+                              request.title ||
+                              `#${request.id}`}
                           </p>
                           {request.priority && (
-                            <Badge className={`${getPriorityColor(request.priority)} text-xs`}>
+                            <Badge
+                              className={`${getPriorityColor(request.priority)} text-xs`}
+                            >
                               {request.priority}
                             </Badge>
                           )}
@@ -162,7 +180,10 @@ export default function MaintenanceWidget() {
               <CheckCircle className="w-5 h-5 text-green-600" />
             </div>
             <p className="text-xs text-green-600 dark:text-green-400 font-medium">
-              {t("dashboard.widgets.noMaintenanceAlerts", "No pending maintenance alerts")}
+              {t(
+                "dashboard.widgets.noMaintenanceAlerts",
+                "No pending maintenance alerts",
+              )}
             </p>
           </div>
         )}

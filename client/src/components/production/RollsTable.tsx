@@ -1,8 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
-import { Button } from "../ui/button";
-import { Badge } from "../ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import {
   ArrowRight,
   Package,
@@ -12,9 +8,15 @@ import {
   Tag,
   QrCode,
 } from "lucide-react";
-import { useToast } from "../../hooks/use-toast";
+import { useTranslation } from "react-i18next";
+
 import { useAuth } from "../../hooks/use-auth";
+import { useToast } from "../../hooks/use-toast";
 import { apiRequest } from "../../lib/queryClient";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+
 import type { Roll } from "../../../../shared/schema";
 
 interface RollsTableProps {
@@ -284,13 +286,21 @@ export default function RollsTable({ stage }: RollsTableProps) {
         description: `${t("production.rolls.rollLabel")} ${labelData.roll_number}`,
         variant: "default",
       });
-      
+
       queryClient.invalidateQueries({ queryKey: ["/api/rolls"] });
       queryClient.invalidateQueries({ queryKey: ["/api/production-orders"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/production/hierarchical-orders"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/production/film-queue"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/production/printing-queue"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/production/cutting-queue"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/production/hierarchical-orders"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/production/film-queue"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/production/printing-queue"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/production/cutting-queue"],
+      });
     } catch (error) {
       console.error("Error printing label:", error);
       toast({
@@ -384,7 +394,9 @@ export default function RollsTable({ stage }: RollsTableProps) {
         <CardContent>
           <div className="text-center py-8">
             <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">{t("production.rolls.noRollsInStage")}</p>
+            <p className="text-gray-500">
+              {t("production.rolls.noRollsInStage")}
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -443,7 +455,9 @@ export default function RollsTable({ stage }: RollsTableProps) {
                       : t("common.notSpecified")}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {roll.machine_name_ar || roll.machine_name || t("common.notSpecified")}
+                    {roll.machine_name_ar ||
+                      roll.machine_name ||
+                      t("common.notSpecified")}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="space-y-1">
@@ -455,7 +469,9 @@ export default function RollsTable({ stage }: RollsTableProps) {
                       </div>
                       <div className="text-xs text-gray-400">
                         {roll.created_at
-                          ? new Date(roll.created_at).toLocaleDateString("en-US")
+                          ? new Date(roll.created_at).toLocaleDateString(
+                              "en-US",
+                            )
                           : ""}
                       </div>
 
@@ -469,7 +485,9 @@ export default function RollsTable({ stage }: RollsTableProps) {
                       )}
                       {roll.printed_at && (
                         <div className="text-xs text-gray-400">
-                          {new Date(roll.printed_at).toLocaleDateString("en-US")}
+                          {new Date(roll.printed_at).toLocaleDateString(
+                            "en-US",
+                          )}
                         </div>
                       )}
 
@@ -570,53 +588,116 @@ export default function RollsTable({ stage }: RollsTableProps) {
         {/* Mobile Card View */}
         <div className="md:hidden space-y-3">
           {rolls.map((roll) => (
-            <div key={roll.id} className="bg-white rounded-lg border p-4 space-y-3">
+            <div
+              key={roll.id}
+              className="bg-white rounded-lg border p-4 space-y-3"
+            >
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="font-semibold text-base">{roll.roll_number}</div>
-                  <div className="text-xs text-muted-foreground">{roll.production_order_number}</div>
+                  <div className="font-semibold text-base">
+                    {roll.roll_number}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {roll.production_order_number}
+                  </div>
                 </div>
-                <Badge variant="secondary" className={getStatusColor(roll.stage || "")}>
+                <Badge
+                  variant="secondary"
+                  className={getStatusColor(roll.stage || "")}
+                >
                   <div className="flex items-center gap-1">
                     {getStatusIcon(roll.stage || "")}
-                    <span className="text-xs">{getStatusText(roll.stage || "")}</span>
+                    <span className="text-xs">
+                      {getStatusText(roll.stage || "")}
+                    </span>
                   </div>
                 </Badge>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
-                  <span className="text-muted-foreground text-xs">{t("common.weight")}:</span>
-                  <div className="font-medium">{roll.weight_kg ? parseFloat(roll.weight_kg.toString()).toFixed(1) : "0"} {t("common.kg")}</div>
+                  <span className="text-muted-foreground text-xs">
+                    {t("common.weight")}:
+                  </span>
+                  <div className="font-medium">
+                    {roll.weight_kg
+                      ? parseFloat(roll.weight_kg.toString()).toFixed(1)
+                      : "0"}{" "}
+                    {t("common.kg")}
+                  </div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground text-xs">{t("production.machine")}:</span>
-                  <div className="font-medium text-xs">{roll.machine_name_ar || roll.machine_name}</div>
+                  <span className="text-muted-foreground text-xs">
+                    {t("production.machine")}:
+                  </span>
+                  <div className="font-medium text-xs">
+                    {roll.machine_name_ar || roll.machine_name}
+                  </div>
                 </div>
               </div>
-              
+
               <div className="text-xs bg-gray-50 p-2 rounded">
-                <div className="font-medium mb-1">{t("production.rolls.responsible")}:</div>
+                <div className="font-medium mb-1">
+                  {t("production.rolls.responsible")}:
+                </div>
                 <div className="space-y-1 text-gray-700">
-                  {roll.created_by && <div>{t("production.rolls.production")}: {roll.created_by}</div>}
-                  {roll.printed_by && <div className="text-green-600">{t("production.rolls.printing")}: {roll.printed_by}</div>}
-                  {roll.cut_by && <div className="text-purple-600">{t("production.rolls.cutting")}: {roll.cut_by}</div>}
+                  {roll.created_by && (
+                    <div>
+                      {t("production.rolls.production")}: {roll.created_by}
+                    </div>
+                  )}
+                  {roll.printed_by && (
+                    <div className="text-green-600">
+                      {t("production.rolls.printing")}: {roll.printed_by}
+                    </div>
+                  )}
+                  {roll.cut_by && (
+                    <div className="text-purple-600">
+                      {t("production.rolls.cutting")}: {roll.cut_by}
+                    </div>
+                  )}
                 </div>
               </div>
-              
+
               <div className="flex gap-2 flex-wrap">
-                <Button size="sm" variant="outline" onClick={() => printLabel(roll.id)}>
-                  <Tag className="w-3 h-3 mr-1" />{t("production.rolls.label")}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => printLabel(roll.id)}
+                >
+                  <Tag className="w-3 h-3 mr-1" />
+                  {t("production.rolls.label")}
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => window.open(`/api/rolls/${roll.id}/qr`, "_blank")}>
-                  <QrCode className="w-3 h-3 mr-1" />QR
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    window.open(`/api/rolls/${roll.id}/qr`, "_blank")
+                  }
+                >
+                  <QrCode className="w-3 h-3 mr-1" />
+                  QR
                 </Button>
                 {(roll.stage || "") !== "done" && (
-                  <Button size="sm" onClick={() => moveToNextStage(roll.id, roll.stage || "film")} disabled={updateRollMutation.isPending}>
-                    {nextStage[(roll.stage || "film") as keyof typeof nextStage] ? (
-                      <><ArrowRight className="w-3 h-3 mr-1" />{t("production.rolls.next")}</>
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      moveToNextStage(roll.id, roll.stage || "film")
+                    }
+                    disabled={updateRollMutation.isPending}
+                  >
+                    {nextStage[
+                      (roll.stage || "film") as keyof typeof nextStage
+                    ] ? (
+                      <>
+                        <ArrowRight className="w-3 h-3 mr-1" />
+                        {t("production.rolls.next")}
+                      </>
                     ) : (
-                      <><CheckCircle className="w-3 h-3 mr-1" />{t("production.rolls.finish")}</>
+                      <>
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        {t("production.rolls.finish")}
+                      </>
                     )}
                   </Button>
                 )}

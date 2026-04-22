@@ -1,14 +1,19 @@
-import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import {
+  Copy,
+  Plus,
+  Trash2,
+  ToggleLeft,
+  ToggleRight,
+  Key,
+  ExternalLink,
+  Shield,
+  Plug,
+} from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+
 import PageLayout from "../components/layout/PageLayout";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
-import { Badge } from "../components/ui/badge";
-import { useToast } from "../hooks/use-toast";
-import { apiRequest, queryClient } from "../lib/queryClient";
-import { Copy, Plus, Trash2, ToggleLeft, ToggleRight, Key, ExternalLink, Shield, Plug } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +24,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../components/ui/alert-dialog";
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { Input } from "../components/ui/input";
+import { useToast } from "../hooks/use-toast";
+import { apiRequest, queryClient } from "../lib/queryClient";
 
 interface ApiKey {
   id: number;
@@ -39,7 +56,11 @@ export default function McpSettings() {
   );
 }
 
-export function McpSettingsContent({ embedded = true }: { embedded?: boolean }) {
+export function McpSettingsContent({
+  embedded = true,
+}: {
+  embedded?: boolean;
+}) {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === "ar";
   const { toast } = useToast();
@@ -53,7 +74,10 @@ export function McpSettingsContent({ embedded = true }: { embedded?: boolean }) 
 
   const createMutation = useMutation({
     mutationFn: async (name: string) => {
-      const res = await apiRequest("/api/mcp/api-keys", { method: "POST", body: JSON.stringify({ name }) });
+      const res = await apiRequest("/api/mcp/api-keys", {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      });
       return res.json();
     },
     onSuccess: (data) => {
@@ -62,7 +86,9 @@ export function McpSettingsContent({ embedded = true }: { embedded?: boolean }) 
       queryClient.invalidateQueries({ queryKey: ["/api/mcp/api-keys"] });
       toast({
         title: isAr ? "تم إنشاء المفتاح" : "API Key Created",
-        description: isAr ? "احفظ المفتاح الآن - لن يظهر مرة أخرى!" : "Save the key now - it won't be shown again!",
+        description: isAr
+          ? "احفظ المفتاح الآن - لن يظهر مرة أخرى!"
+          : "Save the key now - it won't be shown again!",
       });
     },
     onError: () => {
@@ -109,7 +135,9 @@ export function McpSettingsContent({ embedded = true }: { embedded?: boolean }) 
 
   return (
     <>
-      <div className={embedded ? "space-y-6" : "space-y-6 max-w-4xl mx-auto p-4"}>
+      <div
+        className={embedded ? "space-y-6" : "space-y-6 max-w-4xl mx-auto p-4"}
+      >
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -126,7 +154,9 @@ export function McpSettingsContent({ embedded = true }: { embedded?: boolean }) 
             <div className="bg-muted/50 rounded-lg p-4 space-y-3">
               <h3 className="font-semibold text-sm flex items-center gap-2">
                 <ExternalLink className="h-4 w-4" />
-                {isAr ? "خطوات الربط مع ChatGPT" : "Steps to connect with ChatGPT"}
+                {isAr
+                  ? "خطوات الربط مع ChatGPT"
+                  : "Steps to connect with ChatGPT"}
               </h3>
               <ol className="text-sm space-y-2 list-decimal ps-5">
                 <li>
@@ -136,18 +166,25 @@ export function McpSettingsContent({ embedded = true }: { embedded?: boolean }) 
                 </li>
                 <li>
                   {isAr
-                    ? 'افتح ChatGPT وانتقل إلى الإعدادات → Connected Apps أو MCP'
-                    : 'Open ChatGPT and go to Settings → Connected Apps or MCP'}
+                    ? "افتح ChatGPT وانتقل إلى الإعدادات → Connected Apps أو MCP"
+                    : "Open ChatGPT and go to Settings → Connected Apps or MCP"}
                 </li>
                 <li>
-                  {isAr ? 'اضغط "Add Connection" وأدخل الرابط التالي:' : 'Click "Add Connection" and enter the following URL:'}
+                  {isAr
+                    ? 'اضغط "Add Connection" وأدخل الرابط التالي:'
+                    : 'Click "Add Connection" and enter the following URL:'}
                   <div className="mt-2 space-y-2">
                     <div className="flex items-center gap-2 bg-background p-2 rounded border">
                       <span className="text-xs font-medium text-muted-foreground min-w-[120px]">
                         {isAr ? "رابط خادم MCP:" : "MCP Server URL:"}
                       </span>
                       <code className="text-xs flex-1 break-all">{mcpUrl}</code>
-                      <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => copyToClipboard(mcpUrl)}>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 shrink-0"
+                        onClick={() => copyToClipboard(mcpUrl)}
+                      >
                         <Copy className="h-3 w-3" />
                       </Button>
                     </div>
@@ -176,48 +213,140 @@ export function McpSettingsContent({ embedded = true }: { embedded?: boolean }) 
             <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4">
               <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
                 <Shield className="h-4 w-4 text-blue-600" />
-                {isAr ? "الأدوات المتاحة لـ ChatGPT" : "Available Tools for ChatGPT"}
+                {isAr
+                  ? "الأدوات المتاحة لـ ChatGPT"
+                  : "Available Tools for ChatGPT"}
               </h4>
-              <h5 className="text-xs font-medium text-muted-foreground mt-1 mb-1">{isAr ? "📖 أدوات القراءة" : "📖 Read Tools"}</h5>
+              <h5 className="text-xs font-medium text-muted-foreground mt-1 mb-1">
+                {isAr ? "📖 أدوات القراءة" : "📖 Read Tools"}
+              </h5>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                 {[
-                  { name: "get_dashboard_stats", desc: isAr ? "إحصائيات المصنع" : "Factory stats" },
-                  { name: "get_orders", desc: isAr ? "طلبات العملاء" : "Customer orders" },
-                  { name: "get_production_status", desc: isAr ? "حالة الإنتاج" : "Production status" },
-                  { name: "get_inventory", desc: isAr ? "المخزون" : "Inventory levels" },
-                  { name: "get_machines_status", desc: isAr ? "حالة الماكينات" : "Machine status" },
-                  { name: "get_maintenance_requests", desc: isAr ? "طلبات الصيانة" : "Maintenance requests" },
-                  { name: "get_attendance_summary", desc: isAr ? "ملخص الحضور" : "Attendance summary" },
-                  { name: "get_customers", desc: isAr ? "العملاء" : "Customers" },
-                  { name: "get_customer_products", desc: isAr ? "منتجات العملاء" : "Customer products" },
-                  { name: "get_categories", desc: isAr ? "الأصناف" : "Categories" },
-                  { name: "get_quality_issues", desc: isAr ? "مشاكل الجودة" : "Quality issues" },
-                  { name: "search_rolls", desc: isAr ? "بحث الرولات" : "Search rolls" },
+                  {
+                    name: "get_dashboard_stats",
+                    desc: isAr ? "إحصائيات المصنع" : "Factory stats",
+                  },
+                  {
+                    name: "get_orders",
+                    desc: isAr ? "طلبات العملاء" : "Customer orders",
+                  },
+                  {
+                    name: "get_production_status",
+                    desc: isAr ? "حالة الإنتاج" : "Production status",
+                  },
+                  {
+                    name: "get_inventory",
+                    desc: isAr ? "المخزون" : "Inventory levels",
+                  },
+                  {
+                    name: "get_machines_status",
+                    desc: isAr ? "حالة الماكينات" : "Machine status",
+                  },
+                  {
+                    name: "get_maintenance_requests",
+                    desc: isAr ? "طلبات الصيانة" : "Maintenance requests",
+                  },
+                  {
+                    name: "get_attendance_summary",
+                    desc: isAr ? "ملخص الحضور" : "Attendance summary",
+                  },
+                  {
+                    name: "get_customers",
+                    desc: isAr ? "العملاء" : "Customers",
+                  },
+                  {
+                    name: "get_customer_products",
+                    desc: isAr ? "منتجات العملاء" : "Customer products",
+                  },
+                  {
+                    name: "get_categories",
+                    desc: isAr ? "الأصناف" : "Categories",
+                  },
+                  {
+                    name: "get_quality_issues",
+                    desc: isAr ? "مشاكل الجودة" : "Quality issues",
+                  },
+                  {
+                    name: "search_rolls",
+                    desc: isAr ? "بحث الرولات" : "Search rolls",
+                  },
                 ].map((tool) => (
-                  <div key={tool.name} className="text-xs py-1 flex items-center gap-2">
-                    <Badge variant="outline" className="font-mono text-[10px]">{tool.name}</Badge>
+                  <div
+                    key={tool.name}
+                    className="text-xs py-1 flex items-center gap-2"
+                  >
+                    <Badge variant="outline" className="font-mono text-[10px]">
+                      {tool.name}
+                    </Badge>
                     <span className="text-muted-foreground">{tool.desc}</span>
                   </div>
                 ))}
               </div>
-              <h5 className="text-xs font-medium text-muted-foreground mt-3 mb-1">{isAr ? "✏️ أدوات الإنشاء والتعديل" : "✏️ Create & Update Tools"}</h5>
+              <h5 className="text-xs font-medium text-muted-foreground mt-3 mb-1">
+                {isAr
+                  ? "✏️ أدوات الإنشاء والتعديل"
+                  : "✏️ Create & Update Tools"}
+              </h5>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                 {[
-                  { name: "create_customer", desc: isAr ? "إنشاء عميل جديد" : "Create customer" },
-                  { name: "update_customer", desc: isAr ? "تعديل بيانات عميل" : "Update customer" },
-                  { name: "create_category", desc: isAr ? "إنشاء صنف جديد" : "Create category" },
-                  { name: "create_item", desc: isAr ? "إنشاء مادة جديدة" : "Create item" },
-                  { name: "create_customer_product", desc: isAr ? "إنشاء منتج عميل" : "Create customer product" },
-                  { name: "update_customer_product", desc: isAr ? "تعديل منتج عميل" : "Update customer product" },
-                  { name: "create_order", desc: isAr ? "إنشاء طلب جديد" : "Create order" },
-                  { name: "update_order", desc: isAr ? "تعديل طلب" : "Update order" },
-                  { name: "update_order_status", desc: isAr ? "تغيير حالة طلب" : "Change order status" },
-                  { name: "create_production_order", desc: isAr ? "إنشاء أمر إنتاج" : "Create production order" },
-                  { name: "update_production_order", desc: isAr ? "تعديل أمر إنتاج" : "Update production order" },
-                  { name: "update_production_order_status", desc: isAr ? "تغيير حالة أمر إنتاج" : "Change production status" },
+                  {
+                    name: "create_customer",
+                    desc: isAr ? "إنشاء عميل جديد" : "Create customer",
+                  },
+                  {
+                    name: "update_customer",
+                    desc: isAr ? "تعديل بيانات عميل" : "Update customer",
+                  },
+                  {
+                    name: "create_category",
+                    desc: isAr ? "إنشاء صنف جديد" : "Create category",
+                  },
+                  {
+                    name: "create_item",
+                    desc: isAr ? "إنشاء مادة جديدة" : "Create item",
+                  },
+                  {
+                    name: "create_customer_product",
+                    desc: isAr ? "إنشاء منتج عميل" : "Create customer product",
+                  },
+                  {
+                    name: "update_customer_product",
+                    desc: isAr ? "تعديل منتج عميل" : "Update customer product",
+                  },
+                  {
+                    name: "create_order",
+                    desc: isAr ? "إنشاء طلب جديد" : "Create order",
+                  },
+                  {
+                    name: "update_order",
+                    desc: isAr ? "تعديل طلب" : "Update order",
+                  },
+                  {
+                    name: "update_order_status",
+                    desc: isAr ? "تغيير حالة طلب" : "Change order status",
+                  },
+                  {
+                    name: "create_production_order",
+                    desc: isAr ? "إنشاء أمر إنتاج" : "Create production order",
+                  },
+                  {
+                    name: "update_production_order",
+                    desc: isAr ? "تعديل أمر إنتاج" : "Update production order",
+                  },
+                  {
+                    name: "update_production_order_status",
+                    desc: isAr
+                      ? "تغيير حالة أمر إنتاج"
+                      : "Change production status",
+                  },
                 ].map((tool) => (
-                  <div key={tool.name} className="text-xs py-1 flex items-center gap-2">
-                    <Badge variant="outline" className="font-mono text-[10px]">{tool.name}</Badge>
+                  <div
+                    key={tool.name}
+                    className="text-xs py-1 flex items-center gap-2"
+                  >
+                    <Badge variant="outline" className="font-mono text-[10px]">
+                      {tool.name}
+                    </Badge>
                     <span className="text-muted-foreground">{tool.desc}</span>
                   </div>
                 ))}
@@ -241,7 +370,11 @@ export function McpSettingsContent({ embedded = true }: { embedded?: boolean }) 
           <CardContent className="space-y-4">
             <div className="flex gap-2">
               <Input
-                placeholder={isAr ? "اسم المفتاح (مثال: ChatGPT الرئيسي)" : "Key name (e.g. Main ChatGPT)"}
+                placeholder={
+                  isAr
+                    ? "اسم المفتاح (مثال: ChatGPT الرئيسي)"
+                    : "Key name (e.g. Main ChatGPT)"
+                }
                 value={newKeyName}
                 onChange={(e) => setNewKeyName(e.target.value)}
                 onKeyDown={(e) => {
@@ -262,13 +395,19 @@ export function McpSettingsContent({ embedded = true }: { embedded?: boolean }) 
             {generatedKey && (
               <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-4">
                 <p className="text-sm font-semibold text-green-800 dark:text-green-200 mb-2">
-                  {isAr ? "🔑 مفتاح API الجديد (انسخه الآن):" : "🔑 New API Key (copy it now):"}
+                  {isAr
+                    ? "🔑 مفتاح API الجديد (انسخه الآن):"
+                    : "🔑 New API Key (copy it now):"}
                 </p>
                 <div className="flex items-center gap-2">
                   <code className="text-xs bg-green-100 dark:bg-green-900 p-2 rounded flex-1 break-all select-all">
                     {generatedKey}
                   </code>
-                  <Button size="icon" variant="outline" onClick={() => copyToClipboard(generatedKey)}>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    onClick={() => copyToClipboard(generatedKey)}
+                  >
                     <Copy className="h-4 w-4" />
                   </Button>
                 </div>
@@ -297,23 +436,35 @@ export function McpSettingsContent({ embedded = true }: { embedded?: boolean }) 
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm truncate">{key.name}</span>
-                        <Badge variant={key.is_active ? "default" : "secondary"}>
+                        <span className="font-medium text-sm truncate">
+                          {key.name}
+                        </span>
+                        <Badge
+                          variant={key.is_active ? "default" : "secondary"}
+                        >
                           {key.is_active
-                            ? isAr ? "نشط" : "Active"
-                            : isAr ? "معطل" : "Inactive"}
+                            ? isAr
+                              ? "نشط"
+                              : "Active"
+                            : isAr
+                              ? "معطل"
+                              : "Inactive"}
                         </Badge>
                       </div>
                       <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                         <span className="font-mono">{key.key_prefix}...</span>
                         <span>
                           {isAr ? "أُنشئ: " : "Created: "}
-                          {new Date(key.created_at).toLocaleDateString(isAr ? "ar-SA" : "en-US")}
+                          {new Date(key.created_at).toLocaleDateString(
+                            isAr ? "ar-SA" : "en-US",
+                          )}
                         </span>
                         {key.last_used_at && (
                           <span>
                             {isAr ? "آخر استخدام: " : "Last used: "}
-                            {new Date(key.last_used_at).toLocaleDateString(isAr ? "ar-SA" : "en-US")}
+                            {new Date(key.last_used_at).toLocaleDateString(
+                              isAr ? "ar-SA" : "en-US",
+                            )}
                           </span>
                         )}
                       </div>
@@ -323,7 +474,15 @@ export function McpSettingsContent({ embedded = true }: { embedded?: boolean }) 
                         size="icon"
                         variant="ghost"
                         onClick={() => toggleMutation.mutate(key.id)}
-                        title={key.is_active ? (isAr ? "تعطيل" : "Disable") : (isAr ? "تفعيل" : "Enable")}
+                        title={
+                          key.is_active
+                            ? isAr
+                              ? "تعطيل"
+                              : "Disable"
+                            : isAr
+                              ? "تفعيل"
+                              : "Enable"
+                        }
                       >
                         {key.is_active ? (
                           <ToggleRight className="h-4 w-4 text-green-600" />
@@ -348,10 +507,15 @@ export function McpSettingsContent({ embedded = true }: { embedded?: boolean }) 
         </Card>
       </div>
 
-      <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
+      <AlertDialog
+        open={deleteId !== null}
+        onOpenChange={() => setDeleteId(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{isAr ? "حذف المفتاح" : "Delete API Key"}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {isAr ? "حذف المفتاح" : "Delete API Key"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
               {isAr
                 ? "هل أنت متأكد من حذف هذا المفتاح؟ سيتوقف أي تطبيق يستخدمه عن العمل."

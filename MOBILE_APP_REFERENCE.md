@@ -1,4 +1,5 @@
 # دليل مرجعي شامل لتطوير تطبيق الجوال
+
 # MPBF - Muassasat Plastic Bag Factory - Mobile App Development Reference
 
 ---
@@ -6,6 +7,7 @@
 ## 1. نظرة عامة على النظام (System Overview)
 
 نظام تخطيط موارد التصنيع (MRP) لمصنع أكياس بلاستيكية. يدير:
+
 - الطلبات وأوامر الإنتاج متعددة المراحل (فيلم ← طباعة ← تقطيع)
 - المستودعات والمخزون
 - الموارد البشرية (حضور، إجازات، تدريب، تقييم أداء)
@@ -77,6 +79,7 @@ Response (429):  // Rate limited
 ```
 
 ### 2.1.1 تجديد الجلسة (Refresh Token)
+
 ```
 POST /api/mobile/refresh-token
 Content-Type: application/json
@@ -101,6 +104,7 @@ Response (401):
 ```
 
 ### 2.2 تسجيل الدخول العادي (Session-based)
+
 ```
 POST /api/login
 Content-Type: application/json
@@ -115,6 +119,7 @@ Response: Sets session cookie + returns user data
 ```
 
 ### 2.3 جلب بيانات المستخدم الحالي
+
 ```
 GET /api/me
 Headers: Cookie (session) أو Authorization token
@@ -145,6 +150,7 @@ Response (200):
 ```
 
 ### 2.4 تسجيل الخروج
+
 ```
 POST /api/logout        // Web
 POST /api/mobile/logout  // Mobile
@@ -156,6 +162,7 @@ Body (optional):
 ```
 
 ### 2.5 إدارة الجلسات (Session Management)
+
 ```
 GET /api/mobile/sessions
 Authorization: Bearer <token>
@@ -180,6 +187,7 @@ Authorization: Bearer <token>
 ```
 
 ### 2.6 تسجيل جهاز الإشعارات (Push Notification Token)
+
 ```
 POST /api/mobile/device-token
 Authorization: Bearer <token>
@@ -201,6 +209,7 @@ Body:
 ```
 
 ### 2.7 ملاحظات المصادقة للجوال
+
 - Access token مدته 24 ساعة، refresh token مدته 90 يوم
 - الـ tokens مخزنة كـ SHA-256 hash في قاعدة البيانات
 - عند انتهاء access token استخدم `POST /api/mobile/refresh-token`
@@ -213,88 +222,90 @@ Body:
 ## 3. نظام الصلاحيات (Permissions System - RBAC)
 
 ### 3.1 هيكل الصلاحيات
+
 كل مستخدم له دور (Role)، وكل دور يحتوي على مصفوفة صلاحيات.
 
 ### 3.2 جميع الصلاحيات المتاحة
 
-| مفتاح الصلاحية | الوصف بالعربي | الفئة |
-|---|---|---|
-| `admin` | مدير النظام الكامل | عام |
-| `view_home` | عرض الصفحة الرئيسية | عام |
-| `view_dashboard` | عرض لوحة التحكم | عام |
-| `view_user_dashboard` | عرض لوحة المستخدم | عام |
-| `manage_orders` | إدارة الطلبات | الطلبات |
-| `update_order_status` | تحديث حالة الطلب | الطلبات |
-| `view_orders` | عرض الطلبات | الطلبات |
-| `manage_production` | إدارة الإنتاج | الإنتاج |
-| `view_production` | عرض الإنتاج | الإنتاج |
-| `view_film_dashboard` | لوحة مشغل الفيلم | الإنتاج |
-| `view_printing_dashboard` | لوحة مشغل الطباعة | الإنتاج |
-| `view_cutting_dashboard` | لوحة مشغل التقطيع | الإنتاج |
-| `view_production_monitoring` | مراقبة الإنتاج | الإنتاج |
-| `view_production_reports` | تقارير الإنتاج | الإنتاج |
-| `view_mixing` | عرض الخلط | الإنتاج |
-| `manage_mixing` | إدارة الخلط | الإنتاج |
-| `manage_production_hall` | إدارة صالة الإنتاج | الإنتاج |
-| `manage_warehouse` | إدارة المستودع | المستودع |
-| `view_warehouse` | عرض المستودع | المستودع |
-| `manage_inventory` | إدارة المخزون | المستودع |
-| `view_inventory` | عرض المخزون | المستودع |
-| `view_warehouse_vouchers` | عرض سندات المستودع | المستودع |
-| `manage_warehouse_vouchers` | إدارة سندات المستودع | المستودع |
-| `view_warehouse_reports` | تقارير المستودع | المستودع |
-| `manage_hr` | إدارة الموارد البشرية | HR |
-| `view_hr` | عرض الموارد البشرية | HR |
-| `view_attendance` | عرض الحضور | HR |
-| `manage_attendance` | إدارة الحضور | HR |
-| `view_attendance_reports` | تقارير الحضور | HR |
-| `manage_leaves` | إدارة الإجازات | HR |
-| `view_training` | عرض التدريب | HR |
-| `manage_training` | إدارة التدريب | HR |
-| `manage_maintenance` | إدارة الصيانة | الصيانة |
-| `view_maintenance` | عرض الصيانة | الصيانة |
-| `view_maintenance_requests` | عرض طلبات الصيانة | الصيانة |
-| `create_maintenance_requests` | إنشاء طلبات صيانة | الصيانة |
-| `manage_maintenance_actions` | إدارة إجراءات الصيانة | الصيانة |
-| `view_maintenance_reports` | تقارير الصيانة | الصيانة |
-| `manage_negligence` | إدارة بلاغات الإهمال | الصيانة |
-| `manage_spare_parts` | إدارة قطع الغيار | الصيانة |
-| `manage_consumable_parts` | إدارة القطع الاستهلاكية | الصيانة |
-| `manage_quality` | إدارة الجودة | الجودة |
-| `view_quality` | عرض الجودة | الجودة |
-| `create_quality_inspections` | إنشاء فحوصات جودة | الجودة |
-| `view_quality_reports` | تقارير الجودة | الجودة |
-| `manage_quality_settings` | إعدادات الجودة | الجودة |
-| `manage_users` | إدارة المستخدمين | الإدارة |
-| `manage_roles` | إدارة الأدوار | الإدارة |
-| `manage_settings` | إدارة الإعدادات | الإدارة |
-| `manage_definitions` | إدارة التعريفات | الإدارة |
-| `view_reports` | عرض التقارير | التقارير |
-| `view_financial_reports` | التقارير المالية | التقارير |
-| `view_hr_reports` | تقارير HR | التقارير |
-| `view_notifications` | عرض الإشعارات | الإشعارات |
-| `view_alerts` | عرض التنبيهات | النظام |
-| `manage_alerts` | إدارة التنبيهات | النظام |
-| `view_system_health` | صحة النظام | النظام |
-| `view_system_monitoring` | مراقبة النظام | النظام |
-| `manage_analytics` | إدارة التحليلات | النظام |
-| `manage_whatsapp` | إدارة واتساب | الإشعارات |
-| `view_ai_agent` | عرض الوكيل الذكي | AI |
-| `use_ai_agent` | استخدام الوكيل الذكي | AI |
-| `manage_ai_agent` | إدارة الوكيل الذكي | AI |
-| `manage_customers` | إدارة العملاء | التعريفات |
-| `manage_items` | إدارة الأصناف | التعريفات |
-| `manage_machines` | إدارة المكائن | التعريفات |
-| `manage_sections` | إدارة الأقسام | التعريفات |
-| `manage_categories` | إدارة الفئات | التعريفات |
-| `manage_master_batch` | إدارة ألوان الماستر باتش | التعريفات |
-| `view_factory_simulation` | محاكاة المصنع | المصنع |
-| `manage_factory_simulation` | إدارة محاكاة المصنع | المصنع |
-| `view_display_screen` | شاشة العرض | العرض |
-| `manage_display_screen` | إدارة شاشة العرض | العرض |
-| `view_tools` | عرض الأدوات | الإدارة |
+| مفتاح الصلاحية                | الوصف بالعربي            | الفئة     |
+| ----------------------------- | ------------------------ | --------- |
+| `admin`                       | مدير النظام الكامل       | عام       |
+| `view_home`                   | عرض الصفحة الرئيسية      | عام       |
+| `view_dashboard`              | عرض لوحة التحكم          | عام       |
+| `view_user_dashboard`         | عرض لوحة المستخدم        | عام       |
+| `manage_orders`               | إدارة الطلبات            | الطلبات   |
+| `update_order_status`         | تحديث حالة الطلب         | الطلبات   |
+| `view_orders`                 | عرض الطلبات              | الطلبات   |
+| `manage_production`           | إدارة الإنتاج            | الإنتاج   |
+| `view_production`             | عرض الإنتاج              | الإنتاج   |
+| `view_film_dashboard`         | لوحة مشغل الفيلم         | الإنتاج   |
+| `view_printing_dashboard`     | لوحة مشغل الطباعة        | الإنتاج   |
+| `view_cutting_dashboard`      | لوحة مشغل التقطيع        | الإنتاج   |
+| `view_production_monitoring`  | مراقبة الإنتاج           | الإنتاج   |
+| `view_production_reports`     | تقارير الإنتاج           | الإنتاج   |
+| `view_mixing`                 | عرض الخلط                | الإنتاج   |
+| `manage_mixing`               | إدارة الخلط              | الإنتاج   |
+| `manage_production_hall`      | إدارة صالة الإنتاج       | الإنتاج   |
+| `manage_warehouse`            | إدارة المستودع           | المستودع  |
+| `view_warehouse`              | عرض المستودع             | المستودع  |
+| `manage_inventory`            | إدارة المخزون            | المستودع  |
+| `view_inventory`              | عرض المخزون              | المستودع  |
+| `view_warehouse_vouchers`     | عرض سندات المستودع       | المستودع  |
+| `manage_warehouse_vouchers`   | إدارة سندات المستودع     | المستودع  |
+| `view_warehouse_reports`      | تقارير المستودع          | المستودع  |
+| `manage_hr`                   | إدارة الموارد البشرية    | HR        |
+| `view_hr`                     | عرض الموارد البشرية      | HR        |
+| `view_attendance`             | عرض الحضور               | HR        |
+| `manage_attendance`           | إدارة الحضور             | HR        |
+| `view_attendance_reports`     | تقارير الحضور            | HR        |
+| `manage_leaves`               | إدارة الإجازات           | HR        |
+| `view_training`               | عرض التدريب              | HR        |
+| `manage_training`             | إدارة التدريب            | HR        |
+| `manage_maintenance`          | إدارة الصيانة            | الصيانة   |
+| `view_maintenance`            | عرض الصيانة              | الصيانة   |
+| `view_maintenance_requests`   | عرض طلبات الصيانة        | الصيانة   |
+| `create_maintenance_requests` | إنشاء طلبات صيانة        | الصيانة   |
+| `manage_maintenance_actions`  | إدارة إجراءات الصيانة    | الصيانة   |
+| `view_maintenance_reports`    | تقارير الصيانة           | الصيانة   |
+| `manage_negligence`           | إدارة بلاغات الإهمال     | الصيانة   |
+| `manage_spare_parts`          | إدارة قطع الغيار         | الصيانة   |
+| `manage_consumable_parts`     | إدارة القطع الاستهلاكية  | الصيانة   |
+| `manage_quality`              | إدارة الجودة             | الجودة    |
+| `view_quality`                | عرض الجودة               | الجودة    |
+| `create_quality_inspections`  | إنشاء فحوصات جودة        | الجودة    |
+| `view_quality_reports`        | تقارير الجودة            | الجودة    |
+| `manage_quality_settings`     | إعدادات الجودة           | الجودة    |
+| `manage_users`                | إدارة المستخدمين         | الإدارة   |
+| `manage_roles`                | إدارة الأدوار            | الإدارة   |
+| `manage_settings`             | إدارة الإعدادات          | الإدارة   |
+| `manage_definitions`          | إدارة التعريفات          | الإدارة   |
+| `view_reports`                | عرض التقارير             | التقارير  |
+| `view_financial_reports`      | التقارير المالية         | التقارير  |
+| `view_hr_reports`             | تقارير HR                | التقارير  |
+| `view_notifications`          | عرض الإشعارات            | الإشعارات |
+| `view_alerts`                 | عرض التنبيهات            | النظام    |
+| `manage_alerts`               | إدارة التنبيهات          | النظام    |
+| `view_system_health`          | صحة النظام               | النظام    |
+| `view_system_monitoring`      | مراقبة النظام            | النظام    |
+| `manage_analytics`            | إدارة التحليلات          | النظام    |
+| `manage_whatsapp`             | إدارة واتساب             | الإشعارات |
+| `view_ai_agent`               | عرض الوكيل الذكي         | AI        |
+| `use_ai_agent`                | استخدام الوكيل الذكي     | AI        |
+| `manage_ai_agent`             | إدارة الوكيل الذكي       | AI        |
+| `manage_customers`            | إدارة العملاء            | التعريفات |
+| `manage_items`                | إدارة الأصناف            | التعريفات |
+| `manage_machines`             | إدارة المكائن            | التعريفات |
+| `manage_sections`             | إدارة الأقسام            | التعريفات |
+| `manage_categories`           | إدارة الفئات             | التعريفات |
+| `manage_master_batch`         | إدارة ألوان الماستر باتش | التعريفات |
+| `view_factory_simulation`     | محاكاة المصنع            | المصنع    |
+| `manage_factory_simulation`   | إدارة محاكاة المصنع      | المصنع    |
+| `view_display_screen`         | شاشة العرض               | العرض     |
+| `manage_display_screen`       | إدارة شاشة العرض         | العرض     |
+| `view_tools`                  | عرض الأدوات              | الإدارة   |
 
 ### 3.3 APIs الأدوار
+
 ```
 GET    /api/roles                    // جلب كل الأدوار (requirePermission: manage_roles)
 POST   /api/roles                    // إنشاء دور جديد
@@ -307,6 +318,7 @@ DELETE /api/roles/:id                // حذف دور
 ## 4. هيكل قاعدة البيانات (Database Schema)
 
 ### 4.1 المستخدمون (users)
+
 ```typescript
 {
   id: number (PK, auto),
@@ -329,6 +341,7 @@ DELETE /api/roles/:id                // حذف دور
 ```
 
 ### 4.2 الأدوار (roles)
+
 ```typescript
 {
   id: number (PK, auto),
@@ -339,6 +352,7 @@ DELETE /api/roles/:id                // حذف دور
 ```
 
 ### 4.3 الأقسام (sections)
+
 ```typescript
 {
   id: string (PK, max 20),
@@ -349,6 +363,7 @@ DELETE /api/roles/:id                // حذف دور
 ```
 
 ### 4.4 العملاء (customers)
+
 ```typescript
 {
   id: string (PK, format: CID001),
@@ -371,6 +386,7 @@ DELETE /api/roles/:id                // حذف دور
 ```
 
 ### 4.5 منتجات العملاء (customer_products)
+
 ```typescript
 {
   id: number (PK, auto),
@@ -401,6 +417,7 @@ DELETE /api/roles/:id                // حذف دور
 ```
 
 ### 4.6 الطلبات (orders)
+
 ```typescript
 {
   id: number (PK, auto),
@@ -416,6 +433,7 @@ DELETE /api/roles/:id                // حذف دور
 ```
 
 ### 4.7 أوامر الإنتاج (production_orders)
+
 ```typescript
 {
   id: number (PK, auto),
@@ -464,6 +482,7 @@ DELETE /api/roles/:id                // حذف دور
 ```
 
 ### 4.8 الرولات (rolls)
+
 ```typescript
 {
   id: number (PK, auto),
@@ -495,6 +514,7 @@ DELETE /api/roles/:id                // حذف دور
 **مراحل الرول (Stage Transitions):** `film → printing → cutting → done` (تسلسلي فقط)
 
 ### 4.9 المكائن (machines)
+
 ```typescript
 {
   id: string (PK, format: M001),
@@ -511,6 +531,7 @@ DELETE /api/roles/:id                // حذف دور
 ```
 
 ### 4.10 الحضور (attendance)
+
 ```typescript
 {
   id: number (PK, auto),
@@ -537,6 +558,7 @@ DELETE /api/roles/:id                // حذف دور
 ```
 
 ### 4.11 طلبات الإجازات (leave_requests)
+
 ```typescript
 {
   id: number (PK),
@@ -550,23 +572,24 @@ DELETE /api/roles/:id                // حذف دور
   emergency_contact: string,
   work_handover: string,
   replacement_employee_id: string,
-  
+
   // سلسلة الموافقات
   direct_manager_id: string,
   direct_manager_status: "pending" | "approved" | "rejected",
   direct_manager_comments: string,
   direct_manager_action_date: timestamp,
-  
+
   hr_status: "pending" | "approved" | "rejected",
   hr_comments: string,
   hr_action_date: timestamp,
-  
+
   final_status: "pending" | "approved" | "rejected" | "cancelled",
   created_at: timestamp
 }
 ```
 
 ### 4.12 طلبات الصيانة (maintenance_requests)
+
 ```typescript
 {
   id: number (PK),
@@ -585,6 +608,7 @@ DELETE /api/roles/:id                // حذف دور
 ```
 
 ### 4.13 إجراءات الصيانة (maintenance_actions)
+
 ```typescript
 {
   id: number (PK),
@@ -604,6 +628,7 @@ DELETE /api/roles/:id                // حذف دور
 ```
 
 ### 4.14 المخزون (inventory)
+
 ```typescript
 {
   id: number (PK),
@@ -619,6 +644,7 @@ DELETE /api/roles/:id                // حذف دور
 ```
 
 ### 4.15 حركات المخزون (inventory_movements)
+
 ```typescript
 {
   id: number (PK),
@@ -636,6 +662,7 @@ DELETE /api/roles/:id                // حذف دور
 ```
 
 ### 4.16 قطع الغيار الاستهلاكية (consumable_parts)
+
 ```typescript
 {
   id: number (PK),
@@ -654,6 +681,7 @@ DELETE /api/roles/:id                // حذف دور
 ```
 
 ### 4.17 الإشعارات (notifications)
+
 ```typescript
 {
   id: number (PK),
@@ -675,63 +703,64 @@ DELETE /api/roles/:id                // حذف دور
 
 ### 4.18 جداول إضافية
 
-| اسم الجدول | الوصف |
-|---|---|
-| `cuts` | عمليات التقطيع لكل رول |
-| `warehouse_receipts` | إيصالات استلام المستودع |
-| `machine_queues` | طوابير المكائن وجدولة الإنتاج |
-| `production_settings` | إعدادات الإنتاج العامة |
-| `waste` | سجل الهدر |
-| `quality_checks` | فحوصات الجودة |
-| `spare_parts` | قطع الغيار |
-| `consumable_parts_transactions` | حركات القطع الاستهلاكية |
-| `maintenance_reports` | بلاغات الصيانة للإدارة |
-| `operator_negligence_reports` | بلاغات إهمال المشغلين |
-| `violations` | المخالفات |
-| `items` | الأصناف والمواد |
-| `categories` | المجموعات/الفئات |
-| `locations` | المواقع الجغرافية |
-| `suppliers` | الموردين |
-| `warehouse_transactions` | حركات المستودع |
-| `training_records` | سجلات التدريب |
-| `training_programs` | البرامج التدريبية |
-| `training_materials` | المواد التدريبية |
-| `training_enrollments` | تسجيل الموظفين في التدريب |
-| `training_evaluations` | تقييمات التدريب |
-| `training_certificates` | شهادات التدريب |
-| `performance_reviews` | تقييمات الأداء |
-| `performance_criteria` | معايير التقييم |
-| `performance_ratings` | درجات التقييم التفصيلية |
-| `leave_types` | أنواع الإجازات |
-| `leave_balances` | أرصدة الإجازات |
-| `admin_decisions` | القرارات الإدارية |
-| `company_profile` | بيانات المصنع |
-| `notification_templates` | قوالب الإشعارات |
-| `notification_event_settings` | إعدادات أحداث الإشعارات |
-| `notification_event_logs` | سجل الإشعارات المرسلة |
-| `face_registrations` | تسجيل بصمة الوجه |
-| `quality_issues` | مشاكل الجودة |
-| `quality_issue_responsibles` | المسؤولون عن مشاكل الجودة |
-| `quality_issue_actions` | إجراءات مشاكل الجودة |
-| `mixing_recipes` | وصفات الخلط |
-| `master_batch_colors` | ألوان الماستر باتش |
-| `alert_rules` | قواعد التنبيهات |
-| `system_settings` | إعدادات النظام |
-| `user_settings` | إعدادات المستخدم |
-| `factory_locations` | مواقع المصنع GPS |
-| `display_slides` | شرائح شاشة العرض |
-| `quotes` | عروض الأسعار |
-| `quote_templates` | قوالب عروض الأسعار |
-| `ai_agent_settings` | إعدادات الوكيل الذكي |
-| `ai_agent_knowledge` | قاعدة معرفة الوكيل الذكي |
-| `quick_notes` | الملاحظات السريعة |
-| `user_requests` | طلبات المستخدمين |
+| اسم الجدول                      | الوصف                         |
+| ------------------------------- | ----------------------------- |
+| `cuts`                          | عمليات التقطيع لكل رول        |
+| `warehouse_receipts`            | إيصالات استلام المستودع       |
+| `machine_queues`                | طوابير المكائن وجدولة الإنتاج |
+| `production_settings`           | إعدادات الإنتاج العامة        |
+| `waste`                         | سجل الهدر                     |
+| `quality_checks`                | فحوصات الجودة                 |
+| `spare_parts`                   | قطع الغيار                    |
+| `consumable_parts_transactions` | حركات القطع الاستهلاكية       |
+| `maintenance_reports`           | بلاغات الصيانة للإدارة        |
+| `operator_negligence_reports`   | بلاغات إهمال المشغلين         |
+| `violations`                    | المخالفات                     |
+| `items`                         | الأصناف والمواد               |
+| `categories`                    | المجموعات/الفئات              |
+| `locations`                     | المواقع الجغرافية             |
+| `suppliers`                     | الموردين                      |
+| `warehouse_transactions`        | حركات المستودع                |
+| `training_records`              | سجلات التدريب                 |
+| `training_programs`             | البرامج التدريبية             |
+| `training_materials`            | المواد التدريبية              |
+| `training_enrollments`          | تسجيل الموظفين في التدريب     |
+| `training_evaluations`          | تقييمات التدريب               |
+| `training_certificates`         | شهادات التدريب                |
+| `performance_reviews`           | تقييمات الأداء                |
+| `performance_criteria`          | معايير التقييم                |
+| `performance_ratings`           | درجات التقييم التفصيلية       |
+| `leave_types`                   | أنواع الإجازات                |
+| `leave_balances`                | أرصدة الإجازات                |
+| `admin_decisions`               | القرارات الإدارية             |
+| `company_profile`               | بيانات المصنع                 |
+| `notification_templates`        | قوالب الإشعارات               |
+| `notification_event_settings`   | إعدادات أحداث الإشعارات       |
+| `notification_event_logs`       | سجل الإشعارات المرسلة         |
+| `face_registrations`            | تسجيل بصمة الوجه              |
+| `quality_issues`                | مشاكل الجودة                  |
+| `quality_issue_responsibles`    | المسؤولون عن مشاكل الجودة     |
+| `quality_issue_actions`         | إجراءات مشاكل الجودة          |
+| `mixing_recipes`                | وصفات الخلط                   |
+| `master_batch_colors`           | ألوان الماستر باتش            |
+| `alert_rules`                   | قواعد التنبيهات               |
+| `system_settings`               | إعدادات النظام                |
+| `user_settings`                 | إعدادات المستخدم              |
+| `factory_locations`             | مواقع المصنع GPS              |
+| `display_slides`                | شرائح شاشة العرض              |
+| `quotes`                        | عروض الأسعار                  |
+| `quote_templates`               | قوالب عروض الأسعار            |
+| `ai_agent_settings`             | إعدادات الوكيل الذكي          |
+| `ai_agent_knowledge`            | قاعدة معرفة الوكيل الذكي      |
+| `quick_notes`                   | الملاحظات السريعة             |
+| `user_requests`                 | طلبات المستخدمين              |
 
 ---
 
 ## 5. واجهات API الكاملة (Complete API Reference)
 
 ### ملاحظات عامة على الاستجابات:
+
 - معظم الـ GET endpoints تُرجع `{ data: [...] }` أو مصفوفة مباشرة
 - تعامل مع كلا الحالتين في الجوال: `response.data || response`
 - الأخطاء تُرجع `{ message: "..." }` مع HTTP status مناسب
@@ -2014,49 +2043,54 @@ Body: { name: string, from: "ar"|"en", to: "ar"|"en" }
 ### 6.1 هيكل التنقل الرئيسي
 
 #### المجموعة الأساسية (Primary)
-| الصفحة | المسار | الوصف |
-|---|---|---|
-| الرئيسية | `/` | لوحة تحكم بويدجتات قابلة للتخصيص |
-| لوحة المستخدم | `/user-dashboard` | لوحة شخصية (حضور، طلبات) |
-| الطلبات والإنتاج | `/orders` | إدارة طلبات البيع وأوامر الإنتاج والرولات |
-| لوحة الإنتاج | `/production-dashboard` | لوحة موحدة للمشغلين (فيلم/طباعة/تقطيع) |
-| مراقبة الإنتاج | `/production-monitoring` | مراقبة حية لخطوط الإنتاج |
-| المستودع | `/warehouse` | إدارة المخزون والسندات |
-| الوكيل الذكي | `/ai-agent` | مساعد ذكي بالذكاء الاصطناعي |
-| محاكاة المصنع | `/factory-simulation` | خريطة ثلاثية الأبعاد للمصنع |
-| شاشة العرض | `/display-control` | التحكم بشاشة العرض |
+
+| الصفحة           | المسار                   | الوصف                                     |
+| ---------------- | ------------------------ | ----------------------------------------- |
+| الرئيسية         | `/`                      | لوحة تحكم بويدجتات قابلة للتخصيص          |
+| لوحة المستخدم    | `/user-dashboard`        | لوحة شخصية (حضور، طلبات)                  |
+| الطلبات والإنتاج | `/orders`                | إدارة طلبات البيع وأوامر الإنتاج والرولات |
+| لوحة الإنتاج     | `/production-dashboard`  | لوحة موحدة للمشغلين (فيلم/طباعة/تقطيع)    |
+| مراقبة الإنتاج   | `/production-monitoring` | مراقبة حية لخطوط الإنتاج                  |
+| المستودع         | `/warehouse`             | إدارة المخزون والسندات                    |
+| الوكيل الذكي     | `/ai-agent`              | مساعد ذكي بالذكاء الاصطناعي               |
+| محاكاة المصنع    | `/factory-simulation`    | خريطة ثلاثية الأبعاد للمصنع               |
+| شاشة العرض       | `/display-control`       | التحكم بشاشة العرض                        |
 
 #### المجموعة المساندة (Support)
-| الصفحة | المسار | الوصف |
-|---|---|---|
-| الجودة | `/quality` | إدارة الجودة والفحوصات |
-| الصيانة | `/maintenance` | طلبات وإجراءات الصيانة |
-| الموارد البشرية | `/hr` | حضور، إجازات، تدريب، أداء |
+
+| الصفحة          | المسار         | الوصف                     |
+| --------------- | -------------- | ------------------------- |
+| الجودة          | `/quality`     | إدارة الجودة والفحوصات    |
+| الصيانة         | `/maintenance` | طلبات وإجراءات الصيانة    |
+| الموارد البشرية | `/hr`          | حضور، إجازات، تدريب، أداء |
 
 #### مجموعة الإدارة (Admin)
-| الصفحة | المسار | الوصف |
-|---|---|---|
-| التعريفات | `/definitions` | فئات، وحدات، مجموعات مواد |
-| التقارير | `/reports` | تقارير شاملة |
-| الأدوات | `/tools` | أدوات إدارية |
-| إعدادات الوكيل | `/ai-agent-settings` | تكوين الوكيل الذكي |
-| الإعدادات | `/settings` | إعدادات النظام والنسخ الاحتياطي |
-| مراقبة النظام | `/system-monitoring` | أداء النظام والخادم |
+
+| الصفحة         | المسار               | الوصف                           |
+| -------------- | -------------------- | ------------------------------- |
+| التعريفات      | `/definitions`       | فئات، وحدات، مجموعات مواد       |
+| التقارير       | `/reports`           | تقارير شاملة                    |
+| الأدوات        | `/tools`             | أدوات إدارية                    |
+| إعدادات الوكيل | `/ai-agent-settings` | تكوين الوكيل الذكي              |
+| الإعدادات      | `/settings`          | إعدادات النظام والنسخ الاحتياطي |
+| مراقبة النظام  | `/system-monitoring` | أداء النظام والخادم             |
 
 #### صفحات الجوال المحسنة (Mobile-Optimized)
-| الصفحة | المسار | النسخة الأصلية |
-|---|---|---|
-| الطلبات-جوال | `/orders-mobile` | `/orders` |
-| المستودع-جوال | `/warehouse-mobile` | `/warehouse` |
-| الإنتاج-جوال | `/production-mobile` | `/production` |
-| لوحة المستخدم-جوال | `/user-dashboard-mobile` | `/user-dashboard` |
-| لوحة الإنتاج-جوال | `/production-dashboard-mobile` | `/production-dashboard` |
+
+| الصفحة             | المسار                         | النسخة الأصلية          |
+| ------------------ | ------------------------------ | ----------------------- |
+| الطلبات-جوال       | `/orders-mobile`               | `/orders`               |
+| المستودع-جوال      | `/warehouse-mobile`            | `/warehouse`            |
+| الإنتاج-جوال       | `/production-mobile`           | `/production`           |
+| لوحة المستخدم-جوال | `/user-dashboard-mobile`       | `/user-dashboard`       |
+| لوحة الإنتاج-جوال  | `/production-dashboard-mobile` | `/production-dashboard` |
 
 ---
 
 ### 6.2 تفاصيل كل صفحة
 
 #### الرئيسية (Dashboard) `/`
+
 - **ويدجتات قابلة للتخصيص:**
   - إحصائيات سريعة (طلبات، إنتاج، مكائن)
   - حالة المكائن الحية
@@ -2068,12 +2102,14 @@ Body: { name: string, from: "ar"|"en", to: "ar"|"en" }
 - **APIs:** `/api/dashboard/config`, `/api/dashboard/stats`, `/api/quick-notes`
 
 #### لوحة المستخدم (User Dashboard) `/user-dashboard`
+
 - حالة الحضور اليومية (تسجيل دخول/خروج)
 - طلبات المستخدم الشخصية
 - رصيد الإجازات
 - **APIs:** `/api/attendance/daily-status/:userId`, `/api/user-requests`, `/api/hr/leave-balances/:id`
 
 #### الطلبات والإنتاج (Orders) `/orders`
+
 - **تبويبات:**
   1. طلبات البيع - إنشاء/تعديل/بحث
   2. أوامر الإنتاج - إدارة وتتبع
@@ -2083,6 +2119,7 @@ Body: { name: string, from: "ar"|"en", to: "ar"|"en" }
 - **APIs:** `/api/orders`, `/api/production-orders`, `/api/rolls`, `/api/customer-products`
 
 #### لوحة الإنتاج (Production Dashboard) `/production-dashboard`
+
 - **ثلاثة أوضاع حسب القسم:**
   1. **الفيلم (Film):** إنشاء رولات، تسجيل الوزن، وقت الإنتاج
   2. **الطباعة (Printing):** استلام رولات للطباعة، تسجيل اكتمال الطباعة
@@ -2091,6 +2128,7 @@ Body: { name: string, from: "ar"|"en", to: "ar"|"en" }
 - **APIs:** `/api/production-orders/active-for-operator`, `/api/rolls/create-with-timing`, `/api/rolls/:id/mark-printed`
 
 #### المستودع (Warehouse) `/warehouse`
+
 - **تبويبات:**
   1. المخزون الحالي - مستويات المخزون
   2. سندات الإدخال/الإخراج
@@ -2101,6 +2139,7 @@ Body: { name: string, from: "ar"|"en", to: "ar"|"en" }
 - **APIs:** `/api/inventory`, `/api/warehouse/vouchers`, `/api/warehouse/shipments`
 
 #### الموارد البشرية (HR) `/hr`
+
 - **تبويبات:**
   1. الحضور والانصراف
   2. الإجازات
@@ -2110,6 +2149,7 @@ Body: { name: string, from: "ar"|"en", to: "ar"|"en" }
   6. المخالفات
 
 #### الصيانة (Maintenance) `/maintenance`
+
 - **تبويبات:**
   1. طلبات الصيانة
   2. إجراءات الصيانة
@@ -2119,12 +2159,14 @@ Body: { name: string, from: "ar"|"en", to: "ar"|"en" }
   6. تقارير الصيانة
 
 #### الجودة (Quality) `/quality`
+
 - مشاكل الجودة
 - المسؤولون والإجراءات التصحيحية
 - فحوصات الجودة
 - إحصائيات
 
 #### التعريفات (Definitions) `/definitions`
+
 - العملاء ومنتجاتهم
 - الأقسام
 - الفئات
@@ -2230,19 +2272,22 @@ Body: { name: string, from: "ar"|"en", to: "ar"|"en" }
 ## 8. ملاحظات مهمة لمطور الجوال
 
 ### 8.1 التعامل مع الاستجابات
+
 ```javascript
 // بعض الـ APIs ترجع مصفوفة مباشرة وبعضها { data: [...] }
-const response = await fetch('/api/users');
+const response = await fetch("/api/users");
 const json = await response.json();
-const data = json.data || json;  // تعامل مع كلا الحالتين
+const data = json.data || json; // تعامل مع كلا الحالتين
 ```
 
 ### 8.2 اللغة والاتجاه
+
 - التطبيق يدعم العربية (RTL) كلغة أساسية
 - معظم الحقول لها نسخة عربية (`name_ar`, `title_ar`, `description_ar`)
 - بعض حالات الحضور باللغة العربية: "حاضر"، "غائب"، "إجازة"
 
 ### 8.3 ميزات خاصة بالجوال يجب تنفيذها
+
 1. **GPS للحضور:** إرسال `location_accuracy` و `distance_from_factory` مع الحضور
 2. **مسح QR Code:** لبحث الرولات ومسح باركود القطع الاستهلاكية
 3. **كاميرا:** لتسجيل/التحقق من الوجه (`/api/face-verification/*`)
@@ -2251,6 +2296,7 @@ const data = json.data || json;  // تعامل مع كلا الحالتين
 6. **تسجيل صوتي:** لتحويل الصوت إلى نص في الوكيل الذكي
 
 ### 8.4 الأمان
+
 - كلمات المرور مشفرة بـ bcrypt
 - الجلسات محفوظة في PostgreSQL
 - التحقق من الوجه بالهاش (مؤقت - يمكن استبداله بـ AWS Rekognition)
@@ -2258,31 +2304,35 @@ const data = json.data || json;  // تعامل مع كلا الحالتين
 - صلاحيات RBAC على كل endpoint
 
 ### 8.5 الملفات المرفقة (File Uploads)
+
 - استخدم `multipart/form-data` للملفات
 - الأحجام المقبولة: صور (Base64 لتصاميم الكليشيه)، Excel (للاستيراد)، PDF
 - endpoints الرفع: `/api/ai-agent/upload`, `/api/display/upload-image`, `/api/warehouse/import/*`
 
 ### 8.6 الوقت والتواريخ
+
 - التواريخ بصيغة ISO 8601: `"2026-04-03"` أو `"2026-04-03T00:00:00.000Z"`
 - المنطقة الزمنية: توقيت الخادم (يُفضل إرسال UTC)
 
 ### 8.7 أرقام تسلسلية تلقائية
+
 - أرقام الطلبات: `GET /api/orders/next-number`
 - أرقام الرولات: تُنشأ تلقائياً بصيغة `PO001-R001`
 - أرقام الصيانة: `MO001`, `MA001`, `MR001`
 - أرقام القطع: `CP001`, `CT001`
 
 ### 8.8 حدود وقيود البيانات
-| القيد | القيمة |
-|---|---|
-| الحد الأقصى لوزن الرول | 2000 كجم |
-| نسبة الزيادة (overrun) | 0-50% |
-| المخزون | لا يقل عن 0 أبداً |
-| تقييمات الأداء | مقياس 1-5 |
-| أنواع المكائن | extruder, printer, cutter, quality_check |
-| مراحل الرول | film → printing → cutting → done |
-| حالات الطلب | waiting → in_production → completed/cancelled |
-| حالات أمر الإنتاج | pending → active → completed/cancelled |
+
+| القيد                  | القيمة                                        |
+| ---------------------- | --------------------------------------------- |
+| الحد الأقصى لوزن الرول | 2000 كجم                                      |
+| نسبة الزيادة (overrun) | 0-50%                                         |
+| المخزون                | لا يقل عن 0 أبداً                             |
+| تقييمات الأداء         | مقياس 1-5                                     |
+| أنواع المكائن          | extruder, printer, cutter, quality_check      |
+| مراحل الرول            | film → printing → cutting → done              |
+| حالات الطلب            | waiting → in_production → completed/cancelled |
+| حالات أمر الإنتاج      | pending → active → completed/cancelled        |
 
 ---
 
@@ -2327,26 +2377,27 @@ consumable_parts ──1:M──→ consumable_parts_transactions
 
 ## 10. متغيرات البيئة المطلوبة (Environment Variables)
 
-| المتغير | الوصف | مطلوب |
-|---|---|---|
-| `DATABASE_URL` | رابط PostgreSQL | نعم |
-| `SESSION_SECRET` | مفتاح تشفير الجلسات | نعم |
-| `OPENAI_API_KEY` | مفتاح OpenAI للوكيل الذكي | للـ AI |
-| `TAQNYAT_API_KEY` | مفتاح خدمة Taqnyat SMS | للـ SMS |
-| `TAQNYAT_SENDER_NAME` | اسم المرسل | للـ SMS |
-| `META_WHATSAPP_TOKEN` | توكن Meta WhatsApp API | للواتساب |
-| `META_WHATSAPP_PHONE_ID` | رقم هاتف Meta | للواتساب |
-| `META_APP_SECRET` | سر تطبيق Meta (Webhook HMAC) | اختياري |
-| `TWILIO_ACCOUNT_SID` | حساب Twilio | للواتساب/SMS |
-| `TWILIO_AUTH_TOKEN` | توكن Twilio | للواتساب/SMS |
-| `TWILIO_WHATSAPP_FROM` | رقم واتساب Twilio | للواتساب |
-| `TAQNYAT_WEBHOOK_SECRET` | سر Webhook Taqnyat | اختياري |
+| المتغير                  | الوصف                        | مطلوب        |
+| ------------------------ | ---------------------------- | ------------ |
+| `DATABASE_URL`           | رابط PostgreSQL              | نعم          |
+| `SESSION_SECRET`         | مفتاح تشفير الجلسات          | نعم          |
+| `OPENAI_API_KEY`         | مفتاح OpenAI للوكيل الذكي    | للـ AI       |
+| `TAQNYAT_API_KEY`        | مفتاح خدمة Taqnyat SMS       | للـ SMS      |
+| `TAQNYAT_SENDER_NAME`    | اسم المرسل                   | للـ SMS      |
+| `META_WHATSAPP_TOKEN`    | توكن Meta WhatsApp API       | للواتساب     |
+| `META_WHATSAPP_PHONE_ID` | رقم هاتف Meta                | للواتساب     |
+| `META_APP_SECRET`        | سر تطبيق Meta (Webhook HMAC) | اختياري      |
+| `TWILIO_ACCOUNT_SID`     | حساب Twilio                  | للواتساب/SMS |
+| `TWILIO_AUTH_TOKEN`      | توكن Twilio                  | للواتساب/SMS |
+| `TWILIO_WHATSAPP_FROM`   | رقم واتساب Twilio            | للواتساب     |
+| `TAQNYAT_WEBHOOK_SECRET` | سر Webhook Taqnyat           | اختياري      |
 
 ---
 
 ## 11. توصيات لتطبيق الجوال
 
 ### 11.1 الهيكل المقترح
+
 ```
 /screens
   /auth         → Login, ForgotPassword
@@ -2370,6 +2421,7 @@ consumable_parts ──1:M──→ consumable_parts_transactions
 ```
 
 ### 11.2 الأولويات للتنفيذ
+
 1. **المرحلة 1:** المصادقة + لوحة المستخدم + الحضور (مع GPS)
 2. **المرحلة 2:** الطلبات + أوامر الإنتاج + لوحة المشغلين
 3. **المرحلة 3:** المستودع + المخزون
@@ -2379,6 +2431,6 @@ consumable_parts ──1:M──→ consumable_parts_transactions
 
 ---
 
-*آخر تحديث: أبريل 2026*
-*إجمالي جداول قاعدة البيانات: 92*
-*إجمالي نقاط API: ~385 endpoint*
+_آخر تحديث: أبريل 2026_
+_إجمالي جداول قاعدة البيانات: 92_
+_إجمالي نقاط API: ~385 endpoint_

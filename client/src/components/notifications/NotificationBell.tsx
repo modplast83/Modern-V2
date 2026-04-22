@@ -1,9 +1,10 @@
-import { Bell } from "lucide-react";
-import { Button } from "../ui/button";
-import { Badge } from "../ui/badge";
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "../../hooks/use-auth";
+import { Bell } from "lucide-react";
 import { Link } from "wouter";
+
+import { useAuth } from "../../hooks/use-auth";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
 
 type Notification = {
   id: number;
@@ -25,9 +26,9 @@ export function NotificationBell() {
 
   // Filter out system notifications and count unread
   const filteredNotifications = notifications.filter(
-    (n) => n.type !== "system"
+    (n) => n.type !== "system",
   );
-  
+
   const unreadCount = filteredNotifications.filter(
     (n) => !n.read_at && n.status !== "failed",
   ).length;

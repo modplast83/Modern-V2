@@ -1,17 +1,17 @@
-import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
-import { useTranslation } from "react-i18next";
-import { format } from "date-fns";
-
-import { Screen } from "@/components/layout/Screen";
-import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
-import { Loader } from "@/components/ui/Loader";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { useMaintenanceRequests } from "@/api/hooks/useMaintenance";
-import { useTheme } from "@/utils/useTheme";
-import { FontSize, Spacing } from "@/constants/spacing";
 import { PriorityLabels, getStatusLabel } from "@mpbf/shared";
+import { format } from "date-fns";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { StyleSheet, Text, View } from "react-native";
+
+import { useMaintenanceRequests } from "@/api/hooks/useMaintenance";
+import { Screen } from "@/components/layout/Screen";
+import { Badge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Loader } from "@/components/ui/Loader";
+import { FontSize, Spacing } from "@/constants/spacing";
+import { useTheme } from "@/utils/useTheme";
 
 export default function MaintenanceScreen() {
   const { t, i18n } = useTranslation();
@@ -23,7 +23,11 @@ export default function MaintenanceScreen() {
   return (
     <Screen
       refreshing={refreshing}
-      onRefresh={async () => { setRefreshing(true); await refetch(); setRefreshing(false); }}
+      onRefresh={async () => {
+        setRefreshing(true);
+        await refetch();
+        setRefreshing(false);
+      }}
     >
       {isLoading ? (
         <Loader />
@@ -40,9 +44,15 @@ export default function MaintenanceScreen() {
                 </Text>
                 <Badge label={p.label} color={p.color} />
               </View>
-              <Text style={[styles.body, { color: colors.text }]} numberOfLines={3}>{m.description}</Text>
+              <Text
+                style={[styles.body, { color: colors.text }]}
+                numberOfLines={3}
+              >
+                {m.description}
+              </Text>
               <Text style={[styles.meta, { color: colors.textMuted }]}>
-                {format(new Date(m.created_at), "yyyy-MM-dd HH:mm")} • {m.status}
+                {format(new Date(m.created_at), "yyyy-MM-dd HH:mm")} •{" "}
+                {m.status}
               </Text>
             </Card>
           );
@@ -53,7 +63,12 @@ export default function MaintenanceScreen() {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.sm },
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: Spacing.sm,
+  },
   title: { fontSize: FontSize.md, fontWeight: "700" },
   body: { fontSize: FontSize.sm, lineHeight: 20, marginBottom: Spacing.sm },
   meta: { fontSize: FontSize.xs },

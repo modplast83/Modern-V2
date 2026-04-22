@@ -1,12 +1,4 @@
-import { useTranslation } from "react-i18next";
-import { useLocalizedName } from "../../hooks/use-localized-name";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Badge } from "../ui/badge";
-import { Button } from "../ui/button";
-import { ScrollArea } from "../ui/scroll-area";
-import { Progress } from "../ui/progress";
-import { formatNumber, formatPercentage } from "../../lib/formatNumber";
 import {
   Settings,
   Activity,
@@ -19,6 +11,15 @@ import {
   Gauge,
   Plus,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
+
+import { useLocalizedName } from "../../hooks/use-localized-name";
+import { formatNumber, formatPercentage } from "../../lib/formatNumber";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Progress } from "../ui/progress";
+import { ScrollArea } from "../ui/scroll-area";
 
 interface MachineStatusProps {
   onCreateRoll: () => void;
@@ -49,13 +50,13 @@ export default function MachineStatus({ onCreateRoll }: MachineStatusProps) {
   const getStatusText = (status: string) => {
     switch (status) {
       case "operational":
-        return t('dashboard.machines.operational');
+        return t("dashboard.machines.operational");
       case "maintenance":
-        return t('dashboard.machines.maintenance');
+        return t("dashboard.machines.maintenance");
       case "down":
-        return t('dashboard.machines.down');
+        return t("dashboard.machines.down");
       case "idle":
-        return t('dashboard.machines.idle');
+        return t("dashboard.machines.idle");
       default:
         return status;
     }
@@ -63,7 +64,7 @@ export default function MachineStatus({ onCreateRoll }: MachineStatusProps) {
 
   const getStatusIcon = (status: string) => {
     const iconProps = { className: "w-4 h-4" };
-    
+
     switch (status) {
       case "operational":
         return { Icon: CheckCircle2, className: "w-4 h-4 text-green-600" };
@@ -77,7 +78,7 @@ export default function MachineStatus({ onCreateRoll }: MachineStatusProps) {
         return { Icon: Settings, className: "w-4 h-4 text-gray-600" };
     }
   };
-  
+
   const renderStatusIcon = (status: string) => {
     const { Icon, className } = getStatusIcon(status);
     return <Icon className={className} />;
@@ -89,7 +90,7 @@ export default function MachineStatus({ onCreateRoll }: MachineStatusProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Settings className="w-5 h-5" />
-            {t('dashboard.machines.title')}
+            {t("dashboard.machines.title")}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -128,26 +129,28 @@ export default function MachineStatus({ onCreateRoll }: MachineStatusProps) {
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <Settings className="w-5 h-5" />
-            {t('dashboard.machines.title')}
+            {t("dashboard.machines.title")}
           </CardTitle>
           <Button size="sm" onClick={onCreateRoll}>
             <Plus className="w-4 h-4 mr-1" />
-            {t('dashboard.machines.newRoll')}
+            {t("dashboard.machines.newRoll")}
           </Button>
         </div>
 
         <div className="flex gap-2 mt-3">
           <Badge variant="default" className="bg-green-100 text-green-800">
-            {formatNumber(operationalMachines)} {t('dashboard.machines.operational')}
+            {formatNumber(operationalMachines)}{" "}
+            {t("dashboard.machines.operational")}
           </Badge>
           {maintenanceMachines > 0 && (
             <Badge variant="default" className="bg-yellow-100 text-yellow-800">
-              {formatNumber(maintenanceMachines)} {t('dashboard.machines.maintenance')}
+              {formatNumber(maintenanceMachines)}{" "}
+              {t("dashboard.machines.maintenance")}
             </Badge>
           )}
           {downMachines > 0 && (
             <Badge variant="destructive">
-              {formatNumber(downMachines)} {t('dashboard.machines.down')}
+              {formatNumber(downMachines)} {t("dashboard.machines.down")}
             </Badge>
           )}
         </div>
@@ -188,7 +191,10 @@ export default function MachineStatus({ onCreateRoll }: MachineStatusProps) {
                           {machine.section_id && (
                             <div className="flex items-center gap-1">
                               <Activity className="w-3 h-3" />
-                              <span>{t('dashboard.machines.section')}: {machine.section_id}</span>
+                              <span>
+                                {t("dashboard.machines.section")}:{" "}
+                                {machine.section_id}
+                              </span>
                             </div>
                           )}
                         </div>
@@ -198,10 +204,11 @@ export default function MachineStatus({ onCreateRoll }: MachineStatusProps) {
                     {machine.production_rate && (
                       <div className="text-right">
                         <div className="text-sm font-medium text-gray-900">
-                          {machine.production_rate}/{t('dashboard.machines.perHour')}
+                          {machine.production_rate}/
+                          {t("dashboard.machines.perHour")}
                         </div>
                         <div className="text-xs text-gray-500">
-                          {t('dashboard.machines.productionRate')}
+                          {t("dashboard.machines.productionRate")}
                         </div>
                       </div>
                     )}
@@ -212,7 +219,7 @@ export default function MachineStatus({ onCreateRoll }: MachineStatusProps) {
                       <div className="flex items-center justify-between text-xs">
                         <div className="flex items-center gap-1">
                           <Gauge className="w-3 h-3 text-blue-500" />
-                          <span>{t('dashboard.machines.efficiency')}</span>
+                          <span>{t("dashboard.machines.efficiency")}</span>
                         </div>
                         <span className="font-medium">
                           {formatPercentage(
@@ -257,7 +264,7 @@ export default function MachineStatus({ onCreateRoll }: MachineStatusProps) {
                               machine.speed ||
                                 Math.floor(Math.random() * 500 + 1000),
                             )}{" "}
-                            {t('dashboard.machines.mPerMin')}
+                            {t("dashboard.machines.mPerMin")}
                           </span>
                         </div>
                       </div>
@@ -268,7 +275,9 @@ export default function MachineStatus({ onCreateRoll }: MachineStatusProps) {
                     <div className="text-xs text-gray-600 bg-yellow-50 p-2 rounded">
                       <div className="flex items-center gap-1">
                         <AlertTriangle className="w-3 h-3 text-yellow-600" />
-                        <span>{t('dashboard.machines.scheduledMaintenance')}</span>
+                        <span>
+                          {t("dashboard.machines.scheduledMaintenance")}
+                        </span>
                       </div>
                     </div>
                   )}
@@ -277,7 +286,9 @@ export default function MachineStatus({ onCreateRoll }: MachineStatusProps) {
                     <div className="text-xs text-gray-600 bg-red-50 p-2 rounded">
                       <div className="flex items-center gap-1">
                         <XCircle className="w-3 h-3 text-red-600" />
-                        <span>{t('dashboard.machines.breakdownTechnical')}</span>
+                        <span>
+                          {t("dashboard.machines.breakdownTechnical")}
+                        </span>
                       </div>
                     </div>
                   )}
@@ -287,9 +298,11 @@ export default function MachineStatus({ onCreateRoll }: MachineStatusProps) {
           ) : (
             <div className="p-8 text-center">
               <Settings className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-600 mb-2">{t('dashboard.machines.noMachines')}</p>
+              <p className="text-gray-600 mb-2">
+                {t("dashboard.machines.noMachines")}
+              </p>
               <p className="text-sm text-gray-500">
-                {t('dashboard.machines.addFromDefinitions')}
+                {t("dashboard.machines.addFromDefinitions")}
               </p>
             </div>
           )}

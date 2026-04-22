@@ -5,7 +5,12 @@ interface CustomTooltipProps {
   formatValue?: (value: any) => string;
 }
 
-export const CustomTooltip = ({ active, payload, label, formatValue }: CustomTooltipProps) => {
+export const CustomTooltip = ({
+  active,
+  payload,
+  label,
+  formatValue,
+}: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     return (
       <div

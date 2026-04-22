@@ -93,7 +93,11 @@ export const WIDGET_REGISTRY: Record<string, WidgetMeta> = {
     category: "Warehouse",
     category_ar: "المستودع",
     icon: "Package",
-    requiredPermissions: ["manage_warehouse", "manage_inventory", "view_warehouse"],
+    requiredPermissions: [
+      "manage_warehouse",
+      "manage_inventory",
+      "view_warehouse",
+    ],
     defaultSize: "medium",
   },
   quotes_widget: {
@@ -218,22 +222,19 @@ export const ROLE_DEFAULT_WIDGETS: Record<RoleCategory, string[]> = {
     "dashboard_stats",
     "shortcuts",
   ],
-  default: [
-    "dashboard_stats",
-    "shortcuts",
-    "quick_notes",
-  ],
+  default: ["dashboard_stats", "shortcuts", "quick_notes"],
 };
 
 export function getRoleCategoryFromPermissions(
   permissions: string[] | undefined,
-  roleId: number | undefined
+  roleId: number | undefined,
 ): RoleCategory {
   if (!permissions) return "default";
 
   if (permissions.includes("admin")) return "admin";
 
-  const hasAny = (perms: string[]) => perms.some((p) => permissions.includes(p));
+  const hasAny = (perms: string[]) =>
+    perms.some((p) => permissions.includes(p));
 
   if (hasAny(["manage_production", "view_production_monitoring"]))
     return "production_manager";
@@ -243,7 +244,13 @@ export function getRoleCategoryFromPermissions(
     return "warehouse_manager";
   if (hasAny(["manage_orders"]) && !hasAny(["manage_production"]))
     return "sales";
-  if (hasAny(["view_film_dashboard", "view_printing_dashboard", "view_cutting_dashboard"]))
+  if (
+    hasAny([
+      "view_film_dashboard",
+      "view_printing_dashboard",
+      "view_cutting_dashboard",
+    ])
+  )
     return "operator";
 
   return "default";
@@ -251,7 +258,7 @@ export function getRoleCategoryFromPermissions(
 
 export function getDefaultDashboardConfig(
   permissions: string[] | undefined,
-  roleId: number | undefined
+  roleId: number | undefined,
 ): DashboardConfig {
   const category = getRoleCategoryFromPermissions(permissions, roleId);
   return {
@@ -261,7 +268,7 @@ export function getDefaultDashboardConfig(
 }
 
 export function getAvailableWidgets(
-  permissions: string[] | undefined
+  permissions: string[] | undefined,
 ): WidgetMeta[] {
   if (!permissions) return [];
 
@@ -269,6 +276,8 @@ export function getAvailableWidgets(
 
   return Object.values(WIDGET_REGISTRY).filter((widget) => {
     if (isAdmin) return true;
-    return widget.requiredPermissions.some((perm) => permissions.includes(perm));
+    return widget.requiredPermissions.some((perm) =>
+      permissions.includes(perm),
+    );
   });
 }

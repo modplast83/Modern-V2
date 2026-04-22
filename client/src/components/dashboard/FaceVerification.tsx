@@ -1,13 +1,35 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  Camera,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  RefreshCw,
+  User,
+  Shield,
+} from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
-import { Button } from "../ui/button";
-import { Badge } from "../ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../ui/dialog";
-import { Alert, AlertDescription } from "../ui/alert";
-import { Camera, CheckCircle, XCircle, AlertTriangle, RefreshCw, User, Shield } from "lucide-react";
+
 import { useToast } from "../../hooks/use-toast";
+import { Alert, AlertDescription } from "../ui/alert";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "../ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "../ui/dialog";
 
 interface FaceVerificationProps {
   userId: number;
@@ -28,11 +50,13 @@ export default function FaceVerification({
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  
+
   const [isOpen, setIsOpen] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  const [verificationStatus, setVerificationStatus] = useState<"idle" | "capturing" | "verifying" | "success" | "failed">("idle");
+  const [verificationStatus, setVerificationStatus] = useState<
+    "idle" | "capturing" | "verifying" | "success" | "failed"
+  >("idle");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [countdown, setCountdown] = useState<number>(3);
 
@@ -45,10 +69,14 @@ export default function FaceVerification({
     try {
       setErrorMessage("");
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+        video: {
+          facingMode: "user",
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+        },
         audio: false,
       });
-      
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
@@ -57,11 +85,11 @@ export default function FaceVerification({
     } catch (err: any) {
       console.error("Camera error:", err);
       if (err.name === "NotAllowedError") {
-        setErrorMessage(t('dashboard.face.cameraPermission'));
+        setErrorMessage(t("dashboard.face.cameraPermission"));
       } else if (err.name === "NotFoundError") {
-        setErrorMessage(t('dashboard.face.noCamera'));
+        setErrorMessage(t("dashboard.face.noCamera"));
       } else {
-        setErrorMessage(t('dashboard.face.cameraError'));
+        setErrorMessage(t("dashboard.face.cameraError"));
       }
     }
   }, [t]);
@@ -79,17 +107,17 @@ export default function FaceVerification({
 
   const captureImage = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) return null;
-    
+
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const context = canvas.getContext("2d");
-    
+
     if (!context) return null;
-    
+
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
+
     return canvas.toDataURL("image/jpeg", 0.8);
   }, []);
 
@@ -105,25 +133,28 @@ export default function FaceVerification({
           timestamp: new Date().toISOString(),
         }),
       });
-      
+
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || t('dashboard.face.verifyFailed'));
+        throw new Error(error.message || t("dashboard.face.verifyFailed"));
       }
-      
+
       return response.json();
     },
     onSuccess: (data) => {
       if (data.verified) {
         setVerificationStatus("success");
-        toast({ title: t('dashboard.face.verifySuccess'), description: t('dashboard.face.verifySuccessDesc') });
+        toast({
+          title: t("dashboard.face.verifySuccess"),
+          description: t("dashboard.face.verifySuccessDesc"),
+        });
         setTimeout(() => {
           handleClose();
           onVerificationSuccess();
         }, 1500);
       } else {
         setVerificationStatus("failed");
-        setErrorMessage(data.message || t('dashboard.face.faceNotRecognized'));
+        setErrorMessage(data.message || t("dashboard.face.faceNotRecognized"));
       }
     },
     onError: (error: Error) => {
@@ -142,17 +173,22 @@ export default function FaceVerification({
           image: imageData,
         }),
       });
-      
+
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || t('dashboard.face.registerFailed'));
+        throw new Error(error.message || t("dashboard.face.registerFailed"));
       }
-      
+
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/face-verification/status", userId] });
-      toast({ title: t('dashboard.face.registerSuccess'), description: t('dashboard.face.registerSuccessDesc') });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/face-verification/status", userId],
+      });
+      toast({
+        title: t("dashboard.face.registerSuccess"),
+        description: t("dashboard.face.registerSuccessDesc"),
+      });
       setVerificationStatus("success");
       setTimeout(() => {
         handleClose();
@@ -168,7 +204,7 @@ export default function FaceVerification({
   const startCountdownCapture = useCallback(() => {
     setVerificationStatus("capturing");
     setCountdown(3);
-    
+
     const interval = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
@@ -177,7 +213,7 @@ export default function FaceVerification({
           if (image) {
             setCapturedImage(image);
             setVerificationStatus("verifying");
-            
+
             if (hasRegisteredFace?.hasRegisteredFace) {
               verifyFaceMutation.mutate(image);
             } else {
@@ -189,7 +225,12 @@ export default function FaceVerification({
         return prev - 1;
       });
     }, 1000);
-  }, [captureImage, hasRegisteredFace, verifyFaceMutation, registerFaceMutation]);
+  }, [
+    captureImage,
+    hasRegisteredFace,
+    verifyFaceMutation,
+    registerFaceMutation,
+  ]);
 
   const handleOpen = () => {
     setIsOpen(true);
@@ -221,10 +262,10 @@ export default function FaceVerification({
   }, [stopCamera]);
 
   const actionLabels: Record<string, string> = {
-    check_in: t('dashboard.face.checkIn'),
-    check_out: t('dashboard.face.checkOut'),
-    break_start: t('dashboard.face.breakStart'),
-    break_end: t('dashboard.face.breakEnd'),
+    check_in: t("dashboard.face.checkIn"),
+    check_out: t("dashboard.face.checkOut"),
+    break_start: t("dashboard.face.breakStart"),
+    break_end: t("dashboard.face.breakEnd"),
   };
 
   return (
@@ -236,7 +277,7 @@ export default function FaceVerification({
       >
         <Camera className="h-4 w-4" />
         <Shield className="h-4 w-4" />
-        {t('dashboard.face.title')}
+        {t("dashboard.face.title")}
       </Button>
 
       <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
@@ -244,12 +285,12 @@ export default function FaceVerification({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Camera className="h-5 w-5" />
-              {t('dashboard.face.verifyIdentity')} - {actionLabels[actionType]}
+              {t("dashboard.face.verifyIdentity")} - {actionLabels[actionType]}
             </DialogTitle>
             <DialogDescription>
-              {hasRegisteredFace?.hasRegisteredFace 
-                ? t('dashboard.face.lookAtCamera')
-                : t('dashboard.face.firstTimeRegistration')}
+              {hasRegisteredFace?.hasRegisteredFace
+                ? t("dashboard.face.lookAtCamera")
+                : t("dashboard.face.firstTimeRegistration")}
             </DialogDescription>
           </DialogHeader>
 
@@ -263,7 +304,11 @@ export default function FaceVerification({
 
             <div className="relative aspect-[4/3] bg-gray-900 rounded-lg overflow-hidden">
               {capturedImage ? (
-                <img src={capturedImage} alt="Captured" className="w-full h-full object-cover" />
+                <img
+                  src={capturedImage}
+                  alt="Captured"
+                  className="w-full h-full object-cover"
+                />
               ) : (
                 <video
                   ref={videoRef}
@@ -273,12 +318,14 @@ export default function FaceVerification({
                   className="w-full h-full object-cover scale-x-[-1]"
                 />
               )}
-              
+
               <canvas ref={canvasRef} className="hidden" />
 
               {verificationStatus === "capturing" && countdown > 0 && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                  <div className="text-6xl font-bold text-white animate-pulse">{countdown}</div>
+                  <div className="text-6xl font-bold text-white animate-pulse">
+                    {countdown}
+                  </div>
                 </div>
               )}
 
@@ -286,7 +333,9 @@ export default function FaceVerification({
                 <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                   <div className="flex flex-col items-center gap-2">
                     <RefreshCw className="h-8 w-8 text-white animate-spin" />
-                    <span className="text-white text-sm">{t('dashboard.face.verifying')}</span>
+                    <span className="text-white text-sm">
+                      {t("dashboard.face.verifying")}
+                    </span>
                   </div>
                 </div>
               )}
@@ -295,7 +344,9 @@ export default function FaceVerification({
                 <div className="absolute inset-0 flex items-center justify-center bg-green-500/70">
                   <div className="flex flex-col items-center gap-2">
                     <CheckCircle className="h-12 w-12 text-white" />
-                    <span className="text-white font-semibold">{t('dashboard.face.verified')}</span>
+                    <span className="text-white font-semibold">
+                      {t("dashboard.face.verified")}
+                    </span>
                   </div>
                 </div>
               )}
@@ -304,22 +355,30 @@ export default function FaceVerification({
                 <div className="absolute inset-0 flex items-center justify-center bg-red-500/70">
                   <div className="flex flex-col items-center gap-2">
                     <XCircle className="h-12 w-12 text-white" />
-                    <span className="text-white font-semibold">{t('dashboard.face.failed')}</span>
+                    <span className="text-white font-semibold">
+                      {t("dashboard.face.failed")}
+                    </span>
                   </div>
                 </div>
               )}
 
-              {!isCameraActive && verificationStatus === "idle" && !errorMessage && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <RefreshCw className="h-8 w-8 text-white animate-spin" />
-                </div>
-              )}
+              {!isCameraActive &&
+                verificationStatus === "idle" &&
+                !errorMessage && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <RefreshCw className="h-8 w-8 text-white animate-spin" />
+                  </div>
+                )}
 
               <div className="absolute bottom-2 right-2">
                 {hasRegisteredFace?.hasRegisteredFace ? (
-                  <Badge className="bg-green-500">{t('dashboard.face.registeredFace')}</Badge>
+                  <Badge className="bg-green-500">
+                    {t("dashboard.face.registeredFace")}
+                  </Badge>
                 ) : (
-                  <Badge variant="secondary">{t('dashboard.face.newRegistration')}</Badge>
+                  <Badge variant="secondary">
+                    {t("dashboard.face.newRegistration")}
+                  </Badge>
                 )}
               </div>
             </div>
@@ -328,7 +387,7 @@ export default function FaceVerification({
               {verificationStatus === "idle" && isCameraActive && (
                 <>
                   <User className="h-4 w-4 inline ml-1" />
-                  {t('dashboard.face.clearFace')}
+                  {t("dashboard.face.clearFace")}
                 </>
               )}
             </div>
@@ -338,19 +397,23 @@ export default function FaceVerification({
             {verificationStatus === "idle" && isCameraActive && (
               <Button onClick={startCountdownCapture} className="w-full">
                 <Camera className="h-4 w-4 ml-2" />
-                {t('dashboard.face.capture')}
+                {t("dashboard.face.capture")}
               </Button>
             )}
-            
+
             {verificationStatus === "failed" && (
-              <Button onClick={handleRetry} variant="outline" className="w-full">
+              <Button
+                onClick={handleRetry}
+                variant="outline"
+                className="w-full"
+              >
                 <RefreshCw className="h-4 w-4 ml-2" />
-                {t('dashboard.face.retry')}
+                {t("dashboard.face.retry")}
               </Button>
             )}
-            
+
             <Button onClick={handleClose} variant="ghost" className="w-full">
-              {t('dashboard.face.cancel')}
+              {t("dashboard.face.cancel")}
             </Button>
           </DialogFooter>
         </DialogContent>

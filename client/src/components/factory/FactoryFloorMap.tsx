@@ -1,15 +1,32 @@
-import React, { useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Badge } from "../ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { CheckCircle, AlertTriangle, XCircle, Activity } from "lucide-react";
+import React, { useCallback, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+
+import { Badge } from "../ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../ui/tooltip";
 
 type SectionId = "SEC03" | "SEC04" | "SEC05";
 type MachineStatus = "active" | "maintenance" | "down" | "unknown";
-type MachineType = "extruder" | "printer" | "cutter" | "quality_check" | "other";
+type MachineType =
+  | "extruder"
+  | "printer"
+  | "cutter"
+  | "quality_check"
+  | "other";
 
 interface Machine {
   id: string;
@@ -31,7 +48,15 @@ interface Section {
 
 /** Icons (SVG) */
 const FilmExtruderIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
     <circle cx="12" cy="8" r="5" />
     <path d="M12 13v8" />
     <path d="M8 17h8" />
@@ -41,7 +66,15 @@ const FilmExtruderIcon = ({ className }: { className?: string }) => (
 );
 
 const PrintingMachineIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
     <rect x="3" y="8" width="18" height="10" rx="2" />
     <path d="M7 8V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v3" />
     <path d="M7 15h10" />
@@ -51,7 +84,15 @@ const PrintingMachineIcon = ({ className }: { className?: string }) => (
 );
 
 const CuttingMachineIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
     <rect x="4" y="6" width="16" height="12" rx="1" />
     <path d="M4 12h16" />
     <path d="M12 6v12" />
@@ -62,10 +103,31 @@ const CuttingMachineIcon = ({ className }: { className?: string }) => (
 
 const SECTION_IDS: SectionId[] = ["SEC03", "SEC04", "SEC05"];
 
-const SECTION_POSITIONS: Record<SectionId, { x: number; y: number; width: number; height: number; labelKey: string }> = {
-  SEC03: { x: 30, y: 80, width: 380, height: 320, labelKey: "factory.sections.film" },
-  SEC04: { x: 430, y: 80, width: 380, height: 320, labelKey: "factory.sections.printing" },
-  SEC05: { x: 830, y: 80, width: 380, height: 320, labelKey: "factory.sections.cutting" },
+const SECTION_POSITIONS: Record<
+  SectionId,
+  { x: number; y: number; width: number; height: number; labelKey: string }
+> = {
+  SEC03: {
+    x: 30,
+    y: 80,
+    width: 380,
+    height: 320,
+    labelKey: "factory.sections.film",
+  },
+  SEC04: {
+    x: 430,
+    y: 80,
+    width: 380,
+    height: 320,
+    labelKey: "factory.sections.printing",
+  },
+  SEC05: {
+    x: 830,
+    y: 80,
+    width: 380,
+    height: 320,
+    labelKey: "factory.sections.cutting",
+  },
 };
 
 function isSectionId(id?: string): id is SectionId {
@@ -73,20 +135,42 @@ function isSectionId(id?: string): id is SectionId {
 }
 
 function normalizeStatus(status?: string): MachineStatus {
-  if (status === "active" || status === "maintenance" || status === "down") return status;
+  if (status === "active" || status === "maintenance" || status === "down")
+    return status;
   return "unknown";
 }
 
 function normalizeType(type?: string): MachineType {
-  if (type === "extruder" || type === "printer" || type === "cutter" || type === "quality_check") return type;
+  if (
+    type === "extruder" ||
+    type === "printer" ||
+    type === "cutter" ||
+    type === "quality_check"
+  )
+    return type;
   return "other";
 }
 
 type StatusStyle = { bg: string; border: string; text: string; glow?: string };
 const STATUS_STYLE: Record<MachineStatus, StatusStyle> = {
-  active: { bg: "#22c55e", border: "#16a34a", text: "white", glow: "0 0 20px rgba(34, 197, 94, 0.5)" },
-  maintenance: { bg: "#f59e0b", border: "#d97706", text: "white", glow: "0 0 20px rgba(245, 158, 11, 0.5)" },
-  down: { bg: "#ef4444", border: "#dc2626", text: "white", glow: "0 0 20px rgba(239, 68, 68, 0.5)" },
+  active: {
+    bg: "#22c55e",
+    border: "#16a34a",
+    text: "white",
+    glow: "0 0 20px rgba(34, 197, 94, 0.5)",
+  },
+  maintenance: {
+    bg: "#f59e0b",
+    border: "#d97706",
+    text: "white",
+    glow: "0 0 20px rgba(245, 158, 11, 0.5)",
+  },
+  down: {
+    bg: "#ef4444",
+    border: "#dc2626",
+    text: "white",
+    glow: "0 0 20px rgba(239, 68, 68, 0.5)",
+  },
   unknown: { bg: "#6b7280", border: "#4b5563", text: "white" },
 };
 
@@ -163,12 +247,19 @@ function MachineNode({
   const { x: machineX, y: machineY } = gridPosition(sectionPos, idx);
   const status = normalizeStatus(machine.status);
   const style = STATUS_STYLE[status];
-  const Icon = resolveIcon(machine.type, isSectionId(machine.section_id) ? machine.section_id : undefined);
+  const Icon = resolveIcon(
+    machine.type,
+    isSectionId(machine.section_id) ? machine.section_id : undefined,
+  );
 
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <g onClick={() => onSelect(machine)} style={{ cursor: "pointer" }} className="transition-transform hover:scale-110">
+        <g
+          onClick={() => onSelect(machine)}
+          style={{ cursor: "pointer" }}
+          className="transition-transform hover:scale-110"
+        >
           <rect
             x={machineX - 28}
             y={machineY - 28}
@@ -178,9 +269,16 @@ function MachineNode({
             fill={style.bg}
             stroke={style.border}
             strokeWidth="3"
-            style={{ filter: style.glow ? `drop-shadow(${style.glow})` : undefined }}
+            style={{
+              filter: style.glow ? `drop-shadow(${style.glow})` : undefined,
+            }}
           />
-          <foreignObject x={machineX - 14} y={machineY - 14} width="28" height="28">
+          <foreignObject
+            x={machineX - 14}
+            y={machineY - 14}
+            width="28"
+            height="28"
+          >
             <div className="flex items-center justify-center w-full h-full">
               <Icon className="w-6 h-6 text-white" />
             </div>
@@ -198,8 +296,12 @@ function MachineNode({
       </TooltipTrigger>
 
       <TooltipContent side="top" className="bg-slate-900 text-white p-3">
-        <div className="text-sm font-bold">{machine.name_ar || machine.name}</div>
-        <div className="text-xs opacity-80">{getTypeLabel(machine.type, t)}</div>
+        <div className="text-sm font-bold">
+          {machine.name_ar || machine.name}
+        </div>
+        <div className="text-xs opacity-80">
+          {getTypeLabel(machine.type, t)}
+        </div>
         <div className="flex items-center gap-1 mt-1">
           {STATUS_ICON[status]}
           <span>{getStatusLabel(machine.status, t)}</span>
@@ -214,7 +316,9 @@ export default function FactoryFloorMap() {
   const isRTL = i18n.language === "ar";
   const [selectedMachine, setSelectedMachine] = useState<Machine | null>(null);
 
-  const { data: machines = [], isLoading: machinesLoading } = useQuery<Machine[]>({
+  const { data: machines = [], isLoading: machinesLoading } = useQuery<
+    Machine[]
+  >({
     queryKey: ["/api/machines"],
   });
 
@@ -222,10 +326,17 @@ export default function FactoryFloorMap() {
     queryKey: ["/api/sections"],
   });
 
-  const sectionsMap = useMemo(() => new Map(sections.map((s) => [s.id, s])), [sections]);
+  const sectionsMap = useMemo(
+    () => new Map(sections.map((s) => [s.id, s])),
+    [sections],
+  );
 
   const machinesBySection = useMemo(() => {
-    const grouped: Record<SectionId, Machine[]> = { SEC03: [], SEC04: [], SEC05: [] };
+    const grouped: Record<SectionId, Machine[]> = {
+      SEC03: [],
+      SEC04: [],
+      SEC05: [],
+    };
 
     for (const m of machines) {
       if (!isSectionId(m.section_id)) continue; // ignore unexpected
@@ -248,11 +359,14 @@ export default function FactoryFloorMap() {
         else if (st === "down") acc.down += 1;
         return acc;
       },
-      { total: 0, active: 0, maintenance: 0, down: 0 }
+      { total: 0, active: 0, maintenance: 0, down: 0 },
     );
   }, [machines]);
 
-  const onSelectMachine = useCallback((m: Machine) => setSelectedMachine(m), []);
+  const onSelectMachine = useCallback(
+    (m: Machine) => setSelectedMachine(m),
+    [],
+  );
 
   if (machinesLoading) {
     return (
@@ -267,29 +381,45 @@ export default function FactoryFloorMap() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200">
           <CardContent className="p-4 text-center">
-            <div className="text-3xl font-bold text-blue-700 dark:text-blue-400">{stats.total}</div>
-            <div className="text-sm text-blue-600 dark:text-blue-300">{t("factory.totalMachines", "إجمالي الماكينات")}</div>
+            <div className="text-3xl font-bold text-blue-700 dark:text-blue-400">
+              {stats.total}
+            </div>
+            <div className="text-sm text-blue-600 dark:text-blue-300">
+              {t("factory.totalMachines", "إجمالي الماكينات")}
+            </div>
           </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border-green-200">
           <CardContent className="p-4 text-center">
-            <div className="text-3xl font-bold text-green-700 dark:text-green-400">{stats.active}</div>
-            <div className="text-sm text-green-600 dark:text-green-300">{t("factory.activeMachines", "تعمل")}</div>
+            <div className="text-3xl font-bold text-green-700 dark:text-green-400">
+              {stats.active}
+            </div>
+            <div className="text-sm text-green-600 dark:text-green-300">
+              {t("factory.activeMachines", "تعمل")}
+            </div>
           </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 border-yellow-200">
           <CardContent className="p-4 text-center">
-            <div className="text-3xl font-bold text-yellow-700 dark:text-yellow-400">{stats.maintenance}</div>
-            <div className="text-sm text-yellow-600 dark:text-yellow-300">{t("factory.maintenanceMachines", "صيانة")}</div>
+            <div className="text-3xl font-bold text-yellow-700 dark:text-yellow-400">
+              {stats.maintenance}
+            </div>
+            <div className="text-sm text-yellow-600 dark:text-yellow-300">
+              {t("factory.maintenanceMachines", "صيانة")}
+            </div>
           </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 border-red-200">
           <CardContent className="p-4 text-center">
-            <div className="text-3xl font-bold text-red-700 dark:text-red-400">{stats.down}</div>
-            <div className="text-sm text-red-600 dark:text-red-300">{t("factory.downMachines", "متوقفة")}</div>
+            <div className="text-3xl font-bold text-red-700 dark:text-red-400">
+              {stats.down}
+            </div>
+            <div className="text-sm text-red-600 dark:text-red-300">
+              {t("factory.downMachines", "متوقفة")}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -305,19 +435,51 @@ export default function FactoryFloorMap() {
         <CardContent>
           <div className="relative bg-gradient-to-b from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 rounded-xl p-4 overflow-x-auto">
             <TooltipProvider>
-              <svg viewBox="0 0 1240 520" className="w-full min-w-[1000px]" style={{ minHeight: "480px" }}>
+              <svg
+                viewBox="0 0 1240 520"
+                className="w-full min-w-[1000px]"
+                style={{ minHeight: "480px" }}
+              >
                 <defs>
-                  <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#cbd5e1" strokeWidth="0.5" opacity="0.5" />
+                  <pattern
+                    id="grid"
+                    width="20"
+                    height="20"
+                    patternUnits="userSpaceOnUse"
+                  >
+                    <path
+                      d="M 20 0 L 0 0 0 20"
+                      fill="none"
+                      stroke="#cbd5e1"
+                      strokeWidth="0.5"
+                      opacity="0.5"
+                    />
                   </pattern>
-                  <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-                    <feDropShadow dx="2" dy="2" stdDeviation="3" floodOpacity="0.3" />
+                  <filter
+                    id="shadow"
+                    x="-20%"
+                    y="-20%"
+                    width="140%"
+                    height="140%"
+                  >
+                    <feDropShadow
+                      dx="2"
+                      dy="2"
+                      stdDeviation="3"
+                      floodOpacity="0.3"
+                    />
                   </filter>
                 </defs>
 
                 <rect width="100%" height="100%" fill="url(#grid)" />
 
-                <text x="620" y="45" textAnchor="middle" className="fill-slate-700 dark:fill-slate-300" style={{ fontSize: "22px", fontWeight: 700 }}>
+                <text
+                  x="620"
+                  y="45"
+                  textAnchor="middle"
+                  className="fill-slate-700 dark:fill-slate-300"
+                  style={{ fontSize: "22px", fontWeight: 700 }}
+                >
                   {t("factory.productionHall", "صالة الإنتاج")}
                 </text>
 
@@ -352,32 +514,70 @@ export default function FactoryFloorMap() {
                       </text>
 
                       {sectionMachines.map((machine, idx) => (
-                        <MachineNode key={machine.id} machine={machine} sectionPos={pos} idx={idx} onSelect={onSelectMachine} t={t} />
+                        <MachineNode
+                          key={machine.id}
+                          machine={machine}
+                          sectionPos={pos}
+                          idx={idx}
+                          onSelect={onSelectMachine}
+                          t={t}
+                        />
                       ))}
                     </g>
                   );
                 })}
 
                 <g>
-                  <rect x="30" y="420" width="1180" height="60" rx="8" fill="#1e40af" opacity="0.1" stroke="#1e40af" strokeWidth="1" />
-                  <text x="620" y="455" textAnchor="middle" className="fill-blue-700 dark:fill-blue-400" style={{ fontSize: "14px", fontWeight: 600 }}>
+                  <rect
+                    x="30"
+                    y="420"
+                    width="1180"
+                    height="60"
+                    rx="8"
+                    fill="#1e40af"
+                    opacity="0.1"
+                    stroke="#1e40af"
+                    strokeWidth="1"
+                  />
+                  <text
+                    x="620"
+                    y="455"
+                    textAnchor="middle"
+                    className="fill-blue-700 dark:fill-blue-400"
+                    style={{ fontSize: "14px", fontWeight: 600 }}
+                  >
                     {t("factory.warehouseArea", "منطقة المستودعات والتخزين")}
                   </text>
                 </g>
 
                 <g>
                   <circle cx="100" cy="30" r="8" fill="#22c55e" />
-                  <text x="115" y="35" className="fill-slate-600 dark:fill-slate-300" style={{ fontSize: "11px" }}>
+                  <text
+                    x="115"
+                    y="35"
+                    className="fill-slate-600 dark:fill-slate-300"
+                    style={{ fontSize: "11px" }}
+                  >
                     {t("factory.status.active", "تعمل")}
                   </text>
 
                   <circle cx="180" cy="30" r="8" fill="#f59e0b" />
-                  <text x="195" y="35" className="fill-slate-600 dark:fill-slate-300" style={{ fontSize: "11px" }}>
+                  <text
+                    x="195"
+                    y="35"
+                    className="fill-slate-600 dark:fill-slate-300"
+                    style={{ fontSize: "11px" }}
+                  >
                     {t("factory.status.maintenance", "صيانة")}
                   </text>
 
                   <circle cx="270" cy="30" r="8" fill="#ef4444" />
-                  <text x="285" y="35" className="fill-slate-600 dark:fill-slate-300" style={{ fontSize: "11px" }}>
+                  <text
+                    x="285"
+                    y="35"
+                    className="fill-slate-600 dark:fill-slate-300"
+                    style={{ fontSize: "11px" }}
+                  >
                     {t("factory.status.down", "متوقفة")}
                   </text>
                 </g>
@@ -388,60 +588,95 @@ export default function FactoryFloorMap() {
           <div className="mt-4 flex flex-wrap gap-2 justify-center">
             <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full">
               <FilmExtruderIcon className="w-4 h-4 text-slate-600" />
-              <span className="text-sm">{t("factory.type.extruder", "نفخ الفيلم")}</span>
+              <span className="text-sm">
+                {t("factory.type.extruder", "نفخ الفيلم")}
+              </span>
             </div>
 
             <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full">
               <PrintingMachineIcon className="w-4 h-4 text-slate-600" />
-              <span className="text-sm">{t("factory.type.printer", "الطباعة")}</span>
+              <span className="text-sm">
+                {t("factory.type.printer", "الطباعة")}
+              </span>
             </div>
 
             <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full">
               <CuttingMachineIcon className="w-4 h-4 text-slate-600" />
-              <span className="text-sm">{t("factory.type.cutter", "التقطيع")}</span>
+              <span className="text-sm">
+                {t("factory.type.cutter", "التقطيع")}
+              </span>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Dialog open={!!selectedMachine} onOpenChange={() => setSelectedMachine(null)}>
+      <Dialog
+        open={!!selectedMachine}
+        onOpenChange={() => setSelectedMachine(null)}
+      >
         <DialogContent className="max-w-md" dir={isRTL ? "rtl" : "ltr"}>
           {selectedMachine && (
             <>
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-3">
                   {(() => {
-                    const Icon = resolveIcon(selectedMachine.type, isSectionId(selectedMachine.section_id) ? selectedMachine.section_id : undefined);
+                    const Icon = resolveIcon(
+                      selectedMachine.type,
+                      isSectionId(selectedMachine.section_id)
+                        ? selectedMachine.section_id
+                        : undefined,
+                    );
                     const st = normalizeStatus(selectedMachine.status);
                     const style = STATUS_STYLE[st];
                     return (
-                      <div className="p-3 rounded-lg" style={{ backgroundColor: style.bg }}>
+                      <div
+                        className="p-3 rounded-lg"
+                        style={{ backgroundColor: style.bg }}
+                      >
                         <Icon className="w-6 h-6 text-white" />
                       </div>
                     );
                   })()}
 
                   <div>
-                    <div className="text-lg font-bold">{selectedMachine.name_ar || selectedMachine.name}</div>
-                    <div className="text-sm text-muted-foreground">{selectedMachine.name}</div>
+                    <div className="text-lg font-bold">
+                      {selectedMachine.name_ar || selectedMachine.name}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {selectedMachine.name}
+                    </div>
                   </div>
                 </DialogTitle>
-                <DialogDescription className="sr-only">{t("factory.machineDetails")}</DialogDescription>
+                <DialogDescription className="sr-only">
+                  {t("factory.machineDetails")}
+                </DialogDescription>
               </DialogHeader>
 
               <div className="space-y-4 mt-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-lg">
-                    <div className="text-xs text-muted-foreground mb-1">{t("factory.machineType", "نوع الماكينة")}</div>
-                    <div className="font-semibold">{getTypeLabel(selectedMachine.type, t)}</div>
+                    <div className="text-xs text-muted-foreground mb-1">
+                      {t("factory.machineType", "نوع الماكينة")}
+                    </div>
+                    <div className="font-semibold">
+                      {getTypeLabel(selectedMachine.type, t)}
+                    </div>
                   </div>
 
                   <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-lg">
-                    <div className="text-xs text-muted-foreground mb-1">{t("factory.currentStatus", "الحالة الحالية")}</div>
+                    <div className="text-xs text-muted-foreground mb-1">
+                      {t("factory.currentStatus", "الحالة الحالية")}
+                    </div>
                     <Badge
                       variant="outline"
                       className="inline-flex items-center gap-1"
-                      style={{ backgroundColor: STATUS_STYLE[normalizeStatus(selectedMachine.status)].bg, color: "white", border: "none" }}
+                      style={{
+                        backgroundColor:
+                          STATUS_STYLE[normalizeStatus(selectedMachine.status)]
+                            .bg,
+                        color: "white",
+                        border: "none",
+                      }}
                     >
                       {STATUS_ICON[normalizeStatus(selectedMachine.status)]}
                       <span>{getStatusLabel(selectedMachine.status, t)}</span>
@@ -450,28 +685,48 @@ export default function FactoryFloorMap() {
                 </div>
 
                 <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-lg">
-                  <div className="text-xs text-muted-foreground mb-1">{t("factory.section", "القسم")}</div>
+                  <div className="text-xs text-muted-foreground mb-1">
+                    {t("factory.section", "القسم")}
+                  </div>
                   <div className="font-semibold">
-                    {sectionsMap.get(selectedMachine.section_id || "")?.name_ar ||
+                    {sectionsMap.get(selectedMachine.section_id || "")
+                      ?.name_ar ||
                       sectionsMap.get(selectedMachine.section_id || "")?.name ||
                       t("factory.unknown", "غير محدد")}
                   </div>
                 </div>
 
                 <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-lg">
-                  <div className="text-xs text-muted-foreground mb-2">{t("factory.productionCapacity", "الطاقة الإنتاجية (كجم/ساعة)")}</div>
+                  <div className="text-xs text-muted-foreground mb-2">
+                    {t(
+                      "factory.productionCapacity",
+                      "الطاقة الإنتاجية (كجم/ساعة)",
+                    )}
+                  </div>
                   <div className="grid grid-cols-3 gap-2 text-center text-sm">
                     <div>
-                      <div className="text-muted-foreground text-xs">{t("factory.small", "صغير")}</div>
-                      <div className="font-bold">{selectedMachine.capacity_small_kg_per_hour ?? "-"}</div>
+                      <div className="text-muted-foreground text-xs">
+                        {t("factory.small", "صغير")}
+                      </div>
+                      <div className="font-bold">
+                        {selectedMachine.capacity_small_kg_per_hour ?? "-"}
+                      </div>
                     </div>
                     <div>
-                      <div className="text-muted-foreground text-xs">{t("factory.medium", "متوسط")}</div>
-                      <div className="font-bold">{selectedMachine.capacity_medium_kg_per_hour ?? "-"}</div>
+                      <div className="text-muted-foreground text-xs">
+                        {t("factory.medium", "متوسط")}
+                      </div>
+                      <div className="font-bold">
+                        {selectedMachine.capacity_medium_kg_per_hour ?? "-"}
+                      </div>
                     </div>
                     <div>
-                      <div className="text-muted-foreground text-xs">{t("factory.large", "كبير")}</div>
-                      <div className="font-bold">{selectedMachine.capacity_large_kg_per_hour ?? "-"}</div>
+                      <div className="text-muted-foreground text-xs">
+                        {t("factory.large", "كبير")}
+                      </div>
+                      <div className="font-bold">
+                        {selectedMachine.capacity_large_kg_per_hour ?? "-"}
+                      </div>
                     </div>
                   </div>
                 </div>

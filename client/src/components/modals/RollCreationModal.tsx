@@ -1,7 +1,18 @@
 // src/components/RollCreationModal.tsx
-import React, { useEffect, useMemo } from "react";
-import { useTranslation } from "react-i18next";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import React, { useEffect, useMemo } from "react";
+import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
+import { z } from "zod";
+
+import {
+  safeParseFloat,
+  formatNumberAr,
+} from "../../../../shared/number-utils";
+import { useToast } from "../../hooks/use-toast";
+import { apiRequest } from "../../lib/queryClient";
+import { Button } from "../ui/button";
 import {
   Dialog,
   DialogContent,
@@ -9,7 +20,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../ui/dialog";
-import { Button } from "../ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "../ui/form";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import {
@@ -19,21 +37,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "../ui/form";
-import { useToast } from "../../hooks/use-toast";
-import { apiRequest } from "../../lib/queryClient";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+
 import type { ProductionOrder, Machine } from "../../../../shared/schema";
-import { safeParseFloat, formatNumberAr } from "../../../../shared/number-utils";
 
 interface RollCreationModalProps {
   isOpen: boolean;
@@ -53,7 +58,10 @@ const rollFormSchema = z.object({
       if (typeof v === "number") return v;
       return undefined;
     },
-    z.number({ required_error: "يرجى اختيار أمر الإنتاج" }).int().positive("يرجى اختيار أمر الإنتاج")
+    z
+      .number({ required_error: "يرجى اختيار أمر الإنتاج" })
+      .int()
+      .positive("يرجى اختيار أمر الإنتاج"),
   ),
   weight_kg: z
     .string()
@@ -79,7 +87,10 @@ export default function RollCreationModal({
   const form = useForm<RollFormData>({
     resolver: zodResolver(rollFormSchema),
     defaultValues: {
-      production_order_id: selectedProductionOrderId && selectedProductionOrderId > 0 ? selectedProductionOrderId : undefined,
+      production_order_id:
+        selectedProductionOrderId && selectedProductionOrderId > 0
+          ? selectedProductionOrderId
+          : undefined,
       weight_kg: "",
       film_machine_id: "",
     },
@@ -88,9 +99,14 @@ export default function RollCreationModal({
 
   // Fetch lists only when the modal is open → snappier app.
   const { data: productionOrders = [], isLoading: productionOrdersLoading } =
-    useQuery<ProductionOrder[]>({ queryKey: ["/api/production-orders"], enabled: isOpen });
+    useQuery<ProductionOrder[]>({
+      queryKey: ["/api/production-orders"],
+      enabled: isOpen,
+    });
 
-  const { data: machines = [], isLoading: machinesLoading } = useQuery<Machine[]>({
+  const { data: machines = [], isLoading: machinesLoading } = useQuery<
+    Machine[]
+  >({
     queryKey: ["/api/machines"],
     enabled: isOpen,
     staleTime: 5 * 60 * 1000,
@@ -110,16 +126,27 @@ export default function RollCreationModal({
 
   const selectedOrder = useMemo(
     () =>
-      productionOrders.find((o) => o.id === (selectedProductionOrderId ?? form.getValues("production_order_id"))) || null,
-    [productionOrders, selectedProductionOrderId]
+      productionOrders.find(
+        (o) =>
+          o.id ===
+          (selectedProductionOrderId ?? form.getValues("production_order_id")),
+      ) || null,
+    [productionOrders, selectedProductionOrderId],
   );
 
   // Remaining quantity for the chosen order
   const remainingQuantity = useMemo(() => {
     if (!selectedOrder || !selectedOrder.quantity_kg) return 0;
-    const required = Number.parseFloat(String((selectedOrder as any).quantity_kg)) || 0;
-    const orderRolls = (rolls || []).filter((r: any) => r.production_order_id === selectedOrder.id);
-    const produced = orderRolls.reduce((sum: number, r: any) => sum + (Number.parseFloat(String(r.weight_kg)) || 0), 0);
+    const required =
+      Number.parseFloat(String((selectedOrder as any).quantity_kg)) || 0;
+    const orderRolls = (rolls || []).filter(
+      (r: any) => r.production_order_id === selectedOrder.id,
+    );
+    const produced = orderRolls.reduce(
+      (sum: number, r: any) =>
+        sum + (Number.parseFloat(String(r.weight_kg)) || 0),
+      0,
+    );
     return Math.max(0, required - produced);
   }, [selectedOrder, rolls]);
 
@@ -128,9 +155,16 @@ export default function RollCreationModal({
     if (!isOpen) return;
     // Ensure production order id is populated
     if (selectedProductionOrderId && selectedProductionOrderId > 0) {
-      form.setValue("production_order_id", selectedProductionOrderId, { shouldValidate: true });
-    } else if (!form.getValues("production_order_id") && productionOrders.length > 0) {
-      form.setValue("production_order_id", productionOrders[0].id, { shouldValidate: true });
+      form.setValue("production_order_id", selectedProductionOrderId, {
+        shouldValidate: true,
+      });
+    } else if (
+      !form.getValues("production_order_id") &&
+      productionOrders.length > 0
+    ) {
+      form.setValue("production_order_id", productionOrders[0].id, {
+        shouldValidate: true,
+      });
     }
 
     // Prefill weight by the remaining quantity if available and the user hasn't typed anything
@@ -139,7 +173,12 @@ export default function RollCreationModal({
       form.setValue("weight_kg", String(remainingQuantity));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, selectedProductionOrderId, productionOrders.length, remainingQuantity]);
+  }, [
+    isOpen,
+    selectedProductionOrderId,
+    productionOrders.length,
+    remainingQuantity,
+  ]);
 
   const createRollMutation = useMutation({
     mutationFn: async (data: RollFormData) => {
@@ -154,12 +193,15 @@ export default function RollCreationModal({
       });
       if (!response.ok) {
         const errText = await response.text();
-        throw new Error(errText || t('modals.rollCreation.requestFailed'));
+        throw new Error(errText || t("modals.rollCreation.requestFailed"));
       }
       return response.json();
     },
     onSuccess: (data) => {
-      toast({ title: t('modals.rollCreation.createSuccess'), description: `${t('modals.rollCreation.rollNumberLabel')}: ${data.roll_number}` });
+      toast({
+        title: t("modals.rollCreation.createSuccess"),
+        description: `${t("modals.rollCreation.rollNumberLabel")}: ${data.roll_number}`,
+      });
       // Invalidate related caches succinctly
       [
         "/api/rolls",
@@ -176,20 +218,24 @@ export default function RollCreationModal({
     },
     onError: (error: unknown) => {
       console.error("Roll creation error:", error);
-      let errorMessage = t('modals.rollCreation.createFailed');
+      let errorMessage = t("modals.rollCreation.createFailed");
       if (error instanceof Error) {
         const msg = error.message || "";
         if (/Network error|Failed to fetch/i.test(msg)) {
-          errorMessage = t('modals.rollCreation.networkError');
+          errorMessage = t("modals.rollCreation.networkError");
         } else if (/Validation|Invalid/i.test(msg)) {
-          errorMessage = t('modals.rollCreation.validationError');
+          errorMessage = t("modals.rollCreation.validationError");
         } else if (/Conflict|already exists/i.test(msg)) {
-          errorMessage = t('modals.rollCreation.conflictError');
+          errorMessage = t("modals.rollCreation.conflictError");
         } else {
           errorMessage = msg;
         }
       }
-      toast({ title: t('modals.rollCreation.createErrorTitle'), description: errorMessage, variant: "destructive" });
+      toast({
+        title: t("modals.rollCreation.createErrorTitle"),
+        description: errorMessage,
+        variant: "destructive",
+      });
     },
   });
 
@@ -197,8 +243,8 @@ export default function RollCreationModal({
     const weightParsed = safeParseFloat(data.weight_kg.replace(",", "."), 0);
     if (remainingQuantity > 0 && weightParsed > remainingQuantity + 0.0001) {
       toast({
-        title: t('modals.rollCreation.weightExceedsRemaining'),
-        description: `${t('modals.rollCreation.remainingQuantityLabel')}: ${formatNumberAr(remainingQuantity, 2)} ${t('modals.rollCreation.kg')}` ,
+        title: t("modals.rollCreation.weightExceedsRemaining"),
+        description: `${t("modals.rollCreation.remainingQuantityLabel")}: ${formatNumberAr(remainingQuantity, 2)} ${t("modals.rollCreation.kg")}`,
         variant: "destructive",
       });
       return;
@@ -220,12 +266,14 @@ export default function RollCreationModal({
       [s.name, s.name_ar]
         .filter(Boolean)
         .map((x: string) => x.toLowerCase())
-        .some((n: string) => n.includes("film") || n.includes("فيلم"))
+        .some((n: string) => n.includes("film") || n.includes("فيلم")),
     );
     if (!filmSection) return [];
-    return (machines as any[]).filter((m: any) => m.section_id === filmSection.id && m.status === "active" && m.id);
+    return (machines as any[]).filter(
+      (m: any) =>
+        m.section_id === filmSection.id && m.status === "active" && m.id,
+    );
   }, [machines, sections]);
-
 
   return (
     <Dialog
@@ -234,11 +282,14 @@ export default function RollCreationModal({
         if (!open) handleClose();
       }}
     >
-      <DialogContent className="max-w-md" aria-describedby="roll-creation-description">
+      <DialogContent
+        className="max-w-md"
+        aria-describedby="roll-creation-description"
+      >
         <DialogHeader>
-          <DialogTitle>{t('modals.rollCreation.title')}</DialogTitle>
+          <DialogTitle>{t("modals.rollCreation.title")}</DialogTitle>
           <DialogDescription id="roll-creation-description">
-            {t('modals.rollCreation.description')}
+            {t("modals.rollCreation.description")}
           </DialogDescription>
         </DialogHeader>
 
@@ -250,33 +301,52 @@ export default function RollCreationModal({
                 name="production_order_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('modals.rollCreation.productionOrder')}</FormLabel>
+                    <FormLabel>
+                      {t("modals.rollCreation.productionOrder")}
+                    </FormLabel>
                     <Select
-                      value={field.value != null ? String(field.value) : undefined}
+                      value={
+                        field.value != null ? String(field.value) : undefined
+                      }
                       onValueChange={(value) => field.onChange(value)}
                       disabled={productionOrdersLoading}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder={t('modals.rollCreation.selectProductionOrder')} />
+                          <SelectValue
+                            placeholder={t(
+                              "modals.rollCreation.selectProductionOrder",
+                            )}
+                          />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {productionOrdersLoading ? (
                           <SelectItem value="loading" disabled>
-                            {t('modals.rollCreation.loading')}
+                            {t("modals.rollCreation.loading")}
                           </SelectItem>
                         ) : productionOrders.length ? (
                           productionOrders
                             .filter((order) => order.id)
                             .map((order) => (
-                              <SelectItem key={order.id} value={String(order.id)}>
-                                {order.production_order_number} - { (order as any).customer_name_ar || (order as any).customer_name || t('modals.rollCreation.notSpecified') } - { (order as any).item_name_ar || (order as any).item_name || (order as any).size_caption || t('modals.rollCreation.notSpecified') }
+                              <SelectItem
+                                key={order.id}
+                                value={String(order.id)}
+                              >
+                                {order.production_order_number} -{" "}
+                                {(order as any).customer_name_ar ||
+                                  (order as any).customer_name ||
+                                  t("modals.rollCreation.notSpecified")}{" "}
+                                -{" "}
+                                {(order as any).item_name_ar ||
+                                  (order as any).item_name ||
+                                  (order as any).size_caption ||
+                                  t("modals.rollCreation.notSpecified")}
                               </SelectItem>
                             ))
                         ) : (
                           <SelectItem value="empty" disabled>
-                            {t('modals.rollCreation.noProductionOrders')}
+                            {t("modals.rollCreation.noProductionOrders")}
                           </SelectItem>
                         )}
                       </SelectContent>
@@ -289,13 +359,16 @@ export default function RollCreationModal({
 
             {selectedProductionOrderId && (
               <div className="space-y-2">
-                <Label>{t('modals.rollCreation.selectedProductionOrder')}</Label>
+                <Label>
+                  {t("modals.rollCreation.selectedProductionOrder")}
+                </Label>
                 <div className="p-3 bg-gray-50 rounded-md border">
                   <p className="font-medium text-sm">
-                    {selectedOrder?.production_order_number || `PO-${selectedProductionOrderId}`}
+                    {selectedOrder?.production_order_number ||
+                      `PO-${selectedProductionOrderId}`}
                   </p>
                   <p className="text-xs text-gray-600">
-                    {`${(selectedOrder as any)?.customer_name_ar || (selectedOrder as any)?.customer_name || t('modals.rollCreation.notSpecified')} - ${(selectedOrder as any)?.item_name_ar || (selectedOrder as any)?.item_name || (selectedOrder as any)?.size_caption || t('modals.rollCreation.notSpecified')}`}
+                    {`${(selectedOrder as any)?.customer_name_ar || (selectedOrder as any)?.customer_name || t("modals.rollCreation.notSpecified")} - ${(selectedOrder as any)?.item_name_ar || (selectedOrder as any)?.item_name || (selectedOrder as any)?.size_caption || t("modals.rollCreation.notSpecified")}`}
                   </p>
                 </div>
               </div>
@@ -306,7 +379,7 @@ export default function RollCreationModal({
               name="weight_kg"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t('modals.rollCreation.weightKg')}</FormLabel>
+                  <FormLabel>{t("modals.rollCreation.weightKg")}</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
@@ -321,7 +394,11 @@ export default function RollCreationModal({
                   </FormControl>
                   {selectedOrder && (
                     <p className="text-xs text-gray-600">
-                      {t('modals.rollCreation.remainingQuantityLabel')}: <span className="font-medium">{remainingQuantity.toFixed(2)} {t('modals.rollCreation.kg')}</span>
+                      {t("modals.rollCreation.remainingQuantityLabel")}:{" "}
+                      <span className="font-medium">
+                        {remainingQuantity.toFixed(2)}{" "}
+                        {t("modals.rollCreation.kg")}
+                      </span>
                     </p>
                   )}
                   <FormMessage />
@@ -334,31 +411,40 @@ export default function RollCreationModal({
               name="film_machine_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t('modals.rollCreation.filmMachine')}</FormLabel>
+                  <FormLabel>{t("modals.rollCreation.filmMachine")}</FormLabel>
                   <Select
-                    value={field.value != null ? String(field.value) : undefined}
+                    value={
+                      field.value != null ? String(field.value) : undefined
+                    }
                     onValueChange={(value) => field.onChange(value)}
                     disabled={machinesLoading}
                   >
                     <FormControl>
                       <SelectTrigger data-testid="select-film-machine">
-                        <SelectValue placeholder={t('modals.rollCreation.selectFilmMachine')} />
+                        <SelectValue
+                          placeholder={t(
+                            "modals.rollCreation.selectFilmMachine",
+                          )}
+                        />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       {machinesLoading ? (
                         <SelectItem value="loading" disabled>
-                          {t('modals.rollCreation.loading')}
+                          {t("modals.rollCreation.loading")}
                         </SelectItem>
                       ) : filmSectionMachines.length ? (
                         filmSectionMachines.map((machine: any) => (
-                          <SelectItem key={String(machine.id)} value={String(machine.id)}>
+                          <SelectItem
+                            key={String(machine.id)}
+                            value={String(machine.id)}
+                          >
                             {machine.name_ar || machine.name}
                           </SelectItem>
                         ))
                       ) : (
                         <SelectItem value="empty" disabled>
-                          {t('modals.rollCreation.noFilmMachines')}
+                          {t("modals.rollCreation.noFilmMachines")}
                         </SelectItem>
                       )}
                     </SelectContent>
@@ -369,11 +455,26 @@ export default function RollCreationModal({
             />
 
             <div className="flex justify-end gap-3 pt-4 rtl:space-x-reverse">
-              <Button type="button" variant="outline" onClick={handleClose} disabled={createRollMutation.isPending}>
-                {t('modals.rollCreation.cancel')}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleClose}
+                disabled={createRollMutation.isPending}
+              >
+                {t("modals.rollCreation.cancel")}
               </Button>
-              <Button type="submit" className="btn-primary" disabled={createRollMutation.isPending || remainingQuantity === 0}>
-                {createRollMutation.isPending ? t('modals.rollCreation.creating') : remainingQuantity === 0 ? t('modals.rollCreation.quantityComplete') : t('modals.rollCreation.createRoll')}
+              <Button
+                type="submit"
+                className="btn-primary"
+                disabled={
+                  createRollMutation.isPending || remainingQuantity === 0
+                }
+              >
+                {createRollMutation.isPending
+                  ? t("modals.rollCreation.creating")
+                  : remainingQuantity === 0
+                    ? t("modals.rollCreation.quantityComplete")
+                    : t("modals.rollCreation.createRoll")}
               </Button>
             </div>
           </form>

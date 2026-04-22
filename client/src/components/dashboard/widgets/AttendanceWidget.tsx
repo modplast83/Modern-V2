@@ -1,11 +1,12 @@
-import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
-import { Badge } from "../../ui/badge";
-import { Skeleton } from "../../ui/skeleton";
-import { Progress } from "../../ui/progress";
 import { Users, UserCheck, UserX, Clock, Calendar } from "lucide-react";
+import { useTranslation } from "react-i18next";
+
 import { formatNumber } from "../../../lib/formatNumber";
+import { Badge } from "../../ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
+import { Progress } from "../../ui/progress";
+import { Skeleton } from "../../ui/skeleton";
 
 interface AttendanceRecord {
   id: number;
@@ -48,7 +49,7 @@ export default function AttendanceWidget() {
   const todayRecords = recordList.filter((r) => r.date === today);
 
   const presentCount = todayRecords.filter(
-    (r) => r.status !== "غائب" && r.status !== "إجازة" && r.check_in_time
+    (r) => r.status !== "غائب" && r.status !== "إجازة" && r.check_in_time,
   ).length;
   const absentCount = todayRecords.filter((r) => r.status === "غائب").length;
   const leaveCount = todayRecords.filter((r) => r.status === "إجازة").length;
@@ -65,7 +66,10 @@ export default function AttendanceWidget() {
           </CardTitle>
           <Badge variant="secondary" className="text-xs">
             <Calendar className="w-3 h-3 mr-1" />
-            {new Date().toLocaleDateString("ar", { day: "numeric", month: "short" })}
+            {new Date().toLocaleDateString("ar", {
+              day: "numeric",
+              month: "short",
+            })}
           </Badge>
         </div>
       </CardHeader>
@@ -122,7 +126,10 @@ export default function AttendanceWidget() {
           <div className="text-center py-4">
             <Users className="w-8 h-8 text-gray-400 mx-auto mb-2" />
             <p className="text-xs text-gray-500">
-              {t("dashboard.widgets.noAttendanceData", "No attendance data for today")}
+              {t(
+                "dashboard.widgets.noAttendanceData",
+                "No attendance data for today",
+              )}
             </p>
           </div>
         )}

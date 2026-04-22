@@ -1,42 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import PageLayout from "../components/layout/PageLayout";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
-import { Badge } from "../components/ui/badge";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../components/ui/select";
-import { SearchableSelect } from "../components/ui/searchable-select";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "../components/ui/tabs";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from "../components/ui/dialog";
-import { useToast } from "../hooks/use-toast";
-import { apiRequest } from "../lib/queryClient";
 import {
   Building2,
   Users,
@@ -59,19 +21,61 @@ import {
   Languages,
   Loader2,
 } from "lucide-react";
-import { formatNumber } from "../lib/formatNumber";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
+
+import PageLayout from "../components/layout/PageLayout";
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "../components/ui/dialog";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { SearchableSelect } from "../components/ui/searchable-select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../components/ui/tabs";
 import { useAuth } from "../hooks/use-auth";
+import { useToast } from "../hooks/use-toast";
+import { formatNumber } from "../lib/formatNumber";
+import { apiRequest } from "../lib/queryClient";
 import { canAccessDefinitionsTab } from "../utils/roleUtils";
 
 const DEFINITIONS_TABS = [
-  { value: 'customers', labelKey: 'definitions.tabs.customers' },
-  { value: 'sections', labelKey: 'definitions.tabs.sections' },
-  { value: 'categories', labelKey: 'definitions.tabs.categories' },
-  { value: 'items', labelKey: 'definitions.tabs.items' },
-  { value: 'customer-products', labelKey: 'definitions.tabs.customerProducts' },
-  { value: 'machines', labelKey: 'definitions.tabs.machines' },
-  { value: 'users', labelKey: 'definitions.tabs.users' },
-  { value: 'master-batch-colors', labelKey: 'definitions.tabs.masterBatchColors' },
+  { value: "customers", labelKey: "definitions.tabs.customers" },
+  { value: "sections", labelKey: "definitions.tabs.sections" },
+  { value: "categories", labelKey: "definitions.tabs.categories" },
+  { value: "items", labelKey: "definitions.tabs.items" },
+  { value: "customer-products", labelKey: "definitions.tabs.customerProducts" },
+  { value: "machines", labelKey: "definitions.tabs.machines" },
+  { value: "users", labelKey: "definitions.tabs.users" },
+  {
+    value: "master-batch-colors",
+    labelKey: "definitions.tabs.masterBatchColors",
+  },
 ];
 
 export default function Definitions() {
@@ -80,9 +84,13 @@ export default function Definitions() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
-  const accessibleTabs = DEFINITIONS_TABS.filter(tab => canAccessDefinitionsTab(user, tab.value));
+  const accessibleTabs = DEFINITIONS_TABS.filter((tab) =>
+    canAccessDefinitionsTab(user, tab.value),
+  );
 
-  const [selectedTab, setSelectedTab] = useState(() => accessibleTabs[0]?.value || "customers");
+  const [selectedTab, setSelectedTab] = useState(
+    () => accessibleTabs[0]?.value || "customers",
+  );
   const [editingItem, setEditingItem] = useState<any>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -98,16 +106,19 @@ export default function Definitions() {
   useEffect(() => {
     const preventWheel = (e: WheelEvent) => {
       const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'number') {
+      if (
+        target.tagName === "INPUT" &&
+        (target as HTMLInputElement).type === "number"
+      ) {
         e.preventDefault();
       }
     };
 
     // Add listener to all number inputs
-    document.addEventListener('wheel', preventWheel, { passive: false });
+    document.addEventListener("wheel", preventWheel, { passive: false });
 
     return () => {
-      document.removeEventListener('wheel', preventWheel);
+      document.removeEventListener("wheel", preventWheel);
     };
   }, []);
 
@@ -185,14 +196,17 @@ export default function Definitions() {
         method: "POST",
         body: JSON.stringify({ text: textToTranslate, targetLanguage }),
       });
-      
+
       const data = await response.json();
-      
+
       if (data.translatedText) {
         if (targetLanguage === "en") {
-          setCustomerForm(prev => ({ ...prev, name: data.translatedText }));
+          setCustomerForm((prev) => ({ ...prev, name: data.translatedText }));
         } else {
-          setCustomerForm(prev => ({ ...prev, name_ar: data.translatedText }));
+          setCustomerForm((prev) => ({
+            ...prev,
+            name_ar: data.translatedText,
+          }));
         }
         toast({
           title: t("common.success"),
@@ -299,7 +313,7 @@ export default function Definitions() {
     status: "active",
   });
   const [showPassword, setShowPassword] = useState(false);
-  
+
   // Master batch color form state
   const [masterBatchColorForm, setMasterBatchColorForm] = useState({
     id: "",
@@ -314,7 +328,8 @@ export default function Definitions() {
   });
 
   // Search term for customer selection in customer products form
-  const [customerSearchTermInProducts, setCustomerSearchTermInProducts] = useState("");
+  const [customerSearchTermInProducts, setCustomerSearchTermInProducts] =
+    useState("");
 
   // Generate printing cylinder options
   const printingCylinderOptions = [
@@ -381,7 +396,10 @@ export default function Definitions() {
     // Create a detailed print view
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
-      toast({ title: t("definitions.messages.printError"), variant: "destructive" });
+      toast({
+        title: t("definitions.messages.printError"),
+        variant: "destructive",
+      });
       return;
     }
 
@@ -404,7 +422,9 @@ export default function Definitions() {
       : t("definitions.print.unspecified");
 
     const masterBatchColor = masterBatchColors.find(
-      (mb) => mb.id === product.master_batch_id || mb.aliases?.includes(product.master_batch_id || ""),
+      (mb) =>
+        mb.id === product.master_batch_id ||
+        mb.aliases?.includes(product.master_batch_id || ""),
     );
 
     const printContent = `
@@ -700,7 +720,7 @@ export default function Definitions() {
     sizeCaptionTimer.current = setTimeout(() => {
       const { width, right_facing, left_facing, cutting_length_cm } =
         customerProductForm;
-      
+
       const w = parseFloat(width) || 0;
       const rf = parseFloat(right_facing) || 0;
       const lf = parseFloat(left_facing) || 0;
@@ -713,7 +733,7 @@ export default function Definitions() {
         if (rf > 0) sizeCaption += `+${rf}`;
         if (lf > 0) sizeCaption += `+${lf}`;
         sizeCaption += `X${cl}`;
-        
+
         setCustomerProductForm((prev) => ({
           ...prev,
           size_caption: sizeCaption,
@@ -724,7 +744,7 @@ export default function Definitions() {
         if (rf > 0) sizeCaption += `+${rf}`;
         if (lf > 0) sizeCaption += `+${lf}`;
         if (cl > 0) sizeCaption += sizeCaption ? `X${cl}` : `${cl}`;
-        
+
         if (sizeCaption) {
           setCustomerProductForm((prev) => ({
             ...prev,
@@ -823,13 +843,16 @@ export default function Definitions() {
     queryKey: ["/api/users/sales-reps"],
     staleTime: 0,
   });
-  
+
   // جلب ألوان الماستر باتش من قاعدة البيانات
-  const { data: masterBatchColorsData = [], isLoading: masterBatchColorsLoading } = useQuery<any[]>({
+  const {
+    data: masterBatchColorsData = [],
+    isLoading: masterBatchColorsLoading,
+  } = useQuery<any[]>({
     queryKey: ["/api/master-batch-colors"],
     staleTime: 0,
   });
-  
+
   // تحويل بيانات الألوان لتتوافق مع الشكل المتوقع
   const masterBatchColors = React.useMemo(() => {
     return masterBatchColorsData.map((color: any) => ({
@@ -855,7 +878,9 @@ export default function Definitions() {
       return (
         (customer.name || "").toLowerCase().includes(searchLower) ||
         (customer.name_ar || "").toLowerCase().includes(searchLower) ||
-        String(customer.id || "").toLowerCase().includes(searchLower) ||
+        String(customer.id || "")
+          .toLowerCase()
+          .includes(searchLower) ||
         (customer.code || "").toLowerCase().includes(searchLower)
       );
     });
@@ -907,7 +932,8 @@ export default function Definitions() {
           punching = "بنانة";
         }
 
-        const isSufra = nameAr === "سفرة بلاستيكية" || nameAr === "سفرة بلاستيكية مطوية";
+        const isSufra =
+          nameAr === "سفرة بلاستيكية" || nameAr === "سفرة بلاستيكية مطوية";
 
         setCustomerProductForm((prev) => ({
           ...prev,
@@ -922,10 +948,13 @@ export default function Definitions() {
   // Auto-calculate cutting length from printing cylinder (skip for sufra categories and "no printing" where it's manual)
   React.useEffect(() => {
     const selectedCat = Array.isArray(categories)
-      ? (categories as any[]).find((c: any) => c.id === customerProductForm.category_id)
+      ? (categories as any[]).find(
+          (c: any) => c.id === customerProductForm.category_id,
+        )
       : null;
     const catNameAr = selectedCat?.name_ar || "";
-    const isSufra = catNameAr === "سفرة بلاستيكية" || catNameAr === "سفرة بلاستيكية مطوية";
+    const isSufra =
+      catNameAr === "سفرة بلاستيكية" || catNameAr === "سفرة بلاستيكية مطوية";
 
     if (isSufra) return;
 
@@ -949,7 +978,11 @@ export default function Definitions() {
         cutting_length_cm: "",
       }));
     }
-  }, [customerProductForm.printing_cylinder, customerProductForm.category_id, categories]);
+  }, [
+    customerProductForm.printing_cylinder,
+    customerProductForm.category_id,
+    categories,
+  ]);
 
   // Filter helper function
   const filterData = (data: any[], searchFields: string[]) => {
@@ -1086,36 +1119,39 @@ export default function Definitions() {
       "id",
     ]);
 
-  const handlePrintCustomer = useCallback(async (customer: any) => {
-    const rep = Array.isArray(salesReps)
-      ? salesReps.find((r: any) => r.id === customer.sales_rep_id)
-      : null;
+  const handlePrintCustomer = useCallback(
+    async (customer: any) => {
+      const rep = Array.isArray(salesReps)
+        ? salesReps.find((r: any) => r.id === customer.sales_rep_id)
+        : null;
 
-    let customerProds: any[] = [];
-    try {
-      const response = await fetch(`/api/customer-products?customer_id=${encodeURIComponent(customer.id)}`);
-      if (response.ok) {
-        const result = await response.json();
-        customerProds = result.data || result || [];
-      }
-    } catch (e) {
-      console.error("Error fetching customer products for print:", e);
-    }
-
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
-
-    const productsRows = customerProds
-      .map((product: any, idx: number) => {
-        const item = Array.isArray(items)
-          ? items.find((i: any) => i.id === product.item_id)
-          : null;
-        const mbColor = masterBatchColors.find(
-          (mb: any) =>
-            mb.id === product.master_batch_id ||
-            mb.aliases?.includes(product.master_batch_id || "")
+      let customerProds: any[] = [];
+      try {
+        const response = await fetch(
+          `/api/customer-products?customer_id=${encodeURIComponent(customer.id)}`,
         );
-        return `<tr>
+        if (response.ok) {
+          const result = await response.json();
+          customerProds = result.data || result || [];
+        }
+      } catch (e) {
+        console.error("Error fetching customer products for print:", e);
+      }
+
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) return;
+
+      const productsRows = customerProds
+        .map((product: any, idx: number) => {
+          const item = Array.isArray(items)
+            ? items.find((i: any) => i.id === product.item_id)
+            : null;
+          const mbColor = masterBatchColors.find(
+            (mb: any) =>
+              mb.id === product.master_batch_id ||
+              mb.aliases?.includes(product.master_batch_id || ""),
+          );
+          return `<tr>
           <td style="padding:8px 6px;border:1px solid #d1d5db;text-align:center">${idx + 1}</td>
           <td style="padding:8px 6px;border:1px solid #d1d5db;text-align:center">${product.id || "-"}</td>
           <td style="padding:8px 6px;border:1px solid #d1d5db;text-align:center">${item?.name_ar || item?.name || product.item_id || "-"}</td>
@@ -1124,7 +1160,7 @@ export default function Definitions() {
           <td style="padding:8px 6px;border:1px solid #d1d5db;text-align:center">${product.thickness || "-"}</td>
           <td style="padding:8px 6px;border:1px solid #d1d5db;text-align:center">${product.raw_material || "-"}</td>
           <td style="padding:8px 6px;border:1px solid #d1d5db;text-align:center">${mbColor?.name_ar || mbColor?.name || product.master_batch_id || "-"}</td>
-          <td style="padding:8px 6px;border:1px solid #d1d5db;text-align:center">${product.is_printed ? (product.printing_cylinder || t("common.yes")) : t("common.no")}</td>
+          <td style="padding:8px 6px;border:1px solid #d1d5db;text-align:center">${product.is_printed ? product.printing_cylinder || t("common.yes") : t("common.no")}</td>
           <td style="padding:8px 6px;border:1px solid #d1d5db;text-align:center">${product.cutting_length_cm ? product.cutting_length_cm + " " + t("common.cm") : "-"}</td>
           <td style="padding:8px 6px;border:1px solid #d1d5db;text-align:center">${product.punching || "-"}</td>
           <td style="padding:8px 6px;border:1px solid #d1d5db;text-align:center">${product.cutting_unit || "-"}</td>
@@ -1133,10 +1169,10 @@ export default function Definitions() {
           <td style="padding:8px 6px;border:1px solid #d1d5db;text-align:center">${product.package_weight_kg ? product.package_weight_kg + " " + t("common.kg") : "-"}</td>
           <td style="padding:8px 6px;border:1px solid #d1d5db;text-align:center;max-width:120px;word-break:break-word">${product.notes || "-"}</td>
         </tr>`;
-      })
-      .join("");
+        })
+        .join("");
 
-    printWindow.document.write(`<!DOCTYPE html>
+      printWindow.document.write(`<!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
   <meta charset="UTF-8">
@@ -1191,12 +1227,14 @@ export default function Definitions() {
     <div class="info-cell"><span class="label">${t("definitions.print.commercialName")}</span><span class="value">${customer.commercial_name || "-"}</span></div>
     <div class="info-cell"><span class="label">${t("definitions.print.unifiedNumber")}</span><span class="value">${customer.unified_number || "-"}</span></div>
     <div class="info-cell"><span class="label">${t("definitions.print.uniqueCustomerNumber")}</span><span class="value">${customer.unique_customer_number || "-"}</span></div>
-    <div class="info-cell"><span class="label">${t("definitions.print.representative")}</span><span class="value">${rep ? (rep.display_name_ar || rep.display_name || "-") : "-"}</span></div>
+    <div class="info-cell"><span class="label">${t("definitions.print.representative")}</span><span class="value">${rep ? rep.display_name_ar || rep.display_name || "-" : "-"}</span></div>
     <div class="info-cell"><span class="label">${t("definitions.print.status")}</span><span class="value">${customer.is_active !== false ? t("common.active") : t("common.inactive")}</span></div>
   </div>
 
   <div class="section-title">${t("definitions.print.customerProducts")} <span class="badge badge-count">${customerProds.length} ${t("definitions.print.product")}</span></div>
-  ${customerProds.length > 0 ? `<table class="products-table">
+  ${
+    customerProds.length > 0
+      ? `<table class="products-table">
     <thead>
       <tr>
         <th>#</th>
@@ -1218,15 +1256,19 @@ export default function Definitions() {
       </tr>
     </thead>
     <tbody>${productsRows}</tbody>
-  </table>` : `<div class="no-products">${t("definitions.print.noProducts")}</div>`}
+  </table>`
+      : `<div class="no-products">${t("definitions.print.noProducts")}</div>`
+  }
 
   <div class="footer">${t("definitions.print.printedFromSystem")}</div>
 </body>
 </html>`);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => printWindow.print(), 500);
-  }, [salesReps, items, masterBatchColors]);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => printWindow.print(), 500);
+    },
+    [salesReps, items, masterBatchColors],
+  );
 
   // Pagination component
   const PaginationComponent = ({
@@ -1266,9 +1308,13 @@ export default function Definitions() {
         <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
           <div>
             <p className="text-sm text-gray-700">
-              {t("definitions.showing")} <span className="font-medium">{startItem}</span> {t("definitions.to")}{" "}
-              <span className="font-medium">{endItem}</span> {t("definitions.of")}{" "}
-              <span className="font-medium">{totalItems}</span> {t("definitions.results")}
+              {t("definitions.showing")}{" "}
+              <span className="font-medium">{startItem}</span>{" "}
+              {t("definitions.to")}{" "}
+              <span className="font-medium">{endItem}</span>{" "}
+              {t("definitions.of")}{" "}
+              <span className="font-medium">{totalItems}</span>{" "}
+              {t("definitions.results")}
             </p>
           </div>
           <div>
@@ -1351,7 +1397,10 @@ export default function Definitions() {
     },
     onError: (error: any) => {
       console.error("Error creating customer:", error);
-      toast({ title: t("definitions.messages.customerCreateError"), variant: "destructive" });
+      toast({
+        title: t("definitions.messages.customerCreateError"),
+        variant: "destructive",
+      });
     },
   });
 
@@ -1371,7 +1420,10 @@ export default function Definitions() {
     },
     onError: (error: any) => {
       console.error("Error updating customer:", error);
-      toast({ title: t("definitions.messages.customerUpdateError"), variant: "destructive" });
+      toast({
+        title: t("definitions.messages.customerUpdateError"),
+        variant: "destructive",
+      });
     },
   });
 
@@ -1392,7 +1444,10 @@ export default function Definitions() {
     },
     onError: (error: any) => {
       console.error("Error creating section:", error);
-      toast({ title: t("definitions.messages.sectionCreateError"), variant: "destructive" });
+      toast({
+        title: t("definitions.messages.sectionCreateError"),
+        variant: "destructive",
+      });
     },
   });
 
@@ -1412,7 +1467,10 @@ export default function Definitions() {
     },
     onError: (error: any) => {
       console.error("Error updating section:", error);
-      toast({ title: t("definitions.messages.sectionUpdateError"), variant: "destructive" });
+      toast({
+        title: t("definitions.messages.sectionUpdateError"),
+        variant: "destructive",
+      });
     },
   });
 
@@ -1433,7 +1491,10 @@ export default function Definitions() {
     },
     onError: (error: any) => {
       console.error("Error creating category:", error);
-      toast({ title: t("definitions.messages.categoryCreateError"), variant: "destructive" });
+      toast({
+        title: t("definitions.messages.categoryCreateError"),
+        variant: "destructive",
+      });
     },
   });
 
@@ -1453,7 +1514,10 @@ export default function Definitions() {
     },
     onError: (error: any) => {
       console.error("Error updating category:", error);
-      toast({ title: t("definitions.messages.categoryUpdateError"), variant: "destructive" });
+      toast({
+        title: t("definitions.messages.categoryUpdateError"),
+        variant: "destructive",
+      });
     },
   });
 
@@ -1477,7 +1541,10 @@ export default function Definitions() {
     },
     onError: (error: any) => {
       console.error("Error creating item:", error);
-      toast({ title: t("definitions.messages.itemCreateError"), variant: "destructive" });
+      toast({
+        title: t("definitions.messages.itemCreateError"),
+        variant: "destructive",
+      });
     },
   });
 
@@ -1500,7 +1567,10 @@ export default function Definitions() {
     },
     onError: (error: any) => {
       console.error("Error updating item:", error);
-      toast({ title: t("definitions.messages.itemUpdateError"), variant: "destructive" });
+      toast({
+        title: t("definitions.messages.itemUpdateError"),
+        variant: "destructive",
+      });
     },
   });
 
@@ -1524,7 +1594,10 @@ export default function Definitions() {
     },
     onError: (error: any) => {
       console.error("Error creating customer product:", error);
-      toast({ title: t("definitions.messages.customerProductCreateError"), variant: "destructive" });
+      toast({
+        title: t("definitions.messages.customerProductCreateError"),
+        variant: "destructive",
+      });
     },
   });
 
@@ -1547,7 +1620,10 @@ export default function Definitions() {
     },
     onError: (error: any) => {
       console.error("Error updating customer product:", error);
-      toast({ title: t("definitions.messages.customerProductUpdateError"), variant: "destructive" });
+      toast({
+        title: t("definitions.messages.customerProductUpdateError"),
+        variant: "destructive",
+      });
     },
   });
 
@@ -1568,7 +1644,10 @@ export default function Definitions() {
     },
     onError: (error: any) => {
       console.error("Error deleting customer product:", error);
-      toast({ title: t("definitions.messages.customerProductDeleteError"), variant: "destructive" });
+      toast({
+        title: t("definitions.messages.customerProductDeleteError"),
+        variant: "destructive",
+      });
     },
   });
 
@@ -1589,7 +1668,10 @@ export default function Definitions() {
     },
     onError: (error: any) => {
       console.error("Error deleting customer:", error);
-      toast({ title: t("definitions.messages.customerDeleteFailed"), variant: "destructive" });
+      toast({
+        title: t("definitions.messages.customerDeleteFailed"),
+        variant: "destructive",
+      });
     },
   });
 
@@ -1610,7 +1692,10 @@ export default function Definitions() {
     },
     onError: (error: any) => {
       console.error("Error creating location:", error);
-      toast({ title: t("definitions.messages.locationCreateError"), variant: "destructive" });
+      toast({
+        title: t("definitions.messages.locationCreateError"),
+        variant: "destructive",
+      });
     },
   });
 
@@ -1630,7 +1715,10 @@ export default function Definitions() {
     },
     onError: (error: any) => {
       console.error("Error updating location:", error);
-      toast({ title: t("definitions.messages.locationUpdateError"), variant: "destructive" });
+      toast({
+        title: t("definitions.messages.locationUpdateError"),
+        variant: "destructive",
+      });
     },
   });
 
@@ -1651,7 +1739,10 @@ export default function Definitions() {
     },
     onError: (error: any) => {
       console.error("Error creating machine:", error);
-      toast({ title: t("definitions.messages.machineCreateError"), variant: "destructive" });
+      toast({
+        title: t("definitions.messages.machineCreateError"),
+        variant: "destructive",
+      });
     },
   });
 
@@ -1671,7 +1762,10 @@ export default function Definitions() {
     },
     onError: (error: any) => {
       console.error("Error updating machine:", error);
-      toast({ title: t("definitions.messages.machineUpdateError"), variant: "destructive" });
+      toast({
+        title: t("definitions.messages.machineUpdateError"),
+        variant: "destructive",
+      });
     },
   });
 
@@ -1692,7 +1786,10 @@ export default function Definitions() {
     },
     onError: (error: any) => {
       console.error("Error creating user:", error);
-      toast({ title: t("definitions.messages.userCreateError"), variant: "destructive" });
+      toast({
+        title: t("definitions.messages.userCreateError"),
+        variant: "destructive",
+      });
     },
   });
 
@@ -1712,7 +1809,10 @@ export default function Definitions() {
     },
     onError: (error: any) => {
       console.error("Error updating user:", error);
-      toast({ title: t("definitions.messages.userUpdateError"), variant: "destructive" });
+      toast({
+        title: t("definitions.messages.userUpdateError"),
+        variant: "destructive",
+      });
     },
   });
 
@@ -1736,7 +1836,10 @@ export default function Definitions() {
     },
     onError: (error: any) => {
       console.error("Error creating master batch color:", error);
-      toast({ title: t("definitions.messages.colorAddError"), variant: "destructive" });
+      toast({
+        title: t("definitions.messages.colorAddError"),
+        variant: "destructive",
+      });
     },
   });
 
@@ -1759,7 +1862,10 @@ export default function Definitions() {
     },
     onError: (error: any) => {
       console.error("Error updating master batch color:", error);
-      toast({ title: t("definitions.messages.colorUpdateError"), variant: "destructive" });
+      toast({
+        title: t("definitions.messages.colorUpdateError"),
+        variant: "destructive",
+      });
     },
   });
 
@@ -1778,7 +1884,10 @@ export default function Definitions() {
     },
     onError: (error: any) => {
       console.error("Error deleting master batch color:", error);
-      toast({ title: t("definitions.messages.colorDeleteError"), variant: "destructive" });
+      toast({
+        title: t("definitions.messages.colorDeleteError"),
+        variant: "destructive",
+      });
     },
   });
 
@@ -1885,3897 +1994,4342 @@ export default function Definitions() {
   return (
     <PageLayout title={t("definitions.title")}>
       <div className="w-full space-y-4">
-            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <Input
-                    type="text"
-                    placeholder={t("definitions.search")}
-                    value={quickSearch}
-                    onChange={(e) => setQuickSearch(e.target.value)}
-                    className="pr-10"
+        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                type="text"
+                placeholder={t("definitions.search")}
+                value={quickSearch}
+                onChange={(e) => setQuickSearch(e.target.value)}
+                className="pr-10"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-gray-400" />
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder={t("definitions.allStatuses")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">
+                    {t("definitions.allStatuses")}
+                  </SelectItem>
+                  <SelectItem value="active">
+                    {t("definitions.active")}
+                  </SelectItem>
+                  <SelectItem value="inactive">
+                    {t("definitions.inactive")}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
+        <div className="w-full">
+          <Tabs
+            value={selectedTab}
+            onValueChange={setSelectedTab}
+            className="space-y-4 w-full"
+          >
+            <TabsList
+              className={`grid w-full h-auto p-1 bg-white rounded-lg border border-gray-200 shadow-sm gap-1`}
+              dir="rtl"
+              style={{
+                gridTemplateColumns: `repeat(${Math.min(accessibleTabs.length, 8)}, minmax(0, 1fr))`,
+              }}
+            >
+              {accessibleTabs.map((tab) => (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  className="data-[state=active]:bg-white data-[state=active]:text-blue-600 
+                               text-gray-600 hover:text-blue-600 px-2 py-2 text-xs sm:text-sm font-medium
+                               transition-all duration-200 rounded-md min-w-0 flex-1"
+                >
+                  {t(tab.labelKey)}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            <TabsContent value="customers" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <Building2 className="w-5 h-5" />
+                      {t("definitions.customers.title")}
+                    </CardTitle>
+                    <Button
+                      onClick={() => {
+                        resetForm();
+                        setSelectedTab("customers");
+                        setIsDialogOpen(true);
+                      }}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      {t("definitions.customers.addNew")}
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {customersLoading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {t("common.loading")}
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Mobile Card View */}
+                      <div className="md:hidden space-y-3">
+                        {(() => {
+                          const filteredCustomers = getFilteredCustomers();
+                          const paginatedCustomers = paginateData(
+                            filteredCustomers,
+                            currentPages.customers,
+                          );
+                          return paginatedCustomers.length > 0 ? (
+                            paginatedCustomers.map((customer: any) => {
+                              const rep = Array.isArray(salesReps)
+                                ? salesReps.find(
+                                    (r: any) => r.id === customer.sales_rep_id,
+                                  )
+                                : null;
+                              return (
+                                <div
+                                  key={customer.id}
+                                  className="bg-white border rounded-lg p-4 shadow-sm"
+                                >
+                                  <div className="flex justify-between items-start mb-3">
+                                    <div>
+                                      <div className="font-bold text-lg">
+                                        {customer.name_ar || customer.name}
+                                      </div>
+                                      <div className="text-sm text-gray-500">
+                                        #{customer.id}
+                                      </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-blue-600"
+                                        onClick={() =>
+                                          handlePrintCustomer(customer)
+                                        }
+                                      >
+                                        <Printer className="w-4 h-4" />
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          setEditingItem(customer);
+                                          setCustomerForm({
+                                            name: customer.name || "",
+                                            name_ar: customer.name_ar || "",
+                                            code: customer.code || "",
+                                            user_id: customer.user_id || "",
+                                            plate_drawer_code:
+                                              customer.plate_drawer_code || "",
+                                            city: customer.city || "",
+                                            address: customer.address || "",
+                                            tax_number:
+                                              customer.tax_number || "",
+                                            phone: customer.phone || "",
+                                            sales_rep_id:
+                                              customer.sales_rep_id || "",
+                                          });
+                                          setSelectedTab("customers");
+                                          setIsDialogOpen(true);
+                                        }}
+                                      >
+                                        <Edit className="w-4 h-4" />
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-red-600"
+                                        disabled={
+                                          deleteCustomerMutation.isPending
+                                        }
+                                        onClick={() => {
+                                          if (
+                                            confirm(
+                                              t(
+                                                "definitions.messages.confirmDeleteCustomer",
+                                                {
+                                                  name:
+                                                    customer.name_ar ||
+                                                    customer.name,
+                                                },
+                                              ),
+                                            )
+                                          ) {
+                                            deleteCustomerMutation.mutate(
+                                              customer.id,
+                                            );
+                                          }
+                                        }}
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-2 text-sm">
+                                    <div>
+                                      <span className="text-gray-500">
+                                        {t("definitions.print.phone")}:
+                                      </span>{" "}
+                                      {customer.phone || "-"}
+                                    </div>
+                                    <div>
+                                      <span className="text-gray-500">
+                                        {t("definitions.print.representative")}:
+                                      </span>{" "}
+                                      {rep
+                                        ? rep.display_name_ar ||
+                                          rep.display_name
+                                        : "-"}
+                                    </div>
+                                    <div>
+                                      <span className="text-gray-500">
+                                        {t("definitions.print.plateDrawerCode")}
+                                        :
+                                      </span>{" "}
+                                      {customer.plate_drawer_code || "-"}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <div className="text-center py-8 text-gray-500">
+                              {quickSearch || statusFilter !== "all"
+                                ? t("definitions.noFilterResults")
+                                : t("common.noData")}
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Desktop Table View */}
+                      <div className="hidden md:block overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                                {t("definitions.customers.code")}
+                              </th>
+                              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                                {t("definitions.customers.nameAr")}
+                              </th>
+                              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                                {t("definitions.customers.name")}
+                              </th>
+                              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                                {t("definitions.customers.plateDrawerCode")}
+                              </th>
+                              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                                {t("definitions.customers.phone")}
+                              </th>
+                              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                                {t("definitions.print.representative")}
+                              </th>
+                              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                                {t("definitions.customers.actions")}
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {(() => {
+                              const filteredCustomers = getFilteredCustomers();
+                              const paginatedCustomers = paginateData(
+                                filteredCustomers,
+                                currentPages.customers,
+                              );
+                              return paginatedCustomers.length > 0 ? (
+                                paginatedCustomers.map((customer: any) => (
+                                  <tr
+                                    key={customer.id}
+                                    className="hover:bg-gray-50"
+                                  >
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-center">
+                                      {customer.id}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                      {customer.name_ar || "-"}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                      {customer.name || "-"}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                      {customer.plate_drawer_code || "-"}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                      {customer.phone || "-"}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                      {(() => {
+                                        if (!Array.isArray(salesReps))
+                                          return "-";
+                                        const rep = salesReps.find(
+                                          (r: any) =>
+                                            r.id === customer.sales_rep_id,
+                                        );
+                                        return rep
+                                          ? rep.display_name_ar ||
+                                              rep.display_name ||
+                                              "-"
+                                          : "-";
+                                      })()}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-center">
+                                      <div className="flex items-center justify-center gap-2">
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                          onClick={() =>
+                                            handlePrintCustomer(customer)
+                                          }
+                                          title={t(
+                                            "definitions.print.customerData",
+                                          )}
+                                        >
+                                          <Printer className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => {
+                                            setEditingItem(customer);
+                                            setCustomerForm({
+                                              name: customer.name || "",
+                                              name_ar: customer.name_ar || "",
+                                              code: customer.code || "",
+                                              user_id: customer.user_id || "",
+                                              plate_drawer_code:
+                                                customer.plate_drawer_code ||
+                                                "",
+                                              city: customer.city || "",
+                                              address: customer.address || "",
+                                              tax_number:
+                                                customer.tax_number || "",
+                                              phone: customer.phone || "",
+                                              sales_rep_id:
+                                                customer.sales_rep_id || "",
+                                            });
+                                            setSelectedTab("customers");
+                                            setIsDialogOpen(true);
+                                          }}
+                                        >
+                                          <Edit className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                          disabled={
+                                            deleteCustomerMutation.isPending
+                                          }
+                                          onClick={() => {
+                                            if (
+                                              confirm(
+                                                t(
+                                                  "definitions.messages.confirmDeleteCustomer",
+                                                  {
+                                                    name:
+                                                      customer.name_ar ||
+                                                      customer.name,
+                                                  },
+                                                ),
+                                              )
+                                            ) {
+                                              deleteCustomerMutation.mutate(
+                                                customer.id,
+                                              );
+                                            }
+                                          }}
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))
+                              ) : (
+                                <tr>
+                                  <td
+                                    colSpan={7}
+                                    className="px-6 py-4 text-center text-gray-500"
+                                  >
+                                    {quickSearch || statusFilter !== "all"
+                                      ? t("definitions.noFilterResults")
+                                      : t("common.noData")}
+                                  </td>
+                                </tr>
+                              );
+                            })()}
+                          </tbody>
+                        </table>
+                        {(() => {
+                          const filteredCustomers = getFilteredCustomers();
+                          const totalPages = getTotalPages(
+                            filteredCustomers.length,
+                          );
+                          if (totalPages > 1) {
+                            return (
+                              <PaginationComponent
+                                currentPage={currentPages.customers}
+                                totalPages={totalPages}
+                                onPageChange={(page) =>
+                                  updatePage("customers", page)
+                                }
+                                totalItems={filteredCustomers.length}
+                                itemsPerPage={itemsPerPage}
+                              />
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="categories" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <Package className="w-5 h-5" />
+                      {t("definitions.categories.title")}
+                    </CardTitle>
+                    <Button
+                      onClick={() => {
+                        resetForm();
+                        setSelectedTab("categories");
+                        setIsDialogOpen(true);
+                      }}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      {t("definitions.categories.addNew")}
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {categoriesLoading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {t("common.loading")}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.id")}
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.nameAr")}
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.nameEn")}
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.code")}
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.actions")}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {(() => {
+                            const filteredCategories = getFilteredCategories();
+                            const paginatedCategories = paginateData(
+                              filteredCategories,
+                              currentPages.categories,
+                            );
+                            return paginatedCategories.length > 0 ? (
+                              paginatedCategories.map((category: any) => (
+                                <tr
+                                  key={category.id}
+                                  className="hover:bg-gray-50"
+                                >
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-center">
+                                    {category.id}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                    {category.name_ar || "-"}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                    {category.name || "-"}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                    {category.code || "-"}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-center">
+                                    <div className="flex items-center justify-center gap-2">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          setEditingItem(category);
+                                          setCategoryForm({
+                                            name: category.name || "",
+                                            name_ar: category.name_ar || "",
+                                            code: category.code || "",
+                                            parent_id:
+                                              category.parent_id || "none",
+                                            description:
+                                              category.description || "",
+                                            status: category.status || "active",
+                                          });
+                                          setIsDialogOpen(true);
+                                        }}
+                                      >
+                                        <Edit className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td
+                                  colSpan={5}
+                                  className="px-6 py-4 text-center text-gray-500"
+                                >
+                                  {quickSearch || statusFilter !== "all"
+                                    ? t("definitions.noFilterResults")
+                                    : t("common.noData")}
+                                </td>
+                              </tr>
+                            );
+                          })()}
+                        </tbody>
+                      </table>
+                      {(() => {
+                        const filteredCategories = getFilteredCategories();
+                        const totalPages = getTotalPages(
+                          filteredCategories.length,
+                        );
+                        if (totalPages > 1) {
+                          return (
+                            <PaginationComponent
+                              currentPage={currentPages.categories}
+                              totalPages={totalPages}
+                              onPageChange={(page) =>
+                                updatePage("categories", page)
+                              }
+                              totalItems={filteredCategories.length}
+                              itemsPerPage={itemsPerPage}
+                            />
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Sections Tab */}
+            <TabsContent value="sections" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <Cog className="w-5 h-5" />
+                      {t("definitions.sections.title")}
+                    </CardTitle>
+                    <Button
+                      onClick={() => {
+                        resetForm();
+                        setSelectedTab("sections");
+                        setIsDialogOpen(true);
+                      }}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      {t("definitions.sections.addNew")}
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {sectionsLoading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {t("common.loading")}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.id")}
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.nameAr")}
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.nameEn")}
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.description")}
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.actions")}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {(() => {
+                            const filteredSections = getFilteredSections();
+                            const paginatedSections = paginateData(
+                              filteredSections,
+                              currentPages.sections,
+                            );
+                            return paginatedSections.length > 0 ? (
+                              paginatedSections.map((section: any) => (
+                                <tr
+                                  key={section.id}
+                                  className="hover:bg-gray-50"
+                                >
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-center">
+                                    {section.id}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                    {section.name_ar || "-"}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                    {section.name || "-"}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                    {section.description || "-"}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-center">
+                                    <div className="flex items-center justify-center gap-2">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          setEditingItem(section);
+                                          setSectionForm({
+                                            name: section.name || "",
+                                            name_ar: section.name_ar || "",
+                                            description:
+                                              section.description || "",
+                                          });
+                                          setSelectedTab("sections");
+                                          setIsDialogOpen(true);
+                                        }}
+                                      >
+                                        <Edit className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td
+                                  colSpan={5}
+                                  className="px-6 py-8 text-center text-gray-500"
+                                >
+                                  {t("definitions.noSearchResults")}
+                                </td>
+                              </tr>
+                            );
+                          })()}
+                        </tbody>
+                      </table>
+                      {(() => {
+                        const filteredSections = getFilteredSections();
+                        const totalPages = getTotalPages(
+                          filteredSections.length,
+                        );
+                        if (totalPages > 1) {
+                          return (
+                            <PaginationComponent
+                              currentPage={currentPages.sections}
+                              totalPages={totalPages}
+                              onPageChange={(page) =>
+                                updatePage("sections", page)
+                              }
+                              totalItems={filteredSections.length}
+                              itemsPerPage={itemsPerPage}
+                            />
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Items Tab */}
+            <TabsContent value="items" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <Package className="w-5 h-5" />
+                      {t("definitions.items.title")}
+                    </CardTitle>
+                    <Button
+                      onClick={() => {
+                        resetForm();
+                        setSelectedTab("items");
+                        setIsDialogOpen(true);
+                      }}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      {t("definitions.items.addNew")}
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {itemsLoading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {t("common.loading")}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.id")}
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.nameAr")}
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.nameEn")}
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.category")}
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.actions")}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {(() => {
+                            const filteredItems = getFilteredItems();
+                            const paginatedItems = paginateData(
+                              filteredItems,
+                              currentPages.items,
+                            );
+                            return paginatedItems.length > 0 ? (
+                              paginatedItems.map((item: any) => (
+                                <tr key={item.id} className="hover:bg-gray-50">
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-center">
+                                    {item.id}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                    {item.name_ar || "-"}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                    {item.name || "-"}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                    {item.category_id || "-"}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-center">
+                                    <div className="flex items-center justify-center gap-2">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          setEditingItem(item);
+                                          setItemForm({
+                                            name: item.name || "",
+                                            name_ar: item.name_ar || "",
+                                            code: item.code || "",
+                                            category_id:
+                                              item.category_id || "none",
+                                            status: item.status || "active",
+                                          });
+                                          setSelectedTab("items");
+                                          setIsDialogOpen(true);
+                                        }}
+                                      >
+                                        <Edit className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td
+                                  colSpan={5}
+                                  className="px-6 py-8 text-center text-gray-500"
+                                >
+                                  {t("definitions.noSearchResults")}
+                                </td>
+                              </tr>
+                            );
+                          })()}
+                        </tbody>
+                      </table>
+                      {(() => {
+                        const filteredItems = getFilteredItems();
+                        const totalPages = getTotalPages(filteredItems.length);
+                        if (totalPages > 1) {
+                          return (
+                            <PaginationComponent
+                              currentPage={currentPages.items}
+                              totalPages={totalPages}
+                              onPageChange={(page) => updatePage("items", page)}
+                              totalItems={filteredItems.length}
+                              itemsPerPage={itemsPerPage}
+                            />
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Customer Products Tab */}
+            <TabsContent value="customer-products" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <Package className="w-5 h-5" />
+                      {t("definitions.customerProducts.title")}
+                    </CardTitle>
+                    <Button
+                      onClick={() => {
+                        resetForm();
+                        setSelectedTab("customer-products");
+                        setIsDialogOpen(true);
+                      }}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      {t("definitions.customerProducts.addNew")}
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {customerProductsLoading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {t("common.loading")}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.id")}
+                            </th>
+                            <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.print.customerName")}
+                            </th>
+                            <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.print.item")}
+                            </th>
+                            <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.print.sizeCaption")}
+                            </th>
+                            <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.printingCutting")}
+                            </th>
+                            <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.print.rawMaterial")}
+                            </th>
+                            <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.print.masterBatch")}
+                            </th>
+                            <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.print.punching")}
+                            </th>
+                            <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.print.unit")}
+                            </th>
+                            <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.print.packageWeight")}
+                            </th>
+                            <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.actions")}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {(() => {
+                            const filteredCustomerProducts =
+                              getFilteredCustomerProducts();
+                            const paginatedCustomerProducts = paginateData(
+                              filteredCustomerProducts,
+                              currentPages.customerProducts,
+                            );
+                            return paginatedCustomerProducts.length > 0 ? (
+                              paginatedCustomerProducts.map((product: any) => {
+                                // Find customer details
+                                const customer = Array.isArray(customers)
+                                  ? customers.find(
+                                      (c: any) => c.id === product.customer_id,
+                                    )
+                                  : null;
+                                // Find item details
+                                const item = Array.isArray(items)
+                                  ? items.find(
+                                      (i: any) => i.id === product.item_id,
+                                    )
+                                  : null;
+
+                                return (
+                                  <tr
+                                    key={product.id}
+                                    className="hover:bg-gray-50"
+                                  >
+                                    <td className="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-center">
+                                      {product.id}
+                                    </td>
+                                    <td className="px-3 py-4 text-sm text-gray-900 text-center">
+                                      <div className="flex flex-col items-center">
+                                        <span className="font-medium">
+                                          {customer?.name_ar ||
+                                            customer?.name ||
+                                            "-"}
+                                        </span>
+                                        <span className="text-xs text-gray-500">
+                                          {customer?.name || "-"}
+                                        </span>
+                                      </div>
+                                    </td>
+                                    <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                                      {item?.name_ar || item?.name || "-"}
+                                    </td>
+                                    <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                                      {product.size_caption || "-"}
+                                    </td>
+                                    <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                                      {product.is_printed
+                                        ? product.printing_cylinder ||
+                                          "بدون طباعة"
+                                        : product.cutting_length_cm
+                                          ? `${formatNumber(parseFloat(product.cutting_length_cm))} ${t("common.cm")}`
+                                          : "-"}
+                                    </td>
+                                    <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                                      {product.raw_material || "-"}
+                                    </td>
+                                    <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                                      {(() => {
+                                        if (!product.master_batch_id)
+                                          return "-";
+                                        if (
+                                          masterBatchColorsLoading ||
+                                          masterBatchColors.length === 0
+                                        ) {
+                                          return (
+                                            <span className="text-gray-500">
+                                              {product.master_batch_id}
+                                            </span>
+                                          );
+                                        }
+                                        const masterBatchColor =
+                                          masterBatchColors.find(
+                                            (mb) =>
+                                              mb.id ===
+                                                product.master_batch_id ||
+                                              mb.aliases?.includes(
+                                                product.master_batch_id || "",
+                                              ),
+                                          );
+                                        return masterBatchColor ? (
+                                          <div className="flex flex-col items-center gap-1">
+                                            <div
+                                              className="w-6 h-6 rounded border border-gray-300 shadow-sm"
+                                              style={{
+                                                backgroundColor:
+                                                  masterBatchColor.color ||
+                                                  "#E0E0E0",
+                                              }}
+                                              title={masterBatchColor.name}
+                                            ></div>
+                                            <span className="text-[10px] font-medium text-gray-600 leading-tight">
+                                              {masterBatchColor.id}
+                                            </span>
+                                          </div>
+                                        ) : (
+                                          <span className="text-gray-500">
+                                            {product.master_batch_id}
+                                          </span>
+                                        );
+                                      })()}
+                                    </td>
+                                    <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                                      {product.punching || "-"}
+                                    </td>
+                                    <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                                      {product.cutting_unit || "-"}
+                                    </td>
+                                    <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                                      {product.package_weight_kg
+                                        ? `${formatNumber(parseFloat(product.package_weight_kg))} ${t("common.kg")}`
+                                        : "-"}
+                                    </td>
+                                    <td className="px-2 py-3 text-sm font-medium text-center">
+                                      <div className="grid grid-cols-2 gap-1 w-fit mx-auto">
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="h-7 w-7 p-0"
+                                          onClick={() => {
+                                            setEditingItem(product);
+                                            setCustomerProductForm({
+                                              customer_id:
+                                                product.customer_id || "none",
+                                              category_id:
+                                                product.category_id || "none",
+                                              item_id:
+                                                product.item_id || "none",
+                                              size_caption:
+                                                product.size_caption || "",
+                                              width: product.width || "",
+                                              left_facing:
+                                                product.left_facing || "",
+                                              right_facing:
+                                                product.right_facing || "",
+                                              thickness:
+                                                product.thickness || "",
+                                              printing_cylinder:
+                                                product.printing_cylinder ||
+                                                "بدون طباعة",
+                                              cutting_length_cm:
+                                                product.cutting_length_cm || "",
+                                              raw_material:
+                                                product.raw_material || "",
+                                              master_batch_id:
+                                                product.master_batch_id || "",
+                                              is_printed:
+                                                product.is_printed || false,
+                                              cutting_unit:
+                                                product.cutting_unit || "",
+                                              punching: product.punching || "",
+                                              unit_weight_kg:
+                                                product.unit_weight_kg || "",
+                                              unit_quantity:
+                                                product.unit_quantity || "",
+                                              package_weight_kg:
+                                                product.package_weight_kg || "",
+                                              cliche_front_design:
+                                                product.cliche_front_design ||
+                                                "",
+                                              cliche_back_design:
+                                                product.cliche_back_design ||
+                                                "",
+                                              front_design_filename: "",
+                                              back_design_filename: "",
+                                              notes: product.notes || "",
+                                              status:
+                                                product.status || "active",
+                                            });
+                                            setSelectedTab("customer-products");
+                                            setIsDialogOpen(true);
+                                          }}
+                                          title={t("definitions.table.update")}
+                                        >
+                                          <Edit className="w-3 h-3" />
+                                        </Button>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="h-7 w-7 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                          onClick={() =>
+                                            handleCloneCustomerProduct(product)
+                                          }
+                                          title={t("definitions.table.clone")}
+                                        >
+                                          <Copy className="w-3 h-3" />
+                                        </Button>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                          onClick={() =>
+                                            handlePrintCustomerProduct(product)
+                                          }
+                                          title={t("definitions.table.print")}
+                                        >
+                                          <Printer className="w-3 h-3" />
+                                        </Button>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                          onClick={() =>
+                                            handleDeleteCustomerProduct(product)
+                                          }
+                                          title={t("definitions.table.delete")}
+                                          disabled={
+                                            deleteCustomerProductMutation.isPending
+                                          }
+                                        >
+                                          {deleteCustomerProductMutation.isPending ? (
+                                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600"></div>
+                                          ) : (
+                                            <Trash2 className="w-3 h-3" />
+                                          )}
+                                        </Button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })
+                            ) : (
+                              <tr>
+                                <td
+                                  colSpan={11}
+                                  className="px-6 py-8 text-center text-gray-500"
+                                >
+                                  {t("definitions.noSearchResults")}
+                                </td>
+                              </tr>
+                            );
+                          })()}
+                        </tbody>
+                      </table>
+                      {(() => {
+                        const filteredCustomerProducts =
+                          getFilteredCustomerProducts();
+                        const totalPages = getTotalPages(
+                          filteredCustomerProducts.length,
+                        );
+                        if (totalPages > 1) {
+                          return (
+                            <PaginationComponent
+                              currentPage={currentPages.customerProducts}
+                              totalPages={totalPages}
+                              onPageChange={(page) =>
+                                updatePage("customerProducts", page)
+                              }
+                              totalItems={filteredCustomerProducts.length}
+                              itemsPerPage={itemsPerPage}
+                            />
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Machines Tab */}
+            <TabsContent value="machines" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <Settings className="w-5 h-5" />
+                      {t("definitions.machines.title")}
+                    </CardTitle>
+                    <Button
+                      onClick={() => {
+                        resetForm();
+                        setSelectedTab("machines");
+                        setIsDialogOpen(true);
+                      }}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      {t("definitions.machines.addNew")}
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {machinesLoading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {t("common.loading")}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.id")}
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.nameAr")}
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.nameEn")}
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.type")}
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.active")}
+                            </th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.capacitySmall")}
+                              <br />
+                              <span className="text-[10px] font-normal">
+                                ({t("common.kgPerHour")})
+                              </span>
+                            </th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.capacityMedium")}
+                              <br />
+                              <span className="text-[10px] font-normal">
+                                ({t("common.kgPerHour")})
+                              </span>
+                            </th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.capacityLarge")}
+                              <br />
+                              <span className="text-[10px] font-normal">
+                                ({t("common.kgPerHour")})
+                              </span>
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.actions")}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {(() => {
+                            const filteredMachines = getFilteredMachines();
+                            const paginatedMachines = paginateData(
+                              filteredMachines,
+                              currentPages.machines,
+                            );
+                            return paginatedMachines.length > 0 ? (
+                              paginatedMachines.map((machine: any) => (
+                                <tr
+                                  key={machine.id}
+                                  className="hover:bg-gray-50"
+                                >
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-center">
+                                    {machine.id}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                    {machine.name_ar || "-"}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                    {machine.name || "-"}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                    {machine.type || "-"}
+                                  </td>
+                                  <td
+                                    className="px-6 py-4 whitespace-nowrap text-center"
+                                    data-testid={`text-status-${machine.id}`}
+                                  >
+                                    <Badge
+                                      variant={
+                                        machine.status === "active"
+                                          ? "default"
+                                          : "secondary"
+                                      }
+                                      className={
+                                        machine.status === "active"
+                                          ? "bg-green-500 hover:bg-green-600"
+                                          : "bg-gray-500 hover:bg-gray-600"
+                                      }
+                                    >
+                                      {machine.status === "active"
+                                        ? t("common.active")
+                                        : machine.status === "maintenance"
+                                          ? t("definitions.table.maintenance")
+                                          : t("definitions.table.stopped")}
+                                    </Badge>
+                                  </td>
+                                  <td
+                                    className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-center"
+                                    data-testid={`text-capacity-small-${machine.id}`}
+                                  >
+                                    {machine.capacity_small_kg_per_hour
+                                      ? formatNumber(
+                                          parseFloat(
+                                            machine.capacity_small_kg_per_hour,
+                                          ),
+                                        )
+                                      : "-"}
+                                  </td>
+                                  <td
+                                    className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-center"
+                                    data-testid={`text-capacity-medium-${machine.id}`}
+                                  >
+                                    {machine.capacity_medium_kg_per_hour
+                                      ? formatNumber(
+                                          parseFloat(
+                                            machine.capacity_medium_kg_per_hour,
+                                          ),
+                                        )
+                                      : "-"}
+                                  </td>
+                                  <td
+                                    className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-center"
+                                    data-testid={`text-capacity-large-${machine.id}`}
+                                  >
+                                    {machine.capacity_large_kg_per_hour
+                                      ? formatNumber(
+                                          parseFloat(
+                                            machine.capacity_large_kg_per_hour,
+                                          ),
+                                        )
+                                      : "-"}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-center">
+                                    <div className="flex items-center justify-center gap-2">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          setEditingItem(machine);
+                                          setMachineForm({
+                                            name: machine.name || "",
+                                            name_ar: machine.name_ar || "",
+                                            type: machine.type || "extruder",
+                                            section_id:
+                                              machine.section_id || "",
+                                            status: machine.status || "active",
+                                            capacity_small_kg_per_hour:
+                                              machine.capacity_small_kg_per_hour ||
+                                              "",
+                                            capacity_medium_kg_per_hour:
+                                              machine.capacity_medium_kg_per_hour ||
+                                              "",
+                                            capacity_large_kg_per_hour:
+                                              machine.capacity_large_kg_per_hour ||
+                                              "",
+                                          });
+                                          setSelectedTab("machines");
+                                          setIsDialogOpen(true);
+                                        }}
+                                      >
+                                        <Edit className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td
+                                  colSpan={9}
+                                  className="px-6 py-8 text-center text-gray-500"
+                                >
+                                  {t("definitions.noSearchResults")}
+                                </td>
+                              </tr>
+                            );
+                          })()}
+                        </tbody>
+                      </table>
+                      {(() => {
+                        const filteredMachines = getFilteredMachines();
+                        const totalPages = getTotalPages(
+                          filteredMachines.length,
+                        );
+                        if (totalPages > 1) {
+                          return (
+                            <PaginationComponent
+                              currentPage={currentPages.machines}
+                              totalPages={totalPages}
+                              onPageChange={(page) =>
+                                updatePage("machines", page)
+                              }
+                              totalItems={filteredMachines.length}
+                              itemsPerPage={itemsPerPage}
+                            />
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Users Tab */}
+            <TabsContent value="users" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <User className="w-5 h-5" />
+                      {t("definitions.users.title")}
+                    </CardTitle>
+                    <Button
+                      onClick={() => {
+                        resetForm();
+                        setSelectedTab("users");
+                        setIsDialogOpen(true);
+                      }}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      {t("definitions.users.addNew")}
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {usersLoading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {t("common.loading")}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.id")}
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.username")}
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.name")}
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.section")}
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.role")}
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.actions")}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {(() => {
+                            const filteredUsers = getFilteredUsers();
+                            const paginatedUsers = paginateData(
+                              filteredUsers,
+                              currentPages.users,
+                            );
+                            return paginatedUsers.length > 0 ? (
+                              paginatedUsers.map((user: any) => (
+                                <tr key={user.id} className="hover:bg-gray-50">
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-center">
+                                    {user.id}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                    {user.username || "-"}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                    {user.display_name || user.name || "-"}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                    {(() => {
+                                      if (!user.section_id) return "-";
+                                      if (!Array.isArray(sections))
+                                        return `${user.section_id}`;
+                                      const section = sections.find(
+                                        (s: any) =>
+                                          s.id === user.section_id ||
+                                          s.id === String(user.section_id) ||
+                                          s.id ===
+                                            `SEC${String(user.section_id).padStart(2, "0")}`,
+                                      );
+                                      return section
+                                        ? section.name_ar || section.name
+                                        : `${user.section_id}`;
+                                    })()}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                    {(() => {
+                                      if (!user.role_id) return "-";
+                                      const role =
+                                        Array.isArray(roles) &&
+                                        roles.find(
+                                          (r: any) => r.id === user.role_id,
+                                        );
+                                      return role
+                                        ? role.name_ar || role.name
+                                        : "-";
+                                    })()}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-center">
+                                    <div className="flex items-center justify-center gap-2">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          setEditingItem(user);
+                                          setUserForm({
+                                            username: user.username || "",
+                                            display_name:
+                                              user.display_name || "",
+                                            display_name_ar:
+                                              user.display_name_ar || "",
+                                            password: "",
+                                            phone: user.phone || "",
+                                            role_id: user.role_id
+                                              ? `ROLE${String(user.role_id).padStart(2, "0")}`
+                                              : "none",
+                                            section_id: (() => {
+                                              if (!user.section_id)
+                                                return "none";
+                                              const sectionMapping: {
+                                                [key: number]: string;
+                                              } = {
+                                                1: "SEC01",
+                                                2: "SEC02",
+                                                3: "SEC03",
+                                                4: "SEC04",
+                                                5: "SEC05",
+                                                6: "SEC06",
+                                                7: "SEC07",
+                                              };
+                                              return (
+                                                sectionMapping[
+                                                  user.section_id
+                                                ] || "none"
+                                              );
+                                            })(),
+                                            status: user.status || "active",
+                                          });
+                                          setSelectedTab("users");
+                                          setShowPassword(false);
+                                          setIsDialogOpen(true);
+                                        }}
+                                      >
+                                        <Edit className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td
+                                  colSpan={5}
+                                  className="px-6 py-8 text-center text-gray-500"
+                                >
+                                  {t("definitions.noSearchResults")}
+                                </td>
+                              </tr>
+                            );
+                          })()}
+                        </tbody>
+                      </table>
+                      {(() => {
+                        const filteredUsers = getFilteredUsers();
+                        const totalPages = getTotalPages(filteredUsers.length);
+                        if (totalPages > 1) {
+                          return (
+                            <PaginationComponent
+                              currentPage={currentPages.users}
+                              totalPages={totalPages}
+                              onPageChange={(page) => updatePage("users", page)}
+                              totalItems={filteredUsers.length}
+                              itemsPerPage={itemsPerPage}
+                            />
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Master Batch Colors Tab */}
+            <TabsContent value="master-batch-colors" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <Package className="w-5 h-5" />
+                      {t("definitions.masterBatch.title")}
+                    </CardTitle>
+                    <Button
+                      onClick={() => {
+                        resetForm();
+                        setSelectedTab("master-batch-colors");
+                        setIsDialogOpen(true);
+                      }}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      {t("definitions.masterBatch.addNew")}
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {masterBatchColorsLoading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {t("common.loading")}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.code")}
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.masterBatch.color")}
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.nameAr")}
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.nameEn")}
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.masterBatch.supplier")}
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.masterBatch.status")}
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {t("definitions.table.actions")}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {masterBatchColorsData.length > 0 ? (
+                            masterBatchColorsData
+                              .filter((color: any) => {
+                                if (!quickSearch) return true;
+                                const searchLower = quickSearch.toLowerCase();
+                                return (
+                                  (color.id || "")
+                                    .toLowerCase()
+                                    .includes(searchLower) ||
+                                  (color.name || "")
+                                    .toLowerCase()
+                                    .includes(searchLower) ||
+                                  (color.name_ar || "")
+                                    .toLowerCase()
+                                    .includes(searchLower) ||
+                                  (color.brand || "")
+                                    .toLowerCase()
+                                    .includes(searchLower)
+                                );
+                              })
+                              .filter((color: any) => {
+                                if (statusFilter === "all") return true;
+                                return statusFilter === "active"
+                                  ? color.is_active
+                                  : !color.is_active;
+                              })
+                              .map((color: any) => (
+                                <tr key={color.id} className="hover:bg-gray-50">
+                                  <td className="px-6 py-4 text-center text-sm font-medium text-gray-900">
+                                    {color.id}
+                                  </td>
+                                  <td className="px-6 py-4 text-center">
+                                    <div className="flex items-center justify-center">
+                                      <div
+                                        className="w-8 h-8 rounded-full border-2 shadow-sm"
+                                        style={{
+                                          backgroundColor: color.color_hex,
+                                          borderColor:
+                                            color.color_hex === "#ffffff"
+                                              ? "#e5e7eb"
+                                              : color.color_hex,
+                                        }}
+                                      />
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4 text-center text-sm text-gray-900">
+                                    {color.name_ar}
+                                  </td>
+                                  <td className="px-6 py-4 text-center text-sm text-gray-500">
+                                    {color.name}
+                                  </td>
+                                  <td className="px-6 py-4 text-center text-sm text-gray-500">
+                                    {color.brand || "-"}
+                                  </td>
+                                  <td className="px-6 py-4 text-center">
+                                    <Badge
+                                      variant={
+                                        color.is_active
+                                          ? "default"
+                                          : "secondary"
+                                      }
+                                    >
+                                      {color.is_active
+                                        ? t("common.active")
+                                        : t("definitions.masterBatch.inactive")}
+                                    </Badge>
+                                  </td>
+                                  <td className="px-6 py-4 text-center">
+                                    <div className="flex items-center justify-center gap-2">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => {
+                                          setEditingItem(color);
+                                          setMasterBatchColorForm({
+                                            id: color.id,
+                                            name: color.name || "",
+                                            name_ar: color.name_ar || "",
+                                            color_hex:
+                                              color.color_hex || "#000000",
+                                            text_color:
+                                              color.text_color || "#ffffff",
+                                            brand: color.brand || "",
+                                            aliases: color.aliases || "",
+                                            is_active: color.is_active ?? true,
+                                            sort_order: color.sort_order || 0,
+                                          });
+                                          setIsDialogOpen(true);
+                                        }}
+                                      >
+                                        <Edit className="w-4 h-4" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="text-red-500 hover:text-red-700"
+                                        onClick={() => {
+                                          if (
+                                            window.confirm(
+                                              t(
+                                                "definitions.masterBatch.confirmDelete",
+                                                { name: color.name_ar },
+                                              ),
+                                            )
+                                          ) {
+                                            deleteMasterBatchColorMutation.mutate(
+                                              color.id,
+                                            );
+                                          }
+                                        }}
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))
+                          ) : (
+                            <tr>
+                              <td
+                                colSpan={7}
+                                className="px-6 py-8 text-center text-gray-500"
+                              >
+                                {t("definitions.masterBatch.noColors")}
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        {/* All Dialogs for different entities */}
+
+        {/* Customer Add/Edit Dialog */}
+        {selectedTab === "customers" && (
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogContent
+              className="max-w-4xl max-h-[90vh] overflow-y-auto"
+              aria-describedby="customer-dialog-description"
+            >
+              <DialogHeader>
+                <DialogTitle>
+                  {editingItem
+                    ? t("definitions.customers.edit")
+                    : t("definitions.customers.addNew")}
+                </DialogTitle>
+                <DialogDescription id="customer-dialog-description">
+                  {editingItem
+                    ? t("definitions.customers.editDescription")
+                    : t("definitions.customers.addDescription")}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="name_ar">
+                      {t("definitions.customers.nameAr")} *
+                    </Label>
+                    <Input
+                      id="name_ar"
+                      value={customerForm.name_ar}
+                      onChange={(e) =>
+                        setCustomerForm({
+                          ...customerForm,
+                          name_ar: e.target.value,
+                        })
+                      }
+                      placeholder={t("definitions.form.customerNameAr")}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="name">
+                      {t("definitions.customers.name")}
+                    </Label>
+                    <Input
+                      id="name"
+                      value={customerForm.name}
+                      onChange={(e) =>
+                        setCustomerForm({
+                          ...customerForm,
+                          name: e.target.value,
+                        })
+                      }
+                      placeholder="Customer Name"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleTranslateCustomerName}
+                    disabled={
+                      isTranslating ||
+                      (!customerForm.name_ar && !customerForm.name)
+                    }
+                    className="gap-2"
+                  >
+                    {isTranslating ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Languages className="h-4 w-4" />
+                    )}
+                    {t("definitions.customers.translateName")}
+                  </Button>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="code">
+                      {t("definitions.customers.code")}
+                    </Label>
+                    <Input
+                      id="code"
+                      value={customerForm.code}
+                      onChange={(e) =>
+                        setCustomerForm({
+                          ...customerForm,
+                          code: e.target.value,
+                        })
+                      }
+                      placeholder={t("definitions.form.customerCode")}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="plate_drawer_code">
+                      {t("definitions.customers.plateDrawerCode")}
+                    </Label>
+                    <div className="grid grid-cols-2 gap-2 mt-1">
+                      <Select
+                        value={drawerLetter || "none"}
+                        onValueChange={(value) => {
+                          const newLetter = value === "none" ? "" : value;
+                          setDrawerLetter(newLetter);
+                          const combined =
+                            newLetter && drawerNumber
+                              ? `${newLetter}-${drawerNumber}`
+                              : "";
+                          setCustomerForm({
+                            ...customerForm,
+                            plate_drawer_code: combined,
+                          });
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue
+                            placeholder={t("definitions.form.letter")}
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">
+                            {t("definitions.form.none")}
+                          </SelectItem>
+                          <SelectItem value="A">A</SelectItem>
+                          <SelectItem value="B">B</SelectItem>
+                          <SelectItem value="C">C</SelectItem>
+                          <SelectItem value="D">D</SelectItem>
+                          <SelectItem value="E">E</SelectItem>
+                          <SelectItem value="F">F</SelectItem>
+                          <SelectItem value="G">G</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={drawerNumber || "none"}
+                        onValueChange={(value) => {
+                          const newNumber = value === "none" ? "" : value;
+                          setDrawerNumber(newNumber);
+                          const combined =
+                            drawerLetter && newNumber
+                              ? `${drawerLetter}-${newNumber}`
+                              : "";
+                          setCustomerForm({
+                            ...customerForm,
+                            plate_drawer_code: combined,
+                          });
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue
+                            placeholder={t("definitions.form.number")}
+                          />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[200px]">
+                          <SelectItem value="none">
+                            {t("definitions.form.none")}
+                          </SelectItem>
+                          {Array.from({ length: 100 }, (_, i) => i + 1).map(
+                            (num) => (
+                              <SelectItem key={num} value={num.toString()}>
+                                {num}
+                              </SelectItem>
+                            ),
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="phone">
+                      {t("definitions.customers.phone")}
+                    </Label>
+                    <Input
+                      id="phone"
+                      value={customerForm.phone}
+                      onChange={(e) =>
+                        setCustomerForm({
+                          ...customerForm,
+                          phone: e.target.value,
+                        })
+                      }
+                      placeholder={t("definitions.form.phoneNumber")}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="city">
+                      {t("definitions.customers.city")}
+                    </Label>
+                    <Input
+                      id="city"
+                      value={customerForm.city}
+                      onChange={(e) =>
+                        setCustomerForm({
+                          ...customerForm,
+                          city: e.target.value,
+                        })
+                      }
+                      placeholder={t("definitions.form.city")}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="tax_number">
+                      {t("definitions.customers.taxNumber")}
+                      <span className="text-xs text-muted-foreground mr-1">
+                        ({t("definitions.form.14digits")})
+                      </span>
+                    </Label>
+                    <Input
+                      id="tax_number"
+                      value={customerForm.tax_number}
+                      onChange={(e) => {
+                        const value = e.target.value
+                          .replace(/\D/g, "")
+                          .slice(0, 14);
+                        setCustomerForm({
+                          ...customerForm,
+                          tax_number: value,
+                        });
+                      }}
+                      placeholder={t("definitions.form.taxNumberPlaceholder")}
+                      className={`mt-1 ${customerForm.tax_number && customerForm.tax_number.length > 0 && customerForm.tax_number.length !== 14 ? "border-yellow-500" : ""}`}
+                      maxLength={14}
+                    />
+                    {customerForm.tax_number &&
+                      customerForm.tax_number.length > 0 &&
+                      customerForm.tax_number.length !== 14 && (
+                        <p className="text-xs text-yellow-600 mt-1">
+                          {customerForm.tax_number.length}/14 -{" "}
+                          {t("definitions.form.mustEnter14digits")}
+                        </p>
+                      )}
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="sales_rep_id">
+                    {t("definitions.customers.salesRep")}
+                  </Label>
+                  <SearchableSelect
+                    options={[
+                      { value: "none", label: t("definitions.form.noRep") },
+                      ...(Array.isArray(salesReps)
+                        ? salesReps.map((rep: any) => ({
+                            value: rep.id.toString(),
+                            label:
+                              rep.display_name_ar && rep.display_name
+                                ? `${rep.display_name_ar} (${rep.display_name})`
+                                : rep.display_name_ar ||
+                                  rep.display_name ||
+                                  rep.username,
+                          }))
+                        : []),
+                    ]}
+                    value={customerForm.sales_rep_id?.toString() || "none"}
+                    onValueChange={(value) =>
+                      setCustomerForm({
+                        ...customerForm,
+                        sales_rep_id: value === "none" ? "" : value,
+                      })
+                    }
+                    placeholder={t("definitions.form.selectRep")}
+                    searchPlaceholder="ابحث عن مندوب..."
                   />
                 </div>
-                <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-gray-400" />
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-40">
-                      <SelectValue placeholder={t("definitions.allStatuses")} />
+                <div>
+                  <Label htmlFor="address">
+                    {t("definitions.customers.address")}
+                  </Label>
+                  <Input
+                    id="address"
+                    value={customerForm.address}
+                    onChange={(e) =>
+                      setCustomerForm({
+                        ...customerForm,
+                        address: e.target.value,
+                      })
+                    }
+                    placeholder={t("definitions.form.fullAddress")}
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                >
+                  {t("common.cancel")}
+                </Button>
+                <Button
+                  onClick={() => {
+                    const formData = {
+                      ...customerForm,
+                      sales_rep_id: customerForm.sales_rep_id
+                        ? parseInt(customerForm.sales_rep_id)
+                        : null,
+                      tax_number: customerForm.tax_number || null,
+                      code: customerForm.code || null,
+                      user_id: customerForm.user_id || null,
+                      plate_drawer_code: customerForm.plate_drawer_code || null,
+                    };
+                    if (editingItem) {
+                      updateCustomerMutation.mutate({
+                        id: editingItem.id,
+                        data: formData,
+                      });
+                    } else {
+                      createCustomerMutation.mutate(formData);
+                    }
+                  }}
+                  disabled={
+                    createCustomerMutation.isPending ||
+                    updateCustomerMutation.isPending
+                  }
+                >
+                  {createCustomerMutation.isPending ||
+                  updateCustomerMutation.isPending ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      {editingItem
+                        ? t("definitions.updating")
+                        : t("definitions.saving")}
+                    </>
+                  ) : editingItem ? (
+                    t("definitions.update")
+                  ) : (
+                    t("common.save")
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Section Add/Edit Dialog */}
+        {selectedTab === "sections" && (
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingItem
+                    ? t("definitions.sections.edit")
+                    : t("definitions.sections.addNew")}
+                </DialogTitle>
+                <DialogDescription>
+                  {editingItem
+                    ? t("definitions.sections.editDescription")
+                    : t("definitions.sections.addDescription")}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="name_ar">
+                      {t("definitions.customers.nameAr")} *
+                    </Label>
+                    <Input
+                      id="name_ar"
+                      value={sectionForm.name_ar}
+                      onChange={(e) =>
+                        setSectionForm({
+                          ...sectionForm,
+                          name_ar: e.target.value,
+                        })
+                      }
+                      placeholder={t("definitions.form.sectionNameAr")}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="name">
+                      {t("definitions.customers.name")}
+                    </Label>
+                    <Input
+                      id="name"
+                      value={sectionForm.name}
+                      onChange={(e) =>
+                        setSectionForm({
+                          ...sectionForm,
+                          name: e.target.value,
+                        })
+                      }
+                      placeholder="Section Name"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="description">
+                    {t("definitions.sections.description")}
+                  </Label>
+                  <Input
+                    id="description"
+                    value={sectionForm.description}
+                    onChange={(e) =>
+                      setSectionForm({
+                        ...sectionForm,
+                        description: e.target.value,
+                      })
+                    }
+                    placeholder={t("definitions.form.sectionDescOptional")}
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                >
+                  {t("common.cancel")}
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (editingItem) {
+                      updateSectionMutation.mutate({
+                        id: editingItem.id,
+                        data: sectionForm,
+                      });
+                    } else {
+                      createSectionMutation.mutate(sectionForm);
+                    }
+                  }}
+                  disabled={
+                    createSectionMutation.isPending ||
+                    updateSectionMutation.isPending
+                  }
+                >
+                  {createSectionMutation.isPending ||
+                  updateSectionMutation.isPending ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      {editingItem
+                        ? t("definitions.updating")
+                        : t("definitions.saving")}
+                    </>
+                  ) : editingItem ? (
+                    t("definitions.update")
+                  ) : (
+                    t("common.save")
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Category Add/Edit Dialog */}
+        {selectedTab === "categories" && (
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingItem
+                    ? t("definitions.categories.edit")
+                    : t("definitions.categories.addNew")}
+                </DialogTitle>
+                <DialogDescription>
+                  {editingItem
+                    ? t("definitions.categories.editDescription")
+                    : t("definitions.categories.addDescription")}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="name_ar">
+                      {t("definitions.customers.nameAr")} *
+                    </Label>
+                    <Input
+                      id="name_ar"
+                      value={categoryForm.name_ar}
+                      onChange={(e) =>
+                        setCategoryForm({
+                          ...categoryForm,
+                          name_ar: e.target.value,
+                        })
+                      }
+                      placeholder={t("definitions.form.categoryNameAr")}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="name">
+                      {t("definitions.customers.name")}
+                    </Label>
+                    <Input
+                      id="name"
+                      value={categoryForm.name}
+                      onChange={(e) =>
+                        setCategoryForm({
+                          ...categoryForm,
+                          name: e.target.value,
+                        })
+                      }
+                      placeholder="Category Name"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="code">
+                      {t("definitions.categories.code")}
+                    </Label>
+                    <Input
+                      id="code"
+                      value={categoryForm.code}
+                      onChange={(e) =>
+                        setCategoryForm({
+                          ...categoryForm,
+                          code: e.target.value,
+                        })
+                      }
+                      placeholder={t("definitions.form.categoryCodeOptional")}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="parent_id">
+                      {t("definitions.categories.parentCategory")}
+                    </Label>
+                    <Select
+                      value={categoryForm.parent_id}
+                      onValueChange={(value) =>
+                        setCategoryForm({
+                          ...categoryForm,
+                          parent_id: value,
+                        })
+                      }
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue
+                          placeholder={t(
+                            "definitions.form.selectParentCategory",
+                          )}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">
+                          {t("definitions.form.noParentCategory")}
+                        </SelectItem>
+                        {Array.isArray(categories) &&
+                          categories
+                            .filter(
+                              (cat) =>
+                                cat.id &&
+                                cat.id !== "" &&
+                                cat.id !== null &&
+                                cat.id !== undefined,
+                            )
+                            .map((cat: any) => (
+                              <SelectItem
+                                key={cat.id}
+                                value={cat.id.toString()}
+                              >
+                                {cat.name_ar || cat.name} ({cat.id})
+                              </SelectItem>
+                            ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="description">
+                    {t("definitions.sections.description")}
+                  </Label>
+                  <Input
+                    id="description"
+                    value={categoryForm.description}
+                    onChange={(e) =>
+                      setCategoryForm({
+                        ...categoryForm,
+                        description: e.target.value,
+                      })
+                    }
+                    placeholder={t("definitions.form.categoryDescOptional")}
+                    className="mt-1"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="status">
+                    {t("definitions.categories.status")}
+                  </Label>
+                  <Select
+                    value={categoryForm.status}
+                    onValueChange={(value) =>
+                      setCategoryForm({ ...categoryForm, status: value })
+                    }
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">{t("definitions.allStatuses")}</SelectItem>
-                      <SelectItem value="active">{t("definitions.active")}</SelectItem>
-                      <SelectItem value="inactive">{t("definitions.inactive")}</SelectItem>
+                      <SelectItem value="active">
+                        {t("definitions.active")}
+                      </SelectItem>
+                      <SelectItem value="inactive">
+                        {t("definitions.inactive")}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-            </div>
-
-            <div className="w-full">
-              <Tabs
-                value={selectedTab}
-                onValueChange={setSelectedTab}
-                className="space-y-4 w-full"
-              >
-                <TabsList
-                  className={`grid w-full h-auto p-1 bg-white rounded-lg border border-gray-200 shadow-sm gap-1`}
-                  dir="rtl"
-                  style={{ gridTemplateColumns: `repeat(${Math.min(accessibleTabs.length, 8)}, minmax(0, 1fr))` }}
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
                 >
-                  {accessibleTabs.map(tab => (
-                    <TabsTrigger
-                      key={tab.value}
-                      value={tab.value}
-                      className="data-[state=active]:bg-white data-[state=active]:text-blue-600 
-                               text-gray-600 hover:text-blue-600 px-2 py-2 text-xs sm:text-sm font-medium
-                               transition-all duration-200 rounded-md min-w-0 flex-1"
-                    >
-                      {t(tab.labelKey)}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-
-                <TabsContent value="customers" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-2">
-                          <Building2 className="w-5 h-5" />
-                          {t("definitions.customers.title")}
-                        </CardTitle>
-                        <Button
-                          onClick={() => {
-                            resetForm();
-                            setSelectedTab("customers");
-                            setIsDialogOpen(true);
-                          }}
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          {t("definitions.customers.addNew")}
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {customersLoading ? (
-                        <div className="text-center py-8">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                          <p className="mt-2 text-sm text-muted-foreground">
-                            {t("common.loading")}
-                          </p>
-                        </div>
-                      ) : (
-                        <>
-                          {/* Mobile Card View */}
-                          <div className="md:hidden space-y-3">
-                            {(() => {
-                              const filteredCustomers = getFilteredCustomers();
-                              const paginatedCustomers = paginateData(filteredCustomers, currentPages.customers);
-                              return paginatedCustomers.length > 0 ? (
-                                paginatedCustomers.map((customer: any) => {
-                                  const rep = Array.isArray(salesReps) ? salesReps.find((r: any) => r.id === customer.sales_rep_id) : null;
-                                  return (
-                                    <div key={customer.id} className="bg-white border rounded-lg p-4 shadow-sm">
-                                      <div className="flex justify-between items-start mb-3">
-                                        <div>
-                                          <div className="font-bold text-lg">{customer.name_ar || customer.name}</div>
-                                          <div className="text-sm text-gray-500">#{customer.id}</div>
-                                        </div>
-                                        <div className="flex gap-2">
-                                          <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="text-blue-600"
-                                            onClick={() => handlePrintCustomer(customer)}
-                                          >
-                                            <Printer className="w-4 h-4" />
-                                          </Button>
-                                          <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => {
-                                              setEditingItem(customer);
-                                              setCustomerForm({
-                                                name: customer.name || "",
-                                                name_ar: customer.name_ar || "",
-                                                code: customer.code || "",
-                                                user_id: customer.user_id || "",
-                                                plate_drawer_code: customer.plate_drawer_code || "",
-                                                city: customer.city || "",
-                                                address: customer.address || "",
-                                                tax_number: customer.tax_number || "",
-                                                phone: customer.phone || "",
-                                                sales_rep_id: customer.sales_rep_id || "",
-                                              });
-                                              setSelectedTab("customers");
-                                              setIsDialogOpen(true);
-                                            }}
-                                          >
-                                            <Edit className="w-4 h-4" />
-                                          </Button>
-                                          <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="text-red-600"
-                                            disabled={deleteCustomerMutation.isPending}
-                                            onClick={() => {
-                                              if (confirm(t("definitions.messages.confirmDeleteCustomer", { name: customer.name_ar || customer.name }))) {
-                                                deleteCustomerMutation.mutate(customer.id);
-                                              }
-                                            }}
-                                          >
-                                            <Trash2 className="w-4 h-4" />
-                                          </Button>
-                                        </div>
-                                      </div>
-                                      <div className="grid grid-cols-2 gap-2 text-sm">
-                                        <div><span className="text-gray-500">{t("definitions.print.phone")}:</span> {customer.phone || "-"}</div>
-                                        <div><span className="text-gray-500">{t("definitions.print.representative")}:</span> {rep ? (rep.display_name_ar || rep.display_name) : "-"}</div>
-                                        <div><span className="text-gray-500">{t("definitions.print.plateDrawerCode")}:</span> {customer.plate_drawer_code || "-"}</div>
-                                      </div>
-                                    </div>
-                                  );
-                                })
-                              ) : (
-                                <div className="text-center py-8 text-gray-500">
-                                  {quickSearch || statusFilter !== "all" ? t("definitions.noFilterResults") : t("common.noData")}
-                                </div>
-                              );
-                            })()}
-                          </div>
-
-                          {/* Desktop Table View */}
-                          <div className="hidden md:block overflow-x-auto">
-                          <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.customers.code")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.customers.nameAr")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.customers.name")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.customers.plateDrawerCode")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.customers.phone")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.print.representative")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.customers.actions")}
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                              {(() => {
-                                const filteredCustomers =
-                                  getFilteredCustomers();
-                                const paginatedCustomers = paginateData(
-                                  filteredCustomers,
-                                  currentPages.customers,
-                                );
-                                return paginatedCustomers.length > 0 ? (
-                                  paginatedCustomers.map((customer: any) => (
-                                    <tr
-                                      key={customer.id}
-                                      className="hover:bg-gray-50"
-                                    >
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-center">
-                                        {customer.id}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                        {customer.name_ar || "-"}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                        {customer.name || "-"}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                        {customer.plate_drawer_code || "-"}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                        {customer.phone || "-"}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                        {(() => {
-                                          if (!Array.isArray(salesReps)) return "-";
-                                          const rep = salesReps.find((r: any) => r.id === customer.sales_rep_id);
-                                          return rep ? (rep.display_name_ar || rep.display_name || "-") : "-";
-                                        })()}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-center">
-                                        <div className="flex items-center justify-center gap-2">
-                                          <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                            onClick={() => handlePrintCustomer(customer)}
-                                            title={t("definitions.print.customerData")}
-                                          >
-                                            <Printer className="w-4 h-4" />
-                                          </Button>
-                                          <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => {
-                                              setEditingItem(customer);
-                                              setCustomerForm({
-                                                name: customer.name || "",
-                                                name_ar: customer.name_ar || "",
-                                                code: customer.code || "",
-                                                user_id: customer.user_id || "",
-                                                plate_drawer_code:
-                                                  customer.plate_drawer_code ||
-                                                  "",
-                                                city: customer.city || "",
-                                                address: customer.address || "",
-                                                tax_number:
-                                                  customer.tax_number || "",
-                                                phone: customer.phone || "",
-                                                sales_rep_id:
-                                                  customer.sales_rep_id || "",
-                                              });
-                                              setSelectedTab("customers");
-                                              setIsDialogOpen(true);
-                                            }}
-                                          >
-                                            <Edit className="w-4 h-4" />
-                                          </Button>
-                                          <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                            disabled={deleteCustomerMutation.isPending}
-                                            onClick={() => {
-                                              if (confirm(t("definitions.messages.confirmDeleteCustomer", { name: customer.name_ar || customer.name }))) {
-                                                deleteCustomerMutation.mutate(customer.id);
-                                              }
-                                            }}
-                                          >
-                                            <Trash2 className="w-4 h-4" />
-                                          </Button>
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  ))
-                                ) : (
-                                  <tr>
-                                    <td
-                                      colSpan={7}
-                                      className="px-6 py-4 text-center text-gray-500"
-                                    >
-                                      {quickSearch || statusFilter !== "all"
-                                        ? t("definitions.noFilterResults")
-                                        : t("common.noData")}
-                                    </td>
-                                  </tr>
-                                );
-                              })()}
-                            </tbody>
-                          </table>
-                          {(() => {
-                            const filteredCustomers = getFilteredCustomers();
-                            const totalPages = getTotalPages(
-                              filteredCustomers.length,
-                            );
-                            if (totalPages > 1) {
-                              return (
-                                <PaginationComponent
-                                  currentPage={currentPages.customers}
-                                  totalPages={totalPages}
-                                  onPageChange={(page) =>
-                                    updatePage("customers", page)
-                                  }
-                                  totalItems={filteredCustomers.length}
-                                  itemsPerPage={itemsPerPage}
-                                />
-                              );
-                            }
-                            return null;
-                          })()}
-                          </div>
-                        </>
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="categories" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-2">
-                          <Package className="w-5 h-5" />
-                          {t("definitions.categories.title")}
-                        </CardTitle>
-                        <Button
-                          onClick={() => {
-                            resetForm();
-                            setSelectedTab("categories");
-                            setIsDialogOpen(true);
-                          }}
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          {t("definitions.categories.addNew")}
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {categoriesLoading ? (
-                        <div className="text-center py-8">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                          <p className="mt-2 text-sm text-muted-foreground">
-                            {t("common.loading")}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.id")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.nameAr")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.nameEn")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.code")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.actions")}
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                              {(() => {
-                                const filteredCategories =
-                                  getFilteredCategories();
-                                const paginatedCategories = paginateData(
-                                  filteredCategories,
-                                  currentPages.categories,
-                                );
-                                return paginatedCategories.length > 0 ? (
-                                  paginatedCategories.map((category: any) => (
-                                    <tr
-                                      key={category.id}
-                                      className="hover:bg-gray-50"
-                                    >
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-center">
-                                        {category.id}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                        {category.name_ar || "-"}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                        {category.name || "-"}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                        {category.code || "-"}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-center">
-                                        <div className="flex items-center justify-center gap-2">
-                                          <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => {
-                                              setEditingItem(category);
-                                              setCategoryForm({
-                                                name: category.name || "",
-                                                name_ar: category.name_ar || "",
-                                                code: category.code || "",
-                                                parent_id:
-                                                  category.parent_id || "none",
-                                                description:
-                                                  category.description || "",
-                                                status:
-                                                  category.status || "active",
-                                              });
-                                              setIsDialogOpen(true);
-                                            }}
-                                          >
-                                            <Edit className="w-4 h-4" />
-                                          </Button>
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  ))
-                                ) : (
-                                  <tr>
-                                    <td
-                                      colSpan={5}
-                                      className="px-6 py-4 text-center text-gray-500"
-                                    >
-                                      {quickSearch || statusFilter !== "all"
-                                        ? t("definitions.noFilterResults")
-                                        : t("common.noData")}
-                                    </td>
-                                  </tr>
-                                );
-                              })()}
-                            </tbody>
-                          </table>
-                          {(() => {
-                            const filteredCategories = getFilteredCategories();
-                            const totalPages = getTotalPages(
-                              filteredCategories.length,
-                            );
-                            if (totalPages > 1) {
-                              return (
-                                <PaginationComponent
-                                  currentPage={currentPages.categories}
-                                  totalPages={totalPages}
-                                  onPageChange={(page) =>
-                                    updatePage("categories", page)
-                                  }
-                                  totalItems={filteredCategories.length}
-                                  itemsPerPage={itemsPerPage}
-                                />
-                              );
-                            }
-                            return null;
-                          })()}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                {/* Sections Tab */}
-                <TabsContent value="sections" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-2">
-                          <Cog className="w-5 h-5" />
-                          {t("definitions.sections.title")}
-                        </CardTitle>
-                        <Button
-                          onClick={() => {
-                            resetForm();
-                            setSelectedTab("sections");
-                            setIsDialogOpen(true);
-                          }}
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          {t("definitions.sections.addNew")}
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {sectionsLoading ? (
-                        <div className="text-center py-8">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                          <p className="mt-2 text-sm text-muted-foreground">
-                            {t("common.loading")}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.id")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.nameAr")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.nameEn")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.description")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.actions")}
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                              {(() => {
-                                const filteredSections = getFilteredSections();
-                                const paginatedSections = paginateData(
-                                  filteredSections,
-                                  currentPages.sections,
-                                );
-                                return paginatedSections.length > 0 ? (
-                                  paginatedSections.map((section: any) => (
-                                    <tr
-                                      key={section.id}
-                                      className="hover:bg-gray-50"
-                                    >
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-center">
-                                        {section.id}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                        {section.name_ar || "-"}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                        {section.name || "-"}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                        {section.description || "-"}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-center">
-                                        <div className="flex items-center justify-center gap-2">
-                                          <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => {
-                                              setEditingItem(section);
-                                              setSectionForm({
-                                                name: section.name || "",
-                                                name_ar: section.name_ar || "",
-                                                description:
-                                                  section.description || "",
-                                              });
-                                              setSelectedTab("sections");
-                                              setIsDialogOpen(true);
-                                            }}
-                                          >
-                                            <Edit className="w-4 h-4" />
-                                          </Button>
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  ))
-                                ) : (
-                                  <tr>
-                                    <td
-                                      colSpan={5}
-                                      className="px-6 py-8 text-center text-gray-500"
-                                    >
-                                      {t("definitions.noSearchResults")}
-                                    </td>
-                                  </tr>
-                                );
-                              })()}
-                            </tbody>
-                          </table>
-                          {(() => {
-                            const filteredSections = getFilteredSections();
-                            const totalPages = getTotalPages(
-                              filteredSections.length,
-                            );
-                            if (totalPages > 1) {
-                              return (
-                                <PaginationComponent
-                                  currentPage={currentPages.sections}
-                                  totalPages={totalPages}
-                                  onPageChange={(page) =>
-                                    updatePage("sections", page)
-                                  }
-                                  totalItems={filteredSections.length}
-                                  itemsPerPage={itemsPerPage}
-                                />
-                              );
-                            }
-                            return null;
-                          })()}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                {/* Items Tab */}
-                <TabsContent value="items" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-2">
-                          <Package className="w-5 h-5" />
-                          {t("definitions.items.title")}
-                        </CardTitle>
-                        <Button
-                          onClick={() => {
-                            resetForm();
-                            setSelectedTab("items");
-                            setIsDialogOpen(true);
-                          }}
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          {t("definitions.items.addNew")}
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {itemsLoading ? (
-                        <div className="text-center py-8">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                          <p className="mt-2 text-sm text-muted-foreground">
-                            {t("common.loading")}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.id")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.nameAr")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.nameEn")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.category")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.actions")}
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                              {(() => {
-                                const filteredItems = getFilteredItems();
-                                const paginatedItems = paginateData(
-                                  filteredItems,
-                                  currentPages.items,
-                                );
-                                return paginatedItems.length > 0 ? (
-                                  paginatedItems.map((item: any) => (
-                                    <tr
-                                      key={item.id}
-                                      className="hover:bg-gray-50"
-                                    >
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-center">
-                                        {item.id}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                        {item.name_ar || "-"}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                        {item.name || "-"}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                        {item.category_id || "-"}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-center">
-                                        <div className="flex items-center justify-center gap-2">
-                                          <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => {
-                                              setEditingItem(item);
-                                              setItemForm({
-                                                name: item.name || "",
-                                                name_ar: item.name_ar || "",
-                                                code: item.code || "",
-                                                category_id:
-                                                  item.category_id || "none",
-                                                status: item.status || "active",
-                                              });
-                                              setSelectedTab("items");
-                                              setIsDialogOpen(true);
-                                            }}
-                                          >
-                                            <Edit className="w-4 h-4" />
-                                          </Button>
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  ))
-                                ) : (
-                                  <tr>
-                                    <td
-                                      colSpan={5}
-                                      className="px-6 py-8 text-center text-gray-500"
-                                    >
-                                      {t("definitions.noSearchResults")}
-                                    </td>
-                                  </tr>
-                                );
-                              })()}
-                            </tbody>
-                          </table>
-                          {(() => {
-                            const filteredItems = getFilteredItems();
-                            const totalPages = getTotalPages(
-                              filteredItems.length,
-                            );
-                            if (totalPages > 1) {
-                              return (
-                                <PaginationComponent
-                                  currentPage={currentPages.items}
-                                  totalPages={totalPages}
-                                  onPageChange={(page) =>
-                                    updatePage("items", page)
-                                  }
-                                  totalItems={filteredItems.length}
-                                  itemsPerPage={itemsPerPage}
-                                />
-                              );
-                            }
-                            return null;
-                          })()}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                {/* Customer Products Tab */}
-                <TabsContent value="customer-products" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-2">
-                          <Package className="w-5 h-5" />
-                          {t("definitions.customerProducts.title")}
-                        </CardTitle>
-                        <Button
-                          onClick={() => {
-                            resetForm();
-                            setSelectedTab("customer-products");
-                            setIsDialogOpen(true);
-                          }}
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          {t("definitions.customerProducts.addNew")}
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {customerProductsLoading ? (
-                        <div className="text-center py-8">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                          <p className="mt-2 text-sm text-muted-foreground">
-                            {t("common.loading")}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.id")}
-                                </th>
-                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.print.customerName")}
-                                </th>
-                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.print.item")}
-                                </th>
-                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.print.sizeCaption")}
-                                </th>
-                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.printingCutting")}
-                                </th>
-                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.print.rawMaterial")}
-                                </th>
-                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.print.masterBatch")}
-                                </th>
-                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.print.punching")}
-                                </th>
-                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.print.unit")}
-                                </th>
-                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.print.packageWeight")}
-                                </th>
-                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.actions")}
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                              {(() => {
-                                const filteredCustomerProducts =
-                                  getFilteredCustomerProducts();
-                                const paginatedCustomerProducts = paginateData(
-                                  filteredCustomerProducts,
-                                  currentPages.customerProducts,
-                                );
-                                return paginatedCustomerProducts.length > 0 ? (
-                                  paginatedCustomerProducts.map(
-                                    (product: any) => {
-                                      // Find customer details
-                                      const customer = Array.isArray(customers)
-                                        ? customers.find(
-                                            (c: any) =>
-                                              c.id === product.customer_id,
-                                          )
-                                        : null;
-                                      // Find item details
-                                      const item = Array.isArray(items)
-                                        ? items.find(
-                                            (i: any) =>
-                                              i.id === product.item_id,
-                                          )
-                                        : null;
-
-                                      return (
-                                        <tr
-                                          key={product.id}
-                                          className="hover:bg-gray-50"
-                                        >
-                                          <td className="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-center">
-                                            {product.id}
-                                          </td>
-                                          <td className="px-3 py-4 text-sm text-gray-900 text-center">
-                                            <div className="flex flex-col items-center">
-                                              <span className="font-medium">
-                                                {customer?.name_ar ||
-                                                  customer?.name ||
-                                                  "-"}
-                                              </span>
-                                              <span className="text-xs text-gray-500">
-                                                {customer?.name || "-"}
-                                              </span>
-                                            </div>
-                                          </td>
-                                          <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                                            {item?.name_ar || item?.name || "-"}
-                                          </td>
-                                          <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                                            {product.size_caption || "-"}
-                                          </td>
-                                          <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                                            {product.is_printed
-                                              ? product.printing_cylinder ||
-                                                "بدون طباعة"
-                                              : product.cutting_length_cm
-                                                ? `${formatNumber(parseFloat(product.cutting_length_cm))} ${t("common.cm")}`
-                                                : "-"}
-                                          </td>
-                                          <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                                            {product.raw_material || "-"}
-                                          </td>
-                                          <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                                            {(() => {
-                                              if (!product.master_batch_id) return "-";
-                                              if (masterBatchColorsLoading || masterBatchColors.length === 0) {
-                                                return <span className="text-gray-500">{product.master_batch_id}</span>;
-                                              }
-                                              const masterBatchColor =
-                                                masterBatchColors.find(
-                                                  (mb) =>
-                                                    mb.id === product.master_batch_id ||
-                                                    mb.aliases?.includes(product.master_batch_id || ""),
-                                                );
-                                              return masterBatchColor ? (
-                                                <div className="flex flex-col items-center gap-1">
-                                                  <div
-                                                    className="w-6 h-6 rounded border border-gray-300 shadow-sm"
-                                                    style={{
-                                                      backgroundColor:
-                                                        masterBatchColor.color || "#E0E0E0",
-                                                    }}
-                                                    title={masterBatchColor.name}
-                                                  ></div>
-                                                  <span className="text-[10px] font-medium text-gray-600 leading-tight">
-                                                    {masterBatchColor.id}
-                                                  </span>
-                                                </div>
-                                              ) : (
-                                                <span className="text-gray-500">{product.master_batch_id}</span>
-                                              );
-                                            })()}
-                                          </td>
-                                          <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                                            {product.punching || "-"}
-                                          </td>
-                                          <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                                            {product.cutting_unit || "-"}
-                                          </td>
-                                          <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                                            {product.package_weight_kg
-                                              ? `${formatNumber(parseFloat(product.package_weight_kg))} ${t("common.kg")}`
-                                              : "-"}
-                                          </td>
-                                          <td className="px-2 py-3 text-sm font-medium text-center">
-                                            <div className="grid grid-cols-2 gap-1 w-fit mx-auto">
-                                              <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="h-7 w-7 p-0"
-                                                onClick={() => {
-                                                  setEditingItem(product);
-                                                  setCustomerProductForm({
-                                                    customer_id:
-                                                      product.customer_id ||
-                                                      "none",
-                                                    category_id:
-                                                      product.category_id ||
-                                                      "none",
-                                                    item_id:
-                                                      product.item_id || "none",
-                                                    size_caption:
-                                                      product.size_caption ||
-                                                      "",
-                                                    width: product.width || "",
-                                                    left_facing:
-                                                      product.left_facing || "",
-                                                    right_facing:
-                                                      product.right_facing ||
-                                                      "",
-                                                    thickness:
-                                                      product.thickness || "",
-                                                    printing_cylinder:
-                                                      product.printing_cylinder ||
-                                                      "بدون طباعة",
-                                                    cutting_length_cm:
-                                                      product.cutting_length_cm ||
-                                                      "",
-                                                    raw_material:
-                                                      product.raw_material ||
-                                                      "",
-                                                    master_batch_id:
-                                                      product.master_batch_id ||
-                                                      "",
-                                                    is_printed:
-                                                      product.is_printed ||
-                                                      false,
-                                                    cutting_unit:
-                                                      product.cutting_unit ||
-                                                      "",
-                                                    punching:
-                                                      product.punching || "",
-                                                    unit_weight_kg:
-                                                      product.unit_weight_kg ||
-                                                      "",
-                                                    unit_quantity:
-                                                      product.unit_quantity ||
-                                                      "",
-                                                    package_weight_kg:
-                                                      product.package_weight_kg ||
-                                                      "",
-                                                    cliche_front_design:
-                                                      product.cliche_front_design ||
-                                                      "",
-                                                    cliche_back_design:
-                                                      product.cliche_back_design ||
-                                                      "",
-                                                    front_design_filename: "",
-                                                    back_design_filename: "",
-                                                    notes: product.notes || "",
-                                                    status:
-                                                      product.status ||
-                                                      "active",
-                                                  });
-                                                  setSelectedTab(
-                                                    "customer-products",
-                                                  );
-                                                  setIsDialogOpen(true);
-                                                }}
-                                                title={t("definitions.table.update")}
-                                              >
-                                                <Edit className="w-3 h-3" />
-                                              </Button>
-                                              <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="h-7 w-7 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                                onClick={() =>
-                                                  handleCloneCustomerProduct(
-                                                    product,
-                                                  )
-                                                }
-                                                title={t("definitions.table.clone")}
-                                              >
-                                                <Copy className="w-3 h-3" />
-                                              </Button>
-                                              <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
-                                                onClick={() =>
-                                                  handlePrintCustomerProduct(
-                                                    product,
-                                                  )
-                                                }
-                                                title={t("definitions.table.print")}
-                                              >
-                                                <Printer className="w-3 h-3" />
-                                              </Button>
-                                              <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                                onClick={() =>
-                                                  handleDeleteCustomerProduct(
-                                                    product,
-                                                  )
-                                                }
-                                                title={t("definitions.table.delete")}
-                                                disabled={
-                                                  deleteCustomerProductMutation.isPending
-                                                }
-                                              >
-                                                {deleteCustomerProductMutation.isPending ? (
-                                                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600"></div>
-                                                ) : (
-                                                  <Trash2 className="w-3 h-3" />
-                                                )}
-                                              </Button>
-                                            </div>
-                                          </td>
-                                        </tr>
-                                      );
-                                    },
-                                  )
-                                ) : (
-                                  <tr>
-                                    <td
-                                      colSpan={11}
-                                      className="px-6 py-8 text-center text-gray-500"
-                                    >
-                                      {t("definitions.noSearchResults")}
-                                    </td>
-                                  </tr>
-                                );
-                              })()}
-                            </tbody>
-                          </table>
-                          {(() => {
-                            const filteredCustomerProducts =
-                              getFilteredCustomerProducts();
-                            const totalPages = getTotalPages(
-                              filteredCustomerProducts.length,
-                            );
-                            if (totalPages > 1) {
-                              return (
-                                <PaginationComponent
-                                  currentPage={currentPages.customerProducts}
-                                  totalPages={totalPages}
-                                  onPageChange={(page) =>
-                                    updatePage("customerProducts", page)
-                                  }
-                                  totalItems={filteredCustomerProducts.length}
-                                  itemsPerPage={itemsPerPage}
-                                />
-                              );
-                            }
-                            return null;
-                          })()}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                {/* Machines Tab */}
-                <TabsContent value="machines" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-2">
-                          <Settings className="w-5 h-5" />
-                          {t("definitions.machines.title")}
-                        </CardTitle>
-                        <Button
-                          onClick={() => {
-                            resetForm();
-                            setSelectedTab("machines");
-                            setIsDialogOpen(true);
-                          }}
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          {t("definitions.machines.addNew")}
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {machinesLoading ? (
-                        <div className="text-center py-8">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                          <p className="mt-2 text-sm text-muted-foreground">
-                            {t("common.loading")}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.id")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.nameAr")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.nameEn")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.type")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.active")}
-                                </th>
-                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.capacitySmall")}
-                                  <br />
-                                  <span className="text-[10px] font-normal">({t("common.kgPerHour")})</span>
-                                </th>
-                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.capacityMedium")}
-                                  <br />
-                                  <span className="text-[10px] font-normal">({t("common.kgPerHour")})</span>
-                                </th>
-                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.capacityLarge")}
-                                  <br />
-                                  <span className="text-[10px] font-normal">({t("common.kgPerHour")})</span>
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.actions")}
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                              {(() => {
-                                const filteredMachines = getFilteredMachines();
-                                const paginatedMachines = paginateData(
-                                  filteredMachines,
-                                  currentPages.machines,
-                                );
-                                return paginatedMachines.length > 0 ? (
-                                  paginatedMachines.map((machine: any) => (
-                                    <tr
-                                      key={machine.id}
-                                      className="hover:bg-gray-50"
-                                    >
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-center">
-                                        {machine.id}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                        {machine.name_ar || "-"}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                        {machine.name || "-"}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                        {machine.type || "-"}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-center" data-testid={`text-status-${machine.id}`}>
-                                        <Badge 
-                                          variant={machine.status === "active" ? "default" : "secondary"}
-                                          className={machine.status === "active" ? "bg-green-500 hover:bg-green-600" : "bg-gray-500 hover:bg-gray-600"}
-                                        >
-                                          {machine.status === "active" ? t("common.active") : machine.status === "maintenance" ? t("definitions.table.maintenance") : t("definitions.table.stopped")}
-                                        </Badge>
-                                      </td>
-                                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-center" data-testid={`text-capacity-small-${machine.id}`}>
-                                        {machine.capacity_small_kg_per_hour ? formatNumber(parseFloat(machine.capacity_small_kg_per_hour)) : "-"}
-                                      </td>
-                                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-center" data-testid={`text-capacity-medium-${machine.id}`}>
-                                        {machine.capacity_medium_kg_per_hour ? formatNumber(parseFloat(machine.capacity_medium_kg_per_hour)) : "-"}
-                                      </td>
-                                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-center" data-testid={`text-capacity-large-${machine.id}`}>
-                                        {machine.capacity_large_kg_per_hour ? formatNumber(parseFloat(machine.capacity_large_kg_per_hour)) : "-"}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-center">
-                                        <div className="flex items-center justify-center gap-2">
-                                          <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => {
-                                              setEditingItem(machine);
-                                              setMachineForm({
-                                                name: machine.name || "",
-                                                name_ar: machine.name_ar || "",
-                                                type:
-                                                  machine.type || "extruder",
-                                                section_id:
-                                                  machine.section_id || "",
-                                                status:
-                                                  machine.status || "active",
-                                                capacity_small_kg_per_hour: machine.capacity_small_kg_per_hour || "",
-                                                capacity_medium_kg_per_hour: machine.capacity_medium_kg_per_hour || "",
-                                                capacity_large_kg_per_hour: machine.capacity_large_kg_per_hour || "",
-                                              });
-                                              setSelectedTab("machines");
-                                              setIsDialogOpen(true);
-                                            }}
-                                          >
-                                            <Edit className="w-4 h-4" />
-                                          </Button>
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  ))
-                                ) : (
-                                  <tr>
-                                    <td
-                                      colSpan={9}
-                                      className="px-6 py-8 text-center text-gray-500"
-                                    >
-                                      {t("definitions.noSearchResults")}
-                                    </td>
-                                  </tr>
-                                );
-                              })()}
-                            </tbody>
-                          </table>
-                          {(() => {
-                            const filteredMachines = getFilteredMachines();
-                            const totalPages = getTotalPages(
-                              filteredMachines.length,
-                            );
-                            if (totalPages > 1) {
-                              return (
-                                <PaginationComponent
-                                  currentPage={currentPages.machines}
-                                  totalPages={totalPages}
-                                  onPageChange={(page) =>
-                                    updatePage("machines", page)
-                                  }
-                                  totalItems={filteredMachines.length}
-                                  itemsPerPage={itemsPerPage}
-                                />
-                              );
-                            }
-                            return null;
-                          })()}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                {/* Users Tab */}
-                <TabsContent value="users" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-2">
-                          <User className="w-5 h-5" />
-                          {t("definitions.users.title")}
-                        </CardTitle>
-                        <Button
-                          onClick={() => {
-                            resetForm();
-                            setSelectedTab("users");
-                            setIsDialogOpen(true);
-                          }}
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          {t("definitions.users.addNew")}
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {usersLoading ? (
-                        <div className="text-center py-8">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                          <p className="mt-2 text-sm text-muted-foreground">
-                            {t("common.loading")}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.id")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.username")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.name")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.section")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.role")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.actions")}
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                              {(() => {
-                                const filteredUsers = getFilteredUsers();
-                                const paginatedUsers = paginateData(
-                                  filteredUsers,
-                                  currentPages.users,
-                                );
-                                return paginatedUsers.length > 0 ? (
-                                  paginatedUsers.map((user: any) => (
-                                    <tr
-                                      key={user.id}
-                                      className="hover:bg-gray-50"
-                                    >
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-center">
-                                        {user.id}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                        {user.username || "-"}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                        {user.display_name || user.name || "-"}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                        {(() => {
-                                          if (!user.section_id) return "-";
-                                          if (!Array.isArray(sections)) return `${user.section_id}`;
-                                          const section = sections.find(
-                                            (s: any) =>
-                                              s.id === user.section_id ||
-                                              s.id === String(user.section_id) ||
-                                              s.id === `SEC${String(user.section_id).padStart(2, "0")}`
-                                          );
-                                          return section
-                                            ? section.name_ar || section.name
-                                            : `${user.section_id}`;
-                                        })()}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                        {(() => {
-                                          if (!user.role_id) return "-";
-                                          const role =
-                                            Array.isArray(roles) &&
-                                            roles.find(
-                                              (r: any) => r.id === user.role_id,
-                                            );
-                                          return role
-                                            ? role.name_ar || role.name
-                                            : "-";
-                                        })()}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-center">
-                                        <div className="flex items-center justify-center gap-2">
-                                          <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => {
-                                              setEditingItem(user);
-                                              setUserForm({
-                                                username: user.username || "",
-                                                display_name:
-                                                  user.display_name || "",
-                                                display_name_ar:
-                                                  user.display_name_ar || "",
-                                                password: "",
-                                                phone: user.phone || "",
-                                                role_id: user.role_id
-                                                  ? `ROLE${String(user.role_id).padStart(2, '0')}`
-                                                  : "none",
-                                                section_id: (() => {
-                                                  if (!user.section_id)
-                                                    return "none";
-                                                  const sectionMapping: {
-                                                    [key: number]: string;
-                                                  } = {
-                                                    1: "SEC01",
-                                                    2: "SEC02",
-                                                    3: "SEC03",
-                                                    4: "SEC04",
-                                                    5: "SEC05",
-                                                    6: "SEC06",
-                                                    7: "SEC07",
-                                                  };
-                                                  return (
-                                                    sectionMapping[
-                                                      user.section_id
-                                                    ] || "none"
-                                                  );
-                                                })(),
-                                                status: user.status || "active",
-                                              });
-                                              setSelectedTab("users");
-                                              setShowPassword(false);
-                                              setIsDialogOpen(true);
-                                            }}
-                                          >
-                                            <Edit className="w-4 h-4" />
-                                          </Button>
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  ))
-                                ) : (
-                                  <tr>
-                                    <td
-                                      colSpan={5}
-                                      className="px-6 py-8 text-center text-gray-500"
-                                    >
-                                      {t("definitions.noSearchResults")}
-                                    </td>
-                                  </tr>
-                                );
-                              })()}
-                            </tbody>
-                          </table>
-                          {(() => {
-                            const filteredUsers = getFilteredUsers();
-                            const totalPages = getTotalPages(
-                              filteredUsers.length,
-                            );
-                            if (totalPages > 1) {
-                              return (
-                                <PaginationComponent
-                                  currentPage={currentPages.users}
-                                  totalPages={totalPages}
-                                  onPageChange={(page) =>
-                                    updatePage("users", page)
-                                  }
-                                  totalItems={filteredUsers.length}
-                                  itemsPerPage={itemsPerPage}
-                                />
-                              );
-                            }
-                            return null;
-                          })()}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                {/* Master Batch Colors Tab */}
-                <TabsContent value="master-batch-colors" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-2">
-                          <Package className="w-5 h-5" />
-                          {t("definitions.masterBatch.title")}
-                        </CardTitle>
-                        <Button
-                          onClick={() => {
-                            resetForm();
-                            setSelectedTab("master-batch-colors");
-                            setIsDialogOpen(true);
-                          }}
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          {t("definitions.masterBatch.addNew")}
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {masterBatchColorsLoading ? (
-                        <div className="text-center py-8">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                          <p className="mt-2 text-sm text-muted-foreground">
-                            {t("common.loading")}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.code")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.masterBatch.color")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.nameAr")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.nameEn")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.masterBatch.supplier")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.masterBatch.status")}
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                  {t("definitions.table.actions")}
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                              {masterBatchColorsData.length > 0 ? (
-                                masterBatchColorsData
-                                  .filter((color: any) => {
-                                    if (!quickSearch) return true;
-                                    const searchLower = quickSearch.toLowerCase();
-                                    return (
-                                      (color.id || "").toLowerCase().includes(searchLower) ||
-                                      (color.name || "").toLowerCase().includes(searchLower) ||
-                                      (color.name_ar || "").toLowerCase().includes(searchLower) ||
-                                      (color.brand || "").toLowerCase().includes(searchLower)
-                                    );
-                                  })
-                                  .filter((color: any) => {
-                                    if (statusFilter === "all") return true;
-                                    return statusFilter === "active" ? color.is_active : !color.is_active;
-                                  })
-                                  .map((color: any) => (
-                                    <tr key={color.id} className="hover:bg-gray-50">
-                                      <td className="px-6 py-4 text-center text-sm font-medium text-gray-900">
-                                        {color.id}
-                                      </td>
-                                      <td className="px-6 py-4 text-center">
-                                        <div className="flex items-center justify-center">
-                                          <div
-                                            className="w-8 h-8 rounded-full border-2 shadow-sm"
-                                            style={{
-                                              backgroundColor: color.color_hex,
-                                              borderColor: color.color_hex === "#ffffff" ? "#e5e7eb" : color.color_hex,
-                                            }}
-                                          />
-                                        </div>
-                                      </td>
-                                      <td className="px-6 py-4 text-center text-sm text-gray-900">
-                                        {color.name_ar}
-                                      </td>
-                                      <td className="px-6 py-4 text-center text-sm text-gray-500">
-                                        {color.name}
-                                      </td>
-                                      <td className="px-6 py-4 text-center text-sm text-gray-500">
-                                        {color.brand || "-"}
-                                      </td>
-                                      <td className="px-6 py-4 text-center">
-                                        <Badge variant={color.is_active ? "default" : "secondary"}>
-                                          {color.is_active ? t("common.active") : t("definitions.masterBatch.inactive")}
-                                        </Badge>
-                                      </td>
-                                      <td className="px-6 py-4 text-center">
-                                        <div className="flex items-center justify-center gap-2">
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => {
-                                              setEditingItem(color);
-                                              setMasterBatchColorForm({
-                                                id: color.id,
-                                                name: color.name || "",
-                                                name_ar: color.name_ar || "",
-                                                color_hex: color.color_hex || "#000000",
-                                                text_color: color.text_color || "#ffffff",
-                                                brand: color.brand || "",
-                                                aliases: color.aliases || "",
-                                                is_active: color.is_active ?? true,
-                                                sort_order: color.sort_order || 0,
-                                              });
-                                              setIsDialogOpen(true);
-                                            }}
-                                          >
-                                            <Edit className="w-4 h-4" />
-                                          </Button>
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="text-red-500 hover:text-red-700"
-                                            onClick={() => {
-                                              if (window.confirm(t("definitions.masterBatch.confirmDelete", { name: color.name_ar }))) {
-                                                deleteMasterBatchColorMutation.mutate(color.id);
-                                              }
-                                            }}
-                                          >
-                                            <Trash2 className="w-4 h-4" />
-                                          </Button>
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  ))
-                              ) : (
-                                <tr>
-                                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
-                                    {t("definitions.masterBatch.noColors")}
-                                  </td>
-                                </tr>
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-              </Tabs>
-            </div>
-
-            {/* All Dialogs for different entities */}
-
-            {/* Customer Add/Edit Dialog */}
-            {selectedTab === "customers" && (
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent
-                  className="max-w-4xl max-h-[90vh] overflow-y-auto"
-                  aria-describedby="customer-dialog-description"
+                  {t("common.cancel")}
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (editingItem) {
+                      updateCategoryMutation.mutate({
+                        id: editingItem.id,
+                        data: categoryForm,
+                      });
+                    } else {
+                      createCategoryMutation.mutate(categoryForm);
+                    }
+                  }}
+                  disabled={
+                    createCategoryMutation.isPending ||
+                    updateCategoryMutation.isPending
+                  }
                 >
-                  <DialogHeader>
-                    <DialogTitle>
-                      {editingItem ? t("definitions.customers.edit") : t("definitions.customers.addNew")}
-                    </DialogTitle>
-                    <DialogDescription id="customer-dialog-description">
+                  {createCategoryMutation.isPending ||
+                  updateCategoryMutation.isPending ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                       {editingItem
-                        ? t("definitions.customers.editDescription")
-                        : t("definitions.customers.addDescription")}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="name_ar">{t("definitions.customers.nameAr")} *</Label>
-                        <Input
-                          id="name_ar"
-                          value={customerForm.name_ar}
-                          onChange={(e) =>
-                            setCustomerForm({
-                              ...customerForm,
-                              name_ar: e.target.value,
-                            })
-                          }
-                          placeholder={t("definitions.form.customerNameAr")}
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="name">{t("definitions.customers.name")}</Label>
-                        <Input
-                          id="name"
-                          value={customerForm.name}
-                          onChange={(e) =>
-                            setCustomerForm({
-                              ...customerForm,
-                              name: e.target.value,
-                            })
-                          }
-                          placeholder="Customer Name"
-                          className="mt-1"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex justify-center">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handleTranslateCustomerName}
-                        disabled={isTranslating || (!customerForm.name_ar && !customerForm.name)}
-                        className="gap-2"
-                      >
-                        {isTranslating ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Languages className="h-4 w-4" />
-                        )}
-                        {t("definitions.customers.translateName")}
-                      </Button>
-                    </div>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div>
-                        <Label htmlFor="code">{t("definitions.customers.code")}</Label>
-                        <Input
-                          id="code"
-                          value={customerForm.code}
-                          onChange={(e) =>
-                            setCustomerForm({
-                              ...customerForm,
-                              code: e.target.value,
-                            })
-                          }
-                          placeholder={t("definitions.form.customerCode")}
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="plate_drawer_code">{t("definitions.customers.plateDrawerCode")}</Label>
-                        <div className="grid grid-cols-2 gap-2 mt-1">
-                          <Select
-                            value={drawerLetter || "none"}
-                            onValueChange={(value) => {
-                              const newLetter = value === "none" ? "" : value;
-                              setDrawerLetter(newLetter);
-                              const combined = newLetter && drawerNumber 
-                                ? `${newLetter}-${drawerNumber}` 
-                                : "";
-                              setCustomerForm({
-                                ...customerForm,
-                                plate_drawer_code: combined,
-                              });
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder={t("definitions.form.letter")} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">{t("definitions.form.none")}</SelectItem>
-                              <SelectItem value="A">A</SelectItem>
-                              <SelectItem value="B">B</SelectItem>
-                              <SelectItem value="C">C</SelectItem>
-                              <SelectItem value="D">D</SelectItem>
-                              <SelectItem value="E">E</SelectItem>
-                              <SelectItem value="F">F</SelectItem>
-                              <SelectItem value="G">G</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <Select
-                            value={drawerNumber || "none"}
-                            onValueChange={(value) => {
-                              const newNumber = value === "none" ? "" : value;
-                              setDrawerNumber(newNumber);
-                              const combined = drawerLetter && newNumber 
-                                ? `${drawerLetter}-${newNumber}` 
-                                : "";
-                              setCustomerForm({
-                                ...customerForm,
-                                plate_drawer_code: combined,
-                              });
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder={t("definitions.form.number")} />
-                            </SelectTrigger>
-                            <SelectContent className="max-h-[200px]">
-                              <SelectItem value="none">{t("definitions.form.none")}</SelectItem>
-                              {Array.from({ length: 100 }, (_, i) => i + 1).map((num) => (
-                                <SelectItem key={num} value={num.toString()}>
-                                  {num}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <div>
-                        <Label htmlFor="phone">{t("definitions.customers.phone")}</Label>
-                        <Input
-                          id="phone"
-                          value={customerForm.phone}
-                          onChange={(e) =>
-                            setCustomerForm({
-                              ...customerForm,
-                              phone: e.target.value,
-                            })
-                          }
-                          placeholder={t("definitions.form.phoneNumber")}
-                          className="mt-1"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="city">{t("definitions.customers.city")}</Label>
-                        <Input
-                          id="city"
-                          value={customerForm.city}
-                          onChange={(e) =>
-                            setCustomerForm({
-                              ...customerForm,
-                              city: e.target.value,
-                            })
-                          }
-                          placeholder={t("definitions.form.city")}
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="tax_number">
-                          {t("definitions.customers.taxNumber")}
-                          <span className="text-xs text-muted-foreground mr-1">({t("definitions.form.14digits")})</span>
-                        </Label>
-                        <Input
-                          id="tax_number"
-                          value={customerForm.tax_number}
-                          onChange={(e) => {
-                            const value = e.target.value.replace(/\D/g, '').slice(0, 14);
-                            setCustomerForm({
-                              ...customerForm,
-                              tax_number: value,
-                            });
-                          }}
-                          placeholder={t("definitions.form.taxNumberPlaceholder")}
-                          className={`mt-1 ${customerForm.tax_number && customerForm.tax_number.length > 0 && customerForm.tax_number.length !== 14 ? 'border-yellow-500' : ''}`}
-                          maxLength={14}
-                        />
-                        {customerForm.tax_number && customerForm.tax_number.length > 0 && customerForm.tax_number.length !== 14 && (
-                          <p className="text-xs text-yellow-600 mt-1">
-                            {customerForm.tax_number.length}/14 - {t("definitions.form.mustEnter14digits")}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <Label htmlFor="sales_rep_id">{t("definitions.customers.salesRep")}</Label>
-                      <SearchableSelect
-                        options={[
-                          { value: "none", label: t("definitions.form.noRep") },
-                          ...(Array.isArray(salesReps) ? salesReps.map((rep: any) => ({
-                            value: rep.id.toString(),
-                            label: rep.display_name_ar && rep.display_name 
-                              ? `${rep.display_name_ar} (${rep.display_name})`
-                              : rep.display_name_ar || rep.display_name || rep.username
-                          })) : [])
-                        ]}
-                        value={customerForm.sales_rep_id?.toString() || "none"}
-                        onValueChange={(value) =>
-                          setCustomerForm({
-                            ...customerForm,
-                            sales_rep_id: value === "none" ? "" : value,
-                          })
-                        }
-                        placeholder={t("definitions.form.selectRep")}
-                        searchPlaceholder="ابحث عن مندوب..."
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="address">{t("definitions.customers.address")}</Label>
-                      <Input
-                        id="address"
-                        value={customerForm.address}
-                        onChange={(e) =>
-                          setCustomerForm({
-                            ...customerForm,
-                            address: e.target.value,
-                          })
-                        }
-                        placeholder={t("definitions.form.fullAddress")}
-                        className="mt-1"
-                      />
-                    </div>
+                        ? t("definitions.updating")
+                        : t("definitions.saving")}
+                    </>
+                  ) : editingItem ? (
+                    t("definitions.update")
+                  ) : (
+                    t("common.save")
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Items Add/Edit Dialog */}
+        {selectedTab === "items" && (
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingItem
+                    ? t("definitions.items.edit")
+                    : t("definitions.items.addNew")}
+                </DialogTitle>
+                <DialogDescription>
+                  {editingItem
+                    ? t("definitions.items.editDescription")
+                    : t("definitions.items.addDescription")}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="name_ar">
+                      {t("definitions.customers.nameAr")} *
+                    </Label>
+                    <Input
+                      id="name_ar"
+                      value={itemForm.name_ar}
+                      onChange={(e) =>
+                        setItemForm({
+                          ...itemForm,
+                          name_ar: e.target.value,
+                        })
+                      }
+                      placeholder={t("definitions.form.itemNameAr")}
+                      className="mt-1"
+                    />
                   </div>
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsDialogOpen(false)}
-                    >
-                      {t("common.cancel")}
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        const formData = {
-                          ...customerForm,
-                          sales_rep_id: customerForm.sales_rep_id ? parseInt(customerForm.sales_rep_id) : null,
-                          tax_number: customerForm.tax_number || null,
-                          code: customerForm.code || null,
-                          user_id: customerForm.user_id || null,
-                          plate_drawer_code: customerForm.plate_drawer_code || null,
-                        };
-                        if (editingItem) {
-                          updateCustomerMutation.mutate({
-                            id: editingItem.id,
-                            data: formData,
-                          });
-                        } else {
-                          createCustomerMutation.mutate(formData);
-                        }
-                      }}
-                      disabled={
-                        createCustomerMutation.isPending ||
-                        updateCustomerMutation.isPending
+                  <div>
+                    <Label htmlFor="name">
+                      {t("definitions.customers.name")}
+                    </Label>
+                    <Input
+                      id="name"
+                      value={itemForm.name}
+                      onChange={(e) =>
+                        setItemForm({ ...itemForm, name: e.target.value })
+                      }
+                      placeholder="Item Name"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="code">{t("definitions.items.code")}</Label>
+                    <Input
+                      id="code"
+                      value={itemForm.code}
+                      onChange={(e) =>
+                        setItemForm({ ...itemForm, code: e.target.value })
+                      }
+                      placeholder={t("definitions.form.itemCode")}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="category_id">
+                      {t("definitions.items.category")}
+                    </Label>
+                    <Select
+                      value={itemForm.category_id}
+                      onValueChange={(value) =>
+                        setItemForm({ ...itemForm, category_id: value })
                       }
                     >
-                      {createCustomerMutation.isPending ||
-                      updateCustomerMutation.isPending ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          {editingItem ? t("definitions.updating") : t("definitions.saving")}
-                        </>
-                      ) : editingItem ? (
-                        t("definitions.update")
-                      ) : (
-                        t("common.save")
-                      )}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            )}
-
-            {/* Section Add/Edit Dialog */}
-            {selectedTab === "sections" && (
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>
-                      {editingItem ? t("definitions.sections.edit") : t("definitions.sections.addNew")}
-                    </DialogTitle>
-                    <DialogDescription>
-                      {editingItem
-                        ? t("definitions.sections.editDescription")
-                        : t("definitions.sections.addDescription")}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="name_ar">{t("definitions.customers.nameAr")} *</Label>
-                        <Input
-                          id="name_ar"
-                          value={sectionForm.name_ar}
-                          onChange={(e) =>
-                            setSectionForm({
-                              ...sectionForm,
-                              name_ar: e.target.value,
-                            })
-                          }
-                          placeholder={t("definitions.form.sectionNameAr")}
-                          className="mt-1"
+                      <SelectTrigger className="mt-1">
+                        <SelectValue
+                          placeholder={t("definitions.form.selectCategory")}
                         />
-                      </div>
-                      <div>
-                        <Label htmlFor="name">{t("definitions.customers.name")}</Label>
-                        <Input
-                          id="name"
-                          value={sectionForm.name}
-                          onChange={(e) =>
-                            setSectionForm({
-                              ...sectionForm,
-                              name: e.target.value,
-                            })
-                          }
-                          placeholder="Section Name"
-                          className="mt-1"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <Label htmlFor="description">{t("definitions.sections.description")}</Label>
-                      <Input
-                        id="description"
-                        value={sectionForm.description}
-                        onChange={(e) =>
-                          setSectionForm({
-                            ...sectionForm,
-                            description: e.target.value,
-                          })
-                        }
-                        placeholder={t("definitions.form.sectionDescOptional")}
-                        className="mt-1"
-                      />
-                    </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">
+                          {t("definitions.form.noCategory")}
+                        </SelectItem>
+                        {Array.isArray(categories) &&
+                          categories
+                            .filter(
+                              (cat) =>
+                                cat.id &&
+                                cat.id !== "" &&
+                                cat.id !== null &&
+                                cat.id !== undefined,
+                            )
+                            .map((cat: any) => (
+                              <SelectItem
+                                key={cat.id}
+                                value={cat.id.toString()}
+                              >
+                                {cat.name_ar || cat.name} ({cat.id})
+                              </SelectItem>
+                            ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsDialogOpen(false)}
-                    >
-                      {t("common.cancel")}
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        if (editingItem) {
-                          updateSectionMutation.mutate({
-                            id: editingItem.id,
-                            data: sectionForm,
-                          });
-                        } else {
-                          createSectionMutation.mutate(sectionForm);
-                        }
-                      }}
-                      disabled={
-                        createSectionMutation.isPending ||
-                        updateSectionMutation.isPending
-                      }
-                    >
-                      {createSectionMutation.isPending ||
-                      updateSectionMutation.isPending ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          {editingItem ? t("definitions.updating") : t("definitions.saving")}
-                        </>
-                      ) : editingItem ? (
-                        t("definitions.update")
-                      ) : (
-                        t("common.save")
-                      )}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            )}
-
-            {/* Category Add/Edit Dialog */}
-            {selectedTab === "categories" && (
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>
-                      {editingItem ? t("definitions.categories.edit") : t("definitions.categories.addNew")}
-                    </DialogTitle>
-                    <DialogDescription>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                >
+                  {t("common.cancel")}
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (editingItem) {
+                      updateItemMutation.mutate({
+                        id: editingItem.id,
+                        data: itemForm,
+                      });
+                    } else {
+                      createItemMutation.mutate(itemForm);
+                    }
+                  }}
+                  disabled={
+                    createItemMutation.isPending || updateItemMutation.isPending
+                  }
+                >
+                  {createItemMutation.isPending ||
+                  updateItemMutation.isPending ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                       {editingItem
-                        ? t("definitions.categories.editDescription")
-                        : t("definitions.categories.addDescription")}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="name_ar">{t("definitions.customers.nameAr")} *</Label>
+                        ? t("definitions.updating")
+                        : t("definitions.saving")}
+                    </>
+                  ) : editingItem ? (
+                    t("definitions.update")
+                  ) : (
+                    t("common.save")
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Customer Products Add/Edit Dialog */}
+        {selectedTab === "customer-products" && (
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto sm:max-w-[95vw] w-full mx-4">
+              <DialogHeader>
+                <DialogTitle className="text-lg sm:text-xl">
+                  {editingItem
+                    ? t("definitions.customerProducts.edit")
+                    : t("definitions.customerProducts.addNew")}
+                </DialogTitle>
+                <DialogDescription className="text-sm sm:text-base">
+                  {editingItem
+                    ? t("definitions.customerProducts.editDescription")
+                    : t("definitions.customerProducts.addDescription")}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-6 py-4 px-2 sm:px-0">
+                {/* العميل والفئة والصنف */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="customer_id">
+                      {t("definitions.customerProducts.customer")} *
+                    </Label>
+                    <div className="space-y-2 mt-1">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <Input
-                          id="name_ar"
-                          value={categoryForm.name_ar}
+                          placeholder={t("definitions.form.searchByName")}
+                          value={customerSearchTermInProducts}
                           onChange={(e) =>
-                            setCategoryForm({
-                              ...categoryForm,
-                              name_ar: e.target.value,
-                            })
+                            setCustomerSearchTermInProducts(e.target.value)
                           }
-                          placeholder={t("definitions.form.categoryNameAr")}
-                          className="mt-1"
+                          className="pl-10"
+                          data-testid="input-search-customers-in-products"
                         />
                       </div>
-                      <div>
-                        <Label htmlFor="name">{t("definitions.customers.name")}</Label>
-                        <Input
-                          id="name"
-                          value={categoryForm.name}
-                          onChange={(e) =>
-                            setCategoryForm({
-                              ...categoryForm,
-                              name: e.target.value,
-                            })
-                          }
-                          placeholder="Category Name"
-                          className="mt-1"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="code">{t("definitions.categories.code")}</Label>
-                        <Input
-                          id="code"
-                          value={categoryForm.code}
-                          onChange={(e) =>
-                            setCategoryForm({
-                              ...categoryForm,
-                              code: e.target.value,
-                            })
-                          }
-                          placeholder={t("definitions.form.categoryCodeOptional")}
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="parent_id">{t("definitions.categories.parentCategory")}</Label>
-                        <Select
-                          value={categoryForm.parent_id}
-                          onValueChange={(value) =>
-                            setCategoryForm({
-                              ...categoryForm,
-                              parent_id: value,
-                            })
-                          }
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue placeholder={t("definitions.form.selectParentCategory")} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">
-                              {t("definitions.form.noParentCategory")}
-                            </SelectItem>
-                            {Array.isArray(categories) &&
-                              categories
-                                .filter(
-                                  (cat) =>
-                                    cat.id &&
-                                    cat.id !== "" &&
-                                    cat.id !== null &&
-                                    cat.id !== undefined,
-                                )
-                                .map((cat: any) => (
-                                  <SelectItem
-                                    key={cat.id}
-                                    value={cat.id.toString()}
-                                  >
-                                    {cat.name_ar || cat.name} ({cat.id})
-                                  </SelectItem>
-                                ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="description">{t("definitions.sections.description")}</Label>
-                      <Input
-                        id="description"
-                        value={categoryForm.description}
-                        onChange={(e) =>
-                          setCategoryForm({
-                            ...categoryForm,
-                            description: e.target.value,
-                          })
-                        }
-                        placeholder={t("definitions.form.categoryDescOptional")}
-                        className="mt-1"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="status">{t("definitions.categories.status")}</Label>
                       <Select
-                        value={categoryForm.status}
+                        value={customerProductForm.customer_id}
                         onValueChange={(value) =>
-                          setCategoryForm({ ...categoryForm, status: value })
+                          setCustomerProductForm({
+                            ...customerProductForm,
+                            customer_id: value,
+                          })
+                        }
+                      >
+                        <SelectTrigger data-testid="select-customer-in-products">
+                          <SelectValue
+                            placeholder={t("definitions.form.selectCustomer")}
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">
+                            {t("definitions.form.selectCustomer")}
+                          </SelectItem>
+                          {filteredCustomersInProducts.length > 0 ? (
+                            filteredCustomersInProducts
+                              .filter(
+                                (customer) =>
+                                  customer.id &&
+                                  customer.id !== "" &&
+                                  customer.id !== null &&
+                                  customer.id !== undefined,
+                              )
+                              .map((customer: any) => (
+                                <SelectItem
+                                  key={customer.id}
+                                  value={customer.id.toString()}
+                                >
+                                  {customer.name_ar || customer.name}
+                                  {customer.name && customer.name_ar
+                                    ? ` - ${customer.name}`
+                                    : ""}
+                                </SelectItem>
+                              ))
+                          ) : (
+                            <div className="p-2 text-sm text-gray-500 text-center">
+                              {customerSearchTermInProducts
+                                ? t("definitions.form.noSearchResults")
+                                : t("definitions.form.loadingCustomers")}
+                            </div>
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {filteredCustomersInProducts.length > 0 && (
+                          <span>
+                            {filteredCustomersInProducts.length}{" "}
+                            {t("definitions.form.customersAvailable")}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="category_id">
+                      {t("definitions.items.category")}
+                    </Label>
+                    <Select
+                      value={customerProductForm.category_id}
+                      onValueChange={(value) => {
+                        setCustomerProductForm({
+                          ...customerProductForm,
+                          category_id: value,
+                          item_id: "", // Reset item selection when category changes
+                        });
+                      }}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue
+                          placeholder={t("definitions.form.selectCategory")}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">
+                          {t("definitions.form.selectCategory")}
+                        </SelectItem>
+                        {Array.isArray(categories) &&
+                          categories
+                            .filter(
+                              (cat) =>
+                                cat.id &&
+                                cat.id !== "" &&
+                                cat.id !== null &&
+                                cat.id !== undefined,
+                            )
+                            .map((cat: any) => (
+                              <SelectItem
+                                key={cat.id}
+                                value={cat.id.toString()}
+                              >
+                                {cat.name_ar || cat.name} ({cat.id})
+                              </SelectItem>
+                            ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="item_id">
+                      {t("definitions.customerProducts.item")}
+                    </Label>
+                    <Select
+                      value={customerProductForm.item_id}
+                      onValueChange={(value) =>
+                        setCustomerProductForm({
+                          ...customerProductForm,
+                          item_id: value,
+                        })
+                      }
+                      disabled={
+                        !customerProductForm.category_id ||
+                        customerProductForm.category_id === "none"
+                      }
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue
+                          placeholder={
+                            !customerProductForm.category_id ||
+                            customerProductForm.category_id === "none"
+                              ? t("definitions.form.selectCategoryFirst")
+                              : t("definitions.form.selectItem")
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">
+                          {t("definitions.form.selectItem")}
+                        </SelectItem>
+                        {Array.isArray(items) &&
+                          items
+                            .filter(
+                              (item: any) =>
+                                customerProductForm.category_id &&
+                                customerProductForm.category_id !== "none" &&
+                                item.category_id ===
+                                  customerProductForm.category_id,
+                            )
+                            .filter(
+                              (item) =>
+                                item.id &&
+                                item.id !== "" &&
+                                item.id !== null &&
+                                item.id !== undefined,
+                            )
+                            .map((item: any) => (
+                              <SelectItem
+                                key={item.id}
+                                value={item.id.toString()}
+                              >
+                                {item.name_ar || item.name} ({item.code})
+                              </SelectItem>
+                            ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* وصف الحجم والتثقيب */}
+                <div className="space-y-4">
+                  <h4 className="text-lg sm:text-xl font-medium border-b border-gray-200 pb-2">
+                    {t("definitions.form.productSpecs")}
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="size_caption">
+                        {t("definitions.form.productSizeAuto")}
+                      </Label>
+                      <Input
+                        id="size_caption"
+                        value={customerProductForm.size_caption}
+                        placeholder={t("definitions.form.autoGeneratedSize")}
+                        className="mt-1 bg-gray-50"
+                        readOnly
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="punching">التخريم</Label>
+                      <Select
+                        value={customerProductForm.punching || "بدون"}
+                        onValueChange={(value) =>
+                          setCustomerProductForm({
+                            ...customerProductForm,
+                            punching: value,
+                          })
                         }
                       >
                         <SelectTrigger className="mt-1">
-                          <SelectValue />
+                          <SelectValue
+                            placeholder={t("definitions.form.selectPunchType")}
+                          />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="active">{t("definitions.active")}</SelectItem>
-                          <SelectItem value="inactive">{t("definitions.inactive")}</SelectItem>
+                          {(() => {
+                            const selectedCategory = Array.isArray(categories)
+                              ? (categories as any[]).find(
+                                  (c: any) =>
+                                    c.id === customerProductForm.category_id,
+                                )
+                              : null;
+                            const catName = selectedCategory?.name_ar || "";
+
+                            if (catName === "أكياس علاقي") {
+                              return (
+                                <>
+                                  <SelectItem value="علاقي">علاقي</SelectItem>
+                                  <SelectItem value="علاقي هوك">
+                                    علاقي هوك
+                                  </SelectItem>
+                                </>
+                              );
+                            } else if (catName === "أكياس بنانة") {
+                              return (
+                                <>
+                                  <SelectItem value="بنانة">بنانة</SelectItem>
+                                  <SelectItem value="بنانة 6سم">
+                                    بنانة 6سم
+                                  </SelectItem>
+                                </>
+                              );
+                            } else {
+                              return <SelectItem value="بدون">بدون</SelectItem>;
+                            }
+                          })()}
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsDialogOpen(false)}
-                    >
-                      {t("common.cancel")}
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        if (editingItem) {
-                          updateCategoryMutation.mutate({
-                            id: editingItem.id,
-                            data: categoryForm,
-                          });
-                        } else {
-                          createCategoryMutation.mutate(categoryForm);
-                        }
-                      }}
-                      disabled={
-                        createCategoryMutation.isPending ||
-                        updateCategoryMutation.isPending
-                      }
-                    >
-                      {createCategoryMutation.isPending ||
-                      updateCategoryMutation.isPending ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          {editingItem ? t("definitions.updating") : t("definitions.saving")}
-                        </>
-                      ) : editingItem ? (
-                        t("definitions.update")
-                      ) : (
-                        t("common.save")
-                      )}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            )}
+                </div>
 
-            {/* Items Add/Edit Dialog */}
-            {selectedTab === "items" && (
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>
-                      {editingItem ? t("definitions.items.edit") : t("definitions.items.addNew")}
-                    </DialogTitle>
-                    <DialogDescription>
-                      {editingItem
-                        ? t("definitions.items.editDescription")
-                        : t("definitions.items.addDescription")}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="name_ar">{t("definitions.customers.nameAr")} *</Label>
-                        <Input
-                          id="name_ar"
-                          value={itemForm.name_ar}
-                          onChange={(e) =>
-                            setItemForm({
-                              ...itemForm,
-                              name_ar: e.target.value,
-                            })
-                          }
-                          placeholder={t("definitions.form.itemNameAr")}
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="name">{t("definitions.customers.name")}</Label>
-                        <Input
-                          id="name"
-                          value={itemForm.name}
-                          onChange={(e) =>
-                            setItemForm({ ...itemForm, name: e.target.value })
-                          }
-                          placeholder="Item Name"
-                          className="mt-1"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="code">{t("definitions.items.code")}</Label>
-                        <Input
-                          id="code"
-                          value={itemForm.code}
-                          onChange={(e) =>
-                            setItemForm({ ...itemForm, code: e.target.value })
-                          }
-                          placeholder={t("definitions.form.itemCode")}
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="category_id">{t("definitions.items.category")}</Label>
-                        <Select
-                          value={itemForm.category_id}
-                          onValueChange={(value) =>
-                            setItemForm({ ...itemForm, category_id: value })
-                          }
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue placeholder={t("definitions.form.selectCategory")} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">{t("definitions.form.noCategory")}</SelectItem>
-                            {Array.isArray(categories) &&
-                              categories
-                                .filter(
-                                  (cat) =>
-                                    cat.id &&
-                                    cat.id !== "" &&
-                                    cat.id !== null &&
-                                    cat.id !== undefined,
-                                )
-                                .map((cat: any) => (
-                                  <SelectItem
-                                    key={cat.id}
-                                    value={cat.id.toString()}
-                                  >
-                                    {cat.name_ar || cat.name} ({cat.id})
-                                  </SelectItem>
-                                ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsDialogOpen(false)}
-                    >
-                      {t("common.cancel")}
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        if (editingItem) {
-                          updateItemMutation.mutate({
-                            id: editingItem.id,
-                            data: itemForm,
-                          });
-                        } else {
-                          createItemMutation.mutate(itemForm);
-                        }
-                      }}
-                      disabled={
-                        createItemMutation.isPending ||
-                        updateItemMutation.isPending
-                      }
-                    >
-                      {createItemMutation.isPending ||
-                      updateItemMutation.isPending ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          {editingItem ? t("definitions.updating") : t("definitions.saving")}
-                        </>
-                      ) : editingItem ? (
-                        t("definitions.update")
-                      ) : (
-                        t("common.save")
-                      )}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            )}
-
-            {/* Customer Products Add/Edit Dialog */}
-            {selectedTab === "customer-products" && (
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto sm:max-w-[95vw] w-full mx-4">
-                  <DialogHeader>
-                    <DialogTitle className="text-lg sm:text-xl">
-                      {editingItem
-                        ? t("definitions.customerProducts.edit")
-                        : t("definitions.customerProducts.addNew")}
-                    </DialogTitle>
-                    <DialogDescription className="text-sm sm:text-base">
-                      {editingItem
-                        ? t("definitions.customerProducts.editDescription")
-                        : t("definitions.customerProducts.addDescription")}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-6 py-4 px-2 sm:px-0">
-                    {/* العميل والفئة والصنف */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      <div>
-                        <Label htmlFor="customer_id">{t("definitions.customerProducts.customer")} *</Label>
-                        <div className="space-y-2 mt-1">
-                          <div className="relative">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                            <Input
-                              placeholder={t("definitions.form.searchByName")}
-                              value={customerSearchTermInProducts}
-                              onChange={(e) =>
-                                setCustomerSearchTermInProducts(e.target.value)
-                              }
-                              className="pl-10"
-                              data-testid="input-search-customers-in-products"
-                            />
-                          </div>
-                          <Select
-                            value={customerProductForm.customer_id}
-                            onValueChange={(value) =>
-                              setCustomerProductForm({
-                                ...customerProductForm,
-                                customer_id: value,
-                              })
-                            }
-                          >
-                            <SelectTrigger data-testid="select-customer-in-products">
-                              <SelectValue placeholder={t("definitions.form.selectCustomer")} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">{t("definitions.form.selectCustomer")}</SelectItem>
-                              {filteredCustomersInProducts.length > 0 ? (
-                                filteredCustomersInProducts
-                                  .filter(
-                                    (customer) =>
-                                      customer.id &&
-                                      customer.id !== "" &&
-                                      customer.id !== null &&
-                                      customer.id !== undefined,
-                                  )
-                                  .map((customer: any) => (
-                                    <SelectItem
-                                      key={customer.id}
-                                      value={customer.id.toString()}
-                                    >
-                                      {customer.name_ar || customer.name}
-                                      {customer.name && customer.name_ar ? ` - ${customer.name}` : ""}
-                                    </SelectItem>
-                                  ))
-                              ) : (
-                                <div className="p-2 text-sm text-gray-500 text-center">
-                                  {customerSearchTermInProducts 
-                                    ? t("definitions.form.noSearchResults")
-                                    : t("definitions.form.loadingCustomers")}
-                                </div>
-                              )}
-                            </SelectContent>
-                          </Select>
-                          <div className="text-xs text-gray-500 mt-1">
-                            {filteredCustomersInProducts.length > 0 && (
-                              <span>
-                                {filteredCustomersInProducts.length} {t("definitions.form.customersAvailable")}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div>
-                        <Label htmlFor="category_id">{t("definitions.items.category")}</Label>
-                        <Select
-                          value={customerProductForm.category_id}
-                          onValueChange={(value) => {
-                            setCustomerProductForm({
-                              ...customerProductForm,
-                              category_id: value,
-                              item_id: "", // Reset item selection when category changes
-                            });
-                          }}
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue placeholder={t("definitions.form.selectCategory")} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">{t("definitions.form.selectCategory")}</SelectItem>
-                            {Array.isArray(categories) &&
-                              categories
-                                .filter(
-                                  (cat) =>
-                                    cat.id &&
-                                    cat.id !== "" &&
-                                    cat.id !== null &&
-                                    cat.id !== undefined,
-                                )
-                                .map((cat: any) => (
-                                  <SelectItem
-                                    key={cat.id}
-                                    value={cat.id.toString()}
-                                  >
-                                    {cat.name_ar || cat.name} ({cat.id})
-                                  </SelectItem>
-                                ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label htmlFor="item_id">{t("definitions.customerProducts.item")}</Label>
-                        <Select
-                          value={customerProductForm.item_id}
-                          onValueChange={(value) =>
-                            setCustomerProductForm({
-                              ...customerProductForm,
-                              item_id: value,
-                            })
-                          }
-                          disabled={
-                            !customerProductForm.category_id ||
-                            customerProductForm.category_id === "none"
-                          }
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue
-                              placeholder={
-                                !customerProductForm.category_id ||
-                                customerProductForm.category_id === "none"
-                                  ? t("definitions.form.selectCategoryFirst")
-                                  : t("definitions.form.selectItem")
-                              }
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">{t("definitions.form.selectItem")}</SelectItem>
-                            {Array.isArray(items) &&
-                              items
-                                .filter(
-                                  (item: any) =>
-                                    customerProductForm.category_id &&
-                                    customerProductForm.category_id !==
-                                      "none" &&
-                                    item.category_id ===
-                                      customerProductForm.category_id,
-                                )
-                                .filter(
-                                  (item) =>
-                                    item.id &&
-                                    item.id !== "" &&
-                                    item.id !== null &&
-                                    item.id !== undefined,
-                                )
-                                .map((item: any) => (
-                                  <SelectItem
-                                    key={item.id}
-                                    value={item.id.toString()}
-                                  >
-                                    {item.name_ar || item.name} ({item.code})
-                                  </SelectItem>
-                                ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    {/* وصف الحجم والتثقيب */}
-                    <div className="space-y-4">
-                      <h4 className="text-lg sm:text-xl font-medium border-b border-gray-200 pb-2">
-                        {t("definitions.form.productSpecs")}
-                      </h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="size_caption">
-                            {t("definitions.form.productSizeAuto")}
-                          </Label>
-                          <Input
-                            id="size_caption"
-                            value={customerProductForm.size_caption}
-                            placeholder={t("definitions.form.autoGeneratedSize")}
-                            className="mt-1 bg-gray-50"
-                            readOnly
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="punching">التخريم</Label>
-                          <Select
-                            value={customerProductForm.punching || "بدون"}
-                            onValueChange={(value) =>
-                              setCustomerProductForm({
-                                ...customerProductForm,
-                                punching: value,
-                              })
-                            }
-                          >
-                            <SelectTrigger className="mt-1">
-                              <SelectValue placeholder={t("definitions.form.selectPunchType")} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {(() => {
-                                const selectedCategory = Array.isArray(categories)
-                                  ? (categories as any[]).find((c: any) => c.id === customerProductForm.category_id)
-                                  : null;
-                                const catName = selectedCategory?.name_ar || "";
-
-                                if (catName === "أكياس علاقي") {
-                                  return (
-                                    <>
-                                      <SelectItem value="علاقي">علاقي</SelectItem>
-                                      <SelectItem value="علاقي هوك">علاقي هوك</SelectItem>
-                                    </>
-                                  );
-                                } else if (catName === "أكياس بنانة") {
-                                  return (
-                                    <>
-                                      <SelectItem value="بنانة">بنانة</SelectItem>
-                                      <SelectItem value="بنانة 6سم">بنانة 6سم</SelectItem>
-                                    </>
-                                  );
-                                } else {
-                                  return (
-                                    <SelectItem value="بدون">بدون</SelectItem>
-                                  );
-                                }
-                              })()}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* الأبعاد والقياسات بالترتيب المطلوب */}
-                    <div className="space-y-4">
-                      <h4 className="text-lg sm:text-xl font-medium border-b border-gray-200 pb-2">
-                        {t("definitions.form.dimensionsMeasurements")}
-                      </h4>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                        <div>
-                          <Label htmlFor="right_facing">
-                            {t("definitions.form.rightSide")}
-                          </Label>
-                          <Input
-                            id="right_facing"
-                            type="number"
-                            step="0.01"
-                            value={customerProductForm.right_facing}
-                            onChange={(e) =>
-                              setCustomerProductForm({
-                                ...customerProductForm,
-                                right_facing: e.target.value,
-                              })
-                            }
-                            placeholder="0.00"
-                            className="mt-1"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="width">{t("definitions.form.width")}</Label>
-                          <Input
-                            id="width"
-                            type="number"
-                            step="0.01"
-                            value={customerProductForm.width}
-                            onChange={(e) =>
-                              setCustomerProductForm({
-                                ...customerProductForm,
-                                width: e.target.value,
-                              })
-                            }
-                            placeholder="0.00"
-                            className="mt-1"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="left_facing">
-                            {t("definitions.form.leftSide")}
-                          </Label>
-                          <Input
-                            id="left_facing"
-                            type="number"
-                            step="0.01"
-                            value={customerProductForm.left_facing}
-                            onChange={(e) =>
-                              setCustomerProductForm({
-                                ...customerProductForm,
-                                left_facing: e.target.value,
-                              })
-                            }
-                            placeholder="0.00"
-                            className="mt-1"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="thickness">{t("definitions.form.thickness")}</Label>
-                          <Input
-                            id="thickness"
-                            type="number"
-                            step="0.01"
-                            value={customerProductForm.thickness}
-                            onChange={(e) =>
-                              setCustomerProductForm({
-                                ...customerProductForm,
-                                thickness: e.target.value,
-                              })
-                            }
-                            placeholder="0.00"
-                            className="mt-1"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* الطباعة والقطع */}
-                    <div className="space-y-4">
-                      <h4 className="text-lg sm:text-xl font-medium border-b border-gray-200 pb-2">
-                        {t("definitions.form.printingCuttingSpecs")}
-                      </h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div>
-                          <Label htmlFor="printing_cylinder">
-                            {t("definitions.form.printingCylinder")}
-                          </Label>
-                          <Select
-                            value={customerProductForm.printing_cylinder}
-                            onValueChange={(value) =>
-                              setCustomerProductForm({
-                                ...customerProductForm,
-                                printing_cylinder: value,
-                              })
-                            }
-                          >
-                            <SelectTrigger className="mt-1">
-                              <SelectValue placeholder={t("definitions.form.selectCylinder")} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {printingCylinderOptions
-                                .filter(
-                                  (option) =>
-                                    option.value &&
-                                    option.value !== "" &&
-                                    option.value !== null &&
-                                    option.value !== undefined,
-                                )
-                                .map((option) => (
-                                  <SelectItem
-                                    key={option.value}
-                                    value={option.value.toString()}
-                                  >
-                                    {option.label}
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label htmlFor="cutting_length_cm">
-                            {t("definitions.form.cuttingLength")}
-                          </Label>
-                          {(() => {
-                            const selectedCat = Array.isArray(categories)
-                              ? (categories as any[]).find((c: any) => c.id === customerProductForm.category_id)
-                              : null;
-                            const catNameAr = selectedCat?.name_ar || "";
-                            const isSufra = catNameAr === "سفرة بلاستيكية" || catNameAr === "سفرة بلاستيكية مطوية";
-                            const isNoPrinting = customerProductForm.printing_cylinder === "بدون طباعة";
-                            const isManualInput = isSufra || isNoPrinting;
-                            return (
-                              <Input
-                                id="cutting_length_cm"
-                                type="number"
-                                value={customerProductForm.cutting_length_cm}
-                                onChange={(e) =>
-                                  setCustomerProductForm({
-                                    ...customerProductForm,
-                                    cutting_length_cm: e.target.value,
-                                  })
-                                }
-                                placeholder={isManualInput ? t("definitions.form.enterCuttingLength") : t("definitions.form.autoCalculated")}
-                                className="mt-1"
-                                disabled={!isManualInput}
-                              />
-                            );
-                          })()}
-                        </div>
-                        <div className="flex items-center gap-3 mt-6 p-3 bg-gray-50 rounded-md">
-                          <input
-                            type="checkbox"
-                            id="is_printed"
-                            checked={customerProductForm.is_printed}
-                            className="rounded w-4 h-4"
-                            disabled
-                          />
-                          <Label
-                            htmlFor="is_printed"
-                            className="text-gray-600 text-sm"
-                          >
-                            {t("definitions.form.printedProduct")}
-                          </Label>
-                        </div>
-                        <div>
-                          <Label htmlFor="cutting_unit">{t("definitions.form.cuttingUnit")}</Label>
-                          <Select
-                            value={customerProductForm.cutting_unit || "none"}
-                            onValueChange={(value) =>
-                              setCustomerProductForm({
-                                ...customerProductForm,
-                                cutting_unit: value === "none" ? "" : value,
-                              })
-                            }
-                          >
-                            <SelectTrigger className="mt-1">
-                              <SelectValue placeholder={t("definitions.form.selectUnit")} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">{t("definitions.form.selectUnit")}</SelectItem>
-                              <SelectItem value="كيلو">{t("definitions.form.unitKilo")}</SelectItem>
-                              <SelectItem value="رول">{t("definitions.form.unitRoll")}</SelectItem>
-                              <SelectItem value="باكت">{t("definitions.form.unitPacket")}</SelectItem>
-                              <SelectItem value="كرتون">{t("definitions.form.unitCarton")}</SelectItem>
-                              <SelectItem value="قطعة">{t("definitions.form.unitPiece")}</SelectItem>
-                              <SelectItem value="كيس">{t("definitions.form.unitBag")}</SelectItem>
-                              <SelectItem value="غطاء">{t("definitions.form.unitCover")}</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* المواد والخامات */}
-                    <div className="space-y-4">
-                      <h4 className="text-lg sm:text-xl font-medium border-b border-gray-200 pb-2">
-                        {t("definitions.form.materialsRaw")}
-                      </h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="raw_material">{t("definitions.form.rawMaterial")}</Label>
-                          <Select
-                            value={customerProductForm.raw_material}
-                            onValueChange={(value) =>
-                              setCustomerProductForm({
-                                ...customerProductForm,
-                                raw_material: value,
-                              })
-                            }
-                          >
-                            <SelectTrigger className="mt-1">
-                              <SelectValue placeholder={t("definitions.form.selectRawMaterial")} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="HDPE">HDPE</SelectItem>
-                              <SelectItem value="LDPE">LDPE</SelectItem>
-                              <SelectItem value="Regrind">Regrind</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label htmlFor="master_batch_id">
-                            {t("definitions.form.masterBatchColor")}
-                          </Label>
-                          <Select
-                            value={customerProductForm.master_batch_id}
-                            onValueChange={(value) =>
-                              setCustomerProductForm({
-                                ...customerProductForm,
-                                master_batch_id: value,
-                              })
-                            }
-                          >
-                            <SelectTrigger className="mt-1">
-                              <SelectValue placeholder={t("definitions.form.selectColor")} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">{t("definitions.form.noColor")}</SelectItem>
-                              {masterBatchColors
-                                .filter(
-                                  (color) =>
-                                    color.id &&
-                                    color.id !== "" &&
-                                    color.id !== null &&
-                                    color.id !== undefined &&
-                                    color.is_active !== false,
-                                )
-                                .map((color) => (
-                                  <SelectItem
-                                    key={color.id}
-                                    value={color.id.toString()}
-                                  >
-                                    <div className="flex items-center gap-3">
-                                      <div
-                                        className="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center"
-                                        style={{
-                                          backgroundColor: color.color,
-                                          border:
-                                            color.id === "transparent"
-                                              ? "2px dashed #ccc"
-                                              : `2px solid ${color.color}`,
-                                        }}
-                                      >
-                                        {color.id === "transparent" && (
-                                          <span className="text-xs text-gray-400">
-                                            ⊘
-                                          </span>
-                                        )}
-                                      </div>
-                                      <span className="font-medium">
-                                        {color.name_ar}
-                                      </span>
-                                      <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
-                                        {color.id}
-                                      </span>
-                                    </div>
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* الأوزان والكميات */}
-                    <div className="space-y-4">
-                      <h4 className="text-lg sm:text-xl font-medium border-b border-gray-200 pb-2">
-                        {t("definitions.form.weightsQuantities")}
-                      </h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <div>
-                          <Label htmlFor="unit_weight_kg">
-                            {t("definitions.form.unitWeight")}
-                          </Label>
-                          <Input
-                            id="unit_weight_kg"
-                            type="number"
-                            step="0.001"
-                            value={customerProductForm.unit_weight_kg}
-                            onChange={(e) =>
-                              setCustomerProductForm({
-                                ...customerProductForm,
-                                unit_weight_kg: e.target.value,
-                              })
-                            }
-                            placeholder="0.00"
-                            className="mt-1"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="unit_quantity">{t("definitions.form.packaging")}</Label>
-                          <Input
-                            id="unit_quantity"
-                            type="number"
-                            value={customerProductForm.unit_quantity}
-                            onChange={(e) =>
-                              setCustomerProductForm({
-                                ...customerProductForm,
-                                unit_quantity: e.target.value,
-                              })
-                            }
-                            placeholder="0"
-                            className="mt-1"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="package_weight_kg">
-                            {t("definitions.form.packageWeightAuto")}
-                          </Label>
-                          <Input
-                            id="package_weight_kg"
-                            type="number"
-                            step="0.01"
-                            value={customerProductForm.package_weight_kg}
-                            placeholder={t("definitions.form.unitWeightTimesQty")}
-                            className="mt-1 bg-gray-50"
-                            readOnly
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* الكليشيهات والتصاميم */}
-                    <div className="space-y-4">
-                      <h4 className="text-lg sm:text-xl font-medium border-b border-gray-200 pb-2">
-                        {t("definitions.form.clichesDesigns")}
-                      </h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="cliche_front_design">
-                            {t("definitions.form.frontDesign")}
-                          </Label>
-                          <div className="space-y-2">
-                            <Input
-                              id="cliche_front_design"
-                              type="file"
-                              accept="image/*,.jpeg,.jpg,.png,.gif,.bmp,.webp,.svg"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  // Validate file size (max 5MB)
-                                  if (file.size > 5 * 1024 * 1024) {
-                                    toast({
-                                      title: t("definitions.form.fileTooLarge"),
-                                      description:
-                                        t("definitions.form.imageSizeLimit"),
-                                      variant: "destructive",
-                                    });
-                                    return;
-                                  }
-
-                                  const reader = new FileReader();
-                                  reader.onload = (e) => {
-                                    const result = e.target?.result as string;
-                                    setCustomerProductForm({
-                                      ...customerProductForm,
-                                      cliche_front_design: result,
-                                      front_design_filename: file.name,
-                                    });
-                                  };
-                                  reader.readAsDataURL(file);
-                                }
-                              }}
-                              className="mt-1"
-                            />
-                            {customerProductForm.cliche_front_design && (
-                              <div className="relative">
-                                <img
-                                  src={customerProductForm.cliche_front_design}
-                                  alt={t("definitions.form.frontDesign")}
-                                  className="max-w-full max-h-32 object-contain border rounded-md bg-gray-50"
-                                />
-                                <Button
-                                  type="button"
-                                  variant="destructive"
-                                  size="sm"
-                                  className="absolute top-1 right-1 h-6 w-6 p-0"
-                                  onClick={() =>
-                                    setCustomerProductForm({
-                                      ...customerProductForm,
-                                      cliche_front_design: "",
-                                      front_design_filename: "",
-                                    })
-                                  }
-                                >
-                                  ✕
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <div>
-                          <Label htmlFor="cliche_back_design">
-                            {t("definitions.form.backDesign")}
-                          </Label>
-                          <div className="space-y-2">
-                            <Input
-                              id="cliche_back_design"
-                              type="file"
-                              accept="image/*,.jpeg,.jpg,.png,.gif,.bmp,.webp,.svg"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  // Validate file size (max 5MB)
-                                  if (file.size > 5 * 1024 * 1024) {
-                                    toast({
-                                      title: t("definitions.form.fileTooLarge"),
-                                      description:
-                                        t("definitions.form.imageSizeLimit"),
-                                      variant: "destructive",
-                                    });
-                                    return;
-                                  }
-
-                                  const reader = new FileReader();
-                                  reader.onload = (e) => {
-                                    const result = e.target?.result as string;
-                                    setCustomerProductForm({
-                                      ...customerProductForm,
-                                      cliche_back_design: result,
-                                      back_design_filename: file.name,
-                                    });
-                                  };
-                                  reader.readAsDataURL(file);
-                                }
-                              }}
-                              className="mt-1"
-                            />
-                            {customerProductForm.cliche_back_design && (
-                              <div className="relative">
-                                <img
-                                  src={customerProductForm.cliche_back_design}
-                                  alt={t("definitions.form.backDesign")}
-                                  className="max-w-full max-h-32 object-contain border rounded-md bg-gray-50"
-                                />
-                                <Button
-                                  type="button"
-                                  variant="destructive"
-                                  size="sm"
-                                  className="absolute top-1 right-1 h-6 w-6 p-0"
-                                  onClick={() =>
-                                    setCustomerProductForm({
-                                      ...customerProductForm,
-                                      cliche_back_design: "",
-                                      back_design_filename: "",
-                                    })
-                                  }
-                                >
-                                  ✕
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* ملاحظات */}
+                {/* الأبعاد والقياسات بالترتيب المطلوب */}
+                <div className="space-y-4">
+                  <h4 className="text-lg sm:text-xl font-medium border-b border-gray-200 pb-2">
+                    {t("definitions.form.dimensionsMeasurements")}
+                  </h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                     <div>
-                      <Label htmlFor="notes" className="text-base">
-                        {t("definitions.form.notes")}
+                      <Label htmlFor="right_facing">
+                        {t("definitions.form.rightSide")}
                       </Label>
-                      <textarea
-                        id="notes"
-                        value={customerProductForm.notes}
+                      <Input
+                        id="right_facing"
+                        type="number"
+                        step="0.01"
+                        value={customerProductForm.right_facing}
                         onChange={(e) =>
                           setCustomerProductForm({
                             ...customerProductForm,
-                            notes: e.target.value,
+                            right_facing: e.target.value,
                           })
                         }
-                        placeholder={t("definitions.form.notesPlaceholder")}
-                        className="mt-2 w-full p-3 border border-gray-300 rounded-md resize-none text-right"
-                        rows={4}
-                        dir="rtl"
+                        placeholder="0.00"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="width">
+                        {t("definitions.form.width")}
+                      </Label>
+                      <Input
+                        id="width"
+                        type="number"
+                        step="0.01"
+                        value={customerProductForm.width}
+                        onChange={(e) =>
+                          setCustomerProductForm({
+                            ...customerProductForm,
+                            width: e.target.value,
+                          })
+                        }
+                        placeholder="0.00"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="left_facing">
+                        {t("definitions.form.leftSide")}
+                      </Label>
+                      <Input
+                        id="left_facing"
+                        type="number"
+                        step="0.01"
+                        value={customerProductForm.left_facing}
+                        onChange={(e) =>
+                          setCustomerProductForm({
+                            ...customerProductForm,
+                            left_facing: e.target.value,
+                          })
+                        }
+                        placeholder="0.00"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="thickness">
+                        {t("definitions.form.thickness")}
+                      </Label>
+                      <Input
+                        id="thickness"
+                        type="number"
+                        step="0.01"
+                        value={customerProductForm.thickness}
+                        onChange={(e) =>
+                          setCustomerProductForm({
+                            ...customerProductForm,
+                            thickness: e.target.value,
+                          })
+                        }
+                        placeholder="0.00"
+                        className="mt-1"
                       />
                     </div>
                   </div>
-                  <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0">
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsDialogOpen(false)}
-                      className="w-full sm:w-auto order-2 sm:order-1"
-                    >
-                      {t("common.cancel")}
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        // Convert string fields to numbers for validation
-                        const processedData = {
-                          ...customerProductForm,
-                          cutting_length_cm:
-                            customerProductForm.cutting_length_cm
-                              ? parseInt(customerProductForm.cutting_length_cm)
-                              : undefined,
-                          unit_quantity: customerProductForm.unit_quantity
-                            ? parseInt(customerProductForm.unit_quantity)
-                            : undefined,
-                          width: customerProductForm.width
-                            ? parseFloat(customerProductForm.width)
-                            : undefined,
-                          left_facing: customerProductForm.left_facing
-                            ? parseFloat(customerProductForm.left_facing)
-                            : undefined,
-                          right_facing: customerProductForm.right_facing
-                            ? parseFloat(customerProductForm.right_facing)
-                            : undefined,
-                          thickness: customerProductForm.thickness
-                            ? parseFloat(customerProductForm.thickness)
-                            : undefined,
-                          unit_weight_kg: customerProductForm.unit_weight_kg
-                            ? parseFloat(customerProductForm.unit_weight_kg)
-                            : undefined,
-                          package_weight_kg:
-                            customerProductForm.package_weight_kg
-                              ? parseFloat(
-                                  customerProductForm.package_weight_kg,
-                                )
-                              : undefined,
-                        };
+                </div>
 
-                        if (editingItem) {
-                          updateCustomerProductMutation.mutate({
-                            id: editingItem.id,
-                            data: processedData,
-                          });
-                        } else {
-                          createCustomerProductMutation.mutate(processedData);
-                        }
-                      }}
-                      disabled={
-                        createCustomerProductMutation.isPending ||
-                        updateCustomerProductMutation.isPending
-                      }
-                      className="w-full sm:w-auto order-1 sm:order-2"
-                    >
-                      {createCustomerProductMutation.isPending ||
-                      updateCustomerProductMutation.isPending ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          {editingItem ? t("definitions.updating") : t("definitions.saving")}
-                        </>
-                      ) : editingItem ? (
-                        t("definitions.update")
-                      ) : (
-                        t("common.save")
-                      )}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            )}
-
-            {/* Machines Add/Edit Dialog */}
-            {selectedTab === "machines" && (
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>
-                      {editingItem ? t("definitions.machines.edit") : t("definitions.machines.addNew")}
-                    </DialogTitle>
-                    <DialogDescription>
-                      {editingItem
-                        ? t("definitions.machines.editDescription")
-                        : t("definitions.machines.addDescription")}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="name_ar">{t("definitions.customers.nameAr")} *</Label>
-                        <Input
-                          id="name_ar"
-                          value={machineForm.name_ar}
-                          onChange={(e) =>
-                            setMachineForm({
-                              ...machineForm,
-                              name_ar: e.target.value,
-                            })
-                          }
-                          placeholder={t("definitions.form.machineNameAr")}
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="name">{t("definitions.customers.name")}</Label>
-                        <Input
-                          id="name"
-                          value={machineForm.name}
-                          onChange={(e) =>
-                            setMachineForm({
-                              ...machineForm,
-                              name: e.target.value,
-                            })
-                          }
-                          placeholder="Machine Name"
-                          className="mt-1"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="type">{t("definitions.machines.type")}</Label>
-                        <Select
-                          value={machineForm.type}
-                          onValueChange={(value) =>
-                            setMachineForm({ ...machineForm, type: value })
-                          }
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="extruder">{t("definitions.form.typeFilm")}</SelectItem>
-                            <SelectItem value="cutting">{t("definitions.form.typeCutting")}</SelectItem>
-                            <SelectItem value="printing">{t("definitions.form.typePrinting")}</SelectItem>
-                            <SelectItem value="packaging">{t("definitions.form.typePackaging")}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label htmlFor="section_id">{t("definitions.machines.section")}</Label>
-                        <Select
-                          value={machineForm.section_id}
-                          onValueChange={(value) =>
-                            setMachineForm({
-                              ...machineForm,
-                              section_id: value,
-                            })
-                          }
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue placeholder={t("definitions.form.selectSection")} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">{t("definitions.form.noSection")}</SelectItem>
-                            {Array.isArray(sections) &&
-                              sections
-                                .filter(
-                                  (section) =>
-                                    section.id &&
-                                    section.id !== "" &&
-                                    section.id !== null &&
-                                    section.id !== undefined,
-                                )
-                                .map((section: any) => (
-                                  <SelectItem
-                                    key={section.id}
-                                    value={section.id.toString()}
-                                  >
-                                    {section.name_ar || section.name} (
-                                    {section.id})
-                                  </SelectItem>
-                                ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    {/* حالة الماكينة */}
+                {/* الطباعة والقطع */}
+                <div className="space-y-4">
+                  <h4 className="text-lg sm:text-xl font-medium border-b border-gray-200 pb-2">
+                    {t("definitions.form.printingCuttingSpecs")}
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div>
-                      <Label htmlFor="status">{t("definitions.machines.status")}</Label>
+                      <Label htmlFor="printing_cylinder">
+                        {t("definitions.form.printingCylinder")}
+                      </Label>
                       <Select
-                        value={machineForm.status}
+                        value={customerProductForm.printing_cylinder}
                         onValueChange={(value) =>
-                          setMachineForm({
-                            ...machineForm,
-                            status: value,
+                          setCustomerProductForm({
+                            ...customerProductForm,
+                            printing_cylinder: value,
                           })
                         }
                       >
-                        <SelectTrigger className="mt-1" data-testid="select-machine-status">
-                          <SelectValue placeholder={t("definitions.form.selectStatus")} />
+                        <SelectTrigger className="mt-1">
+                          <SelectValue
+                            placeholder={t("definitions.form.selectCylinder")}
+                          />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="active">{t("common.active")}</SelectItem>
-                          <SelectItem value="maintenance">{t("definitions.table.maintenance")}</SelectItem>
-                          <SelectItem value="down">{t("definitions.table.stopped")}</SelectItem>
+                          {printingCylinderOptions
+                            .filter(
+                              (option) =>
+                                option.value &&
+                                option.value !== "" &&
+                                option.value !== null &&
+                                option.value !== undefined,
+                            )
+                            .map((option) => (
+                              <SelectItem
+                                key={option.value}
+                                value={option.value.toString()}
+                              >
+                                {option.label}
+                              </SelectItem>
+                            ))}
                         </SelectContent>
                       </Select>
                     </div>
-
-                    {/* قدرة الإنتاج حسب الحجم */}
-                    <div className="border-t pt-4 mt-4">
-                      <h3 className="text-sm font-medium mb-3">{t("definitions.form.productionCapacity")}</h3>
-                      <div className="grid grid-cols-3 gap-4">
-                        <div>
-                          <Label htmlFor="capacity_small">{t("definitions.machines.capacitySmall")}</Label>
+                    <div>
+                      <Label htmlFor="cutting_length_cm">
+                        {t("definitions.form.cuttingLength")}
+                      </Label>
+                      {(() => {
+                        const selectedCat = Array.isArray(categories)
+                          ? (categories as any[]).find(
+                              (c: any) =>
+                                c.id === customerProductForm.category_id,
+                            )
+                          : null;
+                        const catNameAr = selectedCat?.name_ar || "";
+                        const isSufra =
+                          catNameAr === "سفرة بلاستيكية" ||
+                          catNameAr === "سفرة بلاستيكية مطوية";
+                        const isNoPrinting =
+                          customerProductForm.printing_cylinder ===
+                          "بدون طباعة";
+                        const isManualInput = isSufra || isNoPrinting;
+                        return (
                           <Input
-                            id="capacity_small"
+                            id="cutting_length_cm"
                             type="number"
-                            step="0.01"
-                            value={machineForm.capacity_small_kg_per_hour}
+                            value={customerProductForm.cutting_length_cm}
                             onChange={(e) =>
-                              setMachineForm({
-                                ...machineForm,
-                                capacity_small_kg_per_hour: e.target.value,
+                              setCustomerProductForm({
+                                ...customerProductForm,
+                                cutting_length_cm: e.target.value,
                               })
                             }
-                            placeholder={t("common.kgPerHour")}
+                            placeholder={
+                              isManualInput
+                                ? t("definitions.form.enterCuttingLength")
+                                : t("definitions.form.autoCalculated")
+                            }
                             className="mt-1"
-                            data-testid="input-capacity-small"
+                            disabled={!isManualInput}
                           />
-                        </div>
-                        <div>
-                          <Label htmlFor="capacity_medium">{t("definitions.machines.capacityMedium")}</Label>
-                          <Input
-                            id="capacity_medium"
-                            type="number"
-                            step="0.01"
-                            value={machineForm.capacity_medium_kg_per_hour}
-                            onChange={(e) =>
-                              setMachineForm({
-                                ...machineForm,
-                                capacity_medium_kg_per_hour: e.target.value,
-                              })
-                            }
-                            placeholder={t("common.kgPerHour")}
-                            className="mt-1"
-                            data-testid="input-capacity-medium"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="capacity_large">{t("definitions.machines.capacityLarge")}</Label>
-                          <Input
-                            id="capacity_large"
-                            type="number"
-                            step="0.01"
-                            value={machineForm.capacity_large_kg_per_hour}
-                            onChange={(e) =>
-                              setMachineForm({
-                                ...machineForm,
-                                capacity_large_kg_per_hour: e.target.value,
-                              })
-                            }
-                            placeholder={t("common.kgPerHour")}
-                            className="mt-1"
-                            data-testid="input-capacity-large"
-                          />
-                        </div>
-                      </div>
+                        );
+                      })()}
                     </div>
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsDialogOpen(false)}
-                    >
-                      {t("common.cancel")}
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        if (editingItem) {
-                          updateMachineMutation.mutate({
-                            id: editingItem.id,
-                            data: machineForm,
-                          });
-                        } else {
-                          createMachineMutation.mutate(machineForm);
-                        }
-                      }}
-                      disabled={
-                        createMachineMutation.isPending ||
-                        updateMachineMutation.isPending
-                      }
-                    >
-                      {createMachineMutation.isPending ||
-                      updateMachineMutation.isPending ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          {editingItem ? t("definitions.updating") : t("definitions.saving")}
-                        </>
-                      ) : editingItem ? (
-                        t("definitions.update")
-                      ) : (
-                        t("common.save")
-                      )}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            )}
-
-            {/* Users Add/Edit Dialog */}
-            {selectedTab === "users" && (
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>
-                      {editingItem ? t("definitions.users.edit") : t("definitions.users.addNew")}
-                    </DialogTitle>
-                    <DialogDescription>
-                      {editingItem
-                        ? t("definitions.users.editDescription")
-                        : t("definitions.users.addDescription")}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="display_name_ar">
-                          {t("definitions.table.nameAr")} *
-                        </Label>
-                        <Input
-                          id="display_name_ar"
-                          value={userForm.display_name_ar}
-                          onChange={(e) =>
-                            setUserForm({
-                              ...userForm,
-                              display_name_ar: e.target.value,
-                            })
-                          }
-                          placeholder={t("definitions.form.userNameAr")}
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="display_name">{t("definitions.users.displayName")}</Label>
-                        <Input
-                          id="display_name"
-                          value={userForm.display_name}
-                          onChange={(e) =>
-                            setUserForm({
-                              ...userForm,
-                              display_name: e.target.value,
-                            })
-                          }
-                          placeholder="Display Name"
-                          className="mt-1"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="username">{t("definitions.users.username")} *</Label>
-                        <Input
-                          id="username"
-                          value={userForm.username}
-                          onChange={(e) =>
-                            setUserForm({
-                              ...userForm,
-                              username: e.target.value,
-                            })
-                          }
-                          placeholder="username"
-                          className="mt-1"
-                          data-testid="input-username"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="password">
-                          {t("definitions.form.password")} {editingItem ? t("definitions.form.leaveBlank") : "*"}
-                        </Label>
-                        <div className="relative">
-                          <Input
-                            id="password"
-                            type={showPassword ? "text" : "password"}
-                            value={userForm.password}
-                            onChange={(e) =>
-                              setUserForm({
-                                ...userForm,
-                                password: e.target.value,
-                              })
-                            }
-                            placeholder={editingItem ? t("definitions.form.enterNewPassword") : t("definitions.form.enterPassword")}
-                            className="mt-1 pr-10"
-                            data-testid="input-password"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                            data-testid="button-toggle-password"
-                          >
-                            {showPassword ? (
-                              <EyeOff className="w-4 h-4" />
-                            ) : (
-                              <Eye className="w-4 h-4" />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="phone">{t("definitions.form.mobileNumber")}</Label>
-                        <Input
-                          id="phone"
-                          type="tel"
-                          value={userForm.phone}
-                          onChange={(e) =>
-                            setUserForm({
-                              ...userForm,
-                              phone: e.target.value,
-                            })
-                          }
-                          placeholder="05xxxxxxxx"
-                          className="mt-1"
-                          dir="ltr"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="role_id">{t("definitions.users.role")}</Label>
-                        <Select
-                          value={userForm.role_id}
-                          onValueChange={(value) =>
-                            setUserForm({ ...userForm, role_id: value })
-                          }
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue placeholder={t("definitions.form.selectRole")} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">{t("definitions.form.noRole")}</SelectItem>
-                            {Array.isArray(roles) &&
-                              roles
-                                .filter(
-                                  (role) =>
-                                    role.id &&
-                                    role.id !== "" &&
-                                    role.id !== null &&
-                                    role.id !== undefined,
-                                )
-                                .map((role: any) => (
-                                  <SelectItem
-                                    key={role.id}
-                                    value={`ROLE${String(role.id).padStart(2, '0')}`}
-                                  >
-                                    {role.name_ar || role.name}
-                                  </SelectItem>
-                                ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label htmlFor="section_id">{t("definitions.machines.section")}</Label>
-                        <Select
-                          value={userForm.section_id}
-                          onValueChange={(value) =>
-                            setUserForm({ ...userForm, section_id: value })
-                          }
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue placeholder={t("definitions.form.selectSection")} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">{t("definitions.form.noSection")}</SelectItem>
-                            {Array.isArray(sections) &&
-                              sections
-                                .filter(
-                                  (section) =>
-                                    section.id &&
-                                    section.id !== "" &&
-                                    section.id !== null &&
-                                    section.id !== undefined,
-                                )
-                                .map((section: any) => (
-                                  <SelectItem
-                                    key={section.id}
-                                    value={section.id.toString()}
-                                  >
-                                    {section.name_ar || section.name} (
-                                    {section.id})
-                                  </SelectItem>
-                                ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label htmlFor="status">{t("definitions.categories.status")}</Label>
-                        <Select
-                          value={userForm.status}
-                          onValueChange={(value) =>
-                            setUserForm({ ...userForm, status: value })
-                          }
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue placeholder={t("definitions.form.selectStatus")} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="active">{t("definitions.active")}</SelectItem>
-                            <SelectItem value="inactive">{t("definitions.inactive")}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsDialogOpen(false)}
-                    >
-                      {t("common.cancel")}
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        if (editingItem) {
-                          // When updating, only send password if it's not empty
-                          const { password, ...restData } = userForm;
-                          const updateData = password && password.trim() !== "" 
-                            ? userForm 
-                            : restData;
-                          updateUserMutation.mutate({
-                            id: editingItem.id,
-                            data: updateData,
-                          });
-                        } else {
-                          // When creating, password is required
-                          if (!userForm.password || userForm.password.trim() === "") {
-                            toast({
-                              title: t("common.error"),
-                              description: t("definitions.users.messages.passwordRequired"),
-                              variant: "destructive",
-                            });
-                            return;
-                          }
-                          createUserMutation.mutate(userForm);
-                        }
-                      }}
-                      disabled={
-                        createUserMutation.isPending ||
-                        updateUserMutation.isPending
-                      }
-                      data-testid="button-save-user"
-                    >
-                      {createUserMutation.isPending ||
-                      updateUserMutation.isPending ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          {editingItem ? t("definitions.updating") : t("definitions.saving")}
-                        </>
-                      ) : editingItem ? (
-                        t("definitions.update")
-                      ) : (
-                        t("common.save")
-                      )}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            )}
-
-            {/* Master Batch Colors Add/Edit Dialog */}
-            {selectedTab === "master-batch-colors" && (
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>
-                      {editingItem ? t("definitions.masterBatch.editColor") : t("definitions.masterBatch.addNew")}
-                    </DialogTitle>
-                    <DialogDescription>
-                      {editingItem
-                        ? t("definitions.masterBatch.editColorDesc")
-                        : t("definitions.masterBatch.addColorDesc")}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="color_id">{t("definitions.masterBatch.colorCode")} *</Label>
-                        <Input
-                          id="color_id"
-                          value={masterBatchColorForm.id}
-                          onChange={(e) =>
-                            setMasterBatchColorForm({
-                              ...masterBatchColorForm,
-                              id: e.target.value,
-                            })
-                          }
-                          placeholder={t("definitions.masterBatch.colorCodePlaceholder")}
-                          className="mt-1"
-                          disabled={!!editingItem}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="brand">{t("definitions.masterBatch.supplier")}</Label>
-                        <Input
-                          id="brand"
-                          value={masterBatchColorForm.brand}
-                          onChange={(e) =>
-                            setMasterBatchColorForm({
-                              ...masterBatchColorForm,
-                              brand: e.target.value,
-                            })
-                          }
-                          placeholder={t("definitions.masterBatch.supplierName")}
-                          className="mt-1"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="name_ar">{t("definitions.table.nameAr")} *</Label>
-                        <Input
-                          id="name_ar"
-                          value={masterBatchColorForm.name_ar}
-                          onChange={(e) =>
-                            setMasterBatchColorForm({
-                              ...masterBatchColorForm,
-                              name_ar: e.target.value,
-                            })
-                          }
-                          placeholder={t("definitions.table.nameAr")}
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="name">{t("definitions.table.nameEn")} *</Label>
-                        <Input
-                          id="name"
-                          value={masterBatchColorForm.name}
-                          onChange={(e) =>
-                            setMasterBatchColorForm({
-                              ...masterBatchColorForm,
-                              name: e.target.value,
-                            })
-                          }
-                          placeholder="English Name"
-                          className="mt-1"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="color_hex">{t("definitions.masterBatch.displayColor")} *</Label>
-                        <div className="flex items-center gap-2 mt-1">
-                          <input
-                            type="color"
-                            id="color_hex"
-                            value={masterBatchColorForm.color_hex}
-                            onChange={(e) =>
-                              setMasterBatchColorForm({
-                                ...masterBatchColorForm,
-                                color_hex: e.target.value,
-                              })
-                            }
-                            className="w-12 h-10 rounded border cursor-pointer"
-                          />
-                          <Input
-                            value={masterBatchColorForm.color_hex}
-                            onChange={(e) =>
-                              setMasterBatchColorForm({
-                                ...masterBatchColorForm,
-                                color_hex: e.target.value,
-                              })
-                            }
-                            placeholder="#000000"
-                            className="flex-1"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <Label htmlFor="text_color">{t("definitions.masterBatch.textColor")}</Label>
-                        <div className="flex items-center gap-2 mt-1">
-                          <input
-                            type="color"
-                            id="text_color"
-                            value={masterBatchColorForm.text_color}
-                            onChange={(e) =>
-                              setMasterBatchColorForm({
-                                ...masterBatchColorForm,
-                                text_color: e.target.value,
-                              })
-                            }
-                            className="w-12 h-10 rounded border cursor-pointer"
-                          />
-                          <Input
-                            value={masterBatchColorForm.text_color}
-                            onChange={(e) =>
-                              setMasterBatchColorForm({
-                                ...masterBatchColorForm,
-                                text_color: e.target.value,
-                              })
-                            }
-                            placeholder="#ffffff"
-                            className="flex-1"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="aliases">{t("definitions.masterBatch.aliases")}</Label>
-                        <Input
-                          id="aliases"
-                          value={masterBatchColorForm.aliases}
-                          onChange={(e) =>
-                            setMasterBatchColorForm({
-                              ...masterBatchColorForm,
-                              aliases: e.target.value,
-                            })
-                          }
-                          placeholder={t("definitions.masterBatch.aliasesPlaceholder")}
-                          className="mt-1"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          {t("definitions.masterBatch.aliasesHint")}
-                        </p>
-                      </div>
-                      <div>
-                        <Label htmlFor="sort_order">{t("definitions.masterBatch.sortOrder")}</Label>
-                        <Input
-                          id="sort_order"
-                          type="number"
-                          value={masterBatchColorForm.sort_order}
-                          onChange={(e) =>
-                            setMasterBatchColorForm({
-                              ...masterBatchColorForm,
-                              sort_order: parseInt(e.target.value) || 0,
-                            })
-                          }
-                          placeholder="0"
-                          className="mt-1"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3 mt-6 p-3 bg-gray-50 rounded-md">
                       <input
                         type="checkbox"
-                        id="is_active"
-                        checked={masterBatchColorForm.is_active}
+                        id="is_printed"
+                        checked={customerProductForm.is_printed}
+                        className="rounded w-4 h-4"
+                        disabled
+                      />
+                      <Label
+                        htmlFor="is_printed"
+                        className="text-gray-600 text-sm"
+                      >
+                        {t("definitions.form.printedProduct")}
+                      </Label>
+                    </div>
+                    <div>
+                      <Label htmlFor="cutting_unit">
+                        {t("definitions.form.cuttingUnit")}
+                      </Label>
+                      <Select
+                        value={customerProductForm.cutting_unit || "none"}
+                        onValueChange={(value) =>
+                          setCustomerProductForm({
+                            ...customerProductForm,
+                            cutting_unit: value === "none" ? "" : value,
+                          })
+                        }
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue
+                            placeholder={t("definitions.form.selectUnit")}
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">
+                            {t("definitions.form.selectUnit")}
+                          </SelectItem>
+                          <SelectItem value="كيلو">
+                            {t("definitions.form.unitKilo")}
+                          </SelectItem>
+                          <SelectItem value="رول">
+                            {t("definitions.form.unitRoll")}
+                          </SelectItem>
+                          <SelectItem value="باكت">
+                            {t("definitions.form.unitPacket")}
+                          </SelectItem>
+                          <SelectItem value="كرتون">
+                            {t("definitions.form.unitCarton")}
+                          </SelectItem>
+                          <SelectItem value="قطعة">
+                            {t("definitions.form.unitPiece")}
+                          </SelectItem>
+                          <SelectItem value="كيس">
+                            {t("definitions.form.unitBag")}
+                          </SelectItem>
+                          <SelectItem value="غطاء">
+                            {t("definitions.form.unitCover")}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* المواد والخامات */}
+                <div className="space-y-4">
+                  <h4 className="text-lg sm:text-xl font-medium border-b border-gray-200 pb-2">
+                    {t("definitions.form.materialsRaw")}
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="raw_material">
+                        {t("definitions.form.rawMaterial")}
+                      </Label>
+                      <Select
+                        value={customerProductForm.raw_material}
+                        onValueChange={(value) =>
+                          setCustomerProductForm({
+                            ...customerProductForm,
+                            raw_material: value,
+                          })
+                        }
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue
+                            placeholder={t(
+                              "definitions.form.selectRawMaterial",
+                            )}
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="HDPE">HDPE</SelectItem>
+                          <SelectItem value="LDPE">LDPE</SelectItem>
+                          <SelectItem value="Regrind">Regrind</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="master_batch_id">
+                        {t("definitions.form.masterBatchColor")}
+                      </Label>
+                      <Select
+                        value={customerProductForm.master_batch_id}
+                        onValueChange={(value) =>
+                          setCustomerProductForm({
+                            ...customerProductForm,
+                            master_batch_id: value,
+                          })
+                        }
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue
+                            placeholder={t("definitions.form.selectColor")}
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">
+                            {t("definitions.form.noColor")}
+                          </SelectItem>
+                          {masterBatchColors
+                            .filter(
+                              (color) =>
+                                color.id &&
+                                color.id !== "" &&
+                                color.id !== null &&
+                                color.id !== undefined &&
+                                color.is_active !== false,
+                            )
+                            .map((color) => (
+                              <SelectItem
+                                key={color.id}
+                                value={color.id.toString()}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div
+                                    className="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center"
+                                    style={{
+                                      backgroundColor: color.color,
+                                      border:
+                                        color.id === "transparent"
+                                          ? "2px dashed #ccc"
+                                          : `2px solid ${color.color}`,
+                                    }}
+                                  >
+                                    {color.id === "transparent" && (
+                                      <span className="text-xs text-gray-400">
+                                        ⊘
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="font-medium">
+                                    {color.name_ar}
+                                  </span>
+                                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                                    {color.id}
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* الأوزان والكميات */}
+                <div className="space-y-4">
+                  <h4 className="text-lg sm:text-xl font-medium border-b border-gray-200 pb-2">
+                    {t("definitions.form.weightsQuantities")}
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="unit_weight_kg">
+                        {t("definitions.form.unitWeight")}
+                      </Label>
+                      <Input
+                        id="unit_weight_kg"
+                        type="number"
+                        step="0.001"
+                        value={customerProductForm.unit_weight_kg}
+                        onChange={(e) =>
+                          setCustomerProductForm({
+                            ...customerProductForm,
+                            unit_weight_kg: e.target.value,
+                          })
+                        }
+                        placeholder="0.00"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="unit_quantity">
+                        {t("definitions.form.packaging")}
+                      </Label>
+                      <Input
+                        id="unit_quantity"
+                        type="number"
+                        value={customerProductForm.unit_quantity}
+                        onChange={(e) =>
+                          setCustomerProductForm({
+                            ...customerProductForm,
+                            unit_quantity: e.target.value,
+                          })
+                        }
+                        placeholder="0"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="package_weight_kg">
+                        {t("definitions.form.packageWeightAuto")}
+                      </Label>
+                      <Input
+                        id="package_weight_kg"
+                        type="number"
+                        step="0.01"
+                        value={customerProductForm.package_weight_kg}
+                        placeholder={t("definitions.form.unitWeightTimesQty")}
+                        className="mt-1 bg-gray-50"
+                        readOnly
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* الكليشيهات والتصاميم */}
+                <div className="space-y-4">
+                  <h4 className="text-lg sm:text-xl font-medium border-b border-gray-200 pb-2">
+                    {t("definitions.form.clichesDesigns")}
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="cliche_front_design">
+                        {t("definitions.form.frontDesign")}
+                      </Label>
+                      <div className="space-y-2">
+                        <Input
+                          id="cliche_front_design"
+                          type="file"
+                          accept="image/*,.jpeg,.jpg,.png,.gif,.bmp,.webp,.svg"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              // Validate file size (max 5MB)
+                              if (file.size > 5 * 1024 * 1024) {
+                                toast({
+                                  title: t("definitions.form.fileTooLarge"),
+                                  description: t(
+                                    "definitions.form.imageSizeLimit",
+                                  ),
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
+
+                              const reader = new FileReader();
+                              reader.onload = (e) => {
+                                const result = e.target?.result as string;
+                                setCustomerProductForm({
+                                  ...customerProductForm,
+                                  cliche_front_design: result,
+                                  front_design_filename: file.name,
+                                });
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                          className="mt-1"
+                        />
+                        {customerProductForm.cliche_front_design && (
+                          <div className="relative">
+                            <img
+                              src={customerProductForm.cliche_front_design}
+                              alt={t("definitions.form.frontDesign")}
+                              className="max-w-full max-h-32 object-contain border rounded-md bg-gray-50"
+                            />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="absolute top-1 right-1 h-6 w-6 p-0"
+                              onClick={() =>
+                                setCustomerProductForm({
+                                  ...customerProductForm,
+                                  cliche_front_design: "",
+                                  front_design_filename: "",
+                                })
+                              }
+                            >
+                              ✕
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="cliche_back_design">
+                        {t("definitions.form.backDesign")}
+                      </Label>
+                      <div className="space-y-2">
+                        <Input
+                          id="cliche_back_design"
+                          type="file"
+                          accept="image/*,.jpeg,.jpg,.png,.gif,.bmp,.webp,.svg"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              // Validate file size (max 5MB)
+                              if (file.size > 5 * 1024 * 1024) {
+                                toast({
+                                  title: t("definitions.form.fileTooLarge"),
+                                  description: t(
+                                    "definitions.form.imageSizeLimit",
+                                  ),
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
+
+                              const reader = new FileReader();
+                              reader.onload = (e) => {
+                                const result = e.target?.result as string;
+                                setCustomerProductForm({
+                                  ...customerProductForm,
+                                  cliche_back_design: result,
+                                  back_design_filename: file.name,
+                                });
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                          className="mt-1"
+                        />
+                        {customerProductForm.cliche_back_design && (
+                          <div className="relative">
+                            <img
+                              src={customerProductForm.cliche_back_design}
+                              alt={t("definitions.form.backDesign")}
+                              className="max-w-full max-h-32 object-contain border rounded-md bg-gray-50"
+                            />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="absolute top-1 right-1 h-6 w-6 p-0"
+                              onClick={() =>
+                                setCustomerProductForm({
+                                  ...customerProductForm,
+                                  cliche_back_design: "",
+                                  back_design_filename: "",
+                                })
+                              }
+                            >
+                              ✕
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ملاحظات */}
+                <div>
+                  <Label htmlFor="notes" className="text-base">
+                    {t("definitions.form.notes")}
+                  </Label>
+                  <textarea
+                    id="notes"
+                    value={customerProductForm.notes}
+                    onChange={(e) =>
+                      setCustomerProductForm({
+                        ...customerProductForm,
+                        notes: e.target.value,
+                      })
+                    }
+                    placeholder={t("definitions.form.notesPlaceholder")}
+                    className="mt-2 w-full p-3 border border-gray-300 rounded-md resize-none text-right"
+                    rows={4}
+                    dir="rtl"
+                  />
+                </div>
+              </div>
+              <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                  className="w-full sm:w-auto order-2 sm:order-1"
+                >
+                  {t("common.cancel")}
+                </Button>
+                <Button
+                  onClick={() => {
+                    // Convert string fields to numbers for validation
+                    const processedData = {
+                      ...customerProductForm,
+                      cutting_length_cm: customerProductForm.cutting_length_cm
+                        ? parseInt(customerProductForm.cutting_length_cm)
+                        : undefined,
+                      unit_quantity: customerProductForm.unit_quantity
+                        ? parseInt(customerProductForm.unit_quantity)
+                        : undefined,
+                      width: customerProductForm.width
+                        ? parseFloat(customerProductForm.width)
+                        : undefined,
+                      left_facing: customerProductForm.left_facing
+                        ? parseFloat(customerProductForm.left_facing)
+                        : undefined,
+                      right_facing: customerProductForm.right_facing
+                        ? parseFloat(customerProductForm.right_facing)
+                        : undefined,
+                      thickness: customerProductForm.thickness
+                        ? parseFloat(customerProductForm.thickness)
+                        : undefined,
+                      unit_weight_kg: customerProductForm.unit_weight_kg
+                        ? parseFloat(customerProductForm.unit_weight_kg)
+                        : undefined,
+                      package_weight_kg: customerProductForm.package_weight_kg
+                        ? parseFloat(customerProductForm.package_weight_kg)
+                        : undefined,
+                    };
+
+                    if (editingItem) {
+                      updateCustomerProductMutation.mutate({
+                        id: editingItem.id,
+                        data: processedData,
+                      });
+                    } else {
+                      createCustomerProductMutation.mutate(processedData);
+                    }
+                  }}
+                  disabled={
+                    createCustomerProductMutation.isPending ||
+                    updateCustomerProductMutation.isPending
+                  }
+                  className="w-full sm:w-auto order-1 sm:order-2"
+                >
+                  {createCustomerProductMutation.isPending ||
+                  updateCustomerProductMutation.isPending ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      {editingItem
+                        ? t("definitions.updating")
+                        : t("definitions.saving")}
+                    </>
+                  ) : editingItem ? (
+                    t("definitions.update")
+                  ) : (
+                    t("common.save")
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Machines Add/Edit Dialog */}
+        {selectedTab === "machines" && (
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingItem
+                    ? t("definitions.machines.edit")
+                    : t("definitions.machines.addNew")}
+                </DialogTitle>
+                <DialogDescription>
+                  {editingItem
+                    ? t("definitions.machines.editDescription")
+                    : t("definitions.machines.addDescription")}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="name_ar">
+                      {t("definitions.customers.nameAr")} *
+                    </Label>
+                    <Input
+                      id="name_ar"
+                      value={machineForm.name_ar}
+                      onChange={(e) =>
+                        setMachineForm({
+                          ...machineForm,
+                          name_ar: e.target.value,
+                        })
+                      }
+                      placeholder={t("definitions.form.machineNameAr")}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="name">
+                      {t("definitions.customers.name")}
+                    </Label>
+                    <Input
+                      id="name"
+                      value={machineForm.name}
+                      onChange={(e) =>
+                        setMachineForm({
+                          ...machineForm,
+                          name: e.target.value,
+                        })
+                      }
+                      placeholder="Machine Name"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="type">
+                      {t("definitions.machines.type")}
+                    </Label>
+                    <Select
+                      value={machineForm.type}
+                      onValueChange={(value) =>
+                        setMachineForm({ ...machineForm, type: value })
+                      }
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="extruder">
+                          {t("definitions.form.typeFilm")}
+                        </SelectItem>
+                        <SelectItem value="cutting">
+                          {t("definitions.form.typeCutting")}
+                        </SelectItem>
+                        <SelectItem value="printing">
+                          {t("definitions.form.typePrinting")}
+                        </SelectItem>
+                        <SelectItem value="packaging">
+                          {t("definitions.form.typePackaging")}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="section_id">
+                      {t("definitions.machines.section")}
+                    </Label>
+                    <Select
+                      value={machineForm.section_id}
+                      onValueChange={(value) =>
+                        setMachineForm({
+                          ...machineForm,
+                          section_id: value,
+                        })
+                      }
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue
+                          placeholder={t("definitions.form.selectSection")}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">
+                          {t("definitions.form.noSection")}
+                        </SelectItem>
+                        {Array.isArray(sections) &&
+                          sections
+                            .filter(
+                              (section) =>
+                                section.id &&
+                                section.id !== "" &&
+                                section.id !== null &&
+                                section.id !== undefined,
+                            )
+                            .map((section: any) => (
+                              <SelectItem
+                                key={section.id}
+                                value={section.id.toString()}
+                              >
+                                {section.name_ar || section.name} ({section.id})
+                              </SelectItem>
+                            ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* حالة الماكينة */}
+                <div>
+                  <Label htmlFor="status">
+                    {t("definitions.machines.status")}
+                  </Label>
+                  <Select
+                    value={machineForm.status}
+                    onValueChange={(value) =>
+                      setMachineForm({
+                        ...machineForm,
+                        status: value,
+                      })
+                    }
+                  >
+                    <SelectTrigger
+                      className="mt-1"
+                      data-testid="select-machine-status"
+                    >
+                      <SelectValue
+                        placeholder={t("definitions.form.selectStatus")}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">
+                        {t("common.active")}
+                      </SelectItem>
+                      <SelectItem value="maintenance">
+                        {t("definitions.table.maintenance")}
+                      </SelectItem>
+                      <SelectItem value="down">
+                        {t("definitions.table.stopped")}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* قدرة الإنتاج حسب الحجم */}
+                <div className="border-t pt-4 mt-4">
+                  <h3 className="text-sm font-medium mb-3">
+                    {t("definitions.form.productionCapacity")}
+                  </h3>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="capacity_small">
+                        {t("definitions.machines.capacitySmall")}
+                      </Label>
+                      <Input
+                        id="capacity_small"
+                        type="number"
+                        step="0.01"
+                        value={machineForm.capacity_small_kg_per_hour}
+                        onChange={(e) =>
+                          setMachineForm({
+                            ...machineForm,
+                            capacity_small_kg_per_hour: e.target.value,
+                          })
+                        }
+                        placeholder={t("common.kgPerHour")}
+                        className="mt-1"
+                        data-testid="input-capacity-small"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="capacity_medium">
+                        {t("definitions.machines.capacityMedium")}
+                      </Label>
+                      <Input
+                        id="capacity_medium"
+                        type="number"
+                        step="0.01"
+                        value={machineForm.capacity_medium_kg_per_hour}
+                        onChange={(e) =>
+                          setMachineForm({
+                            ...machineForm,
+                            capacity_medium_kg_per_hour: e.target.value,
+                          })
+                        }
+                        placeholder={t("common.kgPerHour")}
+                        className="mt-1"
+                        data-testid="input-capacity-medium"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="capacity_large">
+                        {t("definitions.machines.capacityLarge")}
+                      </Label>
+                      <Input
+                        id="capacity_large"
+                        type="number"
+                        step="0.01"
+                        value={machineForm.capacity_large_kg_per_hour}
+                        onChange={(e) =>
+                          setMachineForm({
+                            ...machineForm,
+                            capacity_large_kg_per_hour: e.target.value,
+                          })
+                        }
+                        placeholder={t("common.kgPerHour")}
+                        className="mt-1"
+                        data-testid="input-capacity-large"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                >
+                  {t("common.cancel")}
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (editingItem) {
+                      updateMachineMutation.mutate({
+                        id: editingItem.id,
+                        data: machineForm,
+                      });
+                    } else {
+                      createMachineMutation.mutate(machineForm);
+                    }
+                  }}
+                  disabled={
+                    createMachineMutation.isPending ||
+                    updateMachineMutation.isPending
+                  }
+                >
+                  {createMachineMutation.isPending ||
+                  updateMachineMutation.isPending ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      {editingItem
+                        ? t("definitions.updating")
+                        : t("definitions.saving")}
+                    </>
+                  ) : editingItem ? (
+                    t("definitions.update")
+                  ) : (
+                    t("common.save")
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Users Add/Edit Dialog */}
+        {selectedTab === "users" && (
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingItem
+                    ? t("definitions.users.edit")
+                    : t("definitions.users.addNew")}
+                </DialogTitle>
+                <DialogDescription>
+                  {editingItem
+                    ? t("definitions.users.editDescription")
+                    : t("definitions.users.addDescription")}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="display_name_ar">
+                      {t("definitions.table.nameAr")} *
+                    </Label>
+                    <Input
+                      id="display_name_ar"
+                      value={userForm.display_name_ar}
+                      onChange={(e) =>
+                        setUserForm({
+                          ...userForm,
+                          display_name_ar: e.target.value,
+                        })
+                      }
+                      placeholder={t("definitions.form.userNameAr")}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="display_name">
+                      {t("definitions.users.displayName")}
+                    </Label>
+                    <Input
+                      id="display_name"
+                      value={userForm.display_name}
+                      onChange={(e) =>
+                        setUserForm({
+                          ...userForm,
+                          display_name: e.target.value,
+                        })
+                      }
+                      placeholder="Display Name"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="username">
+                      {t("definitions.users.username")} *
+                    </Label>
+                    <Input
+                      id="username"
+                      value={userForm.username}
+                      onChange={(e) =>
+                        setUserForm({
+                          ...userForm,
+                          username: e.target.value,
+                        })
+                      }
+                      placeholder="username"
+                      className="mt-1"
+                      data-testid="input-username"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="password">
+                      {t("definitions.form.password")}{" "}
+                      {editingItem ? t("definitions.form.leaveBlank") : "*"}
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        value={userForm.password}
+                        onChange={(e) =>
+                          setUserForm({
+                            ...userForm,
+                            password: e.target.value,
+                          })
+                        }
+                        placeholder={
+                          editingItem
+                            ? t("definitions.form.enterNewPassword")
+                            : t("definitions.form.enterPassword")
+                        }
+                        className="mt-1 pr-10"
+                        data-testid="input-password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        data-testid="button-toggle-password"
+                      >
+                        {showPassword ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="phone">
+                      {t("definitions.form.mobileNumber")}
+                    </Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      value={userForm.phone}
+                      onChange={(e) =>
+                        setUserForm({
+                          ...userForm,
+                          phone: e.target.value,
+                        })
+                      }
+                      placeholder="05xxxxxxxx"
+                      className="mt-1"
+                      dir="ltr"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="role_id">
+                      {t("definitions.users.role")}
+                    </Label>
+                    <Select
+                      value={userForm.role_id}
+                      onValueChange={(value) =>
+                        setUserForm({ ...userForm, role_id: value })
+                      }
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue
+                          placeholder={t("definitions.form.selectRole")}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">
+                          {t("definitions.form.noRole")}
+                        </SelectItem>
+                        {Array.isArray(roles) &&
+                          roles
+                            .filter(
+                              (role) =>
+                                role.id &&
+                                role.id !== "" &&
+                                role.id !== null &&
+                                role.id !== undefined,
+                            )
+                            .map((role: any) => (
+                              <SelectItem
+                                key={role.id}
+                                value={`ROLE${String(role.id).padStart(2, "0")}`}
+                              >
+                                {role.name_ar || role.name}
+                              </SelectItem>
+                            ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="section_id">
+                      {t("definitions.machines.section")}
+                    </Label>
+                    <Select
+                      value={userForm.section_id}
+                      onValueChange={(value) =>
+                        setUserForm({ ...userForm, section_id: value })
+                      }
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue
+                          placeholder={t("definitions.form.selectSection")}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">
+                          {t("definitions.form.noSection")}
+                        </SelectItem>
+                        {Array.isArray(sections) &&
+                          sections
+                            .filter(
+                              (section) =>
+                                section.id &&
+                                section.id !== "" &&
+                                section.id !== null &&
+                                section.id !== undefined,
+                            )
+                            .map((section: any) => (
+                              <SelectItem
+                                key={section.id}
+                                value={section.id.toString()}
+                              >
+                                {section.name_ar || section.name} ({section.id})
+                              </SelectItem>
+                            ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="status">
+                      {t("definitions.categories.status")}
+                    </Label>
+                    <Select
+                      value={userForm.status}
+                      onValueChange={(value) =>
+                        setUserForm({ ...userForm, status: value })
+                      }
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue
+                          placeholder={t("definitions.form.selectStatus")}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">
+                          {t("definitions.active")}
+                        </SelectItem>
+                        <SelectItem value="inactive">
+                          {t("definitions.inactive")}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                >
+                  {t("common.cancel")}
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (editingItem) {
+                      // When updating, only send password if it's not empty
+                      const { password, ...restData } = userForm;
+                      const updateData =
+                        password && password.trim() !== ""
+                          ? userForm
+                          : restData;
+                      updateUserMutation.mutate({
+                        id: editingItem.id,
+                        data: updateData,
+                      });
+                    } else {
+                      // When creating, password is required
+                      if (
+                        !userForm.password ||
+                        userForm.password.trim() === ""
+                      ) {
+                        toast({
+                          title: t("common.error"),
+                          description: t(
+                            "definitions.users.messages.passwordRequired",
+                          ),
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      createUserMutation.mutate(userForm);
+                    }
+                  }}
+                  disabled={
+                    createUserMutation.isPending || updateUserMutation.isPending
+                  }
+                  data-testid="button-save-user"
+                >
+                  {createUserMutation.isPending ||
+                  updateUserMutation.isPending ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      {editingItem
+                        ? t("definitions.updating")
+                        : t("definitions.saving")}
+                    </>
+                  ) : editingItem ? (
+                    t("definitions.update")
+                  ) : (
+                    t("common.save")
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Master Batch Colors Add/Edit Dialog */}
+        {selectedTab === "master-batch-colors" && (
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingItem
+                    ? t("definitions.masterBatch.editColor")
+                    : t("definitions.masterBatch.addNew")}
+                </DialogTitle>
+                <DialogDescription>
+                  {editingItem
+                    ? t("definitions.masterBatch.editColorDesc")
+                    : t("definitions.masterBatch.addColorDesc")}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="color_id">
+                      {t("definitions.masterBatch.colorCode")} *
+                    </Label>
+                    <Input
+                      id="color_id"
+                      value={masterBatchColorForm.id}
+                      onChange={(e) =>
+                        setMasterBatchColorForm({
+                          ...masterBatchColorForm,
+                          id: e.target.value,
+                        })
+                      }
+                      placeholder={t(
+                        "definitions.masterBatch.colorCodePlaceholder",
+                      )}
+                      className="mt-1"
+                      disabled={!!editingItem}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="brand">
+                      {t("definitions.masterBatch.supplier")}
+                    </Label>
+                    <Input
+                      id="brand"
+                      value={masterBatchColorForm.brand}
+                      onChange={(e) =>
+                        setMasterBatchColorForm({
+                          ...masterBatchColorForm,
+                          brand: e.target.value,
+                        })
+                      }
+                      placeholder={t("definitions.masterBatch.supplierName")}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="name_ar">
+                      {t("definitions.table.nameAr")} *
+                    </Label>
+                    <Input
+                      id="name_ar"
+                      value={masterBatchColorForm.name_ar}
+                      onChange={(e) =>
+                        setMasterBatchColorForm({
+                          ...masterBatchColorForm,
+                          name_ar: e.target.value,
+                        })
+                      }
+                      placeholder={t("definitions.table.nameAr")}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="name">
+                      {t("definitions.table.nameEn")} *
+                    </Label>
+                    <Input
+                      id="name"
+                      value={masterBatchColorForm.name}
+                      onChange={(e) =>
+                        setMasterBatchColorForm({
+                          ...masterBatchColorForm,
+                          name: e.target.value,
+                        })
+                      }
+                      placeholder="English Name"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="color_hex">
+                      {t("definitions.masterBatch.displayColor")} *
+                    </Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <input
+                        type="color"
+                        id="color_hex"
+                        value={masterBatchColorForm.color_hex}
                         onChange={(e) =>
                           setMasterBatchColorForm({
                             ...masterBatchColorForm,
-                            is_active: e.target.checked,
+                            color_hex: e.target.value,
                           })
                         }
-                        className="w-4 h-4"
+                        className="w-12 h-10 rounded border cursor-pointer"
                       />
-                      <Label htmlFor="is_active">{t("common.active")}</Label>
-                    </div>
-                    <div className="p-4 bg-gray-50 rounded-lg">
-                      <p className="text-sm text-gray-600 mb-2">{t("definitions.masterBatch.preview")}:</p>
-                      <div className="flex items-center gap-4">
-                        <div
-                          className="w-16 h-16 rounded-lg border-2 flex items-center justify-center text-sm font-medium shadow-md"
-                          style={{
-                            backgroundColor: masterBatchColorForm.color_hex,
-                            color: masterBatchColorForm.text_color,
-                            borderColor: masterBatchColorForm.color_hex === "#ffffff" ? "#e5e7eb" : masterBatchColorForm.color_hex,
-                          }}
-                        >
-                          {masterBatchColorForm.name_ar?.substring(0, 4) || t("definitions.masterBatch.color")}
-                        </div>
-                        <div>
-                          <p className="font-medium">{masterBatchColorForm.name_ar || t("definitions.table.nameAr")}</p>
-                          <p className="text-sm text-gray-500">{masterBatchColorForm.name || "English Name"}</p>
-                          <p className="text-xs text-gray-400">{masterBatchColorForm.id || t("definitions.table.code")}</p>
-                        </div>
-                      </div>
+                      <Input
+                        value={masterBatchColorForm.color_hex}
+                        onChange={(e) =>
+                          setMasterBatchColorForm({
+                            ...masterBatchColorForm,
+                            color_hex: e.target.value,
+                          })
+                        }
+                        placeholder="#000000"
+                        className="flex-1"
+                      />
                     </div>
                   </div>
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsDialogOpen(false)}
-                    >
-                      {t("common.cancel")}
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        if (!masterBatchColorForm.id || !masterBatchColorForm.name || !masterBatchColorForm.name_ar) {
-                          toast({
-                            title: t("common.error"),
-                            description: t("definitions.masterBatch.fillRequired"),
-                            variant: "destructive",
-                          });
-                          return;
+                  <div>
+                    <Label htmlFor="text_color">
+                      {t("definitions.masterBatch.textColor")}
+                    </Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <input
+                        type="color"
+                        id="text_color"
+                        value={masterBatchColorForm.text_color}
+                        onChange={(e) =>
+                          setMasterBatchColorForm({
+                            ...masterBatchColorForm,
+                            text_color: e.target.value,
+                          })
                         }
-                        if (editingItem) {
-                          updateMasterBatchColorMutation.mutate({
-                            id: editingItem.id,
-                            data: masterBatchColorForm,
-                          });
-                        } else {
-                          createMasterBatchColorMutation.mutate(masterBatchColorForm);
+                        className="w-12 h-10 rounded border cursor-pointer"
+                      />
+                      <Input
+                        value={masterBatchColorForm.text_color}
+                        onChange={(e) =>
+                          setMasterBatchColorForm({
+                            ...masterBatchColorForm,
+                            text_color: e.target.value,
+                          })
                         }
-                      }}
-                      disabled={
-                        createMasterBatchColorMutation.isPending ||
-                        updateMasterBatchColorMutation.isPending
+                        placeholder="#ffffff"
+                        className="flex-1"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="aliases">
+                      {t("definitions.masterBatch.aliases")}
+                    </Label>
+                    <Input
+                      id="aliases"
+                      value={masterBatchColorForm.aliases}
+                      onChange={(e) =>
+                        setMasterBatchColorForm({
+                          ...masterBatchColorForm,
+                          aliases: e.target.value,
+                        })
                       }
-                    >
-                      {createMasterBatchColorMutation.isPending ||
-                      updateMasterBatchColorMutation.isPending ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          {editingItem ? t("definitions.masterBatch.updating") : t("definitions.masterBatch.saving")}
-                        </>
-                      ) : editingItem ? (
-                        t("definitions.update")
-                      ) : (
-                        t("common.save")
+                      placeholder={t(
+                        "definitions.masterBatch.aliasesPlaceholder",
                       )}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            )}
+                      className="mt-1"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      {t("definitions.masterBatch.aliasesHint")}
+                    </p>
+                  </div>
+                  <div>
+                    <Label htmlFor="sort_order">
+                      {t("definitions.masterBatch.sortOrder")}
+                    </Label>
+                    <Input
+                      id="sort_order"
+                      type="number"
+                      value={masterBatchColorForm.sort_order}
+                      onChange={(e) =>
+                        setMasterBatchColorForm({
+                          ...masterBatchColorForm,
+                          sort_order: parseInt(e.target.value) || 0,
+                        })
+                      }
+                      placeholder="0"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="is_active"
+                    checked={masterBatchColorForm.is_active}
+                    onChange={(e) =>
+                      setMasterBatchColorForm({
+                        ...masterBatchColorForm,
+                        is_active: e.target.checked,
+                      })
+                    }
+                    className="w-4 h-4"
+                  />
+                  <Label htmlFor="is_active">{t("common.active")}</Label>
+                </div>
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <p className="text-sm text-gray-600 mb-2">
+                    {t("definitions.masterBatch.preview")}:
+                  </p>
+                  <div className="flex items-center gap-4">
+                    <div
+                      className="w-16 h-16 rounded-lg border-2 flex items-center justify-center text-sm font-medium shadow-md"
+                      style={{
+                        backgroundColor: masterBatchColorForm.color_hex,
+                        color: masterBatchColorForm.text_color,
+                        borderColor:
+                          masterBatchColorForm.color_hex === "#ffffff"
+                            ? "#e5e7eb"
+                            : masterBatchColorForm.color_hex,
+                      }}
+                    >
+                      {masterBatchColorForm.name_ar?.substring(0, 4) ||
+                        t("definitions.masterBatch.color")}
+                    </div>
+                    <div>
+                      <p className="font-medium">
+                        {masterBatchColorForm.name_ar ||
+                          t("definitions.table.nameAr")}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {masterBatchColorForm.name || "English Name"}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {masterBatchColorForm.id || t("definitions.table.code")}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                >
+                  {t("common.cancel")}
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (
+                      !masterBatchColorForm.id ||
+                      !masterBatchColorForm.name ||
+                      !masterBatchColorForm.name_ar
+                    ) {
+                      toast({
+                        title: t("common.error"),
+                        description: t("definitions.masterBatch.fillRequired"),
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    if (editingItem) {
+                      updateMasterBatchColorMutation.mutate({
+                        id: editingItem.id,
+                        data: masterBatchColorForm,
+                      });
+                    } else {
+                      createMasterBatchColorMutation.mutate(
+                        masterBatchColorForm,
+                      );
+                    }
+                  }}
+                  disabled={
+                    createMasterBatchColorMutation.isPending ||
+                    updateMasterBatchColorMutation.isPending
+                  }
+                >
+                  {createMasterBatchColorMutation.isPending ||
+                  updateMasterBatchColorMutation.isPending ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      {editingItem
+                        ? t("definitions.masterBatch.updating")
+                        : t("definitions.masterBatch.saving")}
+                    </>
+                  ) : editingItem ? (
+                    t("definitions.update")
+                  ) : (
+                    t("common.save")
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
     </PageLayout>
   );

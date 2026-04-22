@@ -1,5 +1,6 @@
-import { getBagTypeRules } from "../../lib/bag-rules-engine";
 import { FileText, Palette, Lightbulb } from "lucide-react";
+
+import { getBagTypeRules } from "../../lib/bag-rules-engine";
 
 interface PrintStatusStepProps {
   value: boolean;
@@ -7,14 +8,20 @@ interface PrintStatusStepProps {
   bagType: string;
 }
 
-export function PrintStatusStep({ value, onChange, bagType }: PrintStatusStepProps) {
+export function PrintStatusStep({
+  value,
+  onChange,
+  bagType,
+}: PrintStatusStepProps) {
   const rules = getBagTypeRules(bagType);
   const canPrint = rules?.printable !== false;
 
   return (
     <div>
       <h2 className="text-xl font-bold text-gray-900 mb-2">حالة الطباعة</h2>
-      <p className="text-gray-500 text-sm mb-6">هل تريد طباعة تصميم على الكيس؟</p>
+      <p className="text-gray-500 text-sm mb-6">
+        هل تريد طباعة تصميم على الكيس؟
+      </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <button
@@ -25,9 +32,13 @@ export function PrintStatusStep({ value, onChange, bagType }: PrintStatusStepPro
               : "border-gray-200 hover:border-blue-300 hover:bg-gray-50"
           }`}
         >
-          <div className="w-16 h-16 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center"><FileText className="h-8 w-8" /></div>
+          <div className="w-16 h-16 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center">
+            <FileText className="h-8 w-8" />
+          </div>
           <div className="font-semibold text-gray-900 text-lg">سادة</div>
-          <div className="text-sm text-gray-500 text-center">كيس بدون طباعة - لون واحد فقط</div>
+          <div className="text-sm text-gray-500 text-center">
+            كيس بدون طباعة - لون واحد فقط
+          </div>
         </button>
 
         <button
@@ -37,14 +48,18 @@ export function PrintStatusStep({ value, onChange, bagType }: PrintStatusStepPro
             value
               ? "border-blue-500 bg-blue-50 shadow-md"
               : canPrint
-              ? "border-gray-200 hover:border-blue-300 hover:bg-gray-50"
-              : "border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed"
+                ? "border-gray-200 hover:border-blue-300 hover:bg-gray-50"
+                : "border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed"
           }`}
         >
-          <div className="w-16 h-16 rounded-2xl bg-purple-100 text-purple-600 flex items-center justify-center"><Palette className="h-8 w-8" /></div>
+          <div className="w-16 h-16 rounded-2xl bg-purple-100 text-purple-600 flex items-center justify-center">
+            <Palette className="h-8 w-8" />
+          </div>
           <div className="font-semibold text-gray-900 text-lg">مطبوع</div>
           <div className="text-sm text-gray-500 text-center">
-            {canPrint ? "كيس مع طباعة شعار أو تصميم" : "الطباعة غير متاحة لهذا النوع"}
+            {canPrint
+              ? "كيس مع طباعة شعار أو تصميم"
+              : "الطباعة غير متاحة لهذا النوع"}
           </div>
         </button>
       </div>
@@ -52,7 +67,9 @@ export function PrintStatusStep({ value, onChange, bagType }: PrintStatusStepPro
       {value && canPrint && (
         <div className="mt-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-700 flex items-start gap-2">
           <Lightbulb className="h-4 w-4 mt-0.5 shrink-0" />
-          <span>سيتم إضافة خطوات إعداد الطباعة وتصميم الطباعة في المراحل القادمة</span>
+          <span>
+            سيتم إضافة خطوات إعداد الطباعة وتصميم الطباعة في المراحل القادمة
+          </span>
         </div>
       )}
     </div>

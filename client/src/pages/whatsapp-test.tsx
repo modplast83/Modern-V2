@@ -1,19 +1,4 @@
-import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Textarea } from "../components/ui/textarea";
-import { Label } from "../components/ui/label";
-import { Badge } from "../components/ui/badge";
-import { useToast } from "../hooks/use-toast";
-import { apiRequest } from "../lib/queryClient";
 import {
   Send,
   Phone,
@@ -23,6 +8,22 @@ import {
   Clock,
   Loader2,
 } from "lucide-react";
+import { useState, useEffect } from "react";
+
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Textarea } from "../components/ui/textarea";
+import { useToast } from "../hooks/use-toast";
+import { apiRequest } from "../lib/queryClient";
 
 export default function WhatsAppTest() {
   const { toast } = useToast();
@@ -363,7 +364,9 @@ export default function WhatsAppTest() {
                         </Badge>
                       </div>
                       <span className="text-sm text-gray-500">
-                        {new Date(notification.created_at).toLocaleString("en-US")}
+                        {new Date(notification.created_at).toLocaleString(
+                          "en-US",
+                        )}
                       </span>
                     </div>
 

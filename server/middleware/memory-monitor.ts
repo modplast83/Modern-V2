@@ -1,4 +1,4 @@
-import os from 'os';
+import os from "os";
 
 export interface MemorySnapshot {
   heapUsed: number;
@@ -24,7 +24,7 @@ export interface SystemDiagnostics {
     average: { heapUsedMB: string };
     peak: { heapUsedMB: string; rssMB: string; timestamp: Date | null };
     trend: {
-      direction: 'increasing' | 'decreasing' | 'stable';
+      direction: "increasing" | "decreasing" | "stable";
       changeMB: string;
       changePercent: string;
       isMemoryLeak: boolean;
@@ -45,7 +45,7 @@ export interface SystemDiagnostics {
     currentLagMs: string;
     averageLagMs: string;
     maxLagMs: string;
-    status: 'healthy' | 'warning' | 'critical';
+    status: "healthy" | "warning" | "critical";
   };
   cpu: {
     usagePercent: string;
@@ -126,7 +126,7 @@ export class MemoryMonitor {
       rss: mem.rss,
       timestamp: new Date(),
       eventLoopLag: this.currentEventLoopLag,
-      cpuUsage
+      cpuUsage,
     };
 
     if (mem.heapUsed > this.peakHeap) {
@@ -149,9 +149,11 @@ export class MemoryMonitor {
     const heapUsedMB = snapshot.heapUsed / 1024 / 1024;
 
     if (snapshot.heapUsed > this.criticalThreshold) {
-      console.error(`🚨 [CRITICAL MEMORY] Heap usage: ${heapUsedMB.toFixed(2)}MB`);
+      console.error(
+        `🚨 [CRITICAL MEMORY] Heap usage: ${heapUsedMB.toFixed(2)}MB`,
+      );
       if (global.gc) {
-        console.log('   Running garbage collection...');
+        console.log("   Running garbage collection...");
         global.gc();
       }
     } else if (snapshot.heapUsed > this.warningThreshold) {
@@ -165,23 +167,26 @@ export class MemoryMonitor {
     const current = recent.length > 0 ? recent[recent.length - 1] : null;
     const oldest = recent.length > 0 ? recent[0] : null;
 
-    const avgHeapUsed = recent.length > 0 
-      ? recent.reduce((sum, s) => sum + s.heapUsed, 0) / recent.length 
-      : mem.heapUsed;
+    const avgHeapUsed =
+      recent.length > 0
+        ? recent.reduce((sum, s) => sum + s.heapUsed, 0) / recent.length
+        : mem.heapUsed;
 
     const heapUsagePercent = (mem.heapUsed / mem.heapTotal) * 100;
 
     const trend = current && oldest ? current.heapUsed - oldest.heapUsed : 0;
-    const trendPercent = oldest && oldest.heapUsed > 0 
-      ? (trend / oldest.heapUsed) * 100 
-      : 0;
+    const trendPercent =
+      oldest && oldest.heapUsed > 0 ? (trend / oldest.heapUsed) * 100 : 0;
 
     const leakDetection = this.analyzeMemoryLeak();
 
-    const eventLoopLags = recent.map(s => s.eventLoopLag).filter(l => l > 0);
-    const avgLag = eventLoopLags.length > 0 
-      ? eventLoopLags.reduce((a, b) => a + b, 0) / eventLoopLags.length 
-      : 0;
+    const eventLoopLags = recent
+      .map((s) => s.eventLoopLag)
+      .filter((l) => l > 0);
+    const avgLag =
+      eventLoopLags.length > 0
+        ? eventLoopLags.reduce((a, b) => a + b, 0) / eventLoopLags.length
+        : 0;
     const maxLag = eventLoopLags.length > 0 ? Math.max(...eventLoopLags) : 0;
 
     const cpuPercent = this.getCpuUsage();
@@ -202,16 +207,30 @@ export class MemoryMonitor {
         peak: {
           heapUsedMB: (this.peakHeap / 1024 / 1024).toFixed(2),
           rssMB: (this.peakRss / 1024 / 1024).toFixed(2),
-          timestamp: this.peakTimestamp
+          timestamp: this.peakTimestamp,
         },
         trend: {
-          direction: trend > 1024 * 1024 ? 'increasing' : trend < -1024 * 1024 ? 'decreasing' : 'stable',
+          direction:
+            trend > 1024 * 1024
+              ? "increasing"
+              : trend < -1024 * 1024
+                ? "decreasing"
+                : "stable",
           changeMB: (Math.abs(trend) / 1024 / 1024).toFixed(2),
           changePercent: Math.abs(trendPercent).toFixed(1),
           isMemoryLeak: leakDetection.isLeak,
           leakConfidence: leakDetection.confidence,
         },
-        warnings: this.getMemoryWarnings({ heapUsed: mem.heapUsed, heapTotal: mem.heapTotal, external: mem.external, rss: mem.rss, timestamp: new Date(), eventLoopLag: 0, arrayBuffers: 0, cpuUsage: 0 }),
+        warnings: this.getMemoryWarnings({
+          heapUsed: mem.heapUsed,
+          heapTotal: mem.heapTotal,
+          external: mem.external,
+          rss: mem.rss,
+          timestamp: new Date(),
+          eventLoopLag: 0,
+          arrayBuffers: 0,
+          cpuUsage: 0,
+        }),
         recommendation: this.getRecommendation(mem, leakDetection),
       },
       process: {
@@ -226,7 +245,7 @@ export class MemoryMonitor {
         currentLagMs: this.currentEventLoopLag.toFixed(2),
         averageLagMs: avgLag.toFixed(2),
         maxLagMs: maxLag.toFixed(2),
-        status: maxLag > 100 ? 'critical' : maxLag > 50 ? 'warning' : 'healthy',
+        status: maxLag > 100 ? "critical" : maxLag > 50 ? "warning" : "healthy",
       },
       cpu: {
         usagePercent: cpuPercent.toFixed(1),
@@ -236,8 +255,11 @@ export class MemoryMonitor {
       os: {
         totalMemoryMB: (os.totalmem() / 1024 / 1024).toFixed(0),
         freeMemoryMB: (os.freemem() / 1024 / 1024).toFixed(0),
-        usedMemoryPercent: (((os.totalmem() - os.freemem()) / os.totalmem()) * 100).toFixed(1),
-      }
+        usedMemoryPercent: (
+          ((os.totalmem() - os.freemem()) / os.totalmem()) *
+          100
+        ).toFixed(1),
+      },
     };
   }
 
@@ -266,23 +288,26 @@ export class MemoryMonitor {
     return { isLeak, confidence };
   }
 
-  private static getRecommendation(mem: NodeJS.MemoryUsage, leak: { isLeak: boolean; confidence: number }): string {
+  private static getRecommendation(
+    mem: NodeJS.MemoryUsage,
+    leak: { isLeak: boolean; confidence: number },
+  ): string {
     const heapMB = mem.heapUsed / 1024 / 1024;
     const rssMB = mem.rss / 1024 / 1024;
 
     if (leak.isLeak) {
-      return 'تم اكتشاف تسريب محتمل في الذاكرة. يُنصح بمراجعة المؤقتات والمستمعات غير المحررة.';
+      return "تم اكتشاف تسريب محتمل في الذاكرة. يُنصح بمراجعة المؤقتات والمستمعات غير المحررة.";
     }
     if (heapMB > 400) {
-      return 'استهلاك الذاكرة مرتفع. يُنصح بتحسين الكود وتقليل التخزين المؤقت.';
+      return "استهلاك الذاكرة مرتفع. يُنصح بتحسين الكود وتقليل التخزين المؤقت.";
     }
     if (rssMB > 600) {
-      return 'RSS مرتفع. قد يكون هناك تخصيص ذاكرة خارجية كبير (مثل Buffers).';
+      return "RSS مرتفع. قد يكون هناك تخصيص ذاكرة خارجية كبير (مثل Buffers).";
     }
     if (this.currentEventLoopLag > 50) {
-      return 'تأخر في Event Loop. يُنصح بتقسيم العمليات الثقيلة.';
+      return "تأخر في Event Loop. يُنصح بتقسيم العمليات الثقيلة.";
     }
-    return 'النظام يعمل بشكل طبيعي.';
+    return "النظام يعمل بشكل طبيعي.";
   }
 
   static getMemoryStats() {
@@ -294,7 +319,8 @@ export class MemoryMonitor {
     const current = recent[recent.length - 1];
     const oldest = recent[0];
 
-    const avgHeapUsed = recent.reduce((sum, s) => sum + s.heapUsed, 0) / recent.length;
+    const avgHeapUsed =
+      recent.reduce((sum, s) => sum + s.heapUsed, 0) / recent.length;
     const trend = current.heapUsed - oldest.heapUsed;
 
     return {
@@ -302,17 +328,18 @@ export class MemoryMonitor {
         heapUsedMB: (current.heapUsed / 1024 / 1024).toFixed(2),
         heapTotalMB: (current.heapTotal / 1024 / 1024).toFixed(2),
         rssMB: (current.rss / 1024 / 1024).toFixed(2),
-        externalMB: (current.external / 1024 / 1024).toFixed(2)
+        externalMB: (current.external / 1024 / 1024).toFixed(2),
       },
       average: {
-        heapUsedMB: (avgHeapUsed / 1024 / 1024).toFixed(2)
+        heapUsedMB: (avgHeapUsed / 1024 / 1024).toFixed(2),
       },
       trend: {
-        direction: trend > 0 ? 'increasing' : trend < 0 ? 'decreasing' : 'stable',
+        direction:
+          trend > 0 ? "increasing" : trend < 0 ? "decreasing" : "stable",
         changeMB: (Math.abs(trend) / 1024 / 1024).toFixed(2),
-        isMemoryLeak: this.detectMemoryLeak()
+        isMemoryLeak: this.detectMemoryLeak(),
       },
-      warnings: this.getMemoryWarnings(current)
+      warnings: this.getMemoryWarnings(current),
     };
   }
 
@@ -335,19 +362,19 @@ export class MemoryMonitor {
     const warnings: string[] = [];
 
     if (snapshot.heapUsed > this.criticalThreshold) {
-      warnings.push('حرج: استهلاك الذاكرة مرتفع جداً');
+      warnings.push("حرج: استهلاك الذاكرة مرتفع جداً");
     } else if (snapshot.heapUsed > this.warningThreshold) {
-      warnings.push('تحذير: استهلاك الذاكرة مرتفع');
+      warnings.push("تحذير: استهلاك الذاكرة مرتفع");
     }
 
     if (this.detectMemoryLeak()) {
-      warnings.push('تسريب محتمل: الاستهلاك في ازدياد مستمر');
+      warnings.push("تسريب محتمل: الاستهلاك في ازدياد مستمر");
     }
 
     if (this.currentEventLoopLag > 100) {
-      warnings.push('حرج: تأخر كبير في Event Loop');
+      warnings.push("حرج: تأخر كبير في Event Loop");
     } else if (this.currentEventLoopLag > 50) {
-      warnings.push('تحذير: تأخر في Event Loop');
+      warnings.push("تحذير: تأخر في Event Loop");
     }
 
     return warnings;
@@ -355,7 +382,7 @@ export class MemoryMonitor {
 
   static getMemoryHistory(minutes = 30): MemorySnapshot[] {
     const cutoff = new Date(Date.now() - minutes * 60 * 1000);
-    return this.snapshots.filter(s => s.timestamp >= cutoff);
+    return this.snapshots.filter((s) => s.timestamp >= cutoff);
   }
 
   static forceGarbageCollection() {
@@ -364,17 +391,20 @@ export class MemoryMonitor {
       global.gc();
       const after = process.memoryUsage().heapUsed;
       const freed = (before - after) / 1024 / 1024;
-      
+
       this.takeSnapshot();
 
-      return { 
-        freedMB: freed.toFixed(2), 
+      return {
+        freedMB: freed.toFixed(2),
         beforeMB: (before / 1024 / 1024).toFixed(2),
         afterMB: (after / 1024 / 1024).toFixed(2),
-        success: true 
+        success: true,
       };
     } else {
-      return { error: 'GC غير متاح. يحتاج تشغيل الخادم بعلامة --expose-gc', success: false };
+      return {
+        error: "GC غير متاح. يحتاج تشغيل الخادم بعلامة --expose-gc",
+        success: false,
+      };
     }
   }
 
@@ -390,6 +420,6 @@ export class MemoryMonitor {
     if (minutes > 0) parts.push(`${minutes} دقيقة`);
     if (parts.length === 0) parts.push(`${secs} ثانية`);
 
-    return parts.join(' و ');
+    return parts.join(" و ");
   }
 }

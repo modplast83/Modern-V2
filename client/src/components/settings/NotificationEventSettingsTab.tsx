@@ -1,45 +1,4 @@
-import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
-import { Button } from "../ui/button";
-import { Switch } from "../ui/switch";
-import { Badge } from "../ui/badge";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
-import { Textarea } from "../ui/textarea";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from "../ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "../ui/accordion";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import { useToast } from "../../hooks/use-toast";
-import { apiRequest } from "../../lib/queryClient";
 import {
   Bell,
   Settings2,
@@ -64,7 +23,55 @@ import {
   Zap,
   ChevronDown,
 } from "lucide-react";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { SiWhatsapp } from "react-icons/si";
+
+import { useToast } from "../../hooks/use-toast";
+import { apiRequest } from "../../lib/queryClient";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "../ui/accordion";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "../ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "../ui/dialog";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import { Switch } from "../ui/switch";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import { Textarea } from "../ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 
 interface NotificationEventSetting {
   id: number;
@@ -134,54 +141,84 @@ export default function NotificationEventSettingsTab() {
   const queryClient = useQueryClient();
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<NotificationEventSetting | null>(null);
+  const [selectedEvent, setSelectedEvent] =
+    useState<NotificationEventSetting | null>(null);
   const [testDialogOpen, setTestDialogOpen] = useState(false);
   const [testPhone, setTestPhone] = useState("");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [logsFilterStatus, setLogsFilterStatus] = useState<string>("all");
 
-  const { data: settingsResponse, isLoading: settingsLoading, refetch: refetchSettings } = useQuery<{ data: NotificationEventSetting[]; success: boolean }>({
+  const {
+    data: settingsResponse,
+    isLoading: settingsLoading,
+    refetch: refetchSettings,
+  } = useQuery<{ data: NotificationEventSetting[]; success: boolean }>({
     queryKey: ["/api/notification-event-settings"],
   });
 
-  const { data: logsResponse, isLoading: logsLoading, refetch: refetchLogs } = useQuery<{ data: NotificationEventLog[]; success: boolean }>({
+  const {
+    data: logsResponse,
+    isLoading: logsLoading,
+    refetch: refetchLogs,
+  } = useQuery<{ data: NotificationEventLog[]; success: boolean }>({
     queryKey: ["/api/notification-event-logs"],
   });
 
-  const { data: usersResponse } = useQuery<{ success: boolean; users: { id: number; username: string; full_name: string | null }[] }>({
+  const { data: usersResponse } = useQuery<{
+    success: boolean;
+    users: { id: number; username: string; full_name: string | null }[];
+  }>({
     queryKey: ["/api/users"],
   });
 
-  const { data: rolesResponse } = useQuery<{ success: boolean; roles: { id: number; name: string; name_ar: string }[] }>({
+  const { data: rolesResponse } = useQuery<{
+    success: boolean;
+    roles: { id: number; name: string; name_ar: string }[];
+  }>({
     queryKey: ["/api/roles"],
   });
 
   const updateSettingMutation = useMutation({
-    mutationFn: async ({ id, updates }: { id: number; updates: Partial<NotificationEventSetting> }) => {
+    mutationFn: async ({
+      id,
+      updates,
+    }: {
+      id: number;
+      updates: Partial<NotificationEventSetting>;
+    }) => {
       return apiRequest(`/api/notification-event-settings/${id}`, {
         method: "PATCH",
         body: JSON.stringify(updates),
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/notification-event-settings"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/notification-event-settings"],
+      });
       toast({
-        title: t('notificationEvents.toasts.updated'),
-        description: t('notificationEvents.toasts.settingsUpdated'),
+        title: t("notificationEvents.toasts.updated"),
+        description: t("notificationEvents.toasts.settingsUpdated"),
       });
       setEditDialogOpen(false);
     },
     onError: (error: any) => {
       toast({
-        title: t('common.error'),
-        description: error.message || t('notificationEvents.toasts.updateFailed'),
+        title: t("common.error"),
+        description:
+          error.message || t("notificationEvents.toasts.updateFailed"),
         variant: "destructive",
       });
     },
   });
 
   const testNotificationMutation = useMutation({
-    mutationFn: async ({ id, phone_number }: { id: number; phone_number: string }) => {
+    mutationFn: async ({
+      id,
+      phone_number,
+    }: {
+      id: number;
+      phone_number: string;
+    }) => {
       return apiRequest(`/api/notification-event-settings/${id}/test`, {
         method: "POST",
         body: JSON.stringify({ phone_number }),
@@ -189,8 +226,8 @@ export default function NotificationEventSettingsTab() {
     },
     onSuccess: () => {
       toast({
-        title: t('notificationEvents.toasts.sent'),
-        description: t('notificationEvents.toasts.testSent'),
+        title: t("notificationEvents.toasts.sent"),
+        description: t("notificationEvents.toasts.testSent"),
       });
       setTestDialogOpen(false);
       setTestPhone("");
@@ -198,8 +235,8 @@ export default function NotificationEventSettingsTab() {
     },
     onError: (error: any) => {
       toast({
-        title: t('common.error'),
-        description: error.message || t('notificationEvents.toasts.sendFailed'),
+        title: t("common.error"),
+        description: error.message || t("notificationEvents.toasts.sendFailed"),
         variant: "destructive",
       });
     },
@@ -210,21 +247,26 @@ export default function NotificationEventSettingsTab() {
   const users = usersResponse?.users || [];
   const roles = rolesResponse?.roles || [];
 
-  const filteredSettings = filterCategory === "all"
-    ? settings
-    : settings.filter(s => s.event_category === filterCategory);
+  const filteredSettings =
+    filterCategory === "all"
+      ? settings
+      : settings.filter((s) => s.event_category === filterCategory);
 
-  const groupedSettings = filteredSettings.reduce((acc, setting) => {
-    if (!acc[setting.event_category]) {
-      acc[setting.event_category] = [];
-    }
-    acc[setting.event_category].push(setting);
-    return acc;
-  }, {} as Record<string, NotificationEventSetting[]>);
+  const groupedSettings = filteredSettings.reduce(
+    (acc, setting) => {
+      if (!acc[setting.event_category]) {
+        acc[setting.event_category] = [];
+      }
+      acc[setting.event_category].push(setting);
+      return acc;
+    },
+    {} as Record<string, NotificationEventSetting[]>,
+  );
 
-  const filteredLogs = logsFilterStatus === "all"
-    ? logs
-    : logs.filter(l => l.status === logsFilterStatus);
+  const filteredLogs =
+    logsFilterStatus === "all"
+      ? logs
+      : logs.filter((l) => l.status === logsFilterStatus);
 
   const handleToggleEnabled = (setting: NotificationEventSetting) => {
     updateSettingMutation.mutate({
@@ -297,11 +339,11 @@ export default function NotificationEventSettingsTab() {
         <TabsList className="grid w-full grid-cols-2 mb-6">
           <TabsTrigger value="settings" className="flex items-center gap-2">
             <Settings2 className="h-4 w-4" />
-            {t('notificationEvents.tabs.eventSettings')}
+            {t("notificationEvents.tabs.eventSettings")}
           </TabsTrigger>
           <TabsTrigger value="logs" className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
-            {t('notificationEvents.tabs.notificationLog')}
+            {t("notificationEvents.tabs.notificationLog")}
           </TabsTrigger>
         </TabsList>
 
@@ -311,23 +353,47 @@ export default function NotificationEventSettingsTab() {
               <Select value={filterCategory} onValueChange={setFilterCategory}>
                 <SelectTrigger className="w-[200px]">
                   <Filter className="h-4 w-4 ml-2" />
-                  <SelectValue placeholder={t('notificationEvents.filterByCategory')} />
+                  <SelectValue
+                    placeholder={t("notificationEvents.filterByCategory")}
+                  />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">{t('notificationEvents.allCategories')}</SelectItem>
-                  <SelectItem value="orders">{t('notificationEvents.categories.orders')}</SelectItem>
-                  <SelectItem value="production">{t('notificationEvents.categories.production')}</SelectItem>
-                  <SelectItem value="quality">{t('notificationEvents.categories.quality')}</SelectItem>
-                  <SelectItem value="maintenance">{t('notificationEvents.categories.maintenance')}</SelectItem>
-                  <SelectItem value="hr">{t('notificationEvents.categories.hr')}</SelectItem>
-                  <SelectItem value="inventory">{t('notificationEvents.categories.inventory')}</SelectItem>
-                  <SelectItem value="system">{t('notificationEvents.categories.system')}</SelectItem>
+                  <SelectItem value="all">
+                    {t("notificationEvents.allCategories")}
+                  </SelectItem>
+                  <SelectItem value="orders">
+                    {t("notificationEvents.categories.orders")}
+                  </SelectItem>
+                  <SelectItem value="production">
+                    {t("notificationEvents.categories.production")}
+                  </SelectItem>
+                  <SelectItem value="quality">
+                    {t("notificationEvents.categories.quality")}
+                  </SelectItem>
+                  <SelectItem value="maintenance">
+                    {t("notificationEvents.categories.maintenance")}
+                  </SelectItem>
+                  <SelectItem value="hr">
+                    {t("notificationEvents.categories.hr")}
+                  </SelectItem>
+                  <SelectItem value="inventory">
+                    {t("notificationEvents.categories.inventory")}
+                  </SelectItem>
+                  <SelectItem value="system">
+                    {t("notificationEvents.categories.system")}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <Button variant="outline" onClick={() => refetchSettings()} disabled={settingsLoading}>
-              <RefreshCw className={`h-4 w-4 ml-2 ${settingsLoading ? "animate-spin" : ""}`} />
-              {t('common.refresh')}
+            <Button
+              variant="outline"
+              onClick={() => refetchSettings()}
+              disabled={settingsLoading}
+            >
+              <RefreshCw
+                className={`h-4 w-4 ml-2 ${settingsLoading ? "animate-spin" : ""}`}
+              />
+              {t("common.refresh")}
             </Button>
           </div>
 
@@ -336,87 +402,124 @@ export default function NotificationEventSettingsTab() {
               <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <Accordion type="multiple" className="space-y-2" defaultValue={Object.keys(groupedSettings)}>
-              {Object.entries(groupedSettings).map(([category, categorySettings]) => {
-                const CategoryIcon = categoryIcons[category] || Bell;
-                return (
-                  <AccordionItem key={category} value={category} className="border rounded-lg overflow-hidden">
-                    <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-full ${categoryColors[category]}`}>
-                          <CategoryIcon className="h-4 w-4" />
-                        </div>
-                        <span className="font-semibold">{getCategoryLabel(category)}</span>
-                        <Badge variant="secondary">{categorySettings.length}</Badge>
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="px-0 pb-0">
-                      <div className="divide-y">
-                        {categorySettings.map((setting) => (
+            <Accordion
+              type="multiple"
+              className="space-y-2"
+              defaultValue={Object.keys(groupedSettings)}
+            >
+              {Object.entries(groupedSettings).map(
+                ([category, categorySettings]) => {
+                  const CategoryIcon = categoryIcons[category] || Bell;
+                  return (
+                    <AccordionItem
+                      key={category}
+                      value={category}
+                      className="border rounded-lg overflow-hidden"
+                    >
+                      <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                        <div className="flex items-center gap-3">
                           <div
-                            key={setting.id}
-                            className="flex items-center justify-between px-4 py-3 hover:bg-muted/50"
+                            className={`p-2 rounded-full ${categoryColors[category]}`}
                           >
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium">{setting.event_name_ar}</span>
-                                {setting.priority === "high" && (
-                                  <Badge variant="destructive" className="text-xs">{t('notificationEvents.priority.high')}</Badge>
-                                )}
-                                {setting.priority === "urgent" && (
-                                  <Badge variant="destructive" className="text-xs bg-red-600">{t('notificationEvents.priority.urgent')}</Badge>
-                                )}
-                              </div>
-                              <p className="text-sm text-muted-foreground">{setting.event_description_ar}</p>
-                            </div>
-                            <div className="flex items-center gap-4">
-                              <div className="flex items-center gap-2">
-                                <Label htmlFor={`enabled-${setting.id}`} className="text-xs text-muted-foreground">
-                                  {t('notificationEvents.enabled')}
-                                </Label>
-                                <Switch
-                                  id={`enabled-${setting.id}`}
-                                  checked={setting.is_enabled ?? false}
-                                  onCheckedChange={() => handleToggleEnabled(setting)}
-                                />
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <SiWhatsapp className="h-4 w-4 text-green-500" />
-                                <Switch
-                                  checked={setting.whatsapp_enabled ?? false}
-                                  onCheckedChange={() => handleToggleWhatsApp(setting)}
-                                />
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => {
-                                    setSelectedEvent(setting);
-                                    setEditDialogOpen(true);
-                                  }}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => {
-                                    setSelectedEvent(setting);
-                                    setTestDialogOpen(true);
-                                  }}
-                                >
-                                  <Send className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
+                            <CategoryIcon className="h-4 w-4" />
                           </div>
-                        ))}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                );
-              })}
+                          <span className="font-semibold">
+                            {getCategoryLabel(category)}
+                          </span>
+                          <Badge variant="secondary">
+                            {categorySettings.length}
+                          </Badge>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-0 pb-0">
+                        <div className="divide-y">
+                          {categorySettings.map((setting) => (
+                            <div
+                              key={setting.id}
+                              className="flex items-center justify-between px-4 py-3 hover:bg-muted/50"
+                            >
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">
+                                    {setting.event_name_ar}
+                                  </span>
+                                  {setting.priority === "high" && (
+                                    <Badge
+                                      variant="destructive"
+                                      className="text-xs"
+                                    >
+                                      {t("notificationEvents.priority.high")}
+                                    </Badge>
+                                  )}
+                                  {setting.priority === "urgent" && (
+                                    <Badge
+                                      variant="destructive"
+                                      className="text-xs bg-red-600"
+                                    >
+                                      {t("notificationEvents.priority.urgent")}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                  {setting.event_description_ar}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2">
+                                  <Label
+                                    htmlFor={`enabled-${setting.id}`}
+                                    className="text-xs text-muted-foreground"
+                                  >
+                                    {t("notificationEvents.enabled")}
+                                  </Label>
+                                  <Switch
+                                    id={`enabled-${setting.id}`}
+                                    checked={setting.is_enabled ?? false}
+                                    onCheckedChange={() =>
+                                      handleToggleEnabled(setting)
+                                    }
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <SiWhatsapp className="h-4 w-4 text-green-500" />
+                                  <Switch
+                                    checked={setting.whatsapp_enabled ?? false}
+                                    onCheckedChange={() =>
+                                      handleToggleWhatsApp(setting)
+                                    }
+                                  />
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => {
+                                      setSelectedEvent(setting);
+                                      setEditDialogOpen(true);
+                                    }}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => {
+                                      setSelectedEvent(setting);
+                                      setTestDialogOpen(true);
+                                    }}
+                                  >
+                                    <Send className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                },
+              )}
             </Accordion>
           )}
         </TabsContent>
@@ -424,22 +527,41 @@ export default function NotificationEventSettingsTab() {
         <TabsContent value="logs" className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Select value={logsFilterStatus} onValueChange={setLogsFilterStatus}>
+              <Select
+                value={logsFilterStatus}
+                onValueChange={setLogsFilterStatus}
+              >
                 <SelectTrigger className="w-[180px]">
                   <Filter className="h-4 w-4 ml-2" />
-                  <SelectValue placeholder={t('notificationEvents.filterByStatus')} />
+                  <SelectValue
+                    placeholder={t("notificationEvents.filterByStatus")}
+                  />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">{t('notificationEvents.allStatuses')}</SelectItem>
-                  <SelectItem value="sent">{t('notificationEvents.status.sent')}</SelectItem>
-                  <SelectItem value="failed">{t('notificationEvents.status.failed')}</SelectItem>
-                  <SelectItem value="pending">{t('notificationEvents.status.pending')}</SelectItem>
+                  <SelectItem value="all">
+                    {t("notificationEvents.allStatuses")}
+                  </SelectItem>
+                  <SelectItem value="sent">
+                    {t("notificationEvents.status.sent")}
+                  </SelectItem>
+                  <SelectItem value="failed">
+                    {t("notificationEvents.status.failed")}
+                  </SelectItem>
+                  <SelectItem value="pending">
+                    {t("notificationEvents.status.pending")}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <Button variant="outline" onClick={() => refetchLogs()} disabled={logsLoading}>
-              <RefreshCw className={`h-4 w-4 ml-2 ${logsLoading ? "animate-spin" : ""}`} />
-              {t('common.refresh')}
+            <Button
+              variant="outline"
+              onClick={() => refetchLogs()}
+              disabled={logsLoading}
+            >
+              <RefreshCw
+                className={`h-4 w-4 ml-2 ${logsLoading ? "animate-spin" : ""}`}
+              />
+              {t("common.refresh")}
             </Button>
           </div>
 
@@ -448,11 +570,21 @@ export default function NotificationEventSettingsTab() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-right">{t('notificationEvents.table.event')}</TableHead>
-                    <TableHead className="text-right">{t('notificationEvents.table.recipient')}</TableHead>
-                    <TableHead className="text-right">{t('notificationEvents.table.message')}</TableHead>
-                    <TableHead className="text-right">{t('notificationEvents.table.status')}</TableHead>
-                    <TableHead className="text-right">{t('notificationEvents.table.date')}</TableHead>
+                    <TableHead className="text-right">
+                      {t("notificationEvents.table.event")}
+                    </TableHead>
+                    <TableHead className="text-right">
+                      {t("notificationEvents.table.recipient")}
+                    </TableHead>
+                    <TableHead className="text-right">
+                      {t("notificationEvents.table.message")}
+                    </TableHead>
+                    <TableHead className="text-right">
+                      {t("notificationEvents.table.status")}
+                    </TableHead>
+                    <TableHead className="text-right">
+                      {t("notificationEvents.table.date")}
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -464,8 +596,11 @@ export default function NotificationEventSettingsTab() {
                     </TableRow>
                   ) : filteredLogs.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                        {t('notificationEvents.noLogs')}
+                      <TableCell
+                        colSpan={5}
+                        className="text-center py-8 text-muted-foreground"
+                      >
+                        {t("notificationEvents.noLogs")}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -474,8 +609,12 @@ export default function NotificationEventSettingsTab() {
                         <TableCell>{log.event_key}</TableCell>
                         <TableCell>
                           <div>
-                            <div className="font-medium">{log.recipient_name}</div>
-                            <div className="text-xs text-muted-foreground">{log.recipient_phone}</div>
+                            <div className="font-medium">
+                              {log.recipient_name}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {log.recipient_phone}
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell className="max-w-[200px] truncate">
@@ -485,14 +624,22 @@ export default function NotificationEventSettingsTab() {
                           <div className="flex items-center gap-2">
                             {getStatusIcon(log.status)}
                             <span className="text-sm">
-                              {log.status === "sent" ? t('notificationEvents.status.sent') : log.status === "failed" ? t('notificationEvents.status.failed') : t('notificationEvents.status.pending')}
+                              {log.status === "sent"
+                                ? t("notificationEvents.status.sent")
+                                : log.status === "failed"
+                                  ? t("notificationEvents.status.failed")
+                                  : t("notificationEvents.status.pending")}
                             </span>
                           </div>
                           {log.error_message && (
-                            <div className="text-xs text-red-500 mt-1">{log.error_message}</div>
+                            <div className="text-xs text-red-500 mt-1">
+                              {log.error_message}
+                            </div>
                           )}
                         </TableCell>
-                        <TableCell className="text-sm">{formatDate(log.triggered_at)}</TableCell>
+                        <TableCell className="text-sm">
+                          {formatDate(log.triggered_at)}
+                        </TableCell>
                       </TableRow>
                     ))
                   )}
@@ -506,7 +653,9 @@ export default function NotificationEventSettingsTab() {
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{t('notificationEvents.editEventSettings')}</DialogTitle>
+            <DialogTitle>
+              {t("notificationEvents.editEventSettings")}
+            </DialogTitle>
             <DialogDescription>
               {selectedEvent?.event_name_ar}
             </DialogDescription>
@@ -514,44 +663,65 @@ export default function NotificationEventSettingsTab() {
           {selectedEvent && (
             <div className="space-y-6 py-4">
               <div className="space-y-2">
-                <Label>{t('notificationEvents.messageTemplateAr')}</Label>
+                <Label>{t("notificationEvents.messageTemplateAr")}</Label>
                 <Textarea
                   value={selectedEvent.message_template_ar || ""}
-                  onChange={(e) => setSelectedEvent({ ...selectedEvent, message_template_ar: e.target.value })}
-                  placeholder={t('notificationEvents.useVariablesPlaceholder')}
+                  onChange={(e) =>
+                    setSelectedEvent({
+                      ...selectedEvent,
+                      message_template_ar: e.target.value,
+                    })
+                  }
+                  placeholder={t("notificationEvents.useVariablesPlaceholder")}
                   className="min-h-[100px]"
                   dir="rtl"
                 />
                 <p className="text-xs text-muted-foreground">
-                  {t('notificationEvents.availableVariables')}: {"{{order_id}}"}, {"{{customer_name}}"}, {"{{status}}"}, {"{{quantity}}"}
+                  {t("notificationEvents.availableVariables")}: {"{{order_id}}"}
+                  , {"{{customer_name}}"}, {"{{status}}"}, {"{{quantity}}"}
                 </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>{t('notificationEvents.priorityLabel')}</Label>
+                  <Label>{t("notificationEvents.priorityLabel")}</Label>
                   <Select
                     value={selectedEvent.priority || "normal"}
-                    onValueChange={(value) => setSelectedEvent({ ...selectedEvent, priority: value })}
+                    onValueChange={(value) =>
+                      setSelectedEvent({ ...selectedEvent, priority: value })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="low">{t('notificationEvents.priority.low')}</SelectItem>
-                      <SelectItem value="normal">{t('notificationEvents.priority.normal')}</SelectItem>
-                      <SelectItem value="high">{t('notificationEvents.priority.high')}</SelectItem>
-                      <SelectItem value="urgent">{t('notificationEvents.priority.urgent')}</SelectItem>
+                      <SelectItem value="low">
+                        {t("notificationEvents.priority.low")}
+                      </SelectItem>
+                      <SelectItem value="normal">
+                        {t("notificationEvents.priority.normal")}
+                      </SelectItem>
+                      <SelectItem value="high">
+                        {t("notificationEvents.priority.high")}
+                      </SelectItem>
+                      <SelectItem value="urgent">
+                        {t("notificationEvents.priority.urgent")}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>{t('notificationEvents.sendDelay')}</Label>
+                  <Label>{t("notificationEvents.sendDelay")}</Label>
                   <Input
                     type="number"
                     min={0}
                     value={selectedEvent.delay_minutes || 0}
-                    onChange={(e) => setSelectedEvent({ ...selectedEvent, delay_minutes: parseInt(e.target.value) })}
+                    onChange={(e) =>
+                      setSelectedEvent({
+                        ...selectedEvent,
+                        delay_minutes: parseInt(e.target.value),
+                      })
+                    }
                   />
                 </div>
               </div>
@@ -559,32 +729,47 @@ export default function NotificationEventSettingsTab() {
               <div className="space-y-4">
                 <Label className="flex items-center gap-2">
                   <Users className="h-4 w-4" />
-                  {t('notificationEvents.recipients')}
+                  {t("notificationEvents.recipients")}
                 </Label>
-                
+
                 <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
                   <div className="flex items-center gap-2">
                     <Switch
                       checked={selectedEvent.notify_customer ?? false}
-                      onCheckedChange={(checked) => setSelectedEvent({ ...selectedEvent, notify_customer: checked })}
+                      onCheckedChange={(checked) =>
+                        setSelectedEvent({
+                          ...selectedEvent,
+                          notify_customer: checked,
+                        })
+                      }
                     />
-                    <Label>{t('notificationEvents.notifyCustomer')}</Label>
+                    <Label>{t("notificationEvents.notifyCustomer")}</Label>
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm">{t('notificationEvents.recipientRoles')}</Label>
+                    <Label className="text-sm">
+                      {t("notificationEvents.recipientRoles")}
+                    </Label>
                     <div className="flex flex-wrap gap-2">
                       {roles.map((role) => (
                         <Badge
                           key={role.id}
-                          variant={selectedEvent.recipient_role_ids?.includes(role.id) ? "default" : "outline"}
+                          variant={
+                            selectedEvent.recipient_role_ids?.includes(role.id)
+                              ? "default"
+                              : "outline"
+                          }
                           className="cursor-pointer"
                           onClick={() => {
-                            const currentIds = selectedEvent.recipient_role_ids || [];
+                            const currentIds =
+                              selectedEvent.recipient_role_ids || [];
                             const newIds = currentIds.includes(role.id)
-                              ? currentIds.filter(id => id !== role.id)
+                              ? currentIds.filter((id) => id !== role.id)
                               : [...currentIds, role.id];
-                            setSelectedEvent({ ...selectedEvent, recipient_role_ids: newIds });
+                            setSelectedEvent({
+                              ...selectedEvent,
+                              recipient_role_ids: newIds,
+                            });
                           }}
                         >
                           {role.name_ar || role.name}
@@ -594,51 +779,81 @@ export default function NotificationEventSettingsTab() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm">{t('notificationEvents.specificUsers')}</Label>
+                    <Label className="text-sm">
+                      {t("notificationEvents.specificUsers")}
+                    </Label>
                     <Select
                       value=""
                       onValueChange={(value) => {
                         const userId = parseInt(value);
-                        const currentIds = selectedEvent.recipient_user_ids || [];
+                        const currentIds =
+                          selectedEvent.recipient_user_ids || [];
                         if (!currentIds.includes(userId)) {
-                          setSelectedEvent({ ...selectedEvent, recipient_user_ids: [...currentIds, userId] });
+                          setSelectedEvent({
+                            ...selectedEvent,
+                            recipient_user_ids: [...currentIds, userId],
+                          });
                         }
                       }}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder={t('notificationEvents.selectUserToAdd')} />
+                        <SelectValue
+                          placeholder={t("notificationEvents.selectUserToAdd")}
+                        />
                       </SelectTrigger>
                       <SelectContent>
-                        {users.filter(u => !(selectedEvent.recipient_user_ids || []).includes(u.id)).map((user) => (
-                          <SelectItem key={user.id} value={String(user.id)}>
-                            {user.full_name || user.username}
-                          </SelectItem>
-                        ))}
+                        {users
+                          .filter(
+                            (u) =>
+                              !(
+                                selectedEvent.recipient_user_ids || []
+                              ).includes(u.id),
+                          )
+                          .map((user) => (
+                            <SelectItem key={user.id} value={String(user.id)}>
+                              {user.full_name || user.username}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                     <div className="flex flex-wrap gap-2 mt-2">
-                      {(selectedEvent.recipient_user_ids || []).map((userId) => {
-                        const user = users.find(u => u.id === userId);
-                        return (
-                          <Badge key={userId} variant="secondary" className="gap-1">
-                            {user?.full_name || user?.username || `User ${userId}`}
-                            <XCircle 
-                              className="h-3 w-3 cursor-pointer" 
-                              onClick={() => {
-                                const newIds = (selectedEvent.recipient_user_ids || []).filter(id => id !== userId);
-                                setSelectedEvent({ ...selectedEvent, recipient_user_ids: newIds });
-                              }}
-                            />
-                          </Badge>
-                        );
-                      })}
+                      {(selectedEvent.recipient_user_ids || []).map(
+                        (userId) => {
+                          const user = users.find((u) => u.id === userId);
+                          return (
+                            <Badge
+                              key={userId}
+                              variant="secondary"
+                              className="gap-1"
+                            >
+                              {user?.full_name ||
+                                user?.username ||
+                                `User ${userId}`}
+                              <XCircle
+                                className="h-3 w-3 cursor-pointer"
+                                onClick={() => {
+                                  const newIds = (
+                                    selectedEvent.recipient_user_ids || []
+                                  ).filter((id) => id !== userId);
+                                  setSelectedEvent({
+                                    ...selectedEvent,
+                                    recipient_user_ids: newIds,
+                                  });
+                                }}
+                              />
+                            </Badge>
+                          );
+                        },
+                      )}
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm">{t('notificationEvents.additionalPhones')}</Label>
+                    <Label className="text-sm">
+                      {t("notificationEvents.additionalPhones")}
+                    </Label>
                     <p className="text-xs text-muted-foreground">
-                      {t('notificationEvents.additionalPhonesDesc')}
+                      {t("notificationEvents.additionalPhonesDesc")}
                     </p>
                     <div className="flex gap-2">
                       <Input
@@ -646,19 +861,26 @@ export default function NotificationEventSettingsTab() {
                         placeholder="+966xxxxxxxxx"
                         dir="ltr"
                         onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
+                          if (e.key === "Enter") {
                             e.preventDefault();
                             const input = e.target as HTMLInputElement;
                             const phone = input.value.trim();
-                            if (phone && /^\+?[0-9]{10,15}$/.test(phone.replace(/\s/g, ''))) {
-                              const currentPhones = selectedEvent.recipient_phone_numbers || [];
+                            if (
+                              phone &&
+                              /^\+?[0-9]{10,15}$/.test(phone.replace(/\s/g, ""))
+                            ) {
+                              const currentPhones =
+                                selectedEvent.recipient_phone_numbers || [];
                               if (!currentPhones.includes(phone)) {
-                                setSelectedEvent({ 
-                                  ...selectedEvent, 
-                                  recipient_phone_numbers: [...currentPhones, phone] 
+                                setSelectedEvent({
+                                  ...selectedEvent,
+                                  recipient_phone_numbers: [
+                                    ...currentPhones,
+                                    phone,
+                                  ],
                                 });
                               }
-                              input.value = '';
+                              input.value = "";
                             }
                           }
                         }}
@@ -667,17 +889,26 @@ export default function NotificationEventSettingsTab() {
                         type="button"
                         variant="outline"
                         onClick={() => {
-                          const input = document.getElementById('new-phone-input') as HTMLInputElement;
+                          const input = document.getElementById(
+                            "new-phone-input",
+                          ) as HTMLInputElement;
                           const phone = input?.value.trim();
-                          if (phone && /^\+?[0-9]{10,15}$/.test(phone.replace(/\s/g, ''))) {
-                            const currentPhones = selectedEvent.recipient_phone_numbers || [];
+                          if (
+                            phone &&
+                            /^\+?[0-9]{10,15}$/.test(phone.replace(/\s/g, ""))
+                          ) {
+                            const currentPhones =
+                              selectedEvent.recipient_phone_numbers || [];
                             if (!currentPhones.includes(phone)) {
-                              setSelectedEvent({ 
-                                ...selectedEvent, 
-                                recipient_phone_numbers: [...currentPhones, phone] 
+                              setSelectedEvent({
+                                ...selectedEvent,
+                                recipient_phone_numbers: [
+                                  ...currentPhones,
+                                  phone,
+                                ],
                               });
                             }
-                            input.value = '';
+                            input.value = "";
                           }
                         }}
                       >
@@ -685,18 +916,30 @@ export default function NotificationEventSettingsTab() {
                       </Button>
                     </div>
                     <div className="flex flex-wrap gap-2 mt-2">
-                      {(selectedEvent.recipient_phone_numbers || []).map((phone, index) => (
-                        <Badge key={index} variant="secondary" className="gap-1 font-mono" dir="ltr">
-                          {phone}
-                          <XCircle 
-                            className="h-3 w-3 cursor-pointer" 
-                            onClick={() => {
-                              const newPhones = (selectedEvent.recipient_phone_numbers || []).filter((_, i) => i !== index);
-                              setSelectedEvent({ ...selectedEvent, recipient_phone_numbers: newPhones });
-                            }}
-                          />
-                        </Badge>
-                      ))}
+                      {(selectedEvent.recipient_phone_numbers || []).map(
+                        (phone, index) => (
+                          <Badge
+                            key={index}
+                            variant="secondary"
+                            className="gap-1 font-mono"
+                            dir="ltr"
+                          >
+                            {phone}
+                            <XCircle
+                              className="h-3 w-3 cursor-pointer"
+                              onClick={() => {
+                                const newPhones = (
+                                  selectedEvent.recipient_phone_numbers || []
+                                ).filter((_, i) => i !== index);
+                                setSelectedEvent({
+                                  ...selectedEvent,
+                                  recipient_phone_numbers: newPhones,
+                                });
+                              }}
+                            />
+                          </Badge>
+                        ),
+                      )}
                     </div>
                   </div>
                 </div>
@@ -706,44 +949,76 @@ export default function NotificationEventSettingsTab() {
                 <div className="flex items-center gap-2">
                   <Switch
                     checked={selectedEvent.condition_enabled ?? false}
-                    onCheckedChange={(checked) => setSelectedEvent({ ...selectedEvent, condition_enabled: checked })}
+                    onCheckedChange={(checked) =>
+                      setSelectedEvent({
+                        ...selectedEvent,
+                        condition_enabled: checked,
+                      })
+                    }
                   />
-                  <Label>{t('notificationEvents.enableCondition')}</Label>
+                  <Label>{t("notificationEvents.enableCondition")}</Label>
                 </div>
                 {selectedEvent.condition_enabled && (
                   <div className="grid grid-cols-3 gap-4 p-4 bg-muted rounded-lg">
                     <div className="space-y-2">
-                      <Label>{t('notificationEvents.conditionField')}</Label>
+                      <Label>{t("notificationEvents.conditionField")}</Label>
                       <Input
                         value={selectedEvent.condition_field || ""}
-                        onChange={(e) => setSelectedEvent({ ...selectedEvent, condition_field: e.target.value })}
+                        onChange={(e) =>
+                          setSelectedEvent({
+                            ...selectedEvent,
+                            condition_field: e.target.value,
+                          })
+                        }
                         placeholder="waste_percentage"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>{t('notificationEvents.conditionOperator')}</Label>
+                      <Label>{t("notificationEvents.conditionOperator")}</Label>
                       <Select
                         value={selectedEvent.condition_operator || ""}
-                        onValueChange={(value) => setSelectedEvent({ ...selectedEvent, condition_operator: value })}
+                        onValueChange={(value) =>
+                          setSelectedEvent({
+                            ...selectedEvent,
+                            condition_operator: value,
+                          })
+                        }
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder={t('common.select')} />
+                          <SelectValue placeholder={t("common.select")} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value=">">{t('notificationEvents.operators.greaterThan')}</SelectItem>
-                          <SelectItem value=">=">{t('notificationEvents.operators.greaterOrEqual')}</SelectItem>
-                          <SelectItem value="<">{t('notificationEvents.operators.lessThan')}</SelectItem>
-                          <SelectItem value="<=">{t('notificationEvents.operators.lessOrEqual')}</SelectItem>
-                          <SelectItem value="==">{t('notificationEvents.operators.equals')}</SelectItem>
-                          <SelectItem value="!=">{t('notificationEvents.operators.notEquals')}</SelectItem>
+                          <SelectItem value=">">
+                            {t("notificationEvents.operators.greaterThan")}
+                          </SelectItem>
+                          <SelectItem value=">=">
+                            {t("notificationEvents.operators.greaterOrEqual")}
+                          </SelectItem>
+                          <SelectItem value="<">
+                            {t("notificationEvents.operators.lessThan")}
+                          </SelectItem>
+                          <SelectItem value="<=">
+                            {t("notificationEvents.operators.lessOrEqual")}
+                          </SelectItem>
+                          <SelectItem value="==">
+                            {t("notificationEvents.operators.equals")}
+                          </SelectItem>
+                          <SelectItem value="!=">
+                            {t("notificationEvents.operators.notEquals")}
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label>{t('notificationEvents.conditionValue')}</Label>
+                      <Label>{t("notificationEvents.conditionValue")}</Label>
                       <Input
                         value={selectedEvent.condition_value || ""}
-                        onChange={(e) => setSelectedEvent({ ...selectedEvent, condition_value: e.target.value })}
+                        onChange={(e) =>
+                          setSelectedEvent({
+                            ...selectedEvent,
+                            condition_value: e.target.value,
+                          })
+                        }
                         placeholder="5"
                       />
                     </div>
@@ -754,13 +1029,16 @@ export default function NotificationEventSettingsTab() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
-              {t('common.cancel')}
+              {t("common.cancel")}
             </Button>
-            <Button onClick={handleEditSave} disabled={updateSettingMutation.isPending}>
+            <Button
+              onClick={handleEditSave}
+              disabled={updateSettingMutation.isPending}
+            >
               {updateSettingMutation.isPending ? (
                 <RefreshCw className="h-4 w-4 ml-2 animate-spin" />
               ) : null}
-              {t('common.saveChanges')}
+              {t("common.saveChanges")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -769,14 +1047,16 @@ export default function NotificationEventSettingsTab() {
       <Dialog open={testDialogOpen} onOpenChange={setTestDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('notificationEvents.sendTestNotification')}</DialogTitle>
+            <DialogTitle>
+              {t("notificationEvents.sendTestNotification")}
+            </DialogTitle>
             <DialogDescription>
-              {t('notificationEvents.sendTestDesc')}
+              {t("notificationEvents.sendTestDesc")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>{t('notificationEvents.phoneNumber')}</Label>
+              <Label>{t("notificationEvents.phoneNumber")}</Label>
               <Input
                 value={testPhone}
                 onChange={(e) => setTestPhone(e.target.value)}
@@ -787,10 +1067,16 @@ export default function NotificationEventSettingsTab() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setTestDialogOpen(false)}>
-              {t('common.cancel')}
+              {t("common.cancel")}
             </Button>
             <Button
-              onClick={() => selectedEvent && testNotificationMutation.mutate({ id: selectedEvent.id, phone_number: testPhone })}
+              onClick={() =>
+                selectedEvent &&
+                testNotificationMutation.mutate({
+                  id: selectedEvent.id,
+                  phone_number: testPhone,
+                })
+              }
               disabled={!testPhone || testNotificationMutation.isPending}
             >
               {testNotificationMutation.isPending ? (
@@ -798,7 +1084,7 @@ export default function NotificationEventSettingsTab() {
               ) : (
                 <Send className="h-4 w-4 ml-2" />
               )}
-              {t('common.send')}
+              {t("common.send")}
             </Button>
           </DialogFooter>
         </DialogContent>

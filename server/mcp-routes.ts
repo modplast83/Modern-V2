@@ -1,13 +1,16 @@
-import type { Express, Request, Response } from "express";
 import { randomUUID } from "crypto";
 import crypto from "crypto";
+
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { createMcpServer } from "./mcp-server";
-import { db } from "./db";
 import { mcp_api_keys } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
-import { requireAuth, requireAdmin, type AuthRequest } from "./middleware/auth";
+
+import { db } from "./db";
 import { validateOAuthToken } from "./mcp-oauth";
+import { createMcpServer } from "./mcp-server";
+import { requireAuth, requireAdmin, type AuthRequest } from "./middleware/auth";
+
+import type { Express, Request, Response } from "express";
 
 function hashApiKey(key: string): string {
   return crypto.createHash("sha256").update(key).digest("hex");
@@ -23,7 +26,12 @@ async function validateApiKey(key: string): Promise<boolean> {
     const result = await db
       .select()
       .from(mcp_api_keys)
-      .where(and(eq(mcp_api_keys.key_hash, keyHash), eq(mcp_api_keys.is_active, true)))
+      .where(
+        and(
+          eq(mcp_api_keys.key_hash, keyHash),
+          eq(mcp_api_keys.is_active, true),
+        ),
+      )
       .limit(1);
 
     if (result.length > 0) {
@@ -84,14 +92,19 @@ export function registerMcpRoutes(app: Express) {
     try {
       const clientIp = req.ip || req.socket.remoteAddress || "unknown";
       if (isRateLimited(clientIp)) {
-        res.status(429).json({ error: "Too many failed authentication attempts. Try again later." });
+        res.status(429).json({
+          error: "Too many failed authentication attempts. Try again later.",
+        });
         return;
       }
 
       const apiKey = extractAndValidateBearer(req);
       if (!apiKey) {
         recordAuthFailure(clientIp);
-        res.status(401).json({ error: "Missing or invalid Authorization header. Use Bearer <API_KEY>" });
+        res.status(401).json({
+          error:
+            "Missing or invalid Authorization header. Use Bearer <API_KEY>",
+        });
         return;
       }
 
@@ -140,7 +153,9 @@ export function registerMcpRoutes(app: Express) {
     try {
       const apiKey = extractAndValidateBearer(req);
       if (!apiKey) {
-        res.status(401).json({ error: "Missing or invalid Authorization header" });
+        res
+          .status(401)
+          .json({ error: "Missing or invalid Authorization header" });
         return;
       }
 
@@ -157,7 +172,10 @@ export function registerMcpRoutes(app: Express) {
         return;
       }
 
-      res.status(400).json({ error: "No valid session. Send an initialization request first via POST." });
+      res.status(400).json({
+        error:
+          "No valid session. Send an initialization request first via POST.",
+      });
     } catch (error) {
       console.error("MCP GET error:", error);
       if (!res.headersSent) {
@@ -170,7 +188,9 @@ export function registerMcpRoutes(app: Express) {
     try {
       const apiKey = extractAndValidateBearer(req);
       if (!apiKey) {
-        res.status(401).json({ error: "Missing or invalid Authorization header" });
+        res
+          .status(401)
+          .json({ error: "Missing or invalid Authorization header" });
         return;
       }
 
@@ -195,112 +215,133 @@ export function registerMcpRoutes(app: Express) {
     }
   });
 
-  app.post("/api/mcp/api-keys", requireAuth, requireAdmin, async (req: Request, res: Response) => {
-    try {
-      const { name } = req.body;
-      if (!name || typeof name !== "string" || name.trim().length === 0) {
-        return res.status(400).json({ error: "اسم المفتاح مطلوب" });
+  app.post(
+    "/api/mcp/api-keys",
+    requireAuth,
+    requireAdmin,
+    async (req: Request, res: Response) => {
+      try {
+        const { name } = req.body;
+        if (!name || typeof name !== "string" || name.trim().length === 0) {
+          return res.status(400).json({ error: "اسم المفتاح مطلوب" });
+        }
+
+        const rawKey = generateApiKey();
+        const keyHash = hashApiKey(rawKey);
+        const keyPrefix = rawKey.slice(0, 12);
+
+        const userId = (req as AuthRequest).user?.id;
+        if (!userId) {
+          return res.status(401).json({ error: "Authentication required" });
+        }
+
+        const [created] = await db
+          .insert(mcp_api_keys)
+          .values({
+            name: name.trim(),
+            key_hash: keyHash,
+            key_prefix: keyPrefix,
+            created_by: userId,
+            is_active: true,
+          })
+          .returning();
+
+        res.json({
+          id: created.id,
+          name: created.name,
+          key_prefix: created.key_prefix,
+          api_key: rawKey,
+          created_at: created.created_at,
+          message:
+            "تم إنشاء المفتاح بنجاح. احفظ المفتاح الآن - لن يظهر مرة أخرى!",
+        });
+      } catch (error: any) {
+        console.error("Error creating MCP API key:", error);
+        res.status(500).json({ error: "فشل في إنشاء المفتاح" });
       }
+    },
+  );
 
-      const rawKey = generateApiKey();
-      const keyHash = hashApiKey(rawKey);
-      const keyPrefix = rawKey.slice(0, 12);
+  app.get(
+    "/api/mcp/api-keys",
+    requireAuth,
+    requireAdmin,
+    async (_req: Request, res: Response) => {
+      try {
+        const keys = await db
+          .select({
+            id: mcp_api_keys.id,
+            name: mcp_api_keys.name,
+            key_prefix: mcp_api_keys.key_prefix,
+            is_active: mcp_api_keys.is_active,
+            last_used_at: mcp_api_keys.last_used_at,
+            created_at: mcp_api_keys.created_at,
+          })
+          .from(mcp_api_keys)
+          .orderBy(mcp_api_keys.created_at);
 
-      const userId = (req as AuthRequest).user?.id;
-      if (!userId) {
-        return res.status(401).json({ error: "Authentication required" });
+        res.json(keys);
+      } catch (error: any) {
+        console.error("Error listing MCP API keys:", error);
+        res.status(500).json({ error: "فشل في جلب المفاتيح" });
       }
+    },
+  );
 
-      const [created] = await db
-        .insert(mcp_api_keys)
-        .values({
-          name: name.trim(),
-          key_hash: keyHash,
-          key_prefix: keyPrefix,
-          created_by: userId,
-          is_active: true,
-        })
-        .returning();
+  app.delete(
+    "/api/mcp/api-keys/:id",
+    requireAuth,
+    requireAdmin,
+    async (req: Request, res: Response) => {
+      try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({ error: "معرف غير صالح" });
+        }
 
-      res.json({
-        id: created.id,
-        name: created.name,
-        key_prefix: created.key_prefix,
-        api_key: rawKey,
-        created_at: created.created_at,
-        message: "تم إنشاء المفتاح بنجاح. احفظ المفتاح الآن - لن يظهر مرة أخرى!",
-      });
-    } catch (error: any) {
-      console.error("Error creating MCP API key:", error);
-      res.status(500).json({ error: "فشل في إنشاء المفتاح" });
-    }
-  });
-
-  app.get("/api/mcp/api-keys", requireAuth, requireAdmin, async (_req: Request, res: Response) => {
-    try {
-      const keys = await db
-        .select({
-          id: mcp_api_keys.id,
-          name: mcp_api_keys.name,
-          key_prefix: mcp_api_keys.key_prefix,
-          is_active: mcp_api_keys.is_active,
-          last_used_at: mcp_api_keys.last_used_at,
-          created_at: mcp_api_keys.created_at,
-        })
-        .from(mcp_api_keys)
-        .orderBy(mcp_api_keys.created_at);
-
-      res.json(keys);
-    } catch (error: any) {
-      console.error("Error listing MCP API keys:", error);
-      res.status(500).json({ error: "فشل في جلب المفاتيح" });
-    }
-  });
-
-  app.delete("/api/mcp/api-keys/:id", requireAuth, requireAdmin, async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ error: "معرف غير صالح" });
+        await db.delete(mcp_api_keys).where(eq(mcp_api_keys.id, id));
+        res.json({ message: "تم حذف المفتاح بنجاح" });
+      } catch (error: any) {
+        console.error("Error deleting MCP API key:", error);
+        res.status(500).json({ error: "فشل في حذف المفتاح" });
       }
+    },
+  );
 
-      await db.delete(mcp_api_keys).where(eq(mcp_api_keys.id, id));
-      res.json({ message: "تم حذف المفتاح بنجاح" });
-    } catch (error: any) {
-      console.error("Error deleting MCP API key:", error);
-      res.status(500).json({ error: "فشل في حذف المفتاح" });
-    }
-  });
+  app.patch(
+    "/api/mcp/api-keys/:id/toggle",
+    requireAuth,
+    requireAdmin,
+    async (req: Request, res: Response) => {
+      try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({ error: "معرف غير صالح" });
+        }
 
-  app.patch("/api/mcp/api-keys/:id/toggle", requireAuth, requireAdmin, async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ error: "معرف غير صالح" });
+        const [existing] = await db
+          .select()
+          .from(mcp_api_keys)
+          .where(eq(mcp_api_keys.id, id))
+          .limit(1);
+
+        if (!existing) {
+          return res.status(404).json({ error: "المفتاح غير موجود" });
+        }
+
+        const [updated] = await db
+          .update(mcp_api_keys)
+          .set({ is_active: !existing.is_active })
+          .where(eq(mcp_api_keys.id, id))
+          .returning();
+
+        res.json(updated);
+      } catch (error: any) {
+        console.error("Error toggling MCP API key:", error);
+        res.status(500).json({ error: "فشل في تحديث المفتاح" });
       }
-
-      const [existing] = await db
-        .select()
-        .from(mcp_api_keys)
-        .where(eq(mcp_api_keys.id, id))
-        .limit(1);
-
-      if (!existing) {
-        return res.status(404).json({ error: "المفتاح غير موجود" });
-      }
-
-      const [updated] = await db
-        .update(mcp_api_keys)
-        .set({ is_active: !existing.is_active })
-        .where(eq(mcp_api_keys.id, id))
-        .returning();
-
-      res.json(updated);
-    } catch (error: any) {
-      console.error("Error toggling MCP API key:", error);
-      res.status(500).json({ error: "فشل في تحديث المفتاح" });
-    }
-  });
+    },
+  );
 
   console.log("✅ MCP server routes registered at /mcp");
 }

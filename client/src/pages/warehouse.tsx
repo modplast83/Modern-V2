@@ -1,31 +1,4 @@
-import { useState, useMemo } from "react";
-import { useTranslation } from 'react-i18next';
-import { useLocalizedName } from "../hooks/use-localized-name";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  CardDescription,
-} from "../components/ui/card";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "../components/ui/tabs";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Badge } from "../components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "../components/ui/dialog";
 import {
   Package,
   Factory,
@@ -39,19 +12,52 @@ import {
   BarChart3,
   Settings,
 } from "lucide-react";
-import { VouchersList } from "../components/warehouse/VouchersList";
-import { VoucherForm } from "../components/warehouse/VoucherForm";
+import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
+
+import PageLayout from "../components/layout/PageLayout";
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardDescription,
+} from "../components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../components/ui/dialog";
+import { Input } from "../components/ui/input";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../components/ui/tabs";
 import { InventoryCountForm } from "../components/warehouse/InventoryCountForm";
+import { VoucherForm } from "../components/warehouse/VoucherForm";
+import { VouchersList } from "../components/warehouse/VouchersList";
 import { WarehouseDefinitions } from "../components/warehouse/WarehouseDefinitions";
 import { WarehouseReports } from "../components/warehouse/WarehouseReports";
-import PageLayout from "../components/layout/PageLayout";
-import { useToast } from "../hooks/use-toast";
 import { useAuth } from "../hooks/use-auth";
+import { useLocalizedName } from "../hooks/use-localized-name";
+import { useToast } from "../hooks/use-toast";
 
 export default function Warehouse() {
   const { t } = useTranslation();
 
-  const [voucherFormType, setVoucherFormType] = useState<"raw-material-in" | "raw-material-out" | "finished-goods-in" | "finished-goods-out">("raw-material-in");
+  const [voucherFormType, setVoucherFormType] = useState<
+    | "raw-material-in"
+    | "raw-material-out"
+    | "finished-goods-in"
+    | "finished-goods-out"
+  >("raw-material-in");
   const [isVoucherFormOpen, setIsVoucherFormOpen] = useState(false);
   const [isInventoryCountOpen, setIsInventoryCountOpen] = useState(false);
 
@@ -60,53 +66,78 @@ export default function Warehouse() {
     setIsVoucherFormOpen(true);
   };
 
-  const { data: voucherStats } = useQuery<{ rm_in: number; rm_out: number; fp_in: number; fp_out: number; total: number }>({
+  const { data: voucherStats } = useQuery<{
+    rm_in: number;
+    rm_out: number;
+    fp_in: number;
+    fp_out: number;
+    total: number;
+  }>({
     queryKey: ["/api/warehouse/vouchers/stats"],
   });
 
   return (
-    <PageLayout title={t('warehouse.title')} description={t('warehouse.description')}>
+    <PageLayout
+      title={t("warehouse.title")}
+      description={t("warehouse.description")}
+    >
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Card className="border-green-200 dark:border-green-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-green-700 dark:text-green-400">{t('warehouse.dashboard.rawMaterialInVouchers')}</CardTitle>
+            <CardTitle className="text-sm font-medium text-green-700 dark:text-green-400">
+              {t("warehouse.dashboard.rawMaterialInVouchers")}
+            </CardTitle>
             <ArrowDownToLine className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-700 dark:text-green-400">{voucherStats?.rm_in || 0}</div>
+            <div className="text-2xl font-bold text-green-700 dark:text-green-400">
+              {voucherStats?.rm_in || 0}
+            </div>
             <p className="text-xs text-muted-foreground">RM-Rec</p>
           </CardContent>
         </Card>
 
         <Card className="border-red-200 dark:border-red-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-red-700 dark:text-red-400">{t('warehouse.dashboard.rawMaterialOutVouchers')}</CardTitle>
+            <CardTitle className="text-sm font-medium text-red-700 dark:text-red-400">
+              {t("warehouse.dashboard.rawMaterialOutVouchers")}
+            </CardTitle>
             <ArrowUpFromLine className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-700 dark:text-red-400">{voucherStats?.rm_out || 0}</div>
+            <div className="text-2xl font-bold text-red-700 dark:text-red-400">
+              {voucherStats?.rm_out || 0}
+            </div>
             <p className="text-xs text-muted-foreground">RM-Del</p>
           </CardContent>
         </Card>
 
         <Card className="border-blue-200 dark:border-blue-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-blue-700 dark:text-blue-400">{t('warehouse.dashboard.finishedGoodsInVouchers')}</CardTitle>
+            <CardTitle className="text-sm font-medium text-blue-700 dark:text-blue-400">
+              {t("warehouse.dashboard.finishedGoodsInVouchers")}
+            </CardTitle>
             <Package className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-700 dark:text-blue-400">{voucherStats?.fp_in || 0}</div>
+            <div className="text-2xl font-bold text-blue-700 dark:text-blue-400">
+              {voucherStats?.fp_in || 0}
+            </div>
             <p className="text-xs text-muted-foreground">FP-Rec</p>
           </CardContent>
         </Card>
 
         <Card className="border-orange-200 dark:border-orange-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-orange-700 dark:text-orange-400">{t('warehouse.dashboard.finishedGoodsOutVouchers')}</CardTitle>
+            <CardTitle className="text-sm font-medium text-orange-700 dark:text-orange-400">
+              {t("warehouse.dashboard.finishedGoodsOutVouchers")}
+            </CardTitle>
             <Truck className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-700 dark:text-orange-400">{voucherStats?.fp_out || 0}</div>
+            <div className="text-2xl font-bold text-orange-700 dark:text-orange-400">
+              {voucherStats?.fp_out || 0}
+            </div>
             <p className="text-xs text-muted-foreground">FP-Del</p>
           </CardContent>
         </Card>
@@ -114,30 +145,47 @@ export default function Warehouse() {
 
       <Tabs defaultValue="production-hall" className="space-y-4">
         <TabsList className="flex flex-wrap h-auto gap-1 p-1 sm:inline-flex sm:flex-nowrap sm:h-10">
-          <TabsTrigger value="production-hall" className="bg-amber-50 dark:bg-amber-950 text-xs px-2 py-1.5 sm:text-sm sm:px-3">
+          <TabsTrigger
+            value="production-hall"
+            className="bg-amber-50 dark:bg-amber-950 text-xs px-2 py-1.5 sm:text-sm sm:px-3"
+          >
             <Factory className="h-4 w-4 ml-1 shrink-0" />
-            {t('warehouse.tabs.productionHall')}
+            {t("warehouse.tabs.productionHall")}
           </TabsTrigger>
-          <TabsTrigger value="finished-goods" className="bg-blue-50 dark:bg-blue-950 text-xs px-2 py-1.5 sm:text-sm sm:px-3">
+          <TabsTrigger
+            value="finished-goods"
+            className="bg-blue-50 dark:bg-blue-950 text-xs px-2 py-1.5 sm:text-sm sm:px-3"
+          >
             <Package className="h-4 w-4 ml-1 shrink-0" />
-            {t('warehouse.tabs.finishedGoods')}
+            {t("warehouse.tabs.finishedGoods")}
           </TabsTrigger>
-          <TabsTrigger value="raw-materials" className="bg-green-50 dark:bg-green-950 text-xs px-2 py-1.5 sm:text-sm sm:px-3">
+          <TabsTrigger
+            value="raw-materials"
+            className="bg-green-50 dark:bg-green-950 text-xs px-2 py-1.5 sm:text-sm sm:px-3"
+          >
             <Boxes className="h-4 w-4 ml-1 shrink-0" />
-            {t('warehouse.tabs.rawMaterials')}
+            {t("warehouse.tabs.rawMaterials")}
           </TabsTrigger>
-          <TabsTrigger value="definitions" className="bg-purple-50 dark:bg-purple-950 text-xs px-2 py-1.5 sm:text-sm sm:px-3">
+          <TabsTrigger
+            value="definitions"
+            className="bg-purple-50 dark:bg-purple-950 text-xs px-2 py-1.5 sm:text-sm sm:px-3"
+          >
             <Settings className="h-4 w-4 ml-1 shrink-0" />
-            {t('warehouse.tabs.definitions')}
+            {t("warehouse.tabs.definitions")}
           </TabsTrigger>
-          <TabsTrigger value="reports" className="bg-gray-50 dark:bg-gray-950 text-xs px-2 py-1.5 sm:text-sm sm:px-3">
+          <TabsTrigger
+            value="reports"
+            className="bg-gray-50 dark:bg-gray-950 text-xs px-2 py-1.5 sm:text-sm sm:px-3"
+          >
             <BarChart3 className="h-4 w-4 ml-1 shrink-0" />
-            {t('warehouse.tabs.reports')}
+            {t("warehouse.tabs.reports")}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="production-hall" className="space-y-4">
-          <ProductionHallContent onCreateVoucher={() => openVoucherForm("finished-goods-in")} />
+          <ProductionHallContent
+            onCreateVoucher={() => openVoucherForm("finished-goods-in")}
+          />
         </TabsContent>
 
         <TabsContent value="finished-goods" className="space-y-4">
@@ -177,20 +225,32 @@ export default function Warehouse() {
   );
 }
 
-function FinishedGoodsSection({ onCreateVoucherIn, onCreateVoucherOut }: { onCreateVoucherIn: () => void; onCreateVoucherOut: () => void }) {
+function FinishedGoodsSection({
+  onCreateVoucherIn,
+  onCreateVoucherOut,
+}: {
+  onCreateVoucherIn: () => void;
+  onCreateVoucherOut: () => void;
+}) {
   const { t } = useTranslation();
 
   return (
     <div className="space-y-4">
       <Tabs defaultValue="fp-del" className="space-y-4">
         <TabsList className="flex flex-wrap h-auto gap-1 p-1 sm:inline-flex sm:flex-nowrap sm:h-10">
-          <TabsTrigger value="fp-del" className="text-xs px-2 py-1.5 sm:text-sm sm:px-3">
+          <TabsTrigger
+            value="fp-del"
+            className="text-xs px-2 py-1.5 sm:text-sm sm:px-3"
+          >
             <Truck className="h-4 w-4 ml-1 shrink-0" />
-            {t('warehouse.production.fpDelVouchers')}
+            {t("warehouse.production.fpDelVouchers")}
           </TabsTrigger>
-          <TabsTrigger value="fp-rec" className="text-xs px-2 py-1.5 sm:text-sm sm:px-3">
+          <TabsTrigger
+            value="fp-rec"
+            className="text-xs px-2 py-1.5 sm:text-sm sm:px-3"
+          >
             <ArrowDownToLine className="h-4 w-4 ml-1 shrink-0" />
-            {t('warehouse.production.fpRecVouchers')}
+            {t("warehouse.production.fpRecVouchers")}
           </TabsTrigger>
         </TabsList>
 
@@ -198,7 +258,10 @@ function FinishedGoodsSection({ onCreateVoucherIn, onCreateVoucherOut }: { onCre
           <DeliveryHallContent />
         </TabsContent>
         <TabsContent value="fp-rec">
-          <VouchersList type="finished-goods-in" title={t('warehouse.production.fpRecVouchersTitle')} />
+          <VouchersList
+            type="finished-goods-in"
+            title={t("warehouse.production.fpRecVouchersTitle")}
+          />
         </TabsContent>
       </Tabs>
     </div>
@@ -210,12 +273,16 @@ function DeliveryHallContent() {
   const ln = useLocalizedName();
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
-  const [deliveryWeights, setDeliveryWeights] = useState<Record<string, string>>({});
+  const [deliveryWeights, setDeliveryWeights] = useState<
+    Record<string, string>
+  >({});
   const [deliveryNotes, setDeliveryNotes] = useState("");
   const [driverName, setDriverName] = useState("");
   const [driverPhone, setDriverPhone] = useState("");
   const [vehicleNumber, setVehicleNumber] = useState("");
-  const [selectedDeliveryOrderId, setSelectedDeliveryOrderId] = useState<string | null>(null);
+  const [selectedDeliveryOrderId, setSelectedDeliveryOrderId] = useState<
+    string | null
+  >(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -238,7 +305,15 @@ function DeliveryHallContent() {
   }, [deliveryOrders]);
 
   const groupedByOrder = useMemo(() => {
-    const groups: Record<string, { order_number: string; customer_name: string; customer_name_ar: string; items: any[] }> = {};
+    const groups: Record<
+      string,
+      {
+        order_number: string;
+        customer_name: string;
+        customer_name_ar: string;
+        items: any[];
+      }
+    > = {};
     processedOrders.forEach((po: any) => {
       const key = po.order_number || po.order_id;
       if (!groups[key]) {
@@ -256,14 +331,19 @@ function DeliveryHallContent() {
 
   const deliveryMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await fetch("/api/warehouse/vouchers/finished-goods-out", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
+      const response = await fetch(
+        "/api/warehouse/vouchers/finished-goods-out",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        },
+      );
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
-        throw new Error(err.message || t('warehouse.delivery.deliverySaveFailed'));
+        throw new Error(
+          err.message || t("warehouse.delivery.deliverySaveFailed"),
+        );
       }
       return response.json();
     },
@@ -290,13 +370,21 @@ function DeliveryHallContent() {
       ? [selectedDeliveryOrderId]
       : Array.from(selectedOrders);
     return targetIds
-      .map((id) => processedOrders.find((o: any) => o.production_order_id.toString() === id))
+      .map((id) =>
+        processedOrders.find(
+          (o: any) => o.production_order_id.toString() === id,
+        ),
+      )
       .filter(Boolean);
   }, [selectedDeliveryOrderId, selectedOrders, processedOrders]);
 
   const handleDeliverySubmit = async () => {
     if (!user?.id) {
-      toast({ title: t('warehouse.toast.error'), description: t('warehouse.delivery.loginRequired'), variant: "destructive" });
+      toast({
+        title: t("warehouse.toast.error"),
+        description: t("warehouse.delivery.loginRequired"),
+        variant: "destructive",
+      });
       return;
     }
 
@@ -305,57 +393,82 @@ function DeliveryHallContent() {
       : Array.from(selectedOrders);
 
     if (targetOrders.length === 0) {
-      toast({ title: t('warehouse.toast.error'), description: t('warehouse.delivery.selectAtLeastOne'), variant: "destructive" });
+      toast({
+        title: t("warehouse.toast.error"),
+        description: t("warehouse.delivery.selectAtLeastOne"),
+        variant: "destructive",
+      });
       return;
     }
 
     const ordersWithWeights = targetOrders
       .map((id) => {
         const weight = parseFloat(deliveryWeights[id] || "0");
-        const order = processedOrders.find((o: any) => o.production_order_id.toString() === id);
+        const order = processedOrders.find(
+          (o: any) => o.production_order_id.toString() === id,
+        );
         return { id, weight, order };
       })
       .filter((o) => o.weight > 0);
 
     if (ordersWithWeights.length === 0) {
-      toast({ title: t('warehouse.toast.error'), description: t('warehouse.delivery.enterWeight'), variant: "destructive" });
+      toast({
+        title: t("warehouse.toast.error"),
+        description: t("warehouse.delivery.enterWeight"),
+        variant: "destructive",
+      });
       return;
     }
 
     for (const { weight, order } of ordersWithWeights) {
       if (order && weight > order.available_for_delivery) {
-        toast({ title: t('warehouse.toast.error'), description: `${t('warehouse.delivery.weightExceedsAvailable')} (${order.production_order_number})`, variant: "destructive" });
+        toast({
+          title: t("warehouse.toast.error"),
+          description: `${t("warehouse.delivery.weightExceedsAvailable")} (${order.production_order_number})`,
+          variant: "destructive",
+        });
         return;
       }
     }
 
     try {
-      const nextNumRes = await fetch("/api/warehouse/vouchers/next-number/FP-Del");
+      const nextNumRes = await fetch(
+        "/api/warehouse/vouchers/next-number/FP-Del",
+      );
       const { next_number } = await nextNumRes.json();
 
-      const items = ordersWithWeights.map(({ id: productionOrderId, weight, order }) => ({
-        production_order_id: parseInt(productionOrderId),
-        weight_kg: weight.toString(),
-        product_description: order?.product_name_ar || order?.product_name || '',
-        customer_id: order?.customer_id?.toString() || '',
-        customer_name: order?.customer_name_ar || order?.customer_name || '',
-        order_number: order?.order_number || '',
-      }));
+      const items = ordersWithWeights.map(
+        ({ id: productionOrderId, weight, order }) => ({
+          production_order_id: parseInt(productionOrderId),
+          weight_kg: weight.toString(),
+          product_description:
+            order?.product_name_ar || order?.product_name || "",
+          customer_id: order?.customer_id?.toString() || "",
+          customer_name: order?.customer_name_ar || order?.customer_name || "",
+          order_number: order?.order_number || "",
+        }),
+      );
 
       await deliveryMutation.mutateAsync({
         voucher_number: next_number,
         voucher_type: "customer_delivery",
         unit: "kg",
-        notes: deliveryNotes || '',
+        notes: deliveryNotes || "",
         driver_name: driverName || null,
         driver_phone: driverPhone || null,
         vehicle_number: vehicleNumber || null,
         items,
       });
 
-      queryClient.invalidateQueries({ queryKey: ["/api/warehouse/delivery-hall"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/warehouse/vouchers", "finished-goods-out"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/warehouse/vouchers/stats"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/warehouse/delivery-hall"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/warehouse/vouchers", "finished-goods-out"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/warehouse/vouchers/stats"],
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
       setDeliveryDialogOpen(false);
       setSelectedOrders(new Set());
@@ -365,9 +478,16 @@ function DeliveryHallContent() {
       setDriverPhone("");
       setVehicleNumber("");
       setSelectedDeliveryOrderId(null);
-      toast({ title: t('warehouse.delivery.deliverySuccess'), description: t('warehouse.delivery.fpDelCreated') });
+      toast({
+        title: t("warehouse.delivery.deliverySuccess"),
+        description: t("warehouse.delivery.fpDelCreated"),
+      });
     } catch (err: any) {
-      toast({ title: t('warehouse.toast.error'), description: err.message || t('warehouse.delivery.deliveryFailed'), variant: "destructive" });
+      toast({
+        title: t("warehouse.toast.error"),
+        description: err.message || t("warehouse.delivery.deliveryFailed"),
+        variant: "destructive",
+      });
     }
   };
 
@@ -383,25 +503,40 @@ function DeliveryHallContent() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Truck className="h-5 w-5 text-orange-600" />
-                {t('warehouse.delivery.title')}
+                {t("warehouse.delivery.title")}
               </CardTitle>
               <CardDescription className="mt-1">
-                {t('warehouse.delivery.description')}
+                {t("warehouse.delivery.description")}
               </CardDescription>
             </div>
             <div className="flex gap-2">
-              <Dialog open={deliveryDialogOpen} onOpenChange={(open) => { setDeliveryDialogOpen(open); if (!open) { setSelectedDeliveryOrderId(null); setDeliveryWeights({}); } }}>
+              <Dialog
+                open={deliveryDialogOpen}
+                onOpenChange={(open) => {
+                  setDeliveryDialogOpen(open);
+                  if (!open) {
+                    setSelectedDeliveryOrderId(null);
+                    setDeliveryWeights({});
+                  }
+                }}
+              >
                 <DialogTrigger asChild>
-                  <Button disabled={selectedOrders.size === 0} className="bg-orange-600 hover:bg-orange-700">
+                  <Button
+                    disabled={selectedOrders.size === 0}
+                    className="bg-orange-600 hover:bg-orange-700"
+                  >
                     <Truck className="h-4 w-4 ml-2" />
-                    {t('warehouse.delivery.deliverSelected')} ({selectedOrders.size})
+                    {t("warehouse.delivery.deliverSelected")} (
+                    {selectedOrders.size})
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto w-[95vw] sm:w-full">
                   <DialogHeader>
-                    <DialogTitle className="text-sm sm:text-base">{t('warehouse.delivery.createFpDelTitle')}</DialogTitle>
+                    <DialogTitle className="text-sm sm:text-base">
+                      {t("warehouse.delivery.createFpDelTitle")}
+                    </DialogTitle>
                     <DialogDescription className="text-xs sm:text-sm">
-                      {t('warehouse.delivery.createFpDelDesc')}
+                      {t("warehouse.delivery.createFpDelDesc")}
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
@@ -409,22 +544,41 @@ function DeliveryHallContent() {
                       {deliveryTargetOrders.map((order: any) => {
                         const orderId = order.production_order_id.toString();
                         return (
-                          <div key={orderId} className="border rounded-lg p-3 space-y-2 dark:border-gray-700">
+                          <div
+                            key={orderId}
+                            className="border rounded-lg p-3 space-y-2 dark:border-gray-700"
+                          >
                             <div className="flex items-center justify-between">
-                              <span className="font-bold text-sm">{order.production_order_number}</span>
-                              <Badge variant="outline" className="text-xs">{order.available_for_delivery.toFixed(2)} {t('warehouse.delivery.kgAvailable')}</Badge>
+                              <span className="font-bold text-sm">
+                                {order.production_order_number}
+                              </span>
+                              <Badge variant="outline" className="text-xs">
+                                {order.available_for_delivery.toFixed(2)}{" "}
+                                {t("warehouse.delivery.kgAvailable")}
+                              </Badge>
                             </div>
-                            <div className="text-xs text-gray-500">{order.product_name_ar || order.product_name}</div>
+                            <div className="text-xs text-gray-500">
+                              {order.product_name_ar || order.product_name}
+                            </div>
                             <div>
-                              <label className="text-xs font-medium">{t('warehouse.delivery.deliveryWeight')} *</label>
+                              <label className="text-xs font-medium">
+                                {t("warehouse.delivery.deliveryWeight")} *
+                              </label>
                               <Input
                                 type="number"
                                 step="0.001"
                                 min="0"
                                 max={order.available_for_delivery}
                                 value={deliveryWeights[orderId] || ""}
-                                onChange={(e) => setDeliveryWeights((prev) => ({ ...prev, [orderId]: e.target.value }))}
-                                placeholder={t('warehouse.delivery.enterDeliveryWeight')}
+                                onChange={(e) =>
+                                  setDeliveryWeights((prev) => ({
+                                    ...prev,
+                                    [orderId]: e.target.value,
+                                  }))
+                                }
+                                placeholder={t(
+                                  "warehouse.delivery.enterDeliveryWeight",
+                                )}
                                 className="mt-1"
                               />
                             </div>
@@ -434,33 +588,65 @@ function DeliveryHallContent() {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
-                        <label className="text-xs sm:text-sm font-medium">{t('warehouse.delivery.driverName')}</label>
-                        <Input value={driverName} onChange={(e) => setDriverName(e.target.value)} placeholder={t('warehouse.delivery.driverName')} />
+                        <label className="text-xs sm:text-sm font-medium">
+                          {t("warehouse.delivery.driverName")}
+                        </label>
+                        <Input
+                          value={driverName}
+                          onChange={(e) => setDriverName(e.target.value)}
+                          placeholder={t("warehouse.delivery.driverName")}
+                        />
                       </div>
                       <div>
-                        <label className="text-xs sm:text-sm font-medium">{t('warehouse.delivery.driverPhone')}</label>
-                        <Input value={driverPhone} onChange={(e) => setDriverPhone(e.target.value)} placeholder={t('warehouse.delivery.phoneNumber')} />
+                        <label className="text-xs sm:text-sm font-medium">
+                          {t("warehouse.delivery.driverPhone")}
+                        </label>
+                        <Input
+                          value={driverPhone}
+                          onChange={(e) => setDriverPhone(e.target.value)}
+                          placeholder={t("warehouse.delivery.phoneNumber")}
+                        />
                       </div>
                       <div>
-                        <label className="text-xs sm:text-sm font-medium">{t('warehouse.delivery.vehicleNumber')}</label>
-                        <Input value={vehicleNumber} onChange={(e) => setVehicleNumber(e.target.value)} placeholder={t('warehouse.delivery.vehicleNumber')} />
+                        <label className="text-xs sm:text-sm font-medium">
+                          {t("warehouse.delivery.vehicleNumber")}
+                        </label>
+                        <Input
+                          value={vehicleNumber}
+                          onChange={(e) => setVehicleNumber(e.target.value)}
+                          placeholder={t("warehouse.delivery.vehicleNumber")}
+                        />
                       </div>
                     </div>
                     <div>
-                      <label className="text-sm font-medium">{t('warehouse.labels.notes')}</label>
+                      <label className="text-sm font-medium">
+                        {t("warehouse.labels.notes")}
+                      </label>
                       <textarea
                         value={deliveryNotes}
                         onChange={(e) => setDeliveryNotes(e.target.value)}
-                        placeholder={t('warehouse.delivery.additionalNotes')}
+                        placeholder={t("warehouse.delivery.additionalNotes")}
                         className="w-full min-h-[60px] p-2 border rounded-md dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
                       />
                     </div>
                     <div className="flex gap-2">
-                      <Button onClick={handleDeliverySubmit} disabled={deliveryMutation.isPending} className="bg-orange-600 hover:bg-orange-700">
-                        {deliveryMutation.isPending ? t('warehouse.delivery.saving') : t('warehouse.delivery.confirmDelivery')}
+                      <Button
+                        onClick={handleDeliverySubmit}
+                        disabled={deliveryMutation.isPending}
+                        className="bg-orange-600 hover:bg-orange-700"
+                      >
+                        {deliveryMutation.isPending
+                          ? t("warehouse.delivery.saving")
+                          : t("warehouse.delivery.confirmDelivery")}
                       </Button>
-                      <Button variant="outline" onClick={() => { setDeliveryDialogOpen(false); setSelectedDeliveryOrderId(null); }}>
-                        {t('warehouse.buttons.cancel')}
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setDeliveryDialogOpen(false);
+                          setSelectedDeliveryOrderId(null);
+                        }}
+                      >
+                        {t("warehouse.buttons.cancel")}
                       </Button>
                     </div>
                   </div>
@@ -473,10 +659,12 @@ function DeliveryHallContent() {
           {isLoading ? (
             <div className="text-center py-8">
               <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
-              <p className="mt-2 text-gray-500">{t('warehouse.loading')}</p>
+              <p className="mt-2 text-gray-500">{t("warehouse.loading")}</p>
             </div>
           ) : processedOrders.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">{t('warehouse.delivery.noOrdersAvailable')}</div>
+            <div className="text-center py-8 text-gray-500">
+              {t("warehouse.delivery.noOrdersAvailable")}
+            </div>
           ) : (
             <>
               <div className="flex gap-2 mb-3">
@@ -486,7 +674,7 @@ function DeliveryHallContent() {
                   onClick={() => setSelectedOrders(new Set(allPoIds))}
                   disabled={allPoIds.length === 0}
                 >
-                  {t('warehouse.delivery.selectAll')} ({allPoIds.length})
+                  {t("warehouse.delivery.selectAll")} ({allPoIds.length})
                 </Button>
                 <Button
                   variant="outline"
@@ -494,40 +682,109 @@ function DeliveryHallContent() {
                   onClick={() => setSelectedOrders(new Set())}
                   disabled={selectedOrders.size === 0}
                 >
-                  {t('warehouse.delivery.deselectAll')}
+                  {t("warehouse.delivery.deselectAll")}
                 </Button>
               </div>
               {groupedByOrder.map((group) => (
-                <div key={group.order_number} className="border rounded-lg overflow-hidden mb-4">
+                <div
+                  key={group.order_number}
+                  className="border rounded-lg overflow-hidden mb-4"
+                >
                   <div className="bg-orange-50 dark:bg-orange-900/20 px-3 sm:px-4 py-2 flex flex-wrap justify-between items-center gap-1">
-                    <span className="font-bold text-xs sm:text-sm">{t('warehouse.production.order')}: {group.order_number}</span>
-                    <span className="font-bold text-xs sm:text-sm">{group.customer_name_ar || group.customer_name}</span>
+                    <span className="font-bold text-xs sm:text-sm">
+                      {t("warehouse.production.order")}: {group.order_number}
+                    </span>
+                    <span className="font-bold text-xs sm:text-sm">
+                      {group.customer_name_ar || group.customer_name}
+                    </span>
                   </div>
                   <div className="hidden sm:block overflow-x-auto">
                     <table className="w-full text-sm min-w-[650px]">
                       <thead className="bg-gray-50 dark:bg-gray-800">
                         <tr>
                           <th className="py-2 px-3 w-10"></th>
-                          <th className="py-2 px-3 text-center font-medium whitespace-nowrap">{t('warehouse.delivery.productionOrder')}</th>
-                          <th className="py-2 px-3 text-center font-medium whitespace-nowrap">{t('warehouse.delivery.product')}</th>
-                          <th className="py-2 px-3 text-center font-medium whitespace-nowrap">{t('warehouse.delivery.receivedKg')}</th>
-                          <th className="py-2 px-3 text-center font-medium whitespace-nowrap">{t('warehouse.delivery.deliveredKg')}</th>
-                          <th className="py-2 px-3 text-center font-medium whitespace-nowrap">{t('warehouse.delivery.availableKg')}</th>
-                          <th className="py-2 px-3 text-center font-medium whitespace-nowrap">{t('warehouse.delivery.action')}</th>
+                          <th className="py-2 px-3 text-center font-medium whitespace-nowrap">
+                            {t("warehouse.delivery.productionOrder")}
+                          </th>
+                          <th className="py-2 px-3 text-center font-medium whitespace-nowrap">
+                            {t("warehouse.delivery.product")}
+                          </th>
+                          <th className="py-2 px-3 text-center font-medium whitespace-nowrap">
+                            {t("warehouse.delivery.receivedKg")}
+                          </th>
+                          <th className="py-2 px-3 text-center font-medium whitespace-nowrap">
+                            {t("warehouse.delivery.deliveredKg")}
+                          </th>
+                          <th className="py-2 px-3 text-center font-medium whitespace-nowrap">
+                            {t("warehouse.delivery.availableKg")}
+                          </th>
+                          <th className="py-2 px-3 text-center font-medium whitespace-nowrap">
+                            {t("warehouse.delivery.action")}
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
                         {group.items.map((order: any) => {
-                          const isSelected = selectedOrders.has(order.production_order_id.toString());
+                          const isSelected = selectedOrders.has(
+                            order.production_order_id.toString(),
+                          );
                           return (
-                            <tr key={order.production_order_id} className={`border-b hover:bg-gray-50 dark:hover:bg-gray-800 ${isSelected ? 'bg-orange-50 dark:bg-orange-900/20' : ''}`}>
-                              <td className="py-2 px-3 text-center"><input type="checkbox" checked={isSelected} onChange={() => handleSelectOrder(order.production_order_id.toString())} className="h-4 w-4 rounded border-gray-300" /></td>
-                              <td className="py-2 px-3 text-center font-medium whitespace-nowrap">{order.production_order_number}</td>
-                              <td className="py-2 px-3 text-center whitespace-nowrap">{order.product_name_ar || order.product_name}</td>
-                              <td className="py-2 px-3 text-center whitespace-nowrap">{order.warehouse_received_kg.toFixed(2)}</td>
-                              <td className="py-2 px-3 text-center whitespace-nowrap">{order.warehouse_delivered_kg.toFixed(2)}</td>
-                              <td className="py-2 px-3 text-center whitespace-nowrap"><Badge variant={order.available_for_delivery > 0 ? "default" : "secondary"}>{order.available_for_delivery.toFixed(2)}</Badge></td>
-                              <td className="py-2 px-3 text-center whitespace-nowrap">{order.available_for_delivery > 0 && <Button size="sm" variant="outline" className="text-orange-600 border-orange-300 hover:bg-orange-50 text-sm px-3" onClick={() => openDeliveryForOrder(order.production_order_id.toString())}><Truck className="h-3 w-3 ml-1" />{t('warehouse.delivery.deliver')}</Button>}</td>
+                            <tr
+                              key={order.production_order_id}
+                              className={`border-b hover:bg-gray-50 dark:hover:bg-gray-800 ${isSelected ? "bg-orange-50 dark:bg-orange-900/20" : ""}`}
+                            >
+                              <td className="py-2 px-3 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() =>
+                                    handleSelectOrder(
+                                      order.production_order_id.toString(),
+                                    )
+                                  }
+                                  className="h-4 w-4 rounded border-gray-300"
+                                />
+                              </td>
+                              <td className="py-2 px-3 text-center font-medium whitespace-nowrap">
+                                {order.production_order_number}
+                              </td>
+                              <td className="py-2 px-3 text-center whitespace-nowrap">
+                                {order.product_name_ar || order.product_name}
+                              </td>
+                              <td className="py-2 px-3 text-center whitespace-nowrap">
+                                {order.warehouse_received_kg.toFixed(2)}
+                              </td>
+                              <td className="py-2 px-3 text-center whitespace-nowrap">
+                                {order.warehouse_delivered_kg.toFixed(2)}
+                              </td>
+                              <td className="py-2 px-3 text-center whitespace-nowrap">
+                                <Badge
+                                  variant={
+                                    order.available_for_delivery > 0
+                                      ? "default"
+                                      : "secondary"
+                                  }
+                                >
+                                  {order.available_for_delivery.toFixed(2)}
+                                </Badge>
+                              </td>
+                              <td className="py-2 px-3 text-center whitespace-nowrap">
+                                {order.available_for_delivery > 0 && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-orange-600 border-orange-300 hover:bg-orange-50 text-sm px-3"
+                                    onClick={() =>
+                                      openDeliveryForOrder(
+                                        order.production_order_id.toString(),
+                                      )
+                                    }
+                                  >
+                                    <Truck className="h-3 w-3 ml-1" />
+                                    {t("warehouse.delivery.deliver")}
+                                  </Button>
+                                )}
+                              </td>
                             </tr>
                           );
                         })}
@@ -536,22 +793,79 @@ function DeliveryHallContent() {
                   </div>
                   <div className="sm:hidden space-y-2 p-2">
                     {group.items.map((order: any) => {
-                      const isSelected = selectedOrders.has(order.production_order_id.toString());
+                      const isSelected = selectedOrders.has(
+                        order.production_order_id.toString(),
+                      );
                       return (
-                        <div key={order.production_order_id} className={`border rounded-lg p-3 space-y-2 ${isSelected ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-300' : ''}`}>
+                        <div
+                          key={order.production_order_id}
+                          className={`border rounded-lg p-3 space-y-2 ${isSelected ? "bg-orange-50 dark:bg-orange-900/20 border-orange-300" : ""}`}
+                        >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <input type="checkbox" checked={isSelected} onChange={() => handleSelectOrder(order.production_order_id.toString())} className="h-4 w-4 rounded border-gray-300" />
-                              <span className="font-bold text-sm">{order.production_order_number}</span>
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() =>
+                                  handleSelectOrder(
+                                    order.production_order_id.toString(),
+                                  )
+                                }
+                                className="h-4 w-4 rounded border-gray-300"
+                              />
+                              <span className="font-bold text-sm">
+                                {order.production_order_number}
+                              </span>
                             </div>
-                            <Badge variant={order.available_for_delivery > 0 ? "default" : "secondary"}>{order.available_for_delivery.toFixed(2)} {t('warehouse.delivery.kg')}</Badge>
+                            <Badge
+                              variant={
+                                order.available_for_delivery > 0
+                                  ? "default"
+                                  : "secondary"
+                              }
+                            >
+                              {order.available_for_delivery.toFixed(2)}{" "}
+                              {t("warehouse.delivery.kg")}
+                            </Badge>
                           </div>
-                          <div className="text-xs text-gray-600 dark:text-gray-400">{order.product_name_ar || order.product_name}</div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400">
+                            {order.product_name_ar || order.product_name}
+                          </div>
                           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                            <div className="flex justify-between"><span className="text-gray-500">{t('warehouse.delivery.receivedLabel')}:</span><span className="font-medium">{order.warehouse_received_kg.toFixed(2)} {t('warehouse.delivery.kg')}</span></div>
-                            <div className="flex justify-between"><span className="text-gray-500">{t('warehouse.delivery.deliveredLabel')}:</span><span className="font-medium">{order.warehouse_delivered_kg.toFixed(2)} {t('warehouse.delivery.kg')}</span></div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">
+                                {t("warehouse.delivery.receivedLabel")}:
+                              </span>
+                              <span className="font-medium">
+                                {order.warehouse_received_kg.toFixed(2)}{" "}
+                                {t("warehouse.delivery.kg")}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">
+                                {t("warehouse.delivery.deliveredLabel")}:
+                              </span>
+                              <span className="font-medium">
+                                {order.warehouse_delivered_kg.toFixed(2)}{" "}
+                                {t("warehouse.delivery.kg")}
+                              </span>
+                            </div>
                           </div>
-                          {order.available_for_delivery > 0 && <Button size="sm" variant="outline" className="w-full text-xs text-orange-600 border-orange-300 hover:bg-orange-50" onClick={() => openDeliveryForOrder(order.production_order_id.toString())}><Truck className="h-3 w-3 ml-1" />{t('warehouse.delivery.deliver')}</Button>}
+                          {order.available_for_delivery > 0 && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full text-xs text-orange-600 border-orange-300 hover:bg-orange-50"
+                              onClick={() =>
+                                openDeliveryForOrder(
+                                  order.production_order_id.toString(),
+                                )
+                              }
+                            >
+                              <Truck className="h-3 w-3 ml-1" />
+                              {t("warehouse.delivery.deliver")}
+                            </Button>
+                          )}
                         </div>
                       );
                     })}
@@ -563,59 +877,94 @@ function DeliveryHallContent() {
         </CardContent>
       </Card>
 
-      <VouchersList type="finished-goods-out" title={t('warehouse.delivery.archiveTitle')} />
+      <VouchersList
+        type="finished-goods-out"
+        title={t("warehouse.delivery.archiveTitle")}
+      />
     </div>
   );
 }
 
-function RawMaterialsSection({ onCreateVoucherIn, onCreateVoucherOut }: { onCreateVoucherIn: () => void; onCreateVoucherOut: () => void }) {
+function RawMaterialsSection({
+  onCreateVoucherIn,
+  onCreateVoucherOut,
+}: {
+  onCreateVoucherIn: () => void;
+  onCreateVoucherOut: () => void;
+}) {
   const { t } = useTranslation();
 
   return (
     <div className="space-y-4">
       <Tabs defaultValue="rm-rec" className="space-y-4">
         <TabsList className="flex flex-wrap h-auto gap-1 p-1 sm:inline-flex sm:flex-nowrap sm:h-10">
-          <TabsTrigger value="rm-rec" className="text-xs px-2 py-1.5 sm:text-sm sm:px-3">
+          <TabsTrigger
+            value="rm-rec"
+            className="text-xs px-2 py-1.5 sm:text-sm sm:px-3"
+          >
             <ArrowDownToLine className="h-4 w-4 ml-1 shrink-0" />
-            {t('warehouse.production.rmRecVouchers')}
+            {t("warehouse.production.rmRecVouchers")}
           </TabsTrigger>
-          <TabsTrigger value="rm-del" className="text-xs px-2 py-1.5 sm:text-sm sm:px-3">
+          <TabsTrigger
+            value="rm-del"
+            className="text-xs px-2 py-1.5 sm:text-sm sm:px-3"
+          >
             <ArrowUpFromLine className="h-4 w-4 ml-1 shrink-0" />
-            {t('warehouse.production.rmDelVouchers')}
+            {t("warehouse.production.rmDelVouchers")}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="rm-rec">
           <div className="mb-3">
-            <Button onClick={onCreateVoucherIn} className="bg-green-600 hover:bg-green-700">
+            <Button
+              onClick={onCreateVoucherIn}
+              className="bg-green-600 hover:bg-green-700"
+            >
               <ArrowDownToLine className="h-4 w-4 ml-2" />
-              {t('warehouse.production.rmRecReceiptBtn')}
+              {t("warehouse.production.rmRecReceiptBtn")}
             </Button>
           </div>
-          <VouchersList type="raw-material-in" title={t('warehouse.production.rmRecVouchersTitle')} />
+          <VouchersList
+            type="raw-material-in"
+            title={t("warehouse.production.rmRecVouchersTitle")}
+          />
         </TabsContent>
         <TabsContent value="rm-del">
           <div className="mb-3">
-            <Button onClick={onCreateVoucherOut} className="bg-red-600 hover:bg-red-700">
+            <Button
+              onClick={onCreateVoucherOut}
+              className="bg-red-600 hover:bg-red-700"
+            >
               <ArrowUpFromLine className="h-4 w-4 ml-2" />
-              {t('warehouse.production.rmDelIssueBtn')}
+              {t("warehouse.production.rmDelIssueBtn")}
             </Button>
           </div>
-          <VouchersList type="raw-material-out" title={t('warehouse.production.rmDelVouchersTitle')} />
+          <VouchersList
+            type="raw-material-out"
+            title={t("warehouse.production.rmDelVouchersTitle")}
+          />
         </TabsContent>
       </Tabs>
     </div>
   );
 }
 
-function ProductionHallContent({ onCreateVoucher }: { onCreateVoucher: () => void }) {
+function ProductionHallContent({
+  onCreateVoucher,
+}: {
+  onCreateVoucher: () => void;
+}) {
   const { t } = useTranslation();
   const ln = useLocalizedName();
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
-  const [receiptWeights, setReceiptWeights] = useState<Record<string, string>>({});
+  const [receiptWeights, setReceiptWeights] = useState<Record<string, string>>(
+    {},
+  );
   const [receiptNotes, setReceiptNotes] = useState("");
-  const [selectedReceiptOrderId, setSelectedReceiptOrderId] = useState<string | null>(null);
+  const [selectedReceiptOrderId, setSelectedReceiptOrderId] = useState<
+    string | null
+  >(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -642,7 +991,15 @@ function ProductionHallContent({ onCreateVoucher }: { onCreateVoucher: () => voi
   }, [productionOrders]);
 
   const groupedByOrder = useMemo(() => {
-    const groups: Record<string, { order_number: string; customer_name: string; customer_name_ar: string; items: any[] }> = {};
+    const groups: Record<
+      string,
+      {
+        order_number: string;
+        customer_name: string;
+        customer_name_ar: string;
+        items: any[];
+      }
+    > = {};
     processedOrders.forEach((po: any) => {
       const key = po.order_number || po.order_id;
       if (!groups[key]) {
@@ -660,11 +1017,14 @@ function ProductionHallContent({ onCreateVoucher }: { onCreateVoucher: () => voi
 
   const receiptMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await fetch("/api/warehouse/vouchers/finished-goods-in", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
+      const response = await fetch(
+        "/api/warehouse/vouchers/finished-goods-in",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        },
+      );
       if (!response.ok) throw new Error("Receipt save failed");
       return response.json();
     },
@@ -691,13 +1051,21 @@ function ProductionHallContent({ onCreateVoucher }: { onCreateVoucher: () => voi
       ? [selectedReceiptOrderId]
       : Array.from(selectedOrders);
     return targetIds
-      .map((id) => processedOrders.find((o: any) => o.production_order_id.toString() === id))
+      .map((id) =>
+        processedOrders.find(
+          (o: any) => o.production_order_id.toString() === id,
+        ),
+      )
       .filter(Boolean);
   }, [selectedReceiptOrderId, selectedOrders, processedOrders]);
 
   const handleReceiptSubmit = async () => {
     if (!user?.id) {
-      toast({ title: t('warehouse.toast.error'), description: t('warehouse.production.loginRequired'), variant: "destructive" });
+      toast({
+        title: t("warehouse.toast.error"),
+        description: t("warehouse.production.loginRequired"),
+        variant: "destructive",
+      });
       return;
     }
 
@@ -706,63 +1074,95 @@ function ProductionHallContent({ onCreateVoucher }: { onCreateVoucher: () => voi
       : Array.from(selectedOrders);
 
     if (targetOrders.length === 0) {
-      toast({ title: t('warehouse.toast.error'), description: t('warehouse.production.selectAtLeastOneOrder'), variant: "destructive" });
+      toast({
+        title: t("warehouse.toast.error"),
+        description: t("warehouse.production.selectAtLeastOneOrder"),
+        variant: "destructive",
+      });
       return;
     }
 
     const ordersWithWeights = targetOrders
       .map((id) => {
         const weight = parseFloat(receiptWeights[id] || "0");
-        const order = processedOrders.find((o: any) => o.production_order_id.toString() === id);
+        const order = processedOrders.find(
+          (o: any) => o.production_order_id.toString() === id,
+        );
         return { id, weight, order };
       })
       .filter((o) => o.weight > 0);
 
     if (ordersWithWeights.length === 0) {
-      toast({ title: t('warehouse.toast.error'), description: t('warehouse.production.enterReceiptWeight'), variant: "destructive" });
+      toast({
+        title: t("warehouse.toast.error"),
+        description: t("warehouse.production.enterReceiptWeight"),
+        variant: "destructive",
+      });
       return;
     }
 
     for (const { id, weight, order } of ordersWithWeights) {
       if (order && weight > order.remaining_to_receive) {
-        toast({ title: t('warehouse.toast.error'), description: `${t('warehouse.production.weightExceedsRemaining')} (${order.production_order_number})`, variant: "destructive" });
+        toast({
+          title: t("warehouse.toast.error"),
+          description: `${t("warehouse.production.weightExceedsRemaining")} (${order.production_order_number})`,
+          variant: "destructive",
+        });
         return;
       }
     }
 
     try {
-      const nextNumRes = await fetch("/api/warehouse/vouchers/next-number/FP-Rec");
+      const nextNumRes = await fetch(
+        "/api/warehouse/vouchers/next-number/FP-Rec",
+      );
       const { next_number } = await nextNumRes.json();
 
-      const items = ordersWithWeights.map(({ id: productionOrderId, weight, order }) => ({
-        production_order_id: parseInt(productionOrderId),
-        weight_kg: weight.toString(),
-        product_description: order?.product_name_ar || order?.product_name || '',
-        customer_id: order?.customer_id,
-        customer_name: order?.customer_name_ar || order?.customer_name || '',
-        order_number: order?.order_number || '',
-      }));
+      const items = ordersWithWeights.map(
+        ({ id: productionOrderId, weight, order }) => ({
+          production_order_id: parseInt(productionOrderId),
+          weight_kg: weight.toString(),
+          product_description:
+            order?.product_name_ar || order?.product_name || "",
+          customer_id: order?.customer_id,
+          customer_name: order?.customer_name_ar || order?.customer_name || "",
+          order_number: order?.order_number || "",
+        }),
+      );
 
       await receiptMutation.mutateAsync({
         voucher_number: next_number,
         voucher_type: "production_receipt",
         unit: "kg",
-        notes: receiptNotes || '',
+        notes: receiptNotes || "",
         items,
       });
 
-      queryClient.invalidateQueries({ queryKey: ["/api/warehouse/production-hall"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/warehouse/vouchers", "finished-goods-in"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/warehouse/vouchers/stats"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/warehouse/production-hall"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/warehouse/vouchers", "finished-goods-in"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/warehouse/vouchers/stats"],
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
       setReceiptDialogOpen(false);
       setSelectedOrders(new Set());
       setReceiptWeights({});
       setReceiptNotes("");
       setSelectedReceiptOrderId(null);
-      toast({ title: t('warehouse.production.receiptSuccess'), description: t('warehouse.production.fpRecCreated') });
+      toast({
+        title: t("warehouse.production.receiptSuccess"),
+        description: t("warehouse.production.fpRecCreated"),
+      });
     } catch {
-      toast({ title: t('warehouse.toast.error'), description: t('warehouse.production.receiptFailed'), variant: "destructive" });
+      toast({
+        title: t("warehouse.toast.error"),
+        description: t("warehouse.production.receiptFailed"),
+        variant: "destructive",
+      });
     }
   };
 
@@ -778,25 +1178,40 @@ function ProductionHallContent({ onCreateVoucher }: { onCreateVoucher: () => voi
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Factory className="h-5 w-5 text-amber-600" />
-                {t('warehouse.production.title')}
+                {t("warehouse.production.title")}
               </CardTitle>
               <CardDescription className="mt-1">
-                {t('warehouse.production.titleDesc')}
+                {t("warehouse.production.titleDesc")}
               </CardDescription>
             </div>
             <div className="flex gap-2">
-              <Dialog open={receiptDialogOpen} onOpenChange={(open) => { setReceiptDialogOpen(open); if (!open) { setSelectedReceiptOrderId(null); setReceiptWeights({}); } }}>
+              <Dialog
+                open={receiptDialogOpen}
+                onOpenChange={(open) => {
+                  setReceiptDialogOpen(open);
+                  if (!open) {
+                    setSelectedReceiptOrderId(null);
+                    setReceiptWeights({});
+                  }
+                }}
+              >
                 <DialogTrigger asChild>
-                  <Button disabled={selectedOrders.size === 0} className="bg-blue-600 hover:bg-blue-700">
+                  <Button
+                    disabled={selectedOrders.size === 0}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
                     <ArrowDownToLine className="h-4 w-4 ml-2" />
-                    {t('warehouse.production.receiveSelected')} ({selectedOrders.size})
+                    {t("warehouse.production.receiveSelected")} (
+                    {selectedOrders.size})
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl w-[95vw] sm:w-full">
                   <DialogHeader>
-                    <DialogTitle className="text-sm sm:text-base">{t('warehouse.production.createFpRecTitle')}</DialogTitle>
+                    <DialogTitle className="text-sm sm:text-base">
+                      {t("warehouse.production.createFpRecTitle")}
+                    </DialogTitle>
                     <DialogDescription className="text-xs sm:text-sm">
-                      {t('warehouse.production.createFpRecDesc')}
+                      {t("warehouse.production.createFpRecDesc")}
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
@@ -804,22 +1219,43 @@ function ProductionHallContent({ onCreateVoucher }: { onCreateVoucher: () => voi
                       {receiptTargetOrders.map((order: any) => {
                         const orderId = order.production_order_id.toString();
                         return (
-                          <div key={orderId} className="border rounded-lg p-3 space-y-2 dark:border-gray-700">
+                          <div
+                            key={orderId}
+                            className="border rounded-lg p-3 space-y-2 dark:border-gray-700"
+                          >
                             <div className="flex items-center justify-between">
-                              <span className="font-bold text-sm">{order.production_order_number}</span>
-                              <Badge variant="outline" className="text-xs">{order.remaining_to_receive.toFixed(2)} {t('warehouse.units.kilo')} {t('warehouse.production.remaining')}</Badge>
+                              <span className="font-bold text-sm">
+                                {order.production_order_number}
+                              </span>
+                              <Badge variant="outline" className="text-xs">
+                                {order.remaining_to_receive.toFixed(2)}{" "}
+                                {t("warehouse.units.kilo")}{" "}
+                                {t("warehouse.production.remaining")}
+                              </Badge>
                             </div>
-                            <div className="text-xs text-gray-500">{order.product_name_ar || order.product_name}</div>
+                            <div className="text-xs text-gray-500">
+                              {order.product_name_ar || order.product_name}
+                            </div>
                             <div>
-                              <label className="text-xs font-medium">{t('warehouse.production.receivedWeight')} ({t('warehouse.units.kilo')}) *</label>
+                              <label className="text-xs font-medium">
+                                {t("warehouse.production.receivedWeight")} (
+                                {t("warehouse.units.kilo")}) *
+                              </label>
                               <Input
                                 type="number"
                                 step="0.001"
                                 min="0"
                                 max={order.remaining_to_receive}
                                 value={receiptWeights[orderId] || ""}
-                                onChange={(e) => setReceiptWeights((prev) => ({ ...prev, [orderId]: e.target.value }))}
-                                placeholder={t('warehouse.production.enterReceivedWeight')}
+                                onChange={(e) =>
+                                  setReceiptWeights((prev) => ({
+                                    ...prev,
+                                    [orderId]: e.target.value,
+                                  }))
+                                }
+                                placeholder={t(
+                                  "warehouse.production.enterReceivedWeight",
+                                )}
                                 className="mt-1"
                               />
                             </div>
@@ -828,20 +1264,36 @@ function ProductionHallContent({ onCreateVoucher }: { onCreateVoucher: () => voi
                       })}
                     </div>
                     <div>
-                      <label className="text-sm font-medium">{t('warehouse.labels.notes')}</label>
+                      <label className="text-sm font-medium">
+                        {t("warehouse.labels.notes")}
+                      </label>
                       <textarea
                         value={receiptNotes}
                         onChange={(e) => setReceiptNotes(e.target.value)}
-                        placeholder={t('warehouse.placeholders.additionalNotes')}
+                        placeholder={t(
+                          "warehouse.placeholders.additionalNotes",
+                        )}
                         className="w-full min-h-[60px] p-2 border rounded-md dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
                       />
                     </div>
                     <div className="flex gap-2">
-                      <Button onClick={handleReceiptSubmit} disabled={receiptMutation.isPending} className="bg-blue-600 hover:bg-blue-700">
-                        {receiptMutation.isPending ? t('warehouse.production.saving') : t('warehouse.production.confirmReceiptBtn')}
+                      <Button
+                        onClick={handleReceiptSubmit}
+                        disabled={receiptMutation.isPending}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        {receiptMutation.isPending
+                          ? t("warehouse.production.saving")
+                          : t("warehouse.production.confirmReceiptBtn")}
                       </Button>
-                      <Button variant="outline" onClick={() => { setReceiptDialogOpen(false); setSelectedReceiptOrderId(null); }}>
-                        {t('warehouse.buttons.cancel')}
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setReceiptDialogOpen(false);
+                          setSelectedReceiptOrderId(null);
+                        }}
+                      >
+                        {t("warehouse.buttons.cancel")}
                       </Button>
                     </div>
                   </div>
@@ -858,8 +1310,12 @@ function ProductionHallContent({ onCreateVoucher }: { onCreateVoucher: () => voi
           ) : processedOrders.length === 0 ? (
             <div className="text-center py-12 text-gray-500 dark:text-gray-400">
               <Factory className="h-16 w-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
-              <p className="text-lg font-medium">{t('warehouse.production.noMaterialsReadyTitle')}</p>
-              <p className="text-sm mt-1">{t('warehouse.production.noMaterialsReadyDesc')}</p>
+              <p className="text-lg font-medium">
+                {t("warehouse.production.noMaterialsReadyTitle")}
+              </p>
+              <p className="text-sm mt-1">
+                {t("warehouse.production.noMaterialsReadyDesc")}
+              </p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -867,7 +1323,10 @@ function ProductionHallContent({ onCreateVoucher }: { onCreateVoucher: () => voi
                 <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
                   <input
                     type="checkbox"
-                    checked={selectedOrders.size === allPoIds.length && allPoIds.length > 0}
+                    checked={
+                      selectedOrders.size === allPoIds.length &&
+                      allPoIds.length > 0
+                    }
                     onChange={(e) => {
                       if (e.target.checked) {
                         setSelectedOrders(new Set(allPoIds));
@@ -877,58 +1336,186 @@ function ProductionHallContent({ onCreateVoucher }: { onCreateVoucher: () => voi
                     }}
                     className="h-4 w-4"
                   />
-                  <span className="text-sm text-gray-600 dark:text-gray-400">{t('warehouse.production.selectAllOrders')} ({allPoIds.length} {t('warehouse.production.productionOrders')} {t('warehouse.production.waitingReceipt')})</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    {t("warehouse.production.selectAllOrders")} (
+                    {allPoIds.length}{" "}
+                    {t("warehouse.production.productionOrders")}{" "}
+                    {t("warehouse.production.waitingReceipt")})
+                  </span>
                 </div>
               )}
 
               {groupedByOrder.map((group) => (
-                <div key={group.order_number} className="border rounded-lg overflow-hidden">
+                <div
+                  key={group.order_number}
+                  className="border rounded-lg overflow-hidden"
+                >
                   <div className="bg-gray-100 dark:bg-gray-800 px-3 sm:px-4 py-2 sm:py-3 flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                       <Hash className="h-4 w-4 text-gray-500 shrink-0" />
-                      <span className="font-bold text-xs sm:text-sm">{t('warehouse.production.order')}: {group.order_number}</span>
+                      <span className="font-bold text-xs sm:text-sm">
+                        {t("warehouse.production.order")}: {group.order_number}
+                      </span>
                       <span className="text-gray-400 hidden sm:inline">|</span>
                       <User className="h-4 w-4 text-gray-500 shrink-0 hidden sm:inline" />
-                      <span className="font-bold text-xs sm:text-sm">{group.customer_name_ar || group.customer_name}</span>
+                      <span className="font-bold text-xs sm:text-sm">
+                        {group.customer_name_ar || group.customer_name}
+                      </span>
                     </div>
-                    <Badge variant="outline" className="text-xs">{group.items.length} {t('warehouse.production.productionOrders')}</Badge>
+                    <Badge variant="outline" className="text-xs">
+                      {group.items.length}{" "}
+                      {t("warehouse.production.productionOrders")}
+                    </Badge>
                   </div>
                   <div className="hidden sm:block overflow-x-auto">
                     <table className="w-full text-xs sm:text-sm min-w-[1100px]">
                       <thead>
                         <tr className="border-b bg-gray-50 dark:bg-gray-900">
                           <th className="text-right py-2 px-3 font-medium whitespace-nowrap w-10"></th>
-                          <th className="text-right py-2 px-3 font-medium whitespace-nowrap">{t('warehouse.production.productionOrder')}</th>
-                          <th className="text-right py-2 px-3 font-medium whitespace-nowrap">{t('warehouse.labels.item')}</th>
-                          <th className="text-right py-2 px-3 font-medium whitespace-nowrap">{t('warehouse.production.requiredQuantity')}</th>
-                          <th className="text-right py-2 px-3 font-medium whitespace-nowrap">{t('warehouse.production.producedFilm')}</th>
-                          <th className="text-right py-2 px-3 font-medium whitespace-nowrap">{t('warehouse.production.printing')}</th>
-                          <th className="text-right py-2 px-3 font-medium whitespace-nowrap">{t('warehouse.production.cutQuantity')}</th>
-                          <th className="text-right py-2 px-3 font-medium whitespace-nowrap">{t('warehouse.production.received')}</th>
-                          <th className="text-right py-2 px-3 font-medium whitespace-nowrap">{t('warehouse.production.remaining')}</th>
-                          <th className="text-right py-2 px-3 font-medium whitespace-nowrap">{t('warehouse.production.waste')}</th>
-                          <th className="text-right py-2 px-3 font-medium whitespace-nowrap">{t('warehouse.production.status')}</th>
-                          <th className="text-right py-2 px-3 font-medium whitespace-nowrap w-24">{t('warehouse.production.receive')}</th>
+                          <th className="text-right py-2 px-3 font-medium whitespace-nowrap">
+                            {t("warehouse.production.productionOrder")}
+                          </th>
+                          <th className="text-right py-2 px-3 font-medium whitespace-nowrap">
+                            {t("warehouse.labels.item")}
+                          </th>
+                          <th className="text-right py-2 px-3 font-medium whitespace-nowrap">
+                            {t("warehouse.production.requiredQuantity")}
+                          </th>
+                          <th className="text-right py-2 px-3 font-medium whitespace-nowrap">
+                            {t("warehouse.production.producedFilm")}
+                          </th>
+                          <th className="text-right py-2 px-3 font-medium whitespace-nowrap">
+                            {t("warehouse.production.printing")}
+                          </th>
+                          <th className="text-right py-2 px-3 font-medium whitespace-nowrap">
+                            {t("warehouse.production.cutQuantity")}
+                          </th>
+                          <th className="text-right py-2 px-3 font-medium whitespace-nowrap">
+                            {t("warehouse.production.received")}
+                          </th>
+                          <th className="text-right py-2 px-3 font-medium whitespace-nowrap">
+                            {t("warehouse.production.remaining")}
+                          </th>
+                          <th className="text-right py-2 px-3 font-medium whitespace-nowrap">
+                            {t("warehouse.production.waste")}
+                          </th>
+                          <th className="text-right py-2 px-3 font-medium whitespace-nowrap">
+                            {t("warehouse.production.status")}
+                          </th>
+                          <th className="text-right py-2 px-3 font-medium whitespace-nowrap w-24">
+                            {t("warehouse.production.receive")}
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
                         {group.items.map((order: any) => {
                           const remaining = order.remaining_to_receive;
-                          const isSelected = selectedOrders.has(order.production_order_id.toString());
+                          const isSelected = selectedOrders.has(
+                            order.production_order_id.toString(),
+                          );
                           return (
-                            <tr key={order.production_order_id} className={`border-b hover:bg-gray-50 dark:hover:bg-gray-800 ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}>
-                              <td className="py-2 px-3">{remaining > 0 && <input type="checkbox" checked={isSelected} onChange={() => handleSelectOrder(order.production_order_id.toString())} className="h-4 w-4" />}</td>
-                              <td className="py-2 px-3 font-medium whitespace-nowrap">{order.production_order_number}</td>
-                              <td className="py-2 px-3 whitespace-nowrap">{order.product_name_ar || order.product_name}</td>
-                              <td className="py-2 px-3 whitespace-nowrap">{order.quantity_required.toFixed(2)}</td>
-                              <td className="py-2 px-3 whitespace-nowrap">{order.total_film_weight > 0 ? <span className="text-blue-600">{order.total_film_weight.toFixed(2)}</span> : <span className="text-gray-400">-</span>}</td>
-                              <td className="py-2 px-3 whitespace-nowrap">{order.total_print_weight > 0 ? <span className="text-purple-600">{order.total_print_weight.toFixed(2)}</span> : <span className="text-gray-400">-</span>}</td>
-                              <td className="py-2 px-3 whitespace-nowrap"><span className="text-green-600 font-medium">{order.total_cut_weight.toFixed(2)}</span></td>
-                              <td className="py-2 px-3 whitespace-nowrap"><span className="text-orange-600 font-medium">{order.total_received_weight.toFixed(2)}</span></td>
-                              <td className="py-2 px-3 whitespace-nowrap"><span className={`font-bold ${remaining > 0 ? 'text-purple-600' : 'text-green-600'}`}>{remaining.toFixed(2)}</span></td>
-                              <td className="py-2 px-3 whitespace-nowrap"><span className="text-red-600">{order.waste_weight.toFixed(2)}</span></td>
-                              <td className="py-2 px-3">{remaining > 0 ? <Badge variant="outline" className="text-orange-600 border-orange-600 text-xs whitespace-nowrap">{t('warehouse.production.waitingReceipt')}</Badge> : <Badge variant="outline" className="text-green-600 border-green-600 text-xs whitespace-nowrap"><CheckCircle className="h-3 w-3 ml-1" />{t('warehouse.production.complete')}</Badge>}</td>
-                              <td className="py-2 px-3">{remaining > 0 && <Button size="sm" variant="outline" className="text-xs border-blue-300 text-blue-600 hover:bg-blue-50 px-3 whitespace-nowrap" onClick={() => openReceiptForOrder(order.production_order_id.toString())}><ArrowDownToLine className="h-3 w-3 ml-1" />{t('warehouse.production.receive')}</Button>}</td>
+                            <tr
+                              key={order.production_order_id}
+                              className={`border-b hover:bg-gray-50 dark:hover:bg-gray-800 ${isSelected ? "bg-blue-50 dark:bg-blue-900/20" : ""}`}
+                            >
+                              <td className="py-2 px-3">
+                                {remaining > 0 && (
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() =>
+                                      handleSelectOrder(
+                                        order.production_order_id.toString(),
+                                      )
+                                    }
+                                    className="h-4 w-4"
+                                  />
+                                )}
+                              </td>
+                              <td className="py-2 px-3 font-medium whitespace-nowrap">
+                                {order.production_order_number}
+                              </td>
+                              <td className="py-2 px-3 whitespace-nowrap">
+                                {order.product_name_ar || order.product_name}
+                              </td>
+                              <td className="py-2 px-3 whitespace-nowrap">
+                                {order.quantity_required.toFixed(2)}
+                              </td>
+                              <td className="py-2 px-3 whitespace-nowrap">
+                                {order.total_film_weight > 0 ? (
+                                  <span className="text-blue-600">
+                                    {order.total_film_weight.toFixed(2)}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                              </td>
+                              <td className="py-2 px-3 whitespace-nowrap">
+                                {order.total_print_weight > 0 ? (
+                                  <span className="text-purple-600">
+                                    {order.total_print_weight.toFixed(2)}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                              </td>
+                              <td className="py-2 px-3 whitespace-nowrap">
+                                <span className="text-green-600 font-medium">
+                                  {order.total_cut_weight.toFixed(2)}
+                                </span>
+                              </td>
+                              <td className="py-2 px-3 whitespace-nowrap">
+                                <span className="text-orange-600 font-medium">
+                                  {order.total_received_weight.toFixed(2)}
+                                </span>
+                              </td>
+                              <td className="py-2 px-3 whitespace-nowrap">
+                                <span
+                                  className={`font-bold ${remaining > 0 ? "text-purple-600" : "text-green-600"}`}
+                                >
+                                  {remaining.toFixed(2)}
+                                </span>
+                              </td>
+                              <td className="py-2 px-3 whitespace-nowrap">
+                                <span className="text-red-600">
+                                  {order.waste_weight.toFixed(2)}
+                                </span>
+                              </td>
+                              <td className="py-2 px-3">
+                                {remaining > 0 ? (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-orange-600 border-orange-600 text-xs whitespace-nowrap"
+                                  >
+                                    {t("warehouse.production.waitingReceipt")}
+                                  </Badge>
+                                ) : (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-green-600 border-green-600 text-xs whitespace-nowrap"
+                                  >
+                                    <CheckCircle className="h-3 w-3 ml-1" />
+                                    {t("warehouse.production.complete")}
+                                  </Badge>
+                                )}
+                              </td>
+                              <td className="py-2 px-3">
+                                {remaining > 0 && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-xs border-blue-300 text-blue-600 hover:bg-blue-50 px-3 whitespace-nowrap"
+                                    onClick={() =>
+                                      openReceiptForOrder(
+                                        order.production_order_id.toString(),
+                                      )
+                                    }
+                                  >
+                                    <ArrowDownToLine className="h-3 w-3 ml-1" />
+                                    {t("warehouse.production.receive")}
+                                  </Button>
+                                )}
+                              </td>
                             </tr>
                           );
                         })}
@@ -938,26 +1525,123 @@ function ProductionHallContent({ onCreateVoucher }: { onCreateVoucher: () => voi
                   <div className="sm:hidden space-y-2">
                     {group.items.map((order: any) => {
                       const remaining = order.remaining_to_receive;
-                      const isSelected = selectedOrders.has(order.production_order_id.toString());
+                      const isSelected = selectedOrders.has(
+                        order.production_order_id.toString(),
+                      );
                       return (
-                        <div key={order.production_order_id} className={`border rounded-lg p-3 space-y-2 ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300' : ''}`}>
+                        <div
+                          key={order.production_order_id}
+                          className={`border rounded-lg p-3 space-y-2 ${isSelected ? "bg-blue-50 dark:bg-blue-900/20 border-blue-300" : ""}`}
+                        >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              {remaining > 0 && <input type="checkbox" checked={isSelected} onChange={() => handleSelectOrder(order.production_order_id.toString())} className="h-4 w-4" />}
-                              <span className="font-bold text-sm">{order.production_order_number}</span>
+                              {remaining > 0 && (
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() =>
+                                    handleSelectOrder(
+                                      order.production_order_id.toString(),
+                                    )
+                                  }
+                                  className="h-4 w-4"
+                                />
+                              )}
+                              <span className="font-bold text-sm">
+                                {order.production_order_number}
+                              </span>
                             </div>
-                            {remaining > 0 ? <Badge variant="outline" className="text-orange-600 border-orange-600 text-xs">{t('warehouse.production.waitingReceipt')}</Badge> : <Badge variant="outline" className="text-green-600 border-green-600 text-xs"><CheckCircle className="h-3 w-3 ml-1" />{t('warehouse.production.complete')}</Badge>}
+                            {remaining > 0 ? (
+                              <Badge
+                                variant="outline"
+                                className="text-orange-600 border-orange-600 text-xs"
+                              >
+                                {t("warehouse.production.waitingReceipt")}
+                              </Badge>
+                            ) : (
+                              <Badge
+                                variant="outline"
+                                className="text-green-600 border-green-600 text-xs"
+                              >
+                                <CheckCircle className="h-3 w-3 ml-1" />
+                                {t("warehouse.production.complete")}
+                              </Badge>
+                            )}
                           </div>
-                          <div className="text-xs text-gray-600 dark:text-gray-400">{order.product_name_ar || order.product_name}</div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400">
+                            {order.product_name_ar || order.product_name}
+                          </div>
                           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                            <div className="flex justify-between"><span className="text-gray-500">{t('warehouse.production.requiredQuantity')}:</span><span className="font-medium">{order.quantity_required.toFixed(2)}</span></div>
-                            <div className="flex justify-between"><span className="text-gray-500">{t('warehouse.production.cutQuantity')}:</span><span className="text-green-600 font-medium">{order.total_cut_weight.toFixed(2)}</span></div>
-                            <div className="flex justify-between"><span className="text-gray-500">{t('warehouse.production.received')}:</span><span className="text-orange-600 font-medium">{order.total_received_weight.toFixed(2)}</span></div>
-                            <div className="flex justify-between"><span className="text-gray-500">{t('warehouse.production.remaining')}:</span><span className={`font-bold ${remaining > 0 ? 'text-purple-600' : 'text-green-600'}`}>{remaining.toFixed(2)}</span></div>
-                            {order.total_film_weight > 0 && <div className="flex justify-between"><span className="text-gray-500">{t('warehouse.production.producedFilm')}:</span><span className="text-blue-600">{order.total_film_weight.toFixed(2)}</span></div>}
-                            {order.waste_weight > 0 && <div className="flex justify-between"><span className="text-gray-500">{t('warehouse.production.waste')}:</span><span className="text-red-600">{order.waste_weight.toFixed(2)}</span></div>}
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">
+                                {t("warehouse.production.requiredQuantity")}:
+                              </span>
+                              <span className="font-medium">
+                                {order.quantity_required.toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">
+                                {t("warehouse.production.cutQuantity")}:
+                              </span>
+                              <span className="text-green-600 font-medium">
+                                {order.total_cut_weight.toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">
+                                {t("warehouse.production.received")}:
+                              </span>
+                              <span className="text-orange-600 font-medium">
+                                {order.total_received_weight.toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">
+                                {t("warehouse.production.remaining")}:
+                              </span>
+                              <span
+                                className={`font-bold ${remaining > 0 ? "text-purple-600" : "text-green-600"}`}
+                              >
+                                {remaining.toFixed(2)}
+                              </span>
+                            </div>
+                            {order.total_film_weight > 0 && (
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">
+                                  {t("warehouse.production.producedFilm")}:
+                                </span>
+                                <span className="text-blue-600">
+                                  {order.total_film_weight.toFixed(2)}
+                                </span>
+                              </div>
+                            )}
+                            {order.waste_weight > 0 && (
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">
+                                  {t("warehouse.production.waste")}:
+                                </span>
+                                <span className="text-red-600">
+                                  {order.waste_weight.toFixed(2)}
+                                </span>
+                              </div>
+                            )}
                           </div>
-                          {remaining > 0 && <Button size="sm" variant="outline" className="w-full text-xs border-blue-300 text-blue-600 hover:bg-blue-50" onClick={() => openReceiptForOrder(order.production_order_id.toString())}><ArrowDownToLine className="h-3 w-3 ml-1" />{t('warehouse.production.receive')}</Button>}
+                          {remaining > 0 && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full text-xs border-blue-300 text-blue-600 hover:bg-blue-50"
+                              onClick={() =>
+                                openReceiptForOrder(
+                                  order.production_order_id.toString(),
+                                )
+                              }
+                            >
+                              <ArrowDownToLine className="h-3 w-3 ml-1" />
+                              {t("warehouse.production.receive")}
+                            </Button>
+                          )}
                         </div>
                       );
                     })}

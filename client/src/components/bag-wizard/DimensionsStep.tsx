@@ -1,8 +1,12 @@
-import { getDimensionLimits, type BagConfiguration, getSuggestedThickness } from "../../lib/bag-rules-engine";
+import {
+  getDimensionLimits,
+  type BagConfiguration,
+  getSuggestedThickness,
+} from "../../lib/bag-rules-engine";
 import { Button } from "../ui/button";
-import { Slider } from "../ui/slider";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import { Slider } from "../ui/slider";
 
 interface DimensionsStepProps {
   config: BagConfiguration;
@@ -29,10 +33,14 @@ function DimensionField({
   const isError = value > 0 && (value < min || value > max);
 
   return (
-    <div className={`p-4 rounded-xl border ${disabled ? "opacity-40 pointer-events-none" : ""} ${isError ? "border-red-300 bg-red-50" : "border-gray-200"}`}>
+    <div
+      className={`p-4 rounded-xl border ${disabled ? "opacity-40 pointer-events-none" : ""} ${isError ? "border-red-300 bg-red-50" : "border-gray-200"}`}
+    >
       <div className="flex items-center justify-between mb-2">
         <Label className="font-semibold text-gray-700">{label}</Label>
-        <span className="text-xs text-gray-400">{min} - {max} {unit}</span>
+        <span className="text-xs text-gray-400">
+          {min} - {max} {unit}
+        </span>
       </div>
       <div className="flex items-center gap-3">
         <div className="flex-1">
@@ -58,7 +66,9 @@ function DimensionField({
       </div>
       {isError && (
         <p className="text-xs text-red-500 mt-1">
-          {value < min ? `القيمة أقل من الحد الأدنى (${min})` : `القيمة أعلى من الحد الأقصى (${max})`}
+          {value < min
+            ? `القيمة أقل من الحد الأدنى (${min})`
+            : `القيمة أعلى من الحد الأقصى (${max})`}
         </p>
       )}
     </div>
@@ -66,7 +76,11 @@ function DimensionField({
 }
 
 export function DimensionsStep({ config, onChange }: DimensionsStepProps) {
-  const limits = getDimensionLimits(config.bagType, config.isPrinted, config.width);
+  const limits = getDimensionLimits(
+    config.bagType,
+    config.isPrinted,
+    config.width,
+  );
   if (!limits) return null;
 
   const suggestedThickness = getSuggestedThickness(config);
@@ -74,7 +88,9 @@ export function DimensionsStep({ config, onChange }: DimensionsStepProps) {
   return (
     <div>
       <h2 className="text-xl font-bold text-gray-900 mb-2">الأبعاد والسماكة</h2>
-      <p className="text-gray-500 text-sm mb-6">حدد أبعاد الكيس المطلوبة ضمن الحدود المسموحة</p>
+      <p className="text-gray-500 text-sm mb-6">
+        حدد أبعاد الكيس المطلوبة ضمن الحدود المسموحة
+      </p>
 
       <div className="space-y-4">
         <DimensionField
@@ -113,14 +129,24 @@ export function DimensionsStep({ config, onChange }: DimensionsStepProps) {
           onChange={(v) => onChange({ thickness: v })}
         />
 
-        {suggestedThickness && config.thickness > 0 && config.thickness < suggestedThickness && (
-          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between text-sm">
-            <span className="text-amber-700">💡 السماكة المقترحة لهذه الأبعاد: <strong>{suggestedThickness} ميكرون</strong></span>
-            <Button size="sm" variant="outline" onClick={() => onChange({ thickness: suggestedThickness })} className="text-amber-700 border-amber-300">
-              استخدام المقترح
-            </Button>
-          </div>
-        )}
+        {suggestedThickness &&
+          config.thickness > 0 &&
+          config.thickness < suggestedThickness && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between text-sm">
+              <span className="text-amber-700">
+                💡 السماكة المقترحة لهذه الأبعاد:{" "}
+                <strong>{suggestedThickness} ميكرون</strong>
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onChange({ thickness: suggestedThickness })}
+                className="text-amber-700 border-amber-300"
+              >
+                استخدام المقترح
+              </Button>
+            </div>
+          )}
 
         <DimensionField
           label="الدخلة الجانبية"
@@ -133,11 +159,16 @@ export function DimensionsStep({ config, onChange }: DimensionsStepProps) {
         />
 
         {!limits.sideGussetSupported && (
-          <p className="text-xs text-gray-400 -mt-2 mr-2">الدخلات الجانبية غير مدعومة لهذا النوع من الأكياس</p>
+          <p className="text-xs text-gray-400 -mt-2 mr-2">
+            الدخلات الجانبية غير مدعومة لهذا النوع من الأكياس
+          </p>
         )}
 
         {limits.sideGussetSupported && config.width > 0 && (
-          <p className="text-xs text-gray-400 -mt-2 mr-2">أقصى دخلة جانبية: أقل من نصف العرض ({Math.floor(config.width / 2) - 1} سم)</p>
+          <p className="text-xs text-gray-400 -mt-2 mr-2">
+            أقصى دخلة جانبية: أقل من نصف العرض (
+            {Math.floor(config.width / 2) - 1} سم)
+          </p>
         )}
       </div>
     </div>

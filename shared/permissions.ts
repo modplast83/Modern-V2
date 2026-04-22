@@ -1,93 +1,93 @@
 /**
  * Central Permissions Registry
  * نظام الصلاحيات المركزي
- * 
+ *
  * This file defines all permissions and their mappings to UI elements
  * هذا الملف يعرّف جميع الصلاحيات وربطها بعناصر الواجهة
  */
 
-export type PermissionKey = 
-  | 'view_home'
-  | 'view_dashboard'
-  | 'view_user_dashboard'
-  | 'manage_orders'
-  | 'update_order_status'
-  | 'manage_production'
-  | 'manage_maintenance'
-  | 'manage_quality'
-  | 'manage_inventory'
-  | 'manage_warehouse'
-  | 'manage_users'
-  | 'manage_hr'
-  | 'view_reports'
-  | 'manage_settings'
-  | 'manage_definitions'
-  | 'manage_roles'
-  | 'view_production'
-  | 'view_hr'
-  | 'view_quality'
-  | 'view_maintenance'
-  | 'view_inventory'
-  | 'view_warehouse'
-  | 'view_notifications'
-  | 'view_alerts'
-  | 'manage_alerts'
-  | 'view_system_health'
-  | 'manage_analytics'
-  | 'view_production_monitoring'
-  | 'manage_whatsapp'
-  | 'view_film_dashboard'
-  | 'view_printing_dashboard'
-  | 'view_cutting_dashboard'
-  | 'view_mixing'
-  | 'manage_mixing'
-  | 'view_system_monitoring'
-  | 'view_tools'
-  | 'view_production_reports'
-  | 'view_orders'
-  | 'view_ai_agent'
-  | 'use_ai_agent'
-  | 'manage_ai_agent'
-  | 'view_attendance'
-  | 'manage_attendance'
-  | 'view_attendance_reports'
-  | 'manage_leaves'
-  | 'view_training'
-  | 'manage_training'
-  | 'view_factory_simulation'
-  | 'manage_factory_simulation'
-  | 'create_quality_inspections'
-  | 'view_quality_reports'
-  | 'manage_quality_settings'
-  | 'view_maintenance_requests'
-  | 'create_maintenance_requests'
-  | 'manage_maintenance_actions'
-  | 'view_maintenance_reports'
-  | 'manage_negligence'
-  | 'manage_spare_parts'
-  | 'manage_consumable_parts'
-  | 'view_financial_reports'
-  | 'view_hr_reports'
-  | 'view_quality_control_reports'
-  | 'view_maintenance_stats_reports'
-  | 'manage_customers'
-  | 'manage_items'
-  | 'manage_machines'
-  | 'manage_sections'
-  | 'manage_categories'
-  | 'manage_master_batch'
-  | 'view_warehouse_vouchers'
-  | 'manage_warehouse_vouchers'
-  | 'view_warehouse_reports'
-  | 'manage_production_hall'
-  | 'view_display_screen'
-  | 'manage_display_screen'
-  | 'view_my_orders'
-  | 'view_bag_configurator'
-  | 'view_mcp_settings'
-  | 'view_system_monitoring_tab'
-  | 'view_ai_agent_settings'
-  | 'admin'; // Super admin permission
+export type PermissionKey =
+  | "view_home"
+  | "view_dashboard"
+  | "view_user_dashboard"
+  | "manage_orders"
+  | "update_order_status"
+  | "manage_production"
+  | "manage_maintenance"
+  | "manage_quality"
+  | "manage_inventory"
+  | "manage_warehouse"
+  | "manage_users"
+  | "manage_hr"
+  | "view_reports"
+  | "manage_settings"
+  | "manage_definitions"
+  | "manage_roles"
+  | "view_production"
+  | "view_hr"
+  | "view_quality"
+  | "view_maintenance"
+  | "view_inventory"
+  | "view_warehouse"
+  | "view_notifications"
+  | "view_alerts"
+  | "manage_alerts"
+  | "view_system_health"
+  | "manage_analytics"
+  | "view_production_monitoring"
+  | "manage_whatsapp"
+  | "view_film_dashboard"
+  | "view_printing_dashboard"
+  | "view_cutting_dashboard"
+  | "view_mixing"
+  | "manage_mixing"
+  | "view_system_monitoring"
+  | "view_tools"
+  | "view_production_reports"
+  | "view_orders"
+  | "view_ai_agent"
+  | "use_ai_agent"
+  | "manage_ai_agent"
+  | "view_attendance"
+  | "manage_attendance"
+  | "view_attendance_reports"
+  | "manage_leaves"
+  | "view_training"
+  | "manage_training"
+  | "view_factory_simulation"
+  | "manage_factory_simulation"
+  | "create_quality_inspections"
+  | "view_quality_reports"
+  | "manage_quality_settings"
+  | "view_maintenance_requests"
+  | "create_maintenance_requests"
+  | "manage_maintenance_actions"
+  | "view_maintenance_reports"
+  | "manage_negligence"
+  | "manage_spare_parts"
+  | "manage_consumable_parts"
+  | "view_financial_reports"
+  | "view_hr_reports"
+  | "view_quality_control_reports"
+  | "view_maintenance_stats_reports"
+  | "manage_customers"
+  | "manage_items"
+  | "manage_machines"
+  | "manage_sections"
+  | "manage_categories"
+  | "manage_master_batch"
+  | "view_warehouse_vouchers"
+  | "manage_warehouse_vouchers"
+  | "view_warehouse_reports"
+  | "manage_production_hall"
+  | "view_display_screen"
+  | "manage_display_screen"
+  | "view_my_orders"
+  | "view_bag_configurator"
+  | "view_mcp_settings"
+  | "view_system_monitoring_tab"
+  | "view_ai_agent_settings"
+  | "admin"; // Super admin permission
 
 export interface Permission {
   id: PermissionKey;
@@ -100,619 +100,620 @@ export interface Permission {
 // Define all available permissions
 export const PERMISSIONS: Permission[] = [
   // General
-  { 
-    id: 'view_home', 
-    name: 'View Home Page', 
-    name_ar: 'عرض الصفحة الرئيسية', 
-    category: 'عام',
-    description: 'Access to home page'
-  },
-  { 
-    id: 'view_dashboard', 
-    name: 'View Dashboard', 
-    name_ar: 'عرض لوحة التحكم', 
-    category: 'عام',
-    description: 'Access to main dashboard and statistics'
-  },
-  { 
-    id: 'view_user_dashboard', 
-    name: 'View User Dashboard', 
-    name_ar: 'عرض لوحة تحكم المستخدم', 
-    category: 'عام',
-    description: 'Access to personal user dashboard'
-  },
-  { 
-    id: 'view_notifications', 
-    name: 'View Notifications', 
-    name_ar: 'عرض الإشعارات', 
-    category: 'عام',
-    description: 'View system notifications'
-  },
-  
-  // Orders
-  { 
-    id: 'manage_orders', 
-    name: 'Manage Orders', 
-    name_ar: 'إدارة الطلبات', 
-    category: 'الطلبات',
-    description: 'Create, edit, delete orders'
-  },
-  { 
-    id: 'update_order_status', 
-    name: 'Update Order Status', 
-    name_ar: 'تحديث حالة الطلب', 
-    category: 'الطلبات',
-    description: 'Change order status (waiting, in_production, paused, completed, cancelled)'
-  },
-  
-  // Production
-  { 
-    id: 'view_production', 
-    name: 'View Production', 
-    name_ar: 'عرض الإنتاج', 
-    category: 'الإنتاج',
-    description: 'View production data and queues'
-  },
-  { 
-    id: 'manage_production', 
-    name: 'Manage Production', 
-    name_ar: 'إدارة الإنتاج', 
-    category: 'الإنتاج',
-    description: 'Create and manage production orders'
-  },
-  { 
-    id: 'view_film_dashboard', 
-    name: 'View Film Operator Dashboard', 
-    name_ar: 'عرض لوحة عامل الفيلم', 
-    category: 'الإنتاج',
-    description: 'Access to film production operator dashboard'
-  },
-  { 
-    id: 'view_printing_dashboard', 
-    name: 'View Printing Operator Dashboard', 
-    name_ar: 'عرض لوحة عامل الطباعة', 
-    category: 'الإنتاج',
-    description: 'Access to printing operator dashboard'
-  },
-  { 
-    id: 'view_cutting_dashboard', 
-    name: 'View Cutting Operator Dashboard', 
-    name_ar: 'عرض لوحة عامل التقطيع', 
-    category: 'الإنتاج',
-    description: 'Access to cutting operator dashboard'
-  },
-  
-  // Maintenance
-  { 
-    id: 'view_maintenance', 
-    name: 'View Maintenance', 
-    name_ar: 'عرض الصيانة', 
-    category: 'الصيانة',
-    description: 'View maintenance reports'
-  },
-  { 
-    id: 'manage_maintenance', 
-    name: 'Manage Maintenance', 
-    name_ar: 'إدارة الصيانة', 
-    category: 'الصيانة',
-    description: 'Create and manage maintenance requests'
-  },
-  { 
-    id: 'view_maintenance_requests', 
-    name: 'View Maintenance Requests', 
-    name_ar: 'عرض طلبات الصيانة', 
-    category: 'الصيانة',
-    description: 'View maintenance request list'
-  },
-  { 
-    id: 'create_maintenance_requests', 
-    name: 'Create Maintenance Requests', 
-    name_ar: 'إنشاء طلبات الصيانة', 
-    category: 'الصيانة',
-    description: 'Submit new maintenance requests'
-  },
-  { 
-    id: 'manage_maintenance_actions', 
-    name: 'Manage Maintenance Actions', 
-    name_ar: 'إدارة إجراءات الصيانة', 
-    category: 'الصيانة',
-    description: 'Manage corrective and preventive maintenance actions'
-  },
-  { 
-    id: 'view_maintenance_reports', 
-    name: 'View Maintenance Reports', 
-    name_ar: 'عرض تقارير الصيانة', 
-    category: 'الصيانة',
-    description: 'View maintenance statistics and reports'
-  },
-  { 
-    id: 'manage_negligence', 
-    name: 'Manage Negligence Records', 
-    name_ar: 'إدارة سجلات الإهمال', 
-    category: 'الصيانة',
-    description: 'Record and manage operator negligence reports'
-  },
-  { 
-    id: 'manage_spare_parts', 
-    name: 'Manage Spare Parts', 
-    name_ar: 'إدارة قطع الغيار', 
-    category: 'الصيانة',
-    description: 'Manage spare parts inventory and requests'
-  },
-  { 
-    id: 'manage_consumable_parts', 
-    name: 'Manage Consumable Parts', 
-    name_ar: 'إدارة المواد الاستهلاكية', 
-    category: 'الصيانة',
-    description: 'Manage consumable parts and supplies'
-  },
-  
-  // Quality
-  { 
-    id: 'view_quality', 
-    name: 'View Quality', 
-    name_ar: 'عرض الجودة', 
-    category: 'الجودة',
-    description: 'View quality reports'
-  },
-  { 
-    id: 'manage_quality', 
-    name: 'Manage Quality', 
-    name_ar: 'إدارة الجودة', 
-    category: 'الجودة',
-    description: 'Manage quality control and reports'
-  },
-  { 
-    id: 'create_quality_inspections', 
-    name: 'Create Quality Inspections', 
-    name_ar: 'إنشاء فحوصات الجودة', 
-    category: 'الجودة',
-    description: 'Create new quality inspection records'
-  },
-  { 
-    id: 'view_quality_reports', 
-    name: 'View Quality Reports', 
-    name_ar: 'عرض تقارير الجودة', 
-    category: 'الجودة',
-    description: 'View quality statistics and analysis reports'
-  },
-  { 
-    id: 'manage_quality_settings', 
-    name: 'Manage Quality Settings', 
-    name_ar: 'إدارة إعدادات الجودة', 
-    category: 'الجودة',
-    description: 'Manage quality control parameters and thresholds'
-  },
-  
-  // Inventory & Warehouse
-  { 
-    id: 'view_inventory', 
-    name: 'View Inventory', 
-    name_ar: 'عرض المخزون', 
-    category: 'المخزون',
-    description: 'View inventory levels'
-  },
-  { 
-    id: 'manage_inventory', 
-    name: 'Manage Inventory', 
-    name_ar: 'إدارة المخزون', 
-    category: 'المخزون',
-    description: 'Manage inventory and warehouse'
-  },
-  { 
-    id: 'view_warehouse', 
-    name: 'View Warehouse', 
-    name_ar: 'عرض المستودع', 
-    category: 'المخزون',
-    description: 'View warehouse data'
-  },
-  { 
-    id: 'manage_warehouse', 
-    name: 'Manage Warehouse', 
-    name_ar: 'إدارة المستودع', 
-    category: 'المخزون',
-    description: 'Manage warehouse operations'
-  },
-  { 
-    id: 'view_warehouse_vouchers', 
-    name: 'View Warehouse Vouchers', 
-    name_ar: 'عرض سندات المستودع', 
-    category: 'المخزون',
-    description: 'View warehouse entry and exit vouchers'
-  },
-  { 
-    id: 'manage_warehouse_vouchers', 
-    name: 'Manage Warehouse Vouchers', 
-    name_ar: 'إدارة سندات المستودع', 
-    category: 'المخزون',
-    description: 'Create and manage warehouse vouchers'
-  },
-  { 
-    id: 'view_warehouse_reports', 
-    name: 'View Warehouse Reports', 
-    name_ar: 'عرض تقارير المستودع', 
-    category: 'المخزون',
-    description: 'View warehouse statistics and reports'
-  },
-  { 
-    id: 'manage_production_hall', 
-    name: 'Manage Production Hall', 
-    name_ar: 'إدارة صالة الإنتاج', 
-    category: 'المخزون',
-    description: 'Manage production hall inventory and receipts'
-  },
-  
-  // Users
-  { 
-    id: 'manage_users', 
-    name: 'Manage Users', 
-    name_ar: 'إدارة المستخدمين', 
-    category: 'المستخدمين',
-    description: 'Create, edit, delete users'
-  },
-  
-  // HR
-  { 
-    id: 'view_hr', 
-    name: 'View HR', 
-    name_ar: 'عرض الموارد البشرية', 
-    category: 'الموارد البشرية',
-    description: 'View HR data and employee information'
-  },
-  { 
-    id: 'manage_hr', 
-    name: 'Manage HR', 
-    name_ar: 'إدارة الموارد البشرية', 
-    category: 'الموارد البشرية',
-    description: 'Full HR management including all HR functions'
-  },
-  { 
-    id: 'view_attendance', 
-    name: 'View Attendance', 
-    name_ar: 'عرض الحضور والانصراف', 
-    category: 'الموارد البشرية',
-    description: 'View employee attendance records'
-  },
-  { 
-    id: 'manage_attendance', 
-    name: 'Manage Attendance', 
-    name_ar: 'إدارة الحضور والانصراف', 
-    category: 'الموارد البشرية',
-    description: 'Record and modify attendance, overtime, and breaks'
-  },
-  { 
-    id: 'view_attendance_reports', 
-    name: 'View Attendance Reports', 
-    name_ar: 'عرض تقارير الحضور', 
-    category: 'الموارد البشرية',
-    description: 'View attendance statistics and reports'
-  },
-  { 
-    id: 'manage_leaves', 
-    name: 'Manage Leaves', 
-    name_ar: 'إدارة الإجازات', 
-    category: 'الموارد البشرية',
-    description: 'Approve and manage employee leave requests'
-  },
-  { 
-    id: 'view_training', 
-    name: 'View Training', 
-    name_ar: 'عرض التدريب', 
-    category: 'الموارد البشرية',
-    description: 'View training programs and schedules'
-  },
-  { 
-    id: 'manage_training', 
-    name: 'Manage Training', 
-    name_ar: 'إدارة التدريب', 
-    category: 'الموارد البشرية',
-    description: 'Create and manage training programs'
-  },
-  
-  // Reports & Analytics
-  { 
-    id: 'view_reports', 
-    name: 'View Reports', 
-    name_ar: 'عرض التقارير', 
-    category: 'التقارير',
-    description: 'View system reports and analytics'
-  },
-  { 
-    id: 'manage_analytics', 
-    name: 'Manage Analytics', 
-    name_ar: 'إدارة التحليلات', 
-    category: 'التقارير',
-    description: 'Manage advanced analytics and ML features'
-  },
-  { 
-    id: 'view_production_monitoring', 
-    name: 'View Production Monitoring', 
-    name_ar: 'عرض مراقبة الإنتاج', 
-    category: 'التقارير',
-    description: 'View real-time production monitoring'
-  },
-  { 
-    id: 'view_financial_reports', 
-    name: 'View Financial Reports', 
-    name_ar: 'عرض التقارير المالية', 
-    category: 'التقارير',
-    description: 'View financial and cost analysis reports'
-  },
-  { 
-    id: 'view_hr_reports', 
-    name: 'View HR Reports', 
-    name_ar: 'عرض تقارير الموارد البشرية', 
-    category: 'التقارير',
-    description: 'View human resources statistics and reports'
-  },
-  { 
-    id: 'view_quality_control_reports', 
-    name: 'View Quality Control Reports', 
-    name_ar: 'عرض تقارير مراقبة الجودة', 
-    category: 'التقارير',
-    description: 'View quality control statistics in reports page'
-  },
-  { 
-    id: 'view_maintenance_stats_reports', 
-    name: 'View Maintenance Statistics Reports', 
-    name_ar: 'عرض تقارير إحصائيات الصيانة', 
-    category: 'التقارير',
-    description: 'View maintenance statistics in reports page'
-  },
-  
-  // Alerts & Monitoring
-  { 
-    id: 'view_alerts', 
-    name: 'View Alerts', 
-    name_ar: 'عرض التنبيهات', 
-    category: 'المراقبة',
-    description: 'View system alerts'
-  },
-  { 
-    id: 'manage_alerts', 
-    name: 'Manage Alerts', 
-    name_ar: 'إدارة التنبيهات', 
-    category: 'المراقبة',
-    description: 'Manage system alerts and rules'
-  },
-  { 
-    id: 'view_system_health', 
-    name: 'View System Health', 
-    name_ar: 'عرض صحة النظام', 
-    category: 'المراقبة',
-    description: 'View system health monitoring'
-  },
-  
-  // System
-  { 
-    id: 'manage_settings', 
-    name: 'Manage Settings', 
-    name_ar: 'إدارة الإعدادات', 
-    category: 'النظام',
-    description: 'Modify system settings'
-  },
-  { 
-    id: 'manage_definitions', 
-    name: 'Manage Definitions', 
-    name_ar: 'إدارة التعريفات', 
-    category: 'النظام',
-    description: 'Manage system definitions and master data'
-  },
-  { 
-    id: 'manage_roles', 
-    name: 'Manage Roles', 
-    name_ar: 'إدارة الأدوار', 
-    category: 'النظام',
-    description: 'Create and modify user roles'
-  },
-  
-  // Definitions (sub-permissions)
-  { 
-    id: 'manage_customers', 
-    name: 'Manage Customers', 
-    name_ar: 'إدارة العملاء', 
-    category: 'التعريفات',
-    description: 'Create, edit, and manage customer records'
-  },
-  { 
-    id: 'manage_items', 
-    name: 'Manage Items', 
-    name_ar: 'إدارة الأصناف', 
-    category: 'التعريفات',
-    description: 'Create, edit, and manage item definitions'
-  },
-  { 
-    id: 'manage_machines', 
-    name: 'Manage Machines', 
-    name_ar: 'إدارة الماكينات', 
-    category: 'التعريفات',
-    description: 'Create, edit, and manage machine definitions'
-  },
-  { 
-    id: 'manage_sections', 
-    name: 'Manage Sections', 
-    name_ar: 'إدارة الأقسام', 
-    category: 'التعريفات',
-    description: 'Create, edit, and manage department sections'
-  },
-  { 
-    id: 'manage_categories', 
-    name: 'Manage Categories', 
-    name_ar: 'إدارة الفئات', 
-    category: 'التعريفات',
-    description: 'Create, edit, and manage item categories'
-  },
-  { 
-    id: 'manage_master_batch', 
-    name: 'Manage Master Batch Colors', 
-    name_ar: 'إدارة ألوان الماستر باتش', 
-    category: 'التعريفات',
-    description: 'Create, edit, and manage master batch color definitions'
-  },
-  
-  // WhatsApp Integration
-  { 
-    id: 'manage_whatsapp', 
-    name: 'Manage WhatsApp', 
-    name_ar: 'إدارة الواتساب', 
-    category: 'التكامل',
-    description: 'Manage WhatsApp integration and settings'
-  },
-  
-  // Material Mixing
-  { 
-    id: 'view_mixing', 
-    name: 'View Material Mixing', 
-    name_ar: 'عرض خلط المواد', 
-    category: 'الإنتاج',
-    description: 'View material mixing batches and formulas'
-  },
-  { 
-    id: 'manage_mixing', 
-    name: 'Manage Material Mixing', 
-    name_ar: 'إدارة خلط المواد', 
-    category: 'الإنتاج',
-    description: 'Create and manage material mixing batches'
-  },
-  
-  // System Monitoring
-  { 
-    id: 'view_system_monitoring', 
-    name: 'View System Monitoring', 
-    name_ar: 'عرض مراقبة النظام', 
-    category: 'المراقبة',
-    description: 'View system monitoring and performance'
-  },
-  
-  // Tools
-  { 
-    id: 'view_tools', 
-    name: 'View Tools', 
-    name_ar: 'عرض الأدوات', 
-    category: 'عام',
-    description: 'Access to production tools and utilities'
-  },
-  
-  // Production Reports
-  { 
-    id: 'view_production_reports', 
-    name: 'View Production Reports', 
-    name_ar: 'عرض تقارير الإنتاج', 
-    category: 'التقارير',
-    description: 'View production reports and statistics'
-  },
-  
-  // Orders View
-  { 
-    id: 'view_orders', 
-    name: 'View Orders', 
-    name_ar: 'عرض الطلبات', 
-    category: 'الطلبات',
-    description: 'View orders without editing permissions'
+  {
+    id: "view_home",
+    name: "View Home Page",
+    name_ar: "عرض الصفحة الرئيسية",
+    category: "عام",
+    description: "Access to home page",
   },
   {
-    id: 'view_my_orders',
-    name: 'View My Orders',
-    name_ar: 'عرض طلباتي',
-    category: 'الطلبات',
-    description: 'View orders assigned to the sales representative'
+    id: "view_dashboard",
+    name: "View Dashboard",
+    name_ar: "عرض لوحة التحكم",
+    category: "عام",
+    description: "Access to main dashboard and statistics",
   },
-  
+  {
+    id: "view_user_dashboard",
+    name: "View User Dashboard",
+    name_ar: "عرض لوحة تحكم المستخدم",
+    category: "عام",
+    description: "Access to personal user dashboard",
+  },
+  {
+    id: "view_notifications",
+    name: "View Notifications",
+    name_ar: "عرض الإشعارات",
+    category: "عام",
+    description: "View system notifications",
+  },
+
+  // Orders
+  {
+    id: "manage_orders",
+    name: "Manage Orders",
+    name_ar: "إدارة الطلبات",
+    category: "الطلبات",
+    description: "Create, edit, delete orders",
+  },
+  {
+    id: "update_order_status",
+    name: "Update Order Status",
+    name_ar: "تحديث حالة الطلب",
+    category: "الطلبات",
+    description:
+      "Change order status (waiting, in_production, paused, completed, cancelled)",
+  },
+
+  // Production
+  {
+    id: "view_production",
+    name: "View Production",
+    name_ar: "عرض الإنتاج",
+    category: "الإنتاج",
+    description: "View production data and queues",
+  },
+  {
+    id: "manage_production",
+    name: "Manage Production",
+    name_ar: "إدارة الإنتاج",
+    category: "الإنتاج",
+    description: "Create and manage production orders",
+  },
+  {
+    id: "view_film_dashboard",
+    name: "View Film Operator Dashboard",
+    name_ar: "عرض لوحة عامل الفيلم",
+    category: "الإنتاج",
+    description: "Access to film production operator dashboard",
+  },
+  {
+    id: "view_printing_dashboard",
+    name: "View Printing Operator Dashboard",
+    name_ar: "عرض لوحة عامل الطباعة",
+    category: "الإنتاج",
+    description: "Access to printing operator dashboard",
+  },
+  {
+    id: "view_cutting_dashboard",
+    name: "View Cutting Operator Dashboard",
+    name_ar: "عرض لوحة عامل التقطيع",
+    category: "الإنتاج",
+    description: "Access to cutting operator dashboard",
+  },
+
+  // Maintenance
+  {
+    id: "view_maintenance",
+    name: "View Maintenance",
+    name_ar: "عرض الصيانة",
+    category: "الصيانة",
+    description: "View maintenance reports",
+  },
+  {
+    id: "manage_maintenance",
+    name: "Manage Maintenance",
+    name_ar: "إدارة الصيانة",
+    category: "الصيانة",
+    description: "Create and manage maintenance requests",
+  },
+  {
+    id: "view_maintenance_requests",
+    name: "View Maintenance Requests",
+    name_ar: "عرض طلبات الصيانة",
+    category: "الصيانة",
+    description: "View maintenance request list",
+  },
+  {
+    id: "create_maintenance_requests",
+    name: "Create Maintenance Requests",
+    name_ar: "إنشاء طلبات الصيانة",
+    category: "الصيانة",
+    description: "Submit new maintenance requests",
+  },
+  {
+    id: "manage_maintenance_actions",
+    name: "Manage Maintenance Actions",
+    name_ar: "إدارة إجراءات الصيانة",
+    category: "الصيانة",
+    description: "Manage corrective and preventive maintenance actions",
+  },
+  {
+    id: "view_maintenance_reports",
+    name: "View Maintenance Reports",
+    name_ar: "عرض تقارير الصيانة",
+    category: "الصيانة",
+    description: "View maintenance statistics and reports",
+  },
+  {
+    id: "manage_negligence",
+    name: "Manage Negligence Records",
+    name_ar: "إدارة سجلات الإهمال",
+    category: "الصيانة",
+    description: "Record and manage operator negligence reports",
+  },
+  {
+    id: "manage_spare_parts",
+    name: "Manage Spare Parts",
+    name_ar: "إدارة قطع الغيار",
+    category: "الصيانة",
+    description: "Manage spare parts inventory and requests",
+  },
+  {
+    id: "manage_consumable_parts",
+    name: "Manage Consumable Parts",
+    name_ar: "إدارة المواد الاستهلاكية",
+    category: "الصيانة",
+    description: "Manage consumable parts and supplies",
+  },
+
+  // Quality
+  {
+    id: "view_quality",
+    name: "View Quality",
+    name_ar: "عرض الجودة",
+    category: "الجودة",
+    description: "View quality reports",
+  },
+  {
+    id: "manage_quality",
+    name: "Manage Quality",
+    name_ar: "إدارة الجودة",
+    category: "الجودة",
+    description: "Manage quality control and reports",
+  },
+  {
+    id: "create_quality_inspections",
+    name: "Create Quality Inspections",
+    name_ar: "إنشاء فحوصات الجودة",
+    category: "الجودة",
+    description: "Create new quality inspection records",
+  },
+  {
+    id: "view_quality_reports",
+    name: "View Quality Reports",
+    name_ar: "عرض تقارير الجودة",
+    category: "الجودة",
+    description: "View quality statistics and analysis reports",
+  },
+  {
+    id: "manage_quality_settings",
+    name: "Manage Quality Settings",
+    name_ar: "إدارة إعدادات الجودة",
+    category: "الجودة",
+    description: "Manage quality control parameters and thresholds",
+  },
+
+  // Inventory & Warehouse
+  {
+    id: "view_inventory",
+    name: "View Inventory",
+    name_ar: "عرض المخزون",
+    category: "المخزون",
+    description: "View inventory levels",
+  },
+  {
+    id: "manage_inventory",
+    name: "Manage Inventory",
+    name_ar: "إدارة المخزون",
+    category: "المخزون",
+    description: "Manage inventory and warehouse",
+  },
+  {
+    id: "view_warehouse",
+    name: "View Warehouse",
+    name_ar: "عرض المستودع",
+    category: "المخزون",
+    description: "View warehouse data",
+  },
+  {
+    id: "manage_warehouse",
+    name: "Manage Warehouse",
+    name_ar: "إدارة المستودع",
+    category: "المخزون",
+    description: "Manage warehouse operations",
+  },
+  {
+    id: "view_warehouse_vouchers",
+    name: "View Warehouse Vouchers",
+    name_ar: "عرض سندات المستودع",
+    category: "المخزون",
+    description: "View warehouse entry and exit vouchers",
+  },
+  {
+    id: "manage_warehouse_vouchers",
+    name: "Manage Warehouse Vouchers",
+    name_ar: "إدارة سندات المستودع",
+    category: "المخزون",
+    description: "Create and manage warehouse vouchers",
+  },
+  {
+    id: "view_warehouse_reports",
+    name: "View Warehouse Reports",
+    name_ar: "عرض تقارير المستودع",
+    category: "المخزون",
+    description: "View warehouse statistics and reports",
+  },
+  {
+    id: "manage_production_hall",
+    name: "Manage Production Hall",
+    name_ar: "إدارة صالة الإنتاج",
+    category: "المخزون",
+    description: "Manage production hall inventory and receipts",
+  },
+
+  // Users
+  {
+    id: "manage_users",
+    name: "Manage Users",
+    name_ar: "إدارة المستخدمين",
+    category: "المستخدمين",
+    description: "Create, edit, delete users",
+  },
+
+  // HR
+  {
+    id: "view_hr",
+    name: "View HR",
+    name_ar: "عرض الموارد البشرية",
+    category: "الموارد البشرية",
+    description: "View HR data and employee information",
+  },
+  {
+    id: "manage_hr",
+    name: "Manage HR",
+    name_ar: "إدارة الموارد البشرية",
+    category: "الموارد البشرية",
+    description: "Full HR management including all HR functions",
+  },
+  {
+    id: "view_attendance",
+    name: "View Attendance",
+    name_ar: "عرض الحضور والانصراف",
+    category: "الموارد البشرية",
+    description: "View employee attendance records",
+  },
+  {
+    id: "manage_attendance",
+    name: "Manage Attendance",
+    name_ar: "إدارة الحضور والانصراف",
+    category: "الموارد البشرية",
+    description: "Record and modify attendance, overtime, and breaks",
+  },
+  {
+    id: "view_attendance_reports",
+    name: "View Attendance Reports",
+    name_ar: "عرض تقارير الحضور",
+    category: "الموارد البشرية",
+    description: "View attendance statistics and reports",
+  },
+  {
+    id: "manage_leaves",
+    name: "Manage Leaves",
+    name_ar: "إدارة الإجازات",
+    category: "الموارد البشرية",
+    description: "Approve and manage employee leave requests",
+  },
+  {
+    id: "view_training",
+    name: "View Training",
+    name_ar: "عرض التدريب",
+    category: "الموارد البشرية",
+    description: "View training programs and schedules",
+  },
+  {
+    id: "manage_training",
+    name: "Manage Training",
+    name_ar: "إدارة التدريب",
+    category: "الموارد البشرية",
+    description: "Create and manage training programs",
+  },
+
+  // Reports & Analytics
+  {
+    id: "view_reports",
+    name: "View Reports",
+    name_ar: "عرض التقارير",
+    category: "التقارير",
+    description: "View system reports and analytics",
+  },
+  {
+    id: "manage_analytics",
+    name: "Manage Analytics",
+    name_ar: "إدارة التحليلات",
+    category: "التقارير",
+    description: "Manage advanced analytics and ML features",
+  },
+  {
+    id: "view_production_monitoring",
+    name: "View Production Monitoring",
+    name_ar: "عرض مراقبة الإنتاج",
+    category: "التقارير",
+    description: "View real-time production monitoring",
+  },
+  {
+    id: "view_financial_reports",
+    name: "View Financial Reports",
+    name_ar: "عرض التقارير المالية",
+    category: "التقارير",
+    description: "View financial and cost analysis reports",
+  },
+  {
+    id: "view_hr_reports",
+    name: "View HR Reports",
+    name_ar: "عرض تقارير الموارد البشرية",
+    category: "التقارير",
+    description: "View human resources statistics and reports",
+  },
+  {
+    id: "view_quality_control_reports",
+    name: "View Quality Control Reports",
+    name_ar: "عرض تقارير مراقبة الجودة",
+    category: "التقارير",
+    description: "View quality control statistics in reports page",
+  },
+  {
+    id: "view_maintenance_stats_reports",
+    name: "View Maintenance Statistics Reports",
+    name_ar: "عرض تقارير إحصائيات الصيانة",
+    category: "التقارير",
+    description: "View maintenance statistics in reports page",
+  },
+
+  // Alerts & Monitoring
+  {
+    id: "view_alerts",
+    name: "View Alerts",
+    name_ar: "عرض التنبيهات",
+    category: "المراقبة",
+    description: "View system alerts",
+  },
+  {
+    id: "manage_alerts",
+    name: "Manage Alerts",
+    name_ar: "إدارة التنبيهات",
+    category: "المراقبة",
+    description: "Manage system alerts and rules",
+  },
+  {
+    id: "view_system_health",
+    name: "View System Health",
+    name_ar: "عرض صحة النظام",
+    category: "المراقبة",
+    description: "View system health monitoring",
+  },
+
+  // System
+  {
+    id: "manage_settings",
+    name: "Manage Settings",
+    name_ar: "إدارة الإعدادات",
+    category: "النظام",
+    description: "Modify system settings",
+  },
+  {
+    id: "manage_definitions",
+    name: "Manage Definitions",
+    name_ar: "إدارة التعريفات",
+    category: "النظام",
+    description: "Manage system definitions and master data",
+  },
+  {
+    id: "manage_roles",
+    name: "Manage Roles",
+    name_ar: "إدارة الأدوار",
+    category: "النظام",
+    description: "Create and modify user roles",
+  },
+
+  // Definitions (sub-permissions)
+  {
+    id: "manage_customers",
+    name: "Manage Customers",
+    name_ar: "إدارة العملاء",
+    category: "التعريفات",
+    description: "Create, edit, and manage customer records",
+  },
+  {
+    id: "manage_items",
+    name: "Manage Items",
+    name_ar: "إدارة الأصناف",
+    category: "التعريفات",
+    description: "Create, edit, and manage item definitions",
+  },
+  {
+    id: "manage_machines",
+    name: "Manage Machines",
+    name_ar: "إدارة الماكينات",
+    category: "التعريفات",
+    description: "Create, edit, and manage machine definitions",
+  },
+  {
+    id: "manage_sections",
+    name: "Manage Sections",
+    name_ar: "إدارة الأقسام",
+    category: "التعريفات",
+    description: "Create, edit, and manage department sections",
+  },
+  {
+    id: "manage_categories",
+    name: "Manage Categories",
+    name_ar: "إدارة الفئات",
+    category: "التعريفات",
+    description: "Create, edit, and manage item categories",
+  },
+  {
+    id: "manage_master_batch",
+    name: "Manage Master Batch Colors",
+    name_ar: "إدارة ألوان الماستر باتش",
+    category: "التعريفات",
+    description: "Create, edit, and manage master batch color definitions",
+  },
+
+  // WhatsApp Integration
+  {
+    id: "manage_whatsapp",
+    name: "Manage WhatsApp",
+    name_ar: "إدارة الواتساب",
+    category: "التكامل",
+    description: "Manage WhatsApp integration and settings",
+  },
+
+  // Material Mixing
+  {
+    id: "view_mixing",
+    name: "View Material Mixing",
+    name_ar: "عرض خلط المواد",
+    category: "الإنتاج",
+    description: "View material mixing batches and formulas",
+  },
+  {
+    id: "manage_mixing",
+    name: "Manage Material Mixing",
+    name_ar: "إدارة خلط المواد",
+    category: "الإنتاج",
+    description: "Create and manage material mixing batches",
+  },
+
+  // System Monitoring
+  {
+    id: "view_system_monitoring",
+    name: "View System Monitoring",
+    name_ar: "عرض مراقبة النظام",
+    category: "المراقبة",
+    description: "View system monitoring and performance",
+  },
+
+  // Tools
+  {
+    id: "view_tools",
+    name: "View Tools",
+    name_ar: "عرض الأدوات",
+    category: "عام",
+    description: "Access to production tools and utilities",
+  },
+
+  // Production Reports
+  {
+    id: "view_production_reports",
+    name: "View Production Reports",
+    name_ar: "عرض تقارير الإنتاج",
+    category: "التقارير",
+    description: "View production reports and statistics",
+  },
+
+  // Orders View
+  {
+    id: "view_orders",
+    name: "View Orders",
+    name_ar: "عرض الطلبات",
+    category: "الطلبات",
+    description: "View orders without editing permissions",
+  },
+  {
+    id: "view_my_orders",
+    name: "View My Orders",
+    name_ar: "عرض طلباتي",
+    category: "الطلبات",
+    description: "View orders assigned to the sales representative",
+  },
+
   // AI Agent
-  { 
-    id: 'view_ai_agent', 
-    name: 'View AI Agent', 
-    name_ar: 'عرض الوكيل الذكي', 
-    category: 'الوكيل الذكي',
-    description: 'Access to view AI agent interface'
+  {
+    id: "view_ai_agent",
+    name: "View AI Agent",
+    name_ar: "عرض الوكيل الذكي",
+    category: "الوكيل الذكي",
+    description: "Access to view AI agent interface",
   },
-  { 
-    id: 'use_ai_agent', 
-    name: 'Use AI Agent', 
-    name_ar: 'استخدام الوكيل الذكي', 
-    category: 'الوكيل الذكي',
-    description: 'Use AI agent chat and tools'
+  {
+    id: "use_ai_agent",
+    name: "Use AI Agent",
+    name_ar: "استخدام الوكيل الذكي",
+    category: "الوكيل الذكي",
+    description: "Use AI agent chat and tools",
   },
-  { 
-    id: 'manage_ai_agent', 
-    name: 'Manage AI Agent', 
-    name_ar: 'إدارة الوكيل الذكي', 
-    category: 'الوكيل الذكي',
-    description: 'Manage AI agent settings and knowledge base'
+  {
+    id: "manage_ai_agent",
+    name: "Manage AI Agent",
+    name_ar: "إدارة الوكيل الذكي",
+    category: "الوكيل الذكي",
+    description: "Manage AI agent settings and knowledge base",
   },
-  
+
   // Factory Simulation
-  { 
-    id: 'view_factory_simulation', 
-    name: 'View Factory Simulation', 
-    name_ar: 'عرض محاكاة المصنع', 
-    category: 'محاكاة المصنع',
-    description: 'View factory simulation and 3D layout'
+  {
+    id: "view_factory_simulation",
+    name: "View Factory Simulation",
+    name_ar: "عرض محاكاة المصنع",
+    category: "محاكاة المصنع",
+    description: "View factory simulation and 3D layout",
   },
-  { 
-    id: 'manage_factory_simulation', 
-    name: 'Manage Factory Simulation', 
-    name_ar: 'إدارة محاكاة المصنع', 
-    category: 'محاكاة المصنع',
-    description: 'Edit and configure factory simulation layout'
+  {
+    id: "manage_factory_simulation",
+    name: "Manage Factory Simulation",
+    name_ar: "إدارة محاكاة المصنع",
+    category: "محاكاة المصنع",
+    description: "Edit and configure factory simulation layout",
   },
-  
+
   // Display Screen
   {
-    id: 'view_display_screen',
-    name: 'View Display Screen',
-    name_ar: 'عرض شاشة العرض',
-    category: 'شاشة العرض',
-    description: 'Access to view the production display screen'
+    id: "view_display_screen",
+    name: "View Display Screen",
+    name_ar: "عرض شاشة العرض",
+    category: "شاشة العرض",
+    description: "Access to view the production display screen",
   },
   {
-    id: 'manage_display_screen',
-    name: 'Manage Display Screen',
-    name_ar: 'إدارة شاشة العرض',
-    category: 'شاشة العرض',
-    description: 'Control and manage display screen slides and settings'
+    id: "manage_display_screen",
+    name: "Manage Display Screen",
+    name_ar: "إدارة شاشة العرض",
+    category: "شاشة العرض",
+    description: "Control and manage display screen slides and settings",
   },
 
   // Bag Configurator
   {
-    id: 'view_bag_configurator',
-    name: 'View Bag Configurator',
-    name_ar: 'عرض معالج تصميم الأكياس',
-    category: 'الإنتاج',
-    description: 'Access to bag configuration wizard'
+    id: "view_bag_configurator",
+    name: "View Bag Configurator",
+    name_ar: "عرض معالج تصميم الأكياس",
+    category: "الإنتاج",
+    description: "Access to bag configuration wizard",
   },
 
   // System (settings tabs)
   {
-    id: 'view_mcp_settings',
-    name: 'View MCP Settings',
-    name_ar: 'عرض إعدادات MCP',
-    category: 'النظام',
-    description: 'Access to MCP integration settings tab'
+    id: "view_mcp_settings",
+    name: "View MCP Settings",
+    name_ar: "عرض إعدادات MCP",
+    category: "النظام",
+    description: "Access to MCP integration settings tab",
   },
   {
-    id: 'view_system_monitoring_tab',
-    name: 'View System Monitoring (Settings)',
-    name_ar: 'عرض مراقبة النظام (الإعدادات)',
-    category: 'النظام',
-    description: 'Access to system monitoring tab inside settings'
+    id: "view_system_monitoring_tab",
+    name: "View System Monitoring (Settings)",
+    name_ar: "عرض مراقبة النظام (الإعدادات)",
+    category: "النظام",
+    description: "Access to system monitoring tab inside settings",
   },
   {
-    id: 'view_ai_agent_settings',
-    name: 'View AI Agent Settings',
-    name_ar: 'عرض إعدادات الوكيل الذكي',
-    category: 'الوكيل الذكي',
-    description: 'Access to AI agent settings tab inside settings'
+    id: "view_ai_agent_settings",
+    name: "View AI Agent Settings",
+    name_ar: "عرض إعدادات الوكيل الذكي",
+    category: "الوكيل الذكي",
+    description: "Access to AI agent settings tab inside settings",
   },
 
   // Admin
-  { 
-    id: 'admin', 
-    name: 'Administrator', 
-    name_ar: 'مدير النظام', 
-    category: 'النظام',
-    description: 'Full system access'
-  }
+  {
+    id: "admin",
+    name: "Administrator",
+    name_ar: "مدير النظام",
+    category: "النظام",
+    description: "Full system access",
+  },
 ];
 
 // Route to permission mapping
@@ -720,167 +721,227 @@ export const PERMISSIONS: Permission[] = [
 // because permission check happens on the target route, not the redirect source
 export const ROUTE_PERMISSIONS: Record<string, PermissionKey[]> = {
   // Main pages
-  '/': ['view_home', 'view_dashboard'],
-  '/dashboard': ['view_dashboard'],
-  '/orders': ['view_orders', 'manage_orders'],
-  '/production': ['view_production', 'manage_production'],
-  '/production-dashboard': ['view_production', 'manage_production', 'view_film_dashboard', 'view_printing_dashboard', 'view_cutting_dashboard'],
-  '/maintenance': ['view_maintenance', 'manage_maintenance'],
-  '/quality': ['view_quality', 'manage_quality'],
-  '/warehouse': ['view_warehouse', 'manage_warehouse'],
-  '/inventory': ['view_inventory', 'manage_inventory'],
-  '/hr': ['view_hr', 'manage_hr'],
-  '/reports': ['view_reports', 'view_production_reports'],
-  '/settings': ['manage_settings', 'admin'],
-  '/definitions': ['manage_definitions', 'manage_customers', 'manage_sections', 'manage_categories', 'manage_items', 'manage_machines', 'manage_users', 'manage_master_batch', 'admin'],
-  '/users': ['manage_users'],
-  '/user-dashboard': ['view_user_dashboard'],
-  '/notifications': ['view_notifications'],
-  
+  "/": ["view_home", "view_dashboard"],
+  "/dashboard": ["view_dashboard"],
+  "/orders": ["view_orders", "manage_orders"],
+  "/production": ["view_production", "manage_production"],
+  "/production-dashboard": [
+    "view_production",
+    "manage_production",
+    "view_film_dashboard",
+    "view_printing_dashboard",
+    "view_cutting_dashboard",
+  ],
+  "/maintenance": ["view_maintenance", "manage_maintenance"],
+  "/quality": ["view_quality", "manage_quality"],
+  "/warehouse": ["view_warehouse", "manage_warehouse"],
+  "/inventory": ["view_inventory", "manage_inventory"],
+  "/hr": ["view_hr", "manage_hr"],
+  "/reports": ["view_reports", "view_production_reports"],
+  "/settings": ["manage_settings", "admin"],
+  "/definitions": [
+    "manage_definitions",
+    "manage_customers",
+    "manage_sections",
+    "manage_categories",
+    "manage_items",
+    "manage_machines",
+    "manage_users",
+    "manage_master_batch",
+    "admin",
+  ],
+  "/users": ["manage_users"],
+  "/user-dashboard": ["view_user_dashboard"],
+  "/notifications": ["view_notifications"],
+
   // Production sub-pages
-  '/production-orders-management': ['view_production', 'manage_production'],
-  '/production-queues': ['view_production', 'manage_production', 'view_orders', 'manage_orders'],
-  '/roll-search': ['view_production', 'manage_production'],
-  '/production-reports': ['view_production_reports', 'view_reports', 'view_production'],
-  
+  "/production-orders-management": ["view_production", "manage_production"],
+  "/production-queues": [
+    "view_production",
+    "manage_production",
+    "view_orders",
+    "manage_orders",
+  ],
+  "/roll-search": ["view_production", "manage_production"],
+  "/production-reports": [
+    "view_production_reports",
+    "view_reports",
+    "view_production",
+  ],
+
   // Operator dashboards
-  '/film-operator': ['view_film_dashboard', 'view_production', 'manage_production'],
-  '/printing-operator': ['view_printing_dashboard', 'view_production', 'manage_production'],
-  '/cutting-operator': ['view_cutting_dashboard', 'view_production', 'manage_production'],
-  
+  "/film-operator": [
+    "view_film_dashboard",
+    "view_production",
+    "manage_production",
+  ],
+  "/printing-operator": [
+    "view_printing_dashboard",
+    "view_production",
+    "manage_production",
+  ],
+  "/cutting-operator": [
+    "view_cutting_dashboard",
+    "view_production",
+    "manage_production",
+  ],
+
   // Monitoring and alerts
-  '/alerts': ['view_alerts', 'manage_alerts'],
-  '/system-health': ['view_system_health'],
-  '/system-monitoring': ['view_system_monitoring', 'view_system_health', 'admin'],
-  '/production-monitoring': ['view_production_monitoring', 'view_production'],
-  
+  "/alerts": ["view_alerts", "manage_alerts"],
+  "/system-health": ["view_system_health"],
+  "/system-monitoring": [
+    "view_system_monitoring",
+    "view_system_health",
+    "admin",
+  ],
+  "/production-monitoring": ["view_production_monitoring", "view_production"],
+
   // Tools and utilities
-  '/tools': ['view_tools', 'view_production', 'manage_production'],
-  '/material-mixing': ['view_mixing', 'manage_mixing', 'view_production'],
-  
+  "/tools": ["view_tools", "view_production", "manage_production"],
+  "/material-mixing": ["view_mixing", "manage_mixing", "view_production"],
+
   // Factory simulation
-  '/factory-simulation': ['view_factory_simulation', 'manage_factory_simulation', 'view_production', 'manage_production', 'admin'],
-  
+  "/factory-simulation": [
+    "view_factory_simulation",
+    "manage_factory_simulation",
+    "view_production",
+    "manage_production",
+    "admin",
+  ],
+
   // WhatsApp integration
-  '/meta-whatsapp-setup': ['manage_whatsapp', 'admin'],
-  '/whatsapp-setup': ['manage_whatsapp', 'admin'],
-  '/whatsapp-test': ['manage_whatsapp', 'admin'],
-  '/whatsapp-troubleshoot': ['manage_whatsapp', 'admin'],
-  '/whatsapp-production-setup': ['manage_whatsapp', 'admin'],
-  '/whatsapp-final-setup': ['manage_whatsapp', 'admin'],
-  '/twilio-content': ['manage_whatsapp', 'admin'],
-  '/whatsapp-template-test': ['manage_whatsapp', 'admin'],
-  '/whatsapp-webhooks': ['manage_whatsapp', 'admin'],
-  
+  "/meta-whatsapp-setup": ["manage_whatsapp", "admin"],
+  "/whatsapp-setup": ["manage_whatsapp", "admin"],
+  "/whatsapp-test": ["manage_whatsapp", "admin"],
+  "/whatsapp-troubleshoot": ["manage_whatsapp", "admin"],
+  "/whatsapp-production-setup": ["manage_whatsapp", "admin"],
+  "/whatsapp-final-setup": ["manage_whatsapp", "admin"],
+  "/twilio-content": ["manage_whatsapp", "admin"],
+  "/whatsapp-template-test": ["manage_whatsapp", "admin"],
+  "/whatsapp-webhooks": ["manage_whatsapp", "admin"],
+
   // AI Agent
-  '/ai-agent': ['view_ai_agent', 'use_ai_agent'],
-  '/ai-agent-settings': ['manage_ai_agent', 'admin'],
+  "/ai-agent": ["view_ai_agent", "use_ai_agent"],
+  "/ai-agent-settings": ["manage_ai_agent", "admin"],
 
   // Display Screen
-  '/display-screen': ['view_display_screen', 'admin'],
-  '/display-control': ['manage_display_screen', 'admin'],
+  "/display-screen": ["view_display_screen", "admin"],
+  "/display-control": ["manage_display_screen", "admin"],
 
   // Factory Floor
-  '/factory-floor': ['view_production', 'manage_production', 'admin'],
+  "/factory-floor": ["view_production", "manage_production", "admin"],
 
   // My Orders (sales reps)
-  '/my-orders': ['view_my_orders', 'manage_orders', 'admin'],
+  "/my-orders": ["view_my_orders", "manage_orders", "admin"],
 
   // Bag Configurator
-  '/bag-configurator': ['view_bag_configurator', 'manage_orders', 'admin'],
+  "/bag-configurator": ["view_bag_configurator", "manage_orders", "admin"],
 
   // Mobile views (mirror their desktop counterparts)
-  '/warehouse-mobile': ['view_warehouse', 'manage_warehouse'],
-  '/production-mobile': ['view_production', 'manage_production'],
-  '/user-dashboard-mobile': ['view_user_dashboard'],
-  '/orders-mobile': ['view_orders', 'manage_orders'],
-  '/production-dashboard-mobile': ['view_production', 'manage_production', 'view_film_dashboard', 'view_printing_dashboard', 'view_cutting_dashboard'],
+  "/warehouse-mobile": ["view_warehouse", "manage_warehouse"],
+  "/production-mobile": ["view_production", "manage_production"],
+  "/user-dashboard-mobile": ["view_user_dashboard"],
+  "/orders-mobile": ["view_orders", "manage_orders"],
+  "/production-dashboard-mobile": [
+    "view_production",
+    "manage_production",
+    "view_film_dashboard",
+    "view_printing_dashboard",
+    "view_cutting_dashboard",
+  ],
 };
 
 // Settings tabs permissions
 export const DEFINITIONS_TAB_PERMISSIONS: Record<string, PermissionKey[]> = {
-  'customers': ['manage_customers', 'manage_definitions', 'admin'],
-  'sections': ['manage_sections', 'manage_definitions', 'admin'],
-  'categories': ['manage_categories', 'manage_definitions', 'admin'],
-  'items': ['manage_items', 'manage_definitions', 'admin'],
-  'customer-products': ['manage_customers', 'manage_definitions', 'admin'],
-  'machines': ['manage_machines', 'manage_definitions', 'admin'],
-  'users': ['manage_users', 'admin'],
-  'master-batch-colors': ['manage_master_batch', 'manage_definitions', 'admin'],
+  customers: ["manage_customers", "manage_definitions", "admin"],
+  sections: ["manage_sections", "manage_definitions", "admin"],
+  categories: ["manage_categories", "manage_definitions", "admin"],
+  items: ["manage_items", "manage_definitions", "admin"],
+  "customer-products": ["manage_customers", "manage_definitions", "admin"],
+  machines: ["manage_machines", "manage_definitions", "admin"],
+  users: ["manage_users", "admin"],
+  "master-batch-colors": ["manage_master_batch", "manage_definitions", "admin"],
 };
 
 export const SETTINGS_TAB_PERMISSIONS: Record<string, PermissionKey[]> = {
-  'roles': ['manage_roles', 'admin'],
-  'notifications': ['manage_settings', 'admin'],
-  'system': ['manage_settings', 'admin'],
-  'database': ['admin'],
-  'location': ['manage_settings', 'admin'],
-  'notification-center': ['manage_settings', 'admin'],
-  'whatsapp-webhooks': ['manage_whatsapp', 'admin'],
-  'notification-events': ['manage_settings', 'admin'],
-  'sms': ['manage_settings', 'manage_whatsapp', 'admin'],
-  'mcp': ['view_mcp_settings', 'manage_settings', 'admin'],
-  'system-monitoring': ['view_system_monitoring_tab', 'view_system_monitoring', 'view_system_health', 'admin'],
-  'ai-agent': ['view_ai_agent_settings', 'manage_ai_agent', 'admin'],
-  'user': [],
+  roles: ["manage_roles", "admin"],
+  notifications: ["manage_settings", "admin"],
+  system: ["manage_settings", "admin"],
+  database: ["admin"],
+  location: ["manage_settings", "admin"],
+  "notification-center": ["manage_settings", "admin"],
+  "whatsapp-webhooks": ["manage_whatsapp", "admin"],
+  "notification-events": ["manage_settings", "admin"],
+  sms: ["manage_settings", "manage_whatsapp", "admin"],
+  mcp: ["view_mcp_settings", "manage_settings", "admin"],
+  "system-monitoring": [
+    "view_system_monitoring_tab",
+    "view_system_monitoring",
+    "view_system_health",
+    "admin",
+  ],
+  "ai-agent": ["view_ai_agent_settings", "manage_ai_agent", "admin"],
+  user: [],
 };
 
 // Helper function to check if user has permission
 export function hasPermission(
   userPermissions: string[] | undefined | null,
   requiredPermissions: PermissionKey | PermissionKey[],
-  requireAll: boolean = false
+  requireAll: boolean = false,
 ): boolean {
   if (!userPermissions) return false;
-  
+
   // Admin has all permissions
-  if (userPermissions.includes('admin')) return true;
-  
-  const required = Array.isArray(requiredPermissions) 
-    ? requiredPermissions 
+  if (userPermissions.includes("admin")) return true;
+
+  const required = Array.isArray(requiredPermissions)
+    ? requiredPermissions
     : [requiredPermissions];
-  
+
   if (requireAll) {
     // User must have ALL required permissions
-    return required.every(perm => userPermissions.includes(perm));
+    return required.every((perm) => userPermissions.includes(perm));
   } else {
     // User needs at least ONE of the required permissions
-    return required.some(perm => userPermissions.includes(perm));
+    return required.some((perm) => userPermissions.includes(perm));
   }
 }
 
 // Helper function to filter permissions by category
 export function getPermissionsByCategory(category: string): Permission[] {
-  return PERMISSIONS.filter(p => p.category === category);
+  return PERMISSIONS.filter((p) => p.category === category);
 }
 
 // Helper function to get permission details
 export function getPermission(id: PermissionKey): Permission | undefined {
-  return PERMISSIONS.find(p => p.id === id);
+  return PERMISSIONS.find((p) => p.id === id);
 }
 
 // Helper function to validate permissions array
 export function validatePermissions(permissions: string[]): PermissionKey[] {
-  const validKeys = PERMISSIONS.map(p => p.id);
-  return permissions.filter(p => validKeys.includes(p as PermissionKey)) as PermissionKey[];
+  const validKeys = PERMISSIONS.map((p) => p.id);
+  return permissions.filter((p) =>
+    validKeys.includes(p as PermissionKey),
+  ) as PermissionKey[];
 }
 
 // Export permission groups for UI organization
 export const PERMISSION_CATEGORIES = [
-  'عام',
-  'الطلبات', 
-  'الإنتاج',
-  'الصيانة',
-  'الجودة',
-  'المخزون',
-  'المستخدمين',
-  'الموارد البشرية',
-  'التقارير',
-  'المراقبة',
-  'التعريفات',
-  'محاكاة المصنع',
-  'شاشة العرض',
-  'التكامل',
-  'الوكيل الذكي',
-  'النظام'
+  "عام",
+  "الطلبات",
+  "الإنتاج",
+  "الصيانة",
+  "الجودة",
+  "المخزون",
+  "المستخدمين",
+  "الموارد البشرية",
+  "التقارير",
+  "المراقبة",
+  "التعريفات",
+  "محاكاة المصنع",
+  "شاشة العرض",
+  "التكامل",
+  "الوكيل الذكي",
+  "النظام",
 ];

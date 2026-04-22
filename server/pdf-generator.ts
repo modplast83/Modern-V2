@@ -6,25 +6,38 @@
 
 import fs from "fs";
 import path from "path";
-import PDFDocument from "pdfkit";
+
 import * as ArabicReshaper from "arabic-reshaper";
 import bidiFactory from "bidi-js";
+import PDFDocument from "pdfkit";
+
 const bidi = bidiFactory();
 import { db } from "./db";
+
 import { eq } from "drizzle-orm";
 import { quotes, quote_items, company_profile } from "@shared/schema";
+
 import { objectStorageClient } from "./replit_integrations/object_storage";
 
-async function getCompanyLogoBuffer(fallbackPath: string): Promise<{ buffer: Buffer | null; path: string | null }> {
+async function getCompanyLogoBuffer(
+  fallbackPath: string,
+): Promise<{ buffer: Buffer | null; path: string | null }> {
   try {
-    const [profile] = await db.select({ logo_url: company_profile.logo_url }).from(company_profile).limit(1);
+    const [profile] = await db
+      .select({ logo_url: company_profile.logo_url })
+      .from(company_profile)
+      .limit(1);
     if (profile?.logo_url && profile.logo_url.startsWith("/objects/")) {
       const parts = profile.logo_url.slice(1).split("/");
       const entityId = parts.slice(1).join("/");
       const privateDir = process.env.PRIVATE_OBJECT_DIR || "";
       if (privateDir) {
-        const fullPath = privateDir.endsWith("/") ? `${privateDir}${entityId}` : `${privateDir}/${entityId}`;
-        const pathParts = fullPath.startsWith("/") ? fullPath.slice(1).split("/") : fullPath.split("/");
+        const fullPath = privateDir.endsWith("/")
+          ? `${privateDir}${entityId}`
+          : `${privateDir}/${entityId}`;
+        const pathParts = fullPath.startsWith("/")
+          ? fullPath.slice(1).split("/")
+          : fullPath.split("/");
         const bucketName = pathParts[0];
         const objectName = pathParts.slice(1).join("/");
         const bucket = objectStorageClient.bucket(bucketName);
@@ -96,7 +109,7 @@ function drawTextRTL(
   text: string,
   x: number,
   y: number,
-  opts: any = {}
+  opts: any = {},
 ) {
   const shaped = shapeArabicSafe(text);
   doc.text(shaped, x, y, {
@@ -113,7 +126,7 @@ function drawLabelValue(
   value: string,
   x: number,
   y: number,
-  width: number
+  width: number,
 ) {
   const lh = 12;
 
@@ -203,14 +216,13 @@ export async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
     });
 
     if (haveArabic) {
-      doc.font(haveBoldAr ? "Arabic-Bold" : "Arabic").fontSize(13).fillColor("#1f2937");
-      drawTextRTL(
-        doc,
-        "مصنع الأكياس البلاستيكية الحديثة",
-        right,
-        y + 24,
-        { width: contentW - 65 }
-      );
+      doc
+        .font(haveBoldAr ? "Arabic-Bold" : "Arabic")
+        .fontSize(13)
+        .fillColor("#1f2937");
+      drawTextRTL(doc, "مصنع الأكياس البلاستيكية الحديثة", right, y + 24, {
+        width: contentW - 65,
+      });
     }
 
     doc.font("Helvetica").fontSize(8).fillColor("#6b7280");
@@ -240,7 +252,7 @@ export async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
         doc,
         `الصفحة ${toArabicDigits(page)} من ${toArabicDigits(total)}`,
         right,
-        y + 6
+        y + 6,
       );
     }
   };
@@ -251,7 +263,8 @@ export async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
 
     doc.save();
     doc.rotate(-30, { origin: [pageW / 2, pageH / 2] });
-    doc.font(haveArabic ? "Arabic-Bold" : "Helvetica-Bold")
+    doc
+      .font(haveArabic ? "Arabic-Bold" : "Helvetica-Bold")
       .fontSize(60)
       .fillColor("#e5e7eb")
       .opacity(0.25);
@@ -303,7 +316,10 @@ export async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
     let xx = left;
 
     // index
-    doc.text(String(row.line_number), xx, y + 5, { width: table.columns[0].width, align: "center" });
+    doc.text(String(row.line_number), xx, y + 5, {
+      width: table.columns[0].width,
+      align: "center",
+    });
     xx += table.columns[0].width;
 
     // name
@@ -369,7 +385,11 @@ export async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
     drawTextRTL(doc, "عرض سعر", right, top + 82);
   }
 
-  doc.moveTo(left, top + 105).lineTo(right, top + 105).strokeColor("#e5e7eb").stroke();
+  doc
+    .moveTo(left, top + 105)
+    .lineTo(right, top + 105)
+    .strokeColor("#e5e7eb")
+    .stroke();
 
   // ===== INFO BLOCK =====
   const infoY = top + 115;
@@ -379,7 +399,15 @@ export async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
   const colW = contentW / 2 - 20;
 
   // Document / Date
-  drawLabelValue(doc, "Document", "المستند", quote.document_number, left + 12, infoY + 10, colW);
+  drawLabelValue(
+    doc,
+    "Document",
+    "المستند",
+    quote.document_number,
+    left + 12,
+    infoY + 10,
+    colW,
+  );
   drawLabelValue(
     doc,
     "Date",
@@ -387,7 +415,7 @@ export async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
     formatDateAr(quote.quote_date || quote.created_at),
     left + 12,
     infoY + 36,
-    colW
+    colW,
   );
 
   // Customer / VAT
@@ -398,7 +426,7 @@ export async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
     quote.customer_name,
     left + 20 + colW,
     infoY + 10,
-    colW
+    colW,
   );
   drawLabelValue(
     doc,
@@ -407,7 +435,7 @@ export async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
     quote.tax_number || "—",
     left + 20 + colW,
     infoY + 36,
-    colW
+    colW,
   );
 
   // ===== ITEMS TABLE =====
@@ -427,7 +455,11 @@ export async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
     cursorY += table.rowH;
   }
 
-  doc.moveTo(left, cursorY + 4).lineTo(right, cursorY + 4).strokeColor("#ddd").stroke();
+  doc
+    .moveTo(left, cursorY + 4)
+    .lineTo(right, cursorY + 4)
+    .strokeColor("#ddd")
+    .stroke();
 
   // ===== TOTALS BOX =====
   const totalsY = cursorY + 20;
@@ -445,19 +477,32 @@ export async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
   });
 
   doc.text("VAT 15%", boxX + 10, totalsY + 28);
-  doc.text(formatNumberAr(taxAmount) + " ر.س", boxX + boxW - 100, totalsY + 28, {
-    width: 90,
-    align: "right",
-  });
+  doc.text(
+    formatNumberAr(taxAmount) + " ر.س",
+    boxX + boxW - 100,
+    totalsY + 28,
+    {
+      width: 90,
+      align: "right",
+    },
+  );
 
-  doc.moveTo(boxX + 10, totalsY + 46).lineTo(boxX + boxW - 10, totalsY + 46).stroke();
+  doc
+    .moveTo(boxX + 10, totalsY + 46)
+    .lineTo(boxX + boxW - 10, totalsY + 46)
+    .stroke();
 
   doc.fontSize(11).fillColor("#2563eb");
   doc.text("TOTAL", boxX + 10, totalsY + 54);
-  doc.text(formatNumberAr(grandTotal) + " ر.س", boxX + boxW - 100, totalsY + 54, {
-    width: 90,
-    align: "right",
-  });
+  doc.text(
+    formatNumberAr(grandTotal) + " ر.س",
+    boxX + boxW - 100,
+    totalsY + 54,
+    {
+      width: 90,
+      align: "right",
+    },
+  );
 
   // ===== NOTES =====
   let notesY = totalsY + 110;
@@ -475,7 +520,7 @@ export async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
         shapeArabicSafe(String(quote.notes)),
         right - 10,
         notesY + 28,
-        { width: contentW - 20 }
+        { width: contentW - 20 },
       );
     } else {
       doc.font("Helvetica").text(String(quote.notes), left + 10, notesY + 28, {
@@ -494,7 +539,11 @@ export async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
   doc.rect(left, notesY, colW2, boxH).fillColor("#f3f4f6").fill();
   doc.strokeColor("#e5e7eb").rect(left, notesY, colW2, boxH).stroke();
 
-  doc.font("Helvetica-Bold").fontSize(9).fillColor("#111").text("Validity", left + 10, notesY + 8);
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(9)
+    .fillColor("#111")
+    .text("Validity", left + 10, notesY + 8);
   if (haveArabic) {
     doc.font("Arabic").fontSize(9).fillColor("#111");
     drawTextRTL(doc, "الصلاحية", left + colW2 - 10, notesY + 8);
@@ -503,12 +552,23 @@ export async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
   doc.text("15 days from issue date.", left + 10, notesY + 28);
   if (haveArabic) {
     doc.font("Arabic");
-    drawTextRTL(doc, "صالح لمدة ١٥ يوم من تاريخ الإصدار", left + colW2 - 10, notesY + 28);
+    drawTextRTL(
+      doc,
+      "صالح لمدة ١٥ يوم من تاريخ الإصدار",
+      left + colW2 - 10,
+      notesY + 28,
+    );
   }
 
   // Signature Box
-  doc.rect(left + colW2 + 10, notesY, colW2, boxH).fillColor("#f3f4f6").fill();
-  doc.strokeColor("#e5e7eb").rect(left + colW2 + 10, notesY, colW2, boxH).stroke();
+  doc
+    .rect(left + colW2 + 10, notesY, colW2, boxH)
+    .fillColor("#f3f4f6")
+    .fill();
+  doc
+    .strokeColor("#e5e7eb")
+    .rect(left + colW2 + 10, notesY, colW2, boxH)
+    .stroke();
 
   doc.font("Helvetica-Bold").fontSize(9).fillColor("#111");
   doc.text("Signature & Stamp", left + colW2 + 20, notesY + 8);
@@ -518,7 +578,8 @@ export async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
     drawTextRTL(doc, "التوقيع والختم", left + colW2 + colW2 - 10, notesY + 8);
   }
 
-  doc.strokeColor("#9ca3af")
+  doc
+    .strokeColor("#9ca3af")
     .moveTo(left + colW2 + 20, notesY + 48)
     .lineTo(left + colW2 + colW2 - 20, notesY + 48)
     .stroke();

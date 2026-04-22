@@ -1,5 +1,6 @@
-import { useEffect, useCallback, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useCallback, useRef, useState } from "react";
+
 import { useAuth } from "./use-auth";
 
 interface ProductionSSEEvent {

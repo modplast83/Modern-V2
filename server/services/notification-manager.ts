@@ -1,7 +1,10 @@
-import { Response } from "express";
 import { EventEmitter } from "events";
-import type { IStorage } from "../storage";
+
+import { Response } from "express";
+
 import { logger } from "../lib/logger";
+
+import type { IStorage } from "../storage";
 
 // SSE message types
 export interface SSEMessage {
@@ -219,8 +222,7 @@ export class NotificationManager extends EventEmitter {
           sound:
             notificationData.sound ||
             this.shouldPlaySound(notification.priority || "normal"),
-          icon:
-            notificationData.icon || this.getIconForType(notification.type),
+          icon: notificationData.icon || this.getIconForType(notification.type),
         },
       };
 

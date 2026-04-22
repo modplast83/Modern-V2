@@ -4,32 +4,44 @@
 
 /* Card Component Enhancements */
 .card {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
   border: 1.5px solid var(--border) !important;
 }
 
 .card:hover {
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
   border-color: hsl(220, 13%, 60%) !important;
 }
 
 /* Button Component Enhancements */
 button {
   border: 1px solid transparent !important;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
+  box-shadow:
+    0 1px 3px 0 rgba(0, 0, 0, 0.1),
+    0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
 }
 
 button:hover {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
 }
 
 /* Input and Select Components */
-input, select, textarea {
+input,
+select,
+textarea {
   border-width: 1.5px !important;
   background-color: hsl(0, 0%, 99%) !important;
 }
 
-input:focus, select:focus, textarea:focus {
+input:focus,
+select:focus,
+textarea:focus {
   border-width: 2px !important;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
 }
@@ -76,7 +88,9 @@ table td:last-child {
 /* Dropdown Menu Enhancements */
 [role="menu"] {
   border: 1.5px solid var(--border) !important;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
 }
 
 [role="menuitem"] {
@@ -146,7 +160,9 @@ input[type="radio"] {
 /* Toast/Notification */
 [data-sonner-toast] {
   border: 2px solid var(--border) !important;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
 }
 
 /* Collapsible Content */
@@ -273,20 +289,26 @@ input[type="radio"] {
   * {
     border-width: 2px !important;
   }
-  
+
   button {
     border: 2px solid currentColor !important;
   }
-  
-  input, select, textarea {
+
+  input,
+  select,
+  textarea {
     border-width: 2px !important;
   }
-  
+
   .card {
     border-width: 2px !important;
   }
-  
-  table, table thead, table tbody tr, table th, table td {
+
+  table,
+  table thead,
+  table tbody tr,
+  table th,
+  table td {
     border-width: 2px !important;
   }
 }

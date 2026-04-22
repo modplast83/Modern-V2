@@ -1,21 +1,4 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useTranslation } from 'react-i18next';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
-import { Badge } from "../components/ui/badge";
-import { Progress } from "../components/ui/progress";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "../components/ui/tabs";
 import {
   Activity,
   Database,
@@ -33,6 +16,8 @@ import {
   Monitor,
   MemoryStick,
 } from "lucide-react";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   LineChart,
   Line,
@@ -45,6 +30,22 @@ import {
   Pie,
   Cell,
 } from "recharts";
+
+import { Badge } from "../components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { Progress } from "../components/ui/progress";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../components/ui/tabs";
 
 interface HealthCheck {
   id: number;
@@ -130,12 +131,18 @@ export default function SystemHealth() {
   };
 
   const getCheckTypeLabel = (type: string) => {
-    const typeKey = type as 'database' | 'api' | 'memory' | 'cpu' | 'disk' | 'system';
+    const typeKey = type as
+      | "database"
+      | "api"
+      | "memory"
+      | "cpu"
+      | "disk"
+      | "system";
     return t(`system.health.checkTypes.${typeKey}`, type);
   };
 
   const getStatusLabel = (status: string) => {
-    const statusKey = status as 'healthy' | 'warning' | 'critical' | 'unknown';
+    const statusKey = status as "healthy" | "warning" | "critical" | "unknown";
     return t(`system.health.status.${statusKey}`, status);
   };
 
@@ -149,9 +156,21 @@ export default function SystemHealth() {
     }));
 
   const healthStatusData = [
-    { name: t('system.health.status.healthy'), value: overview?.healthy_checks || 0, color: "#10B981" },
-    { name: t('system.health.warning'), value: overview?.warning_checks || 0, color: "#F59E0B" },
-    { name: t('system.health.danger'), value: overview?.critical_checks || 0, color: "#EF4444" },
+    {
+      name: t("system.health.status.healthy"),
+      value: overview?.healthy_checks || 0,
+      color: "#10B981",
+    },
+    {
+      name: t("system.health.warning"),
+      value: overview?.warning_checks || 0,
+      color: "#F59E0B",
+    },
+    {
+      name: t("system.health.danger"),
+      value: overview?.critical_checks || 0,
+      color: "#EF4444",
+    },
   ];
 
   return (
@@ -159,16 +178,16 @@ export default function SystemHealth() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            {t('system.health.title')}
+            {t("system.health.title")}
           </h1>
           <p className="text-gray-600 dark:text-gray-300 mt-2">
-            {t('system.health.description')}
+            {t("system.health.description")}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-sm">
             <Activity className="w-4 h-4 ml-1" />
-            {t('system.health.liveMonitoring')}
+            {t("system.health.liveMonitoring")}
           </Badge>
           {overview && (
             <Badge
@@ -182,10 +201,10 @@ export default function SystemHealth() {
             >
               <Shield className="w-4 h-4 ml-1" />
               {overview.overall_status === "healthy"
-                ? t('system.health.systemHealthy')
+                ? t("system.health.systemHealthy")
                 : overview.overall_status === "warning"
-                  ? t('system.health.warning')
-                  : t('system.health.danger')}
+                  ? t("system.health.warning")
+                  : t("system.health.danger")}
             </Badge>
           )}
         </div>
@@ -198,7 +217,7 @@ export default function SystemHealth() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-green-700 dark:text-green-300">
-                    {t('system.health.healthyChecks')}
+                    {t("system.health.healthyChecks")}
                   </p>
                   <p className="text-3xl font-bold text-green-900 dark:text-green-100">
                     {overview.healthy_checks}
@@ -214,7 +233,7 @@ export default function SystemHealth() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-yellow-700 dark:text-yellow-300">
-                    {t('system.health.warnings')}
+                    {t("system.health.warnings")}
                   </p>
                   <p className="text-3xl font-bold text-yellow-900 dark:text-yellow-100">
                     {overview.warning_checks}
@@ -230,7 +249,7 @@ export default function SystemHealth() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-red-700 dark:text-red-300">
-                    {t('system.health.criticalCases')}
+                    {t("system.health.criticalCases")}
                   </p>
                   <p className="text-3xl font-bold text-red-900 dark:text-red-100">
                     {overview.critical_checks}
@@ -246,7 +265,7 @@ export default function SystemHealth() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                    {t('system.health.uptimePercent')}
+                    {t("system.health.uptimePercent")}
                   </p>
                   <p className="text-3xl font-bold text-blue-900 dark:text-blue-100">
                     {overview.uptime_percent?.toFixed(1)}%
@@ -262,13 +281,13 @@ export default function SystemHealth() {
       <Tabs defaultValue="checks" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="checks" data-testid="tab-health-checks">
-            {t('system.health.tabs.checks')}
+            {t("system.health.tabs.checks")}
           </TabsTrigger>
           <TabsTrigger value="performance" data-testid="tab-performance">
-            {t('system.health.tabs.performance')}
+            {t("system.health.tabs.performance")}
           </TabsTrigger>
           <TabsTrigger value="overview" data-testid="tab-overview">
-            {t('system.health.tabs.overview')}
+            {t("system.health.tabs.overview")}
           </TabsTrigger>
         </TabsList>
 
@@ -277,10 +296,10 @@ export default function SystemHealth() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Database className="w-5 h-5" />
-                {t('system.health.checksTitle')} ({healthChecks.length})
+                {t("system.health.checksTitle")} ({healthChecks.length})
               </CardTitle>
               <CardDescription>
-                {t('system.health.checksDescription')}
+                {t("system.health.checksDescription")}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -329,7 +348,7 @@ export default function SystemHealth() {
 
                           {check.is_critical && (
                             <Badge variant="destructive" className="text-xs">
-                              {t('system.health.critical')}
+                              {t("system.health.critical")}
                             </Badge>
                           )}
                         </div>
@@ -338,7 +357,7 @@ export default function SystemHealth() {
                       <div className="mt-3 pt-3 border-t grid grid-cols-3 gap-4 text-sm">
                         <div>
                           <span className="text-gray-600 dark:text-gray-300">
-                            {t('system.health.avgResponseTime')}:{" "}
+                            {t("system.health.avgResponseTime")}:{" "}
                           </span>
                           <span className="font-medium">
                             {check.average_response_time}ms
@@ -346,7 +365,7 @@ export default function SystemHealth() {
                         </div>
                         <div>
                           <span className="text-gray-600 dark:text-gray-300">
-                            {t('system.health.errors24h')}:{" "}
+                            {t("system.health.errors24h")}:{" "}
                           </span>
                           <span className="font-medium">
                             {check.error_count_24h}
@@ -354,7 +373,7 @@ export default function SystemHealth() {
                         </div>
                         <div>
                           <span className="text-gray-600 dark:text-gray-300">
-                            {t('system.health.lastCheck')}:{" "}
+                            {t("system.health.lastCheck")}:{" "}
                           </span>
                           <span className="font-medium">
                             {new Date(check.last_check_time).toLocaleTimeString(
@@ -377,7 +396,7 @@ export default function SystemHealth() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <MemoryStick className="w-5 h-5" />
-                  {t('system.health.memoryUsage')}
+                  {t("system.health.memoryUsage")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -387,8 +406,13 @@ export default function SystemHealth() {
                     <XAxis dataKey="time" />
                     <YAxis />
                     <Tooltip
-                      labelFormatter={(label) => `${t('system.health.time')}: ${label}`}
-                      formatter={(value) => [`${value}%`, t('system.health.memoryUsage')]}
+                      labelFormatter={(label) =>
+                        `${t("system.health.time")}: ${label}`
+                      }
+                      formatter={(value) => [
+                        `${value}%`,
+                        t("system.health.memoryUsage"),
+                      ]}
                     />
                     <Line
                       type="monotone"
@@ -406,7 +430,7 @@ export default function SystemHealth() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Activity className="w-5 h-5" />
-                  {t('system.health.checksDistribution')}
+                  {t("system.health.checksDistribution")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -439,7 +463,7 @@ export default function SystemHealth() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                      {t('system.health.avgResponseTimeCard')}
+                      {t("system.health.avgResponseTimeCard")}
                     </p>
                     <p className="text-2xl font-bold">
                       {healthChecks.reduce(
@@ -459,7 +483,7 @@ export default function SystemHealth() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                      {t('system.health.successRate')}
+                      {t("system.health.successRate")}
                     </p>
                     <p className="text-2xl font-bold text-green-600">
                       {(
@@ -481,7 +505,7 @@ export default function SystemHealth() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                      {t('system.health.totalErrors')}
+                      {t("system.health.totalErrors")}
                     </p>
                     <p className="text-2xl font-bold text-red-600">
                       {healthChecks.reduce(
@@ -501,12 +525,12 @@ export default function SystemHealth() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle>{t('system.health.systemInfo')}</CardTitle>
+                <CardTitle>{t("system.health.systemInfo")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-gray-300">
-                    {t('system.health.systemStatus')}:
+                    {t("system.health.systemStatus")}:
                   </span>
                   <Badge
                     variant={
@@ -516,19 +540,19 @@ export default function SystemHealth() {
                     }
                   >
                     {overview?.overall_status === "healthy"
-                      ? t('system.health.status.healthy')
-                      : t('system.health.status.needsAttention')}
+                      ? t("system.health.status.healthy")
+                      : t("system.health.status.needsAttention")}
                   </Badge>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-gray-300">
-                    {t('system.health.totalChecks')}:
+                    {t("system.health.totalChecks")}:
                   </span>
                   <span className="font-medium">{overview?.total_checks}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-gray-300">
-                    {t('system.health.uptimePercent')}:
+                    {t("system.health.uptimePercent")}:
                   </span>
                   <span className="font-medium">
                     {overview?.uptime_percent?.toFixed(2)}%
@@ -536,12 +560,12 @@ export default function SystemHealth() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-gray-300">
-                    {t('system.health.lastCheck')}:
+                    {t("system.health.lastCheck")}:
                   </span>
                   <span className="font-medium">
                     {overview?.last_check
                       ? new Date(overview.last_check).toLocaleString("en-US")
-                      : t('system.health.notDefined')}
+                      : t("system.health.notDefined")}
                   </span>
                 </div>
               </CardContent>
@@ -549,7 +573,7 @@ export default function SystemHealth() {
 
             <Card>
               <CardHeader>
-                <CardTitle>{t('system.health.recommendations')}</CardTitle>
+                <CardTitle>{t("system.health.recommendations")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -557,7 +581,10 @@ export default function SystemHealth() {
                     overview.critical_checks > 0 && (
                       <div className="p-3 bg-red-50 dark:bg-red-950/20 rounded-lg">
                         <p className="text-sm font-medium text-red-900 dark:text-red-100">
-                          ⚠️ {t('system.health.criticalWarning', { count: overview.critical_checks })}
+                          ⚠️{" "}
+                          {t("system.health.criticalWarning", {
+                            count: overview.critical_checks,
+                          })}
                         </p>
                       </div>
                     )}
@@ -565,7 +592,10 @@ export default function SystemHealth() {
                   {overview?.warning_checks && overview.warning_checks > 0 && (
                     <div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg">
                       <p className="text-sm font-medium text-yellow-900 dark:text-yellow-100">
-                        📋 {t('system.health.warningMessage', { count: overview.warning_checks })}
+                        📋{" "}
+                        {t("system.health.warningMessage", {
+                          count: overview.warning_checks,
+                        })}
                       </p>
                     </div>
                   )}
@@ -573,7 +603,7 @@ export default function SystemHealth() {
                   {overview?.uptime_percent && overview.uptime_percent < 99 && (
                     <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
                       <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                        💡 {t('system.health.uptimeCanImprove')}
+                        💡 {t("system.health.uptimeCanImprove")}
                       </p>
                     </div>
                   )}

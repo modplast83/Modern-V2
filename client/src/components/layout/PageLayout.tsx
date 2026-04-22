@@ -1,8 +1,10 @@
 import { ReactNode } from "react";
-import Header from "./Header";
-import Sidebar from "./Sidebar";
-import MobileShell from "./MobileShell";
+
 import { useLanguage } from "../../contexts/LanguageContext";
+
+import Header from "./Header";
+import MobileShell from "./MobileShell";
+import Sidebar from "./Sidebar";
 
 interface PageLayoutProps {
   children: ReactNode;
@@ -12,7 +14,13 @@ interface PageLayoutProps {
   actions?: ReactNode;
 }
 
-export default function PageLayout({ children, title, description, className = "", actions }: PageLayoutProps) {
+export default function PageLayout({
+  children,
+  title,
+  description,
+  className = "",
+  actions,
+}: PageLayoutProps) {
   const { isRTL } = useLanguage();
 
   return (
@@ -23,7 +31,9 @@ export default function PageLayout({ children, title, description, className = "
         <Sidebar />
         <MobileShell />
 
-        <main className={`flex-1 p-4 pb-24 lg:pb-4 ${isRTL ? 'lg:mr-64' : 'lg:ml-64'} ${className}`}>
+        <main
+          className={`flex-1 p-4 pb-24 lg:pb-4 ${isRTL ? "lg:mr-64" : "lg:ml-64"} ${className}`}
+        >
           {(title || description || actions) && (
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
@@ -41,7 +51,7 @@ export default function PageLayout({ children, title, description, className = "
               {actions && <div className="flex-shrink-0">{actions}</div>}
             </div>
           )}
-          
+
           {children}
         </main>
       </div>

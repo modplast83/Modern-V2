@@ -1,25 +1,6 @@
-import { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Button } from "../ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "../ui/dialog";
-import { Label } from "../ui/label";
-import { Textarea } from "../ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
+import { formatDistanceToNow } from "date-fns";
+import { ar } from "date-fns/locale";
 import {
   Plus,
   AlertCircle,
@@ -34,11 +15,31 @@ import {
   Eye,
   Paperclip,
 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+
 import { useAuth } from "../../hooks/use-auth";
 import { useToast } from "../../hooks/use-toast";
 import { apiRequest } from "../../lib/queryClient";
-import { formatDistanceToNow } from "date-fns";
-import { ar } from "date-fns/locale";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../ui/dialog";
+import { Label } from "../ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
+import { Textarea } from "../ui/textarea";
 
 interface QuickNote {
   id: number;
@@ -96,7 +97,7 @@ export default function QuickNotes() {
 
   useEffect(() => {
     if (user?.id && newNote.assigned_to === 0) {
-      setNewNote(prev => ({ ...prev, assigned_to: user.id }));
+      setNewNote((prev) => ({ ...prev, assigned_to: user.id }));
     }
   }, [user?.id, newNote.assigned_to]);
 
@@ -119,8 +120,8 @@ export default function QuickNotes() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/quick-notes"] });
       toast({
-        title: t('dashboard.notes.createSuccess'),
-        description: t('dashboard.notes.createSuccessDesc'),
+        title: t("dashboard.notes.createSuccess"),
+        description: t("dashboard.notes.createSuccessDesc"),
       });
       setIsModalOpen(false);
       setNewNote({
@@ -132,8 +133,8 @@ export default function QuickNotes() {
     },
     onError: (error: any) => {
       toast({
-        title: t('dashboard.notes.createError'),
-        description: error.message || t('dashboard.notes.createErrorDesc'),
+        title: t("dashboard.notes.createError"),
+        description: error.message || t("dashboard.notes.createErrorDesc"),
         variant: "destructive",
       });
     },
@@ -159,8 +160,8 @@ export default function QuickNotes() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/quick-notes"] });
       toast({
-        title: t('dashboard.notes.deleted'),
-        description: t('dashboard.notes.deletedDesc'),
+        title: t("dashboard.notes.deleted"),
+        description: t("dashboard.notes.deletedDesc"),
       });
     },
   });
@@ -168,8 +169,8 @@ export default function QuickNotes() {
   const handleCreateNote = () => {
     if (!newNote.content.trim()) {
       toast({
-        title: t('dashboard.notes.createError'),
-        description: t('dashboard.notes.contentRequired'),
+        title: t("dashboard.notes.createError"),
+        description: t("dashboard.notes.contentRequired"),
         variant: "destructive",
       });
       return;
@@ -179,24 +180,24 @@ export default function QuickNotes() {
   };
 
   const noteTypeLabels: Record<string, string> = {
-    order: t('dashboard.notes.order'),
-    design: t('dashboard.notes.design'),
-    statement: t('dashboard.notes.statement'),
-    quote: t('dashboard.notes.quote'),
-    delivery: t('dashboard.notes.delivery'),
-    call_customer: t('dashboard.notes.callCustomer'),
-    other: t('dashboard.notes.other'),
+    order: t("dashboard.notes.order"),
+    design: t("dashboard.notes.design"),
+    statement: t("dashboard.notes.statement"),
+    quote: t("dashboard.notes.quote"),
+    delivery: t("dashboard.notes.delivery"),
+    call_customer: t("dashboard.notes.callCustomer"),
+    other: t("dashboard.notes.other"),
   };
 
   const priorityLabels: Record<string, string> = {
-    low: t('dashboard.notes.lowPriority'),
-    normal: t('dashboard.notes.normalPriority'),
-    high: t('dashboard.notes.highPriority'),
-    urgent: t('dashboard.notes.urgentPriority'),
+    low: t("dashboard.notes.lowPriority"),
+    normal: t("dashboard.notes.normalPriority"),
+    high: t("dashboard.notes.highPriority"),
+    urgent: t("dashboard.notes.urgentPriority"),
   };
 
   const userNotes = notes.filter(
-    (note) => note.assigned_to === user?.id || note.created_by === user?.id
+    (note) => note.assigned_to === user?.id || note.created_by === user?.id,
   );
   const unreadNotes = userNotes.filter((note) => !note.is_read);
 
@@ -205,7 +206,9 @@ export default function QuickNotes() {
       <CardHeader className="flex flex-row items-center justify-between pb-3">
         <div className="flex items-center gap-2">
           <AlertCircle className="w-5 h-5 text-blue-600" />
-          <CardTitle className="text-lg font-bold">{t('dashboard.notes.title')}</CardTitle>
+          <CardTitle className="text-lg font-bold">
+            {t("dashboard.notes.title")}
+          </CardTitle>
           {unreadNotes.length > 0 && (
             <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
               {unreadNotes.length}
@@ -216,17 +219,19 @@ export default function QuickNotes() {
           <DialogTrigger asChild>
             <Button size="sm" className="gap-2" data-testid="button-add-note">
               <Plus className="w-4 h-4" />
-              {t('dashboard.notes.addNote')}
+              {t("dashboard.notes.addNote")}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>{t('dashboard.notes.addNewNote')}</DialogTitle>
-              <DialogDescription className="sr-only">{t('dashboard.notes.addNewNoteDesc')}</DialogDescription>
+              <DialogTitle>{t("dashboard.notes.addNewNote")}</DialogTitle>
+              <DialogDescription className="sr-only">
+                {t("dashboard.notes.addNewNoteDesc")}
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div>
-                <Label>{t('dashboard.notes.noteType')}</Label>
+                <Label>{t("dashboard.notes.noteType")}</Label>
                 <Select
                   value={newNote.note_type}
                   onValueChange={(value) =>
@@ -250,7 +255,7 @@ export default function QuickNotes() {
               </div>
 
               <div>
-                <Label>{t('dashboard.notes.priority')}</Label>
+                <Label>{t("dashboard.notes.priority")}</Label>
                 <Select
                   value={newNote.priority}
                   onValueChange={(value) =>
@@ -271,7 +276,7 @@ export default function QuickNotes() {
               </div>
 
               <div>
-                <Label>{t('dashboard.notes.assignTo')}</Label>
+                <Label>{t("dashboard.notes.assignTo")}</Label>
                 <Select
                   value={newNote.assigned_to.toString()}
                   onValueChange={(value) =>
@@ -294,13 +299,13 @@ export default function QuickNotes() {
               </div>
 
               <div>
-                <Label>{t('dashboard.notes.content')}</Label>
+                <Label>{t("dashboard.notes.content")}</Label>
                 <Textarea
                   value={newNote.content}
                   onChange={(e) =>
                     setNewNote({ ...newNote, content: e.target.value })
                   }
-                  placeholder={t('dashboard.notes.placeholder')}
+                  placeholder={t("dashboard.notes.placeholder")}
                   className="min-h-[100px]"
                   data-testid="textarea-note-content"
                 />
@@ -312,14 +317,16 @@ export default function QuickNotes() {
                   onClick={() => setIsModalOpen(false)}
                   data-testid="button-cancel"
                 >
-                  {t('dashboard.notes.cancel')}
+                  {t("dashboard.notes.cancel")}
                 </Button>
                 <Button
                   onClick={handleCreateNote}
                   disabled={createNoteMutation.isPending}
                   data-testid="button-save-note"
                 >
-                  {createNoteMutation.isPending ? t('dashboard.notes.saving') : t('dashboard.notes.save')}
+                  {createNoteMutation.isPending
+                    ? t("dashboard.notes.saving")
+                    : t("dashboard.notes.save")}
                 </Button>
               </div>
             </div>
@@ -329,16 +336,24 @@ export default function QuickNotes() {
 
       <CardContent className="space-y-3 max-h-[500px] overflow-y-auto">
         {isLoading ? (
-          <div className="text-center py-4 text-gray-500">{t('dashboard.notes.loading')}</div>
+          <div className="text-center py-4 text-gray-500">
+            {t("dashboard.notes.loading")}
+          </div>
         ) : userNotes.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
-            {t('dashboard.notes.noNotes')}
+            {t("dashboard.notes.noNotes")}
           </div>
         ) : (
           userNotes.map((note) => {
-            const Icon = noteTypeIcons[note.note_type as keyof typeof noteTypeIcons] || noteTypeIcons.other;
-            const typeColor = noteTypeColors[note.note_type as keyof typeof noteTypeColors] || noteTypeColors.other;
-            const priorityStyle = priorityColors[note.priority as keyof typeof priorityColors] || priorityColors.normal;
+            const Icon =
+              noteTypeIcons[note.note_type as keyof typeof noteTypeIcons] ||
+              noteTypeIcons.other;
+            const typeColor =
+              noteTypeColors[note.note_type as keyof typeof noteTypeColors] ||
+              noteTypeColors.other;
+            const priorityStyle =
+              priorityColors[note.priority as keyof typeof priorityColors] ||
+              priorityColors.normal;
 
             return (
               <div
@@ -357,7 +372,7 @@ export default function QuickNotes() {
                       </span>
                       {!note.is_read && (
                         <span className="text-xs font-bold text-blue-600">
-                          {t('dashboard.notes.new')}
+                          {t("dashboard.notes.new")}
                         </span>
                       )}
                     </div>
@@ -365,9 +380,13 @@ export default function QuickNotes() {
                       {note.content}
                     </p>
                     <div className="flex items-center gap-3 text-xs text-gray-600">
-                      <span>{t('dashboard.notes.from')}: {note.creator_name}</span>
+                      <span>
+                        {t("dashboard.notes.from")}: {note.creator_name}
+                      </span>
                       <span>•</span>
-                      <span>{t('dashboard.notes.to')}: {note.assignee_name}</span>
+                      <span>
+                        {t("dashboard.notes.to")}: {note.assignee_name}
+                      </span>
                       <span>•</span>
                       <span>
                         {formatDistanceToNow(new Date(note.created_at), {
@@ -397,7 +416,8 @@ export default function QuickNotes() {
                         <Eye className="w-4 h-4" />
                       </Button>
                     )}
-                    {(note.created_by === user?.id || user?.permissions?.includes('admin')) && (
+                    {(note.created_by === user?.id ||
+                      user?.permissions?.includes("admin")) && (
                       <Button
                         size="sm"
                         variant="ghost"

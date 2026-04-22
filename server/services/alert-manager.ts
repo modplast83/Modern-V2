@@ -1,4 +1,10 @@
 import { EventEmitter } from "events";
+
+import {
+  getNotificationManager,
+  type SystemNotificationData,
+} from "./notification-manager";
+
 import type { IStorage } from "../storage";
 import type {
   SystemAlert,
@@ -8,7 +14,6 @@ import type {
   CorrectiveAction,
   InsertCorrectiveAction,
 } from "@shared/schema";
-import { getNotificationManager, type SystemNotificationData } from "./notification-manager";
 
 /**
  * نظام إدارة التحذيرات الذكية
@@ -183,7 +188,9 @@ export class AlertManager extends EventEmitter {
         message: alert.message || "New alert created",
         message_ar: alert.message_ar || "تم إنشاء تحذير جديد",
         type: alert.type as SystemNotificationData["type"],
-        priority: this.getNotificationPriority(alert.severity) as SystemNotificationData["priority"],
+        priority: this.getNotificationPriority(
+          alert.severity,
+        ) as SystemNotificationData["priority"],
         context_type: alert.type,
         context_id: alert.source_id || undefined,
         sound: alert.severity === "critical",
@@ -213,17 +220,19 @@ export class AlertManager extends EventEmitter {
   private async createCorrectiveActions(alert: SystemAlert): Promise<void> {
     try {
       if (!alert.suggested_actions) return;
-      
+
       // Get system user ID from environment or use null for system actions
       // In production, ensure a proper system user account exists
-      const systemUserId = process.env.SYSTEM_USER_ID ? 
-        parseInt(process.env.SYSTEM_USER_ID) : 
-        null;
-      
+      const systemUserId = process.env.SYSTEM_USER_ID
+        ? parseInt(process.env.SYSTEM_USER_ID)
+        : null;
+
       if (!systemUserId) {
-        console.warn("[AlertManager] No SYSTEM_USER_ID configured. Using null for automated actions.");
+        console.warn(
+          "[AlertManager] No SYSTEM_USER_ID configured. Using null for automated actions.",
+        );
       }
-      
+
       for (const suggestion of alert.suggested_actions) {
         const actionData: InsertCorrectiveAction = {
           alert_id: alert.id,

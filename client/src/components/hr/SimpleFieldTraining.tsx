@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { Card, CardContent } from "../ui/card";
-import { Button } from "../ui/button";
 import { Shield, Users, Star } from "lucide-react";
+import { useState } from "react";
+
+import { Button } from "../ui/button";
+import { Card, CardContent } from "../ui/card";
 
 export default function SimpleFieldTraining() {
   const [selectedView, setSelectedView] = useState<

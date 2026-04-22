@@ -1,19 +1,21 @@
+import fs from "fs";
 import http from "http";
+import path from "path";
+
+import { users } from "@shared/schema";
+import bcrypt from "bcrypt";
+import compression from "compression";
+import connectPgSimple from "connect-pg-simple";
+import { sql } from "drizzle-orm";
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
-import connectPgSimple from "connect-pg-simple";
-import compression from "compression";
-import { setupVite, serveStatic, log } from "./vite";
+
 import { db, pool } from "./db";
-import { users } from "@shared/schema";
-import { sql } from "drizzle-orm";
-import bcrypt from "bcrypt";
-import path from "path";
-import fs from "fs";
-import { populateUserFromSession } from "./middleware/session-auth";
-import { performanceMonitor } from "./middleware/performance-monitor";
 import { MemoryMonitor } from "./middleware/memory-monitor";
+import { performanceMonitor } from "./middleware/performance-monitor";
+import { populateUserFromSession } from "./middleware/session-auth";
 import monitoringRoutes from "./routes/monitoring";
+import { setupVite, serveStatic, log } from "./vite";
 
 process.on("uncaughtException", (err) => {
   try {
@@ -25,7 +27,10 @@ process.on("uncaughtException", (err) => {
 
 process.on("unhandledRejection", (reason) => {
   try {
-    console.error("Unhandled rejection:", reason instanceof Error ? reason.message : String(reason));
+    console.error(
+      "Unhandled rejection:",
+      reason instanceof Error ? reason.message : String(reason),
+    );
   } catch {
     console.error("Unhandled rejection (unformattable)");
   }
@@ -39,7 +44,11 @@ app.use((req: Request, res: Response, next: NextFunction) => {
       return res.status(200).send("OK");
     }
     if (!req.path.startsWith("/api/")) {
-      return res.status(200).send(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><style>body{font-family:Cairo,system-ui,sans-serif;margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#fafafa}.s{width:2rem;height:2rem;border:2px solid #f3f4f6;border-radius:50%;border-top-color:#3984f6;animation:r 1s ease-in-out infinite;margin:0 auto 1rem}@keyframes r{to{transform:rotate(360deg)}}</style></head><body><div style="text-align:center"><div class="s"></div><p style="font-size:.875rem;color:#6b7280">جاري تحميل النظام...</p></div><script>setTimeout(()=>location.reload(),2000)</script></body></html>`);
+      return res
+        .status(200)
+        .send(
+          `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><style>body{font-family:Cairo,system-ui,sans-serif;margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#fafafa}.s{width:2rem;height:2rem;border:2px solid #f3f4f6;border-radius:50%;border-top-color:#3984f6;animation:r 1s ease-in-out infinite;margin:0 auto 1rem}@keyframes r{to{transform:rotate(360deg)}}</style></head><body><div style="text-align:center"><div class="s"></div><p style="font-size:.875rem;color:#6b7280">جاري تحميل النظام...</p></div><script>setTimeout(()=>location.reload(),2000)</script></body></html>`,
+        );
     }
   }
   next();
@@ -55,16 +64,18 @@ if (process.env.NODE_ENV === "production") {
 }
 
 // Enable gzip/br compression for all responses
-app.use(compression({
-  level: 6,
-  threshold: 1024,
-  filter: (req, res) => {
-    if (req.headers['x-no-compression']) {
-      return false;
-    }
-    return compression.filter(req, res);
-  }
-}));
+app.use(
+  compression({
+    level: 6,
+    threshold: 1024,
+    filter: (req, res) => {
+      if (req.headers["x-no-compression"]) {
+        return false;
+      }
+      return compression.filter(req, res);
+    },
+  }),
+);
 
 // Carve-outs: heavy upload/import endpoints get a larger limit (10mb).
 // Everything else is capped at 1mb to prevent payload-based DoS.
@@ -82,10 +93,7 @@ const HEAVY_UPLOAD_PREFIXES = [
 // Webhook prefixes that need raw-body capture for signature verification.
 // Both legacy "/webhook/..." and the actual "/api/notifications/webhook/..."
 // routes (Meta/Taqnyat/Twilio) must capture req.rawBody so HMAC checks work.
-const WEBHOOK_PREFIXES = [
-  "/webhook/",
-  "/api/notifications/webhook/",
-];
+const WEBHOOK_PREFIXES = ["/webhook/", "/api/notifications/webhook/"];
 
 const isWebhookUrl = (url?: string): boolean =>
   !!url && WEBHOOK_PREFIXES.some((p) => url.includes(p));
@@ -99,7 +107,10 @@ const captureRawBody = (req: any, _res: any, buf: Buffer) => {
 const heavyJson = express.json({ limit: "10mb", verify: captureRawBody });
 const heavyUrlencoded = express.urlencoded({ extended: false, limit: "10mb" });
 const standardJson = express.json({ limit: "1mb", verify: captureRawBody });
-const standardUrlencoded = express.urlencoded({ extended: false, limit: "1mb" });
+const standardUrlencoded = express.urlencoded({
+  extended: false,
+  limit: "1mb",
+});
 
 app.use((req, res, next) => {
   const isHeavy = HEAVY_UPLOAD_PREFIXES.some((p) => req.path.startsWith(p));
@@ -150,12 +161,19 @@ app.get("/manifest.json", (_req, res) => {
 });
 const iconsRoot = path.resolve(publicRoot, "icons");
 const iconsDist = path.resolve(distPublic, "icons");
-app.use("/icons", express.static(fs.existsSync(iconsRoot) ? iconsRoot : iconsDist));
+app.use(
+  "/icons",
+  express.static(fs.existsSync(iconsRoot) ? iconsRoot : iconsDist),
+);
 app.get("/favicon-32x32.png", (_req, res) => {
-  res.sendFile(path.resolve(import.meta.dirname, "..", "public", "favicon-32x32.png"));
+  res.sendFile(
+    path.resolve(import.meta.dirname, "..", "public", "favicon-32x32.png"),
+  );
 });
 app.get("/favicon-16x16.png", (_req, res) => {
-  res.sendFile(path.resolve(import.meta.dirname, "..", "public", "favicon-16x16.png"));
+  res.sendFile(
+    path.resolve(import.meta.dirname, "..", "public", "favicon-16x16.png"),
+  );
 });
 
 // Security function to check for plaintext passwords
@@ -210,9 +228,14 @@ async function performPasswordSecurityCheck(): Promise<void> {
               .update(users)
               .set({ password: hashedPassword })
               .where(sql`${users.id} = ${user.id}`);
-            console.log(`✅ Auto-hashed password for user ${user.id} (${user.username})`);
+            console.log(
+              `✅ Auto-hashed password for user ${user.id} (${user.username})`,
+            );
           } catch (hashErr) {
-            console.error(`❌ Failed to hash password for user ${user.id}:`, hashErr);
+            console.error(
+              `❌ Failed to hash password for user ${user.id}:`,
+              hashErr,
+            );
           }
         }
       }
@@ -261,7 +284,10 @@ app.use((req, res, next) => {
   }
 
   // MCP endpoint: allow any origin (protected by API key auth)
-  const isMcpRoute = req.path === "/mcp" || req.path.startsWith("/oauth/") || req.path === "/.well-known/oauth-authorization-server";
+  const isMcpRoute =
+    req.path === "/mcp" ||
+    req.path.startsWith("/oauth/") ||
+    req.path === "/.well-known/oauth-authorization-server";
 
   if (isMcpRoute && origin) {
     res.header("Access-Control-Allow-Origin", origin);
@@ -354,7 +380,12 @@ app.use(performanceMonitor);
 // Session extension middleware - extends session on any API call with enhanced reliability
 app.use((req, res, next) => {
   // Skip session extension for MCP/OAuth routes (uses API key auth)
-  if (req.path === "/mcp" || req.path.startsWith("/oauth/") || req.path === "/.well-known/oauth-authorization-server") return next();
+  if (
+    req.path === "/mcp" ||
+    req.path.startsWith("/oauth/") ||
+    req.path === "/.well-known/oauth-authorization-server"
+  )
+    return next();
   // For API requests, extend the session if it exists
   if (req.path.startsWith("/api") && req.session) {
     // Check if session has userId (authenticated session)
@@ -568,7 +599,10 @@ function sanitizeResponseForLogging(response: any): any {
 
         console.log("✅ تم إنشاء هيكل قاعدة البيانات بنجاح");
         if (pushResult.stderr && pushResult.stderr.includes("error")) {
-          console.warn("⚠️ Push warnings:", pushResult.stderr.substring(0, 200));
+          console.warn(
+            "⚠️ Push warnings:",
+            pushResult.stderr.substring(0, 200),
+          );
         }
 
         const verifyCheck = await db.execute(sql`
@@ -594,13 +628,28 @@ function sanitizeResponseForLogging(response: any): any {
       // Existing database: verify critical tables, skip push to preserve performance
       console.log("✅ قاعدة البيانات موجودة - التحقق من الجداول الأساسية...");
 
-      const criticalTables = ["users", "system_settings", "roles", "face_registrations", "mobile_sessions", "mobile_device_tokens", "mobile_sync_queue", "mcp_api_keys", "mcp_oauth_tokens", "mcp_oauth_clients"];
+      const criticalTables = [
+        "users",
+        "system_settings",
+        "roles",
+        "face_registrations",
+        "mobile_sessions",
+        "mobile_device_tokens",
+        "mobile_sync_queue",
+        "mcp_api_keys",
+        "mcp_oauth_tokens",
+        "mcp_oauth_clients",
+      ];
       for (const tableName of criticalTables) {
         try {
-          await db.execute(sql`SELECT 1 FROM ${sql.identifier(tableName)} LIMIT 1`);
+          await db.execute(
+            sql`SELECT 1 FROM ${sql.identifier(tableName)} LIMIT 1`,
+          );
         } catch (tableError: any) {
           if (tableError?.message?.includes("does not exist")) {
-            console.warn(`⚠️ جدول ${tableName} غير موجود - سيتم إنشاء الجداول الناقصة...`);
+            console.warn(
+              `⚠️ جدول ${tableName} غير موجود - سيتم إنشاء الجداول الناقصة...`,
+            );
             try {
               const { exec } = await import("child_process");
               const { promisify } = await import("util");
@@ -632,7 +681,6 @@ function sanitizeResponseForLogging(response: any): any {
   // Security check: Verify no plaintext passwords remain
   await performPasswordSecurityCheck();
 
-
   // 📊 Start memory monitoring
   MemoryMonitor.startMonitoring(30000); // Every 30 seconds
 
@@ -640,7 +688,10 @@ function sanitizeResponseForLogging(response: any): any {
   app.use(monitoringRoutes);
 
   const { registerRoutes } = await import("./routes");
-  const server = await registerRoutes(app, devServer || earlyServer || undefined);
+  const server = await registerRoutes(
+    app,
+    devServer || earlyServer || undefined,
+  );
 
   // 404 handler for unmatched API routes (MUST be after routes)
   app.use("/api/*", (req: Request, res: Response, next: NextFunction) => {

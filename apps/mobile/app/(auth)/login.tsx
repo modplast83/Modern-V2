@@ -1,14 +1,21 @@
-import { useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
-import { Screen } from "@/components/layout/Screen";
-import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/auth/AuthContext";
-import { useTheme } from "@/utils/useTheme";
+import { Screen } from "@/components/layout/Screen";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { FontSize, Spacing } from "@/constants/spacing";
+import { useTheme } from "@/utils/useTheme";
 
 export default function LoginScreen() {
   const { t } = useTranslation();
@@ -36,10 +43,16 @@ export default function LoginScreen() {
 
   return (
     <Screen>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
         <View style={styles.brand}>
-          <Text style={[styles.title, { color: colors.text }]}>{t("app.name")}</Text>
-          <Text style={[styles.subtitle, { color: colors.textMuted }]}>{t("app.tagline")}</Text>
+          <Text style={[styles.title, { color: colors.text }]}>
+            {t("app.name")}
+          </Text>
+          <Text style={[styles.subtitle, { color: colors.textMuted }]}>
+            {t("app.tagline")}
+          </Text>
         </View>
 
         <View style={{ marginTop: Spacing.xl }}>
@@ -60,7 +73,12 @@ export default function LoginScreen() {
             textContentType="password"
           />
           <View style={{ height: Spacing.xl }} />
-          <Button title={t("auth.login")} onPress={onSubmit} loading={submitting} fullWidth />
+          <Button
+            title={t("auth.login")}
+            onPress={onSubmit}
+            loading={submitting}
+            fullWidth
+          />
         </View>
       </KeyboardAvoidingView>
     </Screen>
@@ -68,7 +86,15 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  brand: { alignItems: "center", paddingTop: Spacing.xxxl, marginBottom: Spacing.xl },
+  brand: {
+    alignItems: "center",
+    paddingTop: Spacing.xxxl,
+    marginBottom: Spacing.xl,
+  },
   title: { fontSize: FontSize.xxl, fontWeight: "800" },
-  subtitle: { fontSize: FontSize.sm, marginTop: Spacing.xs, textAlign: "center" },
+  subtitle: {
+    fontSize: FontSize.sm,
+    marginTop: Spacing.xs,
+    textAlign: "center",
+  },
 });

@@ -1,6 +1,12 @@
 import {
-  BAG_TYPES, MATERIALS, BAG_COLORS, HANDLES,
-  type BagTypeRules, type MaterialInfo, type BagColorInfo, type HandleInfo,
+  BAG_TYPES,
+  MATERIALS,
+  BAG_COLORS,
+  HANDLES,
+  type BagTypeRules,
+  type MaterialInfo,
+  type BagColorInfo,
+  type HandleInfo,
 } from "./bag-rules";
 
 export interface BagConfiguration {
@@ -13,7 +19,7 @@ export interface BagConfiguration {
   thickness: number;
   handle: string;
   bagColor: string;
-  printSide: 'front' | 'back' | 'both';
+  printSide: "front" | "back" | "both";
   printColorsCount: number;
   printColors: string[];
   printColorShades: Record<string, string>;
@@ -43,7 +49,11 @@ export interface ValidationResult {
   isValid: boolean;
   errors: ValidationMessage[];
   warnings: ValidationMessage[];
-  suggestions: Array<{ field: string; suggestedValue: number | string; message: string }>;
+  suggestions: Array<{
+    field: string;
+    suggestedValue: number | string;
+    message: string;
+  }>;
 }
 
 export const DEFAULT_CONFIG: BagConfiguration = {
@@ -76,37 +86,39 @@ export function getBagTypeRules(bagType: string): BagTypeRules | null {
 export function getAllowedMaterials(bagType: string): MaterialInfo[] {
   const rules = getBagTypeRules(bagType);
   if (!rules) return [];
-  return rules.material_allowed
-    .map((id) => MATERIALS[id])
-    .filter(Boolean);
+  return rules.material_allowed.map((id) => MATERIALS[id]).filter(Boolean);
 }
 
 export function getAllowedHandles(bagType: string): HandleInfo[] {
   const rules = getBagTypeRules(bagType);
   if (!rules) return [];
-  return rules.handle_allowed
-    .map((id) => HANDLES[id])
-    .filter(Boolean);
+  return rules.handle_allowed.map((id) => HANDLES[id]).filter(Boolean);
 }
 
 export function getAllowedColors(bagType: string): BagColorInfo[] {
   const rules = getBagTypeRules(bagType);
   if (!rules) return [];
-  return rules.bag_colors
-    .map((id) => BAG_COLORS[id])
-    .filter(Boolean);
+  return rules.bag_colors.map((id) => BAG_COLORS[id]).filter(Boolean);
 }
 
-export function getDimensionLimits(bagType: string, isPrinted: boolean, currentWidth?: number) {
+export function getDimensionLimits(
+  bagType: string,
+  isPrinted: boolean,
+  currentWidth?: number,
+) {
   const rules = getBagTypeRules(bagType);
   if (!rules) return null;
 
-  const widthLimits = isPrinted && rules.width_printed ? rules.width_printed : rules.width;
+  const widthLimits =
+    isPrinted && rules.width_printed ? rules.width_printed : rules.width;
 
   let sideGussetMax = rules.side_gusset.max;
   if (rules.side_gusset_supported && currentWidth && currentWidth > 0) {
     const halfWidth = Math.floor(currentWidth / 2) - 1;
-    sideGussetMax = Math.min(rules.side_gusset.max, Math.max(rules.side_gusset.min, halfWidth));
+    sideGussetMax = Math.min(
+      rules.side_gusset.max,
+      Math.max(rules.side_gusset.min, halfWidth),
+    );
   }
 
   return {
@@ -121,7 +133,8 @@ export function getDimensionLimits(bagType: string, isPrinted: boolean, currentW
 }
 
 export function getBagWeightGrams(config: BagConfiguration): number | null {
-  if (config.width <= 0 || config.length <= 0 || config.thickness <= 0) return null;
+  if (config.width <= 0 || config.length <= 0 || config.thickness <= 0)
+    return null;
   const material = MATERIALS[config.material];
   if (!material) return null;
 
@@ -159,10 +172,14 @@ export function getHangerHeightCm(
 ): number {
   const rules = opts?.bagType ? getBagTypeRules(opts.bagType) : null;
   const widthMax = rules
-    ? (opts?.isPrinted && rules.width_printed ? rules.width_printed.max : rules.width.max)
+    ? opts?.isPrinted && rules.width_printed
+      ? rules.width_printed.max
+      : rules.width.max
     : HANGER_DEFAULT_WIDTH_MAX_CM;
   const lengthMax = rules
-    ? (opts?.isPrinted ? rules.length_printed.max : rules.length_plain.max)
+    ? opts?.isPrinted
+      ? rules.length_printed.max
+      : rules.length_plain.max
     : HANGER_DEFAULT_LENGTH_MAX_CM;
 
   const widthRatio = widthCm > 0 ? Math.min(1, widthCm / widthMax) : 0.5;
@@ -170,7 +187,8 @@ export function getHangerHeightCm(
   const sizeRatio = widthRatio * 0.6 + lengthRatio * 0.4;
 
   return Math.round(
-    HANGER_MIN_HEIGHT_CM + sizeRatio * (HANGER_MAX_HEIGHT_CM - HANGER_MIN_HEIGHT_CM),
+    HANGER_MIN_HEIGHT_CM +
+      sizeRatio * (HANGER_MAX_HEIGHT_CM - HANGER_MIN_HEIGHT_CM),
   );
 }
 
@@ -189,7 +207,10 @@ export function getPrintArea(bagType: string) {
   return rules.print_area;
 }
 
-export function checkPrintContrast(bagColorId: string, printColorHex: string): { good: boolean; message: string } {
+export function checkPrintContrast(
+  bagColorId: string,
+  printColorHex: string,
+): { good: boolean; message: string } {
   const bagColor = BAG_COLORS[bagColorId];
   if (!bagColor) return { good: true, message: "" };
 
@@ -201,13 +222,21 @@ export function checkPrintContrast(bagColorId: string, printColorHex: string): {
 
   const bagLum = relativeLuminance(bagRgb);
   const printLum = relativeLuminance(printRgb);
-  const contrast = (Math.max(bagLum, printLum) + 0.05) / (Math.min(bagLum, printLum) + 0.05);
+  const contrast =
+    (Math.max(bagLum, printLum) + 0.05) / (Math.min(bagLum, printLum) + 0.05);
 
   if (contrast < 2) {
-    return { good: false, message: "تباين ضعيف جداً - لون الطباعة قريب جداً من لون الكيس ولن يكون واضحاً" };
+    return {
+      good: false,
+      message:
+        "تباين ضعيف جداً - لون الطباعة قريب جداً من لون الكيس ولن يكون واضحاً",
+    };
   }
   if (contrast < 3) {
-    return { good: false, message: "تباين منخفض - قد لا يكون لون الطباعة واضحاً على هذا اللون" };
+    return {
+      good: false,
+      message: "تباين منخفض - قد لا يكون لون الطباعة واضحاً على هذا اللون",
+    };
   }
   return { good: true, message: "" };
 }
@@ -230,10 +259,16 @@ export function getSuggestedThickness(config: BagConfiguration): number | null {
   return suggested;
 }
 
-export function validateConfiguration(config: BagConfiguration): ValidationResult {
+export function validateConfiguration(
+  config: BagConfiguration,
+): ValidationResult {
   const errors: ValidationMessage[] = [];
   const warnings: ValidationMessage[] = [];
-  const suggestions: Array<{ field: string; suggestedValue: number | string; message: string }> = [];
+  const suggestions: Array<{
+    field: string;
+    suggestedValue: number | string;
+    message: string;
+  }> = [];
 
   const rules = getBagTypeRules(config.bagType);
   if (!rules) {
@@ -244,94 +279,175 @@ export function validateConfiguration(config: BagConfiguration): ValidationResul
   if (!config.material) {
     errors.push({ field: "material", message: "يجب اختيار المادة" });
   } else if (!rules.material_allowed.includes(config.material)) {
-    errors.push({ field: "material", message: `المادة "${MATERIALS[config.material]?.label_ar}" غير مدعومة لهذا النوع من الأكياس` });
+    errors.push({
+      field: "material",
+      message: `المادة "${MATERIALS[config.material]?.label_ar}" غير مدعومة لهذا النوع من الأكياس`,
+    });
   } else {
     const mat = MATERIALS[config.material];
     if (mat && config.thickness > 0) {
       if (config.thickness < mat.min_thickness) {
-        errors.push({ field: "thickness", message: `السماكة أقل من الحد الأدنى لمادة ${mat.label_ar} (${mat.min_thickness} ميكرون)` });
+        errors.push({
+          field: "thickness",
+          message: `السماكة أقل من الحد الأدنى لمادة ${mat.label_ar} (${mat.min_thickness} ميكرون)`,
+        });
       }
       if (config.thickness > mat.max_thickness) {
-        errors.push({ field: "thickness", message: `السماكة أعلى من الحد الأقصى لمادة ${mat.label_ar} (${mat.max_thickness} ميكرون)` });
+        errors.push({
+          field: "thickness",
+          message: `السماكة أعلى من الحد الأقصى لمادة ${mat.label_ar} (${mat.max_thickness} ميكرون)`,
+        });
       }
     }
   }
 
   if (config.thickness > 0) {
     if (config.thickness < rules.thickness.min) {
-      errors.push({ field: "thickness", message: `السماكة أقل من الحد الأدنى (${rules.thickness.min} ${rules.thickness.unit})` });
-      suggestions.push({ field: "thickness", suggestedValue: rules.thickness.min, message: `الحد الأدنى المسموح: ${rules.thickness.min} ${rules.thickness.unit}` });
+      errors.push({
+        field: "thickness",
+        message: `السماكة أقل من الحد الأدنى (${rules.thickness.min} ${rules.thickness.unit})`,
+      });
+      suggestions.push({
+        field: "thickness",
+        suggestedValue: rules.thickness.min,
+        message: `الحد الأدنى المسموح: ${rules.thickness.min} ${rules.thickness.unit}`,
+      });
     }
     if (config.thickness > rules.thickness.max) {
-      errors.push({ field: "thickness", message: `السماكة أعلى من الحد الأقصى (${rules.thickness.max} ${rules.thickness.unit})` });
-      suggestions.push({ field: "thickness", suggestedValue: rules.thickness.max, message: `الحد الأقصى المسموح: ${rules.thickness.max} ${rules.thickness.unit}` });
+      errors.push({
+        field: "thickness",
+        message: `السماكة أعلى من الحد الأقصى (${rules.thickness.max} ${rules.thickness.unit})`,
+      });
+      suggestions.push({
+        field: "thickness",
+        suggestedValue: rules.thickness.max,
+        message: `الحد الأقصى المسموح: ${rules.thickness.max} ${rules.thickness.unit}`,
+      });
     }
   }
 
-  const widthLimits = config.isPrinted && rules.width_printed ? rules.width_printed : rules.width;
+  const widthLimits =
+    config.isPrinted && rules.width_printed ? rules.width_printed : rules.width;
   if (config.width > 0) {
     if (config.width < widthLimits.min) {
-      errors.push({ field: "width", message: `العرض أقل من الحد الأدنى (${widthLimits.min} ${widthLimits.unit})` });
+      errors.push({
+        field: "width",
+        message: `العرض أقل من الحد الأدنى (${widthLimits.min} ${widthLimits.unit})`,
+      });
     }
     if (config.width > widthLimits.max) {
-      errors.push({ field: "width", message: `العرض أعلى من الحد الأقصى (${widthLimits.max} ${widthLimits.unit})` });
+      errors.push({
+        field: "width",
+        message: `العرض أعلى من الحد الأقصى (${widthLimits.max} ${widthLimits.unit})`,
+      });
     }
   }
 
-  const lengthLimits = config.isPrinted ? rules.length_printed : rules.length_plain;
+  const lengthLimits = config.isPrinted
+    ? rules.length_printed
+    : rules.length_plain;
   if (config.length > 0) {
     if (config.length < lengthLimits.min) {
-      errors.push({ field: "length", message: `الطول أقل من الحد الأدنى (${lengthLimits.min} ${lengthLimits.unit})` });
+      errors.push({
+        field: "length",
+        message: `الطول أقل من الحد الأدنى (${lengthLimits.min} ${lengthLimits.unit})`,
+      });
     }
     if (config.length > lengthLimits.max) {
-      errors.push({ field: "length", message: `الطول أعلى من الحد الأقصى (${lengthLimits.max} ${lengthLimits.unit})` });
+      errors.push({
+        field: "length",
+        message: `الطول أعلى من الحد الأقصى (${lengthLimits.max} ${lengthLimits.unit})`,
+      });
     }
   }
 
   if (!rules.side_gusset_supported && config.sideGusset > 0) {
-    errors.push({ field: "sideGusset", message: "الدخلات الجانبية غير مدعومة لهذا النوع من الأكياس" });
+    errors.push({
+      field: "sideGusset",
+      message: "الدخلات الجانبية غير مدعومة لهذا النوع من الأكياس",
+    });
   }
   if (rules.side_gusset_supported && config.sideGusset > 0) {
     if (config.sideGusset < rules.side_gusset.min) {
-      errors.push({ field: "sideGusset", message: `الدخلة الجانبية أقل من الحد الأدنى (${rules.side_gusset.min} ${rules.side_gusset.unit})` });
+      errors.push({
+        field: "sideGusset",
+        message: `الدخلة الجانبية أقل من الحد الأدنى (${rules.side_gusset.min} ${rules.side_gusset.unit})`,
+      });
     }
-    const maxGusset = config.width > 0 ? Math.floor(config.width / 2) - 1 : rules.side_gusset.max;
+    const maxGusset =
+      config.width > 0
+        ? Math.floor(config.width / 2) - 1
+        : rules.side_gusset.max;
     if (config.sideGusset >= Math.floor(config.width / 2) && config.width > 0) {
-      errors.push({ field: "sideGusset", message: "الدخلة الجانبية يجب أن تكون أقل من نصف العرض" });
+      errors.push({
+        field: "sideGusset",
+        message: "الدخلة الجانبية يجب أن تكون أقل من نصف العرض",
+      });
     } else if (config.sideGusset > rules.side_gusset.max) {
-      errors.push({ field: "sideGusset", message: `الدخلة الجانبية أعلى من الحد الأقصى (${rules.side_gusset.max} ${rules.side_gusset.unit})` });
+      errors.push({
+        field: "sideGusset",
+        message: `الدخلة الجانبية أعلى من الحد الأقصى (${rules.side_gusset.max} ${rules.side_gusset.unit})`,
+      });
     }
     if (config.width > 0 && config.sideGusset > config.width * 0.4) {
-      warnings.push({ field: "sideGusset", message: "الدخلة الجانبية كبيرة نسبياً مقارنة بالعرض" });
+      warnings.push({
+        field: "sideGusset",
+        message: "الدخلة الجانبية كبيرة نسبياً مقارنة بالعرض",
+      });
     }
   }
 
   if (config.handle && !rules.handle_allowed.includes(config.handle)) {
-    errors.push({ field: "handle", message: "نوع المقبض غير مدعوم لهذا الكيس" });
+    errors.push({
+      field: "handle",
+      message: "نوع المقبض غير مدعوم لهذا الكيس",
+    });
   }
   if (config.handle && rules.handle_rules[config.handle]) {
     const hr = rules.handle_rules[config.handle];
     if (hr.min_width && config.width > 0 && config.width < hr.min_width) {
-      errors.push({ field: "handle", message: `هذا المقبض يتطلب عرضاً لا يقل عن ${hr.min_width} سم` });
+      errors.push({
+        field: "handle",
+        message: `هذا المقبض يتطلب عرضاً لا يقل عن ${hr.min_width} سم`,
+      });
     }
-    if (hr.min_thickness && config.thickness > 0 && config.thickness < hr.min_thickness) {
-      errors.push({ field: "handle", message: `هذا المقبض يتطلب سماكة لا تقل عن ${hr.min_thickness} ميكرون` });
+    if (
+      hr.min_thickness &&
+      config.thickness > 0 &&
+      config.thickness < hr.min_thickness
+    ) {
+      errors.push({
+        field: "handle",
+        message: `هذا المقبض يتطلب سماكة لا تقل عن ${hr.min_thickness} ميكرون`,
+      });
     }
   }
 
   if (config.bagColor && !rules.bag_colors.includes(config.bagColor)) {
-    errors.push({ field: "bagColor", message: "لون الكيس غير متاح لهذا النوع" });
+    errors.push({
+      field: "bagColor",
+      message: "لون الكيس غير متاح لهذا النوع",
+    });
   }
 
   if (config.isPrinted) {
     if (!rules.printable) {
-      errors.push({ field: "isPrinted", message: "الطباعة غير مدعومة لهذا النوع من الأكياس" });
+      errors.push({
+        field: "isPrinted",
+        message: "الطباعة غير مدعومة لهذا النوع من الأكياس",
+      });
     }
     if (config.printColors.length < rules.print_colors.min) {
-      errors.push({ field: "printColors", message: `يجب اختيار ${rules.print_colors.min} لون على الأقل` });
+      errors.push({
+        field: "printColors",
+        message: `يجب اختيار ${rules.print_colors.min} لون على الأقل`,
+      });
     }
     if (config.printColors.length > rules.print_colors.max) {
-      errors.push({ field: "printColors", message: `أقصى عدد للألوان ${rules.print_colors.max}` });
+      errors.push({
+        field: "printColors",
+        message: `أقصى عدد للألوان ${rules.print_colors.max}`,
+      });
     }
   }
 
@@ -342,12 +458,18 @@ export function validateConfiguration(config: BagConfiguration): ValidationResul
         if (key === "width_gt" && config.width <= val) conditionMet = false;
         if (key === "width_lt" && config.width >= val) conditionMet = false;
         if (key === "length_gt" && config.length <= val) conditionMet = false;
-        if (key === "thickness_lt" && config.thickness >= val) conditionMet = false;
+        if (key === "thickness_lt" && config.thickness >= val)
+          conditionMet = false;
       }
       if (conditionMet) {
         let actionViolated = false;
         for (const [key, val] of Object.entries(rule.then)) {
-          if (key === "thickness_min" && config.thickness > 0 && config.thickness < val) actionViolated = true;
+          if (
+            key === "thickness_min" &&
+            config.thickness > 0 &&
+            config.thickness < val
+          )
+            actionViolated = true;
         }
         if (actionViolated) {
           if (rule.type === "error") {
@@ -355,9 +477,15 @@ export function validateConfiguration(config: BagConfiguration): ValidationResul
           } else if (rule.type === "warning") {
             warnings.push({ field: "compatibility", message: rule.message_ar });
           } else {
-            const sugVal = Object.entries(rule.then).find(([k]) => k === "thickness_min");
+            const sugVal = Object.entries(rule.then).find(
+              ([k]) => k === "thickness_min",
+            );
             if (sugVal) {
-              suggestions.push({ field: "thickness", suggestedValue: sugVal[1], message: rule.message_ar });
+              suggestions.push({
+                field: "thickness",
+                suggestedValue: sugVal[1],
+                message: rule.message_ar,
+              });
             }
           }
         }
@@ -373,7 +501,10 @@ export function validateConfiguration(config: BagConfiguration): ValidationResul
         const colorHex = shade || colorEntry.hex;
         const contrast = checkPrintContrast(config.bagColor, colorHex);
         if (!contrast.good) {
-          warnings.push({ field: "printColors", message: `${colorEntry.label_ar}: ${contrast.message}` });
+          warnings.push({
+            field: "printColors",
+            message: `${colorEntry.label_ar}: ${contrast.message}`,
+          });
         }
       }
     }
@@ -382,11 +513,15 @@ export function validateConfiguration(config: BagConfiguration): ValidationResul
   return { isValid: errors.length === 0, errors, warnings, suggestions };
 }
 
-export function getDefaultsForBagType(bagType: string, isPrinted: boolean): Partial<BagConfiguration> {
+export function getDefaultsForBagType(
+  bagType: string,
+  isPrinted: boolean,
+): Partial<BagConfiguration> {
   const rules = getBagTypeRules(bagType);
   if (!rules) return {};
 
-  const widthLimits = isPrinted && rules.width_printed ? rules.width_printed : rules.width;
+  const widthLimits =
+    isPrinted && rules.width_printed ? rules.width_printed : rules.width;
   const lengthLimits = isPrinted ? rules.length_printed : rules.length_plain;
 
   return {
@@ -405,13 +540,17 @@ export function getDefaultsForBagType(bagType: string, isPrinted: boolean): Part
 function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result
-    ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) }
+    ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16),
+      }
     : null;
 }
 
 function relativeLuminance(rgb: { r: number; g: number; b: number }): number {
   const [rs, gs, bs] = [rgb.r / 255, rgb.g / 255, rgb.b / 255].map((c) =>
-    c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+    c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4),
   );
   return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
 }

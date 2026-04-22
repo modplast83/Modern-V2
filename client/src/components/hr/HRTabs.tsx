@@ -1,11 +1,20 @@
+import {
+  GraduationCap,
+  Target,
+  Calendar,
+  Clock,
+  FileText,
+  FileEdit,
+} from "lucide-react";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import { GraduationCap, Target, Calendar, Clock, FileText, FileEdit } from "lucide-react";
-import SimpleFieldTraining from "./SimpleFieldTraining.tsx";
-import PerformanceReviews from "./PerformanceReviews.tsx";
-import LeaveManagement from "./LeaveManagement.tsx";
+
 import AttendanceManagement from "./AttendanceManagement.tsx";
 import AttendanceReports from "./AttendanceReports.tsx";
+import LeaveManagement from "./LeaveManagement.tsx";
 import MonthlyAttendanceEditor from "./MonthlyAttendanceEditor.tsx";
+import PerformanceReviews from "./PerformanceReviews.tsx";
+import SimpleFieldTraining from "./SimpleFieldTraining.tsx";
 
 export default function HRTabs() {
   return (

@@ -1,7 +1,9 @@
 import twilio from "twilio";
-import type { IStorage } from "../storage";
+
 import { MetaWhatsAppService } from "./meta-whatsapp";
 import { TaqnyatSMSService } from "./taqnyat-sms";
+
+import type { IStorage } from "../storage";
 
 export interface NotificationData {
   title: string;
@@ -37,7 +39,9 @@ export class NotificationService {
 
     // تحديد استخدام Meta API أو Twilio
     // نستخدم Meta API إذا كانت بيانات الاعتماد متوفرة
-    this.useMetaAPI = !!(process.env.META_ACCESS_TOKEN && process.env.META_PHONE_NUMBER_ID);
+    this.useMetaAPI = !!(
+      process.env.META_ACCESS_TOKEN && process.env.META_PHONE_NUMBER_ID
+    );
 
     // تهيئة Meta WhatsApp API
     this.metaWhatsApp = new MetaWhatsAppService(storage);
@@ -76,7 +80,7 @@ export class NotificationService {
       context_type?: string;
       context_id?: string;
       senderName?: string;
-    }
+    },
   ): Promise<{ success: boolean; messageId?: string; error?: string }> {
     return this.taqnyatSMS.sendSMS(phoneNumber, message, options);
   }

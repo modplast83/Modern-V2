@@ -1,21 +1,33 @@
+import L from "leaflet";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { MapContainer, TileLayer, Marker, Circle, useMapEvents, Popup } from "react-leaflet";
-import L from "leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Circle,
+  useMapEvents,
+  Popup,
+} from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 
 // Fix for default marker icons in react-leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
-  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+  iconRetinaUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
+  iconUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+  shadowUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
 });
 
 // Custom icon for factory locations
 const factoryIcon = new L.Icon({
-  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+  iconUrl:
+    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
+  shadowUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
@@ -24,8 +36,10 @@ const factoryIcon = new L.Icon({
 
 // Custom icon for user location
 const userIcon = new L.Icon({
-  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+  iconUrl:
+    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png",
+  shadowUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
@@ -49,7 +63,11 @@ interface LocationMapPickerProps {
   factoryLocations?: FactoryLocation[];
 }
 
-function MapClickHandler({ onLocationChange }: { onLocationChange: (lat: number, lng: number) => void }) {
+function MapClickHandler({
+  onLocationChange,
+}: {
+  onLocationChange: (lat: number, lng: number) => void;
+}) {
   useMapEvents({
     click(e) {
       onLocationChange(e.latlng.lat, e.latlng.lng);
@@ -67,7 +85,10 @@ export default function LocationMapPicker({
   factoryLocations = [],
 }: LocationMapPickerProps) {
   const { t } = useTranslation();
-  const [position, setPosition] = useState<[number, number]>([latitude, longitude]);
+  const [position, setPosition] = useState<[number, number]>([
+    latitude,
+    longitude,
+  ]);
 
   useEffect(() => {
     setPosition([latitude, longitude]);
@@ -91,14 +112,21 @@ export default function LocationMapPicker({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        
-        {editable && <MapClickHandler onLocationChange={handleLocationChange} />}
-        
+
+        {editable && (
+          <MapClickHandler onLocationChange={handleLocationChange} />
+        )}
+
         {/* User/Selected Location Marker */}
         <Marker position={position} icon={userIcon}>
           <Popup>
             <div className="text-center" dir="rtl">
-              <strong>📍 {editable ? t('locationMap.selectedLocation') : t('locationMap.currentLocation')}</strong>
+              <strong>
+                📍{" "}
+                {editable
+                  ? t("locationMap.selectedLocation")
+                  : t("locationMap.currentLocation")}
+              </strong>
               <br />
               <span className="text-xs font-mono">
                 {position[0].toFixed(6)}°, {position[1].toFixed(6)}°
@@ -106,7 +134,7 @@ export default function LocationMapPicker({
             </div>
           </Popup>
         </Marker>
-        
+
         {/* User/Selected Location Accuracy Circle */}
         <Circle
           center={position}
@@ -121,18 +149,22 @@ export default function LocationMapPicker({
         {/* Factory Location Markers */}
         {factoryLocations.map((factory) => (
           <div key={factory.id}>
-            <Marker 
-              position={[factory.latitude, factory.longitude]} 
+            <Marker
+              position={[factory.latitude, factory.longitude]}
               icon={factoryIcon}
             >
               <Popup>
                 <div className="text-center" dir="rtl">
                   <strong>🏭 {factory.name}</strong>
                   <br />
-                  <span className="text-xs">{t('locationMap.range')}: {factory.radius} {t('locationMap.meters')}</span>
+                  <span className="text-xs">
+                    {t("locationMap.range")}: {factory.radius}{" "}
+                    {t("locationMap.meters")}
+                  </span>
                   <br />
                   <span className="text-xs font-mono">
-                    {factory.latitude.toFixed(6)}°, {factory.longitude.toFixed(6)}°
+                    {factory.latitude.toFixed(6)}°,{" "}
+                    {factory.longitude.toFixed(6)}°
                   </span>
                 </div>
               </Popup>

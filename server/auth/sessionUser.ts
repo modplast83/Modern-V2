@@ -1,20 +1,24 @@
 import { Request } from "express";
-import { storage } from "../storage";
-import type { SafeUser } from "@shared/schema";
+
 import { logger } from "../lib/logger";
+import { storage } from "../storage";
+
+import type { SafeUser } from "@shared/schema";
 
 /**
  * Resolves the current user from either username/password session or Replit Auth session
  * Returns a normalized SafeUser object for consistency across the application
- * 
+ *
  * Priority order:
  * 1. Check req.session.userId (username/password auth)
  * 2. Check req.user?.claims.sub (Replit Auth)
- * 
+ *
  * @param req - Express request object
  * @returns SafeUser object or null if no authenticated session found
  */
-export async function resolveSessionUser(req: Request): Promise<SafeUser | null> {
+export async function resolveSessionUser(
+  req: Request,
+): Promise<SafeUser | null> {
   try {
     // First, check for traditional username/password session
     if (req.session?.userId && typeof req.session.userId === "number") {
@@ -33,10 +37,10 @@ export async function resolveSessionUser(req: Request): Promise<SafeUser | null>
     if (replitUser?.claims?.sub) {
       const replitUserId = replitUser.claims.sub;
       const user = await storage.getUserByReplitId(replitUserId);
-      
+
       if (user && user.status === "active") {
         logger.debug("User resolved from Replit Auth", replitUserId);
-        
+
         // Store the numeric user ID in session for backward compatibility with existing middleware
         // This allows requireAuth and other middleware to work with both auth types
         if (!req.session.userId) {
@@ -48,7 +52,7 @@ export async function resolveSessionUser(req: Request): Promise<SafeUser | null>
             }
           });
         }
-        
+
         const { password, ...safeUser } = user;
         return safeUser;
       } else {
@@ -70,14 +74,14 @@ export async function resolveSessionUser(req: Request): Promise<SafeUser | null>
  */
 export async function requireUnifiedAuth(req: Request, res: any, next: any) {
   const user = await resolveSessionUser(req);
-  
+
   if (!user) {
-    return res.status(401).json({ 
+    return res.status(401).json({
       message: "Unauthorized",
-      success: false 
+      success: false,
     });
   }
-  
+
   // Attach user to request for downstream handlers
   (req as any).currentUser = user;
   next();

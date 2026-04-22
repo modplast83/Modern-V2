@@ -1,4 +1,4 @@
-import { useLanguage } from '../contexts/LanguageContext';
+import { useLanguage } from "../contexts/LanguageContext";
 
 /**
  * Returns a resolver function that picks the correct localized name
@@ -13,9 +13,9 @@ export function useLocalizedName() {
   const { language } = useLanguage();
 
   return (nameAr?: string | null, nameEn?: string | null): string => {
-    if (language === 'en' && nameEn && nameEn.trim()) {
+    if (language === "en" && nameEn && nameEn.trim()) {
       return nameEn;
     }
-    return nameAr || nameEn || '';
+    return nameAr || nameEn || "";
   };
 }

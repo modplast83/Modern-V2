@@ -1,5 +1,8 @@
-import { Component, ErrorInfo, ReactNode } from "react";
 import i18next from "i18next";
+import { AlertTriangle, RefreshCw, Home } from "lucide-react";
+import { Component, ErrorInfo, ReactNode } from "react";
+
+import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import { Button } from "./ui/button";
 import {
   Card,
@@ -9,8 +12,6 @@ import {
   CardHeader,
   CardTitle,
 } from "./ui/card";
-import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
-import { AlertTriangle, RefreshCw, Home } from "lucide-react";
 
 interface Props {
   children: ReactNode;
@@ -66,7 +67,11 @@ class ErrorBoundary extends Component<Props, State> {
     this.props.onError?.(error, errorInfo);
 
     if (import.meta.env.PROD && typeof window !== "undefined") {
-      console.error("[Production Error]", error.message, errorInfo.componentStack);
+      console.error(
+        "[Production Error]",
+        error.message,
+        errorInfo.componentStack,
+      );
     }
   }
 
@@ -82,10 +87,9 @@ class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       const t = i18next.t.bind(i18next);
       const fallback = this.props.fallback || "page";
-      const title = this.props.title || t('errorBoundary.unexpectedError');
+      const title = this.props.title || t("errorBoundary.unexpectedError");
       const description =
-        this.props.description ||
-        t('errorBoundary.errorDescription');
+        this.props.description || t("errorBoundary.errorDescription");
 
       if (fallback === "inline") {
         return (
@@ -95,7 +99,7 @@ class ErrorBoundary extends Component<Props, State> {
             data-testid="error-inline"
           >
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>{t('errorBoundary.error')}</AlertTitle>
+            <AlertTitle>{t("errorBoundary.error")}</AlertTitle>
             <AlertDescription>
               {description}
               <Button
@@ -106,7 +110,7 @@ class ErrorBoundary extends Component<Props, State> {
                 data-testid="button-retry-inline"
               >
                 <RefreshCw className="h-3 w-3 ml-1" />
-                {t('errorBoundary.retry')}
+                {t("errorBoundary.retry")}
               </Button>
             </AlertDescription>
           </Alert>
@@ -127,7 +131,7 @@ class ErrorBoundary extends Component<Props, State> {
               {import.meta.env.DEV && this.state.error && (
                 <details className="mb-3 text-xs">
                   <summary className="cursor-pointer text-muted-foreground">
-                    {t('errorBoundary.errorDetails')}
+                    {t("errorBoundary.errorDetails")}
                   </summary>
                   <pre className="mt-1 p-2 bg-muted rounded text-xs overflow-x-auto">
                     {this.state.error.message}
@@ -142,7 +146,7 @@ class ErrorBoundary extends Component<Props, State> {
                   data-testid="button-retry-component"
                 >
                   <RefreshCw className="h-4 w-4 ml-1" />
-                  {t('errorBoundary.retry')}
+                  {t("errorBoundary.retry")}
                 </Button>
                 {this.props.showReload && (
                   <Button
@@ -151,7 +155,7 @@ class ErrorBoundary extends Component<Props, State> {
                     data-testid="button-reload-component"
                   >
                     <Home className="h-4 w-4 ml-1" />
-                    {t('errorBoundary.backToHome')}
+                    {t("errorBoundary.backToHome")}
                   </Button>
                 )}
               </div>
@@ -177,7 +181,7 @@ class ErrorBoundary extends Component<Props, State> {
               {import.meta.env.DEV && this.state.error && (
                 <div className="mt-4 p-3 bg-muted rounded-md text-sm">
                   <p className="font-semibold text-destructive mb-2">
-                    {t('errorBoundary.errorDetails')}:
+                    {t("errorBoundary.errorDetails")}:
                   </p>
                   <code className="text-xs break-all">
                     {this.state.error.message}
@@ -185,7 +189,7 @@ class ErrorBoundary extends Component<Props, State> {
                   {this.state.errorInfo && (
                     <details className="mt-2 text-xs">
                       <summary className="cursor-pointer">
-                        {t('errorBoundary.additionalInfo')}
+                        {t("errorBoundary.additionalInfo")}
                       </summary>
                       <pre className="mt-1 whitespace-pre-wrap text-xs">
                         {this.state.errorInfo.componentStack}
@@ -202,13 +206,13 @@ class ErrorBoundary extends Component<Props, State> {
                 data-testid="button-retry-page"
               >
                 <RefreshCw className="w-4 h-4 ml-2" />
-                {t('errorBoundary.retry')}
+                {t("errorBoundary.retry")}
               </Button>
               <Button
                 onClick={this.handleReload}
                 data-testid="button-reload-page"
               >
-                {t('errorBoundary.reloadPage')}
+                {t("errorBoundary.reloadPage")}
               </Button>
             </CardFooter>
           </Card>

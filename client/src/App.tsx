@@ -1,21 +1,25 @@
 import { Suspense } from "react";
-import { Route, Switch, Redirect } from "wouter";
-import { AuthProvider, useAuth } from "./hooks/use-auth";
-import ErrorBoundary from "./components/ErrorBoundary";
-
-import Login from "./pages/login";
-import ProtectedRoute from "./components/ProtectedRoute";
 import { useTranslation } from "react-i18next";
+import { Route, Switch, Redirect } from "wouter";
+
+import ErrorBoundary from "./components/ErrorBoundary";
+import ProtectedRoute from "./components/ProtectedRoute";
 import InstallPrompt from "./components/pwa/InstallPrompt";
+import { AuthProvider, useAuth } from "./hooks/use-auth";
 import { MobileAutoRedirect } from "./hooks/use-mobile-redirect";
 import { lazyWithRetry } from "./lib/lazyWithRetry";
+import Login from "./pages/login";
 
 const BagConfigurator = lazyWithRetry(() => import("./pages/bag-configurator"));
 const Dashboard = lazyWithRetry(() => import("./pages/dashboard"));
 const Orders = lazyWithRetry(() => import("./pages/orders"));
 const Production = lazyWithRetry(() => import("./pages/production"));
-const ProductionOrdersManagement = lazyWithRetry(() => import("./pages/ProductionOrdersManagement"));
-const ProductionQueues = lazyWithRetry(() => import("./pages/ProductionQueues"));
+const ProductionOrdersManagement = lazyWithRetry(
+  () => import("./pages/ProductionOrdersManagement"),
+);
+const ProductionQueues = lazyWithRetry(
+  () => import("./pages/ProductionQueues"),
+);
 const Quality = lazyWithRetry(() => import("./pages/quality"));
 const Warehouse = lazyWithRetry(() => import("./pages/warehouse"));
 const Maintenance = lazyWithRetry(() => import("./pages/maintenance"));
@@ -28,47 +32,96 @@ const NotFound = lazyWithRetry(() => import("./pages/not-found"));
 const Notifications = lazyWithRetry(() => import("./pages/notifications"));
 const AlertsCenter = lazyWithRetry(() => import("./pages/AlertsCenter"));
 const SystemHealth = lazyWithRetry(() => import("./pages/SystemHealth"));
-const ProductionMonitoring = lazyWithRetry(() => import("./pages/production-monitoring"));
-const MetaWhatsAppSetup = lazyWithRetry(() => import("./pages/meta-whatsapp-setup"));
+const ProductionMonitoring = lazyWithRetry(
+  () => import("./pages/production-monitoring"),
+);
+const MetaWhatsAppSetup = lazyWithRetry(
+  () => import("./pages/meta-whatsapp-setup"),
+);
 const WhatsAppSetup = lazyWithRetry(() => import("./pages/whatsapp-setup"));
 const WhatsAppTest = lazyWithRetry(() => import("./pages/whatsapp-test"));
-const WhatsAppTroubleshoot = lazyWithRetry(() => import("./pages/whatsapp-troubleshoot"));
-const WhatsAppProductionSetup = lazyWithRetry(() => import("./pages/whatsapp-production-setup"));
-const WhatsAppFinalSetup = lazyWithRetry(() => import("./pages/whatsapp-final-setup"));
-const TwilioContentTemplate = lazyWithRetry(() => import("./pages/twilio-content-template"));
-const WhatsAppTemplateTest = lazyWithRetry(() => import("./pages/whatsapp-template-test"));
-const WhatsAppWebhooks = lazyWithRetry(() => import("./pages/whatsapp-webhooks"));
+const WhatsAppTroubleshoot = lazyWithRetry(
+  () => import("./pages/whatsapp-troubleshoot"),
+);
+const WhatsAppProductionSetup = lazyWithRetry(
+  () => import("./pages/whatsapp-production-setup"),
+);
+const WhatsAppFinalSetup = lazyWithRetry(
+  () => import("./pages/whatsapp-final-setup"),
+);
+const TwilioContentTemplate = lazyWithRetry(
+  () => import("./pages/twilio-content-template"),
+);
+const WhatsAppTemplateTest = lazyWithRetry(
+  () => import("./pages/whatsapp-template-test"),
+);
+const WhatsAppWebhooks = lazyWithRetry(
+  () => import("./pages/whatsapp-webhooks"),
+);
 const ToolsPage = lazyWithRetry(() => import("./pages/tools_page"));
-const FilmOperatorDashboard = lazyWithRetry(() => import("./pages/FilmOperatorDashboard"));
-const PrintingOperatorDashboard = lazyWithRetry(() => import("./pages/PrintingOperatorDashboard"));
-const CuttingOperatorDashboard = lazyWithRetry(() => import("./pages/CuttingOperatorDashboard"));
-const ProductionDashboard = lazyWithRetry(() => import("./pages/ProductionDashboard"));
+const FilmOperatorDashboard = lazyWithRetry(
+  () => import("./pages/FilmOperatorDashboard"),
+);
+const PrintingOperatorDashboard = lazyWithRetry(
+  () => import("./pages/PrintingOperatorDashboard"),
+);
+const CuttingOperatorDashboard = lazyWithRetry(
+  () => import("./pages/CuttingOperatorDashboard"),
+);
+const ProductionDashboard = lazyWithRetry(
+  () => import("./pages/ProductionDashboard"),
+);
 const RollSearch = lazyWithRetry(() => import("./pages/RollSearch"));
-const ProductionReports = lazyWithRetry(() => import("./pages/ProductionReports"));
-const SystemMonitoring = lazyWithRetry(() => import("./pages/system-monitoring"));
+const ProductionReports = lazyWithRetry(
+  () => import("./pages/ProductionReports"),
+);
+const SystemMonitoring = lazyWithRetry(
+  () => import("./pages/system-monitoring"),
+);
 const AiAgent = lazyWithRetry(() => import("./pages/ai-agent"));
-const AiAgentSettings = lazyWithRetry(() => import("./pages/ai-agent-settings"));
-const FactorySimulation3D = lazyWithRetry(() => import("./pages/FactorySimulation3D"));
+const AiAgentSettings = lazyWithRetry(
+  () => import("./pages/ai-agent-settings"),
+);
+const FactorySimulation3D = lazyWithRetry(
+  () => import("./pages/FactorySimulation3D"),
+);
 const CompanySetup = lazyWithRetry(() => import("./pages/company-setup"));
 const DisplayScreen = lazyWithRetry(() => import("./pages/DisplayScreen"));
-const DisplayControlPanel = lazyWithRetry(() => import("./pages/DisplayControlPanel"));
+const DisplayControlPanel = lazyWithRetry(
+  () => import("./pages/DisplayControlPanel"),
+);
 const FactoryFloor = lazyWithRetry(() => import("./pages/FactoryFloor"));
 const MaterialMixing = lazyWithRetry(() => import("./pages/material-mixing"));
 const WarehouseMobile = lazyWithRetry(() => import("./pages/warehouse-mobile"));
-const ProductionMobile = lazyWithRetry(() => import("./pages/production-mobile"));
-const UserDashboardMobile = lazyWithRetry(() => import("./pages/user-dashboard-mobile"));
+const ProductionMobile = lazyWithRetry(
+  () => import("./pages/production-mobile"),
+);
+const UserDashboardMobile = lazyWithRetry(
+  () => import("./pages/user-dashboard-mobile"),
+);
 const MyOrders = lazyWithRetry(() => import("./pages/my-orders"));
 const OrdersMobile = lazyWithRetry(() => import("./pages/orders-mobile"));
-const ProductionDashboardMobile = lazyWithRetry(() => import("./pages/production-dashboard-mobile"));
+const ProductionDashboardMobile = lazyWithRetry(
+  () => import("./pages/production-dashboard-mobile"),
+);
 const McpSettings = lazyWithRetry(() => import("./pages/mcp-settings"));
 const MpbfBagQuote = lazyWithRetry(() => import("./pages/mpbf-bag-quote"));
 
 function PageLoadingFallback() {
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
       <div style={{ textAlign: "center" }}>
         <div className="loading-spinner" style={{ margin: "0 auto 1rem" }} />
-        <p style={{ margin: 0, fontSize: "0.875rem", color: "#6b7280" }}>جاري تحميل الصفحة...</p>
+        <p style={{ margin: 0, fontSize: "0.875rem", color: "#6b7280" }}>
+          جاري تحميل الصفحة...
+        </p>
       </div>
     </div>
   );
@@ -80,10 +133,19 @@ function AppRoutes() {
 
   if (isLoading) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
         <div style={{ textAlign: "center" }}>
           <div className="loading-spinner" style={{ margin: "0 auto 1rem" }} />
-          <p style={{ margin: 0, fontSize: "0.875rem", color: "#6b7280" }}>جاري تحميل النظام...</p>
+          <p style={{ margin: 0, fontSize: "0.875rem", color: "#6b7280" }}>
+            جاري تحميل النظام...
+          </p>
         </div>
       </div>
     );

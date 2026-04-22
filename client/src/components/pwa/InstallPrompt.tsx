@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
 import { Download, X, Smartphone, Share } from "lucide-react";
-import { Button } from "../ui/button";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+
+import { Button } from "../ui/button";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -9,16 +10,21 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 function isIOS(): boolean {
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream
+  );
 }
 
 function isInStandaloneMode(): boolean {
-  return window.matchMedia("(display-mode: standalone)").matches ||
-    (navigator as any).standalone === true;
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    (navigator as any).standalone === true
+  );
 }
 
 export default function InstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [deferredPrompt, setDeferredPrompt] =
+    useState<BeforeInstallPromptEvent | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [showIOSGuide, setShowIOSGuide] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
@@ -102,7 +108,10 @@ export default function InstallPrompt() {
               </p>
             ) : (
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {t("pwa.installDescription", "ثبّت التطبيق على جوالك للوصول السريع والعمل بدون إنترنت")}
+                {t(
+                  "pwa.installDescription",
+                  "ثبّت التطبيق على جوالك للوصول السريع والعمل بدون إنترنت",
+                )}
               </p>
             )}
           </div>
@@ -115,19 +124,11 @@ export default function InstallPrompt() {
         </div>
         {!showIOSGuide && (
           <div className="flex gap-2 mt-3">
-            <Button
-              onClick={handleInstall}
-              size="sm"
-              className="flex-1 gap-2"
-            >
+            <Button onClick={handleInstall} size="sm" className="flex-1 gap-2">
               <Download className="w-4 h-4" />
               {t("pwa.install", "تثبيت")}
             </Button>
-            <Button
-              onClick={handleDismiss}
-              variant="ghost"
-              size="sm"
-            >
+            <Button onClick={handleDismiss} variant="ghost" size="sm">
               {t("pwa.later", "لاحقاً")}
             </Button>
           </div>

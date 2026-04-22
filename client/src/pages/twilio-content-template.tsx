@@ -1,14 +1,3 @@
-import { useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
-import { Button } from "../components/ui/button";
-import { Alert, AlertDescription } from "../components/ui/alert";
-import { Badge } from "../components/ui/badge";
 import {
   CheckCircle,
   AlertTriangle,
@@ -17,6 +6,18 @@ import {
   FileText,
   Settings,
 } from "lucide-react";
+import { useState } from "react";
+
+import { Alert, AlertDescription } from "../components/ui/alert";
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 
 export default function TwilioContentTemplate() {
   const [copied, setCopied] = useState(false);

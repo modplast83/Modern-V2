@@ -8,7 +8,9 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+
 import { CustomTooltip } from "./ChartUtils";
 
 interface InteractiveAreaChartProps {

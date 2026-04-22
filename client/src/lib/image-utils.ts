@@ -6,7 +6,7 @@ export interface ExtractedColor {
 
 export function removeBackground(
   imageUrl: string,
-  threshold: number = 30
+  threshold: number = 30,
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new window.Image();
@@ -33,21 +33,27 @@ export function removeBackground(
         const bgColor = averageColor(corners);
 
         for (let i = 0; i < data.length; i += 4) {
-          const r = data[i], g = data[i + 1], b = data[i + 2];
+          const r = data[i],
+            g = data[i + 1],
+            b = data[i + 2];
           const dist = Math.sqrt(
-            (r - bgColor.r) ** 2 + (g - bgColor.g) ** 2 + (b - bgColor.b) ** 2
+            (r - bgColor.r) ** 2 + (g - bgColor.g) ** 2 + (b - bgColor.b) ** 2,
           );
           if (dist < threshold) {
             data[i + 3] = 0;
           } else if (dist < threshold * 1.5) {
-            data[i + 3] = Math.round((dist - threshold) / (threshold * 0.5) * 255);
+            data[i + 3] = Math.round(
+              ((dist - threshold) / (threshold * 0.5)) * 255,
+            );
           }
         }
 
         ctx.putImageData(imageData, 0, 0);
         resolve(canvas.toDataURL("image/png"));
       } catch (err) {
-        reject(err instanceof Error ? err : new Error("Failed to process image"));
+        reject(
+          err instanceof Error ? err : new Error("Failed to process image"),
+        );
       }
     };
     img.onerror = () => reject(new Error("Failed to load image"));
@@ -55,7 +61,10 @@ export function removeBackground(
   });
 }
 
-export function extractColors(imageUrl: string, maxColors: number = 6): Promise<ExtractedColor[]> {
+export function extractColors(
+  imageUrl: string,
+  maxColors: number = 6,
+): Promise<ExtractedColor[]> {
   return new Promise((resolve, reject) => {
     const img = new window.Image();
     img.crossOrigin = "anonymous";
@@ -75,7 +84,9 @@ export function extractColors(imageUrl: string, maxColors: number = 6): Promise<
         const pixels: Array<[number, number, number]> = [];
         for (let i = 0; i < data.length; i += 4) {
           if (data[i + 3] < 128) continue;
-          const r = data[i], g = data[i + 1], b = data[i + 2];
+          const r = data[i],
+            g = data[i + 1],
+            b = data[i + 2];
           if (r > 240 && g > 240 && b > 240) continue;
           if (r < 15 && g < 15 && b < 15) continue;
           pixels.push([
@@ -96,8 +107,9 @@ export function extractColors(imageUrl: string, maxColors: number = 6): Promise<
           colorMap.set(key, (colorMap.get(key) || 0) + 1);
         }
 
-        const sorted = Array.from(colorMap.entries())
-          .sort((a, b) => b[1] - a[1]);
+        const sorted = Array.from(colorMap.entries()).sort(
+          (a, b) => b[1] - a[1],
+        );
 
         const results: ExtractedColor[] = [];
         const totalPixels = pixels.length;
@@ -112,8 +124,8 @@ export function extractColors(imageUrl: string, maxColors: number = 6): Promise<
             if (!existingRgb) return false;
             const dist = Math.sqrt(
               (r - existingRgb.r) ** 2 +
-              (g - existingRgb.g) ** 2 +
-              (b - existingRgb.b) ** 2
+                (g - existingRgb.g) ** 2 +
+                (b - existingRgb.b) ** 2,
             );
             return dist < 60;
           });
@@ -128,7 +140,9 @@ export function extractColors(imageUrl: string, maxColors: number = 6): Promise<
 
         resolve(results);
       } catch (err) {
-        reject(err instanceof Error ? err : new Error("Failed to extract colors"));
+        reject(
+          err instanceof Error ? err : new Error("Failed to extract colors"),
+        );
       }
     };
     img.onerror = () => reject(new Error("Failed to load image"));
@@ -136,7 +150,12 @@ export function extractColors(imageUrl: string, maxColors: number = 6): Promise<
   });
 }
 
-function getPixel(data: Uint8ClampedArray, x: number, y: number, width: number) {
+function getPixel(
+  data: Uint8ClampedArray,
+  x: number,
+  y: number,
+  width: number,
+) {
   const i = (y * width + x) * 4;
   return { r: data[i], g: data[i + 1], b: data[i + 2] };
 }
@@ -144,10 +163,14 @@ function getPixel(data: Uint8ClampedArray, x: number, y: number, width: number) 
 function averageColor(colors: Array<{ r: number; g: number; b: number }>) {
   const sum = colors.reduce(
     (acc, c) => ({ r: acc.r + c.r, g: acc.g + c.g, b: acc.b + c.b }),
-    { r: 0, g: 0, b: 0 }
+    { r: 0, g: 0, b: 0 },
   );
   const n = colors.length;
-  return { r: Math.round(sum.r / n), g: Math.round(sum.g / n), b: Math.round(sum.b / n) };
+  return {
+    r: Math.round(sum.r / n),
+    g: Math.round(sum.g / n),
+    b: Math.round(sum.b / n),
+  };
 }
 
 function rgbToHex(r: number, g: number, b: number): string {
@@ -157,6 +180,10 @@ function rgbToHex(r: number, g: number, b: number): string {
 function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result
-    ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) }
+    ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16),
+      }
     : null;
 }

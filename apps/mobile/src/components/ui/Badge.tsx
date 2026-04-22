@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
+
 import { FontSize, Radius, Spacing } from "@/constants/spacing";
 
 interface Props {
@@ -8,7 +9,12 @@ interface Props {
 
 export function Badge({ label, color = "#6b7280" }: Props) {
   return (
-    <View style={[styles.badge, { backgroundColor: color + "22", borderColor: color }]}>
+    <View
+      style={[
+        styles.badge,
+        { backgroundColor: color + "22", borderColor: color },
+      ]}
+    >
       <Text style={[styles.text, { color }]}>{label}</Text>
     </View>
   );

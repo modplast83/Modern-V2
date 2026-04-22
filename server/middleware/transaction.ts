@@ -2,15 +2,16 @@
  * Transaction middleware for ensuring data consistency
  */
 
-import { db } from "../db";
 import { sql } from "drizzle-orm";
 import { Response, Request, NextFunction } from "express";
+
+import { db } from "../db";
 
 /**
  * Wraps an async route handler to ensure it runs within a database transaction
  */
 export function withTransaction(
-  handler: (req: Request, res: Response, tx: any) => Promise<void>
+  handler: (req: Request, res: Response, tx: any) => Promise<void>,
 ) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -33,12 +34,12 @@ export function withTransaction(
 export async function acquireAdvisoryLock(
   tx: any,
   lockKey: number,
-  timeout: number = 5000
+  timeout: number = 5000,
 ): Promise<boolean> {
   try {
     // Try to acquire the lock with timeout
     const result = await tx.execute(
-      sql`SELECT pg_advisory_xact_lock(${lockKey})`
+      sql`SELECT pg_advisory_xact_lock(${lockKey})`,
     );
     return true;
   } catch (error) {
@@ -58,22 +59,20 @@ export async function lockResourceForUpdate(
   tx: any,
   table: string,
   id: number,
-  lockTimeout: number = 5000
+  lockTimeout: number = 5000,
 ): Promise<void> {
   try {
     const timeoutMs = parseInt(String(lockTimeout), 10);
     if (isNaN(timeoutMs) || timeoutMs < 0) {
-      throw new Error('Invalid lock timeout value');
+      throw new Error("Invalid lock timeout value");
     }
     const timeoutValue = `${timeoutMs}ms`;
+    await tx.execute(sql`SET LOCAL lock_timeout = ${timeoutValue}`);
     await tx.execute(
-      sql`SET LOCAL lock_timeout = ${timeoutValue}`
-    );
-    await tx.execute(
-      sql`SELECT * FROM ${sql.identifier(table)} WHERE id = ${id} FOR UPDATE NOWAIT`
+      sql`SELECT * FROM ${sql.identifier(table)} WHERE id = ${id} FOR UPDATE NOWAIT`,
     );
   } catch (error: any) {
-    if (error.code === '55P03') {
+    if (error.code === "55P03") {
       throw new Error(`المورد مشغول حالياً، يرجى المحاولة مرة أخرى`);
     }
     throw error;
@@ -90,11 +89,14 @@ export interface OptimisticLockable {
 
 export function checkOptimisticLock<T extends OptimisticLockable>(
   currentRecord: T,
-  requestVersion?: number
+  requestVersion?: number,
 ): void {
-  if (requestVersion !== undefined && currentRecord.version !== requestVersion) {
+  if (
+    requestVersion !== undefined &&
+    currentRecord.version !== requestVersion
+  ) {
     throw new Error(
-      `البيانات تم تحديثها من قبل مستخدم آخر، يرجى إعادة تحميل الصفحة والمحاولة مرة أخرى`
+      `البيانات تم تحديثها من قبل مستخدم آخر، يرجى إعادة تحميل الصفحة والمحاولة مرة أخرى`,
     );
   }
 }
@@ -108,27 +110,27 @@ export function checkOptimisticLock<T extends OptimisticLockable>(
 export async function retryWithBackoff<T>(
   operation: () => Promise<T>,
   maxRetries: number = 3,
-  initialDelay: number = 100
+  initialDelay: number = 100,
 ): Promise<T> {
   let lastError: any;
-  
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       return await operation();
     } catch (error: any) {
       lastError = error;
-      
+
       // Don't retry for non-retryable errors
-      if (error.code && !['40001', '40P01', '55P03'].includes(error.code)) {
+      if (error.code && !["40001", "40P01", "55P03"].includes(error.code)) {
         throw error;
       }
-      
+
       if (attempt < maxRetries) {
         const delay = initialDelay * Math.pow(2, attempt - 1);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
   }
-  
+
   throw lastError;
 }

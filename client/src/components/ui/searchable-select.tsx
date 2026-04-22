@@ -1,5 +1,6 @@
-import * as React from "react";
 import { Check, ChevronDown, Search, X } from "lucide-react";
+import * as React from "react";
+
 import { cn } from "../../lib/utils";
 
 export interface SearchableSelectOption {
@@ -40,8 +41,7 @@ export function SearchableSelect({
     const q = search.toLowerCase();
     return options.filter(
       (o) =>
-        o.label.toLowerCase().includes(q) ||
-        o.value.toLowerCase().includes(q)
+        o.label.toLowerCase().includes(q) || o.value.toLowerCase().includes(q),
     );
   }, [options, search]);
 
@@ -51,7 +51,10 @@ export function SearchableSelect({
       return;
     }
     const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
         setOpen(false);
       }
     };
@@ -125,7 +128,8 @@ export function SearchableSelect({
                   }}
                   className={cn(
                     "relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground gap-2",
-                    value === option.value && "bg-accent text-accent-foreground"
+                    value === option.value &&
+                      "bg-accent text-accent-foreground",
                   )}
                 >
                   <Check

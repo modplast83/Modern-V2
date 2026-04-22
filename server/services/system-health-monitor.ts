@@ -1,7 +1,13 @@
 import { EventEmitter } from "events";
-import type { IStorage } from "../storage";
-import { db } from "../db";
+
 import { eq, desc, and, sql, count } from "drizzle-orm";
+
+import { db } from "../db";
+import { logger } from "../lib/logger";
+
+import { getNotificationManager } from "./notification-manager";
+
+import type { IStorage } from "../storage";
 import type {
   SystemAlert,
   InsertSystemAlert,
@@ -12,8 +18,6 @@ import type {
   AlertRule,
   InsertAlertRule,
 } from "@shared/schema";
-import { getNotificationManager } from "./notification-manager";
-import { logger } from "../lib/logger";
 
 // أنواع المراقبة والتحذيرات
 export interface HealthCheckResult {
@@ -95,7 +99,7 @@ export class SystemHealthMonitor extends EventEmitter {
     // Enforce singleton pattern to prevent duplicate intervals on hot reloads
     if (SystemHealthMonitor.instance) {
       logger.debug(
-        "[SystemHealthMonitor] تم العثور على مثيل موجود، إيقاف المثيل القديم"
+        "[SystemHealthMonitor] تم العثور على مثيل موجود، إيقاف المثيل القديم",
       );
       SystemHealthMonitor.instance.stopMonitoring();
     }
@@ -185,10 +189,7 @@ export class SystemHealthMonitor extends EventEmitter {
       // سنحتاج لإضافة هذه العملية في storage.ts لاحقاً
       logger.info("[SystemHealthMonitor] تم تحميل قواعد التحذيرات");
     } catch (error) {
-      logger.error(
-        "[SystemHealthMonitor] خطأ في تحميل قواعد التحذيرات",
-        error
-      );
+      logger.error("[SystemHealthMonitor] خطأ في تحميل قواعد التحذيرات", error);
     }
   }
 
@@ -206,12 +207,12 @@ export class SystemHealthMonitor extends EventEmitter {
       ];
 
       logger.info(
-        `[SystemHealthMonitor] تم تحميل أوقات التحذير من الذاكرة المؤقتة`
+        `[SystemHealthMonitor] تم تحميل أوقات التحذير من الذاكرة المؤقتة`,
       );
     } catch (error) {
       logger.error(
         "[SystemHealthMonitor] خطأ في تحميل أوقات التحذير من قاعدة البيانات",
-        error
+        error,
       );
       // Continue initialization even if hydration fails
     }
@@ -256,10 +257,7 @@ export class SystemHealthMonitor extends EventEmitter {
       // سنحتاج لإضافة هذه العملية في storage.ts لاحقاً
       logger.info("[SystemHealthMonitor] تم إنشاء فحوصات السلامة الافتراضية");
     } catch (error) {
-      logger.error(
-        "[SystemHealthMonitor] خطأ في إنشاء فحوصات السلامة",
-        error
-      );
+      logger.error("[SystemHealthMonitor] خطأ في إنشاء فحوصات السلامة", error);
     }
   }
 
@@ -283,15 +281,12 @@ export class SystemHealthMonitor extends EventEmitter {
         } else {
           logger.error(
             "[SystemHealthMonitor] فشل في فحص السلامة",
-            result.reason
+            result.reason,
           );
         }
       }
     } catch (error) {
-      logger.error(
-        "[SystemHealthMonitor] خطأ في تنفيذ فحوصات السلامة",
-        error
-      );
+      logger.error("[SystemHealthMonitor] خطأ في تنفيذ فحوصات السلامة", error);
     }
   }
 
@@ -568,7 +563,7 @@ export class SystemHealthMonitor extends EventEmitter {
       ) {
         this.clearAlertState(result.checkName);
         logger.info(
-          `[SystemHealthMonitor] تم تحسن حالة ${result.checkName_ar} من ${previousResult.status} إلى ${result.status}`
+          `[SystemHealthMonitor] تم تحسن حالة ${result.checkName_ar} من ${previousResult.status} إلى ${result.status}`,
         );
       }
 
@@ -629,20 +624,21 @@ export class SystemHealthMonitor extends EventEmitter {
 
       if (!shouldSend) {
         logger.debug(
-          `[SystemHealthMonitor] تم تجاهل التحذير بسبب Rate Limiting ${result.checkName_ar} - ${result.status}`
+          `[SystemHealthMonitor] تم تجاهل التحذير بسبب Rate Limiting ${result.checkName_ar} - ${result.status}`,
         );
         return;
       }
 
       const statusTranslation = result.status === "critical" ? "حرجة" : "تحذير";
-      
+
       const alert: SmartAlert = {
         title: `System Health Issue: ${result.checkName}`,
         title_ar: `مشكلة في سلامة النظام: ${result.checkName_ar || result.checkName}`,
         message:
           result.error || `${result.checkName} is in ${result.status} state`,
         message_ar:
-          result.error || `${result.checkName_ar || result.checkName} في حالة ${statusTranslation}`,
+          result.error ||
+          `${result.checkName_ar || result.checkName} في حالة ${statusTranslation}`,
         type: "system",
         category: result.status === "critical" ? "critical" : "warning",
         severity: result.status === "critical" ? "critical" : "medium",
@@ -707,7 +703,7 @@ export class SystemHealthMonitor extends EventEmitter {
       this.lastAlertTimes.set(normalizedKey, now);
 
       logger.debug(
-        `[SystemHealthMonitor] تم تسجيل إرسال التحذير ${normalizedKey} في ${now.toISOString()}`
+        `[SystemHealthMonitor] تم تسجيل إرسال التحذير ${normalizedKey} في ${now.toISOString()}`,
       );
     } catch (error) {
       logger.error("[SystemHealthMonitor] خطأ في تسجيل إرسال التحذير", error);
@@ -881,10 +877,7 @@ export class SystemHealthMonitor extends EventEmitter {
       logger.debug("[SystemHealthMonitor] فحص الطلبات المتأخرة");
       return 0; // مؤقت
     } catch (error) {
-      logger.error(
-        "[SystemHealthMonitor] خطأ في فحص الطلبات المتأخرة",
-        error
-      );
+      logger.error("[SystemHealthMonitor] خطأ في فحص الطلبات المتأخرة", error);
       return 0;
     }
   }
@@ -933,7 +926,7 @@ export class SystemHealthMonitor extends EventEmitter {
     } catch (error) {
       logger.error(
         "[SystemHealthMonitor] خطأ في فحص المواد قليلة المخزون",
-        error
+        error,
       );
       return 0;
     }
@@ -1009,7 +1002,7 @@ export class SystemHealthMonitor extends EventEmitter {
       // سنحتاج لإضافة هذه العملية في storage.ts لاحقاً
       logger.info(
         "[SystemHealthMonitor] تم إنشاء تحذير النظام",
-        alert.title_ar
+        alert.title_ar,
       );
 
       // إرسال إشعار فوري
@@ -1135,7 +1128,7 @@ export class SystemHealthMonitor extends EventEmitter {
 
       if (keysToRemove.length > 0) {
         logger.info(
-          `[SystemHealthMonitor] تم تنظيف ${keysToRemove.length} حالة تحذير قديمة`
+          `[SystemHealthMonitor] تم تنظيف ${keysToRemove.length} حالة تحذير قديمة`,
         );
       }
 
@@ -1146,7 +1139,7 @@ export class SystemHealthMonitor extends EventEmitter {
     } catch (error) {
       logger.error(
         "[SystemHealthMonitor] خطأ في تنظيف البيانات القديمة",
-        error
+        error,
       );
     }
   }

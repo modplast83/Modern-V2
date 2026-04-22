@@ -1,11 +1,12 @@
-import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
-import { Badge } from "../../ui/badge";
-import { Skeleton } from "../../ui/skeleton";
-import { ScrollArea } from "../../ui/scroll-area";
 import { ShoppingCart, Clock, User, Package } from "lucide-react";
+import { useTranslation } from "react-i18next";
+
 import { formatNumber } from "../../../lib/formatNumber";
+import { Badge } from "../../ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
+import { ScrollArea } from "../../ui/scroll-area";
+import { Skeleton } from "../../ui/skeleton";
 
 interface Order {
   id: number;
@@ -51,17 +52,37 @@ export default function RecentOrdersWidget() {
     switch (status) {
       case "completed":
       case "delivered":
-        return <Badge className="bg-green-100 text-green-800 text-xs">{t("dashboard.widgets.completed", "Completed")}</Badge>;
+        return (
+          <Badge className="bg-green-100 text-green-800 text-xs">
+            {t("dashboard.widgets.completed", "Completed")}
+          </Badge>
+        );
       case "in_production":
       case "processing":
-        return <Badge className="bg-blue-100 text-blue-800 text-xs">{t("dashboard.widgets.inProduction", "In Production")}</Badge>;
+        return (
+          <Badge className="bg-blue-100 text-blue-800 text-xs">
+            {t("dashboard.widgets.inProduction", "In Production")}
+          </Badge>
+        );
       case "pending":
       case "new":
-        return <Badge className="bg-yellow-100 text-yellow-800 text-xs">{t("dashboard.widgets.newOrder", "New")}</Badge>;
+        return (
+          <Badge className="bg-yellow-100 text-yellow-800 text-xs">
+            {t("dashboard.widgets.newOrder", "New")}
+          </Badge>
+        );
       case "cancelled":
-        return <Badge className="bg-red-100 text-red-800 text-xs">{t("dashboard.widgets.cancelled", "Cancelled")}</Badge>;
+        return (
+          <Badge className="bg-red-100 text-red-800 text-xs">
+            {t("dashboard.widgets.cancelled", "Cancelled")}
+          </Badge>
+        );
       default:
-        return <Badge variant="secondary" className="text-xs">{status || "-"}</Badge>;
+        return (
+          <Badge variant="secondary" className="text-xs">
+            {status || "-"}
+          </Badge>
+        );
     }
   };
 
@@ -74,7 +95,8 @@ export default function RecentOrdersWidget() {
             {t("dashboard.widgets.recentOrders", "Recent Orders")}
           </CardTitle>
           <Badge variant="secondary" className="text-xs">
-            {formatNumber(orderList.length)} {t("dashboard.widgets.total", "total")}
+            {formatNumber(orderList.length)}{" "}
+            {t("dashboard.widgets.total", "total")}
           </Badge>
         </div>
       </CardHeader>
@@ -105,10 +127,13 @@ export default function RecentOrdersWidget() {
                         {order.created_at && (
                           <span className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            {new Date(order.created_at).toLocaleDateString("ar", {
-                              day: "numeric",
-                              month: "short",
-                            })}
+                            {new Date(order.created_at).toLocaleDateString(
+                              "ar",
+                              {
+                                day: "numeric",
+                                month: "short",
+                              },
+                            )}
                           </span>
                         )}
                       </div>

@@ -5,8 +5,8 @@ import {
   Database,
   BarChart3,
 } from "lucide-react";
-import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
+import { Link, useLocation } from "wouter";
 
 const navItems = [
   { nameKey: "nav.home", icon: Home, path: "/" },

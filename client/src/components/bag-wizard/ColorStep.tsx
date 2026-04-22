@@ -1,4 +1,7 @@
-import { getAllowedColors, type BagConfiguration } from "../../lib/bag-rules-engine";
+import {
+  getAllowedColors,
+  type BagConfiguration,
+} from "../../lib/bag-rules-engine";
 
 interface ColorStepProps {
   config: BagConfiguration;
@@ -11,7 +14,9 @@ export function ColorStep({ config, onChange }: ColorStepProps) {
   return (
     <div>
       <h2 className="text-xl font-bold text-gray-900 mb-2">لون الكيس</h2>
-      <p className="text-gray-500 text-sm mb-6">اختر لون المادة الأساسي للكيس</p>
+      <p className="text-gray-500 text-sm mb-6">
+        اختر لون المادة الأساسي للكيس
+      </p>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {allowed.map((color) => (
@@ -28,15 +33,22 @@ export function ColorStep({ config, onChange }: ColorStepProps) {
               className="w-12 h-12 rounded-full border-2 shadow-inner"
               style={{
                 backgroundColor: color.hex,
-                borderColor: color.id === "white" || color.id === "transparent" ? "#d1d5db" : color.hex,
+                borderColor:
+                  color.id === "white" || color.id === "transparent"
+                    ? "#d1d5db"
+                    : color.hex,
                 opacity: color.opacity,
                 backgroundImage: color.is_transparent
                   ? "repeating-conic-gradient(#e5e7eb 0% 25%, transparent 0% 50%) 50% / 12px 12px"
                   : undefined,
               }}
             />
-            <span className="font-medium text-gray-700 text-sm">{color.label_ar}</span>
-            {config.bagColor === color.id && <span className="text-blue-500 text-xs">✓ محدد</span>}
+            <span className="font-medium text-gray-700 text-sm">
+              {color.label_ar}
+            </span>
+            {config.bagColor === color.id && (
+              <span className="text-blue-500 text-xs">✓ محدد</span>
+            )}
           </button>
         ))}
       </div>

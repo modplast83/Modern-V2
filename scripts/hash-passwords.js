@@ -14,10 +14,10 @@
  *   DRY_RUN - Optional: Set to 'true' to preview changes without applying them
  */
 
-import { drizzle } from "drizzle-orm/neon-serverless";
 import { Pool } from "@neondatabase/serverless";
-import { eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
+import { eq } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/neon-serverless";
 
 // Configuration
 const SALT_ROUNDS = 12; // Strong salt rounds for production

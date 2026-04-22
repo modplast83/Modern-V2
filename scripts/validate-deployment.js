@@ -4,11 +4,12 @@
  * Validates all requirements for successful deployment
  */
 
+import { constants } from "fs";
+import { readdir, access } from "fs/promises";
+
 import { Pool, neonConfig } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import ws from "ws";
-import { readdir, access } from "fs/promises";
-import { constants } from "fs";
 
 // Configure WebSocket for Neon
 neonConfig.webSocketConstructor = ws;

@@ -1,10 +1,29 @@
-import { useState } from "react";
-import { useTranslation } from "react-i18next";
-import { useLocalizedName } from "../../hooks/use-localized-name";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Button } from "../ui/button";
+import {
+  QrCode,
+  Scissors,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Package,
+  Printer,
+} from "lucide-react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
+import { z } from "zod";
+
+import {
+  safeParseFloat,
+  formatNumberAr,
+} from "../../../../shared/number-utils";
+import { useLocalizedName } from "../../hooks/use-localized-name";
+import { useToast } from "../../hooks/use-toast";
+import { formatWeight } from "../../lib/formatNumber";
 import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import {
   Collapsible,
   CollapsibleContent,
@@ -27,6 +46,7 @@ import {
   FormMessage,
 } from "../ui/form";
 import { Input } from "../ui/input";
+import { Progress } from "../ui/progress";
 import {
   Select,
   SelectContent,
@@ -34,34 +54,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
-import {
-  QrCode,
-  Scissors,
-  ChevronDown,
-  ChevronUp,
-  Clock,
-  Package,
-  Printer,
-} from "lucide-react";
-import { formatWeight } from "../../lib/formatNumber";
-import { Progress } from "../ui/progress";
-import { useToast } from "../../hooks/use-toast";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+
 import { printRollLabel } from "./RollLabelPrint";
-import { safeParseFloat, formatNumberAr } from "../../../../shared/number-utils";
 
 function createCutFormSchema(t: (key: string) => string) {
   return z.object({
     cut_weight_kg: z.coerce
       .number()
-      .positive(t('production.cutting.validation.weightPositive')),
+      .positive(t("production.cutting.validation.weightPositive")),
     pieces_count: z.coerce
       .number()
-      .positive(t('production.cutting.validation.piecesPositive'))
+      .positive(t("production.cutting.validation.piecesPositive"))
       .optional(),
-    cutting_machine_id: z.string().min(1, t('production.cutting.validation.selectMachine')),
+    cutting_machine_id: z
+      .string()
+      .min(1, t("production.cutting.validation.selectMachine")),
   });
 }
 
@@ -100,12 +107,14 @@ export default function GroupedCuttingQueue({
 
   // Find cutting section
   const cuttingSection = sections.find(
-    s => s.name_ar?.includes("تقطيع") || s.name?.toLowerCase().includes("cutting")
+    (s) =>
+      s.name_ar?.includes("تقطيع") || s.name?.toLowerCase().includes("cutting"),
   );
-  
-  const cuttingMachines = machines.filter(m => 
-    m.status === "active" && 
-    (m.type === "cutting" || m.section_id === cuttingSection?.id)
+
+  const cuttingMachines = machines.filter(
+    (m) =>
+      m.status === "active" &&
+      (m.type === "cutting" || m.section_id === cuttingSection?.id),
   );
 
   const cutFormSchema = createCutFormSchema(t);
@@ -133,15 +142,17 @@ export default function GroupedCuttingQueue({
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || t('production.cutting.registrationFailed'));
+        throw new Error(
+          error.message || t("production.cutting.registrationFailed"),
+        );
       }
 
       return response.json();
     },
     onSuccess: () => {
       toast({
-        title: t('messages.success'),
-        description: t('production.cutting.registeredSuccess'),
+        title: t("messages.success"),
+        description: t("production.cutting.registeredSuccess"),
       });
       queryClient.invalidateQueries({
         queryKey: ["/api/production/grouped-cutting-queue"],
@@ -156,7 +167,7 @@ export default function GroupedCuttingQueue({
     },
     onError: (error: Error) => {
       toast({
-        title: t('common.error'),
+        title: t("common.error"),
         description: error.message,
         variant: "destructive",
       });
@@ -204,7 +215,7 @@ export default function GroupedCuttingQueue({
       return 0;
 
     let totalRolls = 0;
-    let cutRolls = 0;
+    const cutRolls = 0;
 
     order.production_orders.forEach((po: any) => {
       if (po.rolls && po.rolls.length > 0) {
@@ -233,7 +244,7 @@ export default function GroupedCuttingQueue({
         <CardContent className="p-6 text-center">
           <div className="text-gray-500">
             <Clock className="h-12 w-12 mx-auto mb-2 opacity-50" />
-            <p>{t('production.cutting.noRollsReady')}</p>
+            <p>{t("production.cutting.noRollsReady")}</p>
           </div>
         </CardContent>
       </Card>
@@ -250,12 +261,12 @@ export default function GroupedCuttingQueue({
                 <Package className="h-5 w-5 text-blue-600" />
                 <div>
                   <CardTitle className="text-lg">
-                    {t('production.orderNumber')}: {order.order_number}
+                    {t("production.orderNumber")}: {order.order_number}
                   </CardTitle>
                   <p className="text-base font-bold text-blue-700">
-                    {t('production.customer')}:{" "}
+                    {t("production.customer")}:{" "}
                     {ln(order.customer_name_ar, order.customer_name) ||
-                      t('production.notSpecified')}
+                      t("production.notSpecified")}
                   </p>
                 </div>
               </div>
@@ -276,7 +287,7 @@ export default function GroupedCuttingQueue({
                     (total: number, po: any) => total + (po.rolls?.length || 0),
                     0,
                   ) || 0}{" "}
-                  {t('production.roll')}
+                  {t("production.roll")}
                 </Badge>
                 <Button
                   variant="ghost"
@@ -310,13 +321,17 @@ export default function GroupedCuttingQueue({
                               {productionOrder.production_order_number}
                             </h4>
                             <p className="text-sm text-muted-foreground">
-                              {ln(productionOrder.item_name_ar, productionOrder.item_name) ||
-                                t('production.notSpecified')}
+                              {ln(
+                                productionOrder.item_name_ar,
+                                productionOrder.item_name,
+                              ) || t("production.notSpecified")}
                             </p>
                             <div className="grid grid-cols-3 gap-x-4 gap-y-1 mt-2 text-xs">
                               {productionOrder.size_caption && (
                                 <div>
-                                  <span className="font-medium">{t('production.size')}: </span>
+                                  <span className="font-medium">
+                                    {t("production.size")}:{" "}
+                                  </span>
                                   <span className="text-muted-foreground">
                                     {productionOrder.size_caption}
                                   </span>
@@ -324,7 +339,9 @@ export default function GroupedCuttingQueue({
                               )}
                               {productionOrder.thickness && (
                                 <div>
-                                  <span className="font-medium">{t('production.thickness')}: </span>
+                                  <span className="font-medium">
+                                    {t("production.thickness")}:{" "}
+                                  </span>
                                   <span className="text-muted-foreground">
                                     {productionOrder.thickness}
                                   </span>
@@ -332,7 +349,9 @@ export default function GroupedCuttingQueue({
                               )}
                               {productionOrder.raw_material && (
                                 <div>
-                                  <span className="font-medium">{t('production.rawMaterial')}: </span>
+                                  <span className="font-medium">
+                                    {t("production.rawMaterial")}:{" "}
+                                  </span>
                                   <span className="text-muted-foreground">
                                     {productionOrder.raw_material}
                                   </span>
@@ -358,7 +377,8 @@ export default function GroupedCuttingQueue({
                               </div>
                             </div>
                             <Badge variant="secondary">
-                              {productionOrder.rolls?.length || 0} {t('production.cutting.rolls')}
+                              {productionOrder.rolls?.length || 0}{" "}
+                              {t("production.cutting.rolls")}
                             </Badge>
                             <Button
                               variant="ghost"
@@ -387,11 +407,13 @@ export default function GroupedCuttingQueue({
                           <CardContent className="pt-0">
                             <div className="mt-4 ml-6 space-y-2">
                               <h5 className="text-sm font-medium text-gray-700 mb-2">
-                                {t('production.rolls')} ({productionOrder.rolls?.length || 0})
+                                {t("production.rolls")} (
+                                {productionOrder.rolls?.length || 0})
                               </h5>
-                              {!productionOrder.rolls || productionOrder.rolls.length === 0 ? (
+                              {!productionOrder.rolls ||
+                              productionOrder.rolls.length === 0 ? (
                                 <p className="text-sm text-muted-foreground">
-                                  {t('production.noRollsYet')}
+                                  {t("production.noRollsYet")}
                                 </p>
                               ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -408,15 +430,33 @@ export default function GroupedCuttingQueue({
                                               {roll.roll_number}
                                             </p>
                                             <p className="text-xs text-muted-foreground">
-                                              {t('production.weight')}: {formatWeight(safeParseFloat(roll.weight_kg, 0))}
+                                              {t("production.weight")}:{" "}
+                                              {formatWeight(
+                                                safeParseFloat(
+                                                  roll.weight_kg,
+                                                  0,
+                                                ),
+                                              )}
                                             </p>
                                             {roll.cut_weight_total_kg > 0 && (
                                               <div className="text-xs space-y-1 mt-1">
                                                 <p className="text-green-600">
-                                                  {t('production.netWeight')}: {formatWeight(safeParseFloat(roll.cut_weight_total_kg, 0))}
+                                                  {t("production.netWeight")}:{" "}
+                                                  {formatWeight(
+                                                    safeParseFloat(
+                                                      roll.cut_weight_total_kg,
+                                                      0,
+                                                    ),
+                                                  )}
                                                 </p>
                                                 <p className="text-red-600">
-                                                  {t('production.waste')}: {formatWeight(safeParseFloat(roll.waste_kg, 0))}
+                                                  {t("production.waste")}:{" "}
+                                                  {formatWeight(
+                                                    safeParseFloat(
+                                                      roll.waste_kg,
+                                                      0,
+                                                    ),
+                                                  )}
                                                 </p>
                                               </div>
                                             )}
@@ -439,22 +479,29 @@ export default function GroupedCuttingQueue({
                                             printRollLabel({
                                               roll: roll,
                                               productionOrder: {
-                                                production_order_number: productionOrder.production_order_number,
-                                                item_name_ar: productionOrder.item_name_ar,
-                                                item_name: productionOrder.item_name,
-                                                size_caption: productionOrder.size_caption
+                                                production_order_number:
+                                                  productionOrder.production_order_number,
+                                                item_name_ar:
+                                                  productionOrder.item_name_ar,
+                                                item_name:
+                                                  productionOrder.item_name,
+                                                size_caption:
+                                                  productionOrder.size_caption,
                                               },
                                               order: {
-                                                order_number: order.order_number,
-                                                customer_name_ar: order.customer_name_ar,
-                                                customer_name: order.customer_name
-                                              }
+                                                order_number:
+                                                  order.order_number,
+                                                customer_name_ar:
+                                                  order.customer_name_ar,
+                                                customer_name:
+                                                  order.customer_name,
+                                              },
                                             });
                                           }}
                                           data-testid={`button-print-label-${roll.id}`}
                                         >
                                           <Printer className="h-3 w-3 mr-1" />
-                                          {t('production.printLabel')}
+                                          {t("production.printLabel")}
                                         </Button>
                                       </div>
                                     </div>
@@ -478,9 +525,9 @@ export default function GroupedCuttingQueue({
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{t('production.cutting.cutRoll')}</DialogTitle>
+            <DialogTitle>{t("production.cutting.cutRoll")}</DialogTitle>
             <DialogDescription>
-              {t('production.cutting.enterCuttingData')}
+              {t("production.cutting.enterCuttingData")}
             </DialogDescription>
           </DialogHeader>
 
@@ -489,8 +536,9 @@ export default function GroupedCuttingQueue({
               <div className="p-3 bg-gray-50 rounded-lg">
                 <p className="font-medium">{selectedRoll.roll_number}</p>
                 <p className="text-sm text-gray-500">
-                  {t('production.originalWeight')}:{" "}
-                  {formatNumberAr(safeParseFloat(selectedRoll.weight_kg, 0), 2)} {t('production.units.kg')}
+                  {t("production.originalWeight")}:{" "}
+                  {formatNumberAr(safeParseFloat(selectedRoll.weight_kg, 0), 2)}{" "}
+                  {t("production.units.kg")}
                 </p>
               </div>
 
@@ -504,20 +552,28 @@ export default function GroupedCuttingQueue({
                     name="cutting_machine_id"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('production.cutting.cuttingMachine')} *</FormLabel>
+                        <FormLabel>
+                          {t("production.cutting.cuttingMachine")} *
+                        </FormLabel>
                         <Select
                           onValueChange={field.onChange}
                           value={field.value}
                         >
                           <FormControl>
                             <SelectTrigger data-testid="select-cutting-machine">
-                              <SelectValue placeholder={t('production.cutting.selectCuttingMachine')} />
+                              <SelectValue
+                                placeholder={t(
+                                  "production.cutting.selectCuttingMachine",
+                                )}
+                              />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
                             {cuttingMachines.length === 0 ? (
                               <div className="p-2 text-sm text-muted-foreground text-center">
-                                {t('production.cutting.noActiveCuttingMachines')}
+                                {t(
+                                  "production.cutting.noActiveCuttingMachines",
+                                )}
                               </div>
                             ) : (
                               cuttingMachines.map((machine) => (
@@ -536,18 +592,20 @@ export default function GroupedCuttingQueue({
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="cut_weight_kg"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('production.cutting.netCutWeight')}</FormLabel>
+                        <FormLabel>
+                          {t("production.cutting.netCutWeight")}
+                        </FormLabel>
                         <FormControl>
                           <Input
                             type="number"
                             step="0.01"
-                            placeholder={t('production.cutting.enterNetWeight')}
+                            placeholder={t("production.cutting.enterNetWeight")}
                             {...field}
                             data-testid="input-cut-weight"
                           />
@@ -562,11 +620,15 @@ export default function GroupedCuttingQueue({
                     name="pieces_count"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('production.cutting.piecesCountOptional')}</FormLabel>
+                        <FormLabel>
+                          {t("production.cutting.piecesCountOptional")}
+                        </FormLabel>
                         <FormControl>
                           <Input
                             type="number"
-                            placeholder={t('production.cutting.enterPiecesCount')}
+                            placeholder={t(
+                              "production.cutting.enterPiecesCount",
+                            )}
                             {...field}
                             data-testid="input-pieces-count"
                           />
@@ -579,7 +641,9 @@ export default function GroupedCuttingQueue({
                   {form.watch("cut_weight_kg") > 0 && selectedRoll && (
                     <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
                       <p className="text-sm">
-                        <span className="font-medium">{t('production.cutting.calculatedWaste')}: </span>
+                        <span className="font-medium">
+                          {t("production.cutting.calculatedWaste")}:{" "}
+                        </span>
                         <span
                           className={
                             calculateWaste(
@@ -590,11 +654,14 @@ export default function GroupedCuttingQueue({
                               : "text-green-600"
                           }
                         >
-                          {formatNumberAr(calculateWaste(
-                            safeParseFloat(selectedRoll.weight_kg, 0),
-                            form.watch("cut_weight_kg"),
-                          ), 2)}{" "}
-                          {t('production.units.kg')}
+                          {formatNumberAr(
+                            calculateWaste(
+                              safeParseFloat(selectedRoll.weight_kg, 0),
+                              form.watch("cut_weight_kg"),
+                            ),
+                            2,
+                          )}{" "}
+                          {t("production.units.kg")}
                         </span>
                       </p>
                     </div>
@@ -607,7 +674,7 @@ export default function GroupedCuttingQueue({
                       onClick={() => setDialogOpen(false)}
                       data-testid="button-cancel-cut"
                     >
-                      {t('common.cancel')}
+                      {t("common.cancel")}
                     </Button>
                     <Button
                       type="submit"
@@ -615,8 +682,8 @@ export default function GroupedCuttingQueue({
                       data-testid="button-confirm-cut"
                     >
                       {cutMutation.isPending
-                        ? t('production.cutting.cuttingInProgress')
-                        : t('production.cutting.confirmCutting')}
+                        ? t("production.cutting.cuttingInProgress")
+                        : t("production.cutting.confirmCutting")}
                     </Button>
                   </div>
                 </form>
