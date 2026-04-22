@@ -71,7 +71,8 @@ export default function RollCreationModalEnhanced({
   productionOrderData,
   isFinalRoll = false,
 }: RollCreationModalEnhancedProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const dir = i18n.language === "ar" ? "rtl" : "ltr";
   const { toast } = useToast();
   const [lastProductionTime, setLastProductionTime] = useState<number | null>(
     null,
@@ -229,32 +230,43 @@ export default function RollCreationModalEnhanced({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]" dir="rtl">
+      <DialogContent
+        className="w-[calc(100vw-1rem)] max-w-[500px] sm:max-w-[500px] max-h-[92vh] overflow-y-auto p-4 sm:p-6 rounded-2xl"
+        dir={dir}
+      >
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="text-xl font-extrabold">
             {isFinalRoll
               ? t("modals.rollCreationEnhanced.titleFinal")
               : t("modals.rollCreationEnhanced.title")}
           </DialogTitle>
-          <DialogDescription>
-            {productionOrderData && (
-              <div className="mt-2 space-y-1 text-sm">
-                <p>
-                  {t("modals.rollCreationEnhanced.productionOrder")}:{" "}
-                  {productionOrderData.production_order_number}
-                </p>
-                <p>
-                  {t("modals.rollCreationEnhanced.product")}:{" "}
-                  {productionOrderData.product_name}
-                </p>
-                <p>
-                  {t("modals.rollCreationEnhanced.customer")}:{" "}
-                  {productionOrderData.customer_name}
-                </p>
-              </div>
-            )}
+          <DialogDescription className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+            {productionOrderData
+              ? `${t("modals.rollCreationEnhanced.productionOrder")}: ${productionOrderData.production_order_number}`
+              : t("modals.rollCreationEnhanced.title")}
           </DialogDescription>
         </DialogHeader>
+
+        {productionOrderData && (
+          <div className="mt-1 space-y-1 text-sm font-semibold text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+            <p>
+              <span className="text-gray-500">
+                {t("modals.rollCreationEnhanced.product")}:
+              </span>{" "}
+              <span className="font-bold">
+                {productionOrderData.product_name}
+              </span>
+            </p>
+            <p>
+              <span className="text-gray-500">
+                {t("modals.rollCreationEnhanced.customer")}:
+              </span>{" "}
+              <span className="font-bold">
+                {productionOrderData.customer_name}
+              </span>
+            </p>
+          </div>
+        )}
 
         <Form {...form}>
           <form
@@ -263,22 +275,22 @@ export default function RollCreationModalEnhanced({
           >
             {/* Suggested Roll Number */}
             <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
-              <p className="text-sm text-blue-900 dark:text-blue-100">
+              <p className="text-base font-semibold text-blue-900 dark:text-blue-100">
                 {t("modals.rollCreationEnhanced.suggestedRollNumber")}:{" "}
-                <strong>{suggestedRollNumber}</strong>
+                <strong className="font-extrabold">{suggestedRollNumber}</strong>
               </p>
             </div>
 
             {/* Production Stats */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
                 <div className="flex items-center gap-2">
                   <Package className="h-4 w-4 text-gray-600" />
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                     {t("modals.rollCreationEnhanced.remainingQuantity")}
                   </p>
                 </div>
-                <p className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                <p className="text-xl font-extrabold text-gray-900 dark:text-gray-100 mt-1">
                   {formatNumberAr(remainingQuantity)}{" "}
                   {t("modals.rollCreationEnhanced.kg")}
                 </p>
@@ -293,11 +305,11 @@ export default function RollCreationModalEnhanced({
               <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-gray-600" />
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                     {t("modals.rollCreationEnhanced.avgProductionTime")}
                   </p>
                 </div>
-                <p className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                <p className="text-xl font-extrabold text-gray-900 dark:text-gray-100 mt-1">
                   {averageProductionTime
                     ? `${averageProductionTime} ${t("modals.rollCreationEnhanced.minute")}`
                     : t("modals.rollCreationEnhanced.notAvailable")}
@@ -311,16 +323,17 @@ export default function RollCreationModalEnhanced({
               name="weight_kg"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>
+                  <FormLabel className="text-base font-bold">
                     {t("modals.rollCreationEnhanced.weightKg")}
                   </FormLabel>
                   <FormControl>
                     <Input
                       {...field}
                       type="number"
+                      inputMode="decimal"
                       step="0.01"
                       placeholder={t("modals.rollCreationEnhanced.enterWeight")}
-                      className="text-right"
+                      className="text-right h-12 text-lg font-bold"
                       data-testid="input-weight"
                     />
                   </FormControl>
@@ -335,7 +348,7 @@ export default function RollCreationModalEnhanced({
               name="film_machine_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>
+                  <FormLabel className="text-base font-bold">
                     {t("modals.rollCreationEnhanced.filmMachine")}
                   </FormLabel>
                   <Select
@@ -344,7 +357,10 @@ export default function RollCreationModalEnhanced({
                     disabled={machinesLoading}
                   >
                     <FormControl>
-                      <SelectTrigger data-testid="select-machine">
+                      <SelectTrigger
+                        data-testid="select-machine"
+                        className="h-12 text-base font-semibold"
+                      >
                         <SelectValue
                           placeholder={t(
                             "modals.rollCreationEnhanced.selectMachine",
@@ -417,12 +433,13 @@ export default function RollCreationModalEnhanced({
             )}
 
             {/* Action Buttons */}
-            <div className="flex justify-between">
+            <div className="flex gap-3 pt-1">
               <Button
                 type="button"
                 variant="outline"
                 onClick={onClose}
                 disabled={createRollMutation.isPending}
+                className="flex-1 h-12 text-base font-bold"
               >
                 {t("modals.rollCreationEnhanced.cancel")}
               </Button>
@@ -435,6 +452,7 @@ export default function RollCreationModalEnhanced({
                     ? "destructive"
                     : "default"
                 }
+                className="flex-1 h-12 text-base font-bold"
               >
                 {createRollMutation.isPending ? (
                   <>

@@ -203,12 +203,13 @@ function MobileHeader({
       {onBack && (
         <button
           onClick={onBack}
+          aria-label="back"
           className="p-1 hover:bg-white/20 rounded-lg transition-colors"
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
       )}
-      <h1 className="text-lg font-bold flex-1">{title}</h1>
+      <h1 className="text-xl font-extrabold flex-1 tracking-tight">{title}</h1>
       {rightAction}
     </div>
   );
@@ -258,10 +259,10 @@ function TabsView({
               <Film className="h-7 w-7 text-blue-600 dark:text-blue-400" />
             </div>
             <div className="flex-1 text-right">
-              <p className="font-bold text-lg text-gray-900 dark:text-gray-100">
+              <p className="font-extrabold text-xl text-gray-900 dark:text-gray-100">
                 {t("production.dashboard.filmOperator", "مشغل الفيلم")}
               </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">
                 {t("production.dashboard.createRolls", "إنشاء رولات جديدة")}
               </p>
             </div>
@@ -278,10 +279,10 @@ function TabsView({
               <Printer className="h-7 w-7 text-purple-600 dark:text-purple-400" />
             </div>
             <div className="flex-1 text-right">
-              <p className="font-bold text-lg text-gray-900 dark:text-gray-100">
+              <p className="font-extrabold text-xl text-gray-900 dark:text-gray-100">
                 {t("production.dashboard.printingOperator", "مشغل الطباعة")}
               </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">
                 {t("operators.printing.description", "تسجيل طباعة الرولات")}
               </p>
             </div>
@@ -298,10 +299,10 @@ function TabsView({
               <Scissors className="h-7 w-7 text-green-600 dark:text-green-400" />
             </div>
             <div className="flex-1 text-right">
-              <p className="font-bold text-lg text-gray-900 dark:text-gray-100">
+              <p className="font-extrabold text-xl text-gray-900 dark:text-gray-100">
                 {t("production.dashboard.cuttingOperator", "مشغل التقطيع")}
               </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">
                 {t("operators.cutting.description", "تسجيل تقطيع الرولات")}
               </p>
             </div>
@@ -394,6 +395,7 @@ function FilmMobileView({ onBack }: { onBack: () => void }) {
         rightAction={
           <button
             onClick={() => refetch()}
+            aria-label="refresh"
             className="p-2 hover:bg-white/20 rounded-lg"
           >
             <RefreshCw className="h-5 w-5" />
@@ -454,10 +456,10 @@ function FilmMobileView({ onBack }: { onBack: () => void }) {
                   <div className="p-4 space-y-3">
                     <div className="flex items-start justify-between">
                       <div>
-                        <p className="font-bold text-base">
+                        <p className="font-extrabold text-lg tracking-tight">
                           {order.production_order_number}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">
                           {t("operators.common.order")}: {order.order_number}
                         </p>
                       </div>
@@ -480,19 +482,19 @@ function FilmMobileView({ onBack }: { onBack: () => void }) {
 
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">
                           {t("operators.common.customer", "العميل")}
                         </p>
-                        <p className="font-semibold truncate">
+                        <p className="font-extrabold text-base truncate text-gray-900 dark:text-gray-100">
                           {ln(order.customer_name_ar, order.customer_name_en) ||
                             order.customer_name}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">
                           {t("operators.common.product", "المنتج")}
                         </p>
-                        <p className="font-medium truncate">
+                        <p className="font-bold text-base truncate text-gray-900 dark:text-gray-100">
                           {ln(order.product_name_ar, order.product_name_en) ||
                             order.product_name}
                         </p>
@@ -659,20 +661,18 @@ function FilmMobileView({ onBack }: { onBack: () => void }) {
                       <div className="flex gap-2">
                         <Button
                           onClick={() => handleCreateRoll(order, false)}
-                          className="flex-1 h-11"
-                          size="sm"
+                          className="flex-1 h-12 text-base font-extrabold"
                         >
-                          <Plus className="h-4 w-4 ml-1" />
+                          <Plus className="h-5 w-5 ml-1" />
                           {t("operators.common.createNewRoll", "إنشاء رول")}
                         </Button>
                         {order.rolls_count > 0 && (
                           <Button
                             onClick={() => handleCreateRoll(order, true)}
                             variant="destructive"
-                            className="h-11"
-                            size="sm"
+                            className="h-12 text-base font-extrabold px-4"
                           >
-                            <Flag className="h-4 w-4 ml-1" />
+                            <Flag className="h-5 w-5 ml-1" />
                             {t("operators.common.finalRoll", "رول أخير")}
                           </Button>
                         )}
@@ -821,6 +821,7 @@ function PrintingMobileView({ onBack }: { onBack: () => void }) {
         rightAction={
           <button
             onClick={() => refetch()}
+            aria-label="refresh"
             className="p-2 hover:bg-white/20 rounded-lg"
           >
             <RefreshCw className="h-5 w-5" />
@@ -837,7 +838,7 @@ function PrintingMobileView({ onBack }: { onBack: () => void }) {
           <div className="bg-white dark:bg-gray-900 rounded-xl p-4 shadow-sm border-2 border-purple-200 dark:border-purple-800">
             <div className="flex items-center gap-2 mb-2">
               <Printer className="h-5 w-5 text-purple-600" />
-              <span className="font-semibold text-sm">
+              <span className="font-extrabold text-base">
                 {t("operators.printing.selectMachine", "اختر الماكينة")}
               </span>
             </div>
@@ -926,10 +927,10 @@ function PrintingMobileView({ onBack }: { onBack: () => void }) {
                   <div className="p-4 space-y-3">
                     <div className="flex items-start justify-between">
                       <div>
-                        <p className="font-bold text-base">
+                        <p className="font-extrabold text-lg tracking-tight">
                           {order.production_order_number}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">
                           {t("operators.common.order")}: {order.order_number}
                         </p>
                       </div>
@@ -941,19 +942,19 @@ function PrintingMobileView({ onBack }: { onBack: () => void }) {
 
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">
                           {t("operators.common.customer", "العميل")}
                         </p>
-                        <p className="font-semibold truncate">
+                        <p className="font-extrabold text-base truncate text-gray-900 dark:text-gray-100">
                           {ln(order.customer_name_ar, order.customer_name_en) ||
                             order.customer_name}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">
                           {t("operators.common.product", "المنتج")}
                         </p>
-                        <p className="font-medium truncate">
+                        <p className="font-bold text-base truncate text-gray-900 dark:text-gray-100">
                           {ln(order.product_name_ar, order.product_name_en) ||
                             order.product_name}
                         </p>
@@ -1012,7 +1013,7 @@ function PrintingMobileView({ onBack }: { onBack: () => void }) {
                               <p className="font-medium text-sm">
                                 {roll.roll_number}
                               </p>
-                              <p className="text-xs text-gray-500">
+                              <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">
                                 {t("operators.common.weight", "الوزن")}:{" "}
                                 {formatNumberAr(Number(roll.weight_kg))}{" "}
                                 {t("operators.common.kg")}
@@ -1024,14 +1025,13 @@ function PrintingMobileView({ onBack }: { onBack: () => void }) {
                                 processingRollIds.has(roll.roll_id) ||
                                 !selectedMachineId
                               }
-                              size="sm"
-                              className="h-9"
+                              className="h-11 text-base font-extrabold bg-purple-600 hover:bg-purple-700"
                             >
                               {processingRollIds.has(roll.roll_id) ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <Loader2 className="h-5 w-5 animate-spin" />
                               ) : (
                                 <>
-                                  <Printer className="h-4 w-4 ml-1" />
+                                  <Printer className="h-5 w-5 ml-1" />
                                   {t("operators.printing.print", "طباعة")}
                                 </>
                               )}
@@ -1178,6 +1178,7 @@ function CuttingMobileView({ onBack }: { onBack: () => void }) {
         rightAction={
           <button
             onClick={() => refetch()}
+            aria-label="refresh"
             className="p-2 hover:bg-white/20 rounded-lg"
           >
             <RefreshCw className="h-5 w-5" />
@@ -1194,7 +1195,7 @@ function CuttingMobileView({ onBack }: { onBack: () => void }) {
           <div className="bg-white dark:bg-gray-900 rounded-xl p-4 shadow-sm border-2 border-green-200 dark:border-green-800">
             <div className="flex items-center gap-2 mb-2">
               <Scissors className="h-5 w-5 text-green-600" />
-              <span className="font-semibold text-sm">
+              <span className="font-extrabold text-base">
                 {t("operators.cutting.selectMachine", "اختر الماكينة")}
               </span>
             </div>
@@ -1283,10 +1284,10 @@ function CuttingMobileView({ onBack }: { onBack: () => void }) {
                   <div className="p-4 space-y-3">
                     <div className="flex items-start justify-between">
                       <div>
-                        <p className="font-bold text-base">
+                        <p className="font-extrabold text-lg tracking-tight">
                           {order.production_order_number}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">
                           {t("operators.common.order")}: {order.order_number}
                         </p>
                       </div>
@@ -1298,19 +1299,19 @@ function CuttingMobileView({ onBack }: { onBack: () => void }) {
 
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">
                           {t("operators.common.customer", "العميل")}
                         </p>
-                        <p className="font-semibold truncate">
+                        <p className="font-extrabold text-base truncate text-gray-900 dark:text-gray-100">
                           {ln(order.customer_name_ar, order.customer_name_en) ||
                             order.customer_name}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">
                           {t("operators.common.product", "المنتج")}
                         </p>
-                        <p className="font-medium truncate">
+                        <p className="font-bold text-base truncate text-gray-900 dark:text-gray-100">
                           {ln(order.product_name_ar, order.product_name_en) ||
                             order.product_name}
                         </p>
@@ -1377,7 +1378,7 @@ function CuttingMobileView({ onBack }: { onBack: () => void }) {
                               <p className="font-medium text-sm">
                                 {roll.roll_number}
                               </p>
-                              <p className="text-xs text-gray-500">
+                              <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">
                                 {t("operators.common.weight", "الوزن")}:{" "}
                                 {formatNumberAr(Number(roll.weight_kg))}{" "}
                                 {t("operators.common.kg")}
@@ -1386,10 +1387,9 @@ function CuttingMobileView({ onBack }: { onBack: () => void }) {
                             <Button
                               onClick={() => handleOpenCuttingDialog(roll)}
                               disabled={!selectedMachineId}
-                              size="sm"
-                              className="h-9 bg-green-600 hover:bg-green-700"
+                              className="h-11 text-base font-extrabold bg-green-600 hover:bg-green-700 px-5"
                             >
-                              <Scissors className="h-4 w-4 ml-1" />
+                              <Scissors className="h-5 w-5 ml-1" />
                               {t("operators.cutting.cut", "قص")}
                             </Button>
                           </div>
@@ -1417,23 +1417,23 @@ function CuttingMobileView({ onBack }: { onBack: () => void }) {
           >
             <div className="w-12 h-1.5 rounded-full bg-gray-300 mx-auto" />
 
-            <h3 className="font-bold text-lg flex items-center gap-2">
+            <h3 className="font-extrabold text-xl flex items-center gap-2">
               <Scissors className="h-5 w-5 text-green-600" />
               {t("operators.cutting.enterNetWeight", "إدخال الوزن الصافي")}
             </h3>
 
             <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 grid grid-cols-2 gap-3 text-sm">
               <div>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">
                   {t("operators.cutting.rollNumber", "رقم الرول")}
                 </p>
-                <p className="font-semibold">{selectedRoll.roll_number}</p>
+                <p className="font-extrabold text-base">{selectedRoll.roll_number}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">
                   {t("operators.cutting.grossWeight", "الوزن الإجمالي")}
                 </p>
-                <p className="font-semibold">
+                <p className="font-extrabold text-base">
                   {formatNumberAr(Number(selectedRoll.weight_kg))}{" "}
                   {t("operators.common.kg")}
                 </p>
@@ -1442,10 +1442,10 @@ function CuttingMobileView({ onBack }: { onBack: () => void }) {
 
             {selectedMachine && (
               <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-sm">
-                <p className="text-xs text-gray-500">
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">
                   {t("operators.cutting.cuttingMachine", "ماكينة التقطيع")}
                 </p>
-                <p className="font-semibold">
+                <p className="font-extrabold text-base">
                   {ln(selectedMachine.name_ar, selectedMachine.name)} (
                   {selectedMachine.id})
                 </p>
@@ -1453,7 +1453,7 @@ function CuttingMobileView({ onBack }: { onBack: () => void }) {
             )}
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">
+              <label className="text-base font-bold">
                 {t("operators.cutting.netWeightKg", "الوزن الصافي (كجم)")}
               </label>
               <Input
@@ -1467,9 +1467,10 @@ function CuttingMobileView({ onBack }: { onBack: () => void }) {
                   "operators.cutting.enterNetWeightPlaceholder",
                   "أدخل الوزن الصافي",
                 )}
-                className="text-right h-12 text-lg"
+                inputMode="decimal"
+                className="text-right h-14 text-xl font-extrabold"
               />
-              <p className="text-xs text-gray-500">
+              <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">
                 {t("operators.cutting.expectedWaste", "الهالك المتوقع")}:{" "}
                 {formatNumberAr(
                   Math.max(
@@ -1486,14 +1487,14 @@ function CuttingMobileView({ onBack }: { onBack: () => void }) {
                 variant="outline"
                 onClick={() => setIsDialogOpen(false)}
                 disabled={completeCuttingMutation.isPending}
-                className="flex-1 h-12"
+                className="flex-1 h-12 text-base font-extrabold"
               >
                 {t("common.cancel", "إلغاء")}
               </Button>
               <Button
                 onClick={handleCompleteCutting}
                 disabled={completeCuttingMutation.isPending || !netWeight}
-                className="flex-1 h-12 bg-green-600 hover:bg-green-700"
+                className="flex-1 h-12 text-base font-extrabold bg-green-600 hover:bg-green-700"
               >
                 {completeCuttingMutation.isPending ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -1535,11 +1536,19 @@ function StatCard({
 
   return (
     <div
-      className={`rounded-xl p-3 border ${colorMap[color] || colorMap.blue}`}
+      className={`rounded-xl p-3 border-2 ${colorMap[color] || colorMap.blue}`}
     >
-      <p className="text-xs text-gray-500 truncate">{label}</p>
-      <p className="text-lg font-bold mt-0.5">{value}</p>
-      {unit && <p className="text-[10px] text-gray-500">{unit}</p>}
+      <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 truncate">
+        {label}
+      </p>
+      <p className="text-2xl font-extrabold mt-1 text-gray-900 dark:text-gray-50 tracking-tight">
+        {value}
+      </p>
+      {unit && (
+        <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 mt-0.5">
+          {unit}
+        </p>
+      )}
     </div>
   );
 }
@@ -1547,8 +1556,8 @@ function StatCard({
 function DetailItem({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-gray-500">{label}</p>
-      <p className="font-medium">{value}</p>
+      <p className="text-gray-500 dark:text-gray-400 font-semibold">{label}</p>
+      <p className="font-bold text-gray-900 dark:text-gray-100">{value}</p>
     </div>
   );
 }
@@ -1557,7 +1566,9 @@ function EmptyState({ message }: { message: string }) {
   return (
     <div className="bg-white dark:bg-gray-900 rounded-xl p-8 text-center border border-gray-200 dark:border-gray-800">
       <Info className="h-10 w-10 text-gray-400 mx-auto mb-3" />
-      <p className="text-gray-600 dark:text-gray-400">{message}</p>
+      <p className="text-base font-bold text-gray-700 dark:text-gray-300">
+        {message}
+      </p>
     </div>
   );
 }
