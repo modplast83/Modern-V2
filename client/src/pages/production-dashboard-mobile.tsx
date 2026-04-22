@@ -18,7 +18,7 @@ import {
   AlertCircle,
   RefreshCw,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { formatNumberAr } from "../../../shared/number-utils";
@@ -351,22 +351,12 @@ function FilmMobileView({ onBack }: { onBack?: () => void }) {
     refetchInterval: 30000,
   });
 
+  // Server applies an Asia/Riyadh "today" boundary, so the response only
+  // contains rolls created since today's local midnight in the factory tz.
   const { data: allRolls = [] } = useQuery<Roll[]>({
-    queryKey: ["/api/rolls", { limit: 500 }],
+    queryKey: ["/api/rolls", { limit: 500, today_only: true }],
     refetchInterval: 30000,
   });
-
-  // Start of "today" in Asia/Riyadh (UTC+3, no DST), expressed as a UTC ms.
-  const todayStartMs = useMemo(() => {
-    const parts = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Asia/Riyadh",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(new Date());
-    const [y, m, d] = parts.split("-").map(Number);
-    return Date.UTC(y, m - 1, d) - 3 * 60 * 60 * 1000;
-  }, []);
 
   const handleCreateRoll = (
     order: ActiveProductionOrderDetails,
@@ -475,11 +465,7 @@ function FilmMobileView({ onBack }: { onBack?: () => void }) {
               const isComplete = order.is_final_roll_created;
               const isExpanded = expandedOrderId === order.id;
               const orderRolls = allRolls
-                .filter((r) => {
-                  if (r.production_order_id !== order.id) return false;
-                  if (!r.created_at) return false;
-                  return new Date(r.created_at).getTime() >= todayStartMs;
-                })
+                .filter((r) => r.production_order_id === order.id)
                 .sort((a, b) => a.roll_seq - b.roll_seq);
 
               return (

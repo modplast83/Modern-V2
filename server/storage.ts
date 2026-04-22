@@ -1862,6 +1862,7 @@ export class DatabaseStorage implements IStorage {
   async getAllRolls(opts?: {
     limit?: number;
     offset?: number;
+    createdAfter?: Date;
   }): Promise<Roll[]> {
     return withDatabaseErrorHandling(
       async () => {
@@ -1870,9 +1871,13 @@ export class DatabaseStorage implements IStorage {
         }
         const limit = Math.max(1, Math.min(opts.limit ?? 50, 500));
         const offset = Math.max(0, opts.offset ?? 0);
-        return await db
-          .select()
-          .from(rolls)
+        const base = opts.createdAfter
+          ? db
+              .select()
+              .from(rolls)
+              .where(sql`${rolls.created_at} >= ${opts.createdAfter}`)
+          : db.select().from(rolls);
+        return await base
           .orderBy(desc(rolls.id))
           .limit(limit)
           .offset(offset);

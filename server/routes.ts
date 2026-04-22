@@ -3080,7 +3080,21 @@ export async function registerRoutes(
         Math.min(parseInt(String(req.query.limit ?? "")) || 50, 500),
       );
       const offset = Math.max(0, parseInt(String(req.query.offset ?? "")) || 0);
-      const rolls = await storage.getAllRolls({ limit, offset });
+
+      // Optional "today_only" filter, anchored to Asia/Riyadh (UTC+3, no DST).
+      let createdAfter: Date | undefined;
+      if (String(req.query.today_only ?? "") === "true") {
+        const parts = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "Asia/Riyadh",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).format(new Date());
+        const [y, m, d] = parts.split("-").map(Number);
+        createdAfter = new Date(Date.UTC(y, m - 1, d) - 3 * 60 * 60 * 1000);
+      }
+
+      const rolls = await storage.getAllRolls({ limit, offset, createdAfter });
       res.set("X-Pagination-Limit", String(limit));
       res.set("X-Pagination-Offset", String(offset));
       res.set("X-Pagination-Count", String(rolls.length));
