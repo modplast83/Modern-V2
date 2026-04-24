@@ -697,6 +697,13 @@ function MobileVoucherCreate({ onBack }: { onBack: () => void }) {
   const { data: suppliers } = useQuery<any[]>({ queryKey: ["/api/suppliers"] });
   const { data: locations } = useQuery<any[]>({ queryKey: ["/api/locations"] });
 
+  const isRawMaterialVoucher =
+    voucherType === "raw-material-in" || voucherType === "raw-material-out";
+
+  const filteredItems = (items || []).filter((item: any) =>
+    isRawMaterialVoucher ? item.category_id === "CAT10" : true,
+  );
+
   const typeToEndpoint: Record<string, string> = {
     "raw-material-in": "/api/warehouse/vouchers/raw-material-in",
     "raw-material-out": "/api/warehouse/vouchers/raw-material-out",
@@ -900,7 +907,7 @@ function MobileVoucherCreate({ onBack }: { onBack: () => void }) {
                     />
                   </SelectTrigger>
                   <SelectContent>
-                    {(items || []).map((item: any) => (
+                    {filteredItems.map((item: any) => (
                       <SelectItem key={item.id} value={String(item.id)}>
                         {item.name_ar || item.name}{" "}
                         {item.code ? `(${item.code})` : ""}
