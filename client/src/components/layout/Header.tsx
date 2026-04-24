@@ -2,8 +2,6 @@ import {
   Sun,
   Moon,
   Smartphone,
-  Factory,
-  ClipboardList,
   User,
   Warehouse,
   Cog,
@@ -124,22 +122,10 @@ function MobileMenuButton() {
       color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30",
     },
     {
-      path: "/production-mobile",
-      label: t("header.mobile.production", "لوحة الإنتاج"),
-      icon: Factory,
-      color: "text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30",
-    },
-    {
       path: "/production-dashboard-mobile",
       label: t("header.mobile.productionDashboard", "تسجيل الرولات"),
       icon: Cog,
       color: "text-cyan-600 bg-cyan-50 dark:bg-cyan-900/30",
-    },
-    {
-      path: "/orders-mobile",
-      label: t("header.mobile.orders", "إدارة الطلبات"),
-      icon: ClipboardList,
-      color: "text-orange-600 bg-orange-50 dark:bg-orange-900/30",
     },
     {
       path: "/warehouse-mobile",
