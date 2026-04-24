@@ -195,9 +195,9 @@ function BackToDesktopBar() {
     <a
       href="/production-dashboard"
       onClick={() => setForceDesktop(true)}
-      className="sticky top-0 z-40 flex items-center justify-center gap-2 bg-gray-900 text-white text-xs py-1.5 hover:bg-gray-800 transition-colors"
+      className="flex items-center justify-center gap-2 bg-slate-950 text-slate-400 text-[11px] py-1 hover:text-white transition-colors"
     >
-      <Home className="h-3.5 w-3.5" />
+      <Home className="h-3 w-3" />
       <span>{t("header.mobile.backToDesktop", "العودة للنسخة الكاملة")}</span>
     </a>
   );
@@ -205,30 +205,63 @@ function BackToDesktopBar() {
 
 function MobileHeader({
   title,
+  subtitle,
   onBack,
   rightAction,
-  color = "bg-blue-600",
+  accent = "blue",
+  icon,
 }: {
   title: string;
+  subtitle?: string;
   onBack?: () => void;
   rightAction?: React.ReactNode;
-  color?: string;
+  accent?: "blue" | "purple" | "green" | "slate";
+  icon?: React.ReactNode;
 }) {
+  const accentBar: Record<string, string> = {
+    blue: "bg-blue-500",
+    purple: "bg-purple-500",
+    green: "bg-emerald-500",
+    slate: "bg-slate-500",
+  };
+  const accentIcon: Record<string, string> = {
+    blue: "bg-blue-500/15 text-blue-400",
+    purple: "bg-purple-500/15 text-purple-400",
+    green: "bg-emerald-500/15 text-emerald-400",
+    slate: "bg-slate-500/15 text-slate-400",
+  };
   return (
-    <div
-      className={`sticky top-0 z-30 ${color} text-white px-4 py-3 flex items-center gap-3 shadow-lg`}
-    >
-      {onBack && (
-        <button
-          onClick={onBack}
-          aria-label="back"
-          className="p-1 hover:bg-white/20 rounded-lg transition-colors"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-      )}
-      <h1 className="text-xl font-extrabold flex-1 tracking-tight">{title}</h1>
-      {rightAction}
+    <div className="sticky top-0 z-30 bg-slate-900 text-white shadow-lg">
+      <div className="px-4 py-3 flex items-center gap-3">
+        {onBack && (
+          <button
+            onClick={onBack}
+            aria-label="back"
+            className="p-1.5 hover:bg-white/10 rounded-lg transition-colors -mr-1"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+        )}
+        {icon && (
+          <div
+            className={`h-10 w-10 rounded-xl flex items-center justify-center ${accentIcon[accent]}`}
+          >
+            {icon}
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <h1 className="text-lg font-extrabold tracking-tight leading-tight truncate">
+            {title}
+          </h1>
+          {subtitle && (
+            <p className="text-[11px] font-semibold text-slate-400 leading-tight truncate">
+              {subtitle}
+            </p>
+          )}
+        </div>
+        {rightAction}
+      </div>
+      <div className={`h-0.5 ${accentBar[accent]}`} />
     </div>
   );
 }
@@ -393,30 +426,20 @@ function FilmMobileView({ onBack }: { onBack?: () => void }) {
     }
   };
 
-  const stats = {
-    totalOrders: productionOrders.length,
-    totalRequired: productionOrders.reduce(
-      (sum, o) => sum + Number(o.final_quantity_kg || o.quantity_kg || 0),
-      0,
-    ),
-    totalProduced: productionOrders.reduce(
-      (sum, o) => sum + Number(o.total_weight_produced || 0),
-      0,
-    ),
-  };
-
   return (
     <>
       <BackToDesktopBar />
       <MobileHeader
         title={t("operators.film.title", "مشغل الفيلم")}
+        subtitle={`${formatNumberAr(productionOrders.length)} ${t("operators.film.activeOrdersSubtitle", "أوامر إنتاج نشطة")}`}
         onBack={onBack}
-        color="bg-blue-600"
+        accent="blue"
+        icon={<Film className="h-5 w-5" />}
         rightAction={
           <button
             onClick={() => refetch()}
             aria-label="refresh"
-            className="p-2 hover:bg-white/20 rounded-lg"
+            className="p-2 hover:bg-white/10 rounded-lg"
           >
             <RefreshCw className="h-5 w-5" />
           </button>
@@ -428,27 +451,7 @@ function FilmMobileView({ onBack }: { onBack?: () => void }) {
           <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
         </div>
       ) : (
-        <div className="p-3 space-y-3 pb-20">
-          <div className="grid grid-cols-3 gap-2">
-            <StatCard
-              label={t("operators.common.activeOrders", "أوامر نشطة")}
-              value={stats.totalOrders}
-              color="blue"
-            />
-            <StatCard
-              label={t("operators.common.requiredQuantity", "المطلوب")}
-              value={`${formatNumberAr(stats.totalRequired)}`}
-              unit={t("operators.common.kg", "كجم")}
-              color="orange"
-            />
-            <StatCard
-              label={t("operators.common.producedQuantity", "المنتج")}
-              value={`${formatNumberAr(stats.totalProduced)}`}
-              unit={t("operators.common.kg", "كجم")}
-              color="green"
-            />
-          </div>
-
+        <div className="p-3 space-y-3 pb-[calc(env(safe-area-inset-bottom)+1.5rem)]">
           {productionOrders.length === 0 ? (
             <EmptyState
               message={t(
@@ -825,24 +828,20 @@ function PrintingMobileView({ onBack }: { onBack?: () => void }) {
     }
   };
 
-  const stats = {
-    totalOrders: productionOrders.length,
-    totalRolls: productionOrders.reduce((sum, o) => sum + o.total_rolls, 0),
-    totalWeight: productionOrders.reduce((sum, o) => sum + o.total_weight, 0),
-  };
-
   return (
     <>
       <BackToDesktopBar />
       <MobileHeader
         title={t("operators.printing.title", "مشغل الطباعة")}
+        subtitle={`${formatNumberAr(productionOrders.length)} ${t("operators.printing.waitingPrintSubtitle", "أوامر بانتظار الطباعة")}`}
         onBack={onBack}
-        color="bg-purple-600"
+        accent="purple"
+        icon={<Printer className="h-5 w-5" />}
         rightAction={
           <button
             onClick={() => refetch()}
             aria-label="refresh"
-            className="p-2 hover:bg-white/20 rounded-lg"
+            className="p-2 hover:bg-white/10 rounded-lg"
           >
             <RefreshCw className="h-5 w-5" />
           </button>
@@ -854,8 +853,8 @@ function PrintingMobileView({ onBack }: { onBack?: () => void }) {
           <Loader2 className="h-10 w-10 animate-spin text-purple-500" />
         </div>
       ) : (
-        <div className="p-3 space-y-3 pb-20">
-          <div className="bg-white dark:bg-gray-900 rounded-xl p-4 shadow-sm border-2 border-purple-200 dark:border-purple-800">
+        <div className="p-3 space-y-3 pb-[calc(env(safe-area-inset-bottom)+1.5rem)]">
+          <div className="bg-white dark:bg-gray-900 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-800">
             <div className="flex items-center gap-2 mb-2">
               <Printer className="h-5 w-5 text-purple-600" />
               <span className="font-extrabold text-base">
@@ -901,25 +900,6 @@ function PrintingMobileView({ onBack }: { onBack?: () => void }) {
                 </span>
               </div>
             )}
-          </div>
-
-          <div className="grid grid-cols-3 gap-2">
-            <StatCard
-              label={t("operators.common.activeOrders", "أوامر نشطة")}
-              value={stats.totalOrders}
-              color="purple"
-            />
-            <StatCard
-              label={t("operators.common.totalRolls", "إجمالي الرولات")}
-              value={stats.totalRolls}
-              color="blue"
-            />
-            <StatCard
-              label={t("operators.common.totalWeight", "إجمالي الوزن")}
-              value={`${formatNumberAr(stats.totalWeight)}`}
-              unit={t("operators.common.kg", "كجم")}
-              color="green"
-            />
           </div>
 
           {productionOrders.length === 0 ? (
@@ -1182,24 +1162,20 @@ function CuttingMobileView({ onBack }: { onBack?: () => void }) {
     });
   };
 
-  const stats = {
-    totalOrders: productionOrders.length,
-    totalRolls: productionOrders.reduce((sum, o) => sum + o.total_rolls, 0),
-    totalWeight: productionOrders.reduce((sum, o) => sum + o.total_weight, 0),
-  };
-
   return (
     <>
       <BackToDesktopBar />
       <MobileHeader
         title={t("operators.cutting.title", "مشغل التقطيع")}
+        subtitle={`${formatNumberAr(productionOrders.length)} ${t("operators.cutting.waitingCutSubtitle", "أوامر بانتظار التقطيع")}`}
         onBack={onBack}
-        color="bg-green-600"
+        accent="green"
+        icon={<Scissors className="h-5 w-5" />}
         rightAction={
           <button
             onClick={() => refetch()}
             aria-label="refresh"
-            className="p-2 hover:bg-white/20 rounded-lg"
+            className="p-2 hover:bg-white/10 rounded-lg"
           >
             <RefreshCw className="h-5 w-5" />
           </button>
@@ -1211,8 +1187,8 @@ function CuttingMobileView({ onBack }: { onBack?: () => void }) {
           <Loader2 className="h-10 w-10 animate-spin text-green-500" />
         </div>
       ) : (
-        <div className="p-3 space-y-3 pb-20">
-          <div className="bg-white dark:bg-gray-900 rounded-xl p-4 shadow-sm border-2 border-green-200 dark:border-green-800">
+        <div className="p-3 space-y-3 pb-[calc(env(safe-area-inset-bottom)+1.5rem)]">
+          <div className="bg-white dark:bg-gray-900 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-800">
             <div className="flex items-center gap-2 mb-2">
               <Scissors className="h-5 w-5 text-green-600" />
               <span className="font-extrabold text-base">
@@ -1258,25 +1234,6 @@ function CuttingMobileView({ onBack }: { onBack?: () => void }) {
                 </span>
               </div>
             )}
-          </div>
-
-          <div className="grid grid-cols-3 gap-2">
-            <StatCard
-              label={t("operators.common.activeOrders", "أوامر نشطة")}
-              value={stats.totalOrders}
-              color="green"
-            />
-            <StatCard
-              label={t("operators.common.totalRolls", "إجمالي الرولات")}
-              value={stats.totalRolls}
-              color="blue"
-            />
-            <StatCard
-              label={t("operators.common.totalWeight", "إجمالي الوزن")}
-              value={`${formatNumberAr(stats.totalWeight)}`}
-              unit={t("operators.common.kg", "كجم")}
-              color="orange"
-            />
           </div>
 
           {productionOrders.length === 0 ? (
@@ -1432,7 +1389,7 @@ function CuttingMobileView({ onBack }: { onBack?: () => void }) {
           }
         >
           <div
-            className="w-full max-w-lg bg-white dark:bg-gray-900 rounded-t-2xl p-5 space-y-4 animate-in slide-in-from-bottom"
+            className="w-full max-w-lg bg-white dark:bg-gray-900 rounded-t-2xl p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] space-y-4 max-h-[92vh] overflow-y-auto animate-in slide-in-from-bottom"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-12 h-1.5 rounded-full bg-gray-300 mx-auto" />
@@ -1530,46 +1487,6 @@ function CuttingMobileView({ onBack }: { onBack?: () => void }) {
         </div>
       )}
     </>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  unit,
-  color,
-}: {
-  label: string;
-  value: string | number;
-  unit?: string;
-  color: string;
-}) {
-  const colorMap: Record<string, string> = {
-    blue: "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800",
-    purple:
-      "bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800",
-    green:
-      "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800",
-    orange:
-      "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800",
-  };
-
-  return (
-    <div
-      className={`rounded-xl p-3 border-2 ${colorMap[color] || colorMap.blue}`}
-    >
-      <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 truncate">
-        {label}
-      </p>
-      <p className="text-2xl font-extrabold mt-1 text-gray-900 dark:text-gray-50 tracking-tight">
-        {value}
-      </p>
-      {unit && (
-        <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 mt-0.5">
-          {unit}
-        </p>
-      )}
-    </div>
   );
 }
 
