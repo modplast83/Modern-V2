@@ -1,14 +1,35 @@
 import { Suspense } from "react";
 import { useTranslation } from "react-i18next";
-import { Route, Switch, Redirect } from "wouter";
+import { Route, Switch, Redirect, useLocation } from "wouter";
 
 import ErrorBoundary from "./components/ErrorBoundary";
 import ProtectedRoute from "./components/ProtectedRoute";
+import Header from "./components/layout/Header";
+import MobileShell from "./components/layout/MobileShell";
+import Sidebar from "./components/layout/Sidebar";
 import InstallPrompt from "./components/pwa/InstallPrompt";
 import { AuthProvider, useAuth } from "./hooks/use-auth";
 import { MobileAutoRedirect } from "./hooks/use-mobile-redirect";
 import { lazyWithRetry } from "./lib/lazyWithRetry";
 import Login from "./pages/login";
+
+import { shouldShowChrome } from "./config/chromeRoutes";
+
+function PersistentChrome() {
+  const { isAuthenticated } = useAuth();
+  const [location] = useLocation();
+
+  if (!isAuthenticated) return null;
+  if (!shouldShowChrome(location)) return null;
+
+  return (
+    <>
+      <Header />
+      <Sidebar />
+      <MobileShell />
+    </>
+  );
+}
 
 const BagConfigurator = lazyWithRetry(() => import("./pages/bag-configurator"));
 const Dashboard = lazyWithRetry(() => import("./pages/dashboard"));
@@ -460,6 +481,7 @@ function App() {
   return (
     <ErrorBoundary fallback="page" showReload>
       <AuthProvider>
+        <PersistentChrome />
         <AppRoutes />
         <InstallPrompt />
       </AuthProvider>
