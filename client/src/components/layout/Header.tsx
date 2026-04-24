@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { useLocation } from "wouter";
 
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -104,6 +105,7 @@ function MobileMenuButton() {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { setForceDesktop } = useForceDesktop();
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -158,14 +160,16 @@ function MobileMenuButton() {
             {mobilePages.map((page) => {
               const Icon = page.icon;
               return (
-                <a
+                <button
                   key={page.path}
-                  href={page.path}
-                  onClick={() => {
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
                     setForceDesktop(false);
                     setOpen(false);
+                    setLocation(page.path);
                   }}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-right"
                 >
                   <div
                     className={`w-8 h-8 rounded-lg flex items-center justify-center ${page.color}`}
@@ -175,7 +179,7 @@ function MobileMenuButton() {
                   <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
                     {page.label}
                   </span>
-                </a>
+                </button>
               );
             })}
           </div>
