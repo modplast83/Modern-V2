@@ -746,6 +746,108 @@ export default function OrdersTable({
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 text-orange-600"
+                      data-testid={`button-status-mobile-${order.id}`}
+                    >
+                      <RefreshCw className="h-3 w-3 ml-1" />
+                      {t("orders.changeStatus")}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" style={{ direction: "rtl" }}>
+                    <DropdownMenuLabel className="text-xs text-muted-foreground">
+                      {t("orders.changeStatus")}
+                    </DropdownMenuLabel>
+                    <DropdownMenuItem
+                      onClick={() => onStatusChange(order, "on_hold")}
+                      className="cursor-pointer"
+                    >
+                      <div className="w-2.5 h-2.5 bg-purple-500 rounded-full ml-2"></div>
+                      <span>{t("orders.statuses.on_hold")}</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => onStatusChange(order, "in_production")}
+                      className="cursor-pointer"
+                    >
+                      <div className="w-2.5 h-2.5 bg-blue-500 rounded-full ml-2"></div>
+                      <span>{t("orders.statuses.in_production")}</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => onStatusChange(order, "paused")}
+                      className="cursor-pointer"
+                    >
+                      <div className="w-2.5 h-2.5 bg-orange-500 rounded-full ml-2"></div>
+                      <span>{t("orders.statuses.paused")}</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => onStatusChange(order, "cancelled")}
+                      className="cursor-pointer"
+                    >
+                      <div className="w-2.5 h-2.5 bg-red-500 rounded-full ml-2"></div>
+                      <span>{t("orders.statuses.cancelled")}</span>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuSeparator />
+
+                    {order.status !== "archived" ? (
+                      <DropdownMenuItem
+                        onClick={() =>
+                          onArchiveOrder
+                            ? onArchiveOrder(order)
+                            : onStatusChange(order, "archived")
+                        }
+                        className="cursor-pointer"
+                      >
+                        <Archive className="h-4 w-4 ml-2 text-gray-500" />
+                        <span>{t("orders.archiveOrder")}</span>
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem
+                        onClick={() =>
+                          onUnarchiveOrder
+                            ? onUnarchiveOrder(order)
+                            : onStatusChange(order, "completed")
+                        }
+                        className="cursor-pointer"
+                      >
+                        <ArchiveRestore className="h-4 w-4 ml-2 text-green-500" />
+                        <span>{t("orders.unarchiveOrder")}</span>
+                      </DropdownMenuItem>
+                    )}
+
+                    {isAdmin && onEditOrder && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuLabel className="text-xs text-muted-foreground">
+                          {t("orders.manage")}
+                        </DropdownMenuLabel>
+                        <DropdownMenuItem
+                          onClick={() => onEditOrder(order)}
+                          className="cursor-pointer"
+                          data-testid={`button-edit-mobile-${order.id}`}
+                        >
+                          <Edit className="h-4 w-4 ml-2 text-purple-600" />
+                          <span>{t("orders.editOrder")}</span>
+                        </DropdownMenuItem>
+                      </>
+                    )}
+
+                    {isAdmin && (
+                      <DropdownMenuItem
+                        onClick={() => onDeleteOrder(order)}
+                        className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                        data-testid={`button-delete-mobile-${order.id}`}
+                      >
+                        <Trash2 className="h-4 w-4 ml-2" />
+                        <span>{t("orders.deleteOrder")}</span>
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
           );
