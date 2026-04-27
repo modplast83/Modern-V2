@@ -81,7 +81,7 @@ export default function Warehouse() {
       title={t("warehouse.title")}
       description={t("warehouse.description")}
     >
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="hidden md:grid md:grid-cols-4 gap-4 mb-6">
         <Card className="border-green-200 dark:border-green-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-green-700 dark:text-green-400">

@@ -291,7 +291,7 @@ export default function CuttingOperatorDashboard({
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="hidden md:grid md:grid-cols-3 gap-4 mb-6">
         <Card data-testid="card-active-orders">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium">
