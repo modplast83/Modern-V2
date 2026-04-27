@@ -706,7 +706,7 @@ export default function OrdersTable({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex-1 h-7 px-1.5 text-[11px] text-blue-600"
+                  className="flex-1 h-7 px-1.5 text-[11px] text-blue-600 pl-[3px] pr-[3px] ml-[-5px] mr-[-5px]"
                   onClick={() => onViewOrder(order)}
                   data-testid={`button-view-mobile-${order.id}`}
                 >
