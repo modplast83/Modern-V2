@@ -17,6 +17,7 @@ interface Order {
   notes?: string;
   status?: string;
   priority?: string;
+  created_by?: number | null;
 }
 
 interface Customer {
@@ -882,121 +883,108 @@ export default function OrderPrintTemplate({
             </tbody>
           </table>
 
-          <div
-            style={{
-              border: "3px solid #dc2626",
-              padding: "14px",
-              marginBottom: "15px",
-              borderRadius: "6px",
-              minHeight: "50px",
-              fontFamily: "'Times New Roman', Times, serif",
-              fontWeight: 900,
-              background: "#fff5f5",
-              textAlign: "center",
-            }}
-          >
-            <strong
-              style={{
-                fontSize: "16px",
-                display: "block",
-                marginBottom: "8px",
-                fontWeight: 900,
-                color: "#dc2626",
-              }}
-            >
-              ⚠️ {t("orders.print.generalNotes")} / General Notes ⚠️
-            </strong>
-            <span
-              style={{
-                fontSize: "20px",
-                fontWeight: 900,
-                color: "#dc2626",
-                lineHeight: 1.6,
-              }}
-            >
-              {order?.notes || t("orders.print.noNotes")}
-            </span>
-          </div>
-
-          <div style={styles.footer}>
+          {order?.notes && order.notes.trim() && (
             <div
               style={{
-                textAlign: "center",
-                width: "30%",
+                border: "3px solid #dc2626",
+                padding: "14px",
+                marginBottom: "15px",
+                borderRadius: "6px",
+                minHeight: "50px",
                 fontFamily: "'Times New Roman', Times, serif",
                 fontWeight: 900,
+                background: "#fff5f5",
+                textAlign: "center",
               }}
             >
-              <div
+              <strong
                 style={{
-                  fontSize: "14px",
-                  marginBottom: "30px",
+                  fontSize: "16px",
+                  display: "block",
+                  marginBottom: "8px",
                   fontWeight: 900,
+                  color: "#dc2626",
                 }}
               >
-                {t("orders.print.productionManager")} / Production Manager
-              </div>
-              <div
+                ⚠️ {t("orders.print.generalNotes")} / General Notes ⚠️
+              </strong>
+              <span
                 style={{
-                  borderTop: "2px solid #000",
-                  width: "60%",
-                  margin: "0 auto",
+                  fontSize: "20px",
+                  fontWeight: 900,
+                  color: "#dc2626",
+                  lineHeight: 1.6,
                 }}
-              ></div>
+              >
+                {order.notes}
+              </span>
             </div>
+          )}
 
-            <div
-              style={{
-                textAlign: "center",
-                width: "30%",
-                fontFamily: "'Times New Roman', Times, serif",
-                fontWeight: 900,
-              }}
-            >
-              <div
-                style={{
-                  fontSize: "14px",
-                  marginBottom: "30px",
-                  fontWeight: 900,
-                }}
-              >
-                {t("orders.print.qualityManager")} / Quality Manager
+          {(() => {
+            const creator = users?.find(
+              (u) => String(u.id) === String(order?.created_by),
+            );
+            const creatorName =
+              creator?.display_name_ar ||
+              creator?.display_name ||
+              creator?.full_name ||
+              creator?.username ||
+              "-";
+            const signatureColumns = [
+              { ar: "المدير", en: "Manager", name: "" },
+              { ar: "تم الاعتماد بواسطة", en: "Approved By", name: "" },
+              {
+                ar: "تم الإنشاء بواسطة",
+                en: "Created By",
+                name: creatorName,
+              },
+            ];
+            return (
+              <div style={styles.footer}>
+                {signatureColumns.map((col, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      textAlign: "center",
+                      width: "30%",
+                      fontFamily: "'Times New Roman', Times, serif",
+                      fontWeight: 900,
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: "14px",
+                        marginBottom: "30px",
+                        fontWeight: 900,
+                      }}
+                    >
+                      {col.ar} / {col.en}
+                      {col.name && (
+                        <div
+                          style={{
+                            fontSize: "13px",
+                            fontWeight: 800,
+                            marginTop: "4px",
+                            color: "#1f2937",
+                          }}
+                        >
+                          {col.name}
+                        </div>
+                      )}
+                    </div>
+                    <div
+                      style={{
+                        borderTop: "2px solid #000",
+                        width: "60%",
+                        margin: "0 auto",
+                      }}
+                    ></div>
+                  </div>
+                ))}
               </div>
-              <div
-                style={{
-                  borderTop: "2px solid #000",
-                  width: "60%",
-                  margin: "0 auto",
-                }}
-              ></div>
-            </div>
-
-            <div
-              style={{
-                textAlign: "center",
-                width: "30%",
-                fontFamily: "'Times New Roman', Times, serif",
-                fontWeight: 900,
-              }}
-            >
-              <div
-                style={{
-                  fontSize: "14px",
-                  marginBottom: "30px",
-                  fontWeight: 900,
-                }}
-              >
-                {t("orders.print.warehouseKeeper")} / Warehouse Keeper
-              </div>
-              <div
-                style={{
-                  borderTop: "2px solid #000",
-                  width: "60%",
-                  margin: "0 auto",
-                }}
-              ></div>
-            </div>
-          </div>
+            );
+          })()}
 
           <div
             style={{
