@@ -3182,12 +3182,19 @@ export async function registerRoutes(
               safeUpdates.printed_by = userId;
               safeUpdates.printed_at = new Date();
               if (printing_machine_id) {
-                const parsedMachineId = parseIntSafe(
-                  String(printing_machine_id),
-                  "printing_machine_id",
-                  { min: 1 },
-                );
-                safeUpdates.printing_machine_id = parsedMachineId;
+                const machineIdStr = String(printing_machine_id).trim();
+                if (!machineIdStr) {
+                  return res
+                    .status(400)
+                    .json({ message: "معرّف ماكينة الطباعة مطلوب" });
+                }
+                const machine = await storage.getMachineById(machineIdStr);
+                if (!machine) {
+                  return res
+                    .status(400)
+                    .json({ message: "ماكينة الطباعة غير موجودة" });
+                }
+                safeUpdates.printing_machine_id = machineIdStr;
               }
             } else if (stage === "cutting") {
               safeUpdates.cut_by = userId;
