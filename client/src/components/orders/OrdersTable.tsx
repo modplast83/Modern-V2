@@ -702,7 +702,7 @@ export default function OrdersTable({
                 </div>
               )}
 
-              <div className="flex gap-1 pt-2">
+              <div className="flex gap-1 pt-2 max-w-[200px]">
                 <Button
                   variant="outline"
                   size="sm"
@@ -755,7 +755,7 @@ export default function OrdersTable({
                       data-testid={`button-status-mobile-${order.id}`}
                     >
                       <RefreshCw className="h-2.5 w-2.5 ml-0.5" />
-                      {t("orders.changeStatus")}
+                      {t("orders.statusShort")}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" style={{ direction: "rtl" }}>

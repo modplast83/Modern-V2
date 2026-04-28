@@ -149,6 +149,7 @@
     "deleteOrder": "Delete Order",
     "printOrder": "Print Order",
     "changeStatus": "Change Status",
+    "statusShort": "Status",
     "statuses": {
       "waiting": "New",
       "for_production": "For Production",

@@ -141,6 +141,7 @@
     "deleteOrder": "حذف الطلب",
     "printOrder": "طباعة الطلب",
     "changeStatus": "تغيير الحالة",
+    "statusShort": "الحالة",
     "statuses": {
       "waiting": "جديدة",
       "for_production": "انتاج",
