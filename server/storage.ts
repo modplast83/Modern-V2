@@ -3524,10 +3524,34 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getMixingBatches(options?: any): Promise<MixingBatch[]> {
-    return await db
-      .select()
-      .from(mixing_batches)
-      .orderBy(desc(mixing_batches.created_at));
+    const result = await db.execute(sql`
+      SELECT
+        mb.*,
+        m.name AS machine_name,
+        m.name_ar AS machine_name_ar,
+        COALESCE(
+          (
+            SELECT json_agg(
+              json_build_object(
+                'item_id', bi.item_id,
+                'material_name', i.name,
+                'material_name_ar', i.name_ar,
+                'actual_weight_kg', bi.actual_weight_kg,
+                'percentage', bi.percentage
+              )
+              ORDER BY bi.id
+            )
+            FROM batch_ingredients bi
+            LEFT JOIN items i ON bi.item_id = i.id
+            WHERE bi.batch_id = mb.id
+          ),
+          '[]'::json
+        ) AS composition
+      FROM mixing_batches mb
+      LEFT JOIN machines m ON mb.machine_id = m.id
+      ORDER BY mb.created_at DESC
+    `);
+    return result.rows as any;
   }
 
   async getMixingBatchById(id: number): Promise<any> {

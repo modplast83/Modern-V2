@@ -84,6 +84,7 @@ type BatchDetail = {
   composition?: Array<{
     material_name?: string;
     material_name_ar?: string;
+    actual_weight_kg?: string;
     percentage: string;
   }>;
   ingredients?: Array<{
@@ -1177,16 +1178,26 @@ export default function FilmMaterialMixingTab() {
                                                   (
                                                     comp: any,
                                                     idx: number,
-                                                  ) => (
-                                                    <div
-                                                      key={idx}
-                                                      className="comp-item"
-                                                    >
-                                                      {comp.material_name_ar ||
-                                                        comp.material_name}{" "}
-                                                      ({comp.percentage})
-                                                    </div>
-                                                  ),
+                                                  ) => {
+                                                    const qty = parseFloat(
+                                                      comp.actual_weight_kg ||
+                                                        "0",
+                                                    );
+                                                    const pct = parseFloat(
+                                                      comp.percentage || "0",
+                                                    );
+                                                    return (
+                                                      <div
+                                                        key={idx}
+                                                        className="comp-item"
+                                                      >
+                                                        {comp.material_name_ar ||
+                                                          comp.material_name}{" "}
+                                                        — {qty.toFixed(2)} كغ (
+                                                        {pct.toFixed(1)}%)
+                                                      </div>
+                                                    );
+                                                  },
                                                 )
                                               : "-"}
                                           </td>
@@ -1361,16 +1372,23 @@ export default function FilmMaterialMixingTab() {
                                             <TableCell className="px-2 py-1.5">
                                               <div className="space-y-0.5">
                                                 {batch.composition && batch.composition.length > 0 ? (
-                                                  batch.composition.map((comp: any, idx: number) => (
-                                                    <div key={idx} className="text-[10px] leading-tight">
-                                                      <span className="font-medium">
-                                                        {comp.material_name_ar || comp.material_name}
-                                                      </span>
-                                                      <span className="text-muted-foreground">
-                                                        {" "}({comp.percentage})
-                                                      </span>
-                                                    </div>
-                                                  ))
+                                                  batch.composition.map((comp: any, idx: number) => {
+                                                    const qty = parseFloat(comp.actual_weight_kg || "0");
+                                                    const pct = parseFloat(comp.percentage || "0");
+                                                    return (
+                                                      <div key={idx} className="text-[10px] leading-tight flex items-center gap-1 flex-wrap">
+                                                        <span className="font-medium">
+                                                          {comp.material_name_ar || comp.material_name}
+                                                        </span>
+                                                        <span className="text-blue-700 dark:text-blue-300 font-semibold">
+                                                          {qty.toFixed(2)} كغ
+                                                        </span>
+                                                        <span className="text-muted-foreground">
+                                                          ({pct.toFixed(1)}%)
+                                                        </span>
+                                                      </div>
+                                                    );
+                                                  })
                                                 ) : (
                                                   <span className="text-muted-foreground">-</span>
                                                 )}
