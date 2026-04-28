@@ -460,13 +460,16 @@ export default function OrdersTabs({
                           {t("orders.product")}
                         </th>
                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          {t("orders.quantityKg")}
+                          {t("orders.requiredQuantityKg")}
                         </th>
                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          {t("orders.overrunPercentage")}
+                          {t("orders.producedQuantityKg")}
                         </th>
                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          {t("orders.finalQuantityKg")}
+                          {t("orders.netQuantityKg")}
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          {t("orders.wasteKg")}
                         </th>
                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                           {t("common.status")}
@@ -533,23 +536,43 @@ export default function OrdersTabs({
                                 )}
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {po.quantity_kg || 0}
-                            </td>
-                            <td
-                              className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
-                              data-testid={`text-overrun-percentage-${po.id}`}
-                            >
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                {po.overrun_percentage ?? 0}%
-                              </span>
-                            </td>
-                            <td
-                              className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900"
-                              data-testid={`text-final-quantity-${po.id}`}
-                            >
-                              {po.final_quantity_kg || po.quantity_kg || 0}
-                            </td>
+                            {(() => {
+                              const required =
+                                parseFloat(po.quantity_kg ?? 0) || 0;
+                              const produced =
+                                parseFloat(po.produced_quantity_kg ?? 0) || 0;
+                              const net =
+                                parseFloat(po.net_quantity_kg ?? 0) || 0;
+                              const waste = Math.max(0, produced - net);
+                              return (
+                                <>
+                                  <td
+                                    className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
+                                    data-testid={`text-required-quantity-${po.id}`}
+                                  >
+                                    {required.toFixed(2)}
+                                  </td>
+                                  <td
+                                    className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600"
+                                    data-testid={`text-produced-quantity-${po.id}`}
+                                  >
+                                    {produced.toFixed(2)}
+                                  </td>
+                                  <td
+                                    className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600"
+                                    data-testid={`text-net-quantity-${po.id}`}
+                                  >
+                                    {net.toFixed(2)}
+                                  </td>
+                                  <td
+                                    className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600"
+                                    data-testid={`text-waste-${po.id}`}
+                                  >
+                                    {waste.toFixed(2)}
+                                  </td>
+                                </>
+                              );
+                            })()}
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span
                                 className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${po.status === "pending" ? "bg-yellow-100 text-yellow-800" : po.status === "in_progress" ? "bg-blue-100 text-blue-800" : po.status === "completed" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}
@@ -629,30 +652,51 @@ export default function OrdersTabs({
                             </span>
                             <span>{category?.name_ar || category?.name}</span>
                           </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">
-                              {t("orders.quantityKg")}:
-                            </span>
-                            <span className="font-medium">
-                              {po.quantity_kg}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">
-                              {t("orders.finalQuantityKg")}:
-                            </span>
-                            <span className="font-medium">
-                              {po.final_quantity_kg || po.quantity_kg}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">
-                              {t("orders.overrunPercentage")}:
-                            </span>
-                            <span className="font-medium">
-                              {po.overrun_percentage ?? 0}%
-                            </span>
-                          </div>
+                          {(() => {
+                            const required =
+                              parseFloat(po.quantity_kg ?? 0) || 0;
+                            const produced =
+                              parseFloat(po.produced_quantity_kg ?? 0) || 0;
+                            const net =
+                              parseFloat(po.net_quantity_kg ?? 0) || 0;
+                            const waste = Math.max(0, produced - net);
+                            return (
+                              <>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">
+                                    {t("orders.requiredQuantityKg")}:
+                                  </span>
+                                  <span className="font-medium">
+                                    {required.toFixed(2)}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">
+                                    {t("orders.producedQuantityKg")}:
+                                  </span>
+                                  <span className="font-medium text-green-600">
+                                    {produced.toFixed(2)}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">
+                                    {t("orders.netQuantityKg")}:
+                                  </span>
+                                  <span className="font-medium text-blue-600">
+                                    {net.toFixed(2)}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">
+                                    {t("orders.wasteKg")}:
+                                  </span>
+                                  <span className="font-medium text-red-600">
+                                    {waste.toFixed(2)}
+                                  </span>
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
                       </div>
                     );

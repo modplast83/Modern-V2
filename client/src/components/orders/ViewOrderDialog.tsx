@@ -224,33 +224,49 @@ export default function ViewOrderDialog({
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-3 mt-3 text-sm">
-                        <div>
-                          <span className="text-gray-500">
-                            {t("orders.baseQuantity")}:
-                          </span>
-                          <p className="font-medium">
-                            {po.quantity_kg} {t("common.kg")}
-                          </p>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">
-                            {t("orders.overrunPercentage")}:
-                          </span>
-                          <p className="font-medium">
-                            {po.overrun_percentage ?? 0}%
-                          </p>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">
-                            {t("orders.finalQuantity")}:
-                          </span>
-                          <p className="font-medium text-blue-600">
-                            {po.final_quantity_kg || po.quantity_kg}{" "}
-                            {t("common.kg")}
-                          </p>
-                        </div>
-                      </div>
+                      {(() => {
+                        const required = parseFloat(po.quantity_kg ?? 0) || 0;
+                        const produced =
+                          parseFloat(po.produced_quantity_kg ?? 0) || 0;
+                        const net = parseFloat(po.net_quantity_kg ?? 0) || 0;
+                        const waste = Math.max(0, produced - net);
+                        return (
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3 text-sm">
+                            <div>
+                              <span className="text-gray-500">
+                                {t("orders.requiredQuantityKg")}:
+                              </span>
+                              <p className="font-medium">
+                                {required.toFixed(2)}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">
+                                {t("orders.producedQuantityKg")}:
+                              </span>
+                              <p className="font-medium text-green-600">
+                                {produced.toFixed(2)}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">
+                                {t("orders.netQuantityKg")}:
+                              </span>
+                              <p className="font-medium text-blue-600">
+                                {net.toFixed(2)}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">
+                                {t("orders.wasteKg")}:
+                              </span>
+                              <p className="font-medium text-red-600">
+                                {waste.toFixed(2)}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })}
