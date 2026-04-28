@@ -275,6 +275,77 @@ export default function FilmMaterialMixingTab() {
         const orderQty = po
           ? parseFloat(po.final_quantity_kg || po.quantity_kg || "0") || 0
           : 0;
+
+        // Aggregate materials per (item, screw)
+        type MatAgg = {
+          name?: string;
+          name_ar?: string;
+          qty: number;
+        };
+        const aggA = new Map<string, MatAgg>();
+        const aggB = new Map<string, MatAgg>();
+        for (const batch of sorted) {
+          const target = batch.screw_assignment === "A" ? aggA : aggB;
+          if (!batch.composition) continue;
+          for (const comp of batch.composition) {
+            const key =
+              (comp as any).item_id ||
+              comp.material_name ||
+              comp.material_name_ar ||
+              "";
+            if (!key) continue;
+            const qty = parseFloat(comp.actual_weight_kg || "0") || 0;
+            const existing = target.get(key);
+            if (existing) {
+              existing.qty += qty;
+            } else {
+              target.set(key, {
+                name: comp.material_name,
+                name_ar: comp.material_name_ar,
+                qty,
+              });
+            }
+          }
+        }
+        const totalAB = totalA + totalB;
+        const allKeys = new Set<string>([
+          ...Array.from(aggA.keys()),
+          ...Array.from(aggB.keys()),
+        ]);
+        const totalsByMaterial = new Map<string, number>();
+        for (const k of Array.from(allKeys)) {
+          const a = aggA.get(k)?.qty || 0;
+          const b = aggB.get(k)?.qty || 0;
+          totalsByMaterial.set(k, a + b);
+        }
+        const buildRows = (
+          m: Map<string, MatAgg>,
+          screw: "A" | "B",
+          screwTotal: number,
+        ) =>
+          Array.from(m.entries())
+            .map(([key, v]) => ({
+              key,
+              screw,
+              name: v.name,
+              name_ar: v.name_ar,
+              qty: v.qty,
+              pctInScrew:
+                screwTotal > 0 ? (v.qty / screwTotal) * 100 : 0,
+              pctInTotal:
+                totalAB > 0 ? (v.qty / totalAB) * 100 : 0,
+              materialTotalQty: totalsByMaterial.get(key) || 0,
+              materialTotalPct:
+                totalAB > 0
+                  ? ((totalsByMaterial.get(key) || 0) / totalAB) * 100
+                  : 0,
+            }))
+            .sort((a, b) => b.qty - a.qty);
+        const materialRowsA = buildRows(aggA, "A", totalA);
+        const materialRowsB = buildRows(aggB, "B", totalB);
+        const pctA = totalAB > 0 ? (totalA / totalAB) * 100 : 0;
+        const pctB = totalAB > 0 ? (totalB / totalAB) * 100 : 0;
+
         return {
           poId,
           poNumber:
@@ -286,6 +357,10 @@ export default function FilmMaterialMixingTab() {
           orderQty,
           remaining: Math.max(0, orderQty - (totalA + totalB)),
           latestAt: new Date(sorted[0].created_at).getTime(),
+          materialRowsA,
+          materialRowsB,
+          pctA,
+          pctB,
         };
       })
       .sort((a, b) => b.latestAt - a.latestAt);
@@ -1248,16 +1323,146 @@ export default function FilmMaterialMixingTab() {
                       </div>
                       <div className="flex gap-3 text-xs font-semibold flex-wrap">
                         <span className="px-2 py-1 rounded bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300">
-                          سكرو A: {group.totalA.toFixed(2)} كغ
+                          سكرو A: {group.totalA.toFixed(2)} كغ ({group.pctA.toFixed(1)}%)
                         </span>
                         <span className="px-2 py-1 rounded bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300">
-                          سكرو B: {group.totalB.toFixed(2)} كغ
+                          سكرو B: {group.totalB.toFixed(2)} كغ ({group.pctB.toFixed(1)}%)
                         </span>
                         <span className="px-2 py-1 rounded bg-amber-200 dark:bg-amber-900/50 text-amber-900 dark:text-amber-100">
                           الإجمالي: {group.total.toFixed(2)} كغ
                         </span>
                       </div>
                     </div>
+
+                    {/* Aggregated materials breakdown table */}
+                    {(group.materialRowsA.length > 0 || group.materialRowsB.length > 0) && (
+                      <div className="border-b-2 border-amber-200 dark:border-amber-800 bg-amber-50/40 dark:bg-amber-950/20 p-3">
+                        <div className="text-sm font-bold text-amber-900 dark:text-amber-100 mb-2 flex items-center gap-2">
+                          <span className="bg-amber-600 text-white text-[10px] px-2 py-0.5 rounded">ملخص</span>
+                          المواد المخلوطة
+                        </div>
+                        <div className="overflow-x-auto rounded-md border border-amber-200 dark:border-amber-800 bg-white dark:bg-gray-900">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-amber-100 dark:bg-amber-900/40">
+                                <TableHead className="text-right text-xs font-bold whitespace-nowrap px-2 w-16">السكرو</TableHead>
+                                <TableHead className="text-right text-xs font-bold whitespace-nowrap px-2">المادة</TableHead>
+                                <TableHead className="text-right text-xs font-bold whitespace-nowrap px-2">الكمية (كغ)</TableHead>
+                                <TableHead className="text-right text-xs font-bold whitespace-nowrap px-2">النسبة</TableHead>
+                                <TableHead className="text-right text-xs font-bold whitespace-nowrap px-2">النسبة الكلية</TableHead>
+                                <TableHead className="text-right text-xs font-bold whitespace-nowrap px-2">الكمية الكلية (كغ)</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {group.materialRowsA.length === 0 && group.materialRowsB.length === 0 ? (
+                                <TableRow>
+                                  <TableCell colSpan={6} className="text-center text-muted-foreground py-3 text-xs">
+                                    لا توجد مواد
+                                  </TableCell>
+                                </TableRow>
+                              ) : (
+                                <>
+                                  {group.materialRowsA.map((row) => (
+                                    <TableRow key={`A-${row.key}`} className="text-xs hover:bg-blue-50/50 dark:hover:bg-blue-950/30">
+                                      <TableCell className="px-2 py-1.5">
+                                        <span className="px-1.5 py-0.5 rounded bg-blue-600 text-white text-[10px] font-bold">A</span>
+                                      </TableCell>
+                                      <TableCell className="px-2 py-1.5 font-medium">
+                                        {row.name_ar || row.name || row.key}
+                                      </TableCell>
+                                      <TableCell className="px-2 py-1.5 font-semibold text-blue-700 dark:text-blue-300">
+                                        {row.qty.toFixed(2)}
+                                      </TableCell>
+                                      <TableCell className="px-2 py-1.5">
+                                        {row.pctInScrew.toFixed(1)}%
+                                      </TableCell>
+                                      <TableCell className="px-2 py-1.5 text-amber-700 dark:text-amber-300 font-medium">
+                                        {row.pctInTotal.toFixed(1)}%
+                                      </TableCell>
+                                      <TableCell className="px-2 py-1.5 text-amber-700 dark:text-amber-300 font-medium">
+                                        {row.materialTotalQty.toFixed(2)} ({row.materialTotalPct.toFixed(1)}%)
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                  {group.materialRowsA.length > 0 && (
+                                    <TableRow className="bg-blue-50 dark:bg-blue-950/40 border-t border-blue-200 dark:border-blue-800">
+                                      <TableCell className="px-2 py-1.5"></TableCell>
+                                      <TableCell className="px-2 py-1.5 font-bold text-blue-800 dark:text-blue-200">
+                                        مجموع سكرو A
+                                      </TableCell>
+                                      <TableCell className="px-2 py-1.5 font-bold text-blue-800 dark:text-blue-200">
+                                        {group.totalA.toFixed(2)}
+                                      </TableCell>
+                                      <TableCell className="px-2 py-1.5 font-bold text-blue-800 dark:text-blue-200">
+                                        100%
+                                      </TableCell>
+                                      <TableCell className="px-2 py-1.5 font-bold text-blue-800 dark:text-blue-200">
+                                        {group.pctA.toFixed(1)}%
+                                      </TableCell>
+                                      <TableCell className="px-2 py-1.5"></TableCell>
+                                    </TableRow>
+                                  )}
+                                  {group.materialRowsB.map((row) => (
+                                    <TableRow key={`B-${row.key}`} className="text-xs hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30">
+                                      <TableCell className="px-2 py-1.5">
+                                        <span className="px-1.5 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-bold">B</span>
+                                      </TableCell>
+                                      <TableCell className="px-2 py-1.5 font-medium">
+                                        {row.name_ar || row.name || row.key}
+                                      </TableCell>
+                                      <TableCell className="px-2 py-1.5 font-semibold text-emerald-700 dark:text-emerald-300">
+                                        {row.qty.toFixed(2)}
+                                      </TableCell>
+                                      <TableCell className="px-2 py-1.5">
+                                        {row.pctInScrew.toFixed(1)}%
+                                      </TableCell>
+                                      <TableCell className="px-2 py-1.5 text-amber-700 dark:text-amber-300 font-medium">
+                                        {row.pctInTotal.toFixed(1)}%
+                                      </TableCell>
+                                      <TableCell className="px-2 py-1.5 text-amber-700 dark:text-amber-300 font-medium">
+                                        {row.materialTotalQty.toFixed(2)} ({row.materialTotalPct.toFixed(1)}%)
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                  {group.materialRowsB.length > 0 && (
+                                    <TableRow className="bg-emerald-50 dark:bg-emerald-950/40 border-t border-emerald-200 dark:border-emerald-800">
+                                      <TableCell className="px-2 py-1.5"></TableCell>
+                                      <TableCell className="px-2 py-1.5 font-bold text-emerald-800 dark:text-emerald-200">
+                                        مجموع سكرو B
+                                      </TableCell>
+                                      <TableCell className="px-2 py-1.5 font-bold text-emerald-800 dark:text-emerald-200">
+                                        {group.totalB.toFixed(2)}
+                                      </TableCell>
+                                      <TableCell className="px-2 py-1.5 font-bold text-emerald-800 dark:text-emerald-200">
+                                        100%
+                                      </TableCell>
+                                      <TableCell className="px-2 py-1.5 font-bold text-emerald-800 dark:text-emerald-200">
+                                        {group.pctB.toFixed(1)}%
+                                      </TableCell>
+                                      <TableCell className="px-2 py-1.5"></TableCell>
+                                    </TableRow>
+                                  )}
+                                  <TableRow className="bg-amber-100 dark:bg-amber-900/40 border-t-2 border-amber-300 dark:border-amber-700">
+                                    <TableCell className="px-2 py-2"></TableCell>
+                                    <TableCell className="px-2 py-2 font-bold text-amber-900 dark:text-amber-100">
+                                      الإجمالي الكلي
+                                    </TableCell>
+                                    <TableCell className="px-2 py-2 font-bold text-amber-900 dark:text-amber-100">
+                                      {group.total.toFixed(2)}
+                                    </TableCell>
+                                    <TableCell className="px-2 py-2"></TableCell>
+                                    <TableCell className="px-2 py-2 font-bold text-amber-900 dark:text-amber-100">
+                                      100%
+                                    </TableCell>
+                                    <TableCell className="px-2 py-2"></TableCell>
+                                  </TableRow>
+                                </>
+                              )}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Two screw tables side-by-side */}
                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 p-3">
