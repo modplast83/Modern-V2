@@ -449,15 +449,32 @@ export async function registerRoutes(
 
       const ref = `BQ-${Date.now().toString(36).toUpperCase().slice(-6)}`;
 
+      // Sanitize untrusted text before inlining it into the WhatsApp message:
+      // strip newlines and the WhatsApp formatting characters (* _ ~ `) so a
+      // malicious customer name or summary value cannot spoof message
+      // sections (e.g. inject a fake "*مواصفات الكيس:*" header) or break the
+      // line-based parsing used downstream.
+      const sanitizeForWhatsApp = (raw: unknown): string =>
+        String(raw ?? "")
+          .replace(/[\r\n]+/g, " ")
+          .replace(/[*_~`]/g, "")
+          .trim()
+          .slice(0, 500);
+
+      const safeName = sanitizeForWhatsApp(data.customer.name);
+
       const lines: string[] = [
         "🔔 *طلب تصميم كيس جديد*",
         `📋 المرجع: ${ref}`,
         "",
-        `👤 الاسم: ${data.customer.name}`,
+        `👤 الاسم: ${safeName}`,
         `📞 الجوال: ${normalizedPhone}`,
         "",
         "📦 *مواصفات الكيس:*",
-        ...(data.summary || []).map((s) => `• ${s.label}: ${s.value}`),
+        ...(data.summary || []).map(
+          (s) =>
+            `• ${sanitizeForWhatsApp(s.label)}: ${sanitizeForWhatsApp(s.value)}`,
+        ),
       ];
 
       if (
@@ -466,7 +483,8 @@ export async function registerRoutes(
         data.validation.errors.length
       ) {
         lines.push("", "⚠️ *ملاحظات فنية:*");
-        for (const e of data.validation.errors) lines.push(`- ${e.message}`);
+        for (const e of data.validation.errors)
+          lines.push(`- ${sanitizeForWhatsApp(e.message)}`);
       }
 
       lines.push(
@@ -1091,34 +1109,44 @@ export async function registerRoutes(
 
       const configJson = JSON.stringify({ widgets: validWidgets });
 
-      const existing = await db
-        .select()
-        .from(user_settings)
-        .where(
-          and(
-            eq(user_settings.user_id, String(userId)),
-            eq(user_settings.setting_key, "dashboard_config"),
-          ),
-        )
-        .limit(1);
+      // Serialize concurrent saves for the same user via a per-user advisory
+      // lock. This prevents two simultaneous PUT requests from both seeing no
+      // existing row and inserting duplicates (there is no unique constraint
+      // on (user_id, setting_key) at the schema level).
+      await db.transaction(async (tx) => {
+        await tx.execute(
+          sql`SELECT pg_advisory_xact_lock(hashtext(${`dashboard_config:${userId}`}))`,
+        );
 
-      if (existing.length > 0) {
-        await db
-          .update(user_settings)
-          .set({
+        const existing = await tx
+          .select()
+          .from(user_settings)
+          .where(
+            and(
+              eq(user_settings.user_id, String(userId)),
+              eq(user_settings.setting_key, "dashboard_config"),
+            ),
+          )
+          .limit(1);
+
+        if (existing.length > 0) {
+          await tx
+            .update(user_settings)
+            .set({
+              setting_value: configJson,
+              setting_type: "json",
+              updated_at: new Date(),
+            })
+            .where(eq(user_settings.id, existing[0].id));
+        } else {
+          await tx.insert(user_settings).values({
+            user_id: String(userId),
+            setting_key: "dashboard_config",
             setting_value: configJson,
             setting_type: "json",
-            updated_at: new Date(),
-          })
-          .where(eq(user_settings.id, existing[0].id));
-      } else {
-        await db.insert(user_settings).values({
-          user_id: String(userId),
-          setting_key: "dashboard_config",
-          setting_value: configJson,
-          setting_type: "json",
-        });
-      }
+          });
+        }
+      });
 
       res.json({ success: true, widgets: validWidgets });
     } catch (error) {

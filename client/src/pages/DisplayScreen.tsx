@@ -85,6 +85,8 @@ interface TopProducersData {
 
 function useLocale() {
   const { i18n } = useTranslation();
+  const lang = (i18n.language || "en").toLowerCase();
+  if (lang.startsWith("ar")) return "ar-SA";
   return "en-US";
 }
 
@@ -94,13 +96,13 @@ function formatNumber(
 ) {
   const num = Number(val);
   if (isNaN(num)) return "0";
-  return num.toLocaleString("en-US", { maximumFractionDigits: 1 });
+  return num.toLocaleString(locale, { maximumFractionDigits: 1 });
 }
 
 function formatTime(dateStr: string, locale: string = "en-US") {
   if (!dateStr) return "";
   const d = new Date(dateStr);
-  return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
 }
 
 function CurrentDateTime() {

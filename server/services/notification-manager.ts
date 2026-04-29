@@ -454,15 +454,18 @@ export class NotificationManager extends EventEmitter {
 
       invalidConnections.forEach((id) => this.removeConnection(id));
 
-      // Clear accumulated event listeners (but don't remove all - be selective)
+      // Note: previously this code called `removeAllListeners("error"|"close")`
+      // when listener counts grew large, but that wiped out legitimate
+      // long-lived listeners (including Node's required `error` handler) and
+      // could crash the process or silently drop events. Stale per-connection
+      // listeners are now cleaned up by `removeConnection` above, so we only
+      // log here for visibility.
       const listenerCounts =
         this.listenerCount("error") + this.listenerCount("close");
-      if (listenerCounts > this.connections.size * 2) {
+      if (listenerCounts > Math.max(this.connections.size * 2, 16)) {
         logger.debug(
-          `[NotificationManager] Found ${listenerCounts} listeners, cleaning up`,
+          `[NotificationManager] High listener count detected: ${listenerCounts} (active connections: ${this.connections.size})`,
         );
-        this.removeAllListeners("error");
-        this.removeAllListeners("close");
       }
 
       // Force garbage collection if available (development only)

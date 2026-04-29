@@ -113,40 +113,44 @@ export function useProductionSSE() {
         console.error("[ProductionSSE] Connection error:", error);
         setIsConnected(false);
 
-        // Only attempt reconnection if the connection is actually closed
-        // EventSource automatically retries some errors, so we need to be careful
-        if (eventSource.readyState === EventSource.CLOSED) {
-          // Clean up current connection
-          if (eventSourceRef.current === eventSource) {
-            eventSourceRef.current = null;
-          }
+        // Always close the failing EventSource ourselves so we don't end up
+        // with overlapping connections when the browser keeps it in CONNECTING
+        // state during transient errors. We then take full control of the
+        // reconnect timing via exponential backoff below.
+        try {
+          eventSource.close();
+        } catch {
+          /* noop */
+        }
+        if (eventSourceRef.current === eventSource) {
+          eventSourceRef.current = null;
+        }
 
-          // Increment reconnection attempts
-          reconnectAttemptsRef.current += 1;
+        // Increment reconnection attempts
+        reconnectAttemptsRef.current += 1;
 
-          // Only attempt to reconnect if we haven't exceeded max attempts
-          if (
-            reconnectAttemptsRef.current < maxReconnectAttempts &&
-            !reconnectTimeoutRef.current
-          ) {
-            // Exponential backoff: 2^(attempts-1) * 1000ms (1s, 2s, 4s, 8s, 16s)
-            const delay = Math.min(
-              Math.pow(2, reconnectAttemptsRef.current - 1) * 1000,
-              30000,
-            );
+        // Only attempt to reconnect if we haven't exceeded max attempts
+        if (
+          reconnectAttemptsRef.current < maxReconnectAttempts &&
+          !reconnectTimeoutRef.current
+        ) {
+          // Exponential backoff: 2^(attempts-1) * 1000ms (1s, 2s, 4s, 8s, 16s)
+          const delay = Math.min(
+            Math.pow(2, reconnectAttemptsRef.current - 1) * 1000,
+            30000,
+          );
 
-            reconnectTimeoutRef.current = setTimeout(() => {
-              console.log(
-                `[ProductionSSE] Attempting to reconnect... (attempt ${reconnectAttemptsRef.current}/${maxReconnectAttempts})`,
-              );
-              reconnectTimeoutRef.current = null;
-              connect();
-            }, delay);
-          } else {
+          reconnectTimeoutRef.current = setTimeout(() => {
             console.log(
-              "[ProductionSSE] Max reconnection attempts reached or timeout already set",
+              `[ProductionSSE] Attempting to reconnect... (attempt ${reconnectAttemptsRef.current}/${maxReconnectAttempts})`,
             );
-          }
+            reconnectTimeoutRef.current = null;
+            connect();
+          }, delay);
+        } else {
+          console.log(
+            "[ProductionSSE] Max reconnection attempts reached or timeout already set",
+          );
         }
       };
 

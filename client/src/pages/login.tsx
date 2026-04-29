@@ -111,6 +111,7 @@ export default function Login() {
                         placeholder={t("auth.enterUsername")}
                         className="text-right"
                         disabled={isLoading}
+                        autoComplete="username"
                         data-testid="input-username"
                         {...field}
                       />
@@ -132,6 +133,7 @@ export default function Login() {
                         placeholder={t("auth.enterPassword")}
                         className="text-right"
                         disabled={isLoading}
+                        autoComplete="current-password"
                         data-testid="input-password"
                         {...field}
                       />

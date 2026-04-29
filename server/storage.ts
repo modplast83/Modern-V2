@@ -1797,7 +1797,30 @@ export class DatabaseStorage implements IStorage {
   async deleteProductionOrder(id: number): Promise<void> {
     return withDatabaseErrorHandling(
       async () => {
-        await db.delete(production_orders).where(eq(production_orders.id, id));
+        // Clean up child rows in the same transaction so we don't fail with
+        // foreign-key constraint errors and leave the database half-deleted.
+        await db.transaction(async (tx) => {
+          await tx.delete(waste).where(eq(waste.production_order_id, id));
+          await tx
+            .delete(machine_queues)
+            .where(eq(machine_queues.production_order_id, id));
+          await tx
+            .delete(mixing_batches)
+            .where(eq(mixing_batches.production_order_id, id));
+          await tx
+            .delete(warehouse_receipts)
+            .where(eq(warehouse_receipts.production_order_id, id));
+          await tx
+            .delete(finished_goods_vouchers_in)
+            .where(eq(finished_goods_vouchers_in.production_order_id, id));
+          await tx
+            .delete(raw_material_vouchers_out)
+            .where(eq(raw_material_vouchers_out.production_order_id, id));
+          await tx.delete(rolls).where(eq(rolls.production_order_id, id));
+          await tx
+            .delete(production_orders)
+            .where(eq(production_orders.id, id));
+        });
         invalidateProductionCache();
       },
       "deleteProductionOrder",
@@ -1912,13 +1935,34 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createRoll(insertRoll: InsertRoll): Promise<Roll> {
+    // If the caller didn't pre-compute a roll_number (the common path for new
+    // rolls), delegate to the locked, sequence-aware implementation so we
+    // never produce duplicate roll numbers under concurrent inserts.
+    const anyRoll = insertRoll as any;
+    if (
+      !anyRoll?.roll_number &&
+      typeof anyRoll?.production_order_id === "number"
+    ) {
+      return this.createRollWithTiming(anyRoll);
+    }
+
     return withDatabaseErrorHandling(
       async () => {
-        const [roll] = await db
-          .insert(rolls)
-          .values(insertRoll as any)
-          .returning();
-        return roll;
+        return await db.transaction(async (tx) => {
+          // Serialize inserts per production order so callers that pass an
+          // explicit roll_number still can't race against another request
+          // computing the same number.
+          if (typeof anyRoll?.production_order_id === "number") {
+            await tx.execute(
+              sql`SELECT pg_advisory_xact_lock(1003, ${anyRoll.production_order_id})`,
+            );
+          }
+          const [roll] = await tx
+            .insert(rolls)
+            .values(insertRoll as any)
+            .returning();
+          return roll;
+        });
       },
       "createRoll",
       "إنشاء رول",
