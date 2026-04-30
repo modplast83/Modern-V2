@@ -11,7 +11,7 @@ import { CodeHealthChecker } from "../services/code-health-checker";
 
 const router = Router();
 
-router.use(requireAuth, requireAdmin);
+router.use("/api/monitoring", requireAuth, requireAdmin);
 
 router.get("/api/monitoring/diagnostics", async (req, res) => {
   try {
