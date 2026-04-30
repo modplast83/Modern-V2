@@ -66,6 +66,7 @@ interface ProductionOrderWithRolls {
   product_name: string;
   product_name_ar?: string;
   product_name_en?: string;
+  size_caption?: string;
   rolls: RollDetails[];
   total_rolls: number;
   total_weight: number;
@@ -427,6 +428,19 @@ export default function CuttingOperatorDashboard({
                           order.product_name}
                       </p>
                     </div>
+                    {order.size_caption && (
+                      <div>
+                        <p className="text-gray-500 dark:text-gray-400">
+                          {t("production.size")}
+                        </p>
+                        <p
+                          className="font-medium"
+                          data-testid={`text-size-${order.production_order_id}`}
+                        >
+                          {order.size_caption}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   {(order.cutting_length_cm || order.punching) && (

@@ -1835,8 +1835,33 @@ export class DatabaseStorage implements IStorage {
     return withDatabaseErrorHandling(
       async () => {
         const results = await db
-          .select()
+          .select({
+            id: production_orders.id,
+            production_order_number: production_orders.production_order_number,
+            order_id: production_orders.order_id,
+            customer_product_id: production_orders.customer_product_id,
+            quantity_kg: production_orders.quantity_kg,
+            final_quantity_kg: production_orders.final_quantity_kg,
+            status: production_orders.status,
+            order_number: orders.order_number,
+            customer_name: customers.name,
+            customer_name_ar: customers.name_ar,
+            item_name: items.name,
+            item_name_ar: items.name_ar,
+            size_caption: customer_products.size_caption,
+            thickness: customer_products.thickness,
+            raw_material: customer_products.raw_material,
+            master_batch_id: customer_products.master_batch_id,
+            is_printed: customer_products.is_printed,
+          })
           .from(production_orders)
+          .leftJoin(orders, eq(production_orders.order_id, orders.id))
+          .leftJoin(customers, eq(orders.customer_id, customers.id))
+          .leftJoin(
+            customer_products,
+            eq(production_orders.customer_product_id, customer_products.id),
+          )
+          .leftJoin(items, eq(customer_products.item_id, items.id))
           .where(eq(production_orders.status, "waiting_for_printing"))
           .orderBy(production_orders.id);
         setCachedData("printing_queue", results, CACHE_TTL.REALTIME);
@@ -1854,8 +1879,33 @@ export class DatabaseStorage implements IStorage {
     return withDatabaseErrorHandling(
       async () => {
         const results = await db
-          .select()
+          .select({
+            id: production_orders.id,
+            production_order_number: production_orders.production_order_number,
+            order_id: production_orders.order_id,
+            customer_product_id: production_orders.customer_product_id,
+            quantity_kg: production_orders.quantity_kg,
+            final_quantity_kg: production_orders.final_quantity_kg,
+            status: production_orders.status,
+            order_number: orders.order_number,
+            customer_name: customers.name,
+            customer_name_ar: customers.name_ar,
+            item_name: items.name,
+            item_name_ar: items.name_ar,
+            size_caption: customer_products.size_caption,
+            thickness: customer_products.thickness,
+            raw_material: customer_products.raw_material,
+            master_batch_id: customer_products.master_batch_id,
+            is_printed: customer_products.is_printed,
+          })
           .from(production_orders)
+          .leftJoin(orders, eq(production_orders.order_id, orders.id))
+          .leftJoin(customers, eq(orders.customer_id, customers.id))
+          .leftJoin(
+            customer_products,
+            eq(production_orders.customer_product_id, customer_products.id),
+          )
+          .leftJoin(items, eq(customer_products.item_id, items.id))
           .where(eq(production_orders.status, "waiting_for_cutting"))
           .orderBy(production_orders.id);
         setCachedData("cutting_queue", results, CACHE_TTL.REALTIME);
@@ -6068,6 +6118,7 @@ export class DatabaseStorage implements IStorage {
         COALESCE(i.name_ar, i.name, cp.id::text) AS product_name,
         i.name_ar AS product_name_ar,
         i.name AS product_name_en,
+        cp.size_caption,
         cp.printing_cylinder
       FROM rolls r
       JOIN production_orders po ON r.production_order_id = po.id
@@ -6094,6 +6145,7 @@ export class DatabaseStorage implements IStorage {
           product_name: row.product_name,
           product_name_ar: row.product_name_ar,
           product_name_en: row.product_name_en,
+          size_caption: row.size_caption,
           printing_cylinder: row.printing_cylinder,
           rolls: [],
           total_rolls: 0,
@@ -6140,6 +6192,7 @@ export class DatabaseStorage implements IStorage {
         COALESCE(i.name_ar, i.name, cp.id::text) AS product_name,
         i.name_ar AS product_name_ar,
         i.name AS product_name_en,
+        cp.size_caption,
         cp.cutting_length_cm,
         cp.punching
       FROM rolls r
@@ -6170,6 +6223,7 @@ export class DatabaseStorage implements IStorage {
           product_name: row.product_name,
           product_name_ar: row.product_name_ar,
           product_name_en: row.product_name_en,
+          size_caption: row.size_caption,
           cutting_length_cm: row.cutting_length_cm,
           punching: row.punching,
           rolls: [],
