@@ -4913,19 +4913,37 @@ export async function registerRoutes(
 
       const prompt =
         targetLanguage === "en"
-          ? `Transliterate the following Arabic name to English letters. Only provide the transliteration without quotes or any additional text: ${text}`
-          : `For the English name "${text}", provide:
-1. First: The Arabic meaning translation (translate the meaning of the words to Arabic)
-2. Second: The Arabic transliteration in parentheses (how it sounds in Arabic letters)
+          ? `Translate the meaning of the following Arabic name/word to English. Provide ONLY the English meaning translation, without quotes, parentheses, or any extra explanation.
 
-Example: "Price House" should become "بيت الأسعار (برايس هاوس)"
-Format: [meaning in Arabic] ([transliteration])
-Do not include quotes or explanations.`;
+Examples:
+- "سيارة" → Car
+- "بيت الأسعار" → Price House
+- "شركة النور" → Al-Noor Company
+
+If the input is a proper name with no clear meaning (e.g. a person's name), provide the closest English transliteration instead.
+
+Input: ${text}`
+          : `For the English name "${text}", provide both the Arabic transliteration AND the Arabic meaning, in this exact format:
+
+"[transliteration]" [meaning]
+
+- Put the transliteration (how it sounds in Arabic letters) inside double quotes first.
+- Then a single space, then the Arabic meaning translation.
+- No extra text, no explanations, no parentheses.
+
+Examples:
+- "Car" → "كار" سيارة
+- "Price House" → "برايس هاوس" بيت الأسعار
+- "Sun" → "سن" شمس
+
+If the input is a proper name with no clear meaning (e.g. a person's name like "John"), provide only the Arabic transliteration in double quotes.
+
+Input: ${text}`;
 
       const systemContent =
         targetLanguage === "en"
-          ? "You are a professional transliterator. Convert Arabic names to English letters (transliteration). Never use quotes in your response. Just provide the transliterated name directly."
-          : "You are a professional Arabic translator. Translate English names to Arabic by providing: 1) The meaning translation first, 2) Then the transliteration (how it sounds) in parentheses. Example: Price House = بيت الأسعار (برايس هاوس). Do not use quotes.";
+          ? "You are a professional Arabic-to-English translator. You translate the MEANING of Arabic words/names to English (not transliteration). Examples: سيارة = Car, بيت = House. Only provide the English translation directly, without quotes or extra text."
+          : 'You are a professional English-to-Arabic translator for business names. You output the format: "<transliteration>" <meaning>. The transliteration goes inside double quotes, followed by a space, then the Arabic meaning. Example: Car → "كار" سيارة. Do not add any other text.';
 
       const response = await openai.chat.completions.create({
         model: "gpt-4o-mini",
@@ -4941,8 +4959,19 @@ Do not include quotes or explanations.`;
       });
 
       let translatedText = response.choices[0]?.message?.content?.trim() || "";
-      // Remove any quotes that might still appear
-      translatedText = translatedText.replace(/^["']|["']$/g, "").trim();
+      if (targetLanguage === "en") {
+        // English output: strip any stray surrounding quotes
+        translatedText = translatedText.replace(/^["']|["']$/g, "").trim();
+      } else {
+        // Arabic output uses the format: "<transliteration>" <meaning>.
+        // The leading quote is intentional, so only strip a stray trailing
+        // quote if it has no matching opening quote.
+        translatedText = translatedText.trim();
+        const dq = (translatedText.match(/"/g) || []).length;
+        if (dq % 2 !== 0 && translatedText.endsWith('"')) {
+          translatedText = translatedText.slice(0, -1).trim();
+        }
+      }
 
       res.json({ translatedText });
     } catch (error) {
