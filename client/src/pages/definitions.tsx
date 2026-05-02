@@ -6383,12 +6383,26 @@ function PackagingUnitsManagerDialog({
     is_default: false,
     is_active: true,
   });
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    roll_weight_g: "",
+    rolls_per_unit: "",
+  });
 
   const computed =
     parseFloat(form.roll_weight_g || "0") > 0 &&
     parseInt(form.rolls_per_unit || "0") > 0
       ? (parseFloat(form.roll_weight_g) *
           parseInt(form.rolls_per_unit)) /
+        1000
+      : null;
+
+  const editComputed =
+    parseFloat(editForm.roll_weight_g || "0") > 0 &&
+    parseInt(editForm.rolls_per_unit || "0") > 0
+      ? (parseFloat(editForm.roll_weight_g) *
+          parseInt(editForm.rolls_per_unit)) /
         1000
       : null;
 
@@ -6452,6 +6466,51 @@ function PackagingUnitsManagerDialog({
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
+
+  const updateMut = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest(`/api/packaging-units/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          name: editForm.name.trim(),
+          roll_weight_g: parseFloat(editForm.roll_weight_g),
+          rolls_per_unit: parseInt(editForm.rolls_per_unit),
+        }),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+      setEditingId(null);
+      toast({ title: t("common.success") });
+    },
+    onError: (e: any) =>
+      toast({
+        title: t("definitions.items.packagingUnits.saveError"),
+        description: e?.message,
+        variant: "destructive",
+      }),
+  });
+
+  const startEdit = (u: any) => {
+    setEditingId(u.id);
+    setEditForm({
+      name: u.name || "",
+      roll_weight_g: String(u.roll_weight_g ?? ""),
+      rolls_per_unit: String(u.rolls_per_unit ?? ""),
+    });
+  };
+
+  const submitEdit = (id: number) => {
+    if (
+      !editForm.name.trim() ||
+      !(parseFloat(editForm.roll_weight_g) > 0) ||
+      !(parseInt(editForm.rolls_per_unit) > 0)
+    ) {
+      return;
+    }
+    updateMut.mutate(id);
+  };
 
   const deleteMut = useMutation({
     mutationFn: async (id: number) => {
@@ -6608,15 +6667,68 @@ function PackagingUnitsManagerDialog({
                   </td>
                 </tr>
               ) : (
-                units.map((u: any) => (
+                units.map((u: any) => {
+                  const isEditing = editingId === u.id;
+                  return (
                   <tr key={u.id} className="border-t">
-                    <td className="p-2">{u.name}</td>
-                    <td className="p-2 text-center">
-                      {parseFloat(u.roll_weight_g).toFixed(2)}
+                    <td className="p-2">
+                      {isEditing ? (
+                        <Input
+                          value={editForm.name}
+                          onChange={(e) =>
+                            setEditForm({
+                              ...editForm,
+                              name: e.target.value,
+                            })
+                          }
+                          className="h-8"
+                        />
+                      ) : (
+                        u.name
+                      )}
                     </td>
-                    <td className="p-2 text-center">{u.rolls_per_unit}</td>
+                    <td className="p-2 text-center">
+                      {isEditing ? (
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={editForm.roll_weight_g}
+                          onChange={(e) =>
+                            setEditForm({
+                              ...editForm,
+                              roll_weight_g: e.target.value,
+                            })
+                          }
+                          className="h-8 text-center"
+                        />
+                      ) : (
+                        parseFloat(u.roll_weight_g).toFixed(2)
+                      )}
+                    </td>
+                    <td className="p-2 text-center">
+                      {isEditing ? (
+                        <Input
+                          type="number"
+                          min="1"
+                          step="1"
+                          value={editForm.rolls_per_unit}
+                          onChange={(e) =>
+                            setEditForm({
+                              ...editForm,
+                              rolls_per_unit: e.target.value,
+                            })
+                          }
+                          className="h-8 text-center"
+                        />
+                      ) : (
+                        u.rolls_per_unit
+                      )}
+                    </td>
                     <td className="p-2 text-center font-medium">
-                      {parseFloat(u.unit_weight_kg).toFixed(3)}
+                      {isEditing && editComputed !== null
+                        ? editComputed.toFixed(3)
+                        : parseFloat(u.unit_weight_kg).toFixed(3)}
                     </td>
                     <td className="p-2 text-center">
                       {u.is_default ? (
@@ -6627,6 +6739,7 @@ function PackagingUnitsManagerDialog({
                         <Button
                           size="sm"
                           variant="ghost"
+                          disabled={isEditing}
                           onClick={() => setDefaultMut.mutate(u.id)}
                         >
                           —
@@ -6636,30 +6749,61 @@ function PackagingUnitsManagerDialog({
                     <td className="p-2 text-center">
                       <Checkbox
                         checked={!!u.is_active}
+                        disabled={isEditing}
                         onCheckedChange={() => toggleMut.mutate(u)}
                       />
                     </td>
                     <td className="p-2 text-center">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          if (
-                            confirm(
-                              t(
-                                "definitions.items.packagingUnits.deleteConfirm",
-                              ),
-                            )
-                          ) {
-                            deleteMut.mutate(u.id);
-                          }
-                        }}
-                      >
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                      </Button>
+                      {isEditing ? (
+                        <div className="flex justify-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="default"
+                            disabled={updateMut.isPending}
+                            onClick={() => submitEdit(u.id)}
+                          >
+                            {t("common.save")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setEditingId(null)}
+                          >
+                            {t("common.cancel")}
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex justify-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => startEdit(u)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              if (
+                                confirm(
+                                  t(
+                                    "definitions.items.packagingUnits.deleteConfirm",
+                                  ),
+                                )
+                              ) {
+                                deleteMut.mutate(u.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        </div>
+                      )}
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>
