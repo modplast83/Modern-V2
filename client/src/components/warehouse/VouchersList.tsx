@@ -686,6 +686,16 @@ export function VouchersList({ type, title, onView }: VouchersListProps) {
                       <TableHead className="text-center whitespace-nowrap">
                         {t("warehouse.vouchers.quantity")}
                       </TableHead>
+                      {type === "finished-goods-in" && (
+                        <>
+                          <TableHead className="text-center whitespace-nowrap">
+                            {t("warehouse.production.packagingUnit")}
+                          </TableHead>
+                          <TableHead className="text-center whitespace-nowrap">
+                            {t("warehouse.production.unitsCount")}
+                          </TableHead>
+                        </>
+                      )}
                       <TableHead className="text-center whitespace-nowrap">
                         {t("warehouse.vouchers.status")}
                       </TableHead>
@@ -736,6 +746,37 @@ export function VouchersList({ type, title, onView }: VouchersListProps) {
                           )}{" "}
                           {voucher.unit || t("warehouse.units.kilo")}
                         </TableCell>
+                        {type === "finished-goods-in" && (() => {
+                          let firstPuName = "";
+                          let firstUnitsCount: any = null;
+                          try {
+                            if (voucher.items) {
+                              const arr = JSON.parse(voucher.items);
+                              if (arr.length > 0) {
+                                firstPuName =
+                                  arr[0].packaging_unit_name || "";
+                                firstUnitsCount = arr[0].units_count;
+                              }
+                            }
+                          } catch {}
+                          const puName = firstPuName || "-";
+                          const uc =
+                            voucher.units_count != null
+                              ? voucher.units_count
+                              : firstUnitsCount;
+                          return (
+                            <>
+                              <TableCell className="text-center text-sm">
+                                {puName}
+                              </TableCell>
+                              <TableCell className="text-center text-sm">
+                                {uc != null
+                                  ? parseFloat(String(uc)).toString()
+                                  : "-"}
+                              </TableCell>
+                            </>
+                          );
+                        })()}
                         <TableCell className="text-center">
                           {getStatusBadge(voucher.status)}
                         </TableCell>
@@ -887,6 +928,45 @@ export function VouchersList({ type, title, onView }: VouchersListProps) {
                           </span>
                         </div>
                       )}
+                      {type === "finished-goods-in" && (() => {
+                        let firstPuName = "";
+                        let firstUnitsCount: any = null;
+                        try {
+                          if (voucher.items) {
+                            const arr = JSON.parse(voucher.items);
+                            if (arr.length > 0) {
+                              firstPuName =
+                                arr[0].packaging_unit_name || "";
+                              firstUnitsCount = arr[0].units_count;
+                            }
+                          }
+                        } catch {}
+                        const puName = firstPuName || "-";
+                        const uc =
+                          voucher.units_count != null
+                            ? voucher.units_count
+                            : firstUnitsCount;
+                        return (
+                          <>
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">
+                                {t("warehouse.production.packagingUnit")}:
+                              </span>
+                              <span>{puName}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">
+                                {t("warehouse.production.unitsCount")}:
+                              </span>
+                              <span>
+                                {uc != null
+                                  ? parseFloat(String(uc)).toString()
+                                  : "-"}
+                              </span>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                     <div className="flex gap-1 pt-1 border-t">
                       <Button
@@ -1042,6 +1122,12 @@ export function VouchersList({ type, title, onView }: VouchersListProps) {
                               {t("warehouse.delivery.product")}
                             </th>
                             <th className="py-2 px-3 text-center font-medium">
+                              {t("warehouse.production.packagingUnit")}
+                            </th>
+                            <th className="py-2 px-3 text-center font-medium">
+                              {t("warehouse.production.unitsCount")}
+                            </th>
+                            <th className="py-2 px-3 text-center font-medium">
                               {t("warehouse.voucherDetails.weightKg")}
                             </th>
                           </tr>
@@ -1066,6 +1152,16 @@ export function VouchersList({ type, title, onView }: VouchersListProps) {
                                 {item.product_description || "-"}
                               </td>
                               <td className="py-2 px-3 text-center">
+                                {item.packaging_unit_name || "-"}
+                              </td>
+                              <td className="py-2 px-3 text-center">
+                                {item.units_count != null
+                                  ? parseFloat(
+                                      String(item.units_count),
+                                    ).toString()
+                                  : "-"}
+                              </td>
+                              <td className="py-2 px-3 text-center">
                                 {parseFloat(
                                   String(item.weight_kg || 0),
                                 ).toLocaleString("en-US")}
@@ -1073,7 +1169,7 @@ export function VouchersList({ type, title, onView }: VouchersListProps) {
                             </tr>
                           ))}
                           <tr className="border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-800 font-semibold">
-                            <td className="py-2 px-3 text-center" colSpan={4}>
+                            <td className="py-2 px-3 text-center" colSpan={6}>
                               {t("warehouse.voucherDetails.total")}
                             </td>
                             <td className="py-2 px-3 text-center">
@@ -1116,6 +1212,31 @@ export function VouchersList({ type, title, onView }: VouchersListProps) {
                             </span>
                             <span>{item.product_description || "-"}</span>
                           </div>
+                          {(item.packaging_unit_name ||
+                            item.units_count != null) && (
+                            <>
+                              <div className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">
+                                  {t("warehouse.production.packagingUnit")}:
+                                </span>
+                                <span>
+                                  {item.packaging_unit_name || "-"}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">
+                                  {t("warehouse.production.unitsCount")}:
+                                </span>
+                                <span>
+                                  {item.units_count != null
+                                    ? parseFloat(
+                                        String(item.units_count),
+                                      ).toString()
+                                    : "-"}
+                                </span>
+                              </div>
+                            </>
+                          )}
                           <div className="flex justify-between text-xs">
                             <span className="text-muted-foreground">
                               {t("warehouse.voucherDetails.weightKg")}:
