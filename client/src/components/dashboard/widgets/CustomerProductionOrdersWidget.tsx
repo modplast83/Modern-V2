@@ -92,7 +92,7 @@ export default function CustomerProductionOrdersWidget() {
   const { data: customersData, isLoading: customersLoading } = useQuery<
     Customer[] | { data: Customer[] }
   >({
-    queryKey: ["/api/customers"],
+    queryKey: ["/api/customers", { all: true }],
   });
 
   const customers: Customer[] = useMemo(() => {
@@ -139,16 +139,10 @@ export default function CustomerProductionOrdersWidget() {
       .sort((a, b) => a.label.localeCompare(b.label, isArabic ? "ar" : "en"));
   }, [customers, isArabic]);
 
-  const filteredOrders = useMemo(() => {
-    if (!selectedCustomerId) return [];
-    return productionOrders.filter(
-      (po) => String(po.customer_id ?? "") === selectedCustomerId,
-    );
-  }, [productionOrders, selectedCustomerId]);
-
   const orderGroups: OrderGroup[] = useMemo(() => {
+    if (!selectedCustomerId) return [];
     const map = new Map<string, OrderGroup>();
-    for (const po of filteredOrders) {
+    for (const po of productionOrders) {
       const orderKey =
         po.order_number ||
         (po.order_id !== undefined ? `#${po.order_id}` : `po-${po.id}`);
@@ -185,7 +179,7 @@ export default function CustomerProductionOrdersWidget() {
       return b.orderKey.localeCompare(a.orderKey);
     });
     return groups;
-  }, [filteredOrders]);
+  }, [productionOrders, selectedCustomerId]);
 
   const getStatusBadge = (status?: string) => {
     switch (status) {
@@ -260,14 +254,14 @@ export default function CustomerProductionOrdersWidget() {
               ? "أوامر إنتاج العميل"
               : "Customer Production Orders"}
           </CardTitle>
-          {selectedCustomerId && filteredOrders.length > 0 && (
+          {selectedCustomerId && productionOrders.length > 0 && (
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="text-xs">
                 {formatNumber(orderGroups.length)}{" "}
                 {isArabic ? "طلب" : "orders"}
               </Badge>
               <Badge variant="secondary" className="text-xs">
-                {formatNumber(filteredOrders.length)}{" "}
+                {formatNumber(productionOrders.length)}{" "}
                 {isArabic ? "أمر إنتاج" : "POs"}
               </Badge>
             </div>
