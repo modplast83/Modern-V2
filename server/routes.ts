@@ -986,6 +986,7 @@ export async function registerRoutes(
         "recent_orders_widget",
         "production_progress_widget",
         "maintenance_widget",
+        "customer_production_orders_widget",
       ]);
 
       if (setting.length > 0 && setting[0].setting_value) {
@@ -1020,6 +1021,7 @@ export async function registerRoutes(
         defaultWidgets = [
           "dashboard_stats",
           "recent_orders_widget",
+          "customer_production_orders_widget",
           "production_progress_widget",
           "machine_status",
           "inventory_widget",
@@ -1035,6 +1037,7 @@ export async function registerRoutes(
         defaultWidgets = [
           "dashboard_stats",
           "recent_orders_widget",
+          "customer_production_orders_widget",
           "production_progress_widget",
           "machine_status",
           "recent_rolls",
@@ -1066,6 +1069,7 @@ export async function registerRoutes(
       ) {
         defaultWidgets = [
           "recent_orders_widget",
+          "customer_production_orders_widget",
           "quotes_widget",
           "dashboard_stats",
           "shortcuts",
@@ -1105,6 +1109,7 @@ export async function registerRoutes(
         "recent_orders_widget",
         "production_progress_widget",
         "maintenance_widget",
+        "customer_production_orders_widget",
       ]);
       const validWidgets = widgets.filter(
         (w: string) => typeof w === "string" && VALID_WIDGET_IDS.has(w),
