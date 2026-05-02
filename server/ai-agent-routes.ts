@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 
-import { requireAuth } from "./middleware/auth";
+import { requireAuth, requirePermission } from "./middleware/auth";
 
 import * as fs from "fs";
 import * as path from "path";
@@ -5295,7 +5295,7 @@ export function registerAiAgentRoutes(app: Express): void {
 
   app.post(
     "/api/ai-agent/chat",
-    requireAuth,
+    requirePermission("use_ai_agent"),
     async (req: Request, res: Response) => {
       let clientClosed = false;
       let ping: NodeJS.Timeout | null = null;
@@ -5621,7 +5621,7 @@ export function registerAiAgentRoutes(app: Express): void {
   // ===== رفع الملفات وقراءتها =====
   app.post(
     "/api/ai-agent/upload",
-    requireAuth,
+    requirePermission("use_ai_agent"),
     upload.single("file"),
     async (req: Request, res: Response) => {
       const file = req.file;
@@ -5723,7 +5723,7 @@ export function registerAiAgentRoutes(app: Express): void {
   // ===== تحويل الصوت إلى نص باستخدام Whisper =====
   app.post(
     "/api/ai-agent/transcribe",
-    requireAuth,
+    requirePermission("use_ai_agent"),
     upload.single("audio"),
     async (req: Request, res: Response) => {
       const file = req.file;
@@ -5807,7 +5807,7 @@ export function registerAiAgentRoutes(app: Express): void {
   // ===== إعدادات الوكيل الذكي =====
   app.get(
     "/api/ai-agent/settings",
-    requireAuth,
+    requirePermission("view_ai_agent_settings", "manage_ai_agent"),
     async (_req: Request, res: Response) => {
       try {
         const settings = await db.select().from(ai_agent_settings);
@@ -5821,7 +5821,7 @@ export function registerAiAgentRoutes(app: Express): void {
 
   app.put(
     "/api/ai-agent/settings/:key",
-    requireAuth,
+    requirePermission("manage_ai_agent"),
     async (req: Request, res: Response) => {
       try {
         const { key } = req.params;
@@ -5854,7 +5854,7 @@ export function registerAiAgentRoutes(app: Express): void {
   // ===== قاعدة المعرفة =====
   app.get(
     "/api/ai-agent/knowledge",
-    requireAuth,
+    requirePermission("view_ai_agent", "manage_ai_agent"),
     async (_req: Request, res: Response) => {
       try {
         const knowledge = await db
@@ -5871,7 +5871,7 @@ export function registerAiAgentRoutes(app: Express): void {
 
   app.post(
     "/api/ai-agent/knowledge",
-    requireAuth,
+    requirePermission("manage_ai_agent"),
     async (req: Request, res: Response) => {
       try {
         const { title, content, category } = req.body;
@@ -5894,7 +5894,7 @@ export function registerAiAgentRoutes(app: Express): void {
 
   app.put(
     "/api/ai-agent/knowledge/:id",
-    requireAuth,
+    requirePermission("manage_ai_agent"),
     async (req: Request, res: Response) => {
       try {
         const id = parseInt(req.params.id);
@@ -5919,7 +5919,7 @@ export function registerAiAgentRoutes(app: Express): void {
 
   app.delete(
     "/api/ai-agent/knowledge/:id",
-    requireAuth,
+    requirePermission("manage_ai_agent"),
     async (req: Request, res: Response) => {
       try {
         const id = parseInt(req.params.id);
@@ -5940,7 +5940,7 @@ export function registerAiAgentRoutes(app: Express): void {
   // ===== تعليمات الخصائص =====
   app.get(
     "/api/ai-agent/feature-instructions",
-    requireAuth,
+    requirePermission("view_ai_agent", "manage_ai_agent"),
     async (_req: Request, res: Response) => {
       try {
         const instructions = await db
@@ -5960,7 +5960,7 @@ export function registerAiAgentRoutes(app: Express): void {
 
   app.post(
     "/api/ai-agent/feature-instructions",
-    requireAuth,
+    requirePermission("manage_ai_agent"),
     async (req: Request, res: Response) => {
       try {
         const { feature_name, instructions, priority } = req.body;
@@ -5988,7 +5988,7 @@ export function registerAiAgentRoutes(app: Express): void {
 
   app.put(
     "/api/ai-agent/feature-instructions/:id",
-    requireAuth,
+    requirePermission("manage_ai_agent"),
     async (req: Request, res: Response) => {
       try {
         const id = parseInt(req.params.id);
@@ -6017,7 +6017,7 @@ export function registerAiAgentRoutes(app: Express): void {
 
   app.delete(
     "/api/ai-agent/feature-instructions/:id",
-    requireAuth,
+    requirePermission("manage_ai_agent"),
     async (req: Request, res: Response) => {
       try {
         const id = parseInt(req.params.id);
