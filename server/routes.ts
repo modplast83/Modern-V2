@@ -151,6 +151,7 @@ import {
   updateUserSchema,
   insertMixingRecipeSchema,
   insertBagWeightRecordSchema,
+  insertPackagingUnitSchema,
 } from "@shared/schema";
 import { eq, sql, and, gte, lte, gt, desc, inArray } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -5081,6 +5082,88 @@ Input: ${text}`;
       res.status(500).json({ message: "خطأ في جلب الأصناف" });
     }
   });
+
+  // ===== Packaging Units (per item) =====
+  // Lookup is open to anyone authenticated (warehouse receipt needs it).
+  // Mutations require manage_items / manage_definitions.
+  app.get(
+    "/api/items/:itemId/packaging-units",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const itemId = String(req.params.itemId);
+        const units = await storage.getPackagingUnitsByItem(itemId);
+        res.json(units);
+      } catch (error) {
+        console.error("Error fetching packaging units:", error);
+        res.status(500).json({ message: "خطأ في جلب وحدات التعبئة" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/items/:itemId/packaging-units",
+    requireAuth,
+    requirePermission("manage_items", "manage_definitions"),
+    async (req, res) => {
+      try {
+        const itemId = String(req.params.itemId);
+        const parsed = insertPackagingUnitSchema.parse({
+          ...req.body,
+          item_id: itemId,
+        });
+        const unit = await storage.createPackagingUnit({ ...parsed, item_id: itemId });
+        res.status(201).json(unit);
+      } catch (error: any) {
+        if (error?.name === "ZodError") {
+          return res.status(400).json({
+            message: error.issues?.[0]?.message || "بيانات غير صحيحة",
+            errors: error.issues,
+          });
+        }
+        console.error("Error creating packaging unit:", error);
+        res.status(500).json({
+          message: error?.message || "خطأ في إنشاء وحدة التعبئة",
+        });
+      }
+    },
+  );
+
+  app.patch(
+    "/api/packaging-units/:id",
+    requireAuth,
+    requirePermission("manage_items", "manage_definitions"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const unit = await storage.updatePackagingUnit(id, req.body);
+        res.json(unit);
+      } catch (error: any) {
+        console.error("Error updating packaging unit:", error);
+        res.status(400).json({
+          message: error?.message || "خطأ في تحديث وحدة التعبئة",
+        });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/packaging-units/:id",
+    requireAuth,
+    requirePermission("manage_items", "manage_definitions"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        await storage.deletePackagingUnit(id);
+        res.json({ message: "تم حذف وحدة التعبئة" });
+      } catch (error: any) {
+        console.error("Error deleting packaging unit:", error);
+        res.status(400).json({
+          message: error?.message || "خطأ في حذف وحدة التعبئة",
+        });
+      }
+    },
+  );
 
   // Customer Products routes
   app.get("/api/customer-products", requireAuth, async (req, res) => {
@@ -13422,6 +13505,7 @@ Input: ${text}`;
   app.post(
     "/api/warehouse/vouchers/finished-goods-in",
     requireAuth,
+    requirePermission("manage_warehouse"),
     async (req: AuthRequest, res) => {
       try {
         const userId = getAuthUserId(req);
@@ -13438,7 +13522,13 @@ Input: ${text}`;
         res.status(201).json(voucher);
       } catch (error: any) {
         console.error("Error creating finished goods in voucher:", error);
-        const validationPatterns = ["تتجاوز", "تم استلام كامل", "غير موجود"];
+        const validationPatterns = [
+          "تتجاوز",
+          "تم استلام كامل",
+          "غير موجود",
+          "وحدة التعبئة",
+          "عدد الوحدات",
+        ];
         const isValidation =
           error.message &&
           validationPatterns.some((p: string) => error.message.includes(p));

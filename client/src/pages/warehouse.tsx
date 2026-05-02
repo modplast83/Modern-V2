@@ -12,7 +12,7 @@ import {
   BarChart3,
   Settings,
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import PageLayout from "../components/layout/PageLayout";
@@ -34,6 +34,13 @@ import {
   DialogTrigger,
 } from "../components/ui/dialog";
 import { Input } from "../components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 import {
   Tabs,
   TabsContent,
@@ -965,6 +972,12 @@ function ProductionHallContent({
   const [selectedReceiptOrderId, setSelectedReceiptOrderId] = useState<
     string | null
   >(null);
+  // Per-line packaging selection: { [orderId]: { puId, count } }.
+  // When a packaging unit is chosen and `count` is set, the weight input is
+  // computed automatically (rolls_per_unit * roll_weight_g/1000 * count).
+  const [receiptPackaging, setReceiptPackaging] = useState<
+    Record<string, { puId: string; count: string }>
+  >({});
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -1043,6 +1056,7 @@ function ProductionHallContent({
   const openReceiptForOrder = (productionOrderId: string) => {
     setSelectedReceiptOrderId(productionOrderId);
     setReceiptWeights({});
+    setReceiptPackaging({});
     setReceiptDialogOpen(true);
   };
 
@@ -1119,15 +1133,23 @@ function ProductionHallContent({
       const { next_number } = await nextNumRes.json();
 
       const items = ordersWithWeights.map(
-        ({ id: productionOrderId, weight, order }) => ({
-          production_order_id: parseInt(productionOrderId),
-          weight_kg: weight.toString(),
-          product_description:
-            order?.product_name_ar || order?.product_name || "",
-          customer_id: order?.customer_id,
-          customer_name: order?.customer_name_ar || order?.customer_name || "",
-          order_number: order?.order_number || "",
-        }),
+        ({ id: productionOrderId, weight, order }) => {
+          const pkg = receiptPackaging[productionOrderId];
+          const hasPackaging = pkg?.puId && parseFloat(pkg?.count || "0") > 0;
+          return {
+            production_order_id: parseInt(productionOrderId),
+            weight_kg: weight.toString(),
+            product_description:
+              order?.product_name_ar || order?.product_name || "",
+            customer_id: order?.customer_id,
+            customer_name:
+              order?.customer_name_ar || order?.customer_name || "",
+            order_number: order?.order_number || "",
+            item_id: order?.item_id || undefined,
+            packaging_unit_id: hasPackaging ? parseInt(pkg.puId) : undefined,
+            units_count: hasPackaging ? pkg.count : undefined,
+          };
+        },
       );
 
       await receiptMutation.mutateAsync({
@@ -1151,6 +1173,7 @@ function ProductionHallContent({
       setReceiptDialogOpen(false);
       setSelectedOrders(new Set());
       setReceiptWeights({});
+      setReceiptPackaging({});
       setReceiptNotes("");
       setSelectedReceiptOrderId(null);
       toast({
@@ -1205,7 +1228,7 @@ function ProductionHallContent({
                     {selectedOrders.size})
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl w-[95vw] sm:w-full">
+                <DialogContent className="max-w-2xl w-[95vw] sm:w-full max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle className="text-sm sm:text-base">
                       {t("warehouse.production.createFpRecTitle")}
@@ -1218,6 +1241,10 @@ function ProductionHallContent({
                     <div className="space-y-2">
                       {receiptTargetOrders.map((order: any) => {
                         const orderId = order.production_order_id.toString();
+                        const pkg = receiptPackaging[orderId] || {
+                          puId: "",
+                          count: "",
+                        };
                         return (
                           <div
                             key={orderId}
@@ -1236,6 +1263,22 @@ function ProductionHallContent({
                             <div className="text-xs text-gray-500">
                               {order.product_name_ar || order.product_name}
                             </div>
+                            <PackagingUnitPicker
+                              itemId={order.item_id || null}
+                              selected={pkg}
+                              onChange={(next, computedKg) => {
+                                setReceiptPackaging((prev) => ({
+                                  ...prev,
+                                  [orderId]: next,
+                                }));
+                                if (computedKg != null) {
+                                  setReceiptWeights((prev) => ({
+                                    ...prev,
+                                    [orderId]: computedKg.toFixed(3),
+                                  }));
+                                }
+                              }}
+                            />
                             <div>
                               <label className="text-xs font-medium">
                                 {t("warehouse.production.receivedWeight")} (
@@ -1652,6 +1695,119 @@ function ProductionHallContent({
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+// PackagingUnitPicker: per-line dropdown + units count input.
+// Fetches packaging units for the given item and computes weight = unit_weight_kg * count.
+// Falls back gracefully when item has no packaging units configured.
+function PackagingUnitPicker({
+  itemId,
+  selected,
+  onChange,
+}: {
+  itemId: string | null;
+  selected: { puId: string; count: string };
+  onChange: (
+    next: { puId: string; count: string },
+    computedKg: number | null,
+  ) => void;
+}) {
+  const { t } = useTranslation();
+  const { data: units = [], isLoading } = useQuery<any[]>({
+    queryKey: ["/api/items", itemId, "packaging-units"],
+    enabled: !!itemId,
+  });
+
+  const activeUnits = (units || []).filter((u: any) => u.is_active);
+  const selectedUnit = activeUnits.find(
+    (u: any) => String(u.id) === selected.puId,
+  );
+
+  // Auto-select the default packaging unit on first load (don't override
+  // an explicit user choice — if selected.puId is set or already attempted,
+  // skip). We mark "manual" intent only after the user picks something.
+  useEffect(() => {
+    if (selected.puId) return;
+    if (activeUnits.length === 0) return;
+    const def = activeUnits.find((u: any) => u.is_default) || activeUnits[0];
+    if (!def) return;
+    const count = "1";
+    const kg = parseFloat(def.unit_weight_kg) * parseFloat(count);
+    onChange({ puId: String(def.id), count }, kg);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [units]);
+
+  const handleUnit = (val: string) => {
+    if (val === "manual") {
+      onChange({ puId: "", count: "" }, null);
+      return;
+    }
+    const u = activeUnits.find((x: any) => String(x.id) === val);
+    const count = selected.count || "1";
+    const kg = u ? parseFloat(u.unit_weight_kg) * parseFloat(count) : null;
+    onChange({ puId: val, count }, kg);
+  };
+
+  const handleCount = (val: string) => {
+    const u = selectedUnit;
+    const kg =
+      u && parseFloat(val) > 0
+        ? parseFloat(u.unit_weight_kg) * parseFloat(val)
+        : null;
+    onChange({ puId: selected.puId, count: val }, kg);
+  };
+
+  if (!itemId) return null;
+  if (isLoading) return null;
+  if (activeUnits.length === 0) {
+    return (
+      <div className="text-[11px] text-gray-400 italic">
+        {t("warehouse.production.noPackagingUnits")}
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <div>
+        <label className="text-xs font-medium">
+          {t("warehouse.production.packagingUnit")}
+        </label>
+        <Select value={selected.puId || "manual"} onValueChange={handleUnit}>
+          <SelectTrigger className="mt-1 h-9 text-xs">
+            <SelectValue
+              placeholder={t("warehouse.production.selectPackagingUnit")}
+            />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="manual">
+              {t("warehouse.production.manualEntry")}
+            </SelectItem>
+            {activeUnits.map((u: any) => (
+              <SelectItem key={u.id} value={String(u.id)}>
+                {u.name} — {parseFloat(u.unit_weight_kg).toFixed(3)}{" "}
+                {t("warehouse.units.kilo")}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <label className="text-xs font-medium">
+          {t("warehouse.production.unitsCount")}
+        </label>
+        <Input
+          type="number"
+          min="0"
+          step="1"
+          value={selected.count}
+          onChange={(e) => handleCount(e.target.value)}
+          disabled={!selected.puId}
+          className="mt-1 h-9 text-xs"
+        />
+      </div>
     </div>
   );
 }

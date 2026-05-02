@@ -25,6 +25,7 @@ import {
   warehouse_receipts,
   production_settings,
   items,
+  packaging_units,
   customer_products,
   locations,
   categories,
@@ -726,6 +727,13 @@ export interface IStorage {
   markNotificationAsRead(id: number): Promise<Notification>;
   markAllNotificationsAsRead(userId: number): Promise<void>;
   getUnreadNotificationsCount(userId: number): Promise<number>;
+
+  // Packaging Units (per item)
+  getPackagingUnitsByItem(itemId: string): Promise<any[]>;
+  getPackagingUnitById(id: number): Promise<any | undefined>;
+  createPackagingUnit(data: any): Promise<any>;
+  updatePackagingUnit(id: number, data: any): Promise<any>;
+  deletePackagingUnit(id: number): Promise<void>;
 
   // Maintenance Components
   getSpareParts(): Promise<SparePart[]>;
@@ -3954,6 +3962,46 @@ export class DatabaseStorage implements IStorage {
           );
         }
 
+        // Optional packaging unit per receipt line. When provided, validate that
+        // (rolls_per_unit * roll_weight_g/1000) * units_count is within ±2% of weight_kg.
+        let packagingUnitId: number | null = null;
+        let unitsCount: number | null = null;
+        let packagingUnitName: string | null = null;
+        if (item.packaging_unit_id) {
+          const puId =
+            typeof item.packaging_unit_id === "string"
+              ? parseInt(item.packaging_unit_id)
+              : item.packaging_unit_id;
+          const [pu] = await db
+            .select()
+            .from(packaging_units)
+            .where(eq(packaging_units.id, puId));
+          if (!pu) {
+            throw new Error("وحدة التعبئة المختارة غير موجودة");
+          }
+          if (pu.item_id !== (item.item_id || data.item_id)) {
+            throw new Error("وحدة التعبئة لا تطابق الصنف المختار");
+          }
+          const rawCount = parseFloat(String(item.units_count || 0));
+          if (!(rawCount > 0)) {
+            throw new Error("عدد الوحدات يجب أن يكون أكبر من صفر");
+          }
+          const expectedKg =
+            (parseFloat(String(pu.roll_weight_g)) *
+              Number(pu.rolls_per_unit) *
+              rawCount) /
+            1000;
+          const tolerance = expectedKg * 0.02; // ±2%
+          if (Math.abs(expectedKg - weight) > tolerance + 0.01) {
+            throw new Error(
+              `الوزن المدخل (${weight} كجم) لا يطابق وحدة التعبئة المختارة (${expectedKg.toFixed(3)} كجم) ضمن نسبة ±2%`,
+            );
+          }
+          packagingUnitId = puId;
+          unitsCount = rawCount;
+          packagingUnitName = pu.name;
+        }
+
         totalWeight += weight;
         validatedItems.push({
           production_order_id: poId,
@@ -3964,12 +4012,23 @@ export class DatabaseStorage implements IStorage {
           customer_name: item.customer_name || "",
           order_number: item.order_number || "",
           item_id: item.item_id || data.item_id,
+          packaging_unit_id: packagingUnitId,
+          units_count: unitsCount,
+          packaging_unit_name: packagingUnitName,
         });
       }
 
       if (validatedItems.length === 0) {
         throw new Error("لم يتم إدخال أي كميات صالحة");
       }
+
+      // If a single line and it carries a packaging unit, surface those at the
+      // top level too for easier listing/filtering. Multi-line vouchers keep the
+      // per-item details inside the JSON `items` payload.
+      const singlePackagingUnitId =
+        validatedItems.length === 1 ? validatedItems[0].packaging_unit_id : null;
+      const singleUnitsCount =
+        validatedItems.length === 1 ? validatedItems[0].units_count : null;
 
       const voucherData: any = {
         voucher_number: data.voucher_number,
@@ -3987,6 +4046,9 @@ export class DatabaseStorage implements IStorage {
             : null,
         customer_id: data.customer_id || validatedItems[0].customer_id || null,
         item_id: data.item_id || validatedItems[0].item_id || null,
+        packaging_unit_id: singlePackagingUnitId,
+        units_count:
+          singleUnitsCount != null ? String(singleUnitsCount) : null,
         created_by: data.created_by,
         status: "completed",
       };
@@ -5352,6 +5414,112 @@ export class DatabaseStorage implements IStorage {
 
   async deleteItem(id: string | number): Promise<void> {
     await db.delete(items).where(eq(items.id, String(id)));
+  }
+
+  // ===== Packaging Units (per item) =====
+  // Each item can have multiple packaging configurations used at warehouse
+  // receipt time only. Production flow remains unaffected.
+  async getPackagingUnitsByItem(itemId: string): Promise<any[]> {
+    return await db
+      .select()
+      .from(packaging_units)
+      .where(eq(packaging_units.item_id, itemId))
+      .orderBy(
+        desc(packaging_units.is_default),
+        desc(packaging_units.is_active),
+        packaging_units.id,
+      );
+  }
+
+  async getPackagingUnitById(id: number): Promise<any | undefined> {
+    const [pu] = await db
+      .select()
+      .from(packaging_units)
+      .where(eq(packaging_units.id, id));
+    return pu;
+  }
+
+  async createPackagingUnit(data: any): Promise<any> {
+    const rollWeightG = parseFloat(String(data.roll_weight_g || 0));
+    const rollsPerUnit = parseInt(String(data.rolls_per_unit || 0));
+    if (!(rollWeightG > 0) || !(rollsPerUnit > 0)) {
+      throw new Error("بيانات وحدة التعبئة غير صحيحة");
+    }
+    const unitWeightKg = (rollWeightG * rollsPerUnit) / 1000;
+
+    return await db.transaction(async (tx) => {
+      // Enforce single default per item
+      if (data.is_default) {
+        await tx
+          .update(packaging_units)
+          .set({ is_default: false })
+          .where(eq(packaging_units.item_id, data.item_id));
+      }
+      const [pu] = await tx
+        .insert(packaging_units)
+        .values({
+          item_id: data.item_id,
+          name: String(data.name).trim(),
+          roll_weight_g: rollWeightG.toFixed(2),
+          rolls_per_unit: rollsPerUnit,
+          unit_weight_kg: unitWeightKg.toFixed(3),
+          is_default: !!data.is_default,
+          is_active: data.is_active !== undefined ? !!data.is_active : true,
+        } as any)
+        .returning();
+      return pu;
+    });
+  }
+
+  async updatePackagingUnit(id: number, data: any): Promise<any> {
+    return await db.transaction(async (tx) => {
+      const [existing] = await tx
+        .select()
+        .from(packaging_units)
+        .where(eq(packaging_units.id, id));
+      if (!existing) throw new Error("وحدة التعبئة غير موجودة");
+
+      const rollWeightG =
+        data.roll_weight_g !== undefined
+          ? parseFloat(String(data.roll_weight_g))
+          : parseFloat(String(existing.roll_weight_g));
+      const rollsPerUnit =
+        data.rolls_per_unit !== undefined
+          ? parseInt(String(data.rolls_per_unit))
+          : existing.rolls_per_unit;
+      if (!(rollWeightG > 0) || !(rollsPerUnit > 0)) {
+        throw new Error("بيانات وحدة التعبئة غير صحيحة");
+      }
+      const unitWeightKg = (rollWeightG * rollsPerUnit) / 1000;
+
+      if (data.is_default) {
+        await tx
+          .update(packaging_units)
+          .set({ is_default: false })
+          .where(eq(packaging_units.item_id, existing.item_id));
+      }
+
+      const updates: any = {
+        roll_weight_g: rollWeightG.toFixed(2),
+        rolls_per_unit: rollsPerUnit,
+        unit_weight_kg: unitWeightKg.toFixed(3),
+      };
+      if (data.name !== undefined) updates.name = String(data.name).trim();
+      if (data.is_default !== undefined)
+        updates.is_default = !!data.is_default;
+      if (data.is_active !== undefined) updates.is_active = !!data.is_active;
+
+      const [pu] = await tx
+        .update(packaging_units)
+        .set(updates)
+        .where(eq(packaging_units.id, id))
+        .returning();
+      return pu;
+    });
+  }
+
+  async deletePackagingUnit(id: number): Promise<void> {
+    await db.delete(packaging_units).where(eq(packaging_units.id, id));
   }
 
   async getCustomerProducts(options?: {
@@ -7388,6 +7556,7 @@ export class DatabaseStorage implements IStorage {
         o.order_number,
         c.name AS customer_name,
         c.name_ar AS customer_name_ar,
+        cp.item_id AS item_id,
         COALESCE(i.name, cp.id::text) AS product_name,
         i.name_ar AS product_name_ar,
         COALESCE(SUM(r.weight_kg), 0) AS total_film_weight,
@@ -7404,13 +7573,14 @@ export class DatabaseStorage implements IStorage {
       WHERE EXISTS (SELECT 1 FROM rolls r2 WHERE r2.production_order_id = po.id AND r2.stage = 'done')
         AND CAST(po.warehouse_received_kg AS NUMERIC) < CAST(po.quantity_kg AS NUMERIC)
       GROUP BY po.id, po.production_order_number, po.order_id, po.quantity_kg, po.final_quantity_kg,
-               po.warehouse_received_kg, po.status, o.order_number, c.name, c.name_ar, i.name, i.name_ar, cp.id
+               po.warehouse_received_kg, po.status, o.order_number, c.name, c.name_ar, i.name, i.name_ar, cp.id, cp.item_id
       ORDER BY po.id
     `);
     return (rows.rows as any[]).map((row) => ({
       ...row,
       production_order_id: Number(row.production_order_id),
       order_id: Number(row.order_id),
+      item_id: row.item_id || null,
     }));
   }
 

@@ -42,6 +42,7 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "../components/ui/dialog";
+import { Checkbox } from "../components/ui/checkbox";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { SearchableSelect } from "../components/ui/searchable-select";
@@ -95,6 +96,7 @@ export default function Definitions() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
   const [quickSearch, setQuickSearch] = useState("");
+  const [packagingItem, setPackagingItem] = useState<any>(null);
 
   // Reset search and filters when changing tabs
   useEffect(() => {
@@ -2779,6 +2781,18 @@ export default function Definitions() {
                                         }}
                                       >
                                         <Edit className="w-4 h-4" />
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        title={t(
+                                          "definitions.items.packagingUnits.manage",
+                                        )}
+                                        onClick={() =>
+                                          setPackagingItem(item)
+                                        }
+                                      >
+                                        <Package className="w-4 h-4" />
                                       </Button>
                                     </div>
                                   </td>
@@ -6332,7 +6346,331 @@ export default function Definitions() {
             </DialogContent>
           </Dialog>
         )}
+
+        {packagingItem && (
+          <PackagingUnitsManagerDialog
+            item={packagingItem}
+            open={!!packagingItem}
+            onClose={() => setPackagingItem(null)}
+          />
+        )}
       </div>
     </PageLayout>
+  );
+}
+
+// PackagingUnitsManagerDialog: CRUD for packaging units of a single item.
+// Hits /api/items/:itemId/packaging-units (GET/POST) and /api/packaging-units/:id (PATCH/DELETE).
+function PackagingUnitsManagerDialog({
+  item,
+  open,
+  onClose,
+}: {
+  item: any;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const itemId = String(item.id);
+  const queryKey = ["/api/items", itemId, "packaging-units"];
+  const { data: units = [], isLoading } = useQuery<any[]>({ queryKey });
+  const [form, setForm] = useState({
+    name: "",
+    roll_weight_g: "",
+    rolls_per_unit: "",
+    is_default: false,
+    is_active: true,
+  });
+
+  const computed =
+    parseFloat(form.roll_weight_g || "0") > 0 &&
+    parseInt(form.rolls_per_unit || "0") > 0
+      ? (parseFloat(form.roll_weight_g) *
+          parseInt(form.rolls_per_unit)) /
+        1000
+      : null;
+
+  const resetForm = () =>
+    setForm({
+      name: "",
+      roll_weight_g: "",
+      rolls_per_unit: "",
+      is_default: false,
+      is_active: true,
+    });
+
+  const createMut = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest(
+        `/api/items/${itemId}/packaging-units`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            name: form.name.trim(),
+            roll_weight_g: parseFloat(form.roll_weight_g),
+            rolls_per_unit: parseInt(form.rolls_per_unit),
+            is_default: form.is_default,
+            is_active: form.is_active,
+          }),
+        },
+      );
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+      resetForm();
+      toast({ title: t("common.success") });
+    },
+    onError: (e: any) =>
+      toast({
+        title: t("definitions.items.packagingUnits.saveError"),
+        description: e?.message,
+        variant: "destructive",
+      }),
+  });
+
+  const toggleMut = useMutation({
+    mutationFn: async (u: any) => {
+      const res = await apiRequest(`/api/packaging-units/${u.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ is_active: !u.is_active }),
+      });
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+  });
+
+  const setDefaultMut = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest(`/api/packaging-units/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ is_default: true }),
+      });
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest(`/api/packaging-units/${id}`, {
+        method: "DELETE",
+      });
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (
+      !form.name.trim() ||
+      !(parseFloat(form.roll_weight_g) > 0) ||
+      !(parseInt(form.rolls_per_unit) > 0)
+    ) {
+      return;
+    }
+    createMut.mutate();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
+            {t("definitions.items.packagingUnits.title")} —{" "}
+            {item.name_ar || item.name}
+          </DialogTitle>
+          <DialogDescription>
+            {t("definitions.items.packagingUnits.description")}
+          </DialogDescription>
+        </DialogHeader>
+
+        <form
+          onSubmit={handleSubmit}
+          className="border rounded-md p-3 grid grid-cols-1 sm:grid-cols-12 gap-2 items-end"
+        >
+          <div className="sm:col-span-4">
+            <Label className="text-xs">
+              {t("definitions.items.packagingUnits.name")}
+            </Label>
+            <Input
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder={t(
+                "definitions.items.packagingUnits.namePlaceholder",
+              )}
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <Label className="text-xs">
+              {t("definitions.items.packagingUnits.rollWeightG")}
+            </Label>
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.roll_weight_g}
+              onChange={(e) =>
+                setForm({ ...form, roll_weight_g: e.target.value })
+              }
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <Label className="text-xs">
+              {t("definitions.items.packagingUnits.rollsPerUnit")}
+            </Label>
+            <Input
+              type="number"
+              min="1"
+              step="1"
+              value={form.rolls_per_unit}
+              onChange={(e) =>
+                setForm({ ...form, rolls_per_unit: e.target.value })
+              }
+            />
+          </div>
+          <div className="sm:col-span-2 flex items-center gap-2 pt-5">
+            <Checkbox
+              checked={form.is_default}
+              onCheckedChange={(c) =>
+                setForm({ ...form, is_default: !!c })
+              }
+              id="pu-default"
+            />
+            <Label htmlFor="pu-default" className="text-xs">
+              {t("definitions.items.packagingUnits.isDefault")}
+            </Label>
+          </div>
+          <div className="sm:col-span-2 flex flex-col gap-1">
+            {computed !== null && (
+              <div className="text-xs text-gray-500">
+                {t("definitions.items.packagingUnits.computed", {
+                  kg: computed.toFixed(3),
+                })}
+              </div>
+            )}
+            <Button
+              type="submit"
+              size="sm"
+              disabled={createMut.isPending}
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              {t("definitions.items.packagingUnits.addNew")}
+            </Button>
+          </div>
+        </form>
+
+        <div className="mt-2 border rounded-md overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="text-right p-2">
+                  {t("definitions.items.packagingUnits.name")}
+                </th>
+                <th className="text-center p-2">
+                  {t("definitions.items.packagingUnits.rollWeightG")}
+                </th>
+                <th className="text-center p-2">
+                  {t("definitions.items.packagingUnits.rollsPerUnit")}
+                </th>
+                <th className="text-center p-2">
+                  {t("definitions.items.packagingUnits.unitWeightKg")}
+                </th>
+                <th className="text-center p-2">
+                  {t("definitions.items.packagingUnits.isDefault")}
+                </th>
+                <th className="text-center p-2">
+                  {t("definitions.items.packagingUnits.isActive")}
+                </th>
+                <th className="text-center p-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                <tr>
+                  <td
+                    colSpan={7}
+                    className="p-4 text-center text-gray-400"
+                  >
+                    <Loader2 className="inline w-4 h-4 animate-spin" />
+                  </td>
+                </tr>
+              ) : units.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={7}
+                    className="p-4 text-center text-gray-400"
+                  >
+                    {t("definitions.items.packagingUnits.noUnits")}
+                  </td>
+                </tr>
+              ) : (
+                units.map((u: any) => (
+                  <tr key={u.id} className="border-t">
+                    <td className="p-2">{u.name}</td>
+                    <td className="p-2 text-center">
+                      {parseFloat(u.roll_weight_g).toFixed(2)}
+                    </td>
+                    <td className="p-2 text-center">{u.rolls_per_unit}</td>
+                    <td className="p-2 text-center font-medium">
+                      {parseFloat(u.unit_weight_kg).toFixed(3)}
+                    </td>
+                    <td className="p-2 text-center">
+                      {u.is_default ? (
+                        <Badge className="bg-green-100 text-green-800">
+                          ✓
+                        </Badge>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setDefaultMut.mutate(u.id)}
+                        >
+                          —
+                        </Button>
+                      )}
+                    </td>
+                    <td className="p-2 text-center">
+                      <Checkbox
+                        checked={!!u.is_active}
+                        onCheckedChange={() => toggleMut.mutate(u)}
+                      />
+                    </td>
+                    <td className="p-2 text-center">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          if (
+                            confirm(
+                              t(
+                                "definitions.items.packagingUnits.deleteConfirm",
+                              ),
+                            )
+                          ) {
+                            deleteMut.mutate(u.id);
+                          }
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            {t("common.close")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

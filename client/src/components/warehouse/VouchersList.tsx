@@ -350,6 +350,27 @@ export function VouchersList({ type, title, onView }: VouchersListProps) {
         label: t("warehouse.voucherDetails.totalPrice"),
         value: parseFloat(v.total_price).toLocaleString("en-US"),
       });
+    if (v.packaging_unit_id || v.units_count) {
+      let puName = "";
+      try {
+        const itemsArr = v.items ? JSON.parse(v.items) : [];
+        if (Array.isArray(itemsArr) && itemsArr.length === 1) {
+          puName = itemsArr[0].packaging_unit_name || "";
+        }
+      } catch {}
+      if (puName) {
+        qtyInfo.push({
+          label: t("warehouse.production.packagingUnit"),
+          value: puName,
+        });
+      }
+      if (v.units_count) {
+        qtyInfo.push({
+          label: t("warehouse.production.unitsCount"),
+          value: parseFloat(String(v.units_count)).toString(),
+        });
+      }
+    }
     if (qtyInfo.length > 0)
       sections.push({
         title: t("warehouse.sections.quantityInfo"),
@@ -520,6 +541,12 @@ export function VouchersList({ type, title, onView }: VouchersListProps) {
                     {t("warehouse.delivery.product")}
                   </th>
                   <th style={{ textAlign: "center" }}>
+                    {t("warehouse.production.packagingUnit")}
+                  </th>
+                  <th style={{ textAlign: "center" }}>
+                    {t("warehouse.production.unitsCount")}
+                  </th>
+                  <th style={{ textAlign: "center" }}>
                     {t("warehouse.voucherDetails.weightKg")}
                   </th>
                 </tr>
@@ -541,6 +568,14 @@ export function VouchersList({ type, title, onView }: VouchersListProps) {
                       {item.product_description || "-"}
                     </td>
                     <td style={{ textAlign: "center" }}>
+                      {item.packaging_unit_name || "-"}
+                    </td>
+                    <td style={{ textAlign: "center" }}>
+                      {item.units_count != null
+                        ? parseFloat(String(item.units_count)).toString()
+                        : "-"}
+                    </td>
+                    <td style={{ textAlign: "center" }}>
                       {parseFloat(String(item.weight_kg || 0)).toLocaleString(
                         "en-US",
                       )}
@@ -548,7 +583,7 @@ export function VouchersList({ type, title, onView }: VouchersListProps) {
                   </tr>
                 ))}
                 <tr style={{ fontWeight: 700, backgroundColor: "#f0f0f0" }}>
-                  <td colSpan={4} style={{ textAlign: "center" }}>
+                  <td colSpan={6} style={{ textAlign: "center" }}>
                     {t("warehouse.voucherDetails.total")}
                   </td>
                   <td style={{ textAlign: "center" }}>

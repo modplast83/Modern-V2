@@ -988,6 +988,38 @@ export const items = pgTable("items", {
   status: varchar("status", { length: 20 }).default("active"),
 });
 
+// 📦 جدول وحدات التعبئة - Packaging Units per item
+// Each item can have multiple packaging unit configurations used at warehouse receipt
+// Example: a 50-gallon roll item can be packed as either:
+//   - 20 rolls × 900g = 18 kg bundle
+//   - 20 rolls × 1000g = 20 kg bundle
+// Used ONLY at warehouse receipt — production-side flow is unaffected.
+export const packaging_units = pgTable(
+  "packaging_units",
+  {
+    id: serial("id").primaryKey(),
+    item_id: varchar("item_id", { length: 20 })
+      .notNull()
+      .references(() => items.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 100 }).notNull(), // e.g. "بندل 18 كجم"
+    roll_weight_g: decimal("roll_weight_g", {
+      precision: 10,
+      scale: 2,
+    }).notNull(), // weight of a single roll in grams
+    rolls_per_unit: integer("rolls_per_unit").notNull(), // number of rolls in the package
+    unit_weight_kg: decimal("unit_weight_kg", {
+      precision: 10,
+      scale: 3,
+    }).notNull(), // total package weight in kg = roll_weight_g * rolls_per_unit / 1000
+    is_default: boolean("is_default").default(false),
+    is_active: boolean("is_active").default(true),
+    created_at: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_packaging_units_item_id").on(table.item_id),
+  ],
+);
+
 // 🌍 جدول المواقع الجغرافية
 export const locations = pgTable("locations", {
   id: varchar("id", { length: 20 }).primaryKey(),
@@ -1974,6 +2006,27 @@ export const insertMaintenanceRequestSchema = createInsertSchema(
 export const insertItemSchema = createInsertSchema(items).omit({
   id: true,
 });
+
+// Insert schema for packaging units with sane validation
+export const insertPackagingUnitSchema = createInsertSchema(packaging_units)
+  .omit({
+    id: true,
+    created_at: true,
+    unit_weight_kg: true, // computed on the server from roll_weight_g * rolls_per_unit
+  })
+  .extend({
+    name: z.string().trim().min(1, "اسم وحدة التعبئة مطلوب"),
+    roll_weight_g: z.coerce
+      .number({ invalid_type_error: "وزن الرول يجب أن يكون رقماً" })
+      .positive("وزن الرول يجب أن يكون أكبر من صفر"),
+    rolls_per_unit: z.coerce
+      .number({ invalid_type_error: "عدد الرولات يجب أن يكون رقماً" })
+      .int("عدد الرولات يجب أن يكون عدداً صحيحاً")
+      .positive("عدد الرولات يجب أن يكون أكبر من صفر"),
+  });
+
+export type PackagingUnit = typeof packaging_units.$inferSelect;
+export type InsertPackagingUnit = z.infer<typeof insertPackagingUnitSchema>;
 
 export const insertSupplierSchema = createInsertSchema(suppliers).omit({
   id: true,
@@ -3618,6 +3671,14 @@ export const finished_goods_vouchers_in = pgTable(
     location_id: integer("location_id"),
     notes: text("notes"),
     items: text("items"),
+    // 📦 وحدة التعبئة المختارة عند الاستلام (اختيارية للتوافق مع السجلات القديمة)
+    // Selected packaging unit at receipt time (nullable for backward compatibility).
+    // When present, units_count holds how many packages of this unit were received.
+    // The kg-quantity in `quantity` / `weight_kg` remains the source of truth for inventory.
+    packaging_unit_id: integer("packaging_unit_id").references(
+      () => packaging_units.id,
+    ),
+    units_count: decimal("units_count", { precision: 12, scale: 3 }),
     status: varchar("status", { length: 50 }).default("completed"),
     created_by: integer("created_by"),
     created_at: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
@@ -3880,6 +3941,20 @@ export const finishedGoodsVouchersInRelations = relations(
     customer: one(customers, {
       fields: [finished_goods_vouchers_in.customer_id],
       references: [customers.id],
+    }),
+    packagingUnit: one(packaging_units, {
+      fields: [finished_goods_vouchers_in.packaging_unit_id],
+      references: [packaging_units.id],
+    }),
+  }),
+);
+
+export const packagingUnitsRelations = relations(
+  packaging_units,
+  ({ one }) => ({
+    item: one(items, {
+      fields: [packaging_units.item_id],
+      references: [items.id],
     }),
   }),
 );

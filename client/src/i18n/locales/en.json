@@ -1362,7 +1362,14 @@
       "status": "Status",
       "receive": "Receive",
       "partial": "Partial",
-      "complete": "Complete"
+      "complete": "Complete",
+      "packagingUnit": "Packaging Unit",
+      "selectPackagingUnit": "Select Packaging Unit",
+      "noPackagingUnits": "No packaging units for this item",
+      "manualEntry": "Manual entry",
+      "unitsCount": "Units count",
+      "computedWeight": "Computed weight",
+      "packagingUnitDetails": "Packaging unit: {{name}} ({{kg}} kg/unit)"
     },
     "received": {
       "title": "Title",
@@ -3150,7 +3157,24 @@
       "category": "Category",
       "selectCategory": "Select Category",
       "noCategory": "No Category",
-      "status": "Status"
+      "status": "Status",
+      "packagingUnits": {
+        "manage": "Packaging Units",
+        "title": "Item Packaging Units",
+        "description": "Multiple packaging configurations (e.g., 20 rolls × 900g = 18kg)",
+        "addNew": "Add Packaging Unit",
+        "name": "Name",
+        "namePlaceholder": "e.g., 20 rolls × 900g",
+        "rollWeightG": "Roll weight (g)",
+        "rollsPerUnit": "Rolls per unit",
+        "unitWeightKg": "Unit weight (kg)",
+        "isDefault": "Default",
+        "isActive": "Active",
+        "noUnits": "No packaging units yet",
+        "saveError": "Failed to save packaging unit",
+        "deleteConfirm": "Delete this packaging unit?",
+        "computed": "Computed: {{kg}} kg"
+      }
     },
     "customerProducts": {
       "title": "Customer Products",
