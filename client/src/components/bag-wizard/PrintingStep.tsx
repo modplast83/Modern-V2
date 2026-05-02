@@ -38,9 +38,7 @@ interface PrintingStepProps {
 
 export function PrintingStep({ config, onChange }: PrintingStepProps) {
   const rules = getBagTypeRules(config.bagType);
-  if (!rules) return null;
 
-  const maxColors = rules.print_colors.max;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [newText, setNewText] = useState("");
   const [selectedTextColor, setSelectedTextColor] = useState(
@@ -60,6 +58,8 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
     offsetY: 0,
   };
   const prevLogoUrlRef = useRef<string | undefined>(undefined);
+
+  const maxColors = rules?.print_colors.max ?? 0;
 
   useEffect(() => {
     if (!config.printColors.includes(selectedTextColor)) {
@@ -85,6 +85,8 @@ export function PrintingStep({ config, onChange }: PrintingStepProps) {
       }
     };
   }, []);
+
+  if (!rules) return null;
 
   const updateDesign = (updates: Partial<typeof design>) => {
     if (

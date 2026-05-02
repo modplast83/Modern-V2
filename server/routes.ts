@@ -11925,7 +11925,10 @@ Input: ${text}`;
           });
         }
 
-        const operatorId = authReq.user?.id!;
+        const operatorId = authReq.user?.id;
+        if (!operatorId) {
+          return res.status(401).json({ message: "Unauthorized" });
+        }
         const result = await storage.completeCutting(
           rollId,
           net_weight,

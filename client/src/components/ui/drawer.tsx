@@ -52,9 +52,10 @@ const DrawerContent = React.forwardRef<
     },
   );
 
-  // Only generate fallback ID if no explicit aria-describedby and no DrawerDescription
+  // Always call useId to comply with the Rules of Hooks; only attach when needed
+  const generatedId = React.useId();
   const needsFallback = !props["aria-describedby"] && !hasDrawerDescription;
-  const descriptionId = needsFallback ? React.useId() : undefined;
+  const descriptionId = needsFallback ? generatedId : undefined;
 
   return (
     <DrawerPortal>

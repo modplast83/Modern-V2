@@ -304,8 +304,8 @@ export default function OrdersForm({
     baseQuantityKg?: number,
   ) => {
     const po = productionOrdersInForm.find((x) => x.uid === uid);
-    const productId = customerProductId ?? po?.customer_product_id!;
-    const quantity = baseQuantityKg ?? po?.quantity_kg!;
+    const productId = customerProductId ?? po?.customer_product_id;
+    const quantity = baseQuantityKg ?? po?.quantity_kg;
 
     if (productId && quantity && quantity > 0) {
       const preview = await previewQuantityCalculation(productId, quantity);
