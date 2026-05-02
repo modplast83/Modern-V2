@@ -510,7 +510,12 @@ export interface IStorage {
   getHierarchicalOrdersForProduction(): Promise<any[]>;
 
   // Production Orders
-  getAllProductionOrders(): Promise<ProductionOrder[]>;
+  getAllProductionOrders(filters?: {
+    order_id?: number;
+    customer_id?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ProductionOrder[]>;
   getProductionOrderById(id: number): Promise<ProductionOrder | undefined>;
   createProductionOrder(
     productionOrder: InsertProductionOrder,
@@ -1497,12 +1502,26 @@ export class DatabaseStorage implements IStorage {
     );
   }
 
-  async getAllProductionOrders(): Promise<any[]> {
+  async getAllProductionOrders(filters?: {
+    order_id?: number;
+    customer_id?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<any[]> {
     return withDatabaseErrorHandling(
       async () => {
         const operatorUser = alias(users, "operator_user");
         const productItem = alias(items, "product_item");
-        const result = await db
+
+        const whereClauses: any[] = [];
+        if (filters?.order_id !== undefined && !isNaN(filters.order_id)) {
+          whereClauses.push(eq(production_orders.order_id, filters.order_id));
+        }
+        if (filters?.customer_id) {
+          whereClauses.push(eq(orders.customer_id, filters.customer_id));
+        }
+
+        let query = db
           .select({
             id: production_orders.id,
             production_order_number: production_orders.production_order_number,
@@ -1566,8 +1585,24 @@ export class DatabaseStorage implements IStorage {
             operatorUser,
             eq(production_orders.assigned_operator_id, operatorUser.id),
           )
-          .orderBy(desc(production_orders.id));
-        return result;
+          .$dynamic();
+
+        if (whereClauses.length > 0) {
+          query = query.where(
+            whereClauses.length === 1 ? whereClauses[0] : and(...whereClauses),
+          );
+        }
+
+        query = query.orderBy(desc(production_orders.id));
+
+        if (filters?.limit !== undefined && filters.limit > 0) {
+          query = query.limit(filters.limit);
+        }
+        if (filters?.offset !== undefined && filters.offset >= 0) {
+          query = query.offset(filters.offset);
+        }
+
+        return await query;
       },
       "getAllProductionOrders",
       "جلب أوامر الإنتاج",

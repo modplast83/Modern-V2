@@ -2303,31 +2303,39 @@ export async function registerRoutes(
   // Production Orders routes
   app.get("/api/production-orders", requireAuth, async (req, res) => {
     try {
-      interface ProductionOrderListRow {
-        order_id: number | null;
-        customer_id: string | null;
-        [key: string]: unknown;
-      }
-      const productionOrders =
-        (await storage.getAllProductionOrders()) as ProductionOrderListRow[];
       const orderId = req.query.order_id
         ? parseInt(String(req.query.order_id))
         : null;
       const customerId = req.query.customer_id
         ? String(req.query.customer_id).trim()
         : null;
-      let result: ProductionOrderListRow[] = productionOrders;
-      if (orderId && !isNaN(orderId)) {
-        result = result.filter(
-          (po: ProductionOrderListRow) => po.order_id === orderId,
-        );
+      const limitRaw = req.query.limit
+        ? parseInt(String(req.query.limit))
+        : NaN;
+      const offsetRaw = req.query.offset
+        ? parseInt(String(req.query.offset))
+        : NaN;
+
+      const filters: {
+        order_id?: number;
+        customer_id?: string;
+        limit?: number;
+        offset?: number;
+      } = {};
+      if (orderId !== null && !isNaN(orderId)) {
+        filters.order_id = orderId;
       }
       if (customerId) {
-        result = result.filter(
-          (po: ProductionOrderListRow) =>
-            String(po.customer_id ?? "") === customerId,
-        );
+        filters.customer_id = customerId;
       }
+      if (!isNaN(limitRaw) && limitRaw > 0) {
+        filters.limit = Math.min(limitRaw, 1000);
+      }
+      if (!isNaN(offsetRaw) && offsetRaw >= 0) {
+        filters.offset = offsetRaw;
+      }
+
+      const result = await storage.getAllProductionOrders(filters);
       res.json(result);
     } catch (error) {
       console.error("Error fetching production orders:", error);

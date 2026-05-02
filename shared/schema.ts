@@ -383,6 +383,10 @@ export const orders = pgTable(
       "delivery_date_valid",
       sql`${table.delivery_date} IS NULL OR ${table.delivery_date} >= CURRENT_DATE`,
     ),
+    // Performance index for customer-scoped lookups (e.g. production orders by customer)
+    idx_orders_customer_id: index("idx_orders_customer_id").on(
+      table.customer_id,
+    ),
   }),
 );
 
