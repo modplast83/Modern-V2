@@ -180,8 +180,8 @@ export default function LegacyCustomerProductsTab() {
   const notConfigured =
     errStatus === 503 && /legacy_not_configured/i.test(errorMessage);
 
-  const titleAr = "القاعدة القديمة (للعرض فقط)";
-  const titleEn = "Legacy Database (read-only)";
+  const titleAr = "القاعدة القديمة";
+  const titleEn = "القاعدة القديمة";
 
   const headerLabel = (c: { ar: string; en: string }) =>
     isAr ? `${c.ar}` : `${c.en}`;

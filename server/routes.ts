@@ -2624,10 +2624,9 @@ export async function registerRoutes(
 
         if (validatedData.status === "completed" && productionOrder?.order_id) {
           try {
-            const allProdOrders = await storage.getAllProductionOrders();
-            const siblingOrders = allProdOrders.filter(
-              (po: any) => po.order_id === productionOrder.order_id,
-            );
+            const siblingOrders = await storage.getAllProductionOrders({
+              order_id: productionOrder.order_id,
+            });
             const allCompleted =
               siblingOrders.length > 0 &&
               siblingOrders.every((po: any) => po.status === "completed");
@@ -8423,11 +8422,16 @@ Input: ${text}`;
         }
 
         // Convert Date objects to strings for database compatibility
+        const dd: any = result.data.delivery_date;
+        const normalizedDeliveryDate =
+          dd instanceof Date
+            ? dd.toISOString().split("T")[0]
+            : typeof dd === "string" && dd.length > 0
+              ? dd.split("T")[0]
+              : dd ?? null;
         const updateData = {
           ...result.data,
-          delivery_date: result.data.delivery_date
-            ? result.data.delivery_date.toISOString().split("T")[0]
-            : result.data.delivery_date,
+          delivery_date: normalizedDeliveryDate,
         };
         const order = await storage.updateOrder(orderId, updateData);
         res.json(order);
@@ -8625,10 +8629,9 @@ Input: ${text}`;
             "cancelled",
           );
         } else if (newStatus === "archived") {
-          const allProdOrders = await storage.getAllProductionOrders();
-          const orderProdOrders = allProdOrders.filter(
-            (po: any) => po.order_id === orderId,
-          );
+          const orderProdOrders = await storage.getAllProductionOrders({
+            order_id: orderId,
+          });
           for (const po of orderProdOrders) {
             if (
               ["pending", "active", "completed", "cancelled"].includes(
@@ -8643,10 +8646,9 @@ Input: ${text}`;
             }
           }
         } else if (currentStatus === "archived") {
-          const allProdOrders = await storage.getAllProductionOrders();
-          const orderProdOrders = allProdOrders.filter(
-            (po: any) => po.order_id === orderId && po.status === "archived",
-          );
+          const orderProdOrders = (
+            await storage.getAllProductionOrders({ order_id: orderId })
+          ).filter((po: any) => po.status === "archived");
           for (const po of orderProdOrders) {
             const poRestoreStatus = po.previous_status || "completed";
             await storage.updateProductionOrderStatusWithPrevious(

@@ -3117,10 +3117,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   async markAllNotificationsAsRead(userId: number): Promise<void> {
+    const [user] = await db
+      .select({ role_id: users.role_id })
+      .from(users)
+      .where(eq(users.id, userId));
+    const roleId = user?.role_id;
     await db
       .update(notifications)
       .set({ read_at: new Date() })
-      .where(eq(notifications.recipient_id, userId.toString()));
+      .where(
+        and(
+          sql`${notifications.read_at} IS NULL`,
+          roleId != null
+            ? sql`(${notifications.recipient_id} = ${userId.toString()}
+                   OR ${notifications.recipient_type} = 'all'
+                   OR (${notifications.recipient_type} = 'role'
+                       AND ${notifications.recipient_id} = ${roleId.toString()}))`
+            : sql`(${notifications.recipient_id} = ${userId.toString()}
+                   OR ${notifications.recipient_type} = 'all')`,
+        ),
+      );
   }
 
   async getUnreadNotificationsCount(userId: number): Promise<number> {
