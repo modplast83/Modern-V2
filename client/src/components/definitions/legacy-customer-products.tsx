@@ -144,7 +144,9 @@ type LegacyCellValue = LegacyRow[keyof LegacyRow];
 
 function formatCell(v: LegacyCellValue): string {
   if (v === null || v === undefined || v === "") return "-";
-  return String(v);
+  const s = String(v).trim();
+  if (s === "" || s.toLowerCase() === "null") return "-";
+  return s;
 }
 
 export default function LegacyCustomerProductsTab() {
