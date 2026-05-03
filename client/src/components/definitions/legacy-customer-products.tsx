@@ -20,8 +20,14 @@ import {
 interface LegacyRow {
   id: number;
   customer_id: string | null;
+  customer_name: string | null;
+  customer_name_ar: string | null;
   category_id: string | null;
+  category_name: string | null;
+  category_name_ar: string | null;
   item_id: string | null;
+  item_name: string | null;
+  item_full_name: string | null;
   size_caption: string | null;
   width: string | number | null;
   left_f: string | number | null;
@@ -33,6 +39,7 @@ interface LegacyRow {
   cutting_length_cm: string | number | null;
   raw_material: string | null;
   master_batch_id: string | null;
+  master_batch_name: string | null;
   printed: string | null;
   cutting_unit: string | null;
   unit_weight_kg: string | number | null;
@@ -55,33 +62,77 @@ interface LegacyResponse {
 
 const PAGE_SIZE = 50;
 
-const COLUMNS: Array<{ key: keyof LegacyRow; ar: string; en: string }> = [
-  { key: "id", ar: "المعرف", en: "ID" },
-  { key: "customer_id", ar: "العميل", en: "Customer" },
-  { key: "category_id", ar: "الفئة", en: "Category" },
-  { key: "item_id", ar: "الصنف", en: "Item" },
-  { key: "size_caption", ar: "المقاس", en: "Size" },
-  { key: "width", ar: "العرض", en: "Width" },
-  { key: "left_f", ar: "يسار", en: "Left" },
-  { key: "right_f", ar: "يمين", en: "Right" },
-  { key: "thickness", ar: "السماكة", en: "Thickness" },
-  { key: "thickness_one", ar: "سماكة 1", en: "Thickness 1" },
-  { key: "printing_cylinder", ar: "أسطوانة الطباعة", en: "Cylinder" },
-  { key: "length_cm", ar: "الطول (سم)", en: "Length (cm)" },
-  { key: "cutting_length_cm", ar: "طول القطع (سم)", en: "Cut Len (cm)" },
-  { key: "raw_material", ar: "المادة الخام", en: "Raw Material" },
-  { key: "master_batch_id", ar: "ماستر باتش", en: "Master Batch" },
-  { key: "printed", ar: "مطبوع", en: "Printed" },
-  { key: "cutting_unit", ar: "وحدة القطع", en: "Cut Unit" },
-  { key: "unit_weight_kg", ar: "وزن الوحدة (كغ)", en: "Unit Wt (kg)" },
-  { key: "packing", ar: "التعبئة", en: "Packing" },
-  { key: "punching", ar: "التخريم", en: "Punching" },
-  { key: "cover", ar: "الغطاء", en: "Cover" },
-  { key: "volum", ar: "الحجم", en: "Volume" },
-  { key: "knife", ar: "السكين", en: "Knife" },
-  { key: "unit_qty", ar: "كمية الوحدة", en: "Unit Qty" },
-  { key: "package_kg", ar: "وزن العبوة (كغ)", en: "Pkg (kg)" },
-  { key: "notes", ar: "ملاحظات", en: "Notes" },
+type ColumnDef = {
+  key: string;
+  ar: string;
+  en: string;
+  render: (row: LegacyRow) => React.ReactNode;
+};
+
+function bilingualCell(ar: string | null, en: string | null): React.ReactNode {
+  if (!ar && !en) return "-";
+  if (ar && en && ar !== en) {
+    return (
+      <div className="flex flex-col items-center leading-tight">
+        <span>{ar}</span>
+        <span className="text-[10px] opacity-70">{en}</span>
+      </div>
+    );
+  }
+  return ar || en;
+}
+
+const COLUMNS: ColumnDef[] = [
+  {
+    key: "customer",
+    ar: "العميل",
+    en: "Customer",
+    render: (r) => bilingualCell(r.customer_name_ar, r.customer_name),
+  },
+  {
+    key: "category",
+    ar: "الفئة",
+    en: "Category",
+    render: (r) => bilingualCell(r.category_name_ar, r.category_name),
+  },
+  {
+    key: "item",
+    ar: "الصنف",
+    en: "Item",
+    render: (r) => formatCell(r.item_full_name || r.item_name),
+  },
+  {
+    key: "size_caption",
+    ar: "المقاس",
+    en: "Size",
+    render: (r) => formatCell(r.size_caption),
+  },
+  { key: "width", ar: "العرض", en: "Width", render: (r) => formatCell(r.width) },
+  { key: "left_f", ar: "يسار", en: "Left", render: (r) => formatCell(r.left_f) },
+  { key: "right_f", ar: "يمين", en: "Right", render: (r) => formatCell(r.right_f) },
+  { key: "thickness", ar: "السماكة", en: "Thickness", render: (r) => formatCell(r.thickness) },
+  { key: "thickness_one", ar: "سماكة 1", en: "Thickness 1", render: (r) => formatCell(r.thickness_one) },
+  { key: "printing_cylinder", ar: "أسطوانة الطباعة", en: "Cylinder", render: (r) => formatCell(r.printing_cylinder) },
+  { key: "length_cm", ar: "الطول (سم)", en: "Length (cm)", render: (r) => formatCell(r.length_cm) },
+  { key: "cutting_length_cm", ar: "طول القطع (سم)", en: "Cut Len (cm)", render: (r) => formatCell(r.cutting_length_cm) },
+  { key: "raw_material", ar: "المادة الخام", en: "Raw Material", render: (r) => formatCell(r.raw_material) },
+  {
+    key: "master_batch",
+    ar: "ماستر باتش",
+    en: "Master Batch",
+    render: (r) => formatCell(r.master_batch_name),
+  },
+  { key: "printed", ar: "مطبوع", en: "Printed", render: (r) => formatCell(r.printed) },
+  { key: "cutting_unit", ar: "وحدة القطع", en: "Cut Unit", render: (r) => formatCell(r.cutting_unit) },
+  { key: "unit_weight_kg", ar: "وزن الوحدة (كغ)", en: "Unit Wt (kg)", render: (r) => formatCell(r.unit_weight_kg) },
+  { key: "packing", ar: "التعبئة", en: "Packing", render: (r) => formatCell(r.packing) },
+  { key: "punching", ar: "التخريم", en: "Punching", render: (r) => formatCell(r.punching) },
+  { key: "cover", ar: "الغطاء", en: "Cover", render: (r) => formatCell(r.cover) },
+  { key: "volum", ar: "الحجم", en: "Volume", render: (r) => formatCell(r.volum) },
+  { key: "knife", ar: "السكين", en: "Knife", render: (r) => formatCell(r.knife) },
+  { key: "unit_qty", ar: "كمية الوحدة", en: "Unit Qty", render: (r) => formatCell(r.unit_qty) },
+  { key: "package_kg", ar: "وزن العبوة (كغ)", en: "Pkg (kg)", render: (r) => formatCell(r.package_kg) },
+  { key: "notes", ar: "ملاحظات", en: "Notes", render: (r) => formatCell(r.notes) },
 ];
 
 function useDebounced<T>(value: T, delay = 350): T {
@@ -255,7 +306,7 @@ export default function LegacyCustomerProductsTab() {
                             key={String(c.key)}
                             className="text-center whitespace-nowrap"
                           >
-                            {formatCell(row[c.key])}
+                            {c.render(row)}
                           </TableCell>
                         ))}
                       </TableRow>

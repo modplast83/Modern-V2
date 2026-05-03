@@ -16453,11 +16453,21 @@ Input: ${text}`;
       const offset =
         Number.isFinite(offsetRaw) && offsetRaw >= 0 ? offsetRaw : 0;
 
-      const cols = `id, customer_id, category_id, item_id, size_caption,
-        width, left_f, right_f, thickness, thickness_one, printing_cylinder,
-        length_cm, cutting_length_cm, raw_material, master_batch_id, printed,
-        cutting_unit, unit_weight_kg, packing, punching, cover, volum, knife,
-        notes, unit_qty, package_kg`;
+      const cols = `cp.id,
+        cp.customer_id, cu.name AS customer_name, cu.name_ar AS customer_name_ar,
+        cp.category_id, ca.name AS category_name, ca.name_ar AS category_name_ar,
+        cp.item_id, it.name AS item_name, it.full_name AS item_full_name,
+        cp.size_caption, cp.width, cp.left_f, cp.right_f, cp.thickness,
+        cp.thickness_one, cp.printing_cylinder, cp.length_cm, cp.cutting_length_cm,
+        cp.raw_material,
+        cp.master_batch_id, mb.name AS master_batch_name,
+        cp.printed, cp.cutting_unit, cp.unit_weight_kg, cp.packing, cp.punching,
+        cp.cover, cp.volum, cp.knife, cp.notes, cp.unit_qty, cp.package_kg`;
+
+      const joins = `LEFT JOIN public.customers cu ON cu.id = cp.customer_id
+        LEFT JOIN public.categories ca ON ca.id = cp.category_id
+        LEFT JOIN public.items it ON it.id = cp.item_id
+        LEFT JOIN public.master_batches mb ON mb.id = cp.master_batch_id`;
 
       const params: (string | number)[] = [];
       let where = "";
@@ -16465,21 +16475,32 @@ Input: ${text}`;
         params.push(`%${q}%`);
         const p = `$${params.length}`;
         where = `WHERE
-          COALESCE(customer_id::text,'') ILIKE ${p}
-          OR COALESCE(item_id::text,'') ILIKE ${p}
-          OR COALESCE(size_caption,'') ILIKE ${p}
-          OR COALESCE(raw_material,'') ILIKE ${p}
-          OR COALESCE(notes,'') ILIKE ${p}
-          OR COALESCE(printed,'') ILIKE ${p}
-          OR COALESCE(packing,'') ILIKE ${p}`;
+          COALESCE(cp.customer_id::text,'') ILIKE ${p}
+          OR COALESCE(cu.name,'') ILIKE ${p}
+          OR COALESCE(cu.name_ar,'') ILIKE ${p}
+          OR COALESCE(ca.name,'') ILIKE ${p}
+          OR COALESCE(ca.name_ar,'') ILIKE ${p}
+          OR COALESCE(it.name,'') ILIKE ${p}
+          OR COALESCE(it.full_name,'') ILIKE ${p}
+          OR COALESCE(mb.name,'') ILIKE ${p}
+          OR COALESCE(cp.item_id::text,'') ILIKE ${p}
+          OR COALESCE(cp.size_caption,'') ILIKE ${p}
+          OR COALESCE(cp.raw_material,'') ILIKE ${p}
+          OR COALESCE(cp.notes,'') ILIKE ${p}
+          OR COALESCE(cp.printed,'') ILIKE ${p}
+          OR COALESCE(cp.packing,'') ILIKE ${p}`;
       }
 
       const dataParams = [...params, limit, offset];
-      const dataSql = `SELECT ${cols} FROM public.customer_products ${where}
-        ORDER BY id DESC
+      const dataSql = `SELECT ${cols} FROM public.customer_products cp
+        ${joins}
+        ${where}
+        ORDER BY cp.id DESC
         LIMIT $${dataParams.length - 1} OFFSET $${dataParams.length}`;
 
-      const countSql = `SELECT COUNT(*)::int AS total FROM public.customer_products ${where}`;
+      const countSql = `SELECT COUNT(*)::int AS total FROM public.customer_products cp
+        ${joins}
+        ${where}`;
 
       const [dataRes, countRes] = await Promise.all([
         pool.query(dataSql, dataParams),
