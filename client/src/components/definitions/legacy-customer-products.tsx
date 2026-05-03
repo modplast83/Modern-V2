@@ -84,7 +84,9 @@ function useDebounced<T>(value: T, delay = 350): T {
   return v;
 }
 
-function formatCell(v: any): string {
+type LegacyCellValue = LegacyRow[keyof LegacyRow];
+
+function formatCell(v: LegacyCellValue): string {
   if (v === null || v === undefined || v === "") return "-";
   return String(v);
 }
@@ -113,8 +115,13 @@ export default function LegacyCustomerProductsTab() {
   const rows = data?.rows ?? [];
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  const errStatus = (error as any)?.status as number | undefined;
+  const errStatus =
+    error && typeof error === "object" && "status" in error
+      ? (error as { status?: number }).status
+      : undefined;
   const notConfigured = errStatus === 503;
+  const errorMessage =
+    error instanceof Error ? error.message : "";
 
   const titleAr = "القاعدة القديمة (للعرض فقط)";
   const titleEn = "Legacy Database (read-only)";
@@ -182,7 +189,7 @@ export default function LegacyCustomerProductsTab() {
               ? "تعذر تحميل البيانات. حاول مرة أخرى."
               : "Failed to load data. Please try again."}
             <div className="mt-2 text-xs text-muted-foreground">
-              {(error as any)?.message || ""}
+              {errorMessage}
             </div>
           </div>
         ) : isLoading ? (
@@ -234,7 +241,7 @@ export default function LegacyCustomerProductsTab() {
                             key={String(c.key)}
                             className="px-3 py-2 text-center whitespace-nowrap text-foreground"
                           >
-                            {formatCell((row as any)[c.key])}
+                            {formatCell(row[c.key])}
                           </td>
                         ))}
                       </tr>

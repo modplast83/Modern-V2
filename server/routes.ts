@@ -16425,7 +16425,7 @@ Input: ${text}`;
   app.get(
     "/api/legacy/customer-products",
     requireAuth,
-    requirePermission("manage_customers", "manage_definitions", "admin"),
+    requirePermission("manage_definitions", "admin"),
     async (req, res) => {
     try {
       if (!isLegacyDbConfigured()) {
@@ -16459,7 +16459,7 @@ Input: ${text}`;
         cutting_unit, unit_weight_kg, packing, punching, cover, volum, knife,
         notes, unit_qty, package_kg`;
 
-      const params: any[] = [];
+      const params: (string | number)[] = [];
       let where = "";
       if (q) {
         params.push(`%${q}%`);
@@ -16493,8 +16493,10 @@ Input: ${text}`;
         limit,
         offset,
       });
-    } catch (error: any) {
-      console.error("Error reading legacy customer_products:", error);
+    } catch (error) {
+      const detail =
+        error instanceof Error ? error.message : String(error);
+      console.error("Error reading legacy customer_products:", detail);
       res.status(500).json({
         message: "legacy_query_failed",
         detail: "خطأ في قراءة بيانات القاعدة القديمة",
