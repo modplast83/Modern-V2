@@ -266,7 +266,7 @@ export const customer_products = pgTable(
     width: decimal("width", { precision: 8, scale: 2 }),
     left_facing: decimal("left_facing", { precision: 8, scale: 2 }),
     right_facing: decimal("right_facing", { precision: 8, scale: 2 }),
-    thickness: decimal("thickness", { precision: 6, scale: 3 }),
+    thickness: decimal("thickness", { precision: 8, scale: 3 }),
     printing_cylinder: varchar("printing_cylinder", { length: 10 }), // 8" to 38" + 39"
     cutting_length_cm: integer("cutting_length_cm"),
     raw_material: varchar("raw_material", { length: 20 }), // HDPE-LDPE-Regrind

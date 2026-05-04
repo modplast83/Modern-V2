@@ -4956,7 +4956,7 @@ export default function Definitions() {
                       <Input
                         id="thickness"
                         type="number"
-                        step="0.01"
+                        step="0.001"
                         value={customerProductForm.thickness}
                         onChange={(e) =>
                           setCustomerProductForm({
