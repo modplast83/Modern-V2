@@ -3510,6 +3510,74 @@ export const insertAiAgentFeatureInstructionSchema = createInsertSchema(
   updated_at: true,
 });
 
+// ===== أدوات مخصصة للوكيل الذكي =====
+export const ai_agent_custom_tools = pgTable("ai_agent_custom_tools", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull().unique(),
+  display_name: varchar("display_name", { length: 255 }),
+  description: text("description").notNull(),
+  parameters_schema: jsonb("parameters_schema")
+    .$type<Record<string, any>>()
+    .notNull()
+    .default({ type: "object", properties: {} }),
+  action_type: varchar("action_type", { length: 50 }).notNull(),
+  action_config: jsonb("action_config")
+    .$type<Record<string, any>>()
+    .notNull()
+    .default({}),
+  required_permission: varchar("required_permission", { length: 100 }),
+  is_active: boolean("is_active").default(true).notNull(),
+  created_at: timestamp("created_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  updated_at: timestamp("updated_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  created_by: integer("created_by").references(() => users.id),
+});
+
+export type AiAgentCustomTool = typeof ai_agent_custom_tools.$inferSelect;
+export type InsertAiAgentCustomTool = typeof ai_agent_custom_tools.$inferInsert;
+
+export const insertAiAgentCustomToolSchema = createInsertSchema(
+  ai_agent_custom_tools,
+).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+
+// ===== أوامر سريعة للوكيل الذكي =====
+export const ai_agent_commands = pgTable("ai_agent_commands", {
+  id: serial("id").primaryKey(),
+  trigger: varchar("trigger", { length: 100 }).notNull(),
+  label: varchar("label", { length: 255 }).notNull(),
+  prompt_template: text("prompt_template").notNull(),
+  description: text("description"),
+  icon: varchar("icon", { length: 50 }).default("Sparkles"),
+  category: varchar("category", { length: 50 }).default("general"),
+  is_active: boolean("is_active").default(true).notNull(),
+  sort_order: integer("sort_order").default(0).notNull(),
+  created_at: timestamp("created_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  updated_at: timestamp("updated_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  created_by: integer("created_by").references(() => users.id),
+});
+
+export type AiAgentCommand = typeof ai_agent_commands.$inferSelect;
+export type InsertAiAgentCommand = typeof ai_agent_commands.$inferInsert;
+
+export const insertAiAgentCommandSchema = createInsertSchema(
+  ai_agent_commands,
+).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+
 // ===== نماذج عروض الأسعار =====
 
 export const quote_templates = pgTable("quote_templates", {

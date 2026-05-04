@@ -5136,7 +5136,8 @@
       "templateDeleted": "تم حذف النموذج بنجاح",
       "featureInstructionAdded": "تم إضافة تعليمات الخاصية بنجاح",
       "featureInstructionUpdated": "تم تحديث تعليمات الخاصية بنجاح",
-      "featureInstructionDeleted": "تم حذف تعليمات الخاصية بنجاح"
+      "featureInstructionDeleted": "تم حذف تعليمات الخاصية بنجاح",
+      "error": "خطأ"
     },
     "categories": {
       "general": "عام",
@@ -5190,7 +5191,82 @@
       "settings": "الإعدادات",
       "knowledge": "قاعدة المعرفة",
       "templates": "نماذج الأسعار",
-      "featureInstructions": "تعليمات الخصائص"
+      "featureInstructions": "تعليمات الخصائص",
+      "customTools": "أدوات مخصصة",
+      "commands": "أوامر سريعة"
+    },
+    "customTools": {
+      "title": "أدوات مخصصة",
+      "description": "أنشئ أدوات يستخدمها الوكيل الذكي. يمكن أن تكون استعلامات قاعدة بيانات، نداءات HTTP، أو نصوصاً محفوظة.",
+      "addTool": "أداة جديدة",
+      "editTool": "تعديل الأداة",
+      "formDesc": "حدّد اسم الأداة وما تفعله، ثم اضبط الإجراء (SQL/HTTP/نص).",
+      "name": "اسم الأداة (للنظام)",
+      "nameHint": "حروف صغيرة وأرقام و _ فقط، يستخدمه الوكيل لاستدعاء الأداة.",
+      "displayName": "الاسم المعروض",
+      "displayNamePlaceholder": "مثال: إحصائيات الإنتاج اليومية",
+      "description": "وصف الأداة",
+      "descriptionPlaceholder": "اشرح للوكيل متى يستخدم هذه الأداة وماذا تفعل.",
+      "descriptionHint": "كلما كان الوصف واضحاً، كان استخدام الوكيل لها أدق.",
+      "actionType": "نوع الإجراء",
+      "types": {
+        "sql": "استعلام SQL",
+        "http": "نداء HTTP",
+        "prompt": "نص محفوظ"
+      },
+      "requiredPermission": "صلاحية مطلوبة (اختياري)",
+      "parametersSchema": "المعاملات (JSON Schema)",
+      "parametersHint": "تعريف المعاملات التي يمررها الوكيل (يدعم JSON Schema).",
+      "actionConfig": "إعدادات الإجراء",
+      "configHint": {
+        "sql": "ضع query واستخدم {{اسم_المعامل}} لإدخال القيم. allow_writes للسماح بـ INSERT/UPDATE.",
+        "http": "ضع url و method و headers (اختياري). يدعم {{اسم_المعامل}}.",
+        "prompt": "ضع text للنص الذي سيُعاد. يدعم {{اسم_المعامل}}."
+      },
+      "active": "مفعّلة",
+      "inactive": "غير مفعّلة",
+      "empty": "لا توجد أدوات مخصصة بعد",
+      "emptyDesc": "أضف أول أداة مخصصة لتوسيع قدرات الوكيل الذكي.",
+      "confirmDelete": "هل أنت متأكد من حذف هذه الأداة؟",
+      "invalidParamsJson": "صيغة JSON للمعاملات غير صحيحة",
+      "invalidConfigJson": "صيغة JSON لإعدادات الإجراء غير صحيحة"
+    },
+    "commands": {
+      "title": "أوامر سريعة",
+      "description": "أوامر تظهر للمستخدم كأزرار في شاشة المحادثة لتشغيل سيناريو بضغطة واحدة.",
+      "addCommand": "أمر جديد",
+      "editCommand": "تعديل الأمر",
+      "formDesc": "اضبط زر اختصار يرسل نصاً جاهزاً إلى الوكيل.",
+      "trigger": "المُحفِّز",
+      "label": "العنوان",
+      "labelPlaceholder": "مثال: حالة الإنتاج",
+      "promptTemplate": "نص الرسالة",
+      "promptPlaceholder": "النص الذي سيُرسل عند الضغط على الزر",
+      "promptHint": "هذا النص يصل للوكيل كأنه رسالة من المستخدم.",
+      "descriptionField": "وصف داخلي (اختياري)",
+      "icon": "الأيقونة",
+      "category": "الفئة",
+      "sortOrder": "الترتيب",
+      "active": "مفعّل",
+      "empty": "لا توجد أوامر سريعة بعد",
+      "emptyDesc": "أضف أول أمر سريع ليظهر كزر في شاشة المحادثة.",
+      "confirmDelete": "هل أنت متأكد من حذف هذا الأمر؟"
+    },
+    "advanced": {
+      "title": "إعدادات متقدمة",
+      "description": "اضبط النموذج، الحدود، وتجاوز التعليمات الأساسية للوكيل.",
+      "model": "النموذج",
+      "modelHint": "مثال: gpt-4.1, gpt-4o, gpt-5. يجب أن يكون مدعوماً من حسابك.",
+      "temperature": "درجة الإبداع",
+      "temperatureHint": "بين 0 (دقيق) و 2 (إبداعي). اتركه فارغاً للافتراضي.",
+      "maxToolRounds": "أقصى جولات أدوات",
+      "maxChatHistory": "حجم سجل المحادثة",
+      "maxCompletionTokens": "أقصى عدد توكِنز للرد",
+      "systemPromptOverride": "تجاوز التعليمات الأساسية",
+      "systemPromptPlaceholder": "اتركه فارغاً لاستخدام التعليمات الافتراضية. عند ملئه يحل محل النص الأساسي للوكيل بالكامل.",
+      "systemPromptHint": "تحذير: عند تفعيله سيتجاهل قاعدة المعرفة وتعليمات الخصائص ضمن النص الأساسي. استخدمه فقط إذا كنت تعرف ما تفعله.",
+      "unrestrictedSql": "وضع SQL غير المقيد (للمدراء)",
+      "unrestrictedSqlHint": "عند التفعيل، أداة execute_database_query للمستخدمين أصحاب صلاحية manage_ai_agent تُنفّذ أي استعلام بلا قيود — DELETE, ALTER, DROP، أي شيء. لا تُفعّله إلا إذا كنت متأكداً!"
     },
     "featureInstructions": {
       "title": "تعليمات الخصائص",

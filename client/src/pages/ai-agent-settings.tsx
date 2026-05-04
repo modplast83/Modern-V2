@@ -9,7 +9,13 @@ import {
   Sparkles,
   FileText,
   Lightbulb,
+  Wrench,
+  Terminal,
 } from "lucide-react";
+
+import AdvancedSettingsCard from "../components/ai-agent/AdvancedSettingsCard";
+import CustomToolsTab from "../components/ai-agent/CustomToolsTab";
+import QuickCommandsTab from "../components/ai-agent/QuickCommandsTab";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -422,7 +428,7 @@ export function AiAgentSettingsContent() {
         </div>
 
         <Tabs defaultValue="settings" dir="rtl">
-          <TabsList className="grid w-full grid-cols-4 mb-6">
+          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 mb-6">
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               {t("aiAgent.tabs.settings")}
@@ -441,6 +447,17 @@ export function AiAgentSettingsContent() {
             <TabsTrigger value="templates" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
               {t("aiAgent.templates.title")}
+            </TabsTrigger>
+            <TabsTrigger
+              value="custom-tools"
+              className="flex items-center gap-2"
+            >
+              <Wrench className="h-4 w-4" />
+              {t("aiAgent.tabs.customTools")}
+            </TabsTrigger>
+            <TabsTrigger value="commands" className="flex items-center gap-2">
+              <Terminal className="h-4 w-4" />
+              {t("aiAgent.tabs.commands")}
             </TabsTrigger>
           </TabsList>
 
@@ -576,6 +593,18 @@ export function AiAgentSettingsContent() {
                 </div>
               </CardContent>
             </Card>
+
+            <div className="mt-6">
+              <AdvancedSettingsCard settings={settings} />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="custom-tools">
+            <CustomToolsTab />
+          </TabsContent>
+
+          <TabsContent value="commands">
+            <QuickCommandsTab />
           </TabsContent>
 
           <TabsContent value="feature-instructions">

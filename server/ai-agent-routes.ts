@@ -18,6 +18,8 @@ import {
   ai_agent_settings,
   ai_agent_knowledge,
   ai_agent_feature_instructions,
+  ai_agent_custom_tools,
+  ai_agent_commands,
   quote_templates,
   users,
   machines,
@@ -99,12 +101,81 @@ async function getCompanyLogoForPdf(
   return { buffer: null, path: null };
 }
 
-const AI_MODEL = "gpt-4.1" as const;
+const DEFAULT_AI_MODEL = "gpt-4.1" as const;
 const AI_MODEL_VISION = "gpt-4.1" as const;
-const MAX_TOOL_ROUNDS = 10;
+const DEFAULT_MAX_TOOL_ROUNDS = 10;
+const DEFAULT_MAX_CHAT_HISTORY = 20;
+const DEFAULT_MAX_COMPLETION_TOKENS = 4096;
 const SSE_PING_INTERVAL_MS = 15000;
-const MAX_CHAT_HISTORY = 20;
 const DOCS_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+interface RuntimeAiConfig {
+  model: string;
+  maxToolRounds: number;
+  maxChatHistory: number;
+  maxCompletionTokens: number;
+  temperature: number | null;
+  unrestrictedSql: boolean;
+  systemPromptOverride: string;
+}
+
+let runtimeConfigCache: { config: RuntimeAiConfig; timestamp: number } | null =
+  null;
+const RUNTIME_CONFIG_TTL = 30000;
+
+function invalidateAiCaches() {
+  runtimeConfigCache = null;
+  systemPromptCache = null;
+  customToolsCache = null;
+}
+
+async function getRuntimeAiConfig(): Promise<RuntimeAiConfig> {
+  if (
+    runtimeConfigCache &&
+    Date.now() - runtimeConfigCache.timestamp < RUNTIME_CONFIG_TTL
+  ) {
+    return runtimeConfigCache.config;
+  }
+  const rows = await db.select().from(ai_agent_settings);
+  const get = (k: string) => rows.find((r) => r.key === k)?.value;
+  const numeric = (k: string, def: number, min?: number, max?: number) => {
+    const v = get(k);
+    if (!v) return def;
+    const n = Number(v);
+    if (!Number.isFinite(n)) return def;
+    if (min !== undefined && n < min) return min;
+    if (max !== undefined && n > max) return max;
+    return n;
+  };
+  const config: RuntimeAiConfig = {
+    model: (get("ai_model") || DEFAULT_AI_MODEL).toString().trim(),
+    maxToolRounds: Math.floor(
+      numeric("max_tool_rounds", DEFAULT_MAX_TOOL_ROUNDS, 1, 50),
+    ),
+    maxChatHistory: Math.floor(
+      numeric("max_chat_history", DEFAULT_MAX_CHAT_HISTORY, 1, 200),
+    ),
+    maxCompletionTokens: Math.floor(
+      numeric(
+        "max_completion_tokens",
+        DEFAULT_MAX_COMPLETION_TOKENS,
+        128,
+        32000,
+      ),
+    ),
+    temperature: (() => {
+      const v = get("temperature");
+      if (v === undefined || v === "") return null;
+      const n = Number(v);
+      if (!Number.isFinite(n)) return null;
+      return Math.max(0, Math.min(2, n));
+    })(),
+    unrestrictedSql: get("unrestricted_sql") === "true",
+    systemPromptOverride: (get("system_prompt_override") || "").toString(),
+  };
+  runtimeConfigCache = { config, timestamp: Date.now() };
+  return config;
+}
 
 const PDF_DIR = "/tmp/quote-pdfs";
 if (!fs.existsSync(PDF_DIR)) {
@@ -864,12 +935,194 @@ async function getCompanyInfo(): Promise<any> {
 let systemPromptCache: { prompt: string; timestamp: number } | null = null;
 const SYSTEM_PROMPT_CACHE_TTL = 60000;
 
+let customToolsCache: {
+  tools: OpenAI.Chat.Completions.ChatCompletionTool[];
+  rows: any[];
+  timestamp: number;
+} | null = null;
+const CUSTOM_TOOLS_CACHE_TTL = 30000;
+
+async function getCustomTools(): Promise<{
+  tools: OpenAI.Chat.Completions.ChatCompletionTool[];
+  rows: any[];
+}> {
+  if (
+    customToolsCache &&
+    Date.now() - customToolsCache.timestamp < CUSTOM_TOOLS_CACHE_TTL
+  ) {
+    return { tools: customToolsCache.tools, rows: customToolsCache.rows };
+  }
+  const rows = await db
+    .select()
+    .from(ai_agent_custom_tools)
+    .where(eq(ai_agent_custom_tools.is_active, true));
+  const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = rows.map((r) => ({
+    type: "function" as const,
+    function: {
+      name: r.name,
+      description: r.description,
+      parameters: (r.parameters_schema as any) || {
+        type: "object",
+        properties: {},
+      },
+    },
+  }));
+  customToolsCache = { tools, rows, timestamp: Date.now() };
+  return { tools, rows };
+}
+
+function substituteTemplate(
+  template: string,
+  args: Record<string, unknown>,
+): string {
+  return template.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_m, key) => {
+    const v = (args as any)[key];
+    if (v === undefined || v === null) return "";
+    return String(v);
+  });
+}
+
+async function executeCustomTool(
+  toolRow: any,
+  args: Record<string, unknown>,
+  userPermissions: string[] = [],
+): Promise<string> {
+  try {
+    if (
+      toolRow.required_permission &&
+      !userPermissions.includes(toolRow.required_permission)
+    ) {
+      return JSON.stringify({
+        error: `ليس لديك صلاحية تنفيذ هذه الأداة (${toolRow.required_permission})`,
+      });
+    }
+    const config = (toolRow.action_config || {}) as Record<string, any>;
+    switch (toolRow.action_type) {
+      case "prompt": {
+        const text = substituteTemplate(
+          String(config.text || config.response || ""),
+          args,
+        );
+        return JSON.stringify({ success: true, result: text });
+      }
+      case "sql": {
+        const queryStr = substituteTemplate(
+          String(config.query || ""),
+          args,
+        ).trim();
+        if (!queryStr) {
+          return JSON.stringify({ error: "استعلام SQL فارغ" });
+        }
+        const allowWrites = config.allow_writes === true;
+        const upper = queryStr.toUpperCase();
+        if (
+          !allowWrites &&
+          !/^\s*(SELECT|WITH)\b/i.test(queryStr)
+        ) {
+          return JSON.stringify({
+            error:
+              "هذه الأداة مهيأة للقراءة فقط. فعّل allow_writes في الإعدادات للسماح بالكتابة.",
+          });
+        }
+        if (
+          !allowWrites &&
+          /\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE|CREATE|GRANT|REVOKE)\b/i.test(
+            upper,
+          )
+        ) {
+          return JSON.stringify({
+            error: "الأداة للقراءة فقط — لا يُسمح بأوامر تعديل البيانات.",
+          });
+        }
+        console.log(
+          `[AI Agent custom-tool sql] ${toolRow.name}: ${queryStr.substring(0, 200)}`,
+        );
+        const result = await db.execute(sql.raw(queryStr));
+        const rows = (result.rows as any[]) || [];
+        const max = Math.min(Number(config.max_rows) || 100, 1000);
+        return JSON.stringify({
+          success: true,
+          row_count: rows.length,
+          data: rows.slice(0, max),
+          truncated: rows.length > max,
+          rows_affected: (result as any).rowCount ?? null,
+        });
+      }
+      case "http": {
+        const url = substituteTemplate(String(config.url || ""), args);
+        if (!url || !/^https?:\/\//i.test(url)) {
+          return JSON.stringify({ error: "رابط HTTP غير صالح" });
+        }
+        const method = String(config.method || "GET").toUpperCase();
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+          ...((config.headers as Record<string, string>) || {}),
+        };
+        for (const [k, v] of Object.entries(headers)) {
+          headers[k] = substituteTemplate(String(v), args);
+        }
+        let body: string | undefined;
+        if (method !== "GET" && method !== "HEAD") {
+          if (config.body_template) {
+            body = substituteTemplate(String(config.body_template), args);
+          } else if (config.send_args !== false) {
+            body = JSON.stringify(args);
+          }
+        }
+        const controller = new AbortController();
+        const timeoutMs = Math.min(
+          Number(config.timeout_ms) || 15000,
+          60000,
+        );
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+          const resp = await fetch(url, {
+            method,
+            headers,
+            body,
+            signal: controller.signal,
+          });
+          const text = await resp.text();
+          let parsed: any = text;
+          try {
+            parsed = JSON.parse(text);
+          } catch {}
+          return JSON.stringify({
+            success: resp.ok,
+            status: resp.status,
+            data: parsed,
+          });
+        } finally {
+          clearTimeout(timer);
+        }
+      }
+      default:
+        return JSON.stringify({
+          error: `نوع أداة غير مدعوم: ${toolRow.action_type}`,
+        });
+    }
+  } catch (e) {
+    console.error(`[AI Agent custom-tool error] ${toolRow.name}:`, e);
+    return JSON.stringify({
+      error: `فشل تنفيذ الأداة: ${(e as Error).message}`,
+    });
+  }
+}
+
 async function getSystemPrompt(): Promise<string> {
   if (
     systemPromptCache &&
     Date.now() - systemPromptCache.timestamp < SYSTEM_PROMPT_CACHE_TTL
   ) {
     return systemPromptCache.prompt;
+  }
+  const runtime = await getRuntimeAiConfig();
+  if (runtime.systemPromptOverride && runtime.systemPromptOverride.trim()) {
+    systemPromptCache = {
+      prompt: runtime.systemPromptOverride,
+      timestamp: Date.now(),
+    };
+    return runtime.systemPromptOverride;
   }
   const settings = await db.select().from(ai_agent_settings);
   const knowledge = await db
@@ -4512,6 +4765,27 @@ async function executeFunction(
       case "execute_database_query": {
         const queryStr = ((args.query as string) || "").trim();
         const description = (args.description as string) || "";
+        const runtimeCfg = await getRuntimeAiConfig();
+        const unrestricted =
+          runtimeCfg.unrestrictedSql &&
+          (userPermissions || []).includes("manage_ai_agent");
+
+        if (unrestricted) {
+          console.log(
+            `[AI Agent] [UNRESTRICTED SQL] (${description}): ${queryStr.substring(0, 200)}`,
+          );
+          const result = await db.execute(sql.raw(queryStr));
+          const rows = (result.rows as any[]) || [];
+          return JSON.stringify({
+            success: true,
+            description,
+            unrestricted: true,
+            row_count: rows.length,
+            data: rows.slice(0, 200),
+            truncated: rows.length > 200,
+            rows_affected: (result as any).rowCount ?? null,
+          });
+        }
 
         const forbidden =
           /\b(DROP|TRUNCATE|ALTER|DELETE\s+FROM|CREATE\s+TABLE|CREATE\s+INDEX|GRANT|REVOKE|COPY|EXECUTE|DO\s*\$|pg_read_file|pg_write_file|lo_import|lo_export|pg_sleep|pg_terminate|pg_cancel|set\s+role|set\s+session|reset\s+role|VACUUM|ANALYZE|REINDEX|CLUSTER|COMMENT|SECURITY|OWNER)\b/i;
@@ -5238,8 +5512,16 @@ async function executeFunction(
         });
       }
 
-      default:
+      default: {
+        const { rows: customRows } = await getCustomTools();
+        const matched = customRows.find(
+          (r) => r.name === name && r.is_active,
+        );
+        if (matched) {
+          return await executeCustomTool(matched, args, userPermissions || []);
+        }
         return JSON.stringify({ error: "دالة غير معروفة" });
+      }
     }
   } catch (error) {
     console.error("Error executing function:", name, error);
@@ -5347,11 +5629,28 @@ export function registerAiAgentRoutes(app: Express): void {
         }, SSE_PING_INTERVAL_MS);
 
         const dynamicSystemPrompt = await getSystemPrompt();
+        const runtimeCfg = await getRuntimeAiConfig();
+        const { tools: customTools } = await getCustomTools();
+        const builtinNames = new Set(
+          tools
+            .map((t) => (t as any).function?.name)
+            .filter((n): n is string => typeof n === "string"),
+        );
+        const safeCustomTools = customTools.filter(
+          (t) => !builtinNames.has((t as any).function?.name),
+        );
+        const allTools = [...tools, ...safeCustomTools];
+        const baseCompletionOpts: any = {
+          max_completion_tokens: runtimeCfg.maxCompletionTokens,
+        };
+        if (runtimeCfg.temperature !== null) {
+          baseCompletionOpts.temperature = runtimeCfg.temperature;
+        }
 
         const chatMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] =
           [
             { role: "system", content: dynamicSystemPrompt },
-            ...messages.slice(-MAX_CHAT_HISTORY).map((m) => ({
+            ...messages.slice(-runtimeCfg.maxChatHistory).map((m) => ({
               role: m.role as "user" | "assistant",
               content: String(m.content || ""),
             })),
@@ -5360,18 +5659,18 @@ export function registerAiAgentRoutes(app: Express): void {
         let toolRounds = 0;
 
         let response = await openai.chat.completions.create({
-          model: AI_MODEL,
+          ...baseCompletionOpts,
+          model: runtimeCfg.model,
           messages: chatMessages,
-          tools,
+          tools: allTools,
           tool_choice: "auto",
-          max_completion_tokens: 4096,
         });
 
         while (response.choices[0]?.message?.tool_calls) {
           if (clientClosed) return safeEnd();
 
           toolRounds++;
-          if (toolRounds > MAX_TOOL_ROUNDS) {
+          if (toolRounds > runtimeCfg.maxToolRounds) {
             safeWrite({
               content:
                 "تعذر إكمال العملية تلقائياً بسبب تكرار الاستدعاءات. فضلاً حدّد رقم الطلب/عرض السعر بشكل أدق.",
@@ -5418,11 +5717,11 @@ export function registerAiAgentRoutes(app: Express): void {
           if (clientClosed) return safeEnd();
 
           response = await openai.chat.completions.create({
-            model: AI_MODEL,
+            ...baseCompletionOpts,
+            model: runtimeCfg.model,
             messages: chatMessages,
-            tools,
+            tools: allTools,
             tool_choice: "auto",
-            max_completion_tokens: 4096,
           });
         }
 
@@ -5436,9 +5735,12 @@ export function registerAiAgentRoutes(app: Express): void {
         } else {
           try {
             const stream = await openai.chat.completions.create({
-              model: AI_MODEL,
+              model: runtimeCfg.model,
               messages: chatMessages,
-              max_completion_tokens: 4096,
+              max_completion_tokens: runtimeCfg.maxCompletionTokens,
+              ...(runtimeCfg.temperature !== null
+                ? { temperature: runtimeCfg.temperature }
+                : {}),
               stream: true,
             });
 
@@ -5456,9 +5758,9 @@ export function registerAiAgentRoutes(app: Express): void {
           } catch (streamError) {
             console.error("Streaming fallback error:", streamError);
             const fallback = await openai.chat.completions.create({
-              model: AI_MODEL,
+              ...baseCompletionOpts,
+              model: runtimeCfg.model,
               messages: chatMessages,
-              max_completion_tokens: 4096,
             });
             const content = fallback.choices[0]?.message?.content || "";
             safeWrite({ content, done: true });
@@ -5844,6 +6146,7 @@ export function registerAiAgentRoutes(app: Express): void {
             .values({ key, value, description });
         }
 
+        invalidateAiCaches();
         res.json({ success: true, message: "تم تحديث الإعداد بنجاح" });
       } catch (error) {
         console.error("Error updating AI setting:", error);
@@ -6032,6 +6335,283 @@ export function registerAiAgentRoutes(app: Express): void {
       } catch (error) {
         console.error("Error deleting feature instruction:", error);
         res.status(500).json({ error: "فشل في حذف تعليمات الخاصية" });
+      }
+    },
+  );
+
+  // ===== أدوات مخصصة للوكيل الذكي =====
+  app.get(
+    "/api/ai-agent/custom-tools",
+    requirePermission("view_ai_agent_settings", "manage_ai_agent"),
+    async (_req: Request, res: Response) => {
+      try {
+        const rows = await db
+          .select()
+          .from(ai_agent_custom_tools)
+          .orderBy(desc(ai_agent_custom_tools.created_at));
+        res.json(rows);
+      } catch (error) {
+        console.error("Error fetching custom tools:", error);
+        res.status(500).json({ error: "فشل في جلب الأدوات المخصصة" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/ai-agent/custom-tools",
+    requirePermission("manage_ai_agent"),
+    async (req: Request, res: Response) => {
+      try {
+        const {
+          name,
+          display_name,
+          description,
+          parameters_schema,
+          action_type,
+          action_config,
+          required_permission,
+          is_active,
+        } = req.body || {};
+
+        if (
+          !name ||
+          typeof name !== "string" ||
+          !/^[a-z][a-z0-9_]{1,99}$/.test(name)
+        ) {
+          return res.status(400).json({
+            error:
+              "اسم الأداة يجب أن يبدأ بحرف صغير ويحتوي على حروف/أرقام/_ فقط",
+          });
+        }
+        if (!description || !action_type) {
+          return res
+            .status(400)
+            .json({ error: "الوصف ونوع الإجراء مطلوبان" });
+        }
+        if (!["sql", "http", "prompt"].includes(action_type)) {
+          return res
+            .status(400)
+            .json({ error: "نوع الإجراء يجب أن يكون sql أو http أو prompt" });
+        }
+
+        const [row] = await db
+          .insert(ai_agent_custom_tools)
+          .values({
+            name,
+            display_name: display_name || null,
+            description,
+            parameters_schema: parameters_schema || {
+              type: "object",
+              properties: {},
+            },
+            action_type,
+            action_config: action_config || {},
+            required_permission: required_permission || null,
+            is_active: is_active !== false,
+            created_by: (req as any).user?.id || null,
+          })
+          .returning();
+        invalidateAiCaches();
+        res.json(row);
+      } catch (error: any) {
+        console.error("Error creating custom tool:", error);
+        if (error?.code === "23505") {
+          return res
+            .status(409)
+            .json({ error: "اسم الأداة مستخدم مسبقاً" });
+        }
+        res.status(500).json({ error: "فشل في إضافة الأداة" });
+      }
+    },
+  );
+
+  app.put(
+    "/api/ai-agent/custom-tools/:id",
+    requirePermission("manage_ai_agent"),
+    async (req: Request, res: Response) => {
+      try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id) || id <= 0) {
+          return res.status(400).json({ error: "معرف غير صالح" });
+        }
+        const {
+          display_name,
+          description,
+          parameters_schema,
+          action_type,
+          action_config,
+          required_permission,
+          is_active,
+        } = req.body || {};
+
+        if (action_type && !["sql", "http", "prompt"].includes(action_type)) {
+          return res
+            .status(400)
+            .json({ error: "نوع الإجراء يجب أن يكون sql أو http أو prompt" });
+        }
+
+        const updates: any = { updated_at: new Date() };
+        if (display_name !== undefined) updates.display_name = display_name;
+        if (description !== undefined) updates.description = description;
+        if (parameters_schema !== undefined)
+          updates.parameters_schema = parameters_schema;
+        if (action_type !== undefined) updates.action_type = action_type;
+        if (action_config !== undefined) updates.action_config = action_config;
+        if (required_permission !== undefined)
+          updates.required_permission = required_permission;
+        if (is_active !== undefined) updates.is_active = is_active;
+
+        const [row] = await db
+          .update(ai_agent_custom_tools)
+          .set(updates)
+          .where(eq(ai_agent_custom_tools.id, id))
+          .returning();
+        invalidateAiCaches();
+        res.json(row);
+      } catch (error) {
+        console.error("Error updating custom tool:", error);
+        res.status(500).json({ error: "فشل في تحديث الأداة" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/ai-agent/custom-tools/:id",
+    requirePermission("manage_ai_agent"),
+    async (req: Request, res: Response) => {
+      try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id) || id <= 0) {
+          return res.status(400).json({ error: "معرف غير صالح" });
+        }
+        await db
+          .delete(ai_agent_custom_tools)
+          .where(eq(ai_agent_custom_tools.id, id));
+        invalidateAiCaches();
+        res.json({ success: true });
+      } catch (error) {
+        console.error("Error deleting custom tool:", error);
+        res.status(500).json({ error: "فشل في حذف الأداة" });
+      }
+    },
+  );
+
+  // ===== أوامر سريعة للوكيل الذكي =====
+  app.get(
+    "/api/ai-agent/commands",
+    requirePermission("use_ai_agent", "view_ai_agent", "manage_ai_agent"),
+    async (_req: Request, res: Response) => {
+      try {
+        const rows = await db
+          .select()
+          .from(ai_agent_commands)
+          .orderBy(ai_agent_commands.sort_order, ai_agent_commands.id);
+        res.json(rows);
+      } catch (error) {
+        console.error("Error fetching ai commands:", error);
+        res.status(500).json({ error: "فشل في جلب الأوامر السريعة" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/ai-agent/commands",
+    requirePermission("manage_ai_agent"),
+    async (req: Request, res: Response) => {
+      try {
+        const {
+          trigger,
+          label,
+          prompt_template,
+          description,
+          icon,
+          category,
+          is_active,
+          sort_order,
+        } = req.body || {};
+
+        if (!trigger || !label || !prompt_template) {
+          return res.status(400).json({
+            error: "trigger و label و prompt_template مطلوبة",
+          });
+        }
+        const [row] = await db
+          .insert(ai_agent_commands)
+          .values({
+            trigger,
+            label,
+            prompt_template,
+            description: description || null,
+            icon: icon || "Sparkles",
+            category: category || "general",
+            is_active: is_active !== false,
+            sort_order: Number(sort_order) || 0,
+            created_by: (req as any).user?.id || null,
+          })
+          .returning();
+        res.json(row);
+      } catch (error) {
+        console.error("Error creating ai command:", error);
+        res.status(500).json({ error: "فشل في إضافة الأمر السريع" });
+      }
+    },
+  );
+
+  app.put(
+    "/api/ai-agent/commands/:id",
+    requirePermission("manage_ai_agent"),
+    async (req: Request, res: Response) => {
+      try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id) || id <= 0) {
+          return res.status(400).json({ error: "معرف غير صالح" });
+        }
+        const updates: any = { updated_at: new Date() };
+        const allowed = [
+          "trigger",
+          "label",
+          "prompt_template",
+          "description",
+          "icon",
+          "category",
+          "is_active",
+          "sort_order",
+        ];
+        for (const k of allowed) {
+          if (req.body[k] !== undefined) updates[k] = req.body[k];
+        }
+        if (updates.sort_order !== undefined)
+          updates.sort_order = Number(updates.sort_order) || 0;
+
+        const [row] = await db
+          .update(ai_agent_commands)
+          .set(updates)
+          .where(eq(ai_agent_commands.id, id))
+          .returning();
+        res.json(row);
+      } catch (error) {
+        console.error("Error updating ai command:", error);
+        res.status(500).json({ error: "فشل في تحديث الأمر السريع" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/ai-agent/commands/:id",
+    requirePermission("manage_ai_agent"),
+    async (req: Request, res: Response) => {
+      try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id) || id <= 0) {
+          return res.status(400).json({ error: "معرف غير صالح" });
+        }
+        await db
+          .delete(ai_agent_commands)
+          .where(eq(ai_agent_commands.id, id));
+        res.json({ success: true });
+      } catch (error) {
+        console.error("Error deleting ai command:", error);
+        res.status(500).json({ error: "فشل في حذف الأمر السريع" });
       }
     },
   );

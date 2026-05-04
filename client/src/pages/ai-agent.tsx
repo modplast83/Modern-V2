@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import * as LucideIcons from "lucide-react";
 import {
   Bot,
   Send,
@@ -23,6 +24,11 @@ import {
   Users,
   BarChart3,
   ChevronDown,
+  Settings,
+  Wrench,
+  Lightbulb,
+  BookOpen,
+  Terminal,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -176,7 +182,7 @@ interface Message {
   };
 }
 
-const QUICK_SUGGESTIONS = [
+const FALLBACK_SUGGESTIONS = [
   {
     icon: Package,
     text: "حساب عدد الأكياس",
@@ -196,6 +202,22 @@ const QUICK_SUGGESTIONS = [
   { icon: Cpu, text: "حالة المكائن", query: "ما هي حالة مكائن المصنع؟" },
   { icon: Users, text: "قائمة العملاء", query: "أعطني قائمة العملاء النشطين" },
 ];
+
+interface CustomCommand {
+  id: number;
+  trigger: string;
+  label: string;
+  prompt_template: string;
+  icon: string | null;
+  is_active: boolean;
+  sort_order: number;
+}
+
+function resolveIcon(name: string | null | undefined) {
+  if (!name) return Sparkles;
+  const Icon = (LucideIcons as any)[name];
+  return Icon || Sparkles;
+}
 
 function TypingIndicator() {
   return (
@@ -294,6 +316,22 @@ function MessageBubble({
 function ChatPanel() {
   const { t } = useTranslation();
   const { toast } = useToast();
+
+  const { data: customCommands = [] } = useQuery<CustomCommand[]>({
+    queryKey: ["/api/ai-agent/commands"],
+  });
+
+  const suggestions = (() => {
+    const active = (customCommands || []).filter((c) => c.is_active);
+    if (active.length > 0) {
+      return active.slice(0, 6).map((c) => ({
+        icon: resolveIcon(c.icon),
+        text: c.label,
+        query: c.prompt_template,
+      }));
+    }
+    return FALLBACK_SUGGESTIONS;
+  })();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const messagesRef = useRef<Message[]>([]);
@@ -675,20 +713,23 @@ function ChatPanel() {
                 {t("aiAgent.chat.canHelpWith")}
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 w-full max-w-lg px-2">
-                {QUICK_SUGGESTIONS.map((item, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleSuggestionClick(item.query)}
-                    className="flex flex-col items-center gap-2 p-3 rounded-xl bg-muted/50 hover:bg-primary/10 hover:border-primary/30 border border-border/40 transition-all duration-200 cursor-pointer text-center group"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-background flex items-center justify-center group-hover:bg-primary/10 transition-colors shadow-sm">
-                      <item.icon className="h-4 w-4 text-primary" />
-                    </div>
-                    <span className="text-xs font-medium text-foreground/80 leading-tight">
-                      {item.text}
-                    </span>
-                  </button>
-                ))}
+                {suggestions.map((item, i) => {
+                  const IconComp = item.icon;
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => handleSuggestionClick(item.query)}
+                      className="flex flex-col items-center gap-2 p-3 rounded-xl bg-muted/50 hover:bg-primary/10 hover:border-primary/30 border border-border/40 transition-all duration-200 cursor-pointer text-center group"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-background flex items-center justify-center group-hover:bg-primary/10 transition-colors shadow-sm">
+                        <IconComp className="h-4 w-4 text-primary" />
+                      </div>
+                      <span className="text-xs font-medium text-foreground/80 leading-tight">
+                        {item.text}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ) : (

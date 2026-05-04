@@ -721,3 +721,26 @@ Key environment variables (managed via Replit Secrets):
 - Error messages: Always in Arabic for end users
 - Number formatting: Arabic numerals, 2 decimal places for weight, 1-2 for percentages
 - Logging: Comprehensive server-side, never log sensitive data (passwords, tokens)
+
+## AI Agent Customization (Settings UI)
+
+The AI Agent's behaviour is fully configurable from `Settings > AI Agent` without
+code changes. Two new tables (`ai_agent_custom_tools`, `ai_agent_commands`) plus
+runtime settings keys (`ai_model`, `temperature`, `max_tool_rounds`,
+`max_chat_history`, `max_completion_tokens`, `system_prompt_override`,
+`unrestricted_sql`) drive the agent at request time:
+
+- **Custom Tools tab** — admins can add `sql` / `http` / `prompt` actions with
+  JSON Schema parameters and `{{placeholder}}` substitution. Names are filtered
+  against built-ins to prevent collision; cache TTL 30s, invalidated on write.
+- **Quick Commands tab** — quick-prompt buttons that replace the hardcoded
+  suggestions on the chat home screen (loaded via `/api/ai-agent/commands`,
+  falls back to built-in defaults if none active).
+- **Advanced Settings card** (inside the Settings tab) — model, temperature,
+  history/tool/token limits, full system prompt override, and an
+  `unrestricted_sql` admin escape hatch (only effective for users with the
+  `manage_ai_agent` permission, with a clear UI warning).
+
+All `manage_ai_agent`-gated CRUD endpoints live under `/api/ai-agent/custom-tools`
+and `/api/ai-agent/commands`. Every settings/tool/command write calls
+`invalidateAiCaches()` so changes are picked up on the next message.
