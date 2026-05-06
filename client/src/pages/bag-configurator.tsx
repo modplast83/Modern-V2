@@ -400,10 +400,10 @@ export default function BagConfigurator() {
   return (
     <div
       dir="rtl"
-      className="relative w-full"
+      className="relative w-full flex"
       style={{ height: "calc(100vh - 4rem)", minHeight: "600px" }}
     >
-      <div ref={containerRef} className="absolute inset-0 z-0" />
+      <div ref={containerRef} className="relative flex-1 min-w-0 h-full" />
 
       {!panelOpen && (
         <button
@@ -416,8 +416,10 @@ export default function BagConfigurator() {
       )}
 
       <div
-        className={`absolute top-0 right-0 h-full w-full sm:w-[22rem] bg-white/95 backdrop-blur shadow-2xl p-4 overflow-y-auto z-10 flex flex-col gap-4 transform transition-transform duration-300 border-l border-slate-200 ${
-          panelOpen ? "translate-x-0" : "translate-x-full"
+        className={`relative h-full bg-white/95 backdrop-blur shadow-2xl overflow-y-auto flex-shrink-0 flex-col gap-4 border-l border-slate-200 transition-all duration-300 ${
+          panelOpen
+            ? "w-full sm:w-[22rem] p-4 flex"
+            : "w-0 p-0 overflow-hidden hidden"
         }`}
         style={{ fontFamily: "Tajawal, sans-serif" }}
       >
