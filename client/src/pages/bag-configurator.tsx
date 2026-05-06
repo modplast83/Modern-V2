@@ -6,37 +6,43 @@ import { Menu, X, Boxes } from "lucide-react";
 const SCALE = 10;
 
 type PlasticType = "ldpe" | "hdpe";
-type HandleType = "banana" | "vest" | "loop" | "none";
+type HandleType = "vest" | "banana" | "loop" | "none";
 
-interface PrintColorState {
-  enabled: boolean;
-  color: string;
-}
-
-const DEFAULT_COLORS: PrintColorState[] = [
-  { enabled: true, color: "#e11d48" },
-  { enabled: true, color: "#0284c7" },
-  { enabled: false, color: "#16a34a" },
-  { enabled: false, color: "#ca8a04" },
+const PRESET_COLORS = [
+  "#ffffff",
+  "#222222",
+  "#dc2626",
+  "#2563eb",
+  "#16a34a",
+  "#facc15",
+  "#f97316",
+  "#9333ea",
+  "#92400e",
 ];
 
-function getPlasticMaterial(type: PlasticType, colorHex: string) {
+function getPlasticMaterial(
+  type: PlasticType,
+  colorHex: string,
+  thickness: number,
+) {
   const opts: THREE.MeshPhysicalMaterialParameters = {
     color: new THREE.Color(colorHex),
     side: THREE.DoubleSide,
     transparent: true,
   };
+
+  const thicknessRatio = (thickness - 35) / (150 - 35);
+
   if (type === "ldpe") {
-    opts.roughness = 0.1;
+    opts.roughness = 0.15;
     opts.metalness = 0.1;
-    opts.transmission = 0.6;
-    opts.opacity = 0.9;
-    opts.clearcoat = 1.0;
+    opts.transmission = 0.8 - thicknessRatio * 0.4;
+    opts.opacity = 0.6 + thicknessRatio * 0.35;
   } else {
     opts.roughness = 0.6;
     opts.metalness = 0.0;
     opts.transmission = 0.0;
-    opts.opacity = 1.0;
+    opts.opacity = 0.9 + thicknessRatio * 0.1;
   }
   return new THREE.MeshPhysicalMaterial(opts);
 }
@@ -50,40 +56,52 @@ export default function BagConfigurator() {
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const bagGroupRef = useRef<THREE.Group | null>(null);
+  const ambientRef = useRef<THREE.AmbientLight | null>(null);
+  const dirLightRef = useRef<THREE.DirectionalLight | null>(null);
+  const floorMatRef = useRef<THREE.MeshStandardMaterial | null>(null);
   const printTextureRef = useRef<THREE.CanvasTexture | null>(null);
+  const uploadedImageRef = useRef<HTMLImageElement | null>(null);
   const rafRef = useRef<number | null>(null);
 
   const [panelOpen, setPanelOpen] = useState(true);
 
   const [type, setType] = useState<PlasticType>("ldpe");
-  const [handle, setHandle] = useState<HandleType>("banana");
-  const [width, setWidth] = useState(30);
-  const [height, setHeight] = useState(45);
-  const [depth, setDepth] = useState(10);
+  const [handle, setHandle] = useState<HandleType>("vest");
+  const [width, setWidth] = useState(40); // cm (zougi)
+  const [heightIn, setHeightIn] = useState(24); // inches
+  const [depth, setDepth] = useState(10); // cm
+  const [thickness, setThickness] = useState(50); // microns
   const [bagColor, setBagColor] = useState("#ffffff");
 
-  const [printText, setPrintText] = useState("Super Market");
-  const [colors, setColors] = useState<PrintColorState[]>(DEFAULT_COLORS);
+  const [printText, setPrintText] = useState("");
+  const [floorColor, setFloorColor] = useState("#cbd5e1");
+  const [lightIntensity, setLightIntensity] = useState(100); // %
   const [printVersion, setPrintVersion] = useState(0);
 
-  // Initialize scene once
+  // depth max = 50% of width
+  const depthMax = useMemo(() => Math.floor(width / 2), [width]);
+  useEffect(() => {
+    if (depth > depthMax) setDepth(depthMax);
+  }, [depthMax, depth]);
+
+  // ---- Init scene ----
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#f1f5f9");
+    scene.background = new THREE.Color("#e2e8f0");
     sceneRef.current = scene;
 
     const w = container.clientWidth;
     const h = container.clientHeight;
     const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 100);
-    camera.position.set(6, 3, 8);
+    camera.position.set(5, 3, 7);
     cameraRef.current = camera;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(w, h);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(renderer.domElement);
@@ -92,37 +110,37 @@ export default function BagConfigurator() {
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
-    controls.target.set(0, 2, 0);
     controls.minDistance = 2;
     controls.maxDistance = 15;
+    controls.target.set(0, 2, 0);
     controlsRef.current = controls;
 
-    // Lighting
-    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+    const ambient = new THREE.AmbientLight(0xffffff, 0.7);
     scene.add(ambient);
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
-    dirLight.position.set(5, 10, 7);
-    dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 2048;
-    dirLight.shadow.mapSize.height = 2048;
-    scene.add(dirLight);
-    const pointLight = new THREE.PointLight(0xe0f2fe, 0.5);
-    pointLight.position.set(-5, 5, 5);
-    scene.add(pointLight);
+    ambientRef.current = ambient;
 
-    // Floor + grid
-    const floorGeo = new THREE.PlaneGeometry(50, 50);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+    dirLight.position.set(4, 8, 6);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 1024;
+    dirLight.shadow.mapSize.height = 1024;
+    scene.add(dirLight);
+    dirLightRef.current = dirLight;
+
+    const backLight = new THREE.PointLight(0xf8fafc, 0.5);
+    backLight.position.set(-4, 4, -4);
+    scene.add(backLight);
+
+    const floorGeo = new THREE.PlaneGeometry(30, 30);
     const floorMat = new THREE.MeshStandardMaterial({
-      color: "#e2e8f0",
-      roughness: 0.5,
+      color: "#cbd5e1",
+      roughness: 0.8,
     });
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
     scene.add(floor);
-    const grid = new THREE.GridHelper(50, 50, 0xcbd5e1, 0xf1f5f9);
-    grid.position.y = 0.01;
-    scene.add(grid);
+    floorMatRef.current = floorMat;
 
     const bagGroup = new THREE.Group();
     scene.add(bagGroup);
@@ -156,16 +174,28 @@ export default function BagConfigurator() {
       if (renderer.domElement.parentNode) {
         renderer.domElement.parentNode.removeChild(renderer.domElement);
       }
+      const disposed = new Set<unknown>();
       scene.traverse((obj) => {
-        if ((obj as THREE.Mesh).geometry) {
-          (obj as THREE.Mesh).geometry.dispose();
+        const mesh = obj as THREE.Mesh;
+        if (mesh.geometry && !disposed.has(mesh.geometry)) {
+          mesh.geometry.dispose();
+          disposed.add(mesh.geometry);
         }
-        const mat = (obj as THREE.Mesh).material as
+        const mat = mesh.material as
           | THREE.Material
           | THREE.Material[]
           | undefined;
-        if (Array.isArray(mat)) mat.forEach((m) => m.dispose());
-        else if (mat) mat.dispose();
+        if (Array.isArray(mat)) {
+          mat.forEach((m) => {
+            if (!disposed.has(m)) {
+              m.dispose();
+              disposed.add(m);
+            }
+          });
+        } else if (mat && !disposed.has(mat)) {
+          mat.dispose();
+          disposed.add(mat);
+        }
       });
       printTextureRef.current?.dispose();
       printTextureRef.current = null;
@@ -174,10 +204,28 @@ export default function BagConfigurator() {
       rendererRef.current = null;
       controlsRef.current = null;
       bagGroupRef.current = null;
+      ambientRef.current = null;
+      dirLightRef.current = null;
+      floorMatRef.current = null;
     };
   }, []);
 
-  // Update print canvas/texture when printVersion changes
+  // Lighting intensity
+  useEffect(() => {
+    const scale = lightIntensity / 100;
+    if (ambientRef.current) ambientRef.current.intensity = 0.7 * scale;
+    if (dirLightRef.current) dirLightRef.current.intensity = 1.2 * scale;
+  }, [lightIntensity]);
+
+  // Floor + background color
+  useEffect(() => {
+    if (floorMatRef.current) floorMatRef.current.color.set(floorColor);
+    if (sceneRef.current && sceneRef.current.background instanceof THREE.Color) {
+      sceneRef.current.background.set(floorColor);
+    }
+  }, [floorColor]);
+
+  // Print canvas / texture
   useEffect(() => {
     const canvas = printCanvasRef.current;
     if (!canvas) return;
@@ -185,50 +233,47 @@ export default function BagConfigurator() {
     if (!ctx) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const active = colors.filter((c) => c.enabled).map((c) => c.color);
 
-    if (printText && active.length > 0) {
+    const img = uploadedImageRef.current;
+    if (img) {
+      const imgAspect = img.width / img.height;
+      let drawW = canvas.width * 0.6;
+      let drawH = drawW / imgAspect;
+      if (drawH > canvas.height * 0.6) {
+        drawH = canvas.height * 0.6;
+        drawW = drawH * imgAspect;
+      }
+      ctx.drawImage(
+        img,
+        (canvas.width - drawW) / 2,
+        (canvas.height - drawH) / 2,
+        drawW,
+        drawH,
+      );
+    } else if (printText) {
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       const cx = canvas.width / 2;
       const cy = canvas.height / 2;
-
-      if (active.length > 1) {
-        ctx.font = "bold 130px Tajawal, sans-serif";
-        ctx.fillStyle = active[1];
-        ctx.fillText(printText, cx + 8, cy + 8);
-      }
-      if (active.length > 2) {
-        ctx.font = "bold 120px Tajawal, sans-serif";
-        ctx.strokeStyle = active[2];
-        ctx.lineWidth = 15;
-        ctx.strokeText(printText, cx, cy);
-      }
-      ctx.font = "bold 120px Tajawal, sans-serif";
-      ctx.fillStyle = active[0];
+      ctx.font = "bold 100px Tajawal, sans-serif";
+      ctx.fillStyle = "#0f172a";
       ctx.fillText(printText, cx, cy);
-
-      if (active.length > 3) {
-        ctx.fillStyle = active[3];
-        ctx.beginPath();
-        ctx.arc(cx, cy - 150, 40, 0, Math.PI * 2);
-        ctx.fill();
-      }
+      ctx.strokeStyle = "#0ea5e9";
+      ctx.lineWidth = 4;
+      ctx.strokeText(printText, cx + 5, cy + 5);
     }
 
     if (!printTextureRef.current) {
       const tex = new THREE.CanvasTexture(canvas);
       const renderer = rendererRef.current;
-      if (renderer) {
-        tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-      }
+      if (renderer) tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
       printTextureRef.current = tex;
     } else {
       printTextureRef.current.needsUpdate = true;
     }
-  }, [printVersion, printText, colors]);
+  }, [printVersion, printText]);
 
-  // Rebuild bag geometry whenever bag/handle/dims/color change (or print texture)
+  // Bag geometry rebuild
   useEffect(() => {
     const bagGroup = bagGroupRef.current;
     const controls = controlsRef.current;
@@ -243,15 +288,20 @@ export default function BagConfigurator() {
       else mat?.dispose?.();
     }
 
-    const w = width / SCALE;
-    const h = height / SCALE;
+    const w_cm = width;
+    const h_cm = heightIn * 2.54;
+    const w = w_cm / SCALE;
+    const h = h_cm / SCALE;
     let d = depth / SCALE;
-    if (d === 0) d = 0.05;
+    if (d === 0) d = 0.02;
 
-    const material = getPlasticMaterial(type, bagColor);
+    const material = getPlasticMaterial(type, bagColor, thickness);
 
-    const geo = new THREE.BoxGeometry(w, h, d, 32, 32, 8);
+    const geo = new THREE.BoxGeometry(w, h, d, 32, 32, 4);
     geo.translate(0, h / 2, 0);
+
+    const vestHandleHeightCm = Math.min(15, Math.max(10, h_cm * 0.25));
+    const vestHandleUnits = vestHandleHeightCm / SCALE;
 
     const pos = geo.getAttribute("position");
     for (let i = 0; i < pos.count; i++) {
@@ -260,52 +310,58 @@ export default function BagConfigurator() {
       let z = pos.getZ(i);
       const yNorm = y / h;
 
-      if (Math.abs(x) > w / 2 - 0.02 && Math.abs(z) < d / 4) {
-        x -= Math.sign(x) * (d * 0.2);
+      if (Math.abs(x) > w / 2 - 0.05 && Math.abs(z) < d / 4) {
+        x -= Math.sign(x) * (d * 0.4);
       }
 
       if (handle === "vest") {
-        if (yNorm > 0.7 && Math.abs(x) < w * 0.25) {
-          const dip = (yNorm - 0.7) * 2;
-          y -= dip;
+        const handleThreshold = (h - vestHandleUnits) / h;
+        if (yNorm > handleThreshold) {
+          if (Math.abs(x) < w * 0.25) {
+            const dip =
+              vestHandleUnits * Math.cos((x / (w * 0.25)) * (Math.PI / 2));
+            y -= dip;
+          } else {
+            x *= 0.9;
+          }
         }
       } else {
-        if (yNorm > 0.8) {
-          const pinch = (yNorm - 0.8) * 5;
-          z *= 1 - pinch * 0.8;
+        if (yNorm > 0.85) {
+          z *= 0.2;
         }
       }
+
       pos.setXYZ(i, x, y, z);
     }
     geo.computeVertexNormals();
 
     const bagMesh = new THREE.Mesh(geo, material);
     bagMesh.castShadow = true;
-    bagMesh.receiveShadow = true;
     bagGroup.add(bagMesh);
 
     if (handle === "banana") {
-      const holeGeo = new THREE.TorusGeometry(w * 0.1, 0.03, 16, 32);
-      holeGeo.scale(1, 0.4, 1);
-      const holeMat = new THREE.MeshBasicMaterial({ color: 0x222222 });
-      const holeFront = new THREE.Mesh(holeGeo, holeMat);
-      holeFront.position.set(0, h * 0.85, (d / 2) * 0.2);
-      const holeBack = holeFront.clone();
-      holeBack.position.set(0, h * 0.85, (-d / 2) * 0.2);
-      bagGroup.add(holeFront, holeBack);
+      const holeGeo = new THREE.TorusGeometry(w * 0.12, 0.02, 16, 32);
+      holeGeo.scale(1, 0.35, 1);
+      const holeMat = new THREE.MeshBasicMaterial({
+        color: 0x1e293b,
+        transparent: true,
+        opacity: 0.5,
+      });
+      const hole = new THREE.Mesh(holeGeo, holeMat);
+      hole.position.set(0, h * 0.85, 0);
+      bagGroup.add(hole);
     } else if (handle === "loop") {
-      const handleWidth = w * 0.25;
       const handleGeo = new THREE.TorusGeometry(
-        handleWidth,
-        0.06,
+        w * 0.2,
+        0.04,
         16,
         32,
         Math.PI,
       );
       const h1 = new THREE.Mesh(handleGeo, material);
-      h1.position.set(0, h * 0.98, (d / 2) * 0.2);
+      h1.position.set(0, h * 0.98, d / 2);
       const h2 = new THREE.Mesh(handleGeo, material);
-      h2.position.set(0, h * 0.98, (-d / 2) * 0.2);
+      h2.position.set(0, h * 0.98, -d / 2);
       bagGroup.add(h1, h2);
     }
 
@@ -316,7 +372,6 @@ export default function BagConfigurator() {
         depthWrite: false,
         polygonOffset: true,
         polygonOffsetFactor: -1,
-        polygonOffsetUnits: -1,
       });
       const printGeo = geo.clone();
       const printMesh = new THREE.Mesh(printGeo, printMat);
@@ -325,15 +380,22 @@ export default function BagConfigurator() {
     }
 
     controls.target.set(0, h / 2, 0);
-  }, [type, handle, width, height, depth, bagColor, printVersion]);
+  }, [type, handle, width, heightIn, depth, thickness, bagColor, printVersion]);
 
-  const setColorAt = (idx: number, patch: Partial<PrintColorState>) => {
-    setColors((prev) =>
-      prev.map((c, i) => (i === idx ? { ...c, ...patch } : c)),
-    );
+  const onUploadImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const img = new Image();
+      img.onload = () => {
+        uploadedImageRef.current = img;
+        setPrintVersion((v) => v + 1);
+      };
+      img.src = String(evt.target?.result || "");
+    };
+    reader.readAsDataURL(file);
   };
-
-  const colorLabels = useMemo(() => ["لون 1", "لون 2", "لون 3", "لون 4"], []);
 
   return (
     <div
@@ -346,7 +408,7 @@ export default function BagConfigurator() {
       {!panelOpen && (
         <button
           onClick={() => setPanelOpen(true)}
-          className="absolute top-4 right-4 z-20 bg-white p-3 rounded-xl shadow-lg text-blue-600 hover:bg-blue-50 transition-colors"
+          className="absolute top-4 right-4 z-20 bg-white p-2 rounded-lg shadow-md text-blue-600"
           aria-label="فتح اللوحة"
         >
           <Menu className="h-6 w-6" />
@@ -354,187 +416,242 @@ export default function BagConfigurator() {
       )}
 
       <div
-        className={`absolute top-0 right-0 h-full w-full sm:w-[30rem] bg-white/95 backdrop-blur shadow-2xl p-6 overflow-y-auto z-10 flex flex-col gap-5 transform transition-transform duration-300 border-l border-slate-200 ${
+        className={`absolute top-0 right-0 h-full w-full sm:w-[22rem] bg-white/95 backdrop-blur shadow-2xl p-4 overflow-y-auto z-10 flex flex-col gap-4 transform transition-transform duration-300 border-l border-slate-200 ${
           panelOpen ? "translate-x-0" : "translate-x-full"
         }`}
         style={{ fontFamily: "Tajawal, sans-serif" }}
       >
-        <div className="border-b border-slate-200 pb-4 flex justify-between items-center sticky top-0 bg-white/95 z-10">
-          <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <Boxes className="h-6 w-6 text-blue-500" />
-            إعدادات التصنيع والطباعة
+        <div className="border-b border-slate-200 pb-2 flex justify-between items-center sticky top-0 bg-white/95 z-10">
+          <h1 className="text-lg font-bold text-slate-900 flex items-center gap-1.5">
+            <Boxes className="h-5 w-5 text-blue-500" />
+            المواصفات الفنية
           </h1>
           <button
             onClick={() => setPanelOpen(false)}
-            className="bg-slate-100 hover:bg-slate-200 p-2 rounded-full text-slate-600 transition-colors"
+            className="p-1 rounded-full text-slate-400 hover:bg-slate-100"
             aria-label="إغلاق اللوحة"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* خصائص الكيس الأساسية */}
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
-          <h2 className="text-md font-bold text-slate-800 mb-4">
-            خصائص الكيس الأساسية
-          </h2>
+        {/* القياسات */}
+        <div className="bg-white rounded-lg p-3 shadow-sm border border-slate-100 space-y-3">
+          <h2 className="text-sm font-bold text-slate-700">القياسات</h2>
 
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="text-xs font-semibold text-slate-500 block mb-1">
-                نوع البلاستيك
-              </label>
-              <select
-                value={type}
-                onChange={(e) => setType(e.target.value as PlasticType)}
-                className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-lg focus:ring-2 focus:ring-blue-500 p-2.5 outline-none"
-              >
-                <option value="ldpe">LDPE (شفاف ولامع)</option>
-                <option value="hdpe">HDPE (معتم وقوي)</option>
-              </select>
+          <div>
+            <div className="flex justify-between mb-1">
+              <label className="text-xs text-slate-600">العرض (زوجي):</label>
+              <span className="text-xs font-bold text-blue-600">
+                {width} سم
+              </span>
             </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-500 block mb-1">
-                شكل المقبض
-              </label>
-              <select
-                value={handle}
-                onChange={(e) => setHandle(e.target.value as HandleType)}
-                className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-lg focus:ring-2 focus:ring-blue-500 p-2.5 outline-none"
-              >
-                <option value="banana">بنانة / كدني (Die-Cut)</option>
-                <option value="vest">علاقي (T-Shirt)</option>
-                <option value="loop">مقبض ملحوم (Loop)</option>
-                <option value="none">بدون مقبض</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="space-y-4 mt-2">
-            <div>
-              <label className="text-xs font-semibold text-slate-600 flex justify-between mb-1">
-                <span>
-                  العرض: <span>{width}</span> سم
-                </span>
-              </label>
-              <input
-                type="range"
-                min={15}
-                max={80}
-                value={width}
-                onChange={(e) => setWidth(parseInt(e.target.value))}
-                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-sky-500"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-600 flex justify-between mb-1">
-                <span>
-                  الطول: <span>{height}</span> سم
-                </span>
-              </label>
-              <input
-                type="range"
-                min={20}
-                max={100}
-                value={height}
-                onChange={(e) => setHeight(parseInt(e.target.value))}
-                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-sky-500"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-600 flex justify-between mb-1">
-                <span>
-                  العمق (الطية): <span>{depth}</span> سم
-                </span>
-              </label>
-              <input
-                type="range"
-                min={0}
-                max={30}
-                value={depth}
-                onChange={(e) => setDepth(parseInt(e.target.value))}
-                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-sky-500"
-              />
-            </div>
-          </div>
-
-          <div className="mt-4 flex items-center gap-3">
-            <label className="text-xs font-semibold text-slate-600">
-              لون البلاستيك:
-            </label>
             <input
-              type="color"
-              value={bagColor}
-              onChange={(e) => setBagColor(e.target.value)}
-              className="w-8 h-8 rounded cursor-pointer border-0 bg-transparent p-0"
+              type="range"
+              min={20}
+              max={80}
+              step={2}
+              value={width}
+              onChange={(e) => setWidth(parseInt(e.target.value))}
+              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none accent-sky-500"
+            />
+          </div>
+
+          <div>
+            <div className="flex justify-between mb-1">
+              <label className="text-xs text-slate-600">الطول (زوجي):</label>
+              <span className="text-xs font-bold text-blue-600">
+                {heightIn} بوصة
+              </span>
+            </div>
+            <input
+              type="range"
+              min={10}
+              max={38}
+              step={2}
+              value={heightIn}
+              onChange={(e) => setHeightIn(parseInt(e.target.value))}
+              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none accent-sky-500"
+            />
+          </div>
+
+          <div>
+            <div className="flex justify-between mb-1">
+              <label className="text-xs text-slate-600">
+                الطية (حتى 50% من العرض):
+              </label>
+              <span className="text-xs font-bold text-blue-600">
+                {depth} سم
+              </span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={depthMax}
+              step={1}
+              value={depth}
+              onChange={(e) => setDepth(parseInt(e.target.value))}
+              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none accent-sky-500"
+            />
+          </div>
+
+          <div>
+            <div className="flex justify-between mb-1">
+              <label className="text-xs text-slate-600">السماكة:</label>
+              <span className="text-xs font-bold text-blue-600">
+                {thickness} مايكرون
+              </span>
+            </div>
+            <input
+              type="range"
+              min={35}
+              max={150}
+              step={1}
+              value={thickness}
+              onChange={(e) => setThickness(parseInt(e.target.value))}
+              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none accent-sky-500"
             />
           </div>
         </div>
 
-        {/* تصميم الطباعة فلكسو */}
-        <div className="bg-blue-50/50 rounded-xl p-4 shadow-sm border border-blue-100">
-          <h2 className="text-md font-bold text-blue-900 mb-4">
-            تصميم طباعة فلكسو (4 ألوان كحد أقصى)
+        {/* المادة والمقبض */}
+        <div className="bg-white rounded-lg p-3 shadow-sm border border-slate-100 space-y-3">
+          <h2 className="text-sm font-bold text-slate-700">المادة والمقبض</h2>
+
+          <div className="grid grid-cols-2 gap-2">
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value as PlasticType)}
+              className="text-xs bg-slate-50 border border-slate-200 rounded p-1.5 outline-none focus:border-blue-400"
+            >
+              <option value="ldpe">LDPE (شفاف/ناعم)</option>
+              <option value="hdpe">HDPE (معتم/قوي)</option>
+            </select>
+            <select
+              value={handle}
+              onChange={(e) => setHandle(e.target.value as HandleType)}
+              className="text-xs bg-slate-50 border border-slate-200 rounded p-1.5 outline-none focus:border-blue-400"
+            >
+              <option value="vest">علاقي (T-Shirt)</option>
+              <option value="banana">بنانة (Die-Cut)</option>
+              <option value="loop">ملحوم (Loop)</option>
+              <option value="none">بدون مقبض</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-xs text-slate-600 block mb-1">
+              لون الكيس الأساسي:
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {PRESET_COLORS.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setBagColor(c)}
+                  style={{ backgroundColor: c }}
+                  className={`w-6 h-6 rounded-full border ${
+                    bagColor === c
+                      ? "outline outline-[3px] outline-sky-500 outline-offset-2 border-gray-300"
+                      : "border-gray-300"
+                  }`}
+                  aria-label={c}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* البيئة والإضاءة */}
+        <div className="bg-white rounded-lg p-3 shadow-sm border border-slate-100 space-y-3">
+          <h2 className="text-sm font-bold text-slate-700">البيئة والإضاءة</h2>
+
+          <div>
+            <div className="flex justify-between mb-1">
+              <label className="text-xs text-slate-600">شدة الإضاءة:</label>
+              <span className="text-xs font-bold text-blue-600">
+                {lightIntensity}%
+              </span>
+            </div>
+            <input
+              type="range"
+              min={20}
+              max={200}
+              step={1}
+              value={lightIntensity}
+              onChange={(e) => setLightIntensity(parseInt(e.target.value))}
+              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none accent-sky-500"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs text-slate-600 block mb-1">
+              لون الاستوديو (الأرضية والخلفية):
+            </label>
+            <div className="flex items-center gap-2 bg-slate-50 p-1 rounded border border-slate-200">
+              <input
+                type="color"
+                value={floorColor}
+                onChange={(e) => setFloorColor(e.target.value)}
+                className="w-8 h-8 rounded cursor-pointer border-0 bg-transparent p-0"
+              />
+              <span className="text-xs text-slate-500 font-medium px-1">
+                انقر لاختيار لون البيئة
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* التصميم والطباعة */}
+        <div className="bg-blue-50/40 rounded-lg p-3 shadow-sm border border-blue-100 space-y-3">
+          <h2 className="text-sm font-bold text-blue-900">
+            التصميم (محاكاة الطباعة)
           </h2>
 
-          <div className="mb-4">
-            <label className="text-xs font-semibold text-slate-600 block mb-1">
-              النص المطبوع
+          <div>
+            <label className="text-[11px] font-semibold text-slate-500 block mb-1">
+              إرفاق تصميم جاهز (صورة شفافة PNG يفضل)
+            </label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={onUploadImage}
+              className="w-full text-xs text-slate-500 file:ml-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 cursor-pointer"
+            />
+          </div>
+
+          <div className="text-center text-xs text-slate-400 my-1">- أو -</div>
+
+          <div>
+            <label className="text-[11px] font-semibold text-slate-500 block mb-1">
+              نص بديل (طباعة فلكسو)
             </label>
             <input
               type="text"
               value={printText}
               onChange={(e) => setPrintText(e.target.value)}
-              placeholder="اكتب التصميم هنا..."
-              className="w-full bg-white border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              placeholder="اكتب لترى محاكاة الفلكسو..."
+              className="w-full bg-white border border-slate-200 rounded p-1.5 text-xs outline-none focus:border-blue-400"
             />
           </div>
 
-          <div className="mb-4">
-            <label className="text-xs font-semibold text-slate-600 block mb-2">
-              فرز الألوان (تنشيط السلندرات)
-            </label>
-            <div className="grid grid-cols-4 gap-2">
-              {colors.map((c, idx) => (
-                <label key={idx} className="relative cursor-pointer block">
-                  <input
-                    type="checkbox"
-                    checked={c.enabled}
-                    onChange={(e) =>
-                      setColorAt(idx, { enabled: e.target.checked })
-                    }
-                    className="peer sr-only"
-                  />
-                  <div
-                    className={`border-2 rounded-lg p-1 text-center transition-all bg-white ${
-                      c.enabled
-                        ? "border-sky-500 ring-2 ring-sky-500/20 opacity-100"
-                        : "border-transparent opacity-50"
-                    }`}
-                  >
-                    <input
-                      type="color"
-                      value={c.color}
-                      onChange={(e) =>
-                        setColorAt(idx, { color: e.target.value })
-                      }
-                      className="w-full h-6 rounded cursor-pointer border-0 p-0 block mb-1"
-                    />
-                    <span className="text-[10px] font-bold text-slate-500">
-                      {colorLabels[idx]}
-                    </span>
-                  </div>
-                </label>
-              ))}
-            </div>
+          <div className="flex gap-2 mt-2">
+            <button
+              onClick={() => setPrintVersion((v) => v + 1)}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 rounded text-xs transition-colors"
+            >
+              تطبيق التصميم
+            </button>
+            <button
+              onClick={() => {
+                uploadedImageRef.current = null;
+                setPrintVersion((v) => v + 1);
+              }}
+              className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-1.5 px-3 rounded text-xs transition-colors"
+              title="إزالة الصورة المرفقة"
+            >
+              إزالة الصورة
+            </button>
           </div>
-
-          <button
-            onClick={() => setPrintVersion((v) => v + 1)}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm"
-          >
-            تحديث أسطوانات الطباعة (Render)
-          </button>
         </div>
       </div>
 
