@@ -340,29 +340,150 @@ export default function BagConfigurator() {
     bagGroup.add(bagMesh);
 
     if (handle === "banana") {
-      const holeGeo = new THREE.TorusGeometry(w * 0.12, 0.02, 16, 32);
-      holeGeo.scale(1, 0.35, 1);
-      const holeMat = new THREE.MeshBasicMaterial({
-        color: 0x1e293b,
-        transparent: true,
-        opacity: 0.5,
+      // ===== Realistic die-cut "banana" handle =====
+      // Builds a stadium/capsule-shaped hole on BOTH faces of the bag with:
+      //  - A reinforced bag-colored rim (the welded/pressed border around the cut)
+      //  - A dark inner fill simulating the punched-through opening
+      //  - A subtle outline edge for the die-cut crispness
+      const holeHalfW = w * 0.16;        // half-length of the slit
+      const holeHalfH = h_cm > 40 ? 0.07 : 0.05; // thickness of the slit
+      const holeY = h * 0.9;
+
+      const makeStadium = (hw: number, hh: number) => {
+        const s = new THREE.Shape();
+        const r = hh;
+        s.moveTo(-hw + r, -r);
+        s.lineTo(hw - r, -r);
+        s.absarc(hw - r, 0, r, -Math.PI / 2, Math.PI / 2, false);
+        s.lineTo(-hw + r, r);
+        s.absarc(-hw + r, 0, r, Math.PI / 2, -Math.PI / 2, false);
+        return s;
+      };
+
+      // Reinforced rim (bag-colored ring around the hole)
+      const rimHalfW = holeHalfW * 1.18;
+      const rimHalfH = holeHalfH * 2.2;
+      const rimShape = makeStadium(rimHalfW, rimHalfH);
+      rimShape.holes.push(makeStadium(holeHalfW, holeHalfH));
+      const rimGeo = new THREE.ShapeGeometry(rimShape, 32);
+      const rimMat = new THREE.MeshStandardMaterial({
+        color: bagColor,
+        roughness: 0.55,
+        metalness: 0.0,
+        side: THREE.DoubleSide,
       });
-      const hole = new THREE.Mesh(holeGeo, holeMat);
-      hole.position.set(0, h * 0.85, 0);
-      bagGroup.add(hole);
-    } else if (handle === "loop") {
-      const handleGeo = new THREE.TorusGeometry(
-        w * 0.2,
-        0.04,
-        16,
-        32,
-        Math.PI,
+
+      // Dark inner "see-through" fill
+      const innerShape = makeStadium(holeHalfW, holeHalfH);
+      const innerGeo = new THREE.ShapeGeometry(innerShape, 32);
+      const innerMat = new THREE.MeshBasicMaterial({
+        color: 0x0a0d12,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.92,
+      });
+
+      // Crisp die-cut outline
+      const outlinePts = makeStadium(holeHalfW, holeHalfH).getPoints(64);
+      const outlineGeo = new THREE.BufferGeometry().setFromPoints(
+        outlinePts.map((p) => new THREE.Vector3(p.x, p.y, 0)),
       );
-      const h1 = new THREE.Mesh(handleGeo, material);
-      h1.position.set(0, h * 0.98, d / 2);
-      const h2 = new THREE.Mesh(handleGeo, material);
-      h2.position.set(0, h * 0.98, -d / 2);
-      bagGroup.add(h1, h2);
+      const outlineMat = new THREE.LineBasicMaterial({
+        color: 0x000000,
+        transparent: true,
+        opacity: 0.55,
+      });
+
+      // Front face
+      const rimFront = new THREE.Mesh(rimGeo, rimMat);
+      rimFront.position.set(0, holeY, d / 2 + 0.002);
+      bagGroup.add(rimFront);
+      const innerFront = new THREE.Mesh(innerGeo, innerMat);
+      innerFront.position.set(0, holeY, d / 2 + 0.0015);
+      bagGroup.add(innerFront);
+      const outlineFront = new THREE.LineLoop(outlineGeo, outlineMat);
+      outlineFront.position.set(0, holeY, d / 2 + 0.003);
+      bagGroup.add(outlineFront);
+
+      // Back face (mirrored)
+      const rimBack = new THREE.Mesh(rimGeo, rimMat);
+      rimBack.position.set(0, holeY, -d / 2 - 0.002);
+      rimBack.rotation.y = Math.PI;
+      bagGroup.add(rimBack);
+      const innerBack = new THREE.Mesh(innerGeo, innerMat);
+      innerBack.position.set(0, holeY, -d / 2 - 0.0015);
+      innerBack.rotation.y = Math.PI;
+      bagGroup.add(innerBack);
+      const outlineBack = new THREE.LineLoop(outlineGeo, outlineMat);
+      outlineBack.position.set(0, holeY, -d / 2 - 0.003);
+      outlineBack.rotation.y = Math.PI;
+      bagGroup.add(outlineBack);
+    } else if (handle === "loop") {
+      // ===== Realistic welded loop handle =====
+      // Two welded plastic loops on top: each is a flat strap (TubeGeometry along
+      // a half-circle curve) with a small flat welded base at each attachment point.
+      const loopRadius = Math.min(w * 0.22, h * 0.35);
+      const strapTube = 0.045;            // strap thickness (round cross-section radius)
+      const strapWidthScale = 1.8;        // scale tube along bag-depth axis to look like a flat strap
+      const weldYOffset = 0.02;           // slight overlap into bag top to look welded
+
+      // Build a half-circle curve in the X–Y plane for one loop
+      const buildHalfLoopCurve = () => {
+        const pts: THREE.Vector3[] = [];
+        const segs = 48;
+        for (let i = 0; i <= segs; i++) {
+          const t = i / segs;
+          const angle = Math.PI * t; // 0 → π
+          pts.push(
+            new THREE.Vector3(
+              -Math.cos(angle) * loopRadius,
+              Math.sin(angle) * loopRadius,
+              0,
+            ),
+          );
+        }
+        return new THREE.CatmullRomCurve3(pts, false, "catmullrom", 0.0);
+      };
+
+      const loopMat = new THREE.MeshStandardMaterial({
+        color: bagColor,
+        roughness: 0.45,
+        metalness: 0.0,
+        transparent: material.transparent,
+        opacity: Math.min(1, (material.opacity ?? 1) + 0.15),
+        side: THREE.DoubleSide,
+      });
+
+      const baseGeo = new THREE.BoxGeometry(
+        strapTube * 4,
+        0.04,
+        strapTube * 2 * strapWidthScale,
+      );
+
+      const placements: Array<{ z: number; rotY: number }> = [
+        { z: d / 2 - strapTube * 0.6, rotY: 0 },
+        { z: -d / 2 + strapTube * 0.6, rotY: 0 },
+      ];
+
+      placements.forEach(({ z }) => {
+        // Strap (flat tube)
+        const curve = buildHalfLoopCurve();
+        const tubeGeo = new THREE.TubeGeometry(curve, 48, strapTube, 12, false);
+        // Flatten cross-section along Z so it looks like a flat strap
+        tubeGeo.scale(1, 1, strapWidthScale);
+        const strap = new THREE.Mesh(tubeGeo, loopMat);
+        strap.position.set(0, h - weldYOffset, z);
+        strap.castShadow = true;
+        bagGroup.add(strap);
+
+        // Welded base patches at the two attachment points
+        [-loopRadius, loopRadius].forEach((xWeld) => {
+          const base = new THREE.Mesh(baseGeo, loopMat);
+          base.position.set(xWeld, h - weldYOffset - 0.015, z);
+          base.castShadow = true;
+          bagGroup.add(base);
+        });
+      });
     }
 
     if (printTextureRef.current) {
