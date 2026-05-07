@@ -640,7 +640,7 @@ export default function BagConfigurator() {
         <div className="bg-white rounded-lg p-3 shadow-sm border border-slate-100 space-y-3">
           <h2 className="text-sm font-bold text-slate-700">المادة والمقبض</h2>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2 text-[#000000] font-bold text-[18px] text-center">
             <select
               value={type}
               onChange={(e) => setType(e.target.value as PlasticType)}
