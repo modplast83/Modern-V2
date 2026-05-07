@@ -303,8 +303,14 @@ export default function BagConfigurator() {
     const geo = new THREE.BoxGeometry(w, h, d, 32, 32, 4);
     geo.translate(0, h / 2, 0);
 
-    const vestHandleHeightCm = Math.min(15, Math.max(10, h_cm * 0.25));
+    // Vest (T-shirt) handle dims — height scales with bag, clamped 11..16 cm
+    const vestHandleHeightCm = Math.min(16, Math.max(11, h_cm * 0.28));
     const vestHandleUnits = vestHandleHeightCm / SCALE;
+    // Neck (central U-cut) takes ~32% of the width; each strap sits between the
+    // neck edge and the bag edge. Strap top tapers inward to look like a grip.
+    const neckHalfW = w * 0.16;
+    const strapTopTaper = 0.22; // how much the strap narrows at the very top
+    const shoulderDropUnits = Math.min(0.18, h * 0.05); // soft shoulder below handles
 
     const pos = geo.getAttribute("position");
     for (let i = 0; i < pos.count; i++) {
@@ -318,14 +324,40 @@ export default function BagConfigurator() {
       }
 
       if (handle === "vest") {
-        const handleThreshold = (h - vestHandleUnits) / h;
+        const shoulderY = h - vestHandleUnits;
+        const handleThreshold = shoulderY / h;
+
         if (yNorm > handleThreshold) {
-          if (Math.abs(x) < w * 0.25) {
+          // Region above the shoulders: carve neck and shape straps.
+          const tHandle = (y - shoulderY) / vestHandleUnits; // 0 at shoulder → 1 at top
+
+          if (Math.abs(x) < neckHalfW) {
+            // Central U-shaped neck cutout — smooth cosine dip down to shoulder
             const dip =
-              vestHandleUnits * Math.cos((x / (w * 0.25)) * (Math.PI / 2));
+              vestHandleUnits *
+              0.5 *
+              (1 + Math.cos((x / neckHalfW) * Math.PI));
             y -= dip;
           } else {
-            x *= 0.9;
+            // Strap region: taper outer edge inward as we go up so the
+            // top of the handle is narrower than the base (realistic grip).
+            const sign = Math.sign(x);
+            const inset = sign * (w * strapTopTaper) * tHandle * tHandle;
+            x -= inset;
+            // Slight outer pinch so straps aren't perfectly rectangular
+            x *= 1 - 0.05 * tHandle;
+            // Round the very top corners a touch
+            if (tHandle > 0.85) {
+              const k = (tHandle - 0.85) / 0.15;
+              y -= vestHandleUnits * 0.05 * k * k;
+            }
+          }
+        } else if (yNorm > handleThreshold - 0.08) {
+          // Soft "shoulder" curve just below the handles for a natural T-shirt
+          // silhouette instead of a hard 90° step.
+          const k = (yNorm - (handleThreshold - 0.08)) / 0.08;
+          if (Math.abs(x) > neckHalfW && Math.abs(x) < w * 0.42) {
+            y -= shoulderDropUnits * k * k;
           }
         }
       } else {
