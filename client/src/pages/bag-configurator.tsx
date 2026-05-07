@@ -1,110 +1,134 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { Boxes, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 
 import PageLayout from "../components/layout/PageLayout";
 import { Button } from "../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 
-const SCALE = 10;
+type BagType = "tshirt" | "diecut" | "softloop" | "none";
+type PrintMode = "text" | "image";
 
-type PlasticType = "ldpe" | "hdpe";
-type HandleType = "vest" | "banana" | "loop" | "none";
-
-const PRESET_COLORS = [
-  "#ffffff",
-  "#222222",
-  "#dc2626",
-  "#2563eb",
-  "#16a34a",
-  "#facc15",
-  "#f97316",
-  "#9333ea",
-  "#92400e",
-];
-
-function getPlasticMaterial(
-  type: PlasticType,
-  colorHex: string,
-  thickness: number,
-) {
-  const opts: THREE.MeshPhysicalMaterialParameters = {
-    color: new THREE.Color(colorHex),
-    side: THREE.DoubleSide,
-    transparent: true,
-  };
-
-  const thicknessRatio = (thickness - 35) / (150 - 35);
-
-  if (type === "ldpe") {
-    opts.roughness = 0.15;
-    opts.metalness = 0.1;
-    opts.transmission = 0.8 - thicknessRatio * 0.4;
-    opts.opacity = 0.6 + thicknessRatio * 0.35;
-  } else {
-    opts.roughness = 0.6;
-    opts.metalness = 0.0;
-    opts.transmission = 0.0;
-    opts.opacity = 0.9 + thicknessRatio * 0.1;
-  }
-  return new THREE.MeshPhysicalMaterial(opts);
+interface BagColorProps {
+  hex: string;
+  roughness: number;
+  transmission: number;
+  metalness?: number;
+  opacity?: number;
+  transparent?: boolean;
+  ior?: number;
+  thickness?: number;
 }
+
+const BAG_COLORS: Record<string, BagColorProps> = {
+  "أزرق": { hex: "#0047AB", roughness: 0.4, transmission: 0, metalness: 0.1 },
+  "سماوي": { hex: "#87CEEB", roughness: 0.4, transmission: 0, metalness: 0.1 },
+  "شفاف": {
+    hex: "#FFFFFF",
+    roughness: 0.1,
+    transmission: 0.95,
+    opacity: 1,
+    transparent: true,
+    ior: 1.5,
+    thickness: 0.1,
+  },
+  "ثلجي": {
+    hex: "#FAFAFA",
+    roughness: 0.6,
+    transmission: 0.8,
+    opacity: 1,
+    transparent: true,
+    ior: 1.2,
+    thickness: 0.5,
+  },
+  "أبيض": { hex: "#FFFFFF", roughness: 0.4, transmission: 0, metalness: 0 },
+  "أصفر": { hex: "#FFD700", roughness: 0.4, transmission: 0, metalness: 0.1 },
+  "برتقالي": { hex: "#FF8C00", roughness: 0.4, transmission: 0, metalness: 0.1 },
+  "أخضر": { hex: "#008000", roughness: 0.4, transmission: 0, metalness: 0.1 },
+  "ذهبي": { hex: "#D4AF37", roughness: 0.25, transmission: 0, metalness: 0.8 },
+  "رمادي": { hex: "#808080", roughness: 0.5, transmission: 0, metalness: 0.1 },
+  "بني": { hex: "#8B4513", roughness: 0.6, transmission: 0, metalness: 0.1 },
+  "فضي": { hex: "#C0C0C0", roughness: 0.2, transmission: 0, metalness: 0.9 },
+  "بيج": { hex: "#F5F5DC", roughness: 0.5, transmission: 0, metalness: 0 },
+  "عاجي": { hex: "#FFFFF0", roughness: 0.5, transmission: 0, metalness: 0 },
+  "أحمر": { hex: "#DC143C", roughness: 0.4, transmission: 0, metalness: 0.1 },
+  "وردي": { hex: "#FFC0CB", roughness: 0.4, transmission: 0, metalness: 0 },
+  "تركوازي": { hex: "#40E0D0", roughness: 0.4, transmission: 0, metalness: 0.1 },
+  "تفاحي": { hex: "#8DB600", roughness: 0.4, transmission: 0, metalness: 0.1 },
+};
+
+const LIGHT_COLORS = new Set(["شفاف", "ثلجي", "أبيض", "عاجي"]);
+
+const BAG_TYPE_OPTIONS: Array<{ value: BagType; label: string }> = [
+  { value: "tshirt", label: "علاق" },
+  { value: "diecut", label: "بنانة" },
+  { value: "softloop", label: "مقبض شريطي" },
+  { value: "none", label: "بدون مقبض" },
+];
 
 export default function BagConfigurator() {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const printCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
+  // Three.js refs
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const bagGroupRef = useRef<THREE.Group | null>(null);
-  const ambientRef = useRef<THREE.AmbientLight | null>(null);
-  const dirLightRef = useRef<THREE.DirectionalLight | null>(null);
-  const floorMatRef = useRef<THREE.MeshStandardMaterial | null>(null);
+  const bagMaterialRef = useRef<THREE.MeshPhysicalMaterial | null>(null);
+  const printMaterialRef = useRef<THREE.MeshPhysicalMaterial | null>(null);
+  const printCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const printTextureRef = useRef<THREE.CanvasTexture | null>(null);
-  const uploadedImageRef = useRef<HTMLImageElement | null>(null);
+  const measurementLinesRef = useRef<{
+    w: THREE.Line;
+    h: THREE.Line;
+    g: THREE.Line;
+  } | null>(null);
+  const labelWRef = useRef<HTMLDivElement | null>(null);
+  const labelHRef = useRef<HTMLDivElement | null>(null);
+  const labelGRef = useRef<HTMLDivElement | null>(null);
+  const loadedImageRef = useRef<HTMLImageElement | null>(null);
   const rafRef = useRef<number | null>(null);
 
-  const [type, setType] = useState<PlasticType>("ldpe");
-  const [handle, setHandle] = useState<HandleType>("vest");
-  const [width, setWidth] = useState(40); // cm (zougi)
-  const [heightIn, setHeightIn] = useState(24); // inches
-  const [depth, setDepth] = useState(10); // cm
-  const [thickness, setThickness] = useState(50); // microns
-  const [bagColor, setBagColor] = useState("#ffffff");
+  // State
+  const [type, setType] = useState<BagType>("tshirt");
+  const [width, setWidth] = useState(30);
+  const [height, setHeight] = useState(40);
+  const [gusset, setGusset] = useState(10);
+  const [colorName, setColorName] = useState<string>("أزرق");
+  const [colorsSide1, setColorsSide1] = useState(2);
+  const [colorsSide2, setColorsSide2] = useState(1);
+  const [printMode, setPrintMode] = useState<PrintMode>("text");
+  const [printText, setPrintText] = useState("علامتك التجارية");
+  const [printColor, setPrintColor] = useState("#000000");
+  const [printSize, setPrintSize] = useState(80);
+  const [printImgSize, setPrintImgSize] = useState(150);
+  const [imageVersion, setImageVersion] = useState(0);
 
-  const [printText, setPrintText] = useState("");
-  const [floorColor, setFloorColor] = useState("#cbd5e1");
-  const [lightIntensity, setLightIntensity] = useState(100); // %
-  const [printVersion, setPrintVersion] = useState(0);
+  const totalColors = colorsSide1 + colorsSide2;
+  const colorsExceeded = totalColors > 8;
 
-  // depth max = 50% of width
-  const depthMax = useMemo(() => Math.floor(width / 2), [width]);
-  useEffect(() => {
-    if (depth > depthMax) setDepth(depthMax);
-  }, [depthMax, depth]);
-
-  // ---- Init scene ----
+  // ---- Init scene (run once) ----
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#e2e8f0");
     sceneRef.current = scene;
 
-    const w = container.clientWidth;
-    const h = container.clientHeight;
-    const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 100);
-    camera.position.set(5, 3, 7);
+    const camera = new THREE.PerspectiveCamera(
+      45,
+      container.clientWidth / container.clientHeight,
+      1,
+      1000,
+    );
+    camera.position.set(60, 40, 80);
     cameraRef.current = camera;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(w, h);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(renderer.domElement);
@@ -113,49 +137,75 @@ export default function BagConfigurator() {
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
-    controls.minDistance = 2;
-    controls.maxDistance = 15;
-    controls.target.set(0, 2, 0);
+    controls.minDistance = 30;
+    controls.maxDistance = 200;
+    controls.target.set(0, 0, 0);
     controlsRef.current = controls;
 
-    const ambient = new THREE.AmbientLight(0xffffff, 0.7);
-    scene.add(ambient);
-    ambientRef.current = ambient;
-
+    // Lighting
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
     const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
-    dirLight.position.set(4, 8, 6);
+    dirLight.position.set(50, 60, 40);
     dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 1024;
-    dirLight.shadow.mapSize.height = 1024;
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
+    dirLight.shadow.bias = -0.001;
     scene.add(dirLight);
-    dirLightRef.current = dirLight;
-
-    const backLight = new THREE.PointLight(0xf8fafc, 0.5);
-    backLight.position.set(-4, 4, -4);
+    const backLight = new THREE.DirectionalLight(0xffffff, 0.5);
+    backLight.position.set(-50, 30, -50);
     scene.add(backLight);
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+    hemiLight.position.set(0, 100, 0);
+    scene.add(hemiLight);
 
-    const floorGeo = new THREE.PlaneGeometry(30, 30);
-    const floorMat = new THREE.MeshStandardMaterial({
-      color: "#cbd5e1",
-      roughness: 0.8,
+    // Materials
+    bagMaterialRef.current = new THREE.MeshPhysicalMaterial({
+      side: THREE.DoubleSide,
+      clearcoat: 0.5,
+      clearcoatRoughness: 0.2,
     });
-    const floor = new THREE.Mesh(floorGeo, floorMat);
-    floor.rotation.x = -Math.PI / 2;
-    floor.receiveShadow = true;
-    scene.add(floor);
-    floorMatRef.current = floorMat;
 
-    const bagGroup = new THREE.Group();
-    scene.add(bagGroup);
-    bagGroupRef.current = bagGroup;
+    // Print canvas / texture
+    const printCanvas = document.createElement("canvas");
+    printCanvas.width = 1024;
+    printCanvas.height = 1024;
+    printCanvasRef.current = printCanvas;
+    const printTexture = new THREE.CanvasTexture(printCanvas);
+    printTexture.colorSpace = THREE.SRGBColorSpace;
+    printTextureRef.current = printTexture;
+
+    printMaterialRef.current = new THREE.MeshPhysicalMaterial({
+      map: printTexture,
+      transparent: true,
+      opacity: 0.85,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+
+    // Measurement lines
+    const lineMaterial = new THREE.LineBasicMaterial({ color: 0x333333 });
+    const makeLine = () => {
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute(
+        "position",
+        new THREE.BufferAttribute(new Float32Array(6), 3),
+      );
+      return new THREE.Line(geo, lineMaterial);
+    };
+    const wLine = makeLine();
+    const hLine = makeLine();
+    const gLine = makeLine();
+    scene.add(wLine, hLine, gLine);
+    measurementLinesRef.current = { w: wLine, h: hLine, g: gLine };
 
     const onResize = () => {
-      if (!container || !cameraRef.current || !rendererRef.current) return;
-      const cw = container.clientWidth;
-      const ch = container.clientHeight;
-      cameraRef.current.aspect = cw / ch;
+      if (!cameraRef.current || !rendererRef.current) return;
+      cameraRef.current.aspect =
+        container.clientWidth / container.clientHeight;
       cameraRef.current.updateProjectionMatrix();
-      rendererRef.current.setSize(cw, ch);
+      rendererRef.current.setSize(container.clientWidth, container.clientHeight);
     };
     window.addEventListener("resize", onResize);
     const ro = new ResizeObserver(onResize);
@@ -164,6 +214,7 @@ export default function BagConfigurator() {
     const animate = () => {
       rafRef.current = requestAnimationFrame(animate);
       controls.update();
+      updateLabels();
       renderer.render(scene, camera);
     };
     animate();
@@ -173,10 +224,10 @@ export default function BagConfigurator() {
       window.removeEventListener("resize", onResize);
       ro.disconnect();
       controls.dispose();
-      renderer.dispose();
       if (renderer.domElement.parentNode) {
         renderer.domElement.parentNode.removeChild(renderer.domElement);
       }
+      renderer.dispose();
       const disposed = new Set<unknown>();
       scene.traverse((obj) => {
         const mesh = obj as THREE.Mesh;
@@ -200,365 +251,304 @@ export default function BagConfigurator() {
           disposed.add(mat);
         }
       });
-      printTextureRef.current?.dispose();
-      printTextureRef.current = null;
+      printTexture.dispose();
       sceneRef.current = null;
       cameraRef.current = null;
       rendererRef.current = null;
       controlsRef.current = null;
       bagGroupRef.current = null;
-      ambientRef.current = null;
-      dirLightRef.current = null;
-      floorMatRef.current = null;
+      bagMaterialRef.current = null;
+      printMaterialRef.current = null;
+      printTextureRef.current = null;
+      measurementLinesRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Lighting intensity
-  useEffect(() => {
-    const scale = lightIntensity / 100;
-    if (ambientRef.current) ambientRef.current.intensity = 0.7 * scale;
-    if (dirLightRef.current) dirLightRef.current.intensity = 1.2 * scale;
-  }, [lightIntensity]);
+  // ---- Update labels each frame helper ----
+  function updateLabels() {
+    const camera = cameraRef.current;
+    const container = containerRef.current;
+    if (!camera || !container || !bagGroupRef.current) return;
 
-  // Floor + background color
-  useEffect(() => {
-    if (floorMatRef.current) floorMatRef.current.color.set(floorColor);
-    if (sceneRef.current && sceneRef.current.background instanceof THREE.Color) {
-      sceneRef.current.background.set(floorColor);
+    const w = stateRef.current.w;
+    const h = stateRef.current.h;
+    const g = stateRef.current.g;
+    const hw = w / 2;
+    const hh = h / 2;
+    const hd = (g > 0 ? g : 0.5) / 2;
+    const offset = 3;
+
+    if (labelWRef.current) {
+      labelWRef.current.textContent = `العرض: ${w} سم`;
+      const v = new THREE.Vector3(0, -hh - offset, hd).project(camera);
+      labelWRef.current.style.left = `${(v.x * 0.5 + 0.5) * container.clientWidth}px`;
+      labelWRef.current.style.top = `${(v.y * -0.5 + 0.5) * container.clientHeight}px`;
+      labelWRef.current.style.opacity = "1";
     }
-  }, [floorColor]);
+    if (labelHRef.current) {
+      labelHRef.current.textContent = `الطول: ${h} سم`;
+      const v = new THREE.Vector3(-hw - offset, 0, hd).project(camera);
+      labelHRef.current.style.left = `${(v.x * 0.5 + 0.5) * container.clientWidth}px`;
+      labelHRef.current.style.top = `${(v.y * -0.5 + 0.5) * container.clientHeight}px`;
+      labelHRef.current.style.opacity = "1";
+    }
+    if (labelGRef.current) {
+      if (g > 0) {
+        labelGRef.current.textContent = `الطية: ${g} سم`;
+        const v = new THREE.Vector3(hw + offset, -hh, 0).project(camera);
+        labelGRef.current.style.left = `${(v.x * 0.5 + 0.5) * container.clientWidth}px`;
+        labelGRef.current.style.top = `${(v.y * -0.5 + 0.5) * container.clientHeight}px`;
+        labelGRef.current.style.opacity = "1";
+      } else {
+        labelGRef.current.style.opacity = "0";
+      }
+    }
+  }
 
-  // Print canvas / texture
+  // Mirror state into a ref for use in the rAF callback (avoids stale closure)
+  const stateRef = useRef({ w: width, h: height, g: gusset });
+  useEffect(() => {
+    stateRef.current = { w: width, h: height, g: gusset };
+  }, [width, height, gusset]);
+
+  // ---- Build bag geometry ----
+  useEffect(() => {
+    const scene = sceneRef.current;
+    const bagMaterial = bagMaterialRef.current;
+    const printMaterial = printMaterialRef.current;
+    if (!scene || !bagMaterial || !printMaterial) return;
+
+    // Remove old bag
+    if (bagGroupRef.current) {
+      scene.remove(bagGroupRef.current);
+      bagGroupRef.current.traverse((child) => {
+        const mesh = child as THREE.Mesh;
+        if (mesh.geometry) mesh.geometry.dispose();
+      });
+      bagGroupRef.current = null;
+    }
+
+    const bagGroup = new THREE.Group();
+    scene.add(bagGroup);
+    bagGroupRef.current = bagGroup;
+
+    const hw = width / 2;
+    const hh = height / 2;
+    const d = gusset > 0 ? gusset : 0.2;
+    const hd = d / 2;
+
+    const shape = new THREE.Shape();
+    shape.moveTo(-hw, -hh);
+    shape.lineTo(hw, -hh);
+
+    const handleHeight = 10;
+    const handleWidth = width * 0.25;
+
+    if (type === "tshirt") {
+      shape.lineTo(hw, hh + handleHeight);
+      shape.lineTo(hw - handleWidth, hh + handleHeight);
+      shape.lineTo(hw - handleWidth, hh);
+      shape.lineTo(-hw + handleWidth, hh);
+      shape.lineTo(-hw + handleWidth, hh + handleHeight);
+      shape.lineTo(-hw, hh + handleHeight);
+      shape.lineTo(-hw, -hh);
+    } else {
+      shape.lineTo(hw, hh);
+      shape.lineTo(-hw, hh);
+      shape.lineTo(-hw, -hh);
+    }
+
+    if (type === "diecut") {
+      const holePath = new THREE.Path();
+      const holeW = Math.min(width * 0.3, 12) / 2;
+      const holeH = 3;
+      const holeY = hh - 6;
+      holePath.absellipse(0, holeY, holeW, holeH, 0, Math.PI * 2, false, 0);
+      shape.holes.push(holePath);
+    }
+
+    const shapeGeo = new THREE.ShapeGeometry(shape, 32);
+
+    const frontMesh = new THREE.Mesh(shapeGeo, bagMaterial);
+    frontMesh.position.z = hd;
+    frontMesh.castShadow = true;
+    frontMesh.receiveShadow = true;
+    bagGroup.add(frontMesh);
+
+    const printMesh = new THREE.Mesh(shapeGeo, printMaterial);
+    printMesh.position.z = hd;
+    bagGroup.add(printMesh);
+
+    const backMesh = new THREE.Mesh(shapeGeo, bagMaterial);
+    backMesh.position.z = -hd;
+    backMesh.rotation.y = Math.PI;
+    backMesh.castShadow = true;
+    backMesh.receiveShadow = true;
+    bagGroup.add(backMesh);
+
+    const addWall = (
+      w: number,
+      h: number,
+      px: number,
+      py: number,
+      pz: number,
+      rx?: number,
+      ry?: number,
+    ) => {
+      const geo = new THREE.PlaneGeometry(w, h);
+      const mesh = new THREE.Mesh(geo, bagMaterial);
+      mesh.position.set(px, py, pz);
+      if (rx) mesh.rotation.x = rx;
+      if (ry) mesh.rotation.y = ry;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      bagGroup.add(mesh);
+    };
+
+    // Bottom
+    addWall(width, d, 0, -hh, 0, Math.PI / 2, 0);
+
+    if (type === "tshirt") {
+      const sideHeight = height + handleHeight;
+      const centerY = (-hh + (hh + handleHeight)) / 2;
+      addWall(d, sideHeight, -hw, centerY, 0, 0, Math.PI / 2);
+      addWall(d, sideHeight, hw, centerY, 0, 0, Math.PI / 2);
+      addWall(handleWidth, d, -hw + handleWidth / 2, hh + handleHeight, 0, Math.PI / 2, 0);
+      addWall(handleWidth, d, hw - handleWidth / 2, hh + handleHeight, 0, Math.PI / 2, 0);
+      addWall(d, handleHeight, hw - handleWidth, hh + handleHeight / 2, 0, 0, Math.PI / 2);
+      addWall(d, handleHeight, -hw + handleWidth, hh + handleHeight / 2, 0, 0, Math.PI / 2);
+      addWall(width - handleWidth * 2, d, 0, hh, 0, Math.PI / 2, 0);
+    } else {
+      addWall(d, height, -hw, 0, 0, 0, Math.PI / 2);
+      addWall(d, height, hw, 0, 0, 0, Math.PI / 2);
+    }
+
+    if (type === "softloop") {
+      const loopRadius = width * 0.15;
+      const tubeRadius = 0.6;
+      const loopGeo = new THREE.TorusGeometry(
+        loopRadius,
+        tubeRadius,
+        8,
+        32,
+        Math.PI,
+      );
+      const handleFront = new THREE.Mesh(loopGeo, bagMaterial);
+      handleFront.position.set(0, hh, hd);
+      handleFront.castShadow = true;
+      const handleBack = new THREE.Mesh(loopGeo, bagMaterial);
+      handleBack.position.set(0, hh, -hd);
+      handleBack.castShadow = true;
+      bagGroup.add(handleFront, handleBack);
+    }
+
+    // Update measurement lines
+    const lines = measurementLinesRef.current;
+    if (lines) {
+      const offset = 3;
+      const wPos = (lines.w.geometry.attributes.position as THREE.BufferAttribute)
+        .array as Float32Array;
+      wPos[0] = -hw; wPos[1] = -hh - offset; wPos[2] = hd;
+      wPos[3] = hw; wPos[4] = -hh - offset; wPos[5] = hd;
+      lines.w.geometry.attributes.position.needsUpdate = true;
+
+      const hPos = (lines.h.geometry.attributes.position as THREE.BufferAttribute)
+        .array as Float32Array;
+      hPos[0] = -hw - offset; hPos[1] = -hh; hPos[2] = hd;
+      hPos[3] = -hw - offset; hPos[4] = hh; hPos[5] = hd;
+      lines.h.geometry.attributes.position.needsUpdate = true;
+
+      if (gusset > 0) {
+        lines.g.visible = true;
+        const gPos = (lines.g.geometry.attributes.position as THREE.BufferAttribute)
+          .array as Float32Array;
+        gPos[0] = hw + offset; gPos[1] = -hh; gPos[2] = hd;
+        gPos[3] = hw + offset; gPos[4] = -hh; gPos[5] = -hd;
+        lines.g.geometry.attributes.position.needsUpdate = true;
+      } else {
+        lines.g.visible = false;
+      }
+    }
+  }, [type, width, height, gusset]);
+
+  // ---- Apply color material ----
+  useEffect(() => {
+    const bagMaterial = bagMaterialRef.current;
+    const printMaterial = printMaterialRef.current;
+    if (!bagMaterial || !printMaterial) return;
+
+    const cProps = BAG_COLORS[colorName];
+    if (!cProps) return;
+
+    bagMaterial.color.set(cProps.hex);
+    bagMaterial.roughness = cProps.roughness;
+    bagMaterial.metalness = cProps.metalness ?? 0;
+
+    if (cProps.transparent) {
+      bagMaterial.transparent = true;
+      bagMaterial.transmission = cProps.transmission;
+      bagMaterial.opacity = cProps.opacity ?? 1;
+      bagMaterial.ior = cProps.ior ?? 1.5;
+      bagMaterial.thickness = cProps.thickness ?? 0.1;
+    } else {
+      bagMaterial.transparent = false;
+      bagMaterial.transmission = 0;
+      bagMaterial.opacity = 1;
+    }
+    bagMaterial.needsUpdate = true;
+
+    printMaterial.roughness = cProps.roughness;
+    printMaterial.metalness = cProps.metalness ?? 0;
+    printMaterial.needsUpdate = true;
+  }, [colorName]);
+
+  // ---- Update print canvas ----
   useEffect(() => {
     const canvas = printCanvasRef.current;
-    if (!canvas) return;
+    const tex = printTextureRef.current;
+    if (!canvas || !tex) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, 1024, 1024);
+    const yOffset = type === "tshirt" ? 620 : 512;
 
-    const img = uploadedImageRef.current;
-    if (img) {
-      const imgAspect = img.width / img.height;
-      let drawW = canvas.width * 0.6;
-      let drawH = drawW / imgAspect;
-      if (drawH > canvas.height * 0.6) {
-        drawH = canvas.height * 0.6;
-        drawW = drawH * imgAspect;
+    if (printMode === "text") {
+      if (printText.trim() !== "") {
+        ctx.fillStyle = printColor;
+        ctx.font = `bold ${printSize * 2}px Tajawal, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(printText, 512, yOffset);
       }
-      ctx.drawImage(
-        img,
-        (canvas.width - drawW) / 2,
-        (canvas.height - drawH) / 2,
-        drawW,
-        drawH,
-      );
-    } else if (printText) {
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      const cx = canvas.width / 2;
-      const cy = canvas.height / 2;
-      ctx.font = "bold 100px Tajawal, sans-serif";
-      ctx.fillStyle = "#0f172a";
-      ctx.fillText(printText, cx, cy);
-      ctx.strokeStyle = "#0ea5e9";
-      ctx.lineWidth = 4;
-      ctx.strokeText(printText, cx + 5, cy + 5);
-    }
+    } else if (printMode === "image" && loadedImageRef.current) {
+      const img = loadedImageRef.current;
+      const maxDim = printImgSize * 4;
+      let w = img.width;
+      let h = img.height;
+      const scale = Math.min(maxDim / w, maxDim / h);
+      w *= scale;
+      h *= scale;
 
-    if (!printTextureRef.current) {
-      const tex = new THREE.CanvasTexture(canvas);
-      const renderer = rendererRef.current;
-      if (renderer) tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-      printTextureRef.current = tex;
-    } else {
-      printTextureRef.current.needsUpdate = true;
-    }
-  }, [printVersion, printText]);
+      ctx.drawImage(img, 512 - w / 2, yOffset - h / 2, w, h);
 
-  // Bag geometry rebuild
-  useEffect(() => {
-    const bagGroup = bagGroupRef.current;
-    const controls = controlsRef.current;
-    if (!bagGroup || !controls) return;
-
-    while (bagGroup.children.length > 0) {
-      const child = bagGroup.children[0] as THREE.Mesh;
-      bagGroup.remove(child);
-      child.geometry?.dispose?.();
-      const mat = child.material as THREE.Material | THREE.Material[];
-      if (Array.isArray(mat)) mat.forEach((m) => m.dispose());
-      else mat?.dispose?.();
-    }
-
-    const w_cm = width;
-    const h_cm = heightIn * 2.54;
-    const w = w_cm / SCALE;
-    const h = h_cm / SCALE;
-    let d = depth / SCALE;
-    if (d === 0) d = 0.02;
-
-    const material = getPlasticMaterial(type, bagColor, thickness);
-
-    const geo = new THREE.BoxGeometry(w, h, d, 32, 32, 4);
-    geo.translate(0, h / 2, 0);
-
-    // Vest (T-shirt) handle dims — height scales with bag, clamped 11..16 cm
-    const vestHandleHeightCm = Math.min(16, Math.max(11, h_cm * 0.32));
-    const vestHandleUnits = vestHandleHeightCm / SCALE;
-    // Central U-shaped neck cut — width scales with bag width, clamped 14..50 cm,
-    // and never exceeds 80% of the bag width. Depth scales with bag height,
-    // clamped 10..16 cm.
-    const neckWidthCm = Math.min(50, Math.max(14, Math.min(w_cm * 0.8, w_cm * 0.55)));
-    const neckHalfW = neckWidthCm / 2 / SCALE;
-    const neckDepthCm = Math.min(16, Math.max(10, h_cm * 0.25));
-    const neckDepthUnits = Math.min(vestHandleUnits, neckDepthCm / SCALE);
-    // Strap base center sits between neck edge and bag edge.
-    const strapBaseCenter = (neckHalfW + w / 2) * 0.5;
-    // Half-width of the strap at the top (the grip) — narrow.
-    const strapTopHalfW = Math.min((w / 2 - neckHalfW) * 0.25, w * 0.045);
-    const shoulderDropUnits = Math.min(0.22, h * 0.06); // soft shoulder below handles
-
-    const pos = geo.getAttribute("position");
-    for (let i = 0; i < pos.count; i++) {
-      let x = pos.getX(i);
-      let y = pos.getY(i);
-      let z = pos.getZ(i);
-      const yNorm = y / h;
-
-      if (Math.abs(x) > w / 2 - 0.05 && Math.abs(z) < d / 4) {
-        x -= Math.sign(x) * (d * 0.4);
-      }
-
-      if (handle === "vest") {
-        const shoulderY = h - vestHandleUnits;
-        const handleThreshold = shoulderY / h;
-
-        if (yNorm > handleThreshold) {
-          // Region above the shoulders: carve neck and shape straps.
-          const tHandle = (y - shoulderY) / vestHandleUnits; // 0 at shoulder → 1 at top
-          const ax = Math.abs(x);
-          const sign = Math.sign(x) || 1;
-
-          if (ax < neckHalfW) {
-            // Central U-shaped neck cutout — smooth cosine dip, scaled by
-            // tHandle so vertices at the shoulder stay put and only the top
-            // edge curves into the U. This eliminates the triangular wedge
-            // that previously appeared in the middle when every neck vertex
-            // was pulled down by the same amount.
-            const tClamp = Math.min(1, Math.max(0, tHandle));
-            const dipShape =
-              0.5 * (1 + Math.cos((x / neckHalfW) * Math.PI));
-            const dip = neckDepthUnits * dipShape * tClamp;
-            y -= dip;
-          } else {
-            // Strap region: smoothly interpolate strap half-width from base
-            // (full strap) at the shoulder to a narrow grip at the top.
-            const baseInner = neckHalfW;
-            const baseOuter = w / 2;
-            const baseHalfW = Math.max((baseOuter - baseInner) * 0.5, 0.001);
-            const baseCenter = strapBaseCenter;
-            // Ease tHandle for a softer transition
-            const e = tHandle * tHandle * (3 - 2 * tHandle);
-            const halfW = baseHalfW * (1 - e) + strapTopHalfW * e;
-
-            // Distance from the base strap centerline (in original coords)
-            const dCenter = ax - baseCenter;
-            // Squash the strap toward its center as we rise
-            const newAx = baseCenter + dCenter * (halfW / baseHalfW);
-            // Never collapse the strap into the neck — clamp to neck edge.
-            x = sign * Math.max(newAx, neckHalfW + 0.005);
-            // Round the very top of each strap
-            if (tHandle > 0.8) {
-              const k = (tHandle - 0.8) / 0.2;
-              y -= vestHandleUnits * 0.08 * k * k;
-            }
-          }
-        } else if (yNorm > handleThreshold - 0.08) {
-          // Soft "shoulder" curve just below the handles for a natural T-shirt
-          // silhouette instead of a hard 90° step.
-          const k = (yNorm - (handleThreshold - 0.08)) / 0.08;
-          if (Math.abs(x) > neckHalfW && Math.abs(x) < w * 0.45) {
-            y -= shoulderDropUnits * k * k;
+      try {
+        const imgData = ctx.getImageData(0, 0, 1024, 1024);
+        const data = imgData.data;
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i] > 235 && data[i + 1] > 235 && data[i + 2] > 235) {
+            data[i + 3] = 0;
           }
         }
-      } else {
-        if (yNorm > 0.85) {
-          z *= 0.2;
-        }
+        ctx.putImageData(imgData, 0, 0);
+      } catch {
+        // ignore (e.g., tainted canvas)
       }
-
-      pos.setXYZ(i, x, y, z);
-    }
-    geo.computeVertexNormals();
-
-    const bagMesh = new THREE.Mesh(geo, material);
-    bagMesh.castShadow = true;
-    bagGroup.add(bagMesh);
-
-    if (handle === "banana") {
-      // ===== Realistic die-cut "banana" handle =====
-      // Builds a stadium/capsule-shaped hole on BOTH faces of the bag with:
-      //  - A reinforced bag-colored rim (the welded/pressed border around the cut)
-      //  - A dark inner fill simulating the punched-through opening
-      //  - A subtle outline edge for the die-cut crispness
-      const holeHalfW = w * 0.16;        // half-length of the slit
-      const holeHalfH = h_cm > 40 ? 0.07 : 0.05; // thickness of the slit
-      const holeY = h * 0.9;
-
-      const makeStadium = (hw: number, hh: number) => {
-        const s = new THREE.Shape();
-        const r = hh;
-        s.moveTo(-hw + r, -r);
-        s.lineTo(hw - r, -r);
-        s.absarc(hw - r, 0, r, -Math.PI / 2, Math.PI / 2, false);
-        s.lineTo(-hw + r, r);
-        s.absarc(-hw + r, 0, r, Math.PI / 2, -Math.PI / 2, false);
-        return s;
-      };
-
-      // Reinforced rim (bag-colored ring around the hole)
-      const rimHalfW = holeHalfW * 1.18;
-      const rimHalfH = holeHalfH * 2.2;
-      const rimShape = makeStadium(rimHalfW, rimHalfH);
-      rimShape.holes.push(makeStadium(holeHalfW, holeHalfH));
-      const rimGeo = new THREE.ShapeGeometry(rimShape, 32);
-      const rimMat = new THREE.MeshStandardMaterial({
-        color: bagColor,
-        roughness: 0.55,
-        metalness: 0.0,
-        side: THREE.DoubleSide,
-      });
-
-      // Dark inner "see-through" fill
-      const innerShape = makeStadium(holeHalfW, holeHalfH);
-      const innerGeo = new THREE.ShapeGeometry(innerShape, 32);
-      const innerMat = new THREE.MeshBasicMaterial({
-        color: 0x0a0d12,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.92,
-      });
-
-      // Crisp die-cut outline
-      const outlinePts = makeStadium(holeHalfW, holeHalfH).getPoints(64);
-      const outlineGeo = new THREE.BufferGeometry().setFromPoints(
-        outlinePts.map((p) => new THREE.Vector3(p.x, p.y, 0)),
-      );
-      const outlineMat = new THREE.LineBasicMaterial({
-        color: 0x000000,
-        transparent: true,
-        opacity: 0.55,
-      });
-
-      // Front face
-      const rimFront = new THREE.Mesh(rimGeo, rimMat);
-      rimFront.position.set(0, holeY, d / 2 + 0.002);
-      bagGroup.add(rimFront);
-      const innerFront = new THREE.Mesh(innerGeo, innerMat);
-      innerFront.position.set(0, holeY, d / 2 + 0.0015);
-      bagGroup.add(innerFront);
-      const outlineFront = new THREE.LineLoop(outlineGeo, outlineMat);
-      outlineFront.position.set(0, holeY, d / 2 + 0.003);
-      bagGroup.add(outlineFront);
-
-      // Back face (mirrored)
-      const rimBack = new THREE.Mesh(rimGeo, rimMat);
-      rimBack.position.set(0, holeY, -d / 2 - 0.002);
-      rimBack.rotation.y = Math.PI;
-      bagGroup.add(rimBack);
-      const innerBack = new THREE.Mesh(innerGeo, innerMat);
-      innerBack.position.set(0, holeY, -d / 2 - 0.0015);
-      innerBack.rotation.y = Math.PI;
-      bagGroup.add(innerBack);
-      const outlineBack = new THREE.LineLoop(outlineGeo, outlineMat);
-      outlineBack.position.set(0, holeY, -d / 2 - 0.003);
-      outlineBack.rotation.y = Math.PI;
-      bagGroup.add(outlineBack);
-    } else if (handle === "loop") {
-      // ===== Realistic welded loop handle =====
-      // Two welded plastic loops on top: each is a flat strap (TubeGeometry along
-      // a half-circle curve) with a small flat welded base at each attachment point.
-      const loopRadius = Math.min(w * 0.22, h * 0.35);
-      const strapTube = 0.045;            // strap thickness (round cross-section radius)
-      const strapWidthScale = 1.8;        // scale tube along bag-depth axis to look like a flat strap
-      const weldYOffset = 0.02;           // slight overlap into bag top to look welded
-
-      // Build a half-circle curve in the X–Y plane for one loop
-      const buildHalfLoopCurve = () => {
-        const pts: THREE.Vector3[] = [];
-        const segs = 48;
-        for (let i = 0; i <= segs; i++) {
-          const t = i / segs;
-          const angle = Math.PI * t; // 0 → π
-          pts.push(
-            new THREE.Vector3(
-              -Math.cos(angle) * loopRadius,
-              Math.sin(angle) * loopRadius,
-              0,
-            ),
-          );
-        }
-        return new THREE.CatmullRomCurve3(pts, false, "catmullrom", 0.0);
-      };
-
-      const loopMat = new THREE.MeshStandardMaterial({
-        color: bagColor,
-        roughness: 0.45,
-        metalness: 0.0,
-        transparent: material.transparent,
-        opacity: Math.min(1, (material.opacity ?? 1) + 0.15),
-        side: THREE.DoubleSide,
-      });
-
-      const baseGeo = new THREE.BoxGeometry(
-        strapTube * 4,
-        0.04,
-        strapTube * 2 * strapWidthScale,
-      );
-
-      const placements: Array<{ z: number; rotY: number }> = [
-        { z: d / 2 - strapTube * 0.6, rotY: 0 },
-        { z: -d / 2 + strapTube * 0.6, rotY: 0 },
-      ];
-
-      placements.forEach(({ z }) => {
-        // Strap (flat tube)
-        const curve = buildHalfLoopCurve();
-        const tubeGeo = new THREE.TubeGeometry(curve, 48, strapTube, 12, false);
-        // Flatten cross-section along Z so it looks like a flat strap
-        tubeGeo.scale(1, 1, strapWidthScale);
-        const strap = new THREE.Mesh(tubeGeo, loopMat);
-        strap.position.set(0, h - weldYOffset, z);
-        strap.castShadow = true;
-        bagGroup.add(strap);
-
-        // Welded base patches at the two attachment points
-        [-loopRadius, loopRadius].forEach((xWeld) => {
-          const base = new THREE.Mesh(baseGeo, loopMat);
-          base.position.set(xWeld, h - weldYOffset - 0.015, z);
-          base.castShadow = true;
-          bagGroup.add(base);
-        });
-      });
     }
 
-    if (printTextureRef.current) {
-      const printMat = new THREE.MeshBasicMaterial({
-        map: printTextureRef.current,
-        transparent: true,
-        depthWrite: false,
-        polygonOffset: true,
-        polygonOffsetFactor: -1,
-      });
-      const printGeo = geo.clone();
-      const printMesh = new THREE.Mesh(printGeo, printMat);
-      printMesh.scale.set(1.002, 1.002, 1.002);
-      bagGroup.add(printMesh);
-    }
-
-    controls.target.set(0, h / 2, 0);
-  }, [type, handle, width, heightIn, depth, thickness, bagColor, printVersion]);
+    tex.needsUpdate = true;
+  }, [type, printMode, printText, printColor, printSize, printImgSize, imageVersion]);
 
   const onUploadImage = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -567,17 +557,30 @@ export default function BagConfigurator() {
     reader.onload = (evt) => {
       const img = new Image();
       img.onload = () => {
-        uploadedImageRef.current = img;
-        setPrintVersion((v) => v + 1);
+        loadedImageRef.current = img;
+        setImageVersion((v) => v + 1);
       };
       img.src = String(evt.target?.result || "");
     };
     reader.readAsDataURL(file);
   };
 
+  const colorEntries = useMemo(() => Object.entries(BAG_COLORS), []);
+
+  const stepHeader = (n: number, title: string, accent = "blue") => (
+    <h3 className="font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2">
+      <span
+        className={`w-6 h-6 rounded flex items-center justify-center text-sm bg-${accent}-100 text-${accent}-600`}
+      >
+        {n}
+      </span>
+      {title}
+    </h3>
+  );
+
   return (
     <PageLayout
-      title="تصميم نموذج الأكياس"
+      title="معالج تصميم الأكياس"
       description="صمّم الكيس بصرياً واضبط مواصفاته الفنية في الوقت الفعلي"
       actions={
         <Button asChild variant="outline" size="sm" className="gap-1.5">
@@ -588,256 +591,323 @@ export default function BagConfigurator() {
         </Button>
       }
     >
-      <div dir="rtl" className="grid gap-4 lg:grid-cols-3">
-        {/* 3D Viewer */}
-        <Card className="lg:col-span-2 overflow-hidden">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Boxes className="h-5 w-5 text-blue-500" />
-              معاينة ثلاثية الأبعاد
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div
-              ref={containerRef}
-              className="w-full bg-slate-100"
-              style={{ height: "min(70vh, 640px)", minHeight: "420px" }}
-            />
-          </CardContent>
-        </Card>
+      <div
+        dir="rtl"
+        className="grid gap-4 lg:grid-cols-[24rem_1fr]"
+        style={{ fontFamily: "Tajawal, sans-serif" }}
+      >
+        {/* Sidebar / Controls */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col max-h-[calc(100vh-12rem)]">
+          <div className="p-5 bg-blue-600 text-white text-center">
+            <h2 className="text-xl font-bold">مُصمم الأكياس المتقدم</h2>
+            <p className="text-xs text-blue-100 mt-1">
+              تخصيص الأبعاد، الألوان، والطباعة
+            </p>
+          </div>
 
-        {/* Specifications panel */}
-        <div
-          className="space-y-4"
-          style={{ fontFamily: "Tajawal, sans-serif" }}
-        >
-        {/* القياسات */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm border border-slate-100 dark:border-gray-700 space-y-3">
-          <h2 className="text-sm font-bold text-slate-700 dark:text-slate-200">القياسات</h2>
-
-          <div>
-            <div className="flex justify-between mb-1">
-              <label className="text-xs text-slate-600">العرض (سم):</label>
-              <span className="text-xs font-bold text-blue-600">
-                {width} سم
-              </span>
+          <div className="p-5 space-y-6 overflow-y-auto flex-1">
+            {/* 1. Bag Type */}
+            <div className="space-y-3">
+              {stepHeader(1, "نوع الكيس")}
+              <div className="grid grid-cols-2 gap-2">
+                {BAG_TYPE_OPTIONS.map((opt) => (
+                  <label
+                    key={opt.value}
+                    className={`flex items-center gap-2 p-3 border rounded-lg cursor-pointer transition ${
+                      type === opt.value
+                        ? "bg-blue-50 border-blue-500 dark:bg-blue-900/30"
+                        : "bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="bagType"
+                      value={opt.value}
+                      checked={type === opt.value}
+                      onChange={() => setType(opt.value)}
+                      className="text-blue-600 w-4 h-4"
+                    />
+                    <span className="text-sm font-medium">{opt.label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
-            <input
-              type="range"
-              min={20}
-              max={80}
-              step={2}
-              value={width}
-              onChange={(e) => setWidth(parseInt(e.target.value))}
-              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none accent-sky-500"
-            />
-          </div>
 
-          <div>
-            <div className="flex justify-between mb-1">
-              <label className="text-xs text-slate-600">الطول (انش):</label>
-              <span className="text-xs font-bold text-blue-600">
-                {heightIn} انش
-              </span>
-            </div>
-            <input
-              type="range"
-              min={10}
-              max={38}
-              step={2}
-              value={heightIn}
-              onChange={(e) => setHeightIn(parseInt(e.target.value))}
-              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none accent-sky-500"
-            />
-          </div>
+            {/* 2. Dimensions */}
+            <div className="space-y-4">
+              {stepHeader(2, "المقاسات بالسم")}
 
-          <div>
-            <div className="flex justify-between mb-1">
-              <label className="text-xs text-slate-600">
-                الطية (حتى 50% من العرض):
-              </label>
-              <span className="text-xs font-bold text-blue-600">
-                {depth} سم
-              </span>
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={depthMax}
-              step={1}
-              value={depth}
-              onChange={(e) => setDepth(parseInt(e.target.value))}
-              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none accent-sky-500"
-            />
-          </div>
-
-          <div>
-            <div className="flex justify-between mb-1">
-              <label className="text-xs text-slate-600">السماكة:</label>
-              <span className="text-xs font-bold text-blue-600">
-                {thickness} مايكرون
-              </span>
-            </div>
-            <input
-              type="range"
-              min={35}
-              max={150}
-              step={1}
-              value={thickness}
-              onChange={(e) => setThickness(parseInt(e.target.value))}
-              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none accent-sky-500"
-            />
-          </div>
-        </div>
-
-        {/* المادة والمقبض */}
-        <div className="bg-white rounded-lg p-3 shadow-sm border border-slate-100 space-y-3">
-          <h2 className="text-sm font-bold text-slate-700">المادة والمقبض</h2>
-
-          <div className="grid grid-cols-2 gap-2 text-[#000000] font-bold text-[18px] text-center">
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value as PlasticType)}
-              className="text-xs bg-slate-50 border border-slate-200 rounded p-1.5 outline-none focus:border-blue-400"
-            >
-              <option value="ldpe">LDPE (لامع/ناعم)</option>
-              <option value="hdpe">HDPE (مطفي/قاسي)</option>
-            </select>
-            <select
-              value={handle}
-              onChange={(e) => setHandle(e.target.value as HandleType)}
-              className="text-xs bg-slate-50 border border-slate-200 rounded p-1.5 outline-none focus:border-blue-400"
-            >
-              <option value="vest">علاقي (T-Shirt)</option>
-              <option value="banana">بنانة (Die-Cut)</option>
-              <option value="loop">شريط (Loop)</option>
-              <option value="none">بدون مقبض</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="text-xs text-slate-600 block mb-1">
-              لون الكيس الأساسي:
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {PRESET_COLORS.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setBagColor(c)}
-                  style={{ backgroundColor: c }}
-                  className={`w-6 h-6 rounded-full border ${
-                    bagColor === c
-                      ? "outline outline-[3px] outline-sky-500 outline-offset-2 border-gray-300"
-                      : "border-gray-300"
-                  }`}
-                  aria-label={c}
-                />
+              {[
+                {
+                  label: "العرض (Width)",
+                  value: width,
+                  set: setWidth,
+                  min: 15,
+                  max: 60,
+                },
+                {
+                  label: "الطول (Height)",
+                  value: height,
+                  set: setHeight,
+                  min: 20,
+                  max: 80,
+                },
+                {
+                  label: "الطية / العمق (Gusset)",
+                  value: gusset,
+                  set: setGusset,
+                  min: 0,
+                  max: 25,
+                },
+              ].map((d) => (
+                <div key={d.label}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <label>{d.label}</label>
+                    <span className="font-bold text-blue-600">
+                      {d.value} سم
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={d.min}
+                    max={d.max}
+                    value={d.value}
+                    onChange={(e) => d.set(parseInt(e.target.value))}
+                    className="w-full accent-blue-600"
+                  />
+                </div>
               ))}
             </div>
-          </div>
-        </div>
 
-        {/* البيئة والإضاءة */}
-        <div className="bg-white rounded-lg p-3 shadow-sm border border-slate-100 space-y-3">
-          <h2 className="text-sm font-bold text-slate-700">البيئة والإضاءة</h2>
-
-          <div>
-            <div className="flex justify-between mb-1">
-              <label className="text-xs text-slate-600">شدة الإضاءة:</label>
-              <span className="text-xs font-bold text-blue-600">
-                {lightIntensity}%
-              </span>
+            {/* 3. Bag Color */}
+            <div className="space-y-3">
+              {stepHeader(3, "لون الكيس الأساسي")}
+              <div className="flex flex-wrap gap-2">
+                {colorEntries.map(([name, props]) => {
+                  const active = colorName === name;
+                  return (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => setColorName(name)}
+                      title={name}
+                      style={{
+                        backgroundColor: props.hex,
+                        ...(LIGHT_COLORS.has(name)
+                          ? { border: "1px solid #ccc" }
+                          : {}),
+                      }}
+                      className={`w-8 h-8 rounded-full cursor-pointer transition shadow-sm ${
+                        active
+                          ? "ring-2 ring-offset-2 ring-blue-600 scale-110"
+                          : "hover:scale-110"
+                      }`}
+                    />
+                  );
+                })}
+              </div>
+              <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                اللون المختار:{" "}
+                <span className="font-bold text-gray-800 dark:text-gray-100">
+                  {colorName}
+                </span>
+              </div>
             </div>
-            <input
-              type="range"
-              min={20}
-              max={200}
-              step={1}
-              value={lightIntensity}
-              onChange={(e) => setLightIntensity(parseInt(e.target.value))}
-              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none accent-sky-500"
-            />
-          </div>
 
-          <div>
-            <label className="text-xs text-slate-600 block mb-1">
-              لون الاستوديو (الأرضية والخلفية):
-            </label>
-            <div className="flex items-center gap-2 bg-slate-50 p-1 rounded border border-slate-200">
-              <input
-                type="color"
-                value={floorColor}
-                onChange={(e) => setFloorColor(e.target.value)}
-                className="w-8 h-8 rounded cursor-pointer border-0 bg-transparent p-0"
-              />
-              <span className="text-xs text-slate-500 font-medium px-1">
-                انقر لاختيار لون البيئة
-              </span>
+            {/* 4. Print Colors */}
+            <div className="space-y-4 bg-gray-50 dark:bg-gray-700/40 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+              {stepHeader(4, "تفاصيل الطباعة", "purple")}
+              <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                الحد الأقصى الإجمالي للألوان هو 8 ألوان. (ملاحظة: إذا كان اللون
+                أسود في الوجه الأول وأسود في الوجه الثاني، فإنه يُحسب كلونين).
+              </p>
+
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="block text-sm mb-1">الوجه الأول (A)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={8}
+                    value={colorsSide1}
+                    onChange={(e) =>
+                      setColorsSide1(Math.max(0, parseInt(e.target.value) || 0))
+                    }
+                    className="w-full border rounded p-2 text-center text-lg focus:ring-2 focus:ring-purple-500 outline-none bg-white dark:bg-gray-800 dark:border-gray-600"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm mb-1">الوجه الثاني (B)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={8}
+                    value={colorsSide2}
+                    onChange={(e) =>
+                      setColorsSide2(Math.max(0, parseInt(e.target.value) || 0))
+                    }
+                    className="w-full border rounded p-2 text-center text-lg focus:ring-2 focus:ring-purple-500 outline-none bg-white dark:bg-gray-800 dark:border-gray-600"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-1">
+                <div className="flex justify-between items-center bg-white dark:bg-gray-800 p-3 rounded shadow-sm border dark:border-gray-700">
+                  <span className="text-sm font-bold">
+                    إجمالي الألوان المستخدمة:
+                  </span>
+                  <span
+                    className={`text-lg font-bold ${
+                      colorsExceeded ? "text-red-600" : "text-purple-600"
+                    }`}
+                  >
+                    {totalColors} / 8
+                  </span>
+                </div>
+                {colorsExceeded && (
+                  <p className="text-red-500 text-xs mt-2 font-bold">
+                    عذراً، لا يمكن تجاوز 8 ألوان كحد أقصى للطباعة!
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* 5. Print Design */}
+            <div className="space-y-4 bg-gray-50 dark:bg-gray-700/40 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+              {stepHeader(5, "تصميم الطباعة الحية", "green")}
+
+              <div className="flex gap-2">
+                {[
+                  { mode: "text" as PrintMode, label: "إضافة نص" },
+                  { mode: "image" as PrintMode, label: "رفع شعار" },
+                ].map((t) => (
+                  <button
+                    key={t.mode}
+                    type="button"
+                    onClick={() => setPrintMode(t.mode)}
+                    className={`flex-1 text-center p-2 border rounded transition ${
+                      printMode === t.mode
+                        ? "bg-blue-50 border-blue-500 dark:bg-blue-900/30"
+                        : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600"
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+
+              {printMode === "text" ? (
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    value={printText}
+                    onChange={(e) => setPrintText(e.target.value)}
+                    placeholder="أدخل النص هنا..."
+                    className="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 dark:border-gray-600"
+                  />
+                  <div className="flex gap-3 items-center">
+                    <div className="flex flex-col">
+                      <label className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                        لون النص
+                      </label>
+                      <input
+                        type="color"
+                        value={printColor}
+                        onChange={(e) => setPrintColor(e.target.value)}
+                        className="w-10 h-10 p-0 border-0 rounded cursor-pointer bg-transparent"
+                      />
+                    </div>
+                    <div className="flex-1 flex flex-col">
+                      <label className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                        حجم الطباعة
+                      </label>
+                      <input
+                        type="range"
+                        min={20}
+                        max={250}
+                        value={printSize}
+                        onChange={(e) => setPrintSize(parseInt(e.target.value))}
+                        className="w-full accent-blue-600"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={onUploadImage}
+                    className="w-full p-2 border rounded bg-white dark:bg-gray-800 dark:border-gray-600 text-sm cursor-pointer"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight">
+                    سيتم إزالة الخلفية البيضاء للشعار تلقائياً لمحاكاة الطباعة
+                    المفرغة على الكيس.
+                  </p>
+                  <div className="flex flex-col mt-2">
+                    <label className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                      حجم الشعار
+                    </label>
+                    <input
+                      type="range"
+                      min={50}
+                      max={400}
+                      value={printImgSize}
+                      onChange={(e) => setPrintImgSize(parseInt(e.target.value))}
+                      className="w-full accent-blue-600"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* التصميم والطباعة */}
-        <div className="bg-blue-50/40 rounded-lg p-3 shadow-sm border border-blue-100 space-y-3">
-          <h2 className="text-sm font-bold text-blue-900">
-            التصميم (محاكاة الطباعة)
-          </h2>
+        {/* 3D Viewer */}
+        <div className="relative bg-gradient-to-br from-gray-100 to-gray-300 dark:from-gray-800 dark:to-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div
+            ref={containerRef}
+            className="w-full"
+            style={{ height: "min(75vh, 720px)", minHeight: "480px" }}
+          />
 
-          <div>
-            <label className="text-[11px] font-semibold text-slate-500 block mb-1">
-              إرفاق تصميم جاهز (صورة شفافة PNG يفضل)
-            </label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={onUploadImage}
-              className="w-full text-xs text-slate-500 file:ml-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 cursor-pointer"
-            />
+          {/* Measurement labels */}
+          <div
+            ref={labelWRef}
+            className="absolute pointer-events-none px-2 py-1 rounded text-xs whitespace-nowrap text-white shadow"
+            style={{
+              background: "rgba(0,0,0,0.75)",
+              transform: "translate(-50%, -50%)",
+              opacity: 0,
+              transition: "opacity .2s",
+            }}
+          />
+          <div
+            ref={labelHRef}
+            className="absolute pointer-events-none px-2 py-1 rounded text-xs whitespace-nowrap text-white shadow"
+            style={{
+              background: "rgba(0,0,0,0.75)",
+              transform: "translate(-50%, -50%)",
+              opacity: 0,
+              transition: "opacity .2s",
+            }}
+          />
+          <div
+            ref={labelGRef}
+            className="absolute pointer-events-none px-2 py-1 rounded text-xs whitespace-nowrap text-white shadow"
+            style={{
+              background: "rgba(0,0,0,0.75)",
+              transform: "translate(-50%, -50%)",
+              opacity: 0,
+              transition: "opacity .2s",
+            }}
+          />
+
+          <div className="absolute bottom-4 left-4 bg-white/80 dark:bg-gray-900/70 backdrop-blur px-3 py-2 rounded-lg shadow text-xs text-gray-600 dark:text-gray-300 pointer-events-none">
+            اسحب بالماوس للتدوير • استخدم العجلة للتقريب
           </div>
-
-          <div className="text-center text-xs text-slate-400 my-1">- أو -</div>
-
-          <div>
-            <label className="text-[11px] font-semibold text-slate-500 block mb-1">
-              نص بديل (طباعة فلكسو)
-            </label>
-            <input
-              type="text"
-              value={printText}
-              onChange={(e) => setPrintText(e.target.value)}
-              placeholder="اكتب لترى محاكاة الفلكسو..."
-              className="w-full bg-white border border-slate-200 rounded p-1.5 text-xs outline-none focus:border-blue-400"
-            />
-          </div>
-
-          <div className="flex gap-2 mt-2">
-            <button
-              onClick={() => setPrintVersion((v) => v + 1)}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 rounded text-xs transition-colors"
-            >
-              تطبيق التصميم
-            </button>
-            <button
-              onClick={() => {
-                uploadedImageRef.current = null;
-                setPrintVersion((v) => v + 1);
-              }}
-              className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-1.5 px-3 rounded text-xs transition-colors"
-              title="إزالة الصورة المرفقة"
-            >
-              إزالة الصورة
-            </button>
-          </div>
-        </div>
         </div>
       </div>
-
-      <canvas
-        ref={printCanvasRef}
-        width={1024}
-        height={1024}
-        style={{ display: "none" }}
-      />
     </PageLayout>
   );
 }
