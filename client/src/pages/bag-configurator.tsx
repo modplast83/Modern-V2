@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { Menu, X, Boxes } from "lucide-react";
+import { Boxes, ArrowRight } from "lucide-react";
+import { Link } from "wouter";
+
+import PageLayout from "../components/layout/PageLayout";
+import { Button } from "../components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 
 const SCALE = 10;
 
@@ -62,8 +67,6 @@ export default function BagConfigurator() {
   const printTextureRef = useRef<THREE.CanvasTexture | null>(null);
   const uploadedImageRef = useRef<HTMLImageElement | null>(null);
   const rafRef = useRef<number | null>(null);
-
-  const [panelOpen, setPanelOpen] = useState(true);
 
   const [type, setType] = useState<PlasticType>("ldpe");
   const [handle, setHandle] = useState<HandleType>("vest");
@@ -519,48 +522,44 @@ export default function BagConfigurator() {
   };
 
   return (
-    <div
-      dir="rtl"
-      className="relative pt-16 lg:pr-64 min-h-screen bg-slate-100"
+    <PageLayout
+      title="معالج تصميم الأكياس"
+      description="صمّم الكيس بصرياً واضبط مواصفاته الفنية في الوقت الفعلي"
+      actions={
+        <Button asChild variant="outline" size="sm" className="gap-1.5">
+          <Link href="/">
+            <ArrowRight className="h-4 w-4" />
+            العودة للرئيسية
+          </Link>
+        </Button>
+      }
     >
-      <div
-        className="relative w-full"
-        style={{ height: "calc(100vh - 4rem)", minHeight: "600px" }}
-      >
-        {/* 3D canvas — fills the area, with right padding reserving space for the side panel */}
-        <div
-          ref={containerRef}
-          className={`absolute top-0 bottom-0 left-0 transition-all duration-300 ${
-            panelOpen ? "right-0 sm:right-[22rem]" : "right-0"
-          }`}
-        />
+      <div dir="rtl" className="grid gap-4 lg:grid-cols-3">
+        {/* 3D Viewer */}
+        <Card className="lg:col-span-2 overflow-hidden">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Boxes className="h-5 w-5 text-blue-500" />
+              معاينة ثلاثية الأبعاد
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div
+              ref={containerRef}
+              className="w-full bg-slate-100"
+              style={{ height: "min(70vh, 640px)", minHeight: "420px" }}
+            />
+          </CardContent>
+        </Card>
 
-        {/* Side panel pinned to the RIGHT edge of the screen */}
+        {/* Specifications panel */}
         <div
-          className={`absolute top-0 right-0 bottom-0 z-10 bg-white/95 backdrop-blur shadow-2xl overflow-y-auto flex-col gap-4 border-l border-slate-200 transition-all duration-300 ${
-            panelOpen
-              ? "w-full sm:w-[22rem] p-4 flex"
-              : "w-0 p-0 overflow-hidden hidden"
-          }`}
+          className="space-y-4"
           style={{ fontFamily: "Tajawal, sans-serif" }}
         >
-        <div className="border-b border-slate-200 pb-2 flex justify-between items-center sticky top-0 bg-white/95 z-10">
-          <h1 className="text-lg font-bold text-slate-900 flex items-center gap-1.5">
-            <Boxes className="h-5 w-5 text-blue-500" />
-            المواصفات الفنية
-          </h1>
-          <button
-            onClick={() => setPanelOpen(false)}
-            className="p-1 rounded-full text-slate-400 hover:bg-slate-100"
-            aria-label="إغلاق اللوحة"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
         {/* القياسات */}
-        <div className="bg-white rounded-lg p-3 shadow-sm border border-slate-100 space-y-3">
-          <h2 className="text-sm font-bold text-slate-700">القياسات</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm border border-slate-100 dark:border-gray-700 space-y-3">
+          <h2 className="text-sm font-bold text-slate-700 dark:text-slate-200">القياسات</h2>
 
           <div>
             <div className="flex justify-between mb-1">
@@ -777,16 +776,6 @@ export default function BagConfigurator() {
           </div>
         </div>
         </div>
-
-        {!panelOpen && (
-          <button
-            onClick={() => setPanelOpen(true)}
-            className="absolute top-4 right-4 z-20 bg-white p-2 rounded-lg shadow-md text-blue-600"
-            aria-label="فتح اللوحة"
-          >
-            <Menu className="h-6 w-6" />
-          </button>
-        )}
       </div>
 
       <canvas
@@ -795,6 +784,6 @@ export default function BagConfigurator() {
         height={1024}
         style={{ display: "none" }}
       />
-    </div>
+    </PageLayout>
   );
 }

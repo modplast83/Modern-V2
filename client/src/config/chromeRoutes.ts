@@ -2,7 +2,6 @@ export const NO_CHROME_PATHS: ReadonlySet<string> = new Set<string>([
   "/login",
   "/mpbf",
   "/setup",
-  "/bag-configurator",
   "/display-screen",
   "/factory-simulation",
   "/factory-floor",
