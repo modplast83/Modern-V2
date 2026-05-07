@@ -403,12 +403,20 @@ export default function BagConfigurator() {
       className="relative pt-16 lg:pr-64 min-h-screen bg-slate-100"
     >
       <div
-        className="relative w-full flex"
+        className="relative w-full"
         style={{ height: "calc(100vh - 4rem)", minHeight: "600px" }}
       >
-        {/* Panel first in DOM → in RTL flex it appears on the RIGHT (matches mockup) */}
+        {/* 3D canvas — fills the area, with right padding reserving space for the side panel */}
         <div
-          className={`relative h-full bg-white/95 backdrop-blur shadow-2xl overflow-y-auto flex-shrink-0 flex-col gap-4 border-l border-slate-200 transition-all duration-300 ${
+          ref={containerRef}
+          className={`absolute top-0 bottom-0 left-0 transition-all duration-300 ${
+            panelOpen ? "right-0 sm:right-[22rem]" : "right-0"
+          }`}
+        />
+
+        {/* Side panel pinned to the RIGHT edge of the screen */}
+        <div
+          className={`absolute top-0 right-0 bottom-0 z-10 bg-white/95 backdrop-blur shadow-2xl overflow-y-auto flex-col gap-4 border-l border-slate-200 transition-all duration-300 ${
             panelOpen
               ? "w-full sm:w-[22rem] p-4 flex"
               : "w-0 p-0 overflow-hidden hidden"
@@ -648,9 +656,6 @@ export default function BagConfigurator() {
           </div>
         </div>
         </div>
-
-        {/* 3D canvas container — visually on the LEFT in RTL flex (after panel in DOM) */}
-        <div ref={containerRef} className="relative flex-1 min-w-0 h-full" />
 
         {!panelOpen && (
           <button
