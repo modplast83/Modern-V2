@@ -638,9 +638,9 @@ export default function BagConfigurator() {
 
           <div>
             <div className="flex justify-between mb-1">
-              <label className="text-xs text-slate-600">الطول (زوجي):</label>
+              <label className="text-xs text-slate-600">الطول (انش):</label>
               <span className="text-xs font-bold text-blue-600">
-                {heightIn} بوصة
+                {heightIn} انش
               </span>
             </div>
             <input
@@ -703,8 +703,8 @@ export default function BagConfigurator() {
               onChange={(e) => setType(e.target.value as PlasticType)}
               className="text-xs bg-slate-50 border border-slate-200 rounded p-1.5 outline-none focus:border-blue-400"
             >
-              <option value="ldpe">LDPE (شفاف/ناعم)</option>
-              <option value="hdpe">HDPE (معتم/قوي)</option>
+              <option value="ldpe">LDPE (لامع/ناعم)</option>
+              <option value="hdpe">HDPE (مطفي/قاسي)</option>
             </select>
             <select
               value={handle}
@@ -713,7 +713,7 @@ export default function BagConfigurator() {
             >
               <option value="vest">علاقي (T-Shirt)</option>
               <option value="banana">بنانة (Die-Cut)</option>
-              <option value="loop">ملحوم (Loop)</option>
+              <option value="loop">شريط (Loop)</option>
               <option value="none">بدون مقبض</option>
             </select>
           </div>
