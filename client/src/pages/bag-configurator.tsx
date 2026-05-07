@@ -341,18 +341,22 @@ export default function BagConfigurator() {
           const sign = Math.sign(x) || 1;
 
           if (ax < neckHalfW) {
-            // Central U-shaped neck cutout — smooth cosine dip
-            const dip =
-              neckDepthUnits *
-              0.5 *
-              (1 + Math.cos((x / neckHalfW) * Math.PI));
+            // Central U-shaped neck cutout — smooth cosine dip, scaled by
+            // tHandle so vertices at the shoulder stay put and only the top
+            // edge curves into the U. This eliminates the triangular wedge
+            // that previously appeared in the middle when every neck vertex
+            // was pulled down by the same amount.
+            const tClamp = Math.min(1, Math.max(0, tHandle));
+            const dipShape =
+              0.5 * (1 + Math.cos((x / neckHalfW) * Math.PI));
+            const dip = neckDepthUnits * dipShape * tClamp;
             y -= dip;
           } else {
             // Strap region: smoothly interpolate strap half-width from base
             // (full strap) at the shoulder to a narrow grip at the top.
             const baseInner = neckHalfW;
             const baseOuter = w / 2;
-            const baseHalfW = (baseOuter - baseInner) * 0.5;
+            const baseHalfW = Math.max((baseOuter - baseInner) * 0.5, 0.001);
             const baseCenter = strapBaseCenter;
             // Ease tHandle for a softer transition
             const e = tHandle * tHandle * (3 - 2 * tHandle);
@@ -362,19 +366,12 @@ export default function BagConfigurator() {
             const dCenter = ax - baseCenter;
             // Squash the strap toward its center as we rise
             const newAx = baseCenter + dCenter * (halfW / baseHalfW);
-            // If after squashing we'd be inside the neck region, push down
-            // (this carves the inside of the strap into the neck cut)
-            if (newAx < neckHalfW + 0.001) {
-              const dip =
-                neckDepthUnits * 0.5 * (1 + Math.cos(Math.PI * (1 - e)));
-              y -= dip;
-            } else {
-              x = sign * newAx;
-              // Round the very top of each strap
-              if (tHandle > 0.8) {
-                const k = (tHandle - 0.8) / 0.2;
-                y -= vestHandleUnits * 0.08 * k * k;
-              }
+            // Never collapse the strap into the neck — clamp to neck edge.
+            x = sign * Math.max(newAx, neckHalfW + 0.005);
+            // Round the very top of each strap
+            if (tHandle > 0.8) {
+              const k = (tHandle - 0.8) / 0.2;
+              y -= vestHandleUnits * 0.08 * k * k;
             }
           }
         } else if (yNorm > handleThreshold - 0.08) {
@@ -580,7 +577,7 @@ export default function BagConfigurator() {
 
   return (
     <PageLayout
-      title="معالج تصميم الأكياس"
+      title="تصميم نموذج الأكياس"
       description="صمّم الكيس بصرياً واضبط مواصفاته الفنية في الوقت الفعلي"
       actions={
         <Button asChild variant="outline" size="sm" className="gap-1.5">
@@ -620,7 +617,7 @@ export default function BagConfigurator() {
 
           <div>
             <div className="flex justify-between mb-1">
-              <label className="text-xs text-slate-600">العرض (زوجي):</label>
+              <label className="text-xs text-slate-600">العرض (سم):</label>
               <span className="text-xs font-bold text-blue-600">
                 {width} سم
               </span>
