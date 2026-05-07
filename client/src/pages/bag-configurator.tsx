@@ -304,13 +304,15 @@ export default function BagConfigurator() {
     geo.translate(0, h / 2, 0);
 
     // Vest (T-shirt) handle dims — height scales with bag, clamped 11..16 cm
-    const vestHandleHeightCm = Math.min(16, Math.max(11, h_cm * 0.28));
+    const vestHandleHeightCm = Math.min(16, Math.max(11, h_cm * 0.32));
     const vestHandleUnits = vestHandleHeightCm / SCALE;
-    // Neck (central U-cut) takes ~32% of the width; each strap sits between the
-    // neck edge and the bag edge. Strap top tapers inward to look like a grip.
-    const neckHalfW = w * 0.16;
-    const strapTopTaper = 0.22; // how much the strap narrows at the very top
-    const shoulderDropUnits = Math.min(0.18, h * 0.05); // soft shoulder below handles
+    // Wide neck (central U-cut) — like a real T-shirt bag.
+    const neckHalfW = w * 0.22;
+    // Strap base center sits between neck edge and bag edge.
+    const strapBaseCenter = (neckHalfW + w / 2) * 0.5;
+    // Half-width of the strap at the top (the grip) — narrow.
+    const strapTopHalfW = w * 0.045;
+    const shoulderDropUnits = Math.min(0.22, h * 0.06); // soft shoulder below handles
 
     const pos = geo.getAttribute("position");
     for (let i = 0; i < pos.count; i++) {
@@ -330,8 +332,10 @@ export default function BagConfigurator() {
         if (yNorm > handleThreshold) {
           // Region above the shoulders: carve neck and shape straps.
           const tHandle = (y - shoulderY) / vestHandleUnits; // 0 at shoulder → 1 at top
+          const ax = Math.abs(x);
+          const sign = Math.sign(x) || 1;
 
-          if (Math.abs(x) < neckHalfW) {
+          if (ax < neckHalfW) {
             // Central U-shaped neck cutout — smooth cosine dip down to shoulder
             const dip =
               vestHandleUnits *
@@ -339,24 +343,40 @@ export default function BagConfigurator() {
               (1 + Math.cos((x / neckHalfW) * Math.PI));
             y -= dip;
           } else {
-            // Strap region: taper outer edge inward as we go up so the
-            // top of the handle is narrower than the base (realistic grip).
-            const sign = Math.sign(x);
-            const inset = sign * (w * strapTopTaper) * tHandle * tHandle;
-            x -= inset;
-            // Slight outer pinch so straps aren't perfectly rectangular
-            x *= 1 - 0.05 * tHandle;
-            // Round the very top corners a touch
-            if (tHandle > 0.85) {
-              const k = (tHandle - 0.85) / 0.15;
-              y -= vestHandleUnits * 0.05 * k * k;
+            // Strap region: smoothly interpolate strap half-width from base
+            // (full strap) at the shoulder to a narrow grip at the top.
+            const baseInner = neckHalfW;
+            const baseOuter = w / 2;
+            const baseHalfW = (baseOuter - baseInner) * 0.5;
+            const baseCenter = strapBaseCenter;
+            // Ease tHandle for a softer transition
+            const e = tHandle * tHandle * (3 - 2 * tHandle);
+            const halfW = baseHalfW * (1 - e) + strapTopHalfW * e;
+
+            // Distance from the base strap centerline (in original coords)
+            const dCenter = ax - baseCenter;
+            // Squash the strap toward its center as we rise
+            const newAx = baseCenter + dCenter * (halfW / baseHalfW);
+            // If after squashing we'd be inside the neck region, push down
+            // (this carves the inside of the strap into the neck cut)
+            if (newAx < neckHalfW + 0.001) {
+              const dip =
+                vestHandleUnits * 0.5 * (1 + Math.cos(Math.PI * (1 - e)));
+              y -= dip;
+            } else {
+              x = sign * newAx;
+              // Round the very top of each strap
+              if (tHandle > 0.8) {
+                const k = (tHandle - 0.8) / 0.2;
+                y -= vestHandleUnits * 0.08 * k * k;
+              }
             }
           }
         } else if (yNorm > handleThreshold - 0.08) {
           // Soft "shoulder" curve just below the handles for a natural T-shirt
           // silhouette instead of a hard 90° step.
           const k = (yNorm - (handleThreshold - 0.08)) / 0.08;
-          if (Math.abs(x) > neckHalfW && Math.abs(x) < w * 0.42) {
+          if (Math.abs(x) > neckHalfW && Math.abs(x) < w * 0.45) {
             y -= shoulderDropUnits * k * k;
           }
         }
