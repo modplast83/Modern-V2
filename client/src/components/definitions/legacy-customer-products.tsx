@@ -111,6 +111,7 @@ const COLUMNS: ColumnDef[] = [
     render: (r) => formatCell(r.size_caption),
   },
   { key: "width", ar: "العرض", en: "Width", render: (r) => formatCell(r.width) },
+  { key: "thickness", ar: "السماكة", en: "Thickness", render: (r) => formatCell(r.thickness) },
   { key: "printing_cylinder", ar: "أسطوانة الطباعة", en: "Cylinder", render: (r) => formatCell(r.printing_cylinder) },
   { key: "length_cm", ar: "الطول (سم)", en: "Length (cm)", render: (r) => formatCell(r.length_cm) },
   { key: "cutting_length_cm", ar: "طول القطع (سم)", en: "Cut Len (cm)", render: (r) => formatCell(r.cutting_length_cm) },
@@ -260,7 +261,7 @@ export default function LegacyCustomerProductsTab() {
                     {COLUMNS.map((c) => (
                       <TableHead
                         key={String(c.key)}
-                        className="text-center whitespace-nowrap"
+                        className="text-center whitespace-nowrap px-2 text-xs"
                       >
                         <div>{headerLabel(c)}</div>
                         <div className="text-[10px] opacity-70 font-normal">
@@ -277,7 +278,7 @@ export default function LegacyCustomerProductsTab() {
                         {COLUMNS.map((c) => (
                           <TableCell
                             key={String(c.key)}
-                            className="text-center"
+                            className="text-center px-2"
                           >
                             <Skeleton className="h-4 w-full mx-auto" />
                           </TableCell>
@@ -303,7 +304,7 @@ export default function LegacyCustomerProductsTab() {
                         {COLUMNS.map((c) => (
                           <TableCell
                             key={String(c.key)}
-                            className="text-center whitespace-nowrap"
+                            className="text-center whitespace-nowrap px-2 text-xs"
                           >
                             {c.render(row)}
                           </TableCell>
