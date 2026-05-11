@@ -4036,22 +4036,23 @@ export default function Definitions() {
                       onChange={(e) => {
                         const value = e.target.value
                           .replace(/\D/g, "")
-                          .slice(0, 14);
+                          .slice(0, 20);
                         setCustomerForm({
                           ...customerForm,
                           tax_number: value,
                         });
                       }}
                       placeholder={t("definitions.form.taxNumberPlaceholder")}
-                      className={`mt-1 ${customerForm.tax_number && customerForm.tax_number.length > 0 && customerForm.tax_number.length !== 14 ? "border-yellow-500" : ""}`}
-                      maxLength={14}
+                      className={`mt-1 ${customerForm.tax_number && customerForm.tax_number.length > 0 && (customerForm.tax_number.length < 10 || customerForm.tax_number.length > 20) ? "border-yellow-500" : ""}`}
+                      maxLength={20}
                     />
                     {customerForm.tax_number &&
                       customerForm.tax_number.length > 0 &&
-                      customerForm.tax_number.length !== 14 && (
+                      (customerForm.tax_number.length < 10 ||
+                        customerForm.tax_number.length > 20) && (
                         <p className="text-xs text-yellow-600 mt-1">
-                          {customerForm.tax_number.length}/14 -{" "}
-                          {t("definitions.form.mustEnter14digits")}
+                          {customerForm.tax_number.length} - يجب أن يكون بين 10
+                          و 20 رقم (الافتراضي 15 للسعودية)
                         </p>
                       )}
                   </div>

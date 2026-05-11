@@ -192,6 +192,10 @@ interface RuntimeAiConfig {
   temperature: number | null;
   unrestrictedSql: boolean;
   systemPromptOverride: string;
+  taxNumberLength: string;
+  vatRate: string;
+  currency: string;
+  unifiedNumberRegex: string;
 }
 
 let runtimeConfigCache: { config: RuntimeAiConfig; timestamp: number } | null =
@@ -247,6 +251,12 @@ async function getRuntimeAiConfig(): Promise<RuntimeAiConfig> {
     })(),
     unrestrictedSql: get("unrestricted_sql") === "true",
     systemPromptOverride: (get("system_prompt_override") || "").toString(),
+    taxNumberLength: (get("tax_number_length") || "15").toString().trim(),
+    vatRate: (get("vat_rate") || "0.15").toString().trim(),
+    currency: (get("currency") || "ر.س").toString().trim(),
+    unifiedNumberRegex: (get("unified_number_regex") || "^7[0-9]{9}$")
+      .toString()
+      .trim(),
   };
   runtimeConfigCache = { config, timestamp: Date.now() };
   return config;
@@ -1222,6 +1232,10 @@ async function getSystemPrompt(): Promise<string> {
   const customInstructions =
     settings.find((s) => s.key === "custom_instructions")?.value || "";
   const vatRate = settings.find((s) => s.key === "vat_rate")?.value || "0.15";
+  const taxNumberLength =
+    settings.find((s) => s.key === "tax_number_length")?.value || "15";
+  const currencySymbol =
+    settings.find((s) => s.key === "currency")?.value || "ر.س";
 
   let knowledgeText = "";
   if (knowledge.length > 0) {
@@ -1334,7 +1348,8 @@ async function getSystemPrompt(): Promise<string> {
 
 ${defaultGreeting ? `رسالة الترحيب: ${defaultGreeting}\n` : ""}
 أسلوب الرد: ${responseStyle}
-العملة الأساسية: الريال السعودي (ر.س). ضريبة القيمة المضافة: ${parseFloat(vatRate) * 100}%
+العملة الأساسية: ${currencySymbol}. ضريبة القيمة المضافة: ${parseFloat(vatRate) * 100}%
+طول الرقم الضريبي المطلوب: ${taxNumberLength} خانة (يقبل القيم: ${taxNumberLength.split(",").map((s) => s.trim()).join(" أو ")})
 
 ### إرشادات العمل الشاملة:
 
@@ -1474,7 +1489,11 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
         type: "object",
         properties: {
           customer_name: { type: "string", description: "اسم العميل" },
-          tax_number: { type: "string", description: "الرقم الضريبي (14 رقم)" },
+          tax_number: {
+            type: "string",
+            description:
+              "الرقم الضريبي (الطول حسب إعدادات الوكيل، الافتراضي 15 رقم للسعودية)",
+          },
           created_by_name: { type: "string", description: "اسم المستخدم" },
           created_by_phone: {
             type: "string",
@@ -2014,7 +2033,8 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
           address: { type: "string", description: "العنوان (اختياري)" },
           tax_number: {
             type: "string",
-            description: "الرقم الضريبي (14 رقم، اختياري)",
+            description:
+              "الرقم الضريبي (الطول حسب إعدادات الوكيل، الافتراضي 15 رقم للسعودية، اختياري)",
           },
           commercial_name: {
             type: "string",
@@ -3445,8 +3465,21 @@ async function executeFunction(
           notes?: string;
         };
 
-        if (tax_number.length !== 14 || !/^\d+$/.test(tax_number)) {
-          return JSON.stringify({ error: "الرقم الضريبي يجب أن يكون 14 رقم" });
+        const quoteCfg = await getRuntimeAiConfig();
+        {
+          const allowed = quoteCfg.taxNumberLength
+            .split(",")
+            .map((s) => parseInt(s.trim(), 10))
+            .filter((n) => Number.isFinite(n) && n > 0);
+          const lengths = allowed.length > 0 ? allowed : [15];
+          if (
+            !/^\d+$/.test(tax_number) ||
+            !lengths.includes(tax_number.length)
+          ) {
+            return JSON.stringify({
+              error: `الرقم الضريبي يجب أن يكون أرقاماً فقط بطول ${lengths.join(" أو ")} خانة`,
+            });
+          }
         }
 
         const lastQuote = await db
@@ -3477,7 +3510,11 @@ async function executeFunction(
           };
         });
 
-        const taxAmount = totalBeforeTax * 0.15;
+        const vatRateNum = (() => {
+          const n = parseFloat(quoteCfg.vatRate);
+          return Number.isFinite(n) && n >= 0 ? n : 0.15;
+        })();
+        const taxAmount = totalBeforeTax * vatRateNum;
         const totalWithTax = totalBeforeTax + taxAmount;
 
         const [newQuote] = await db
@@ -3513,8 +3550,9 @@ async function executeFunction(
             tax_amount: taxAmount.toFixed(2),
             total_with_tax: totalWithTax.toFixed(2),
             items_count: items.length,
-            currency: "SAR",
-            currency_name: "ريال سعودي",
+            currency: quoteCfg.currency || "ر.س",
+            currency_name: quoteCfg.currency || "ر.س",
+            vat_rate: vatRateNum,
           },
           message: `تم إنشاء عرض السعر رقم ${documentNumber} بنجاح`,
         });
@@ -4876,16 +4914,34 @@ async function executeFunction(
         const commercialName = args.commercial_name as string | undefined;
         const unifiedNumber = args.unified_number as string | undefined;
 
-        if (
-          taxNumber &&
-          (taxNumber.length !== 14 || !/^\d+$/.test(taxNumber))
-        ) {
-          return JSON.stringify({ error: "الرقم الضريبي يجب أن يكون 14 رقم" });
+        const customerCfg = await getRuntimeAiConfig();
+        if (taxNumber) {
+          const allowed = customerCfg.taxNumberLength
+            .split(",")
+            .map((s) => parseInt(s.trim(), 10))
+            .filter((n) => Number.isFinite(n) && n > 0);
+          const lengths = allowed.length > 0 ? allowed : [15];
+          if (
+            !/^\d+$/.test(taxNumber) ||
+            !lengths.includes(taxNumber.length)
+          ) {
+            return JSON.stringify({
+              error: `الرقم الضريبي يجب أن يكون أرقاماً فقط بطول ${lengths.join(" أو ")} خانة`,
+            });
+          }
         }
-        if (unifiedNumber && !/^7[0-9]{9}$/.test(unifiedNumber)) {
-          return JSON.stringify({
-            error: "الرقم الموحد يجب أن يبدأ بـ 7 ويتكون من 10 أرقام",
-          });
+        if (unifiedNumber) {
+          let unifiedRe: RegExp;
+          try {
+            unifiedRe = new RegExp(customerCfg.unifiedNumberRegex);
+          } catch {
+            unifiedRe = /^7[0-9]{9}$/;
+          }
+          if (!unifiedRe.test(unifiedNumber)) {
+            return JSON.stringify({
+              error: "الرقم الموحد لا يطابق الصيغة المطلوبة في الإعدادات",
+            });
+          }
         }
 
         const { storage } = await import("./storage");

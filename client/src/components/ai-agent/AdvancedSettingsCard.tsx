@@ -37,6 +37,9 @@ const ADVANCED_KEYS = [
   "max_completion_tokens",
   "system_prompt_override",
   "unrestricted_sql",
+  "tax_number_length",
+  "vat_rate",
+  "currency",
 ];
 
 export default function AdvancedSettingsCard({ settings }: Props) {
@@ -59,6 +62,11 @@ export default function AdvancedSettingsCard({ settings }: Props) {
   const [unrestrictedSql, setUnrestrictedSql] = useState(
     get("unrestricted_sql") === "true",
   );
+  const [taxNumberLength, setTaxNumberLength] = useState(
+    get("tax_number_length") || "15",
+  );
+  const [vatRate, setVatRate] = useState(get("vat_rate") || "0.15");
+  const [currency, setCurrency] = useState(get("currency") || "ر.س");
 
   useEffect(() => {
     setModel(get("ai_model"));
@@ -68,6 +76,9 @@ export default function AdvancedSettingsCard({ settings }: Props) {
     setMaxCompletionTokens(get("max_completion_tokens"));
     setSystemOverride(get("system_prompt_override"));
     setUnrestrictedSql(get("unrestricted_sql") === "true");
+    setTaxNumberLength(get("tax_number_length") || "15");
+    setVatRate(get("vat_rate") || "0.15");
+    setCurrency(get("currency") || "ر.س");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings.length]);
 
@@ -101,6 +112,9 @@ export default function AdvancedSettingsCard({ settings }: Props) {
       { key: "max_completion_tokens", value: maxCompletionTokens },
       { key: "system_prompt_override", value: systemOverride },
       { key: "unrestricted_sql", value: unrestrictedSql ? "true" : "false" },
+      { key: "tax_number_length", value: taxNumberLength.trim() || "15" },
+      { key: "vat_rate", value: vatRate.trim() || "0.15" },
+      { key: "currency", value: currency.trim() || "ر.س" },
     ]);
   };
 
@@ -179,6 +193,47 @@ export default function AdvancedSettingsCard({ settings }: Props) {
           <p className="text-xs text-muted-foreground mt-1">
             {t("aiAgent.advanced.systemPromptHint")}
           </p>
+        </div>
+
+        <div className="border-t pt-4">
+          <div className="font-semibold mb-3 text-sm">
+            قواعد العمل (الضريبة والعملة)
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <Label>طول الرقم الضريبي</Label>
+              <Input
+                dir="ltr"
+                value={taxNumberLength}
+                placeholder="15"
+                onChange={(e) => setTaxNumberLength(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                عدد الخانات المطلوب (مثلاً 15 للسعودية). يمكن وضع أكثر من قيمة
+                مفصولة بفاصلة، مثل: 14,15
+              </p>
+            </div>
+            <div>
+              <Label>نسبة ضريبة القيمة المضافة</Label>
+              <Input
+                dir="ltr"
+                value={vatRate}
+                placeholder="0.15"
+                onChange={(e) => setVatRate(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                نسبة عشرية (0.15 = 15%)
+              </p>
+            </div>
+            <div>
+              <Label>رمز العملة</Label>
+              <Input
+                value={currency}
+                placeholder="ر.س"
+                onChange={(e) => setCurrency(e.target.value)}
+              />
+            </div>
+          </div>
         </div>
 
         <div className="flex items-start justify-between border-2 border-amber-200 dark:border-amber-700 rounded-lg p-4 bg-amber-50/40 dark:bg-amber-900/10">

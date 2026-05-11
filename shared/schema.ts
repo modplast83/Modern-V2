@@ -220,7 +220,7 @@ export const customers = pgTable(
     plate_drawer_code: varchar("plate_drawer_code", { length: 20 }),
     city: varchar("city", { length: 50 }),
     address: text("address"),
-    tax_number: varchar("tax_number", { length: 14 }),
+    tax_number: varchar("tax_number", { length: 20 }),
     commercial_name: varchar("commercial_name", { length: 200 }),
     unified_number: varchar("unified_number", { length: 10 }),
     unique_customer_number: varchar("unique_customer_number", { length: 20 }),
@@ -236,7 +236,7 @@ export const customers = pgTable(
     ),
     taxNumberLength: check(
       "tax_number_length",
-      sql`${table.tax_number} IS NULL OR LENGTH(${table.tax_number}) = 14`,
+      sql`${table.tax_number} IS NULL OR (${table.tax_number} ~ '^[0-9]+$' AND LENGTH(${table.tax_number}) BETWEEN 10 AND 20)`,
     ),
   }),
 );
@@ -2534,9 +2534,13 @@ export const insertCustomerSchema = createInsertSchema(customers)
       .string()
       .refine(
         (val) =>
-          val === "" || val === null || val === undefined || val.length === 14,
+          val === "" ||
+          val === null ||
+          val === undefined ||
+          /^\d{10,20}$/.test(val),
         {
-          message: "الرقم الضريبي يجب أن يكون 14 خانة أو اتركه فارغاً",
+          message:
+            "الرقم الضريبي يجب أن يكون أرقاماً فقط (10-20 خانة) أو اتركه فارغاً",
         },
       )
       .optional()
@@ -3341,7 +3345,7 @@ export const quotes = pgTable("quotes", {
     .notNull()
     .unique(),
   customer_name: varchar("customer_name", { length: 255 }).notNull(),
-  tax_number: varchar("tax_number", { length: 14 }).notNull(),
+  tax_number: varchar("tax_number", { length: 20 }).notNull(),
   quote_date: date("quote_date")
     .notNull()
     .default(sql`CURRENT_DATE`),
@@ -3410,7 +3414,9 @@ export const insertQuoteSchema = createInsertSchema(quotes)
   })
   .extend({
     customer_name: z.string().min(1, "اسم العميل مطلوب"),
-    tax_number: z.string().length(14, "الرقم الضريبي يجب أن يكون 14 رقم"),
+    tax_number: z
+      .string()
+      .regex(/^\d{10,20}$/, "الرقم الضريبي يجب أن يكون أرقاماً فقط (10-20 خانة)"),
   });
 
 export const insertQuoteItemSchema = createInsertSchema(quote_items)
