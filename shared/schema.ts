@@ -2469,6 +2469,24 @@ export const insertCustomerProductSchema = createInsertSchema(customer_products)
     package_weight_kg: true,
   })
   .extend({
+    // Coerce empty strings on FK varchar fields to null so they don't
+    // violate foreign key constraints (e.g. item_id='' -> NULL).
+    customer_id: z.preprocess(
+      (val) => (val === "" || val === undefined ? null : val),
+      z.string().nullable().optional(),
+    ),
+    category_id: z.preprocess(
+      (val) => (val === "" || val === undefined ? null : val),
+      z.string().nullable().optional(),
+    ),
+    item_id: z.preprocess(
+      (val) => (val === "" || val === undefined ? null : val),
+      z.string().nullable().optional(),
+    ),
+    master_batch_id: z.preprocess(
+      (val) => (val === "" || val === undefined ? null : val),
+      z.string().nullable().optional(),
+    ),
     // Transform decimal fields to handle both string and number inputs
     width: z.preprocess((val): string | undefined => {
       if (val === null || val === undefined || val === "") return undefined;

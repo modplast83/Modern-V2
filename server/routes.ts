@@ -5276,6 +5276,23 @@ Input: ${text}`;
       } catch (error: any) {
         console.error("Customer product creation error:", error);
 
+        if (error?.name === "ZodError" || error instanceof z.ZodError) {
+          return res.status(400).json({
+            message: "بيانات منتج العميل غير صحيحة",
+            errors: error.errors,
+            success: false,
+          });
+        }
+
+        const pgCode = error?.code ?? error?.cause?.code;
+        if (pgCode === "23503") {
+          return res.status(400).json({
+            message:
+              "قيمة مرجعية غير صحيحة (العميل أو الفئة أو الصنف غير موجود)",
+            success: false,
+          });
+        }
+
         res.status(500).json({
           message: "خطأ في إنشاء منتج العميل",
           success: false,
