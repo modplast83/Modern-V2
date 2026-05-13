@@ -63,6 +63,7 @@ import {
 import { useAuth } from "../hooks/use-auth";
 import { useToast } from "../hooks/use-toast";
 import { formatNumber } from "../lib/formatNumber";
+import { packagingUnitErrorToast } from "../lib/packagingUnitErrors";
 import { apiRequest } from "../lib/queryClient";
 import { canAccessDefinitionsTab } from "../utils/roleUtils";
 
@@ -6476,12 +6477,7 @@ function PackagingUnitsManagerDialog({
       resetForm();
       toast({ title: t("common.success") });
     },
-    onError: (e: any) =>
-      toast({
-        title: t("definitions.items.packagingUnits.saveError"),
-        description: e?.message,
-        variant: "destructive",
-      }),
+    onError: (e: any) => toast(packagingUnitErrorToast(e, t)),
   });
 
   const toggleMut = useMutation({
@@ -6493,6 +6489,7 @@ function PackagingUnitsManagerDialog({
       return res.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    onError: (e: any) => toast(packagingUnitErrorToast(e, t)),
   });
 
   const setDefaultMut = useMutation({
@@ -6504,6 +6501,7 @@ function PackagingUnitsManagerDialog({
       return res.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    onError: (e: any) => toast(packagingUnitErrorToast(e, t)),
   });
 
   const updateMut = useMutation({
@@ -6523,12 +6521,7 @@ function PackagingUnitsManagerDialog({
       setEditingId(null);
       toast({ title: t("common.success") });
     },
-    onError: (e: any) =>
-      toast({
-        title: t("definitions.items.packagingUnits.saveError"),
-        description: e?.message,
-        variant: "destructive",
-      }),
+    onError: (e: any) => toast(packagingUnitErrorToast(e, t)),
   });
 
   const startEdit = (u: any) => {

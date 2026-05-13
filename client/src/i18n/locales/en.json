@@ -3182,6 +3182,8 @@
         "isActive": "Active",
         "noUnits": "No packaging units yet",
         "saveError": "Failed to save packaging unit",
+        "duplicateDefaultTitle": "A default packaging unit already exists",
+        "duplicateDefaultDesc": "You can't have more than one default packaging unit for the same item. Uncheck \"Default\" here or open \"Manage packaging units\" to swap the existing default.",
         "deleteConfirm": "Delete this packaging unit?",
         "computed": "Computed: {{kg}} kg",
         "inUse": "In use",

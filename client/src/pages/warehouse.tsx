@@ -74,6 +74,7 @@ import { Label } from "../components/ui/label";
 import { useAuth } from "../hooks/use-auth";
 import { useLocalizedName } from "../hooks/use-localized-name";
 import { useToast } from "../hooks/use-toast";
+import { packagingUnitErrorToast } from "../lib/packagingUnitErrors";
 import { apiRequest } from "../lib/queryClient";
 import { userHasPermission } from "../utils/roleUtils";
 
@@ -2076,12 +2077,7 @@ function AddPackagingUnitDialog({
       onCreated(data);
       onClose();
     },
-    onError: (e: any) =>
-      toast({
-        title: t("definitions.items.packagingUnits.saveError"),
-        description: e?.message,
-        variant: "destructive",
-      }),
+    onError: (e: any) => toast(packagingUnitErrorToast(e, t)),
   });
 
   const isValid =
@@ -2273,12 +2269,7 @@ function ManagePackagingUnitsDialog({
       setEditingId(null);
       toast({ title: t("common.success") });
     },
-    onError: (e: any) =>
-      toast({
-        title: t("definitions.items.packagingUnits.saveError"),
-        description: e?.message,
-        variant: "destructive",
-      }),
+    onError: (e: any) => toast(packagingUnitErrorToast(e, t)),
   });
 
   const toggleMut = useMutation({
@@ -2290,12 +2281,7 @@ function ManagePackagingUnitsDialog({
       return res.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
-    onError: (e: any) =>
-      toast({
-        title: t("definitions.items.packagingUnits.saveError"),
-        description: e?.message,
-        variant: "destructive",
-      }),
+    onError: (e: any) => toast(packagingUnitErrorToast(e, t)),
   });
 
   const setDefaultMut = useMutation({
@@ -2307,12 +2293,7 @@ function ManagePackagingUnitsDialog({
       return res.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
-    onError: (e: any) =>
-      toast({
-        title: t("definitions.items.packagingUnits.saveError"),
-        description: e?.message,
-        variant: "destructive",
-      }),
+    onError: (e: any) => toast(packagingUnitErrorToast(e, t)),
   });
 
   const submitEdit = (id: number) => {
