@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Database, Search, ChevronLeft, ChevronRight, Eye } from "lucide-react";
+import { Database, Search, ChevronLeft, ChevronRight, Eye, Download } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -208,7 +208,23 @@ export default function LegacyCustomerProductsTab() {
   const titleAr = "القاعدة القديمة";
   const titleEn = "Legacy Database";
 
-  const renderCliche = (raw: string | null | undefined) => {
+  const downloadCliche = (src: string, side: "front" | "back") => {
+    const match = src.match(/^data:(image\/[a-zA-Z0-9.+-]+);/);
+    const mime = match?.[1] ?? "image/png";
+    const ext = mime.split("/")[1]?.split("+")[0] ?? "png";
+    const id = clicheRow?.id ?? "unknown";
+    const link = document.createElement("a");
+    link.href = src;
+    link.download = `legacy-${id}-${side}.${ext}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const renderCliche = (
+    raw: string | null | undefined,
+    side: "front" | "back",
+  ) => {
     if (!raw) {
       return (
         <div className="flex items-center justify-center h-48 text-sm text-muted-foreground border rounded">
@@ -221,11 +237,25 @@ export default function LegacyCustomerProductsTab() {
       ? trimmed
       : `data:image/png;base64,${trimmed}`;
     return (
-      <img
-        src={src}
-        alt="cliche"
-        className="max-h-72 w-auto mx-auto object-contain border rounded bg-white"
-      />
+      <div className="space-y-2">
+        <img
+          src={src}
+          alt="cliche"
+          className="max-h-72 w-auto mx-auto object-contain border rounded bg-white"
+        />
+        <div className="flex justify-center">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => downloadCliche(src, side)}
+            data-testid={`legacy-cliche-download-${side}`}
+          >
+            <Download className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
+            {isAr ? "تنزيل" : "Download"}
+          </Button>
+        </div>
+      </div>
     );
   };
 
@@ -483,13 +513,13 @@ export default function LegacyCustomerProductsTab() {
                 <div className="text-xs font-medium mb-2 text-center">
                   {isAr ? "الوجه الأمامي" : "Front"}
                 </div>
-                {renderCliche(clicheData?.front)}
+                {renderCliche(clicheData?.front, "front")}
               </div>
               <div>
                 <div className="text-xs font-medium mb-2 text-center">
                   {isAr ? "الوجه الخلفي" : "Back"}
                 </div>
-                {renderCliche(clicheData?.back)}
+                {renderCliche(clicheData?.back, "back")}
               </div>
             </div>
           )}
