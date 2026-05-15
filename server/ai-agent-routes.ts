@@ -234,6 +234,18 @@ async function executeRawSqlSafely(
   return await withQueryTimeout(exec, timeoutMs + 2000, label);
 }
 
+function detectImageType(
+  buf: Buffer,
+): "png" | "jpg" | "gif" | "bmp" {
+  if (!buf || buf.length < 4) return "png";
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47)
+    return "png";
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "jpg";
+  if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46) return "gif";
+  if (buf[0] === 0x42 && buf[1] === 0x4d) return "bmp";
+  return "png";
+}
+
 function safeStorageFilename(input: string, fallback = "document"): string {
   const base = (input || "")
     .toString()
@@ -3175,7 +3187,8 @@ async function generateWordDocument(
                 new docx.ImageRun({
                   data: template.headerImage,
                   transformation: { width: 600, height: 90 },
-                }),
+                  type: detectImageType(template.headerImage),
+                } as any),
               ],
             }),
           ],
@@ -3196,7 +3209,8 @@ async function generateWordDocument(
               new docx.ImageRun({
                 data: template.footerImage,
                 transformation: { width: 600, height: 60 },
-              }),
+                type: detectImageType(template.footerImage),
+              } as any),
             ],
           }),
         );
