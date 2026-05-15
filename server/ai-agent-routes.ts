@@ -183,6 +183,79 @@ const DEFAULT_MAX_CHAT_HISTORY = 20;
 const DEFAULT_MAX_COMPLETION_TOKENS = 4096;
 const SSE_PING_INTERVAL_MS = 15000;
 const DOCS_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const DB_QUERY_TIMEOUT_MS = 10000;
+const STORAGE_OP_TIMEOUT_MS = 30000;
+
+async function withQueryTimeout<T>(
+  p: Promise<T>,
+  ms: number = DB_QUERY_TIMEOUT_MS,
+  label: string = "db.query",
+): Promise<T> {
+  let timer: NodeJS.Timeout | null = null;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () =>
+        reject(
+          new Error(
+            `انتهت مهلة العملية (${label}) بعد ${Math.round(ms / 1000)} ثانية`,
+          ),
+        ),
+      ms,
+    );
+  });
+  try {
+    return (await Promise.race([p, timeoutPromise])) as T;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+/**
+ * Execute raw SQL with a real Postgres-side statement_timeout (cancels server-side).
+ * Wraps in a transaction with SET LOCAL so the timeout is scoped + auto-released.
+ * Falls back to JS Promise.race for total wall-clock safety.
+ */
+async function executeRawSqlSafely(
+  queryStr: string,
+  label: string,
+  timeoutMs: number = DB_QUERY_TIMEOUT_MS,
+): Promise<{ rows: any[]; rowCount: number | null }> {
+  const exec = db.transaction(async (tx) => {
+    await tx.execute(
+      sql.raw(`SET LOCAL statement_timeout = ${Math.max(1000, timeoutMs)}`),
+    );
+    const r = await tx.execute(sql.raw(queryStr));
+    return {
+      rows: (r.rows as any[]) || [],
+      rowCount: (r as any).rowCount ?? null,
+    };
+  });
+  // Wall-clock guard slightly larger than DB timeout so DB-side cancel wins.
+  return await withQueryTimeout(exec, timeoutMs + 2000, label);
+}
+
+function safeStorageFilename(input: string, fallback = "document"): string {
+  const base = (input || "")
+    .toString()
+    .normalize("NFKD")
+    .replace(/[^\w.-]+/g, "_")
+    .replace(/^[._-]+|[._-]+$/g, "")
+    .slice(0, 120);
+  if (!base || base.includes("..") || base.includes("/") || base.includes("\\")) {
+    return fallback;
+  }
+  return base;
+}
+
+function getVatRateFromConfig(cfg: RuntimeAiConfig): number {
+  const n = parseFloat(cfg.vatRate);
+  if (!Number.isFinite(n) || n < 0 || n > 1) return 0.15;
+  return n;
+}
+
+function getCurrencyFromConfig(cfg: RuntimeAiConfig): string {
+  return (cfg.currency || "ر.س").toString();
+}
 
 interface RuntimeAiConfig {
   model: string;
@@ -360,22 +433,48 @@ async function uploadPdfToStorage(
       throw new Error("Object storage not configured");
     }
 
+    // تنظيف رقم المستند لمنع path traversal أو أحرف خطرة في مسار التخزين
+    const safeDocNumber = safeStorageFilename(documentNumber, "quote");
     const bucket = objectStorageClient.bucket(bucketId);
-    // استخدام اسم ملف ثابت بناءً على رقم المستند فقط (بدون timestamp) للوصول المتكرر
-    const fileName = `quotes/quote_${documentNumber}.pdf`;
+    const fileName = `quotes/quote_${safeDocNumber}.pdf`;
     const file = bucket.file(fileName);
 
-    // رفع الملف
-    await file.save(pdfBuffer, {
-      contentType: "application/pdf",
-      metadata: {
-        cacheControl: "public, max-age=86400", // 24 hours cache
-      },
-    });
+    // الرفع عبر createWriteStream + chunks لتقليل استهلاك الذاكرة وضغط GCS الداخلي
+    await withQueryTimeout(
+      new Promise<void>((resolve, reject) => {
+        const writeStream = file.createWriteStream({
+          contentType: "application/pdf",
+          resumable: false,
+          metadata: {
+            cacheControl: "public, max-age=86400",
+          },
+        });
+        writeStream.on("error", reject);
+        writeStream.on("finish", () => resolve());
 
-    // إرجاع رابط على الدومين الخاص بالتطبيق
+        const CHUNK = 64 * 1024;
+        let offset = 0;
+        const writeNext = () => {
+          while (offset < pdfBuffer.length) {
+            const end = Math.min(offset + CHUNK, pdfBuffer.length);
+            const slice = pdfBuffer.subarray(offset, end);
+            offset = end;
+            const ok = writeStream.write(slice);
+            if (!ok) {
+              writeStream.once("drain", writeNext);
+              return;
+            }
+          }
+          writeStream.end();
+        };
+        writeNext();
+      }),
+      STORAGE_OP_TIMEOUT_MS,
+      "uploadPdfToStorage",
+    );
+
     const baseUrl = getAppBaseUrl();
-    const pdfUrl = `${baseUrl}/api/pdf/quotes/${documentNumber}`;
+    const pdfUrl = `${baseUrl}/api/pdf/quotes/${encodeURIComponent(safeDocNumber)}`;
 
     console.log(`PDF uploaded successfully. Access URL: ${pdfUrl}`);
     return pdfUrl;
@@ -408,7 +507,10 @@ async function generateQuotePdfBuffer(quoteId: number): Promise<Buffer> {
     }
   };
   const subtotal = Number(quote.total_before_tax || 0);
-  const tax = Number(quote.tax_amount || subtotal * 0.15);
+  const _runtimeQuoteCfg = await getRuntimeAiConfig();
+  const tax = Number(
+    quote.tax_amount || subtotal * getVatRateFromConfig(_runtimeQuoteCfg),
+  );
   const total = Number(quote.total_with_tax || subtotal + tax);
 
   const lp = path.join(__dirname, "fonts", "factory-logo.png");
@@ -1122,15 +1224,18 @@ async function executeCustomTool(
         console.log(
           `[AI Agent custom-tool sql] ${toolRow.name}: ${queryStr.substring(0, 200)}`,
         );
-        const result = await db.execute(sql.raw(queryStr));
-        const rows = (result.rows as any[]) || [];
+        const result = await executeRawSqlSafely(
+          queryStr,
+          `custom-tool:${toolRow.name}`,
+        );
+        const rows = result.rows;
         const max = Math.min(Number(config.max_rows) || 100, 1000);
         return JSON.stringify({
           success: true,
           row_count: rows.length,
           data: rows.slice(0, max),
           truncated: rows.length > max,
-          rows_affected: (result as any).rowCount ?? null,
+          rows_affected: result.rowCount,
         });
       }
       case "http": {
@@ -1231,42 +1336,13 @@ async function getSystemPrompt(): Promise<string> {
     settings.find((s) => s.key === "response_style")?.value || "ودي ومحترف";
   const customInstructions =
     settings.find((s) => s.key === "custom_instructions")?.value || "";
-  const vatRate = settings.find((s) => s.key === "vat_rate")?.value || "0.15";
-  const taxNumberLength =
-    settings.find((s) => s.key === "tax_number_length")?.value || "15";
-  const currencySymbol =
-    settings.find((s) => s.key === "currency")?.value || "ر.س";
+  // مصدر الحقيقة الموحد: RuntimeAiConfig (لا قراءة مكررة من ai_agent_settings)
+  const vatRate = runtime.vatRate;
+  const taxNumberLength = runtime.taxNumberLength;
+  const currencySymbol = getCurrencyFromConfig(runtime);
 
-  let knowledgeText = "";
-  if (knowledge.length > 0) {
-    const knowledgeByCategory: Record<string, typeof knowledge> = {};
-    for (const k of knowledge) {
-      const cat = k.category || "general";
-      if (!knowledgeByCategory[cat]) knowledgeByCategory[cat] = [];
-      knowledgeByCategory[cat].push(k);
-    }
-    knowledgeText =
-      "\n\n### قاعدة المعرفة الشاملة:\n**هام جداً**: يجب عليك الالتزام بكل ما هو مذكور في قاعدة المعرفة أدناه. هذه تعليمات وسياسات ومعلومات يجب تطبيقها عند تنفيذ أي أمر ذي صلة.\n\n";
-    for (const [category, items] of Object.entries(knowledgeByCategory)) {
-      const categoryNames: Record<string, string> = {
-        products: "المنتجات والمواصفات",
-        policies: "السياسات والإجراءات",
-        customers: "العملاء والتعاملات",
-        pricing: "التسعير والأسعار",
-        production: "الإنتاج والتصنيع",
-        hr: "الموارد البشرية",
-        maintenance: "الصيانة",
-        quality: "الجودة",
-        warehouse: "المستودعات",
-        general: "معلومات عامة",
-      };
-      knowledgeText += `#### ${categoryNames[category] || category}:\n`;
-      for (const k of items) {
-        knowledgeText += `- **${k.title}**: ${k.content}\n`;
-      }
-      knowledgeText += "\n";
-    }
-  }
+  // قاعدة المعرفة الكاملة لم تعد تُحقن في prompt الأساسي.
+  // العميل يستدعيها عند الحاجة عبر search_knowledge_base. نكتفي بإحصاء العدد للإشارة فقط.
 
   let featureInstructionsText = "";
   if (featureInstructions.length > 0) {
@@ -1277,144 +1353,52 @@ async function getSystemPrompt(): Promise<string> {
     }
   }
 
-  const result = `أنت ${agentName}، وكيل ذكي شامل ومتكامل لنظام إدارة المصنع لشركة ${companyName}. أنت لست مجرد مساعد بل مدير تنفيذي رقمي قادر على تنفيذ جميع العمليات في النظام.
+  const result = `أنت ${agentName}، منسّق أدوات (Tool Orchestrator) لنظام MPBF لشركة ${companyName}. مهمتك: استلام طلب المستخدم، اختيار الأدوات المناسبة، تنفيذها فعلياً، وإرجاع النتيجة.
 
-### هويتك ومبادئك:
-- أنت وكيل تنفيذي متكامل: تقرأ وتنفذ وتُنشئ وتُعدّل أي شيء في النظام
-- تلتزم حرفياً بكل ما هو مذكور في قاعدة المعرفة وتعليمات الخصائص
-- عند أي طلب، ابحث أولاً في قاعدة المعرفة وتعليمات الخصائص عن تعليمات ذات صلة ونفّذها
-- لا تكتفِ بالإجابة النظرية بل نفّذ فعلياً باستخدام الأدوات المتاحة
+### قواعد إلزامية:
+1. استخدم الأدوات للتنفيذ — لا تشرح نظرياً ما يمكن تنفيذه عبر أداة.
+2. قبل أي عملية ذات سياسة، استدعِ search_knowledge_base أو راجع تعليمات الخصائص الإلزامية ثم نفّذ.
+3. التزم بهيكل قاعدة المعرفة وتعليمات الخصائص حرفياً عند توفرها للطلب.
+4. عند إنشاء أي مستند (PDF/Excel/Word/CSV)، اعتمد قوالب الترويسة والتذييل من النظام تلقائياً.
+5. لا تتجاوز التحقق من الصلاحيات: في حال رد الأداة بـ permission/forbidden، اشرح للمستخدم بدلاً من المحاولة بأداة أخرى.
+6. عند أي خطأ من أداة، اقرأ رسالة الخطأ وقدّم بديلاً أو اطلب توضيحاً، ولا تكرّر نفس الاستدعاء بنفس المعطيات.
+7. الردود يجب أن تتطابق لغة المستخدم (عربي/إنجليزي) وأن تكون مختصرة ومباشرة.
 
-### بيانات المصنع (تُستخدم تلقائياً في جميع المستندات):
-- اسم الشركة: ${companyInfo.name}${companyInfo.name_ar ? ` | ${companyInfo.name_ar}` : ""}
-- العنوان: ${companyInfo.address || "غير محدد"}
-- الهاتف: ${companyInfo.phone || "غير محدد"}
-- البريد: ${companyInfo.email || "غير محدد"}
-- الرقم الضريبي: ${companyInfo.tax_number || "غير محدد"}
-- السجل التجاري: ${companyInfo.cr_number || "غير محدد"}
+### بيانات الشركة الثابتة (متاحة لجميع المستندات تلقائياً):
+- ${companyInfo.name}${companyInfo.name_ar ? ` | ${companyInfo.name_ar}` : ""}
+- العنوان: ${companyInfo.address || "—"} | هاتف: ${companyInfo.phone || "—"} | بريد: ${companyInfo.email || "—"}
+- الرقم الضريبي: ${companyInfo.tax_number || "—"} | السجل التجاري: ${companyInfo.cr_number || "—"}
 - الموقع: ${companyInfo.website}
-- المواد: HDPE (كثافة 0.95)، LDPE (كثافة 0.92)، LLDPE (كثافة 0.93)، PP (كثافة 0.91)
+- المواد: HDPE 0.95، LDPE 0.92، LLDPE 0.93، PP 0.91
 
-### قدراتك الشاملة:
+### إعدادات مالية موحّدة (لا تستخدم قيماً ثابتة):
+- العملة: ${currencySymbol}
+- نسبة ضريبة القيمة المضافة: ${(parseFloat(vatRate) * 100).toFixed(0)}%
+- طول الرقم الضريبي المسموح: ${taxNumberLength}
 
-**📋 إدارة الطلبات والإنتاج:**
-- استعلام عن الطلبات وأوامر الإنتاج والكميات المنتجة مع التصفية والبحث
-- إنشاء طلبات جديدة مع توليد رقم تلقائي
-- تحديث حالة الطلبات (انتظار/إنتاج/متوقف/ملغي/مكتمل)
-- متابعة اللفات عبر مراحل الإنتاج (بثق، طباعة، قطع)
-
-**👥 إدارة العملاء والمنتجات:**
-- تسجيل عملاء جدد وتعديل بياناتهم
-- تسجيل منتجات مخصصة لكل عميل (أبعاد، مادة خام، تخريم، طباعة)
-- البحث واسترجاع بيانات العملاء
-
-**👨‍💼 الموارد البشرية:**
-- عرض معلومات الموظفين وأدوارهم
-- إدارة سجلات الحضور والانصراف
-- إنشاء بيانات حضور تلقائية
-- تتبع الإجازات والتدريب والأداء
-
-**🏭 المصنع والإنتاج:**
-- متابعة حالة المكائن (بثق، طباعة، قطع)
-- الاستعلام عن المخزون (مواد خام ومنتجات)
-- طلبات الصيانة ومتابعتها
-- خلطات المواد وألوان الماستر باتش
-
-**💰 الحسابات والتسعير:**
-- حساب عدد الأكياس من الأبعاد والوزن
-- حساب تكلفة الكليشهات الطباعية
-- إنشاء عروض أسعار احترافية بـ PDF
-- تحويل العملات
-
-**📄 إنشاء المستندات الاحترافية:**
-- **PDF**: تقارير، فواتير، عقود، خطابات رسمية، شهادات، نماذج
-- **Excel/CSV**: جداول بيانات، تقارير، كشوف، إحصائيات
-- **Word**: مستندات رسمية، خطابات، عقود
-- **هام**: جميع المستندات تتضمن تلقائياً هيدر ببيانات المصنع الكاملة (الاسم، العنوان، الهاتف، الرقم الضريبي، السجل التجاري)
-- يمكنك إنشاء أي نوع من المستندات: كشف رواتب، تقرير حضور، تقرير إنتاج، تقرير جودة، كشف مخزون، تقرير صيانة، إلخ
-
-**📊 استعلامات قاعدة البيانات:**
-- تنفيذ استعلامات SQL متقدمة (SELECT/INSERT/UPDATE)
-- تحليلات وتقارير مباشرة من قاعدة البيانات
-- استكشاف هيكل أي جدول
-
-**📱 التواصل:**
-- إرسال رسائل واتساب
-- إرسال عروض أسعار عبر الواتساب أو البريد
-
-**🧠 قاعدة المعرفة:**
-- البحث في المعلومات المحفوظة
-- إضافة معلومات جديدة للتعلم
-
-${defaultGreeting ? `رسالة الترحيب: ${defaultGreeting}\n` : ""}
+### مجموعات الأدوات المتاحة (استخدمها بدل السرد):
+- طلبات/إنتاج/لفّات: get_order_status, get_production_*, ...
+- عملاء ومنتجات: customers/products *
+- HR وحضور: employees, attendance, leaves, performance *
+- مكائن وصيانة: machines, maintenance *
+- مخزون: warehouse, raw_materials, master_batches *
+- عروض الأسعار: create_quote, generate_quote_pdf, send_quote_*
+- مستندات: generate_pdf/excel/word/csv_document
+- قاعدة المعرفة: search_knowledge_base, add_to_knowledge_base
+- SQL آمن: execute_database_query (SELECT/INSERT/UPDATE فقط)
+- Sandbox تجريبي: generate_sandbox_data, generate_attendance_data, query/verify/delete_sandbox_data
+${defaultGreeting ? `\nرسالة الترحيب: ${defaultGreeting}` : ""}
 أسلوب الرد: ${responseStyle}
-العملة الأساسية: ${currencySymbol}. ضريبة القيمة المضافة: ${parseFloat(vatRate) * 100}%
-طول الرقم الضريبي المطلوب: ${taxNumberLength} خانة (يقبل القيم: ${taxNumberLength.split(",").map((s) => s.trim()).join(" أو ")})
 
-### إرشادات العمل الشاملة:
+### تدفقات قياسية مختصرة:
+- مستند: get_company_info → جلب البيانات → generate_*_document → قدّم الرابط.
+- عرض سعر: calculate_bag_quantity (إن لزم) → create_quote → generate_quote_pdf → اسأل عن قناة الإرسال.
+- طلب جديد: تأكد من العميل (create_customer إن لزم) → create_order.
+- استعلام معقد: execute_database_query مع SQL محدود الصلاحيات.
+- Sandbox: generate_sandbox_data / generate_attendance_data ثم verify/query/delete.
 
-**🔑 قاعدة ذهبية لإنشاء أي مستند:**
-1. دائماً اجلب بيانات المصنع تلقائياً باستخدام get_company_info لوضعها في الهيدر
-2. اجلب البيانات المطلوبة من قاعدة البيانات باستخدام execute_database_query
-3. أنشئ المستند بصيغة generate_document مع هيدر كامل ببيانات المصنع
-4. قدّم رابط التحميل المباشر للمستخدم
-5. الهيدر يجب أن يتضمن دائماً: اسم الشركة، العنوان، الهاتف، البريد، الرقم الضريبي
-
-**عند طلب إنشاء أي تقرير أو جدول أو مستند:**
-1. استخدم get_company_info لجلب بيانات المصنع للهيدر
-2. استخدم execute_database_query لجلب البيانات من قاعدة البيانات
-3. رتّب البيانات في أقسام منظمة مع عناوين واضحة
-4. أنشئ المستند بـ generate_document بالصيغة المطلوبة (PDF/Excel/CSV/Word)
-5. قدّم رابط التحميل مباشرة
-
-**عند تنفيذ أي أمر من قاعدة المعرفة أو تعليمات الخصائص:**
-1. اقرأ التعليمات بعناية ونفّذها خطوة بخطوة
-2. استخدم الأدوات المناسبة لكل خطوة
-3. تأكد من إكمال جميع الخطوات المذكورة
-4. أبلغ المستخدم بكل خطوة تم تنفيذها
-
-**عند سؤال عن حساب أكياس:**
-1. اطلب: العرض (سم)، الطول (سم)، السُمك (ميكرون)، نوع المادة
-2. استخدم calculate_bag_quantity وقدّم النتيجة مع الصيغة
-
-**عند إنشاء عرض سعر:**
-1. استخدم calculate_bag_quantity وcalculate_printing_costs للحسابات
-2. اجمع: اسم العميل، الرقم الضريبي، الأصناف
-3. أنشئ العرض بـ create_quote ثم PDF بـ generate_quote_pdf
-4. اسأل المستخدم: هل يريد الإرسال عبر واتساب أو بريد؟
-
-**عند إنشاء طلب جديد:**
-1. تحقق من وجود العميل أولاً
-2. إذا غير مسجل، سجله بـ create_customer
-3. أنشئ الطلب بـ create_order
-
-**عند الاستعلام عن بيانات معقدة:**
-1. استخدم execute_database_query مع استعلامات SQL متقدمة
-2. يمكنك عمل تحليلات وتقارير مباشرة من قاعدة البيانات
-
-**عند إنشاء بيانات تجريبية/وهمية (sandbox):**
-1. استخدم generate_sandbox_data لأي نوع بيانات (طلبات، فواتير، منتجات، عملاء، مخزون، إنتاج، رواتب، صيانة، جودة، مبيعات، إلخ)
-2. استخدم generate_attendance_data لبيانات الحضور خصيصاً
-3. **مهم جداً**: هذه البيانات تُخزن في جداول منفصلة (ai_sandbox_data / ai_sandbox_attendance) ولا تؤثر على بيانات التطبيق الأساسية
-4. بعد الإنشاء، استخدم verify_sandbox_data للتأكد من سلامة البيانات
-5. استخدم query_sandbox_data لعرض واستعلام البيانات
-6. استخدم delete_sandbox_data لحذف البيانات عند الحاجة
-
-**عند سؤال عام:**
-1. ابحث في قاعدة المعرفة بـ search_knowledge_base أولاً
-2. نفّذ ما تجده من تعليمات
-3. احفظ المعلومات المهمة بـ add_to_knowledge_base
-
-${customInstructions ? `### تعليمات إضافية مخصصة:\n${customInstructions}\n` : ""}
-${featureInstructionsText}
-${knowledgeText}
-
-### ملاحظات نهائية:
-- قم بالرد باللغة نفسها التي يستخدمها المستخدم (عربي أو إنجليزي)
-- كن دقيقاً في الحسابات ومفيداً واحترافياً
-- نفّذ الأوامر فعلياً ولا تكتفِ بالشرح النظري
-- عند إنشاء أي مستند، ضع دائماً هيدر احترافي ببيانات المصنع
-- تأكد من تطبيق جميع تعليمات الخصائص وقاعدة المعرفة ذات الصلة بالطلب`;
+${customInstructions ? `### تعليمات إضافية مخصصة:\n${customInstructions}\n` : ""}${featureInstructionsText}
+> ملاحظة: قاعدة المعرفة الكاملة (${knowledge.length} مدخلاً) ليست مدمجة هنا. استدعِ search_knowledge_base قبل أي قرار له سياسة، خصوصاً المنتجات والتسعير والإجراءات.`;
   systemPromptCache = { prompt: result, timestamp: Date.now() };
   return result;
 }
@@ -3510,10 +3494,7 @@ async function executeFunction(
           };
         });
 
-        const vatRateNum = (() => {
-          const n = parseFloat(quoteCfg.vatRate);
-          return Number.isFinite(n) && n >= 0 ? n : 0.15;
-        })();
+        const vatRateNum = getVatRateFromConfig(quoteCfg);
         const taxAmount = totalBeforeTax * vatRateNum;
         const totalWithTax = totalBeforeTax + taxAmount;
 
@@ -3550,8 +3531,8 @@ async function executeFunction(
             tax_amount: taxAmount.toFixed(2),
             total_with_tax: totalWithTax.toFixed(2),
             items_count: items.length,
-            currency: quoteCfg.currency || "ر.س",
-            currency_name: quoteCfg.currency || "ر.س",
+            currency: getCurrencyFromConfig(quoteCfg),
+            currency_name: getCurrencyFromConfig(quoteCfg),
             vat_rate: vatRateNum,
           },
           message: `تم إنشاء عرض السعر رقم ${documentNumber} بنجاح`,
@@ -5053,8 +5034,11 @@ async function executeFunction(
           console.log(
             `[AI Agent] [UNRESTRICTED SQL] (${description}): ${queryStr.substring(0, 200)}`,
           );
-          const result = await db.execute(sql.raw(queryStr));
-          const rows = (result.rows as any[]) || [];
+          const result = await executeRawSqlSafely(
+            queryStr,
+            `unrestricted-sql:${description.substring(0, 40)}`,
+          );
+          const rows = result.rows;
           return JSON.stringify({
             success: true,
             description,
@@ -5062,7 +5046,7 @@ async function executeFunction(
             row_count: rows.length,
             data: rows.slice(0, 200),
             truncated: rows.length > 200,
-            rows_affected: (result as any).rowCount ?? null,
+            rows_affected: result.rowCount,
           });
         }
 
@@ -5148,10 +5132,13 @@ async function executeFunction(
           `[AI Agent] Executing SQL (${description}): ${queryStr.substring(0, 200)}`,
         );
 
-        const result = await db.execute(sql.raw(queryStr));
+        const result = await executeRawSqlSafely(
+          queryStr,
+          `sql:${description.substring(0, 40)}`,
+        );
 
         if (isSelect) {
-          const rows = result.rows || [];
+          const rows = result.rows;
           const limitedRows = rows.slice(0, 100);
           return JSON.stringify({
             success: true,
@@ -5984,7 +5971,25 @@ export function registerAiAgentRoutes(app: Express): void {
               continue;
             }
 
-            const result = await executeFunction(fn.name, args, userPerms);
+            let result: string;
+            try {
+              result = await executeFunction(fn.name, args, userPerms);
+            } catch (toolErr) {
+              console.error(
+                `[AI Agent] Tool '${fn.name}' threw uncaught error:`,
+                toolErr,
+              );
+              result = JSON.stringify({
+                ok: false,
+                error: {
+                  code: "TOOL_EXECUTION_ERROR",
+                  tool: fn.name,
+                  message:
+                    (toolErr as Error)?.message ||
+                    "حدث خطأ غير متوقع أثناء تنفيذ الأداة",
+                },
+              });
+            }
 
             chatMessages.push({
               role: "tool",
@@ -6109,11 +6114,15 @@ export function registerAiAgentRoutes(app: Express): void {
     requireAuth,
     async (req: Request, res: Response) => {
       try {
-        const { documentNumber } = req.params;
+        const rawDocNumber = req.params.documentNumber;
+        const documentNumber = safeStorageFilename(rawDocNumber, "");
+        if (!documentNumber) {
+          return res.status(400).json({ error: "رقم مستند غير صالح" });
+        }
 
         const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
 
-        // محاولة جلب الملف من Object Storage أولاً
+        // محاولة جلب الملف من Object Storage عبر التدفق (streaming) لتقليل الذاكرة
         if (bucketId) {
           try {
             const bucket = objectStorageClient.bucket(bucketId);
@@ -6122,15 +6131,44 @@ export function registerAiAgentRoutes(app: Express): void {
 
             const [exists] = await file.exists();
             if (exists) {
-              const [fileBuffer] = await file.download();
-
               res.setHeader("Content-Type", "application/pdf");
               res.setHeader(
                 "Content-Disposition",
                 `inline; filename="quote_${documentNumber}.pdf"`,
               );
               res.setHeader("Cache-Control", "private, no-store");
-              return res.send(fileBuffer);
+
+              const downloadStream = file.createReadStream();
+              return await new Promise<void>((resolve) => {
+                let settled = false;
+                const done = () => {
+                  if (settled) return;
+                  settled = true;
+                  resolve();
+                };
+                downloadStream.on("error", (err) => {
+                  console.error("Storage stream error:", err);
+                  if (!res.headersSent) {
+                    try {
+                      res.status(500).json({ error: "فشل في تحميل ملف PDF" });
+                    } catch {}
+                  } else {
+                    try {
+                      res.end();
+                    } catch {}
+                  }
+                  done();
+                });
+                downloadStream.on("end", done);
+                res.on("close", () => {
+                  try {
+                    downloadStream.destroy();
+                  } catch {}
+                  done();
+                });
+                res.on("finish", done);
+                downloadStream.pipe(res);
+              });
             }
           } catch (storageError) {
             console.warn(
