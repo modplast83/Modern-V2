@@ -4491,3 +4491,28 @@ export const insertDeliveryManifestSchema = createInsertSchema(
 });
 export type InsertDeliveryManifest = z.infer<typeof insertDeliveryManifestSchema>;
 export type DeliveryManifest = typeof delivery_manifests.$inferSelect;
+
+// 🗂️ جدول مستندات الأدوات الإدارية (Admin Tools generic documents)
+export const admin_tool_documents = pgTable("admin_tool_documents", {
+  id: serial("id").primaryKey(),
+  doc_type: varchar("doc_type", { length: 50 }).notNull(),
+  reference: varchar("reference", { length: 100 }).notNull(),
+  title: varchar("title", { length: 300 }),
+  data: jsonb("data").notNull(),
+  created_by: integer("created_by"),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+export const insertAdminToolDocumentSchema = createInsertSchema(
+  admin_tool_documents,
+).omit({
+  id: true,
+  created_by: true,
+  created_at: true,
+  updated_at: true,
+});
+export type InsertAdminToolDocument = z.infer<
+  typeof insertAdminToolDocumentSchema
+>;
+export type AdminToolDocument = typeof admin_tool_documents.$inferSelect;

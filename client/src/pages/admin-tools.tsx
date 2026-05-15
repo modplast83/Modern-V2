@@ -188,6 +188,322 @@ function SignatureBlock({
   );
 }
 
+// ============== Shared Admin Tool Documents (save/list/edit/delete) ==============
+
+type AdminDocType =
+  | "delivery_disclaimer"
+  | "admin_order"
+  | "custom_report"
+  | "meeting_minutes"
+  | "asset_handover";
+
+type SavedAdminDoc<T = any> = {
+  id: number;
+  doc_type: AdminDocType;
+  reference: string;
+  title: string | null;
+  data: T;
+  created_at: string;
+  updated_at: string;
+};
+
+function useAdminDocs<T>(opts: {
+  docType: AdminDocType;
+  getPayload: () => { reference: string; title: string; data: T };
+  applyDoc: (data: T, reference: string, title: string) => void;
+  resetForm: () => void;
+}) {
+  const { docType, getPayload, applyDoc, resetForm } = opts;
+  const { toast } = useToast();
+  const [currentId, setCurrentId] = useState<number | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+
+  const queryKey = ["/api/admin-tool-docs", { type: docType }];
+  const {
+    data: resp,
+    isLoading,
+    isError,
+  } = useQuery<{ data: SavedAdminDoc<T>[] }>({
+    queryKey,
+    queryFn: async () => {
+      const r = await fetch(
+        `/api/admin-tool-docs?type=${encodeURIComponent(docType)}`,
+        { credentials: "include" },
+      );
+      if (!r.ok) throw new Error(await r.text());
+      return r.json();
+    },
+    staleTime: 30 * 1000,
+  });
+  const docs = resp?.data || [];
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const payload = { ...getPayload(), doc_type: docType };
+      const res = await apiRequest(
+        currentId
+          ? `/api/admin-tool-docs/${currentId}`
+          : "/api/admin-tool-docs",
+        {
+          method: currentId ? "PUT" : "POST",
+          body: JSON.stringify(payload),
+        },
+      );
+      return (await res.json()) as SavedAdminDoc<T>;
+    },
+    onSuccess: (saved) => {
+      queryClient.invalidateQueries({ queryKey });
+      if (saved && typeof saved.id === "number") setCurrentId(saved.id);
+      toast({
+        title: "تم الحفظ",
+        description: currentId ? "تم تحديث المستند" : "تم حفظ المستند",
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "خطأ",
+        description: err?.message || "تعذر الحفظ",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest(`/api/admin-tool-docs/${id}`, { method: "DELETE" });
+      return id;
+    },
+    onSuccess: (id) => {
+      queryClient.invalidateQueries({ queryKey });
+      if (currentId === id) {
+        setCurrentId(null);
+        resetForm();
+      }
+      toast({ title: "تم الحذف" });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "خطأ",
+        description: err?.message || "تعذر الحذف",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const loadDoc = (d: SavedAdminDoc<T>) => {
+    setCurrentId(d.id);
+    applyDoc(d.data, d.reference, d.title || "");
+    toast({ title: "تم التحميل", description: `تم تحميل ${d.reference}` });
+  };
+
+  const handleNew = () => {
+    setCurrentId(null);
+    resetForm();
+  };
+
+  return {
+    docs,
+    isLoading,
+    isError,
+    currentId,
+    setCurrentId,
+    saveMutation,
+    deleteMutation,
+    loadDoc,
+    handleNew,
+    pendingDeleteId,
+    setPendingDeleteId,
+  };
+}
+
+function AdminDocsPanel<T>({
+  label,
+  ctx,
+}: {
+  label: string;
+  ctx: ReturnType<typeof useAdminDocs<T>>;
+}) {
+  const {
+    docs,
+    isLoading,
+    isError,
+    currentId,
+    loadDoc,
+    handleNew,
+    setPendingDeleteId,
+  } = ctx;
+  return (
+    <Card>
+      <CardContent className="pt-6 space-y-3">
+        <div className="flex items-center justify-between">
+          <Label className="text-base font-semibold flex items-center gap-2">
+            <FolderOpen className="h-4 w-4" />
+            {label} ({docs.length})
+          </Label>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleNew}
+            data-testid={`btn-new-${label}`}
+          >
+            <FilePlus className="h-4 w-4 me-1" /> جديد
+          </Button>
+        </div>
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            جاري التحميل...
+          </p>
+        ) : isError ? (
+          <p className="text-sm text-red-600 text-center py-4">
+            تعذر تحميل المستندات المحفوظة
+          </p>
+        ) : docs.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            لا توجد مستندات محفوظة بعد
+          </p>
+        ) : (
+          <div className="border rounded-md overflow-x-auto max-h-56 overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted sticky top-0">
+                <tr>
+                  <th className="p-2 text-start">المرجع</th>
+                  <th className="p-2 text-start">العنوان</th>
+                  <th className="p-2 text-start">آخر تحديث</th>
+                  <th className="p-2 text-center w-28">إجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {docs.map((d) => {
+                  const isCurrent = currentId === d.id;
+                  return (
+                    <tr
+                      key={d.id}
+                      className={`border-t ${isCurrent ? "bg-blue-50 dark:bg-blue-950/30" : ""}`}
+                    >
+                      <td className="p-2 font-medium">
+                        {d.reference}
+                        {isCurrent && (
+                          <span className="ms-2 text-xs text-blue-600">
+                            (قيد التعديل)
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-2">{d.title || "-"}</td>
+                      <td className="p-2 text-xs text-muted-foreground">
+                        {new Date(d.updated_at).toLocaleString("ar")}
+                      </td>
+                      <td className="p-2">
+                        <div className="flex items-center justify-center gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => loadDoc(d)}
+                            aria-label="تعديل"
+                          >
+                            <Edit className="h-4 w-4 text-blue-600" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => setPendingDeleteId(d.id)}
+                            aria-label="حذف"
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function AdminDocsActions<T>({
+  ctx,
+  onPrint,
+  onValidate,
+}: {
+  ctx: ReturnType<typeof useAdminDocs<T>>;
+  onPrint: () => void;
+  onValidate?: () => string | null;
+}) {
+  const { saveMutation, currentId, handleNew } = ctx;
+  const handleSave = () => {
+    if (onValidate) {
+      const err = onValidate();
+      if (err) {
+        return;
+      }
+    }
+    saveMutation.mutate();
+  };
+  return (
+    <div className="flex justify-end gap-2 flex-wrap">
+      <Button variant="outline" onClick={handleNew}>
+        <FilePlus className="h-4 w-4 me-2" /> جديد
+      </Button>
+      <Button
+        variant="default"
+        onClick={handleSave}
+        disabled={saveMutation.isPending}
+      >
+        <Save className="h-4 w-4 me-2" />
+        {saveMutation.isPending
+          ? "جاري الحفظ..."
+          : currentId
+            ? "حفظ التعديلات"
+            : "حفظ"}
+      </Button>
+      <Button onClick={onPrint}>
+        <Printer className="h-4 w-4 me-2" /> طباعة A4
+      </Button>
+    </div>
+  );
+}
+
+function AdminDocsDeleteDialog<T>({
+  ctx,
+}: {
+  ctx: ReturnType<typeof useAdminDocs<T>>;
+}) {
+  const { pendingDeleteId, setPendingDeleteId, deleteMutation } = ctx;
+  return (
+    <AlertDialog
+      open={pendingDeleteId !== null}
+      onOpenChange={(o) => !o && setPendingDeleteId(null)}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
+          <AlertDialogDescription>
+            هل أنت متأكد من حذف هذا المستند؟ لا يمكن التراجع عن هذا الإجراء.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>إلغاء</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              if (pendingDeleteId !== null) {
+                deleteMutation.mutate(pendingDeleteId);
+                setPendingDeleteId(null);
+              }
+            }}
+            className="bg-red-600 hover:bg-red-700 text-white"
+          >
+            حذف
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 // ------------------------------- Tab 1 ----------------------------------
 function DeliveryDisclaimerTab({ logoUrl }: { logoUrl: string }) {
   const { toast } = useToast();
@@ -211,6 +527,41 @@ function DeliveryDisclaimerTab({ logoUrl }: { logoUrl: string }) {
   const printArea = useRef<HTMLDivElement>(null);
 
   const customer = customers.find((c) => c.id === customerId);
+
+  const resetDeliveryForm = () => {
+    setCustomerId("");
+    setDate(todayISO());
+    setReference(`DLV-${Date.now().toString().slice(-6)}`);
+    setVehicle("");
+    setDriver("");
+    setRecipientName("");
+    setRows([{ id: uid(), description: "", quantity: "", weight: "", notes: "" }]);
+    setDisclaimer(defaultDisclaimer);
+  };
+
+  const docsCtx = useAdminDocs<any>({
+    docType: "delivery_disclaimer",
+    getPayload: () => ({
+      reference,
+      title: customer?.name_ar || customer?.name || recipientName || "",
+      data: { customerId, date, vehicle, driver, recipientName, rows, disclaimer },
+    }),
+    applyDoc: (data, ref) => {
+      setReference(ref);
+      setCustomerId(data.customerId || "");
+      setDate(data.date || todayISO());
+      setVehicle(data.vehicle || "");
+      setDriver(data.driver || "");
+      setRecipientName(data.recipientName || "");
+      setRows(
+        Array.isArray(data.rows) && data.rows.length
+          ? data.rows.map((r: any) => ({ ...r, id: r.id || uid() }))
+          : [{ id: uid(), description: "", quantity: "", weight: "", notes: "" }],
+      );
+      setDisclaimer(data.disclaimer || defaultDisclaimer);
+    },
+    resetForm: resetDeliveryForm,
+  });
 
   const addRow = () =>
     setRows((r) => [
@@ -242,6 +593,8 @@ function DeliveryDisclaimerTab({ logoUrl }: { logoUrl: string }) {
 
   return (
     <div className="space-y-4">
+      <AdminDocsPanel label="إخلاء طرف توصيل" ctx={docsCtx} />
+      <AdminDocsDeleteDialog ctx={docsCtx} />
       <Card>
         <CardContent className="pt-6 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -379,11 +732,7 @@ function DeliveryDisclaimerTab({ logoUrl }: { logoUrl: string }) {
             />
           </div>
 
-          <div className="flex justify-end">
-            <Button onClick={handlePrint} data-testid="btn-print-delivery">
-              <Printer className="h-4 w-4 me-2" /> طباعة وحفظ PDF
-            </Button>
-          </div>
+          <AdminDocsActions ctx={docsCtx} onPrint={handlePrint} />
         </CardContent>
       </Card>
 
@@ -482,8 +831,39 @@ function AdminOrderTab({ logoUrl }: { logoUrl: string }) {
 
   const handlePrint = () => printRef(printArea.current, `AdminOrder-${number}`);
 
+  const docsCtx = useAdminDocs<any>({
+    docType: "admin_order",
+    getPayload: () => ({
+      reference: number,
+      title: subject,
+      data: { number, date, subject, recipient, department, body, issuer, issuerTitle },
+    }),
+    applyDoc: (data, ref) => {
+      setNumber(ref);
+      setDate(data.date || todayISO());
+      setSubject(data.subject || "");
+      setRecipient(data.recipient || "");
+      setDepartment(data.department || "");
+      setBody(data.body || "");
+      setIssuer(data.issuer || "");
+      setIssuerTitle(data.issuerTitle || "الإدارة");
+    },
+    resetForm: () => {
+      setNumber(`AO-${Date.now().toString().slice(-6)}`);
+      setDate(todayISO());
+      setSubject("");
+      setRecipient("");
+      setDepartment("");
+      setBody("");
+      setIssuer((user as any)?.name || (user as any)?.username || "");
+      setIssuerTitle("الإدارة");
+    },
+  });
+
   return (
     <div className="space-y-4">
+      <AdminDocsPanel label="الأوامر الإدارية" ctx={docsCtx} />
+      <AdminDocsDeleteDialog ctx={docsCtx} />
       <Card>
         <CardContent className="pt-6 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -541,11 +921,7 @@ function AdminOrderTab({ logoUrl }: { logoUrl: string }) {
             />
           </div>
 
-          <div className="flex justify-end">
-            <Button onClick={handlePrint} data-testid="btn-print-admin-order">
-              <Printer className="h-4 w-4 me-2" /> طباعة وحفظ PDF
-            </Button>
-          </div>
+          <AdminDocsActions ctx={docsCtx} onPrint={handlePrint} />
         </CardContent>
       </Card>
 
@@ -627,8 +1003,55 @@ function CustomReportTab({ logoUrl }: { logoUrl: string }) {
   const handlePrint = () =>
     printRef(printArea.current, `Report-${title || date}`);
 
+  const reportRef = `RPT-${date}`;
+  const docsCtx = useAdminDocs<any>({
+    docType: "custom_report",
+    getPayload: () => ({
+      reference: title ? `${reportRef}-${title.slice(0, 20)}` : reportRef,
+      title,
+      data: {
+        title, subtitle, period, date, sections, tableHeaders, tableRows,
+        conclusion, preparedBy,
+      },
+    }),
+    applyDoc: (data) => {
+      setTitle(data.title || "");
+      setSubtitle(data.subtitle || "");
+      setPeriod(data.period || "");
+      setDate(data.date || todayISO());
+      setSections(
+        Array.isArray(data.sections) && data.sections.length
+          ? data.sections.map((s: any) => ({ ...s, id: s.id || uid() }))
+          : [{ id: uid(), heading: "المقدمة", body: "" }],
+      );
+      setTableHeaders(
+        data.tableHeaders || { col1: "البند", col2: "القيمة", col3: "ملاحظات" },
+      );
+      setTableRows(
+        Array.isArray(data.tableRows) && data.tableRows.length
+          ? data.tableRows.map((r: any) => ({ ...r, id: r.id || uid() }))
+          : [{ id: uid(), col1: "", col2: "", col3: "" }],
+      );
+      setConclusion(data.conclusion || "");
+      setPreparedBy(data.preparedBy || "");
+    },
+    resetForm: () => {
+      setTitle("");
+      setSubtitle("");
+      setPeriod("");
+      setDate(todayISO());
+      setSections([{ id: uid(), heading: "المقدمة", body: "" }]);
+      setTableHeaders({ col1: "البند", col2: "القيمة", col3: "ملاحظات" });
+      setTableRows([{ id: uid(), col1: "", col2: "", col3: "" }]);
+      setConclusion("");
+      setPreparedBy("");
+    },
+  });
+
   return (
     <div className="space-y-4">
+      <AdminDocsPanel label="التقارير المخصصة" ctx={docsCtx} />
+      <AdminDocsDeleteDialog ctx={docsCtx} />
       <Card>
         <CardContent className="pt-6 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -785,11 +1208,7 @@ function CustomReportTab({ logoUrl }: { logoUrl: string }) {
             />
           </div>
 
-          <div className="flex justify-end">
-            <Button onClick={handlePrint} data-testid="btn-print-report">
-              <Printer className="h-4 w-4 me-2" /> طباعة وحفظ PDF
-            </Button>
-          </div>
+          <AdminDocsActions ctx={docsCtx} onPrint={handlePrint} />
         </CardContent>
       </Card>
 
@@ -874,8 +1293,49 @@ function MeetingMinutesTab({ logoUrl }: { logoUrl: string }) {
   ]);
   const printArea = useRef<HTMLDivElement>(null);
 
+  const handlePrint = () => printRef(printArea.current, `Minutes-${date}`);
+
+  const docsCtx = useAdminDocs<any>({
+    docType: "meeting_minutes",
+    getPayload: () => ({
+      reference: `MIN-${date}-${(title || "").slice(0, 20)}`,
+      title,
+      data: { title, date, time, location, chair, attendees, agenda, actions },
+    }),
+    applyDoc: (data) => {
+      setTitle(data.title || "");
+      setDate(data.date || todayISO());
+      setTime(data.time || "10:00");
+      setLocation(data.location || "");
+      setChair(data.chair || "");
+      setAttendees(data.attendees || "");
+      setAgenda(
+        Array.isArray(data.agenda) && data.agenda.length
+          ? data.agenda.map((a: any) => ({ ...a, id: a.id || uid() }))
+          : [{ id: uid(), topic: "", discussion: "" }],
+      );
+      setActions(
+        Array.isArray(data.actions) && data.actions.length
+          ? data.actions.map((a: any) => ({ ...a, id: a.id || uid() }))
+          : [{ id: uid(), task: "", owner: "", due: "" }],
+      );
+    },
+    resetForm: () => {
+      setTitle("");
+      setDate(todayISO());
+      setTime("10:00");
+      setLocation("");
+      setChair("");
+      setAttendees("");
+      setAgenda([{ id: uid(), topic: "", discussion: "" }]);
+      setActions([{ id: uid(), task: "", owner: "", due: "" }]);
+    },
+  });
+
   return (
     <div className="space-y-4">
+      <AdminDocsPanel label="محاضر الاجتماعات" ctx={docsCtx} />
+      <AdminDocsDeleteDialog ctx={docsCtx} />
       <Card>
         <CardContent className="pt-6 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1059,14 +1519,7 @@ function MeetingMinutesTab({ logoUrl }: { logoUrl: string }) {
             </div>
           </div>
 
-          <div className="flex justify-end">
-            <Button
-              onClick={() => printRef(printArea.current, `Minutes-${date}`)}
-              data-testid="btn-print-minutes"
-            >
-              <Printer className="h-4 w-4 me-2" /> طباعة وحفظ PDF
-            </Button>
-          </div>
+          <AdminDocsActions ctx={docsCtx} onPrint={handlePrint} />
         </CardContent>
       </Card>
 
@@ -1144,13 +1597,45 @@ function AssetHandoverTab({ logoUrl }: { logoUrl: string }) {
   const [items, setItems] = useState<AssetItem[]>([
     { id: uid(), name: "", serial: "", qty: "1", condition: "جديد" },
   ]);
-  const [terms, setTerms] = useState(
-    `أقر أنا الموظف الموقع أدناه باستلام العهدة الموضحة أعلاه بحالتها المذكورة، وأتعهد بالمحافظة عليها واستخدامها للأغراض الوظيفية فقط، وإعادتها بنفس الحالة عند انتهاء العمل أو طلب الشركة لها. وفي حال أي تلف أو فقدان ناتج عن إهمال أتحمل قيمتها كاملة.`,
-  );
+  const defaultTerms = `أقر أنا الموظف الموقع أدناه باستلام العهدة الموضحة أعلاه بحالتها المذكورة، وأتعهد بالمحافظة عليها واستخدامها للأغراض الوظيفية فقط، وإعادتها بنفس الحالة عند انتهاء العمل أو طلب الشركة لها. وفي حال أي تلف أو فقدان ناتج عن إهمال أتحمل قيمتها كاملة.`;
+  const [terms, setTerms] = useState(defaultTerms);
   const printArea = useRef<HTMLDivElement>(null);
+
+  const handlePrint = () => printRef(printArea.current, `Handover-${employee}`);
+
+  const docsCtx = useAdminDocs<any>({
+    docType: "asset_handover",
+    getPayload: () => ({
+      reference: `HND-${date}-${(employeeId || employee || "").slice(0, 20)}`,
+      title: employee,
+      data: { employee, employeeId, department, date, items, terms },
+    }),
+    applyDoc: (data) => {
+      setEmployee(data.employee || "");
+      setEmployeeId(data.employeeId || "");
+      setDepartment(data.department || "");
+      setDate(data.date || todayISO());
+      setItems(
+        Array.isArray(data.items) && data.items.length
+          ? data.items.map((i: any) => ({ ...i, id: i.id || uid() }))
+          : [{ id: uid(), name: "", serial: "", qty: "1", condition: "جديد" }],
+      );
+      setTerms(data.terms || defaultTerms);
+    },
+    resetForm: () => {
+      setEmployee("");
+      setEmployeeId("");
+      setDepartment("");
+      setDate(todayISO());
+      setItems([{ id: uid(), name: "", serial: "", qty: "1", condition: "جديد" }]);
+      setTerms(defaultTerms);
+    },
+  });
 
   return (
     <div className="space-y-4">
+      <AdminDocsPanel label="نماذج تسليم العهد" ctx={docsCtx} />
+      <AdminDocsDeleteDialog ctx={docsCtx} />
       <Card>
         <CardContent className="pt-6 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1293,14 +1778,7 @@ function AssetHandoverTab({ logoUrl }: { logoUrl: string }) {
             />
           </div>
 
-          <div className="flex justify-end">
-            <Button
-              onClick={() => printRef(printArea.current, `Handover-${employee}`)}
-              data-testid="btn-print-handover"
-            >
-              <Printer className="h-4 w-4 me-2" /> طباعة وحفظ PDF
-            </Button>
-          </div>
+          <AdminDocsActions ctx={docsCtx} onPrint={handlePrint} />
         </CardContent>
       </Card>
 

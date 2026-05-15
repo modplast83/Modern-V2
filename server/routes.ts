@@ -159,6 +159,7 @@ import {
   insertMixingRecipeSchema,
   insertBagWeightRecordSchema,
   insertDeliveryManifestSchema,
+  insertAdminToolDocumentSchema,
   insertPackagingUnitSchema,
 } from "@shared/schema";
 import { eq, sql, and, gte, lte, gt, desc, inArray } from "drizzle-orm";
@@ -16879,6 +16880,139 @@ Input: ${text}`;
       } catch (error) {
         console.error("Error deleting delivery manifest:", error);
         res.status(500).json({ message: "خطأ في حذف الكشف" });
+      }
+    },
+  );
+
+  // ============ ADMIN TOOL DOCUMENTS (generic CRUD) ============
+  const ADMIN_DOC_TYPES = [
+    "delivery_disclaimer",
+    "admin_order",
+    "custom_report",
+    "meeting_minutes",
+    "asset_handover",
+  ] as const;
+
+  const adminToolDocPayloadSchema = insertAdminToolDocumentSchema.extend({
+    doc_type: z.enum(ADMIN_DOC_TYPES),
+    reference: z.string().min(1).max(100),
+    title: z.string().max(300).nullable().optional(),
+    data: z.record(z.any()),
+  });
+
+  function parseAdminDocId(raw: string, res: any): number | null {
+    const id = Number(raw);
+    if (!Number.isInteger(id) || id <= 0) {
+      res.status(400).json({ message: "معرف المستند غير صحيح" });
+      return null;
+    }
+    return id;
+  }
+
+  app.get(
+    "/api/admin-tool-docs",
+    requireAuth,
+    requirePermission("manage_production"),
+    async (req: AuthRequest, res) => {
+      try {
+        const typeRaw = typeof req.query.type === "string" ? req.query.type : undefined;
+        if (typeRaw && !ADMIN_DOC_TYPES.includes(typeRaw as any)) {
+          return res.status(400).json({ message: "نوع المستند غير صحيح" });
+        }
+        const list = await storage.getAdminToolDocuments(typeRaw);
+        res.json({ data: list });
+      } catch (error) {
+        console.error("Error listing admin tool docs:", error);
+        res.status(500).json({ message: "خطأ في جلب المستندات" });
+      }
+    },
+  );
+
+  app.get(
+    "/api/admin-tool-docs/:id",
+    requireAuth,
+    requirePermission("manage_production"),
+    async (req: AuthRequest, res) => {
+      try {
+        const id = parseAdminDocId(req.params.id, res);
+        if (id === null) return;
+        const d = await storage.getAdminToolDocumentById(id);
+        if (!d) return res.status(404).json({ message: "المستند غير موجود" });
+        res.json(d);
+      } catch (error) {
+        console.error("Error fetching admin tool doc:", error);
+        res.status(500).json({ message: "خطأ في جلب المستند" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/admin-tool-docs",
+    requireAuth,
+    requirePermission("manage_production"),
+    async (req: AuthRequest, res) => {
+      try {
+        const parsed = adminToolDocPayloadSchema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({
+            message: "بيانات غير صحيحة",
+            errors: parsed.error.errors,
+          });
+        }
+        const userId = getAuthUserId(req);
+        const created = await storage.createAdminToolDocument(
+          parsed.data,
+          userId as number,
+        );
+        res.json(created);
+      } catch (error) {
+        console.error("Error creating admin tool doc:", error);
+        res.status(500).json({ message: "خطأ في حفظ المستند" });
+      }
+    },
+  );
+
+  app.put(
+    "/api/admin-tool-docs/:id",
+    requireAuth,
+    requirePermission("manage_production"),
+    async (req: AuthRequest, res) => {
+      try {
+        const id = parseAdminDocId(req.params.id, res);
+        if (id === null) return;
+        const existing = await storage.getAdminToolDocumentById(id);
+        if (!existing) return res.status(404).json({ message: "المستند غير موجود" });
+        const parsed = adminToolDocPayloadSchema.partial().safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({
+            message: "بيانات غير صحيحة",
+            errors: parsed.error.errors,
+          });
+        }
+        const updated = await storage.updateAdminToolDocument(id, parsed.data);
+        res.json(updated);
+      } catch (error) {
+        console.error("Error updating admin tool doc:", error);
+        res.status(500).json({ message: "خطأ في تعديل المستند" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/admin-tool-docs/:id",
+    requireAuth,
+    requirePermission("manage_production"),
+    async (req: AuthRequest, res) => {
+      try {
+        const id = parseAdminDocId(req.params.id, res);
+        if (id === null) return;
+        const existing = await storage.getAdminToolDocumentById(id);
+        if (!existing) return res.status(404).json({ message: "المستند غير موجود" });
+        await storage.deleteAdminToolDocument(id);
+        res.json({ success: true });
+      } catch (error) {
+        console.error("Error deleting admin tool doc:", error);
+        res.status(500).json({ message: "خطأ في حذف المستند" });
       }
     },
   );

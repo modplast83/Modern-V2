@@ -244,6 +244,9 @@ import {
   delivery_manifests,
   type DeliveryManifest,
   type InsertDeliveryManifest,
+  admin_tool_documents,
+  type AdminToolDocument,
+  type InsertAdminToolDocument,
 } from "@shared/schema";
 import bcrypt from "bcrypt";
 import { eq, desc, and, sql, count, inArray, or } from "drizzle-orm";
@@ -1004,6 +1007,19 @@ export interface IStorage {
     updates: Partial<InsertDeliveryManifest>,
   ): Promise<DeliveryManifest>;
   deleteDeliveryManifest(id: number): Promise<void>;
+
+  // Admin Tool Documents (generic)
+  getAdminToolDocuments(docType?: string): Promise<AdminToolDocument[]>;
+  getAdminToolDocumentById(id: number): Promise<AdminToolDocument | undefined>;
+  createAdminToolDocument(
+    data: InsertAdminToolDocument,
+    userId: number,
+  ): Promise<AdminToolDocument>;
+  updateAdminToolDocument(
+    id: number,
+    updates: Partial<InsertAdminToolDocument>,
+  ): Promise<AdminToolDocument>;
+  deleteAdminToolDocument(id: number): Promise<void>;
 
   // Experimental Blends
   getExperimentalBlends(): Promise<ExperimentalBlend[]>;
@@ -8783,6 +8799,63 @@ export class DatabaseStorage implements IStorage {
 
   async deleteDeliveryManifest(id: number): Promise<void> {
     await db.delete(delivery_manifests).where(eq(delivery_manifests.id, id));
+  }
+
+  // ============ ADMIN TOOL DOCUMENTS (generic) ============
+
+  async getAdminToolDocuments(
+    docType?: string,
+  ): Promise<AdminToolDocument[]> {
+    if (docType) {
+      return await db
+        .select()
+        .from(admin_tool_documents)
+        .where(eq(admin_tool_documents.doc_type, docType))
+        .orderBy(desc(admin_tool_documents.created_at));
+    }
+    return await db
+      .select()
+      .from(admin_tool_documents)
+      .orderBy(desc(admin_tool_documents.created_at));
+  }
+
+  async getAdminToolDocumentById(
+    id: number,
+  ): Promise<AdminToolDocument | undefined> {
+    const [d] = await db
+      .select()
+      .from(admin_tool_documents)
+      .where(eq(admin_tool_documents.id, id));
+    return d;
+  }
+
+  async createAdminToolDocument(
+    data: InsertAdminToolDocument,
+    userId: number,
+  ): Promise<AdminToolDocument> {
+    const [d] = await db
+      .insert(admin_tool_documents)
+      .values({ ...data, created_by: userId })
+      .returning();
+    return d;
+  }
+
+  async updateAdminToolDocument(
+    id: number,
+    updates: Partial<InsertAdminToolDocument>,
+  ): Promise<AdminToolDocument> {
+    const [u] = await db
+      .update(admin_tool_documents)
+      .set({ ...updates, updated_at: new Date() })
+      .where(eq(admin_tool_documents.id, id))
+      .returning();
+    return u;
+  }
+
+  async deleteAdminToolDocument(id: number): Promise<void> {
+    await db
+      .delete(admin_tool_documents)
+      .where(eq(admin_tool_documents.id, id));
   }
 }
 

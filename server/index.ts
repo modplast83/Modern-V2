@@ -656,6 +656,7 @@ function sanitizeResponseForLogging(response: any): any {
         "mcp_oauth_tokens",
         "mcp_oauth_clients",
         "delivery_manifests",
+        "admin_tool_documents",
       ];
       for (const tableName of criticalTables) {
         try {
