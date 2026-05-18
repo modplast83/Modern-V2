@@ -679,7 +679,9 @@ export function createMcpServer() {
     },
     async (params) => {
       try {
-        const product = await storage.createCustomerProduct(params);
+        const { insertCustomerProductSchema } = await import("@shared/schema");
+        const validated = insertCustomerProductSchema.parse(params);
+        const product = await storage.createCustomerProduct(validated);
         return {
           content: [
             {

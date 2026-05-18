@@ -12,6 +12,16 @@ const translateNameCache = new Map<
   { translatedText: string; expiresAt: number }
 >();
 
+let translateOpenAIClientPromise: Promise<any> | null = null;
+async function getTranslateOpenAIClient() {
+  if (!translateOpenAIClientPromise) {
+    translateOpenAIClientPromise = import("openai").then(
+      (mod) => new mod.default({ timeout: 8000, maxRetries: 0 }),
+    );
+  }
+  return translateOpenAIClientPromise;
+}
+
 // Helper: add a sheet from an array of objects to a workbook
 function addJsonSheet(
   workbook: ExcelJS.Workbook,
@@ -4957,9 +4967,8 @@ export async function registerRoutes(
       }
       if (cached) translateNameCache.delete(cacheKey);
 
-      // Check if OpenAI is available
-      const OpenAI = (await import("openai")).default;
-      const openai = new OpenAI();
+      // Shared OpenAI client (created once, reused across requests)
+      const openai = await getTranslateOpenAIClient();
 
       const prompt =
         targetLanguage === "en"

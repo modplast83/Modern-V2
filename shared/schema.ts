@@ -2469,22 +2469,28 @@ export const insertCustomerProductSchema = createInsertSchema(customer_products)
     package_weight_kg: true,
   })
   .extend({
-    // Coerce empty strings on FK varchar fields to null so they don't
-    // violate foreign key constraints (e.g. item_id='' -> NULL).
+    // Coerce empty strings and the UI's "none" sentinel on FK varchar fields
+    // to null so they don't violate foreign key constraints
+    // (e.g. item_id='' or item_id='none' -> NULL). The frontend Select
+    // components use "none" because shadcn Select cannot use "" as a value.
     customer_id: z.preprocess(
-      (val) => (val === "" || val === undefined ? null : val),
+      (val) =>
+        val === "" || val === undefined || val === "none" ? null : val,
       z.string().nullable().optional(),
     ),
     category_id: z.preprocess(
-      (val) => (val === "" || val === undefined ? null : val),
+      (val) =>
+        val === "" || val === undefined || val === "none" ? null : val,
       z.string().nullable().optional(),
     ),
     item_id: z.preprocess(
-      (val) => (val === "" || val === undefined ? null : val),
+      (val) =>
+        val === "" || val === undefined || val === "none" ? null : val,
       z.string().nullable().optional(),
     ),
     master_batch_id: z.preprocess(
-      (val) => (val === "" || val === undefined ? null : val),
+      (val) =>
+        val === "" || val === undefined || val === "none" ? null : val,
       z.string().nullable().optional(),
     ),
     // Transform decimal fields to handle both string and number inputs

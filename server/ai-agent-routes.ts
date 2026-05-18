@@ -5001,7 +5001,8 @@ async function executeFunction(
         }
 
         const { storage } = await import("./storage");
-        const newProduct = await storage.createCustomerProduct({
+        const { insertCustomerProductSchema } = await import("@shared/schema");
+        const validatedProduct = insertCustomerProductSchema.parse({
           customer_id: custId,
           size_caption: sizeCaption || null,
           width: width ? String(width) : null,
@@ -5015,6 +5016,7 @@ async function executeFunction(
           notes: prodNotes || null,
           status: "active",
         });
+        const newProduct = await storage.createCustomerProduct(validatedProduct);
 
         return JSON.stringify({
           success: true,
