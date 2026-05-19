@@ -87,8 +87,8 @@ export default function ProductionMonitoring() {
 
   useEffect(() => {
     const now = new Date();
-    const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    setDateFrom(monthAgo.toISOString().split("T")[0]);
+    const yearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+    setDateFrom(yearAgo.toISOString().split("T")[0]);
     setDateTo(now.toISOString().split("T")[0]);
   }, []);
 
