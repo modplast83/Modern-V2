@@ -8198,162 +8198,172 @@ export class DatabaseStorage implements IStorage {
       .sort((a, b) => b.total_kg - a.total_kg)
       .slice(0, 20);
 
-    // ============ Material requirements by production-order status ============
-    // Aggregates the total raw material (and master batch) required to fulfil
-    // production orders, grouped by status. Uses final_quantity_kg
-    // (= ordered quantity + overrun) since that's what is actually planned to
-    // be produced and therefore the real material need. The date filter
-    // applies to production_orders.created_at to stay consistent with the
-    // rest of the dashboard.
+    // ============ Recipe-based material requirements & consumption ============
+    // For each production order, we classify the product into one of 4 recipes
+    // based on raw_material (HDPE/LDPE) and color (clear vs colored, where
+    // CLEAR = master_batch empty or containing "CLEAR"/"شفاف"), then break the
+    // production quantity into its raw component kilograms.
+    //   - REQUIRED (basis for "what to buy"): final_quantity_kg of pending POs.
+    //   - CONSUMED (basis for "what was used"): produced_quantity_kg of
+    //     active + completed POs.
+    // We send per-PO rows + the recipe definitions and facet lists to the
+    // client so it can apply filters (color/material/category) without an
+    // extra round-trip.
     const materialRows = await db
       .select({
+        po_id: production_orders.id,
+        order_id: production_orders.order_id,
         status: production_orders.status,
         final_quantity_kg: production_orders.final_quantity_kg,
+        produced_quantity_kg: production_orders.produced_quantity_kg,
         raw_material: customer_products.raw_material,
         master_batch_id: customer_products.master_batch_id,
+        category_id: customer_products.category_id,
+        category_name: categories.name,
+        category_name_ar: categories.name_ar,
+        customer_id: customers.id,
+        customer_name: customers.name,
+        customer_name_ar: customers.name_ar,
+        item_name: items.name,
+        item_name_ar: items.name_ar,
+        size_caption: customer_products.size_caption,
       })
       .from(production_orders)
       .leftJoin(
         customer_products,
         eq(production_orders.customer_product_id, customer_products.id),
       )
+      .leftJoin(categories, eq(customer_products.category_id, categories.id))
+      .leftJoin(customers, eq(customer_products.customer_id, customers.id))
+      .leftJoin(items, eq(customer_products.item_id, items.id))
       .where(dateCondition(production_orders.created_at));
 
-    type StatusBucket = {
-      status: string;
-      orders_count: number;
-      total_kg: number;
+    // Recipe definitions (in percent). Components: HDPE / LLDPE / LDPE / FILLER / COLOR
+    const RECIPES: Record<
+      string,
+      { label: string; label_ar: string; components: Record<string, number> }
+    > = {
+      hdpe_colored: {
+        label: "HDPE Colored",
+        label_ar: "HDPE ملون",
+        components: { HDPE: 35, LLDPE: 35, FILLER: 25, COLOR: 5 },
+      },
+      hdpe_clear: {
+        label: "HDPE Clear",
+        label_ar: "HDPE شفاف",
+        components: { HDPE: 50, LLDPE: 50 },
+      },
+      ldpe_colored: {
+        label: "LDPE Colored",
+        label_ar: "LDPE ملون",
+        components: { LLDPE: 60, LDPE: 10, FILLER: 25, COLOR: 5 },
+      },
+      ldpe_clear: {
+        label: "LDPE Clear",
+        label_ar: "LDPE شفاف",
+        components: { LLDPE: 80, LDPE: 20 },
+      },
     };
-    const KNOWN_STATUSES = [
-      "pending",
-      "active",
-      "completed",
-      "cancelled",
-      "archived",
-    ];
-    // Build the final status list as the union of known statuses + any
-    // additional values observed in the data, so unexpected/legacy statuses
-    // still surface in the UI instead of being silently rolled into totals.
-    const observedStatuses = new Set<string>();
-    for (const r of materialRows) {
-      observedStatuses.add(r.status || "pending");
-    }
-    const ALL_STATUSES = [
-      ...KNOWN_STATUSES,
-      ...Array.from(observedStatuses).filter(
-        (s) => !KNOWN_STATUSES.includes(s),
-      ),
-    ];
 
-    const rawMaterialAgg = new Map<
-      string,
-      { material: string; by_status: Record<string, StatusBucket>; total_kg: number; orders_count: number }
-    >();
-    const masterBatchAgg = new Map<
-      string,
-      { master_batch: string; by_status: Record<string, StatusBucket>; total_kg: number; orders_count: number }
-    >();
-    const statusTotals: Record<string, StatusBucket> = {};
-    let materialsGrandTotalKg = 0;
-    let materialsGrandTotalOrders = 0;
-
-    const emptyStatusMap = (): Record<string, StatusBucket> =>
-      Object.fromEntries(
-        ALL_STATUSES.map((s) => [
-          s,
-          { status: s, orders_count: 0, total_kg: 0 },
-        ]),
+    const classifyClear = (mb: string | null | undefined): boolean => {
+      if (!mb || !mb.trim()) return true;
+      const u = mb.trim().toUpperCase();
+      return (
+        u === "CLEAR" ||
+        u.includes("CLEAR") ||
+        mb.includes("شفاف") ||
+        u === "NONE"
       );
+    };
 
+    const classifyRecipe = (
+      rawMaterial: string | null | undefined,
+      mb: string | null | undefined,
+    ): string | null => {
+      const rm = (rawMaterial || "").toUpperCase().trim();
+      const isClear = classifyClear(mb);
+      if (rm.startsWith("HDPE")) return isClear ? "hdpe_clear" : "hdpe_colored";
+      if (rm.startsWith("LDPE")) return isClear ? "ldpe_clear" : "ldpe_colored";
+      return null;
+    };
+
+    const colorFacets = new Set<string>();
+    const rawMaterialFacets = new Set<string>();
+    const categoryFacetsMap = new Map<
+      string,
+      { id: string; name: string; name_ar: string }
+    >();
+
+    const ordersOut: any[] = [];
     for (const row of materialRows) {
       const status = row.status || "pending";
-      const qty = parseFloat(String(row.final_quantity_kg || 0)) || 0;
-      const material = row.raw_material || "غير محدد";
-      const masterBatch = row.master_batch_id || "غير محدد";
+      const rawMaterial = row.raw_material || "غير محدد";
+      const masterBatch = (row.master_batch_id || "").trim() || "CLEAR";
+      const isClear = classifyClear(row.master_batch_id);
+      const recipeKey = classifyRecipe(row.raw_material, row.master_batch_id);
+      const recipe = recipeKey ? RECIPES[recipeKey] : null;
 
-      materialsGrandTotalKg += qty;
-      materialsGrandTotalOrders += 1;
+      const finalKg =
+        parseFloat(String(row.final_quantity_kg || 0)) || 0;
+      const producedKg =
+        parseFloat(String(row.produced_quantity_kg || 0)) || 0;
 
-      if (!statusTotals[status])
-        statusTotals[status] = {
-          status,
-          orders_count: 0,
-          total_kg: 0,
+      // Basis for required = pending POs (final_quantity_kg)
+      // Basis for consumed = active + completed POs (produced_quantity_kg)
+      const basisRequiredKg = status === "pending" ? finalKg : 0;
+      const basisConsumedKg =
+        status === "active" || status === "completed" ? producedKg : 0;
+
+      const splitComponents = (basis: number) => {
+        const out: Record<string, number> = {
+          HDPE: 0,
+          LLDPE: 0,
+          LDPE: 0,
+          FILLER: 0,
+          COLOR: 0,
         };
-      statusTotals[status].orders_count += 1;
-      statusTotals[status].total_kg += qty;
+        if (!recipe || basis <= 0) return out;
+        for (const [comp, pct] of Object.entries(recipe.components)) {
+          out[comp] = (basis * pct) / 100;
+        }
+        return out;
+      };
 
-      let rm = rawMaterialAgg.get(material);
-      if (!rm) {
-        rm = {
-          material,
-          by_status: emptyStatusMap(),
-          total_kg: 0,
-          orders_count: 0,
-        };
-        rawMaterialAgg.set(material, rm);
+      colorFacets.add(masterBatch);
+      rawMaterialFacets.add(rawMaterial);
+      if (row.category_id) {
+        categoryFacetsMap.set(row.category_id, {
+          id: row.category_id,
+          name: row.category_name || row.category_id,
+          name_ar: row.category_name_ar || row.category_name || row.category_id,
+        });
       }
-      if (!rm.by_status[status])
-        rm.by_status[status] = { status, orders_count: 0, total_kg: 0 };
-      rm.by_status[status].orders_count += 1;
-      rm.by_status[status].total_kg += qty;
-      rm.total_kg += qty;
-      rm.orders_count += 1;
 
-      let mb = masterBatchAgg.get(masterBatch);
-      if (!mb) {
-        mb = {
-          master_batch: masterBatch,
-          by_status: emptyStatusMap(),
-          total_kg: 0,
-          orders_count: 0,
-        };
-        masterBatchAgg.set(masterBatch, mb);
-      }
-      if (!mb.by_status[status])
-        mb.by_status[status] = { status, orders_count: 0, total_kg: 0 };
-      mb.by_status[status].orders_count += 1;
-      mb.by_status[status].total_kg += qty;
-      mb.total_kg += qty;
-      mb.orders_count += 1;
+      ordersOut.push({
+        po_id: row.po_id,
+        order_id: row.order_id,
+        status,
+        customer_name: row.customer_name || "",
+        customer_name_ar: row.customer_name_ar || row.customer_name || "",
+        item_name: row.item_name || "",
+        item_name_ar: row.item_name_ar || row.item_name || "",
+        size_caption: row.size_caption || "",
+        raw_material: rawMaterial,
+        master_batch: masterBatch,
+        is_clear: isClear,
+        category_id: row.category_id || null,
+        category_name: row.category_name || null,
+        category_name_ar: row.category_name_ar || row.category_name || null,
+        recipe_key: recipeKey,
+        recipe_label_ar: recipe ? recipe.label_ar : "غير مصنف",
+        final_quantity_kg: +finalKg.toFixed(2),
+        produced_quantity_kg: +producedKg.toFixed(2),
+        basis_required_kg: +basisRequiredKg.toFixed(2),
+        basis_consumed_kg: +basisConsumedKg.toFixed(2),
+        required_components: splitComponents(basisRequiredKg),
+        consumed_components: splitComponents(basisConsumedKg),
+      });
     }
-
-    const roundBucket = (b: StatusBucket) => ({
-      status: b.status,
-      orders_count: b.orders_count,
-      total_kg: +b.total_kg.toFixed(2),
-    });
-
-    const rawMaterialsResult = Array.from(rawMaterialAgg.values())
-      .map((m) => ({
-        material: m.material,
-        total_kg: +m.total_kg.toFixed(2),
-        orders_count: m.orders_count,
-        by_status: Object.fromEntries(
-          Object.entries(m.by_status).map(([k, v]) => [k, roundBucket(v)]),
-        ),
-      }))
-      .sort((a, b) => b.total_kg - a.total_kg);
-
-    const masterBatchesResult = Array.from(masterBatchAgg.values())
-      .map((m) => ({
-        master_batch: m.master_batch,
-        total_kg: +m.total_kg.toFixed(2),
-        orders_count: m.orders_count,
-        by_status: Object.fromEntries(
-          Object.entries(m.by_status).map(([k, v]) => [k, roundBucket(v)]),
-        ),
-      }))
-      .sort((a, b) => b.total_kg - a.total_kg);
-
-    const statusTotalsResult = ALL_STATUSES.map(
-      (s) =>
-        statusTotals[s] || {
-          status: s,
-          orders_count: 0,
-          total_kg: 0,
-        },
-    ).map(roundBucket);
 
     return {
       summary: {
@@ -8373,12 +8383,20 @@ export class DatabaseStorage implements IStorage {
       workers: workersResult,
       products: productsResult,
       materials: {
-        statuses: ALL_STATUSES,
-        status_totals: statusTotalsResult,
-        raw_materials: rawMaterialsResult,
-        master_batches: masterBatchesResult,
-        grand_total_kg: +materialsGrandTotalKg.toFixed(2),
-        grand_total_orders: materialsGrandTotalOrders,
+        recipes: Object.entries(RECIPES).map(([key, r]) => ({
+          key,
+          label: r.label,
+          label_ar: r.label_ar,
+          components: r.components,
+        })),
+        orders: ordersOut,
+        facets: {
+          raw_materials: Array.from(rawMaterialFacets).sort(),
+          colors: Array.from(colorFacets).sort(),
+          categories: Array.from(categoryFacetsMap.values()).sort((a, b) =>
+            (a.name_ar || a.name).localeCompare(b.name_ar || b.name, "ar"),
+          ),
+        },
       },
     };
   }

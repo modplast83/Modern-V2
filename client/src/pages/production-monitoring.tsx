@@ -60,6 +60,13 @@ import {
   TabsList,
   TabsTrigger,
 } from "../components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 import { useLocalizedName } from "../hooks/use-localized-name";
 
 const SECTION_COLORS = {
@@ -100,13 +107,182 @@ export default function ProductionMonitoring() {
   const workersList = dashboard?.workers || [];
   const productsList = dashboard?.products || [];
   const materials = dashboard?.materials || {
-    statuses: [],
-    status_totals: [],
-    raw_materials: [],
-    master_batches: [],
-    grand_total_kg: 0,
-    grand_total_orders: 0,
+    recipes: [],
+    orders: [],
+    facets: { raw_materials: [], colors: [], categories: [] },
   };
+  const [matRawFilter, setMatRawFilter] = useState<string>("all");
+  const [matColorFilter, setMatColorFilter] = useState<string>("all");
+  const [matCategoryFilter, setMatCategoryFilter] = useState<string>("all");
+  const [matRecipeFilter, setMatRecipeFilter] = useState<string>("all");
+
+  const filteredOrders = useMemo(() => {
+    const orders: any[] = materials.orders || [];
+    return orders.filter((o: any) => {
+      if (matRawFilter !== "all" && o.raw_material !== matRawFilter)
+        return false;
+      if (matColorFilter !== "all" && o.master_batch !== matColorFilter)
+        return false;
+      if (
+        matCategoryFilter !== "all" &&
+        (o.category_id || "") !== matCategoryFilter
+      )
+        return false;
+      if (matRecipeFilter !== "all") {
+        if (matRecipeFilter === "unclassified") {
+          if (o.recipe_key) return false;
+        } else if (o.recipe_key !== matRecipeFilter) return false;
+      }
+      return true;
+    });
+  }, [
+    materials.orders,
+    matRawFilter,
+    matColorFilter,
+    matCategoryFilter,
+    matRecipeFilter,
+  ]);
+
+  const COMPONENT_KEYS = ["HDPE", "LLDPE", "LDPE", "FILLER", "COLOR"] as const;
+  const COMPONENT_COLORS: Record<string, string> = {
+    HDPE: "bg-blue-50 text-blue-700 border-blue-200",
+    LLDPE: "bg-indigo-50 text-indigo-700 border-indigo-200",
+    LDPE: "bg-violet-50 text-violet-700 border-violet-200",
+    FILLER: "bg-amber-50 text-amber-700 border-amber-200",
+    COLOR: "bg-pink-50 text-pink-700 border-pink-200",
+  };
+
+  const materialAggregates = useMemo(() => {
+    const blank = () => ({ HDPE: 0, LLDPE: 0, LDPE: 0, FILLER: 0, COLOR: 0 });
+    const required = blank();
+    const consumed = blank();
+    let requiredOrders = 0;
+    let consumedOrders = 0;
+    let requiredKg = 0;
+    let consumedKg = 0;
+    const byRecipe: Record<
+      string,
+      {
+        recipe_key: string | null;
+        recipe_label_ar: string;
+        required_kg: number;
+        consumed_kg: number;
+        required_orders: number;
+        consumed_orders: number;
+        required_components: Record<string, number>;
+        consumed_components: Record<string, number>;
+      }
+    > = {};
+    const byCategory: Record<
+      string,
+      {
+        category_id: string | null;
+        category_name_ar: string;
+        required_kg: number;
+        consumed_kg: number;
+        required_orders: number;
+        consumed_orders: number;
+      }
+    > = {};
+    const byColor: Record<
+      string,
+      {
+        master_batch: string;
+        required_kg: number;
+        consumed_kg: number;
+        required_orders: number;
+        consumed_orders: number;
+      }
+    > = {};
+
+    for (const o of filteredOrders) {
+      const rc = o.required_components || {};
+      const cc = o.consumed_components || {};
+      for (const k of COMPONENT_KEYS) {
+        required[k] += rc[k] || 0;
+        consumed[k] += cc[k] || 0;
+      }
+      if ((o.basis_required_kg || 0) > 0) {
+        requiredOrders += 1;
+        requiredKg += o.basis_required_kg || 0;
+      }
+      if ((o.basis_consumed_kg || 0) > 0) {
+        consumedOrders += 1;
+        consumedKg += o.basis_consumed_kg || 0;
+      }
+
+      const rk = o.recipe_key || "unclassified";
+      if (!byRecipe[rk])
+        byRecipe[rk] = {
+          recipe_key: o.recipe_key || null,
+          recipe_label_ar: o.recipe_label_ar || "غير مصنف",
+          required_kg: 0,
+          consumed_kg: 0,
+          required_orders: 0,
+          consumed_orders: 0,
+          required_components: blank(),
+          consumed_components: blank(),
+        };
+      byRecipe[rk].required_kg += o.basis_required_kg || 0;
+      byRecipe[rk].consumed_kg += o.basis_consumed_kg || 0;
+      if ((o.basis_required_kg || 0) > 0) byRecipe[rk].required_orders += 1;
+      if ((o.basis_consumed_kg || 0) > 0) byRecipe[rk].consumed_orders += 1;
+      for (const k of COMPONENT_KEYS) {
+        byRecipe[rk].required_components[k] += rc[k] || 0;
+        byRecipe[rk].consumed_components[k] += cc[k] || 0;
+      }
+
+      const catKey = o.category_id || "uncat";
+      if (!byCategory[catKey])
+        byCategory[catKey] = {
+          category_id: o.category_id || null,
+          category_name_ar: o.category_name_ar || "بدون فئة",
+          required_kg: 0,
+          consumed_kg: 0,
+          required_orders: 0,
+          consumed_orders: 0,
+        };
+      byCategory[catKey].required_kg += o.basis_required_kg || 0;
+      byCategory[catKey].consumed_kg += o.basis_consumed_kg || 0;
+      if ((o.basis_required_kg || 0) > 0) byCategory[catKey].required_orders += 1;
+      if ((o.basis_consumed_kg || 0) > 0) byCategory[catKey].consumed_orders += 1;
+
+      const colorKey = o.master_batch || "CLEAR";
+      if (!byColor[colorKey])
+        byColor[colorKey] = {
+          master_batch: colorKey,
+          required_kg: 0,
+          consumed_kg: 0,
+          required_orders: 0,
+          consumed_orders: 0,
+        };
+      byColor[colorKey].required_kg += o.basis_required_kg || 0;
+      byColor[colorKey].consumed_kg += o.basis_consumed_kg || 0;
+      if ((o.basis_required_kg || 0) > 0) byColor[colorKey].required_orders += 1;
+      if ((o.basis_consumed_kg || 0) > 0) byColor[colorKey].consumed_orders += 1;
+    }
+
+    return {
+      required,
+      consumed,
+      requiredOrders,
+      consumedOrders,
+      requiredKg,
+      consumedKg,
+      byRecipe: Object.values(byRecipe).sort(
+        (a, b) =>
+          b.required_kg + b.consumed_kg - (a.required_kg + a.consumed_kg),
+      ),
+      byCategory: Object.values(byCategory).sort(
+        (a, b) =>
+          b.required_kg + b.consumed_kg - (a.required_kg + a.consumed_kg),
+      ),
+      byColor: Object.values(byColor).sort(
+        (a, b) =>
+          b.required_kg + b.consumed_kg - (a.required_kg + a.consumed_kg),
+      ),
+    };
+  }, [filteredOrders]);
   const STATUS_LABELS_AR: Record<string, string> = {
     pending: "قيد الانتظار",
     active: "قيد التنفيذ",
@@ -341,7 +517,7 @@ export default function ProductionMonitoring() {
             </TabsTrigger>
             <TabsTrigger value="materials" className="py-2.5 gap-2">
               <Layers className="w-4 h-4" />
-              <span>المواد المطلوبة</span>
+              <span>المواد الخام</span>
             </TabsTrigger>
             <TabsTrigger value="products" className="py-2.5 gap-2">
               <Award className="w-4 h-4" />
@@ -649,219 +825,476 @@ export default function ProductionMonitoring() {
           </TabsContent>
 
           <TabsContent value="materials" className="space-y-6 mt-6">
+            {/* Filters */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Scale className="h-5 w-5" />
-                  ملخص المواد المطلوبة حسب حالة أمر الإنتاج
+                  <Layers className="h-5 w-5" />
+                  فلاتر المواد
                 </CardTitle>
                 <p className="text-xs text-muted-foreground mt-1">
-                  الكميات محسوبة من الكمية النهائية لأوامر الإنتاج (شاملة نسبة
-                  الزيادة) خلال الفترة المحددة.
+                  الحسابات تعتمد على وصفات ثابتة (HDPE/LDPE × شفاف/ملون) دون أي
+                  ربط بالمخزون. المطلوب = أوامر الانتظار، المستهلك = أوامر قيد
+                  التنفيذ + المكتملة.
                 </p>
               </CardHeader>
               <CardContent className="p-4">
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                  <Card className="border-r-4 border-r-primary">
-                    <CardContent className="p-3">
-                      <p className="text-xs text-muted-foreground">
-                        إجمالي المواد المطلوبة
-                      </p>
-                      <p className="text-lg font-bold text-primary">
-                        {formatKg(materials.grand_total_kg)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatNum(materials.grand_total_orders)} أمر إنتاج
-                      </p>
-                    </CardContent>
-                  </Card>
-                  {(materials.status_totals || []).map((s: any) => (
-                    <Card key={s.status}>
-                      <CardContent className="p-3">
-                        <Badge
-                          variant="outline"
-                          className={`mb-1 ${STATUS_COLORS[s.status] || ""}`}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">
+                      نوع الخام
+                    </label>
+                    <Select
+                      value={matRawFilter}
+                      onValueChange={setMatRawFilter}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">الكل</SelectItem>
+                        {(materials.facets?.raw_materials || []).map(
+                          (rm: string) => (
+                            <SelectItem key={rm} value={rm}>
+                              {rm}
+                            </SelectItem>
+                          ),
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">
+                      اللون (ماستر باتش)
+                    </label>
+                    <Select
+                      value={matColorFilter}
+                      onValueChange={setMatColorFilter}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">الكل</SelectItem>
+                        {(materials.facets?.colors || []).map((c: string) => (
+                          <SelectItem key={c} value={c}>
+                            {c}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">
+                      الفئة
+                    </label>
+                    <Select
+                      value={matCategoryFilter}
+                      onValueChange={setMatCategoryFilter}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">الكل</SelectItem>
+                        {(materials.facets?.categories || []).map((c: any) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name_ar || c.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">
+                      الوصفة
+                    </label>
+                    <Select
+                      value={matRecipeFilter}
+                      onValueChange={setMatRecipeFilter}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">الكل</SelectItem>
+                        {(materials.recipes || []).map((r: any) => (
+                          <SelectItem key={r.key} value={r.key}>
+                            {r.label_ar}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="unclassified">غير مصنف</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="mt-3 text-xs text-muted-foreground">
+                  عدد أوامر الإنتاج المطابقة: {formatNum(filteredOrders.length)}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Side-by-side: Required vs Consumed component totals */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <Card className="border-r-4 border-r-amber-500">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Scale className="h-5 w-5 text-amber-600" />
+                    مواد مطلوبة (طلبات قيد الانتظار)
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    إجمالي{" "}
+                    <span className="font-semibold text-foreground">
+                      {formatKg(materialAggregates.requiredKg)}
+                    </span>{" "}
+                    من{" "}
+                    <span className="font-semibold text-foreground">
+                      {formatNum(materialAggregates.requiredOrders)}
+                    </span>{" "}
+                    أمر
+                  </p>
+                </CardHeader>
+                <CardContent className="p-4">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                    {COMPONENT_KEYS.map((k) => (
+                      <div
+                        key={k}
+                        className={`rounded-md border p-3 text-center ${COMPONENT_COLORS[k]}`}
+                      >
+                        <p className="text-xs font-semibold">{k}</p>
+                        <p className="text-base font-bold">
+                          {formatKg(materialAggregates.required[k])}
+                        </p>
+                        <p className="text-[10px] opacity-75">
+                          {materialAggregates.requiredKg > 0
+                            ? (
+                                (materialAggregates.required[k] /
+                                  materialAggregates.requiredKg) *
+                                100
+                              ).toFixed(1)
+                            : 0}
+                          %
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-r-4 border-r-green-500">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                    مواد مستهلكة (قيد التنفيذ + المكتمل)
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    إجمالي{" "}
+                    <span className="font-semibold text-foreground">
+                      {formatKg(materialAggregates.consumedKg)}
+                    </span>{" "}
+                    من{" "}
+                    <span className="font-semibold text-foreground">
+                      {formatNum(materialAggregates.consumedOrders)}
+                    </span>{" "}
+                    أمر
+                  </p>
+                </CardHeader>
+                <CardContent className="p-4">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                    {COMPONENT_KEYS.map((k) => (
+                      <div
+                        key={k}
+                        className={`rounded-md border p-3 text-center ${COMPONENT_COLORS[k]}`}
+                      >
+                        <p className="text-xs font-semibold">{k}</p>
+                        <p className="text-base font-bold">
+                          {formatKg(materialAggregates.consumed[k])}
+                        </p>
+                        <p className="text-[10px] opacity-75">
+                          {materialAggregates.consumedKg > 0
+                            ? (
+                                (materialAggregates.consumed[k] /
+                                  materialAggregates.consumedKg) *
+                                100
+                              ).toFixed(1)
+                            : 0}
+                          %
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Recipe breakdown */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Layers className="h-5 w-5" />
+                  التفصيل حسب الوصفة
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0 overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="font-semibold whitespace-nowrap">
+                        الوصفة
+                      </TableHead>
+                      <TableHead className="font-semibold text-center whitespace-nowrap">
+                        مطلوب (كجم)
+                      </TableHead>
+                      <TableHead className="font-semibold text-center whitespace-nowrap">
+                        مستهلك (كجم)
+                      </TableHead>
+                      {COMPONENT_KEYS.map((k) => (
+                        <TableHead
+                          key={k}
+                          className="font-semibold text-center whitespace-nowrap"
                         >
-                          {STATUS_LABELS_AR[s.status] || s.status}
-                        </Badge>
-                        <p className="text-lg font-bold">
-                          {formatKg(s.total_kg)}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatNum(s.orders_count)} أمر
-                        </p>
-                      </CardContent>
-                    </Card>
+                          {k} (مطلوب)
+                        </TableHead>
+                      ))}
+                      {COMPONENT_KEYS.map((k) => (
+                        <TableHead
+                          key={`c-${k}`}
+                          className="font-semibold text-center whitespace-nowrap bg-green-50"
+                        >
+                          {k} (مستهلك)
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {materialAggregates.byRecipe.length === 0 ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={3 + COMPONENT_KEYS.length * 2}
+                          className="text-center py-12 text-muted-foreground"
+                        >
+                          <Layers className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                          لا توجد أوامر إنتاج مطابقة للفلاتر
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      materialAggregates.byRecipe.map((r) => (
+                        <TableRow
+                          key={r.recipe_key || "unclassified"}
+                          className="hover:bg-muted/50"
+                        >
+                          <TableCell className="font-medium whitespace-nowrap">
+                            <div>{r.recipe_label_ar}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {formatNum(r.required_orders)} مطلوب /{" "}
+                              {formatNum(r.consumed_orders)} مستهلك
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center font-bold text-amber-700">
+                            {r.required_kg > 0 ? formatKg(r.required_kg) : "—"}
+                          </TableCell>
+                          <TableCell className="text-center font-bold text-green-700">
+                            {r.consumed_kg > 0 ? formatKg(r.consumed_kg) : "—"}
+                          </TableCell>
+                          {COMPONENT_KEYS.map((k) => (
+                            <TableCell
+                              key={k}
+                              className="text-center text-sm"
+                            >
+                              {r.required_components[k] > 0
+                                ? formatKg(r.required_components[k])
+                                : "—"}
+                            </TableCell>
+                          ))}
+                          {COMPONENT_KEYS.map((k) => (
+                            <TableCell
+                              key={`c-${k}`}
+                              className="text-center text-sm bg-green-50/50"
+                            >
+                              {r.consumed_components[k] > 0
+                                ? formatKg(r.consumed_components[k])
+                                : "—"}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            {/* Recipe legend */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Palette className="h-5 w-5" />
+                  الوصفات المستخدمة
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {(materials.recipes || []).map((r: any) => (
+                    <div
+                      key={r.key}
+                      className="rounded-md border p-3 bg-muted/30"
+                    >
+                      <p className="text-sm font-semibold mb-2">
+                        {r.label_ar}
+                      </p>
+                      <div className="space-y-1">
+                        {Object.entries(r.components).map(([c, pct]) => (
+                          <div
+                            key={c}
+                            className="flex items-center justify-between text-xs"
+                          >
+                            <span className="font-medium">{c}</span>
+                            <span className="text-muted-foreground">
+                              {String(pct)}%
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Layers className="h-5 w-5" />
-                  المواد الخام المطلوبة
-                  <Badge variant="secondary">
-                    {materials.raw_materials?.length || 0}
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0 overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="font-semibold whitespace-nowrap">
-                        المادة الخام
-                      </TableHead>
-                      <TableHead className="font-semibold text-center">
-                        عدد الأوامر
-                      </TableHead>
-                      {(materials.statuses || []).map((s: string) => (
-                        <TableHead
-                          key={s}
-                          className="font-semibold text-center"
-                        >
-                          {STATUS_LABELS_AR[s] || s}
+            {/* Breakdown by category & color */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Award className="h-5 w-5" />
+                    حسب الفئة
+                    <Badge variant="secondary">
+                      {materialAggregates.byCategory.length}
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0 overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="font-semibold whitespace-nowrap">
+                          الفئة
                         </TableHead>
-                      ))}
-                      <TableHead className="font-semibold text-center bg-primary/5">
-                        الإجمالي (كجم)
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(materials.raw_materials?.length || 0) === 0 ? (
-                      <TableRow>
-                        <TableCell
-                          colSpan={(materials.statuses?.length || 0) + 3}
-                          className="text-center py-12 text-muted-foreground"
-                        >
-                          <Layers className="h-10 w-10 mx-auto mb-2 opacity-30" />
-                          لا توجد بيانات مواد لأوامر الإنتاج في هذه الفترة
-                        </TableCell>
+                        <TableHead className="text-center whitespace-nowrap">
+                          مطلوب
+                        </TableHead>
+                        <TableHead className="text-center whitespace-nowrap">
+                          مستهلك
+                        </TableHead>
                       </TableRow>
-                    ) : (
-                      materials.raw_materials.map((m: any, i: number) => (
-                        <TableRow key={i} className="hover:bg-muted/50">
-                          <TableCell className="font-medium">
-                            {m.material}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {formatNum(m.orders_count)}
-                          </TableCell>
-                          {(materials.statuses || []).map((s: string) => (
-                            <TableCell key={s} className="text-center text-sm">
-                              {m.by_status?.[s]?.total_kg > 0 ? (
-                                <div>
-                                  <div className="font-medium">
-                                    {formatKg(m.by_status[s].total_kg)}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {formatNum(m.by_status[s].orders_count)}{" "}
-                                    أمر
-                                  </div>
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground">
-                                  —
-                                </span>
-                              )}
-                            </TableCell>
-                          ))}
-                          <TableCell className="text-center font-bold bg-primary/5">
-                            {formatKg(m.total_kg)}
+                    </TableHeader>
+                    <TableBody>
+                      {materialAggregates.byCategory.length === 0 ? (
+                        <TableRow>
+                          <TableCell
+                            colSpan={3}
+                            className="text-center py-8 text-muted-foreground"
+                          >
+                            لا توجد بيانات
                           </TableCell>
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+                      ) : (
+                        materialAggregates.byCategory.map((c) => (
+                          <TableRow
+                            key={c.category_id || "uncat"}
+                            className="hover:bg-muted/50"
+                          >
+                            <TableCell className="font-medium whitespace-nowrap">
+                              <div>{c.category_name_ar}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {formatNum(c.required_orders)} /{" "}
+                                {formatNum(c.consumed_orders)} أمر
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center text-amber-700 font-semibold">
+                              {c.required_kg > 0
+                                ? formatKg(c.required_kg)
+                                : "—"}
+                            </TableCell>
+                            <TableCell className="text-center text-green-700 font-semibold">
+                              {c.consumed_kg > 0
+                                ? formatKg(c.consumed_kg)
+                                : "—"}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Palette className="h-5 w-5" />
-                  الماستر باتش (الألوان) المطلوبة
-                  <Badge variant="secondary">
-                    {materials.master_batches?.length || 0}
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0 overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="font-semibold whitespace-nowrap">
-                        الماستر باتش
-                      </TableHead>
-                      <TableHead className="font-semibold text-center">
-                        عدد الأوامر
-                      </TableHead>
-                      {(materials.statuses || []).map((s: string) => (
-                        <TableHead
-                          key={s}
-                          className="font-semibold text-center"
-                        >
-                          {STATUS_LABELS_AR[s] || s}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Palette className="h-5 w-5" />
+                    حسب اللون (الماستر باتش)
+                    <Badge variant="secondary">
+                      {materialAggregates.byColor.length}
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0 overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="font-semibold whitespace-nowrap">
+                          اللون
                         </TableHead>
-                      ))}
-                      <TableHead className="font-semibold text-center bg-primary/5">
-                        الإجمالي (كجم)
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(materials.master_batches?.length || 0) === 0 ? (
-                      <TableRow>
-                        <TableCell
-                          colSpan={(materials.statuses?.length || 0) + 3}
-                          className="text-center py-12 text-muted-foreground"
-                        >
-                          <Palette className="h-10 w-10 mx-auto mb-2 opacity-30" />
-                          لا توجد بيانات ماستر باتش لأوامر الإنتاج في هذه الفترة
-                        </TableCell>
+                        <TableHead className="text-center whitespace-nowrap">
+                          مطلوب
+                        </TableHead>
+                        <TableHead className="text-center whitespace-nowrap">
+                          مستهلك
+                        </TableHead>
                       </TableRow>
-                    ) : (
-                      materials.master_batches.map((m: any, i: number) => (
-                        <TableRow key={i} className="hover:bg-muted/50">
-                          <TableCell className="font-medium">
-                            {m.master_batch}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {formatNum(m.orders_count)}
-                          </TableCell>
-                          {(materials.statuses || []).map((s: string) => (
-                            <TableCell key={s} className="text-center text-sm">
-                              {m.by_status?.[s]?.total_kg > 0 ? (
-                                <div>
-                                  <div className="font-medium">
-                                    {formatKg(m.by_status[s].total_kg)}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {formatNum(m.by_status[s].orders_count)}{" "}
-                                    أمر
-                                  </div>
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground">
-                                  —
-                                </span>
-                              )}
-                            </TableCell>
-                          ))}
-                          <TableCell className="text-center font-bold bg-primary/5">
-                            {formatKg(m.total_kg)}
+                    </TableHeader>
+                    <TableBody>
+                      {materialAggregates.byColor.length === 0 ? (
+                        <TableRow>
+                          <TableCell
+                            colSpan={3}
+                            className="text-center py-8 text-muted-foreground"
+                          >
+                            لا توجد بيانات
                           </TableCell>
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+                      ) : (
+                        materialAggregates.byColor.map((c) => (
+                          <TableRow
+                            key={c.master_batch}
+                            className="hover:bg-muted/50"
+                          >
+                            <TableCell className="font-medium whitespace-nowrap">
+                              <div>{c.master_batch}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {formatNum(c.required_orders)} /{" "}
+                                {formatNum(c.consumed_orders)} أمر
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center text-amber-700 font-semibold">
+                              {c.required_kg > 0
+                                ? formatKg(c.required_kg)
+                                : "—"}
+                            </TableCell>
+                            <TableCell className="text-center text-green-700 font-semibold">
+                              {c.consumed_kg > 0
+                                ? formatKg(c.consumed_kg)
+                                : "—"}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="products" className="space-y-6 mt-6">
