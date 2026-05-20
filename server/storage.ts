@@ -5356,7 +5356,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async markRollAsPrinted(id: number, data?: any): Promise<Roll> {
-    return this.updateRoll(id, { stage: "printed", ...data });
+    const updated = await this.updateRoll(id, { stage: "printing", ...data });
+    if (updated?.production_order_id) {
+      await this.updateProductionOrderCompletionPercentages(
+        updated.production_order_id,
+      );
+    }
+    return updated;
   }
 
   async markRollPrinted(

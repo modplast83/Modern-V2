@@ -699,6 +699,24 @@ function sanitizeResponseForLogging(response: any): any {
         CREATE INDEX IF NOT EXISTS idx_production_orders_production_stage
         ON production_orders (production_stage)
       `);
+      // One-time migration: fix invalid roll stage 'printed' -> 'printing'
+      try {
+        const fixed = await db.execute(sql`
+          UPDATE rolls SET stage = 'printing' WHERE stage = 'printed'
+        `);
+        const fixedCount = (fixed as any)?.rowCount ?? 0;
+        if (fixedCount > 0) {
+          console.log(
+            `🔁 تم إصلاح ${fixedCount} رول بحالة 'printed' غير الصالحة إلى 'printing'`,
+          );
+        }
+      } catch (rollFixErr: any) {
+        console.warn(
+          "⚠️ فشل إصلاح حالة الرولات 'printed':",
+          rollFixErr?.message,
+        );
+      }
+
       // One-time backfill of production_stage from current rolls state
       const { storage: storageImpl } = await import("./storage");
       const updatedCount = await storageImpl.backfillProductionOrderStages();
