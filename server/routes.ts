@@ -389,11 +389,9 @@ export async function registerRoutes(
 
   app.post("/api/public/bag-design-quote", async (req, res) => {
     try {
-      // Rate limiting
-      const ip =
-        (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
-        req.socket.remoteAddress ||
-        "unknown";
+      // Rate limiting — use Express req.ip (respects configured trust proxy)
+      // rather than trusting raw x-forwarded-for, which can be spoofed.
+      const ip = req.ip || req.socket.remoteAddress || "unknown";
       const now = Date.now();
 
       // Global window
@@ -597,10 +595,7 @@ export async function registerRoutes(
   app.post("/api/public/bag-configurator-report", async (req, res) => {
     try {
       // Rate limiting (shares the bag-quote window state)
-      const ip =
-        (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
-        req.socket.remoteAddress ||
-        "unknown";
+      const ip = req.ip || req.socket.remoteAddress || "unknown";
       const now = Date.now();
       while (
         bagQuoteGlobalHits.length &&
@@ -657,7 +652,7 @@ export async function registerRoutes(
         }),
         imageDataUrl: z
           .string()
-          .max(8 * 1024 * 1024)
+          .max(2 * 1024 * 1024)
           .optional()
           .nullable(),
       });
@@ -717,7 +712,7 @@ export async function registerRoutes(
         if (match) {
           const ctype = match[1];
           const buf = Buffer.from(match[2], "base64");
-          if (buf.length <= 6 * 1024 * 1024) {
+          if (buf.length <= 2 * 1024 * 1024) {
             const ext = ctype.split("/")[1] || "png";
             attachments.push({
               filename: `bag-${ref}.${ext}`,

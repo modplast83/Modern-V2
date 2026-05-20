@@ -3442,6 +3442,9 @@ async function executeFunction(
       }
 
       case "create_quote": {
+        if (!hasPermission("manage_orders") && !hasPermission("manage_customers")) {
+          return JSON.stringify({ error: "ليس لديك صلاحية إنشاء عروض الأسعار" });
+        }
         const {
           customer_name,
           tax_number,
@@ -3600,6 +3603,13 @@ async function executeFunction(
       }
 
       case "get_quote_templates": {
+        if (
+          !hasPermission("manage_orders") &&
+          !hasPermission("manage_definitions") &&
+          !hasPermission("manage_ai_agent")
+        ) {
+          return JSON.stringify({ error: "ليس لديك صلاحية عرض نماذج عروض الأسعار" });
+        }
         const activeTemplates = await db
           .select()
           .from(quote_templates)
@@ -3630,6 +3640,9 @@ async function executeFunction(
       }
 
       case "generate_quote_pdf": {
+        if (!hasPermission("manage_orders") && !hasPermission("manage_customers")) {
+          return JSON.stringify({ error: "ليس لديك صلاحية إنشاء PDF لعروض الأسعار" });
+        }
         const quoteId = args.quote_id as number;
         const [quote] = await db
           .select()
@@ -3772,6 +3785,9 @@ async function executeFunction(
       }
 
       case "send_quote_whatsapp": {
+        if (!hasPermission("manage_orders") && !hasPermission("manage_customers")) {
+          return JSON.stringify({ error: "ليس لديك صلاحية إرسال عروض الأسعار" });
+        }
         const quoteId = args.quote_id as number;
         const phoneNumber = args.phone_number as string;
 
@@ -3900,6 +3916,9 @@ async function executeFunction(
       }
 
       case "get_quote_by_number": {
+        if (!hasPermission("manage_orders") && !hasPermission("manage_customers")) {
+          return JSON.stringify({ error: "ليس لديك صلاحية عرض عروض الأسعار" });
+        }
         const documentNumber = args.document_number as string;
         const [quote] = await db
           .select()
@@ -4417,6 +4436,9 @@ async function executeFunction(
       }
 
       case "send_quote_email": {
+        if (!hasPermission("manage_orders") && !hasPermission("manage_customers")) {
+          return JSON.stringify({ error: "ليس لديك صلاحية إرسال عروض الأسعار" });
+        }
         const quoteId = args.quote_id as number;
         const email = args.email as string;
         const recipientName = args.customer_name as string | undefined;
@@ -6057,13 +6079,24 @@ export function registerAiAgentRoutes(app: Express): void {
             safeEnd();
           } catch (streamError) {
             console.error("Streaming fallback error:", streamError);
-            const fallback = await openai.chat.completions.create({
-              ...baseCompletionOpts,
-              model: runtimeCfg.model,
-              messages: chatMessages,
-            });
-            const content = fallback.choices[0]?.message?.content || "";
-            safeWrite({ content, done: true });
+            if (clientClosed || res.writableEnded || res.destroyed) {
+              return safeEnd();
+            }
+            try {
+              const fallback = await openai.chat.completions.create({
+                ...baseCompletionOpts,
+                model: runtimeCfg.model,
+                messages: chatMessages,
+              });
+              const content = fallback.choices[0]?.message?.content || "";
+              safeWrite({ content, done: true });
+            } catch (fallbackErr) {
+              console.error("Non-stream fallback error:", fallbackErr);
+              safeWrite({
+                error: "تعذر إنشاء الرد، يرجى المحاولة مرة أخرى",
+                done: true,
+              });
+            }
             safeEnd();
           }
         }
@@ -6085,7 +6118,7 @@ export function registerAiAgentRoutes(app: Express): void {
     },
   );
 
-  app.get("/api/quotes", requireAuth, async (_req: Request, res: Response) => {
+  app.get("/api/quotes", requireAuth, requirePermission("manage_orders", "manage_customers"), async (_req: Request, res: Response) => {
     try {
       const allQuotes = await db
         .select()
@@ -6101,6 +6134,7 @@ export function registerAiAgentRoutes(app: Express): void {
   app.get(
     "/api/quotes/:id",
     requireAuth,
+    requirePermission("manage_orders", "manage_customers"),
     async (req: Request, res: Response) => {
       try {
         const id = parseInt(req.params.id);
@@ -6128,6 +6162,7 @@ export function registerAiAgentRoutes(app: Express): void {
   app.get(
     "/api/pdf/quotes/:documentNumber",
     requireAuth,
+    requirePermission("manage_orders", "manage_customers"),
     async (req: Request, res: Response) => {
       try {
         const rawDocNumber = req.params.documentNumber;
@@ -6212,7 +6247,7 @@ export function registerAiAgentRoutes(app: Express): void {
     },
   );
 
-  app.get("/api/quotes/:id/pdf", requireAuth, async (req: Request, res: Response) => {
+  app.get("/api/quotes/:id/pdf", requireAuth, requirePermission("manage_orders", "manage_customers"), async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -6953,6 +6988,7 @@ export function registerAiAgentRoutes(app: Express): void {
   app.get(
     "/api/quote-templates",
     requireAuth,
+    requirePermission("manage_orders", "manage_definitions", "manage_ai_agent", "view_ai_agent_settings"),
     async (_req: Request, res: Response) => {
       try {
         const templates = await db
@@ -6970,6 +7006,7 @@ export function registerAiAgentRoutes(app: Express): void {
   app.get(
     "/api/quote-templates/active",
     requireAuth,
+    requirePermission("manage_orders", "manage_definitions", "manage_ai_agent", "view_ai_agent_settings"),
     async (_req: Request, res: Response) => {
       try {
         const templates = await db
@@ -6988,6 +7025,7 @@ export function registerAiAgentRoutes(app: Express): void {
   app.post(
     "/api/quote-templates",
     requireAuth,
+    requirePermission("manage_definitions"),
     async (req: Request, res: Response) => {
       try {
         const {
@@ -7027,6 +7065,7 @@ export function registerAiAgentRoutes(app: Express): void {
   app.put(
     "/api/quote-templates/:id",
     requireAuth,
+    requirePermission("manage_definitions"),
     async (req: Request, res: Response) => {
       try {
         const id = parseInt(req.params.id);
@@ -7075,6 +7114,7 @@ export function registerAiAgentRoutes(app: Express): void {
   app.delete(
     "/api/quote-templates/:id",
     requireAuth,
+    requirePermission("manage_definitions"),
     async (req: Request, res: Response) => {
       try {
         const id = parseInt(req.params.id);

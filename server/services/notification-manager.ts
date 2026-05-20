@@ -66,6 +66,21 @@ export class NotificationManager extends EventEmitter {
       `[NotificationManager] Adding SSE connection for user ${userId}, connection ${connectionId}`,
     );
 
+    // Cap connections per user to avoid leaks when the load balancer
+    // doesn't fire 'close' reliably on rapid reloads. Drop the oldest
+    // connections so the most recent client always wins.
+    const MAX_CONNECTIONS_PER_USER = 5;
+    const userConnections = Array.from(this.connections.values())
+      .filter((c) => c.userId === userId);
+    if (userConnections.length >= MAX_CONNECTIONS_PER_USER) {
+      const toRemove = userConnections
+        .sort((a, b) => a.lastHeartbeat.getTime() - b.lastHeartbeat.getTime())
+        .slice(0, userConnections.length - MAX_CONNECTIONS_PER_USER + 1);
+      for (const stale of toRemove) {
+        this.removeConnection(stale.id);
+      }
+    }
+
     response.writeHead(200, {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
