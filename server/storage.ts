@@ -6476,6 +6476,7 @@ export class DatabaseStorage implements IStorage {
       JOIN customer_products cp ON po.customer_product_id = cp.id
       LEFT JOIN items i ON cp.item_id = i.id
       WHERE r.stage = 'film'
+        AND COALESCE(cp.is_printed, false) = true
         AND po.status IN ('pending', 'active')
       ORDER BY po.id, r.roll_seq
     `);

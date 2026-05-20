@@ -3545,7 +3545,7 @@ export async function registerRoutes(
           }
 
           const allowedTransitions: Record<string, string[]> = {
-            film: ["printing"],
+            film: ["printing", "cutting"],
             printing: ["cutting"],
             cutting: ["done"],
             done: [],
@@ -3556,6 +3556,25 @@ export async function registerRoutes(
             return res.status(400).json({
               message: `لا يمكن الانتقال من مرحلة "${currentStage}" إلى مرحلة "${stage}"`,
             });
+          }
+
+          // الانتقال film → cutting مسموح فقط عندما لا تتطلب المنتج طباعة
+          if (currentStage === "film" && stage === "cutting") {
+            const skipPrinting = await db.execute(sql`
+              SELECT COALESCE(cp.is_printed, false) = false AS skip
+              FROM rolls r
+              JOIN production_orders po ON r.production_order_id = po.id
+              JOIN customer_products cp ON po.customer_product_id = cp.id
+              WHERE r.id = ${id}
+              LIMIT 1
+            `);
+            const canSkip = (skipPrinting.rows?.[0] as any)?.skip === true;
+            if (!canSkip) {
+              return res.status(400).json({
+                message:
+                  'لا يمكن تخطي مرحلة الطباعة لرول يحتاج إلى طباعة',
+              });
+            }
           }
 
           safeUpdates.stage = stage;
