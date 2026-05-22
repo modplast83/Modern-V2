@@ -886,7 +886,7 @@ export default function OrderPrintTemplate({
                               Number(po.quantity_kg) /
                                 Number(cp?.package_weight_kg),
                             )}{" "}
-                            PKT
+                            Bundle
                           </div>
                         )}
                     </td>
