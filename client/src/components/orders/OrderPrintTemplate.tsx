@@ -871,6 +871,24 @@ export default function OrderPrintTemplate({
                           (+{po.overrun_percentage}%)
                         </div>
                       )}
+                      {Number(po.quantity_kg ?? 0) > 0 &&
+                        Number(cp?.package_weight_kg ?? 0) > 0 && (
+                          <div
+                            style={{
+                              fontSize: "13px",
+                              color: "#1a365d",
+                              fontWeight: 900,
+                              marginTop: "2px",
+                              direction: "ltr",
+                            }}
+                          >
+                            {formatNumber(
+                              Number(po.quantity_kg) /
+                                Number(cp?.package_weight_kg),
+                            )}{" "}
+                            PKT
+                          </div>
+                        )}
                     </td>
                     <td
                       style={{
