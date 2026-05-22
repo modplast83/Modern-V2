@@ -14,7 +14,13 @@ import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
-import { useToast } from "../../hooks/use-toast";
+import { useAuth } from "../../hooks/use-auth";
+  import { useToast } from "../../hooks/use-toast";
+  import {
+    canAddInArea,
+    canEditInArea,
+    canDeleteInArea,
+  } from "../../utils/roleUtils";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -56,6 +62,10 @@ function SuppliersTab() {
   const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+    const { user: __whUser } = useAuth();
+    const canAddWh = canAddInArea(__whUser, "warehouse");
+    const canEditWh = canEditInArea(__whUser, "warehouse");
+    const canDeleteWh = canDeleteInArea(__whUser, "warehouse");
   const [isOpen, setIsOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
 
@@ -155,12 +165,14 @@ function SuppliersTab() {
             {t("warehouse.definitions.suppliers")}
           </CardTitle>
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            {canAddWh && (
             <DialogTrigger asChild>
               <Button onClick={handleAdd}>
                 <Plus className="h-4 w-4 ml-2" />
                 {t("warehouse.definitions.addSupplier")}
               </Button>
             </DialogTrigger>
+          )}
             <DialogContent className="w-[95vw] sm:w-full">
               <DialogHeader>
                 <DialogTitle>
@@ -322,21 +334,21 @@ function SuppliersTab() {
                       <TableCell>{supplier.contact_person || "-"}</TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          <Button
+                          {canEditWh && (<Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleEdit(supplier)}
                           >
                             <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
+                          </Button>)}
+                          {canDeleteWh && (<Button
                             variant="ghost"
                             size="sm"
                             onClick={() => deleteMutation.mutate(supplier.id)}
                             disabled={deleteMutation.isPending}
                           >
                             <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
+                          </Button>)}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -355,21 +367,21 @@ function SuppliersTab() {
                       {supplier.name_ar || supplier.name}
                     </span>
                     <div className="flex gap-1">
-                      <Button
+                      {canEditWh && (<Button
                         variant="ghost"
                         size="sm"
                         onClick={() => handleEdit(supplier)}
                       >
                         <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
+                      </Button>)}
+                      {canDeleteWh && (<Button
                         variant="ghost"
                         size="sm"
                         onClick={() => deleteMutation.mutate(supplier.id)}
                         disabled={deleteMutation.isPending}
                       >
                         <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
+                      </Button>)}
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-x-4 text-xs">
@@ -400,6 +412,10 @@ function ItemsTab() {
   const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+    const { user: __whUser } = useAuth();
+    const canAddWh = canAddInArea(__whUser, "warehouse");
+    const canEditWh = canEditInArea(__whUser, "warehouse");
+    const canDeleteWh = canDeleteInArea(__whUser, "warehouse");
   const [isOpen, setIsOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
 
@@ -510,12 +526,14 @@ function ItemsTab() {
             {t("warehouse.definitions.items")}
           </CardTitle>
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            {canAddWh && (
             <DialogTrigger asChild>
               <Button onClick={handleAdd}>
                 <Plus className="h-4 w-4 ml-2" />
                 {t("warehouse.definitions.addItem")}
               </Button>
             </DialogTrigger>
+          )}
             <DialogContent className="w-[95vw] sm:w-full">
               <DialogHeader>
                 <DialogTitle>
@@ -709,21 +727,21 @@ function ItemsTab() {
                       <TableCell dir="ltr">{item.barcode || "-"}</TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          <Button
+                          {canEditWh && (<Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleEdit(item)}
                           >
                             <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
+                          </Button>)}
+                          {canDeleteWh && (<Button
                             variant="ghost"
                             size="sm"
                             onClick={() => deleteMutation.mutate(item.id)}
                             disabled={deleteMutation.isPending}
                           >
                             <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
+                          </Button>)}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -744,21 +762,21 @@ function ItemsTab() {
                       </span>
                     </div>
                     <div className="flex gap-1">
-                      <Button
+                      {canEditWh && (<Button
                         variant="ghost"
                         size="sm"
                         onClick={() => handleEdit(item)}
                       >
                         <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
+                      </Button>)}
+                      {canDeleteWh && (<Button
                         variant="ghost"
                         size="sm"
                         onClick={() => deleteMutation.mutate(item.id)}
                         disabled={deleteMutation.isPending}
                       >
                         <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
+                      </Button>)}
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-x-4 text-xs">
@@ -796,6 +814,10 @@ function UnitsTab() {
   const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+    const { user: __whUser } = useAuth();
+    const canAddWh = canAddInArea(__whUser, "warehouse");
+    const canEditWh = canEditInArea(__whUser, "warehouse");
+    const canDeleteWh = canDeleteInArea(__whUser, "warehouse");
   const [isOpen, setIsOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
 
@@ -897,12 +919,14 @@ function UnitsTab() {
             {t("warehouse.definitions.units")}
           </CardTitle>
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            {canAddWh && (
             <DialogTrigger asChild>
               <Button onClick={handleAdd}>
                 <Plus className="h-4 w-4 ml-2" />
                 {t("warehouse.definitions.addUnit")}
               </Button>
             </DialogTrigger>
+          )}
             <DialogContent className="w-[95vw] sm:w-full">
               <DialogHeader>
                 <DialogTitle>
@@ -1031,14 +1055,14 @@ function UnitsTab() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          <Button
+                          {canEditWh && (<Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleEdit(unit)}
                           >
                             <Edit className="h-4 w-4" />
-                          </Button>
-                          {!unit.id.toString().startsWith("default") && (
+                          </Button>)}
+                          {!unit.id.toString().startsWith("default") && canDeleteWh && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -1068,14 +1092,14 @@ function UnitsTab() {
                     <Badge variant="outline">{unit.symbol}</Badge>
                   </div>
                   <div className="flex gap-1">
-                    <Button
+                    {canEditWh && (<Button
                       variant="ghost"
                       size="sm"
                       onClick={() => handleEdit(unit)}
                     >
                       <Edit className="h-4 w-4" />
-                    </Button>
-                    {!unit.id.toString().startsWith("default") && (
+                    </Button>)}
+                    {!unit.id.toString().startsWith("default") && canDeleteWh && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -1100,6 +1124,10 @@ function CategoriesTab() {
   const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+    const { user: __whUser } = useAuth();
+    const canAddWh = canAddInArea(__whUser, "warehouse");
+    const canEditWh = canEditInArea(__whUser, "warehouse");
+    const canDeleteWh = canDeleteInArea(__whUser, "warehouse");
   const [isOpen, setIsOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
 
@@ -1178,12 +1206,14 @@ function CategoriesTab() {
             {t("warehouse.definitions.materialGroups")}
           </CardTitle>
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            {canAddWh && (
             <DialogTrigger asChild>
               <Button onClick={handleAdd}>
                 <Plus className="h-4 w-4 ml-2" />
                 {t("warehouse.definitions.addGroup")}
               </Button>
             </DialogTrigger>
+          )}
             <DialogContent className="w-[95vw] sm:w-full">
               <DialogHeader>
                 <DialogTitle>
@@ -1278,13 +1308,13 @@ function CategoriesTab() {
                     <TableRow key={cat.id}>
                       <TableCell>{cat.name_ar || cat.name}</TableCell>
                       <TableCell>
-                        <Button
+                        {canEditWh && (<Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleEdit(cat)}
                         >
                           <Edit className="h-4 w-4" />
-                        </Button>
+                        </Button>)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -1300,13 +1330,13 @@ function CategoriesTab() {
                   <span className="font-bold text-sm">
                     {cat.name_ar || cat.name}
                   </span>
-                  <Button
+                  {canEditWh && (<Button
                     variant="ghost"
                     size="sm"
                     onClick={() => handleEdit(cat)}
                   >
                     <Edit className="h-4 w-4" />
-                  </Button>
+                  </Button>)}
                 </div>
               ))}
             </div>

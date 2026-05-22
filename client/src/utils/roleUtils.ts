@@ -248,6 +248,84 @@ export function canDeleteInTab(
   return canPerformDefinitionsTabAction(user, tabName, "delete");
 }
 
+// Per-area granular action permissions for the other admin areas
+// (warehouse, hr, maintenance, production, quality, settings). Each area
+// maps to its add/edit/delete permission keys. Legacy broad permissions
+// (manage_<area>, admin) still grant all three actions for backwards
+// compatibility.
+type AdminArea =
+  | "warehouse"
+  | "hr"
+  | "maintenance"
+  | "production"
+  | "quality"
+  | "settings";
+
+const ADMIN_AREA_ACTION_PERMISSIONS: Record<
+  AdminArea,
+  Record<DefinitionsTabAction, PermissionKey[]>
+> = {
+  warehouse: {
+    add: ["add_warehouse", "manage_warehouse"],
+    edit: ["edit_warehouse", "manage_warehouse"],
+    delete: ["delete_warehouse", "manage_warehouse"],
+  },
+  hr: {
+    add: ["add_hr", "manage_hr"],
+    edit: ["edit_hr", "manage_hr"],
+    delete: ["delete_hr", "manage_hr"],
+  },
+  maintenance: {
+    add: ["add_maintenance", "manage_maintenance"],
+    edit: ["edit_maintenance", "manage_maintenance"],
+    delete: ["delete_maintenance", "manage_maintenance"],
+  },
+  production: {
+    add: ["add_production", "manage_production"],
+    edit: ["edit_production", "manage_production"],
+    delete: ["delete_production", "manage_production"],
+  },
+  quality: {
+    add: ["add_quality", "manage_quality"],
+    edit: ["edit_quality", "manage_quality"],
+    delete: ["delete_quality", "manage_quality"],
+  },
+  settings: {
+    add: ["add_settings", "manage_settings"],
+    edit: ["edit_settings", "manage_settings"],
+    delete: ["delete_settings", "manage_settings"],
+  },
+};
+
+function canPerformAreaAction(
+  user: AuthUser | null,
+  area: AdminArea,
+  action: DefinitionsTabAction,
+): boolean {
+  if (!user) return false;
+  if (isUserAdmin(user)) return true;
+
+  const perms = ADMIN_AREA_ACTION_PERMISSIONS[area]?.[action];
+  if (!perms || perms.length === 0) return false;
+
+  return hasPermission(user.permissions, perms, false);
+}
+
+export function canAddInArea(user: AuthUser | null, area: AdminArea): boolean {
+  return canPerformAreaAction(user, area, "add");
+}
+
+export function canEditInArea(user: AuthUser | null, area: AdminArea): boolean {
+  return canPerformAreaAction(user, area, "edit");
+}
+
+export function canDeleteInArea(
+  user: AuthUser | null,
+  area: AdminArea,
+): boolean {
+  return canPerformAreaAction(user, area, "delete");
+}
+
 export function canAccessDefinitionsTab(
   user: AuthUser | null,
   tabName: string,

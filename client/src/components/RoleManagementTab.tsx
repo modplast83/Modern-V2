@@ -7,8 +7,10 @@ import {
   PERMISSIONS,
   PERMISSION_CATEGORIES,
 } from "../../../shared/permissions";
+import { useAuth } from "../hooks/use-auth";
 import { useToast } from "../hooks/use-toast";
 import { apiRequest } from "../lib/queryClient";
+import { userHasPermission } from "../utils/roleUtils";
 
 import {
   Accordion,
@@ -70,6 +72,10 @@ export default function RoleManagementTab() {
     i18n.language === "en" ? perm.name : perm.name_ar;
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const canAddRoles = userHasPermission(user, "manage_roles");
+  const canEditRoles = userHasPermission(user, "manage_roles");
+  const canDeleteRoles = userHasPermission(user, "manage_roles");
 
   const [newRole, setNewRole] = useState({
     name: "",
@@ -413,6 +419,7 @@ export default function RoleManagementTab() {
       </div>
 
       {/* Add New Role Section */}
+      {canAddRoles && (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -514,6 +521,7 @@ export default function RoleManagementTab() {
           </div>
         </CardContent>
       </Card>
+      )}
 
       {/* Existing Roles Table */}
       <Card>
@@ -616,6 +624,7 @@ export default function RoleManagementTab() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
+                      {canEditRoles && (
                       <Button
                         size="sm"
                         variant="outline"
@@ -626,6 +635,8 @@ export default function RoleManagementTab() {
                         <Edit className="w-3 h-3" />
                         {t("common.edit")}
                       </Button>
+                      )}
+                      {canDeleteRoles && (
                       <Button
                         size="sm"
                         variant="destructive"
@@ -645,6 +656,7 @@ export default function RoleManagementTab() {
                         <Trash2 className="w-3 h-3" />
                         {t("common.delete")}
                       </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

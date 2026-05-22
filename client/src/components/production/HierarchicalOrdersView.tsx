@@ -3,8 +3,10 @@ import { ChevronDown, ChevronRight, Plus, Search, Printer } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
+import { useAuth } from "../../hooks/use-auth";
 import { useLocalizedName } from "../../hooks/use-localized-name";
 import { formatNumber, formatWeight } from "../../lib/formatNumber";
+import { canAddInArea } from "../../utils/roleUtils";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -60,6 +62,8 @@ export default function HierarchicalOrdersView({
   const { t } = useTranslation();
   const ln = useLocalizedName();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const canAddProd = canAddInArea(user, "production");
   const [expandedOrders, setExpandedOrders] = useState<Set<number>>(new Set());
   const [expandedProductionOrders, setExpandedProductionOrders] = useState<
     Set<number>
@@ -398,6 +402,7 @@ export default function HierarchicalOrdersView({
                                     {formatPercentage(progress)}
                                   </span>
                                 </div>
+                                {canAddProd && (
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -408,6 +413,7 @@ export default function HierarchicalOrdersView({
                                 >
                                   <Plus className="h-4 w-4" />
                                 </Button>
+                                )}
                               </div>
                             </div>
 

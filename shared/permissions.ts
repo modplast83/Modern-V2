@@ -100,6 +100,24 @@ export type PermissionKey =
   | "add_master_batch"
   | "edit_master_batch"
   | "delete_master_batch"
+  | "add_warehouse"
+  | "edit_warehouse"
+  | "delete_warehouse"
+  | "add_hr"
+  | "edit_hr"
+  | "delete_hr"
+  | "add_maintenance"
+  | "edit_maintenance"
+  | "delete_maintenance"
+  | "add_production"
+  | "edit_production"
+  | "delete_production"
+  | "add_quality"
+  | "edit_quality"
+  | "delete_quality"
+  | "add_settings"
+  | "edit_settings"
+  | "delete_settings"
   | "view_warehouse_vouchers"
   | "manage_warehouse_vouchers"
   | "view_warehouse_reports"
@@ -745,6 +763,134 @@ export const PERMISSIONS: Permission[] = [
     name_ar: "حذف ألوان الماستر باتش",
     category: "التعريفات",
     description: "Delete master batch color records",
+  },
+
+  // Admin areas — granular per-area actions (add / edit / delete)
+  {
+    id: "add_warehouse",
+    name: "Add Warehouse Records",
+    name_ar: "إضافة سجلات المستودع",
+    category: "المخزون",
+    description: "Create new warehouse records (movements, transactions, inventory)",
+  },
+  {
+    id: "edit_warehouse",
+    name: "Edit Warehouse Records",
+    name_ar: "تعديل سجلات المستودع",
+    category: "المخزون",
+    description: "Edit existing warehouse records",
+  },
+  {
+    id: "delete_warehouse",
+    name: "Delete Warehouse Records",
+    name_ar: "حذف سجلات المستودع",
+    category: "المخزون",
+    description: "Delete warehouse records",
+  },
+  {
+    id: "add_hr",
+    name: "Add HR Records",
+    name_ar: "إضافة سجلات الموارد البشرية",
+    category: "الموارد البشرية",
+    description: "Create new HR records (training, performance, leaves)",
+  },
+  {
+    id: "edit_hr",
+    name: "Edit HR Records",
+    name_ar: "تعديل سجلات الموارد البشرية",
+    category: "الموارد البشرية",
+    description: "Edit existing HR records",
+  },
+  {
+    id: "delete_hr",
+    name: "Delete HR Records",
+    name_ar: "حذف سجلات الموارد البشرية",
+    category: "الموارد البشرية",
+    description: "Delete HR records",
+  },
+  {
+    id: "add_maintenance",
+    name: "Add Maintenance Records",
+    name_ar: "إضافة سجلات الصيانة",
+    category: "الصيانة",
+    description: "Create new maintenance records (requests, actions, reports, parts)",
+  },
+  {
+    id: "edit_maintenance",
+    name: "Edit Maintenance Records",
+    name_ar: "تعديل سجلات الصيانة",
+    category: "الصيانة",
+    description: "Edit existing maintenance records",
+  },
+  {
+    id: "delete_maintenance",
+    name: "Delete Maintenance Records",
+    name_ar: "حذف سجلات الصيانة",
+    category: "الصيانة",
+    description: "Delete maintenance records",
+  },
+  {
+    id: "add_production",
+    name: "Add Production Records",
+    name_ar: "إضافة سجلات الإنتاج",
+    category: "الإنتاج",
+    description: "Create new production orders and related records",
+  },
+  {
+    id: "edit_production",
+    name: "Edit Production Records",
+    name_ar: "تعديل سجلات الإنتاج",
+    category: "الإنتاج",
+    description: "Edit existing production records",
+  },
+  {
+    id: "delete_production",
+    name: "Delete Production Records",
+    name_ar: "حذف سجلات الإنتاج",
+    category: "الإنتاج",
+    description: "Delete production records",
+  },
+  {
+    id: "add_quality",
+    name: "Add Quality Records",
+    name_ar: "إضافة سجلات الجودة",
+    category: "الجودة",
+    description: "Create new quality records (issues, actions, responsibles)",
+  },
+  {
+    id: "edit_quality",
+    name: "Edit Quality Records",
+    name_ar: "تعديل سجلات الجودة",
+    category: "الجودة",
+    description: "Edit existing quality records",
+  },
+  {
+    id: "delete_quality",
+    name: "Delete Quality Records",
+    name_ar: "حذف سجلات الجودة",
+    category: "الجودة",
+    description: "Delete quality records",
+  },
+  {
+    id: "add_settings",
+    name: "Add Settings Records",
+    name_ar: "إضافة إعدادات",
+    category: "النظام",
+    description: "Create new system settings entries",
+  },
+  {
+    id: "edit_settings",
+    name: "Edit Settings Records",
+    name_ar: "تعديل الإعدادات",
+    category: "النظام",
+    description: "Edit existing system settings",
+  },
+  {
+    id: "delete_settings",
+    name: "Delete Settings Records",
+    name_ar: "حذف الإعدادات",
+    category: "النظام",
+    description: "Delete system settings entries",
   },
 
   // WhatsApp Integration

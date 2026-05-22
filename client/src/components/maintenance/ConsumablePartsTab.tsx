@@ -22,6 +22,11 @@ import {
 } from "../../../../shared/schema";
 import { useAuth } from "../../hooks/use-auth";
 import { useToast } from "../../hooks/use-toast";
+import {
+  canAddInArea,
+  canEditInArea,
+  canDeleteInArea,
+} from "../../utils/roleUtils";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -103,6 +108,9 @@ export default function ConsumablePartsTab({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const canAddMaint = canAddInArea(user, "maintenance");
+  const canEditMaint = canEditInArea(user, "maintenance");
+  const canDeleteMaint = canDeleteInArea(user, "maintenance");
 
   const consumablePartSchema = createConsumablePartSchema(t);
   const barcodeTransactionSchema = createBarcodeTransactionSchema(t);
@@ -528,6 +536,7 @@ export default function ConsumablePartsTab({
             </Dialog>
 
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              {canAddMaint && (
               <DialogTrigger asChild>
                 <Button
                   className="bg-green-600 hover:bg-green-700 text-white"
@@ -537,6 +546,7 @@ export default function ConsumablePartsTab({
                   {t("maintenance.consumable.addPart")}
                 </Button>
               </DialogTrigger>
+              )}
               <DialogContent className="max-w-2xl">
                 <DialogHeader>
                   <DialogTitle>
@@ -920,6 +930,7 @@ export default function ConsumablePartsTab({
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <div className="flex justify-center gap-1">
+                          {canEditMaint && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -928,6 +939,8 @@ export default function ConsumablePartsTab({
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
+                          )}
+                          {canDeleteMaint && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -937,6 +950,7 @@ export default function ConsumablePartsTab({
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
+                          )}
                         </div>
                       </td>
                     </tr>

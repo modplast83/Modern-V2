@@ -32,6 +32,12 @@ import {
 import { useState, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
+import { useAuth } from "../hooks/use-auth";
+import {
+  canAddInArea,
+  canEditInArea,
+  canDeleteInArea,
+} from "../utils/roleUtils";
 import PageLayout from "../components/layout/PageLayout";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -269,6 +275,10 @@ export default function Quality() {
   const { t } = useTranslation();
   const ln = useLocalizedName();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const canAddQuality = canAddInArea(user, "quality");
+  const canEditQuality = canEditInArea(user, "quality");
+  const canDeleteQuality = canDeleteInArea(user, "quality");
   const [activeTab, setActiveTab] = useState("issues");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedIssueId, setSelectedIssueId] = useState<number | null>(null);
@@ -385,10 +395,12 @@ export default function Quality() {
       title="إدارة الجودة"
       description="متابعة مشاكل الإنتاج والشكاوى واتخاذ الإجراءات التصحيحية"
       actions={
-        <Button onClick={() => setShowCreateDialog(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          تسجيل مشكلة جديدة
-        </Button>
+        canAddQuality ? (
+          <Button onClick={() => setShowCreateDialog(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            تسجيل مشكلة جديدة
+          </Button>
+        ) : null
       }
     >
       <div className="space-y-6" dir="rtl">
@@ -604,14 +616,16 @@ export default function Quality() {
                               >
                                 <Eye className="h-4 w-4 text-blue-600" />
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                title="تعديل"
-                                onClick={() => setEditIssueId(issue.id)}
-                              >
-                                <Edit className="h-4 w-4 text-amber-600" />
-                              </Button>
+                              {canEditQuality && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  title="تعديل"
+                                  onClick={() => setEditIssueId(issue.id)}
+                                >
+                                  <Edit className="h-4 w-4 text-amber-600" />
+                                </Button>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -620,14 +634,16 @@ export default function Quality() {
                               >
                                 <Printer className="h-4 w-4 text-green-600" />
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                title="حذف"
-                                onClick={() => setDeleteIssueId(issue.id)}
-                              >
-                                <Trash2 className="h-4 w-4 text-red-600" />
-                              </Button>
+                              {canDeleteQuality && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  title="حذف"
+                                  onClick={() => setDeleteIssueId(issue.id)}
+                                >
+                                  <Trash2 className="h-4 w-4 text-red-600" />
+                                </Button>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>

@@ -12,7 +12,9 @@ import {
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { useAuth } from "../../hooks/use-auth";
 import { formatNumber, formatPercentage } from "../../lib/formatNumber";
+import { canAddInArea } from "../../utils/roleUtils";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
@@ -54,6 +56,8 @@ interface PerformanceCriteria {
 
 export default function PerformanceReviews() {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const canAddHr = canAddInArea(user, "hr");
   const [selectedReview, setSelectedReview] = useState<number | null>(null);
 
   const { data: reviews = [], isLoading: reviewsLoading } = useQuery<
@@ -194,10 +198,12 @@ export default function PerformanceReviews() {
             {t("hr.performance.description")}
           </p>
         </div>
+        {canAddHr && (
         <Button className="bg-green-600 hover:bg-green-700 text-white">
           <Plus className="w-4 h-4 ml-2" />
           {t("hr.performance.newReview")}
         </Button>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -440,10 +446,12 @@ export default function PerformanceReviews() {
             <p className="text-gray-600 dark:text-gray-400 mb-4">
               {t("hr.performance.noReviewsDesc")}
             </p>
+            {canAddHr && (
             <Button className="bg-green-600 hover:bg-green-700 text-white">
               <Plus className="w-4 h-4 ml-2" />
               {t("hr.performance.createReview")}
             </Button>
+            )}
           </CardContent>
         </Card>
       )}

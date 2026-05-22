@@ -2679,7 +2679,7 @@ export async function registerRoutes(
   app.post(
     "/api/production-orders",
     requireAuth,
-    requirePermission("manage_production"),
+    requirePermission("add_production", "manage_production"),
     async (req, res) => {
       try {
         // Extract and validate basic fields first
@@ -2744,7 +2744,7 @@ export async function registerRoutes(
   app.post(
     "/api/production-orders/batch",
     requireAuth,
-    requirePermission("manage_production"),
+    requirePermission("add_production", "manage_production"),
     async (req, res) => {
       try {
         const { orders } = req.body;
@@ -2874,7 +2874,7 @@ export async function registerRoutes(
   app.put(
     "/api/production-orders/:id",
     requireAuth,
-    requirePermission("manage_production"),
+    requirePermission("edit_production", "manage_production"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "ID");
@@ -2968,7 +2968,7 @@ export async function registerRoutes(
   app.delete(
     "/api/production-orders/:id",
     requireAuth,
-    requirePermission("manage_production"),
+    requirePermission("delete_production", "manage_production"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "ID");
@@ -3508,6 +3508,7 @@ export async function registerRoutes(
     "/api/rolls/:id",
     requireAuth,
     requirePermission(
+      "edit_production",
       "manage_production",
       "view_film_dashboard",
       "view_printing_dashboard",
@@ -3686,7 +3687,7 @@ export async function registerRoutes(
   app.post(
     "/api/rolls/:id/mark-printed",
     requireAuth,
-    requirePermission("manage_production", "view_printing_dashboard"),
+    requirePermission("edit_production", "manage_production", "view_printing_dashboard"),
     async (req: AuthRequest, res) => {
       try {
         const rollId = parseRouteParam(req.params.id, "Roll ID");
@@ -3873,7 +3874,7 @@ export async function registerRoutes(
   app.post(
     "/api/rolls/create-with-timing",
     requireAuth,
-    requirePermission("manage_production", "view_film_dashboard"),
+    requirePermission("add_production", "manage_production", "view_film_dashboard"),
     async (req: AuthRequest, res) => {
       try {
         const userId = getAuthUserId(req);
@@ -3969,7 +3970,7 @@ export async function registerRoutes(
   app.post(
     "/api/rolls/create-final",
     requireAuth,
-    requirePermission("manage_production", "view_film_dashboard"),
+    requirePermission("add_production", "manage_production", "view_film_dashboard"),
     async (req: AuthRequest, res) => {
       try {
         const userId = getAuthUserId(req);
@@ -5699,7 +5700,7 @@ Input: ${text}`;
   app.post(
     "/api/inventory-movements",
     requireAuth,
-    requirePermission("manage_warehouse"),
+    requirePermission("add_warehouse", "manage_warehouse"),
     async (req, res) => {
       try {
         const validatedData = insertInventoryMovementSchema.parse(req.body);
@@ -5715,7 +5716,7 @@ Input: ${text}`;
   app.delete(
     "/api/inventory-movements/:id",
     requireAuth,
-    requirePermission("manage_warehouse"),
+    requirePermission("delete_warehouse", "manage_warehouse"),
     async (req, res) => {
       try {
         // Enhanced parameter validation
@@ -6097,7 +6098,7 @@ Input: ${text}`;
   app.post(
     "/api/warehouse-transactions",
     requireAuth,
-    requirePermission("manage_warehouse"),
+    requirePermission("add_warehouse", "manage_warehouse"),
     async (req, res) => {
       try {
         if (!req.body || typeof req.body !== "object") {
@@ -6132,7 +6133,7 @@ Input: ${text}`;
   app.post(
     "/api/mixing-recipes",
     requireAuth,
-    requirePermission("manage_mixing", "manage_production"),
+    requirePermission("add_production", "manage_mixing", "manage_production"),
     async (req, res) => {
       try {
         const parsed = insertMixingRecipeSchema.safeParse(req.body);
@@ -6242,7 +6243,7 @@ Input: ${text}`;
   app.post(
     "/api/quality-issues",
     requireAuth,
-    requirePermission("manage_quality"),
+    requirePermission("add_quality", "manage_quality"),
     async (req: AuthRequest, res) => {
       try {
         const parseResult = insertQualityIssueSchema.safeParse(req.body);
@@ -6264,7 +6265,7 @@ Input: ${text}`;
   app.patch(
     "/api/quality-issues/:id",
     requireAuth,
-    requirePermission("manage_quality"),
+    requirePermission("edit_quality", "manage_quality"),
     async (req: AuthRequest, res) => {
       try {
         const id = parseRouteParam(req.params.id, "id");
@@ -6282,7 +6283,7 @@ Input: ${text}`;
   app.delete(
     "/api/quality-issues/:id",
     requireAuth,
-    requirePermission("manage_quality"),
+    requirePermission("delete_quality", "manage_quality"),
     async (req: AuthRequest, res) => {
       try {
         const id = parseRouteParam(req.params.id, "id");
@@ -6300,7 +6301,7 @@ Input: ${text}`;
   app.post(
     "/api/quality-issues/:id/responsibles",
     requireAuth,
-    requirePermission("manage_quality"),
+    requirePermission("add_quality", "manage_quality"),
     async (req: AuthRequest, res) => {
       try {
         const issueId = parseRouteParam(req.params.id, "id");
@@ -6319,7 +6320,7 @@ Input: ${text}`;
   app.patch(
     "/api/quality-issues/responsibles/:id",
     requireAuth,
-    requirePermission("manage_quality"),
+    requirePermission("edit_quality", "manage_quality"),
     async (req: AuthRequest, res) => {
       try {
         const id = parseRouteParam(req.params.id, "id");
@@ -6349,7 +6350,7 @@ Input: ${text}`;
   app.delete(
     "/api/quality-issues/responsibles/:id",
     requireAuth,
-    requirePermission("manage_quality"),
+    requirePermission("delete_quality", "manage_quality"),
     async (req: AuthRequest, res) => {
       try {
         const id = parseRouteParam(req.params.id, "id");
@@ -6367,7 +6368,7 @@ Input: ${text}`;
   app.post(
     "/api/quality-issues/:id/actions",
     requireAuth,
-    requirePermission("manage_quality"),
+    requirePermission("add_quality", "manage_quality"),
     async (req: AuthRequest, res) => {
       try {
         const issueId = parseRouteParam(req.params.id, "id");
@@ -6386,7 +6387,7 @@ Input: ${text}`;
   app.patch(
     "/api/quality-issues/actions/:id",
     requireAuth,
-    requirePermission("manage_quality"),
+    requirePermission("edit_quality", "manage_quality"),
     async (req: AuthRequest, res) => {
       try {
         const id = parseRouteParam(req.params.id, "id");
@@ -6424,7 +6425,7 @@ Input: ${text}`;
   app.post(
     "/api/maintenance-requests",
     requireAuth,
-    requirePermission("manage_maintenance"),
+    requirePermission("add_maintenance", "manage_maintenance"),
     async (req, res) => {
       try {
         // Process the data to convert string values to appropriate types
@@ -6498,7 +6499,7 @@ Input: ${text}`;
   app.post(
     "/api/maintenance-actions",
     requireAuth,
-    requirePermission("manage_maintenance"),
+    requirePermission("add_maintenance", "manage_maintenance"),
     async (req, res) => {
       try {
         const data = insertMaintenanceActionSchema.parse(req.body);
@@ -6517,7 +6518,7 @@ Input: ${text}`;
   app.put(
     "/api/maintenance-actions/:id",
     requireAuth,
-    requirePermission("manage_maintenance"),
+    requirePermission("edit_maintenance", "manage_maintenance"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "ID");
@@ -6533,7 +6534,7 @@ Input: ${text}`;
   app.delete(
     "/api/maintenance-actions/:id",
     requireAuth,
-    requirePermission("manage_maintenance"),
+    requirePermission("delete_maintenance", "manage_maintenance"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "ID");
@@ -6563,7 +6564,7 @@ Input: ${text}`;
   app.post(
     "/api/maintenance-reports",
     requireAuth,
-    requirePermission("manage_maintenance"),
+    requirePermission("add_maintenance", "manage_maintenance"),
     async (req, res) => {
       try {
         const data = insertMaintenanceReportSchema.parse(req.body);
@@ -6579,7 +6580,7 @@ Input: ${text}`;
   app.put(
     "/api/maintenance-reports/:id",
     requireAuth,
-    requirePermission("manage_maintenance"),
+    requirePermission("edit_maintenance", "manage_maintenance"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "ID");
@@ -6595,7 +6596,7 @@ Input: ${text}`;
   app.delete(
     "/api/maintenance-reports/:id",
     requireAuth,
-    requirePermission("manage_maintenance"),
+    requirePermission("delete_maintenance", "manage_maintenance"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "ID");
@@ -6660,7 +6661,7 @@ Input: ${text}`;
   app.delete(
     "/api/operator-negligence-reports/:id",
     requireAuth,
-    requirePermission("manage_production", "manage_maintenance"),
+    requirePermission("delete_production", "manage_production", "manage_maintenance"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "ID");
@@ -6687,7 +6688,7 @@ Input: ${text}`;
   app.post(
     "/api/spare-parts",
     requireAuth,
-    requirePermission("manage_maintenance"),
+    requirePermission("add_maintenance", "manage_maintenance"),
     async (req, res) => {
       try {
         const parsed = insertSparePartSchema.safeParse(req.body);
@@ -6716,7 +6717,7 @@ Input: ${text}`;
   app.put(
     "/api/spare-parts/:id",
     requireAuth,
-    requirePermission("manage_maintenance"),
+    requirePermission("edit_maintenance", "manage_maintenance"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "ID");
@@ -6739,7 +6740,7 @@ Input: ${text}`;
   app.delete(
     "/api/spare-parts/:id",
     requireAuth,
-    requirePermission("manage_maintenance"),
+    requirePermission("delete_maintenance", "manage_maintenance"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "ID");
@@ -6766,7 +6767,7 @@ Input: ${text}`;
   app.post(
     "/api/consumable-parts",
     requireAuth,
-    requirePermission("manage_maintenance"),
+    requirePermission("add_maintenance", "manage_maintenance"),
     async (req, res) => {
       try {
         const parseResult = insertConsumablePartSchema.safeParse(req.body);
@@ -6792,7 +6793,7 @@ Input: ${text}`;
   app.put(
     "/api/consumable-parts/:id",
     requireAuth,
-    requirePermission("manage_maintenance"),
+    requirePermission("edit_maintenance", "manage_maintenance"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "ID");
@@ -6810,7 +6811,7 @@ Input: ${text}`;
   app.delete(
     "/api/consumable-parts/:id",
     requireAuth,
-    requirePermission("manage_maintenance"),
+    requirePermission("delete_maintenance", "manage_maintenance"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "ID");
@@ -7661,7 +7662,7 @@ Input: ${text}`;
   app.post(
     "/api/hr/training-programs",
     requireAuth,
-    requirePermission("manage_hr"),
+    requirePermission("add_hr", "manage_hr"),
     async (req, res) => {
       try {
         const validation = insertTrainingProgramSchema.safeParse(req.body);
@@ -7683,7 +7684,7 @@ Input: ${text}`;
   app.put(
     "/api/hr/training-programs/:id",
     requireAuth,
-    requirePermission("manage_hr"),
+    requirePermission("edit_hr", "manage_hr"),
     async (req, res) => {
       try {
         // Enhanced parameter validation
@@ -7772,7 +7773,7 @@ Input: ${text}`;
   app.post(
     "/api/hr/training-materials",
     requireAuth,
-    requirePermission("manage_hr"),
+    requirePermission("add_hr", "manage_hr"),
     async (req, res) => {
       try {
         const validation = insertTrainingMaterialSchema.safeParse(req.body);
@@ -7820,7 +7821,7 @@ Input: ${text}`;
   app.post(
     "/api/hr/training-enrollments",
     requireAuth,
-    requirePermission("manage_hr"),
+    requirePermission("add_hr", "manage_hr"),
     async (req, res) => {
       try {
         const validation = insertTrainingEnrollmentSchema.safeParse(req.body);
@@ -7844,7 +7845,7 @@ Input: ${text}`;
   app.put(
     "/api/hr/training-enrollments/:id",
     requireAuth,
-    requirePermission("manage_hr"),
+    requirePermission("edit_hr", "manage_hr"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "ID");
@@ -7884,7 +7885,7 @@ Input: ${text}`;
   app.post(
     "/api/hr/training-evaluations",
     requireAuth,
-    requirePermission("manage_hr"),
+    requirePermission("add_hr", "manage_hr"),
     async (req, res) => {
       try {
         const validation = insertTrainingEvaluationSchema.safeParse(req.body);
@@ -7908,7 +7909,7 @@ Input: ${text}`;
   app.put(
     "/api/hr/training-evaluations/:id",
     requireAuth,
-    requirePermission("manage_hr"),
+    requirePermission("edit_hr", "manage_hr"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "ID");
@@ -7955,7 +7956,7 @@ Input: ${text}`;
   app.post(
     "/api/hr/training-certificates",
     requireAuth,
-    requirePermission("manage_hr"),
+    requirePermission("add_hr", "manage_hr"),
     async (req, res) => {
       try {
         const validation = insertTrainingCertificateSchema.safeParse(req.body);
@@ -7998,7 +7999,7 @@ Input: ${text}`;
   app.put(
     "/api/hr/training-certificates/:id",
     requireAuth,
-    requirePermission("manage_hr"),
+    requirePermission("edit_hr", "manage_hr"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "id");
@@ -8046,7 +8047,7 @@ Input: ${text}`;
   app.post(
     "/api/hr/performance-reviews",
     requireAuth,
-    requirePermission("manage_hr"),
+    requirePermission("add_hr", "manage_hr"),
     async (req, res) => {
       try {
         const validation = insertPerformanceReviewSchema.safeParse(req.body);
@@ -8068,7 +8069,7 @@ Input: ${text}`;
   app.put(
     "/api/hr/performance-reviews/:id",
     requireAuth,
-    requirePermission("manage_hr"),
+    requirePermission("edit_hr", "manage_hr"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "id");
@@ -8095,7 +8096,7 @@ Input: ${text}`;
   app.post(
     "/api/hr/performance-criteria",
     requireAuth,
-    requirePermission("manage_hr"),
+    requirePermission("add_hr", "manage_hr"),
     async (req, res) => {
       try {
         const validation = insertPerformanceCriteriaSchema.safeParse(req.body);
@@ -8130,7 +8131,7 @@ Input: ${text}`;
   app.post(
     "/api/hr/leave-types",
     requireAuth,
-    requirePermission("manage_hr"),
+    requirePermission("add_hr", "manage_hr"),
     async (req, res) => {
       try {
         const validation = insertLeaveTypeSchema.safeParse(req.body);
@@ -8166,7 +8167,7 @@ Input: ${text}`;
   app.post(
     "/api/hr/leave-requests",
     requireAuth,
-    requirePermission("manage_hr"),
+    requirePermission("add_hr", "manage_hr"),
     async (req, res) => {
       try {
         const validation = insertLeaveRequestSchema.safeParse(req.body);
@@ -8188,7 +8189,7 @@ Input: ${text}`;
   app.put(
     "/api/hr/leave-requests/:id",
     requireAuth,
-    requirePermission("manage_hr"),
+    requirePermission("edit_hr", "manage_hr"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "id");
@@ -8235,7 +8236,7 @@ Input: ${text}`;
   app.post(
     "/api/hr/leave-balances",
     requireAuth,
-    requirePermission("manage_hr"),
+    requirePermission("add_hr", "manage_hr"),
     async (req, res) => {
       try {
         const validation = insertLeaveBalanceSchema.safeParse(req.body);
@@ -8320,7 +8321,7 @@ Input: ${text}`;
   app.delete(
     "/api/locations/:id",
     requireAuth,
-    requirePermission("manage_warehouse", "manage_definitions"),
+    requirePermission("delete_warehouse", "manage_warehouse", "manage_definitions"),
     async (req, res) => {
       try {
         const id = req.params.id;
@@ -8389,7 +8390,7 @@ Input: ${text}`;
   app.post(
     "/api/inventory",
     requireAuth,
-    requirePermission("manage_warehouse"),
+    requirePermission("add_warehouse", "manage_warehouse"),
     async (req, res) => {
       try {
         // STEP 1: Zod schema validation
@@ -8436,7 +8437,7 @@ Input: ${text}`;
   app.put(
     "/api/inventory/:id",
     requireAuth,
-    requirePermission("manage_warehouse"),
+    requirePermission("edit_warehouse", "manage_warehouse"),
     async (req, res) => {
       try {
         // STEP 1: Parameter validation
@@ -8493,7 +8494,7 @@ Input: ${text}`;
   app.delete(
     "/api/inventory/:id",
     requireAuth,
-    requirePermission("manage_warehouse"),
+    requirePermission("delete_warehouse", "manage_warehouse"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "id");
@@ -8555,7 +8556,7 @@ Input: ${text}`;
   app.put(
     "/api/machine-queues/reorder",
     requireAuth,
-    requirePermission("manage_production"),
+    requirePermission("edit_production", "manage_production"),
     async (req, res) => {
       try {
         const { queueId, newPosition } = req.body;
@@ -8584,7 +8585,7 @@ Input: ${text}`;
   app.delete(
     "/api/machine-queues/:id",
     requireAuth,
-    requirePermission("manage_production", "manage_definitions"),
+    requirePermission("delete_production", "manage_production", "manage_definitions"),
     async (req, res) => {
       try {
         const queueId = parseInt(req.params.id);
@@ -9397,7 +9398,7 @@ Input: ${text}`;
   app.post(
     "/api/settings/system",
     requireAuth,
-    requirePermission("manage_settings"),
+    requirePermission("add_settings", "manage_settings"),
     async (req: AuthRequest, res) => {
       try {
         const { settings } = req.body;
@@ -9526,7 +9527,7 @@ Input: ${text}`;
   app.post(
     "/api/company/logo",
     requireAuth,
-    requirePermission("manage_settings"),
+    requirePermission("add_settings", "manage_settings"),
     async (req: AuthRequest, res) => {
       try {
         const { logo_url } = req.body;
@@ -9589,7 +9590,7 @@ Input: ${text}`;
   app.patch(
     "/api/company/letter-template",
     requireAuth,
-    requirePermission("manage_settings"),
+    requirePermission("edit_settings", "manage_settings"),
     async (req: AuthRequest, res) => {
       try {
         const {
@@ -11684,7 +11685,7 @@ Input: ${text}`;
   app.delete(
     "/api/violations/:id",
     requireAuth,
-    requirePermission("manage_hr", "manage_attendance"),
+    requirePermission("delete_hr", "manage_hr", "manage_attendance"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "id");
@@ -11736,7 +11737,7 @@ Input: ${text}`;
   app.put(
     "/api/user-requests/:id",
     requireAuth,
-    requirePermission("manage_hr"),
+    requirePermission("edit_hr", "manage_hr"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "id");
@@ -11752,7 +11753,7 @@ Input: ${text}`;
   app.patch(
     "/api/user-requests/:id",
     requireAuth,
-    requirePermission("manage_hr"),
+    requirePermission("edit_hr", "manage_hr"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "id");
@@ -11768,7 +11769,7 @@ Input: ${text}`;
   app.delete(
     "/api/user-requests/:id",
     requireAuth,
-    requirePermission("manage_hr"),
+    requirePermission("delete_hr", "manage_hr"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "id");
@@ -11986,7 +11987,7 @@ Input: ${text}`;
   app.patch(
     "/api/production-orders/:id/start-production",
     requireAuth,
-    requirePermission("manage_production"),
+    requirePermission("edit_production", "manage_production"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "id");
@@ -12113,7 +12114,7 @@ Input: ${text}`;
   app.patch(
     "/api/rolls/:id/print",
     requireAuth,
-    requirePermission("manage_production", "view_printing_dashboard"),
+    requirePermission("edit_production", "manage_production", "view_printing_dashboard"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "id");
@@ -12492,7 +12493,7 @@ Input: ${text}`;
   app.post(
     "/api/rolls/:id/complete-cutting",
     requireAuth,
-    requirePermission("manage_production", "view_cutting_dashboard"),
+    requirePermission("edit_production", "manage_production", "view_cutting_dashboard"),
     async (req, res) => {
       try {
         const authReq = req as AuthRequest;
@@ -13447,7 +13448,7 @@ Input: ${text}`;
   app.post(
     "/api/mixing-batches",
     requireAuth,
-    requirePermission("manage_mixing", "manage_production"),
+    requirePermission("add_production", "manage_mixing", "manage_production"),
     async (req, res) => {
       try {
         const { batch, ingredients } = req.body;
@@ -13544,7 +13545,7 @@ Input: ${text}`;
   app.put(
     "/api/mixing-batches/:id",
     requireAuth,
-    requirePermission("manage_mixing", "manage_production"),
+    requirePermission("edit_production", "manage_mixing", "manage_production"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "id");
@@ -13672,7 +13673,7 @@ Input: ${text}`;
   app.delete(
     "/api/mixing-batches/:id",
     requireAuth,
-    requirePermission("manage_mixing", "manage_production"),
+    requirePermission("delete_production", "manage_mixing", "manage_production"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "id");
@@ -13693,7 +13694,7 @@ Input: ${text}`;
   app.put(
     "/api/mixing-batches/:id/ingredients",
     requireAuth,
-    requirePermission("manage_mixing", "manage_production"),
+    requirePermission("edit_production", "manage_mixing", "manage_production"),
     async (req, res) => {
       try {
         const batchId = parseRouteParam(req.params.id, "id");
@@ -13717,7 +13718,7 @@ Input: ${text}`;
   app.post(
     "/api/mixing-batches/:id/complete",
     requireAuth,
-    requirePermission("manage_mixing", "manage_production"),
+    requirePermission("edit_production", "manage_mixing", "manage_production"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "id");
@@ -13937,7 +13938,7 @@ Input: ${text}`;
   app.delete(
     "/api/warehouse/vouchers/raw-material-in/:id",
     requireAuth,
-    requirePermission("manage_warehouse"),
+    requirePermission("delete_warehouse", "manage_warehouse"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "id");
@@ -13954,7 +13955,7 @@ Input: ${text}`;
   app.delete(
     "/api/warehouse/vouchers/raw-material-out/:id",
     requireAuth,
-    requirePermission("manage_warehouse"),
+    requirePermission("delete_warehouse", "manage_warehouse"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "id");
@@ -14002,7 +14003,7 @@ Input: ${text}`;
   app.post(
     "/api/warehouse/vouchers/finished-goods-in",
     requireAuth,
-    requirePermission("manage_warehouse"),
+    requirePermission("add_warehouse", "manage_warehouse"),
     async (req: AuthRequest, res) => {
       try {
         const userId = getAuthUserId(req);
@@ -14061,7 +14062,7 @@ Input: ${text}`;
   app.delete(
     "/api/warehouse/vouchers/finished-goods-in/:id",
     requireAuth,
-    requirePermission("manage_warehouse"),
+    requirePermission("delete_warehouse", "manage_warehouse"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "id");
@@ -14152,7 +14153,7 @@ Input: ${text}`;
   app.delete(
     "/api/warehouse/vouchers/finished-goods-out/:id",
     requireAuth,
-    requirePermission("manage_warehouse"),
+    requirePermission("delete_warehouse", "manage_warehouse"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "id");
@@ -14330,7 +14331,7 @@ Input: ${text}`;
   app.post(
     "/api/suppliers",
     requireAuth,
-    requirePermission("manage_warehouse"),
+    requirePermission("add_warehouse", "manage_warehouse"),
     async (req, res) => {
       try {
         const { name, name_ar, phone, email, address, contact_person } =
@@ -14358,7 +14359,7 @@ Input: ${text}`;
   app.put(
     "/api/suppliers/:id",
     requireAuth,
-    requirePermission("manage_warehouse"),
+    requirePermission("edit_warehouse", "manage_warehouse"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "id");
@@ -14392,7 +14393,7 @@ Input: ${text}`;
   app.delete(
     "/api/suppliers/:id",
     requireAuth,
-    requirePermission("manage_warehouse"),
+    requirePermission("delete_warehouse", "manage_warehouse"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "id");
@@ -14423,7 +14424,7 @@ Input: ${text}`;
   app.post(
     "/api/units",
     requireAuth,
-    requirePermission("manage_warehouse", "manage_definitions"),
+    requirePermission("add_warehouse", "manage_warehouse", "manage_definitions"),
     async (req, res) => {
       try {
         const { name, name_ar, symbol, conversion_factor } = req.body;
@@ -14460,7 +14461,7 @@ Input: ${text}`;
   app.put(
     "/api/units/:id",
     requireAuth,
-    requirePermission("manage_warehouse", "manage_definitions"),
+    requirePermission("edit_warehouse", "manage_warehouse", "manage_definitions"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "id");
@@ -14503,7 +14504,7 @@ Input: ${text}`;
   app.delete(
     "/api/units/:id",
     requireAuth,
-    requirePermission("manage_warehouse", "manage_definitions"),
+    requirePermission("delete_warehouse", "manage_warehouse", "manage_definitions"),
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "id");
@@ -17122,7 +17123,7 @@ Input: ${text}`;
   app.post(
     "/api/delivery-manifests",
     requireAuth,
-    requirePermission("manage_production"),
+    requirePermission("add_production", "manage_production"),
     async (req: AuthRequest, res) => {
       try {
         const parsed = deliveryManifestPayloadSchema.safeParse(req.body);
@@ -17157,7 +17158,7 @@ Input: ${text}`;
   app.put(
     "/api/delivery-manifests/:id",
     requireAuth,
-    requirePermission("manage_production"),
+    requirePermission("edit_production", "manage_production"),
     async (req: AuthRequest, res) => {
       try {
         const id = parseManifestId(req.params.id, res);
@@ -17187,7 +17188,7 @@ Input: ${text}`;
   app.delete(
     "/api/delivery-manifests/:id",
     requireAuth,
-    requirePermission("manage_production"),
+    requirePermission("delete_production", "manage_production"),
     async (req: AuthRequest, res) => {
       try {
         const id = parseManifestId(req.params.id, res);
@@ -17270,7 +17271,7 @@ Input: ${text}`;
   app.post(
     "/api/admin-tool-docs",
     requireAuth,
-    requirePermission("manage_production"),
+    requirePermission("add_production", "manage_production"),
     async (req: AuthRequest, res) => {
       try {
         const parsed = adminToolDocPayloadSchema.safeParse(req.body);
@@ -17296,7 +17297,7 @@ Input: ${text}`;
   app.put(
     "/api/admin-tool-docs/:id",
     requireAuth,
-    requirePermission("manage_production"),
+    requirePermission("edit_production", "manage_production"),
     async (req: AuthRequest, res) => {
       try {
         const id = parseAdminDocId(req.params.id, res);
@@ -17322,7 +17323,7 @@ Input: ${text}`;
   app.delete(
     "/api/admin-tool-docs/:id",
     requireAuth,
-    requirePermission("manage_production"),
+    requirePermission("delete_production", "manage_production"),
     async (req: AuthRequest, res) => {
       try {
         const id = parseAdminDocId(req.params.id, res);

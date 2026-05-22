@@ -2,8 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Eye, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { useAuth } from "../../hooks/use-auth";
 import { useLocalizedName } from "../../hooks/use-localized-name";
 import { formatNumber, formatWeight } from "../../lib/formatNumber";
+import { canAddInArea } from "../../utils/roleUtils";
 import { Button } from "../ui/button";
 import { Progress } from "../ui/progress";
 
@@ -24,6 +26,8 @@ export default function ProductionOrdersTable({
 }: ProductionOrdersTableProps) {
   const { t } = useTranslation();
   const ln = useLocalizedName();
+  const { user } = useAuth();
+  const canAddProd = canAddInArea(user, "production");
 
   const { data: productionOrders = [], isLoading } = useQuery<
     ProductionOrderWithDetails[]
@@ -131,6 +135,7 @@ export default function ProductionOrdersTable({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center space-x-2 space-x-reverse">
+                      {canAddProd && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -140,6 +145,7 @@ export default function ProductionOrdersTable({
                       >
                         <Plus className="h-4 w-4" />
                       </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"
@@ -195,6 +201,7 @@ export default function ProductionOrdersTable({
                 <Progress value={progress} className="mt-1" />
               </div>
               <div className="flex gap-2">
+                {canAddProd && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -205,6 +212,7 @@ export default function ProductionOrdersTable({
                   <Plus className="h-3 w-3 mr-1" />
                   {t("production.table.new")}
                 </Button>
+                )}
                 <Button variant="outline" size="sm" className="flex-1">
                   <Eye className="h-3 w-3 mr-1" />
                   {t("common.view")}

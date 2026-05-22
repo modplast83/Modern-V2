@@ -75,7 +75,10 @@ import SMSSettingsTab from "../components/settings/SMSSettingsTab";
 import NotificationEventSettingsTab from "../components/settings/NotificationEventSettingsTab";
 import LocationMapPicker from "../components/LocationMapPicker";
 import TableImportDialog from "../components/settings/TableImportDialog";
-import { canAccessSettingsTab } from "../utils/roleUtils";
+import {
+  canAccessSettingsTab,
+  canEditInArea,
+} from "../utils/roleUtils";
 
 import { AiAgentSettingsContent } from "./ai-agent-settings";
 import { McpSettingsContent } from "./mcp-settings";
@@ -451,6 +454,8 @@ function LetterImageUpload({
 function LetterTemplateSection() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const canEditTemplate = canEditInArea(user, "settings");
 
   const { data, isLoading } = useQuery<LetterTemplate>({
     queryKey: ["/api/company/letter-template"],
@@ -607,6 +612,7 @@ function LetterTemplateSection() {
                   dir="rtl"
                 />
               </div>
+              {canEditTemplate && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -615,11 +621,14 @@ function LetterTemplateSection() {
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
+              )}
             </div>
           ))}
+          {canEditTemplate && (
           <Button variant="outline" size="sm" onClick={addSignature} className="w-full">
             <Plus className="w-4 h-4 ml-2" /> إضافة توقيع
           </Button>
+          )}
         </CardContent>
       </Card>
 
