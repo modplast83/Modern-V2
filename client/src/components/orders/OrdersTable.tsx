@@ -200,6 +200,7 @@ export default function OrdersTable({
               <TableHead className="text-right">
                 {t("orders.customer")}
               </TableHead>
+              <TableHead className="text-right">المندوب</TableHead>
               <TableHead className="text-right">
                 {t("orders.createdDate")}
               </TableHead>
@@ -319,6 +320,26 @@ export default function OrdersTable({
                           {customer?.id}
                         </div>
                       </div>
+                    </TableCell>
+                    <TableCell data-testid={`sales-rep-${order.id}`}>
+                      {(() => {
+                        const salesRep = customer?.sales_rep_id
+                          ? safeUsers.find(
+                              (u: any) => u.id === customer.sales_rep_id,
+                            )
+                          : null;
+                        return salesRep ? (
+                          <div className="text-right text-sm">
+                            {salesRep.display_name_ar ||
+                              salesRep.display_name ||
+                              salesRep.username}
+                          </div>
+                        ) : (
+                          <div className="text-gray-400 text-center text-sm">
+                            -
+                          </div>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell data-testid={`created-date-${order.id}`}>
                       {order.created_at
@@ -537,7 +558,7 @@ export default function OrdersTable({
                       className={`border-b ${selectedOrders.includes(order.id) ? "bg-blue-50" : "bg-gray-50/50"}`}
                     >
                       <TableCell
-                        colSpan={onOrderSelect && onSelectAll ? 8 : 7}
+                        colSpan={onOrderSelect && onSelectAll ? 9 : 8}
                         className="py-1.5 px-4 text-right"
                         data-testid={`notes-${order.id}`}
                       >
@@ -630,6 +651,21 @@ export default function OrdersTable({
                   <div className="text-sm text-muted-foreground">
                     {customer?.name_ar || customer?.name}
                   </div>
+                  {(() => {
+                    const salesRep = customer?.sales_rep_id
+                      ? safeUsers.find(
+                          (u: any) => u.id === customer.sales_rep_id,
+                        )
+                      : null;
+                    return salesRep ? (
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        المندوب:{" "}
+                        {salesRep.display_name_ar ||
+                          salesRep.display_name ||
+                          salesRep.username}
+                      </div>
+                    ) : null;
+                  })()}
                 </div>
                 <div>{getStatusBadge(order.status || "pending")}</div>
               </div>

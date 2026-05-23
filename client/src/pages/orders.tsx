@@ -103,6 +103,7 @@ export default function Orders() {
   const [searchTerm, setSearchTerm] = useState("");
 
   const [statusFilter, setStatusFilter] = useState("all");
+  const [salesRepFilter, setSalesRepFilter] = useState("all");
   const [productionSearchTerm, setProductionSearchTerm] = useState("");
   const [productionStatusFilter, setProductionStatusFilter] = useState("all");
   const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false);
@@ -252,7 +253,16 @@ export default function Orders() {
           ? order.status === "archived"
           : order.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
+    const orderCustomer = customersArray.find(
+      (c: any) => c.id === order.customer_id,
+    );
+    const matchesSalesRep =
+      salesRepFilter === "all" ||
+      (salesRepFilter === "none"
+        ? !orderCustomer?.sales_rep_id
+        : orderCustomer?.sales_rep_id === parseInt(salesRepFilter));
+
+    return matchesSearch && matchesStatus && matchesSalesRep;
   });
 
   // Ensure arrays are valid before filtering
@@ -1007,6 +1017,8 @@ export default function Orders() {
                   setSearchTerm={setSearchTerm}
                   statusFilter={statusFilter}
                   setStatusFilter={setStatusFilter}
+                  salesRepFilter={salesRepFilter}
+                  setSalesRepFilter={setSalesRepFilter}
                   productionSearchTerm={productionSearchTerm}
                   setProductionSearchTerm={setProductionSearchTerm}
                   productionStatusFilter={productionStatusFilter}

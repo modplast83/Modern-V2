@@ -16,6 +16,9 @@ interface OrdersSearchProps {
   statusFilter: string;
   setStatusFilter: (status: string) => void;
   type?: "orders" | "production";
+  salesReps?: any[];
+  salesRepFilter?: string;
+  setSalesRepFilter?: (repId: string) => void;
 }
 
 export default function OrdersSearch({
@@ -24,6 +27,9 @@ export default function OrdersSearch({
   statusFilter,
   setStatusFilter,
   type = "orders",
+  salesReps = [],
+  salesRepFilter = "all",
+  setSalesRepFilter,
 }: OrdersSearchProps) {
   const { t } = useTranslation();
   const isProduction = type === "production";
@@ -42,6 +48,25 @@ export default function OrdersSearch({
           }
         />
       </div>
+      {!isProduction && setSalesRepFilter && salesReps.length > 0 && (
+        <Select value={salesRepFilter || "all"} onValueChange={setSalesRepFilter}>
+          <SelectTrigger
+            className="w-full sm:w-44 text-xs sm:text-sm"
+            data-testid="select-sales-rep-filter"
+          >
+            <SelectValue placeholder="المندوب" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">كل المندوبين</SelectItem>
+            <SelectItem value="none">بدون مندوب</SelectItem>
+            {salesReps.map((rep: any) => (
+              <SelectItem key={rep.id} value={String(rep.id)}>
+                {rep.display_name_ar || rep.display_name || rep.username}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
       <Select value={statusFilter || ""} onValueChange={setStatusFilter}>
         <SelectTrigger
           className="w-full sm:w-48 text-xs sm:text-sm"

@@ -37,6 +37,8 @@ interface OrdersTabsProps {
   setSearchTerm: (term: string) => void;
   statusFilter: string;
   setStatusFilter: (status: string) => void;
+  salesRepFilter?: string;
+  setSalesRepFilter?: (repId: string) => void;
   productionSearchTerm: string;
   setProductionSearchTerm: (term: string) => void;
   productionStatusFilter: string;
@@ -75,6 +77,8 @@ export default function OrdersTabs({
   setSearchTerm,
   statusFilter,
   setStatusFilter,
+  salesRepFilter,
+  setSalesRepFilter,
   productionSearchTerm,
   setProductionSearchTerm,
   productionStatusFilter,
@@ -244,6 +248,9 @@ export default function OrdersTabs({
                     setSearchTerm={setSearchTerm}
                     statusFilter={statusFilter}
                     setStatusFilter={setStatusFilter}
+                    salesReps={users}
+                    salesRepFilter={salesRepFilter}
+                    setSalesRepFilter={setSalesRepFilter}
                   />
                 </div>
                 <Dialog
