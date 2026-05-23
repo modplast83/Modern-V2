@@ -2752,11 +2752,37 @@ export class DatabaseStorage implements IStorage {
   ): Promise<AttendanceWithdrawal> {
     return withDatabaseErrorHandling(
       async () => {
-        const [created] = await db
+        // Atomic dedupe: the unique partial index
+        // `uniq_attendance_open_withdrawal` (attendance_id WHERE ended_at IS
+        // NULL) prevents two open rows per attendance. ON CONFLICT DO
+        // NOTHING + a follow-up SELECT lets concurrent `start` requests
+        // race safely: only one row is inserted; the loser returns the
+        // existing open row instead of crashing with a 500.
+        const inserted = await db
           .insert(attendance_withdrawals)
           .values(data)
+          .onConflictDoNothing({
+            target: attendance_withdrawals.attendance_id,
+            targetWhere: isNull(attendance_withdrawals.ended_at),
+          } as any)
           .returning();
-        // Update attendance.total_withdrawn_minutes incrementally
+        let created: AttendanceWithdrawal | undefined = inserted[0];
+        if (!created) {
+          const [existing] = await db
+            .select()
+            .from(attendance_withdrawals)
+            .where(
+              and(
+                eq(attendance_withdrawals.attendance_id, data.attendance_id),
+                isNull(attendance_withdrawals.ended_at),
+              ),
+            )
+            .limit(1);
+          if (!existing) {
+            throw new Error("Failed to open withdrawal interval");
+          }
+          created = existing;
+        }
         if (created.duration_minutes && created.duration_minutes > 0) {
           await db
             .update(attendance)
@@ -2802,15 +2828,25 @@ export class DatabaseStorage implements IStorage {
   ): Promise<AttendanceWithdrawal | null> {
     return withDatabaseErrorHandling(
       async () => {
+        // Atomic close: only one writer can flip `ended_at` from NULL.
+        // The `ended_at IS NULL` predicate makes this a CAS — concurrent
+        // `end` calls return null for losers, so we never double-count
+        // minutes in `total_withdrawn_minutes`.
         const [updated] = await db
           .update(attendance_withdrawals)
           .set({
             ended_at: endedAt,
             duration_minutes: durationMinutes,
           })
-          .where(eq(attendance_withdrawals.id, withdrawalId))
+          .where(
+            and(
+              eq(attendance_withdrawals.id, withdrawalId),
+              isNull(attendance_withdrawals.ended_at),
+            ),
+          )
           .returning();
-        if (updated && durationMinutes > 0) {
+        if (!updated) return null;
+        if (durationMinutes > 0) {
           await db
             .update(attendance)
             .set({
@@ -2819,7 +2855,7 @@ export class DatabaseStorage implements IStorage {
             })
             .where(eq(attendance.id, updated.attendance_id));
         }
-        return updated ?? null;
+        return updated;
       },
       "finalizeAttendanceWithdrawal",
       "إنهاء فترة انسحاب",

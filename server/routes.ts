@@ -11796,18 +11796,61 @@ Input: ${text}`;
           return res.json({ withdrawal: null, totalMinutes: 0 });
         }
         const startedMs = new Date(open.started_at as any).getTime();
-        const durationMinutes = Math.min(
-          24 * 60,
-          Math.max(
-            1,
-            Math.round((now.getTime() - startedMs) / 60_000),
-          ),
-        );
+        const rawDuration = Math.round((now.getTime() - startedMs) / 60_000);
+        // Server-enforced threshold: brief flicker (< 1 min) shouldn't
+        // count against the user. Anything longer is rounded to >= 1 min.
+        const MIN_DEDUCTIBLE_MINUTES = 1;
+        if (rawDuration < MIN_DEDUCTIBLE_MINUTES) {
+          // Close the row at 0 minutes so the open interval is cleared,
+          // but don't add to total_withdrawn_minutes.
+          const finalized = await storage.finalizeAttendanceWithdrawal(
+            open.id,
+            now,
+            0,
+          );
+          if (open.previous_status) {
+            const fresh = await storage.getAttendanceById(id);
+            if (fresh && fresh.status === "منسحب") {
+              await storage.updateAttendance(id, {
+                status: open.previous_status,
+              } as any);
+            }
+          }
+          return res.json({
+            withdrawal: finalized,
+            durationMinutes: 0,
+            totalMinutes: (
+              await storage.getAttendanceWithdrawalsForDay(att.user_id, today)
+            ).totalMinutes,
+            restoredStatus: open.previous_status ?? null,
+            belowThreshold: true,
+          });
+        }
+        const durationMinutes = Math.min(24 * 60, rawDuration);
         const finalized = await storage.finalizeAttendanceWithdrawal(
           open.id,
           now,
           durationMinutes,
         );
+        if (!finalized) {
+          // Another request already closed this row — treat as no-op and
+          // return current totals so the client converges on truth.
+          const fresh = await storage.getAttendanceById(id);
+          if (fresh && fresh.status === "منسحب" && open.previous_status) {
+            await storage.updateAttendance(id, {
+              status: open.previous_status,
+            } as any);
+          }
+          const { totalMinutes } =
+            await storage.getAttendanceWithdrawalsForDay(att.user_id, today);
+          return res.json({
+            withdrawal: null,
+            durationMinutes: 0,
+            totalMinutes,
+            restoredStatus: open.previous_status ?? null,
+            alreadyClosed: true,
+          });
+        }
         // Restore previous status only if the row is still "منسحب".
         // (If the user manually started a break or checked out while
         // the watchdog was firing, leave their choice alone.)
