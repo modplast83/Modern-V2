@@ -11741,11 +11741,16 @@ Input: ${text}`;
               alreadyOpen: true,
             });
           }
-          // Only switch if currently in a working state (don't override
-          // a break the user explicitly started).
+          // Hard rule: a withdrawal period can only be opened while the
+          // user is in an active working state. Breaks, check-out, and
+          // absence are not eligible for time deduction.
           const previous_status = att.status;
-          const switchable =
-            previous_status === "حاضر" || previous_status === "يعمل";
+          if (previous_status !== "حاضر" && previous_status !== "يعمل") {
+            return res.status(409).json({
+              message: "لا يمكن فتح فترة انسحاب في الحالة الحالية",
+              currentStatus: previous_status,
+            });
+          }
           const created = await storage.createAttendanceWithdrawal({
             attendance_id: id,
             user_id: att.user_id,
@@ -11756,13 +11761,8 @@ Input: ${text}`;
             reason: parsed.data.reason || "page_abandonment",
             previous_status,
           });
-          if (switchable) {
-            await storage.updateAttendance(id, { status: "منسحب" } as any);
-          }
-          return res.json({
-            withdrawal: created,
-            status: switchable ? "منسحب" : previous_status,
-          });
+          await storage.updateAttendance(id, { status: "منسحب" } as any);
+          return res.json({ withdrawal: created, status: "منسحب" });
         }
 
         // action === 'end'

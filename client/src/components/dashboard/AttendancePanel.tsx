@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Clock, LogIn, LogOut, Coffee, Play, AlertOctagon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -74,6 +74,7 @@ export default function AttendancePanel({
   onAction,
 }: Props) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [now, setNow] = useState<Date>(new Date());
 
   // 1-second live ticker drives the HH:MM:SS counter
@@ -132,6 +133,13 @@ export default function AttendancePanel({
     userId,
     onWithdrawalChanged: () => {
       void refetchWithdrawals();
+      // Refresh daily status + attendance list so the restored "حاضر"
+      // status (after returning) shows up immediately rather than waiting
+      // for the next poll.
+      void queryClient.invalidateQueries({
+        queryKey: ["/api/attendance/daily-status", userId],
+      });
+      void queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
     },
   });
 
@@ -188,7 +196,8 @@ export default function AttendancePanel({
   })();
 
   const withdrawnMinutes = withdrawals?.totalMinutes ?? 0;
-  const hasWithdrawals = withdrawnMinutes > 0;
+  const withdrawalCount = withdrawals?.withdrawals?.length ?? 0;
+  const hasWithdrawals = withdrawnMinutes > 0 || withdrawalCount > 0;
 
   // ---- Buttons ----
   const buttons: Array<{
@@ -283,10 +292,12 @@ export default function AttendancePanel({
                   t("userDashboard.attendance.absent")}
               </span>
               {hasWithdrawals && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">
+                <span
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                  data-testid="badge-withdrawal-count"
+                >
                   <AlertOctagon className="h-3 w-3" />
-                  {t("userDashboard.attendance.withdrawn")} -{withdrawnMinutes}
-                  {" "}
+                  {withdrawalCount}× • -{withdrawnMinutes}{" "}
                   {t("userDashboard.attendance.minute")}
                 </span>
               )}
@@ -378,14 +389,35 @@ export default function AttendancePanel({
               </li>
             )}
             {hasWithdrawals && (
-              <li className="flex items-center justify-between border-t pt-1.5 mt-1.5">
-                <span className="text-red-600 dark:text-red-400 flex items-center gap-1">
-                  <AlertOctagon className="h-3.5 w-3.5" />
-                  {t("userDashboard.attendance.withdrawnTime")}
-                </span>
-                <span className="text-red-700 dark:text-red-300 font-mono font-semibold">
-                  -{withdrawnMinutes} {t("userDashboard.attendance.minute")}
-                </span>
+              <li className="border-t pt-1.5 mt-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-red-600 dark:text-red-400 flex items-center gap-1">
+                    <AlertOctagon className="h-3.5 w-3.5" />
+                    {t("userDashboard.attendance.withdrawnTime")}
+                    {" "}({withdrawalCount}×)
+                  </span>
+                  <span className="text-red-700 dark:text-red-300 font-mono font-semibold">
+                    -{withdrawnMinutes} {t("userDashboard.attendance.minute")}
+                  </span>
+                </div>
+                {withdrawalCount > 0 && (
+                  <ul className="mt-1 ms-4 text-[11px] text-red-600/80 dark:text-red-400/80 space-y-0.5">
+                    {(withdrawals?.withdrawals || [])
+                      .slice(0, 3)
+                      .map((w) => (
+                        <li
+                          key={w.id}
+                          className="flex items-center justify-between font-mono"
+                        >
+                          <span>{formatTime(w.started_at)}</span>
+                          <span>−{w.duration_minutes}m</span>
+                        </li>
+                      ))}
+                    {withdrawalCount > 3 && (
+                      <li className="text-[10px]">+{withdrawalCount - 3}…</li>
+                    )}
+                  </ul>
+                )}
               </li>
             )}
             {!checkInRecord && (
