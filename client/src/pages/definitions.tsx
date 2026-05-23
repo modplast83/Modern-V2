@@ -70,6 +70,7 @@ import {
   canAddInTab,
   canEditInTab,
   canDeleteInTab,
+  isUserAdmin,
 } from "../utils/roleUtils";
 
 const DEFINITIONS_TABS = [
@@ -99,7 +100,12 @@ export default function Definitions() {
 
   const canAddCustomers = canAddInTab(user, "customers");
   const canEditCustomers = canEditInTab(user, "customers");
-  const canDeleteCustomers = canDeleteInTab(user, "customers");
+  const isAdmin = isUserAdmin(user);
+  const canDeleteCustomers = isAdmin;
+  const canDeleteCategories = isAdmin;
+  const canDeleteSections = isAdmin;
+  const canDeleteItems = isAdmin;
+  const canDeleteMachines = isAdmin;
   const canAddCategories = canAddInTab(user, "categories");
   const canEditCategories = canEditInTab(user, "categories");
   const canAddSections = canAddInTab(user, "sections");
@@ -108,14 +114,14 @@ export default function Definitions() {
   const canEditItems = canEditInTab(user, "items");
   const canAddCustomerProducts = canAddInTab(user, "customer-products");
   const canEditCustomerProducts = canEditInTab(user, "customer-products");
-  const canDeleteCustomerProducts = canDeleteInTab(user, "customer-products");
+  const canDeleteCustomerProducts = isAdmin;
   const canAddMachines = canAddInTab(user, "machines");
   const canEditMachines = canEditInTab(user, "machines");
   const canAddUsers = canAddInTab(user, "users");
   const canEditUsers = canEditInTab(user, "users");
   const canAddMasterBatch = canAddInTab(user, "master-batch-colors");
   const canEditMasterBatch = canEditInTab(user, "master-batch-colors");
-  const canDeleteMasterBatch = canDeleteInTab(user, "master-batch-colors");
+  const canDeleteMasterBatch = isAdmin;
 
   const [selectedTab, setSelectedTab] = useState(
     () => accessibleTabs[0]?.value || "customers",

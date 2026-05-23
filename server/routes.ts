@@ -5884,7 +5884,7 @@ Input: ${text}`;
   app.delete(
     "/api/categories/:id",
     requireAuth,
-    requirePermission("delete_categories", "manage_categories", "manage_definitions"),
+    requireAdmin,
     async (req, res) => {
       try {
         const id = req.params.id;
@@ -5988,7 +5988,7 @@ Input: ${text}`;
   app.delete(
     "/api/master-batch-colors/:id",
     requireAuth,
-    requirePermission("delete_master_batch", "manage_master_batch", "manage_definitions"),
+    requireAdmin,
     async (req, res) => {
       try {
         const id = req.params.id?.trim();
@@ -8259,7 +8259,7 @@ Input: ${text}`;
   app.delete(
     "/api/customers/:id",
     requireAuth,
-    requirePermission("delete_customers", "manage_customers", "manage_definitions"),
+    requireAdmin,
     async (req, res) => {
       try {
         await storage.deleteCustomer(req.params.id);
@@ -8274,7 +8274,7 @@ Input: ${text}`;
   app.delete(
     "/api/sections/:id",
     requireAuth,
-    requirePermission("delete_sections", "manage_sections", "manage_definitions"),
+    requireAdmin,
     async (req, res) => {
       try {
         const id = req.params.id;
@@ -8290,7 +8290,7 @@ Input: ${text}`;
   app.delete(
     "/api/items/:id",
     requireAuth,
-    requirePermission("delete_items", "manage_items", "manage_definitions"),
+    requireAdmin,
     async (req, res) => {
       try {
         await storage.deleteItem(req.params.id);
@@ -8305,7 +8305,7 @@ Input: ${text}`;
   app.delete(
     "/api/customer-products/:id",
     requireAuth,
-    requirePermission("delete_customer_products", "manage_customers", "manage_definitions"),
+    requireAdmin,
     async (req, res) => {
       try {
         const id = parseRouteParam(req.params.id, "id");
@@ -8337,7 +8337,7 @@ Input: ${text}`;
   app.delete(
     "/api/machines/:id",
     requireAuth,
-    requirePermission("delete_machines", "manage_machines", "manage_definitions"),
+    requireAdmin,
     async (req, res) => {
       try {
         const id = req.params.id;
