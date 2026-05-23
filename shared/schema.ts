@@ -189,6 +189,7 @@ export const attendance = pgTable(
     shift_type: varchar("shift_type", { length: 20 }).default("صباحي"), // نوع الوردية: صباحي / مسائي / ليلي
     late_minutes: integer("late_minutes").default(0), // دقائق التأخير
     early_leave_minutes: integer("early_leave_minutes").default(0), // دقائق المغادرة المبكرة
+    total_withdrawn_minutes: integer("total_withdrawn_minutes").default(0), // إجمالي الدقائق المخصومة بسبب الانسحاب من الصفحة
     location_accuracy: doublePrecision("location_accuracy"), // دقة الموقع GPS
     distance_from_factory: doublePrecision("distance_from_factory"), // المسافة من المصنع بالأمتار
     device_info: text("device_info"), // معلومات الجهاز
@@ -981,6 +982,32 @@ export const operator_negligence_reports = pgTable(
     created_at: timestamp("created_at").defaultNow(),
     updated_at: timestamp("updated_at").defaultNow(),
   },
+);
+
+// 📋 جدول فترات الانسحاب من صفحة الحضور (Anti-fraud)
+export const attendance_withdrawals = pgTable(
+  "attendance_withdrawals",
+  {
+    id: serial("id").primaryKey(),
+    attendance_id: integer("attendance_id")
+      .notNull()
+      .references(() => attendance.id, { onDelete: "cascade" }),
+    user_id: integer("user_id")
+      .notNull()
+      .references(() => users.id),
+    date: date("date")
+      .notNull()
+      .default(sql`CURRENT_DATE`),
+    started_at: timestamp("started_at").notNull(),
+    ended_at: timestamp("ended_at"),
+    duration_minutes: integer("duration_minutes").default(0),
+    reason: varchar("reason", { length: 50 }).default("page_abandonment"), // page_abandonment | tab_hidden | navigation
+    created_at: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_attendance_withdrawals_user_date").on(table.user_id, table.date),
+    index("idx_attendance_withdrawals_attendance").on(table.attendance_id),
+  ],
 );
 
 // 📋 جدول المخالفات
@@ -2673,6 +2700,17 @@ export const insertAttendanceSchema = createInsertSchema(attendance).omit({
   created_at: true,
   updated_at: true,
 });
+
+export const insertAttendanceWithdrawalSchema = createInsertSchema(
+  attendance_withdrawals,
+).omit({
+  id: true,
+  created_at: true,
+});
+export type AttendanceWithdrawal = typeof attendance_withdrawals.$inferSelect;
+export type InsertAttendanceWithdrawal = z.infer<
+  typeof insertAttendanceWithdrawalSchema
+>;
 
 // Maintenance Actions Schemas
 export const insertMaintenanceActionSchema = createInsertSchema(

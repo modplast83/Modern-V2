@@ -19,6 +19,7 @@ import {
   consumable_parts_transactions,
   quality_checks,
   attendance,
+  attendance_withdrawals,
   waste,
   sections,
   cuts,
@@ -107,6 +108,8 @@ import {
   type QualityCheck,
   type Attendance,
   type InsertAttendance,
+  type AttendanceWithdrawal,
+  type InsertAttendanceWithdrawal,
   type Section,
   type Cut,
   type InsertCut,
@@ -617,6 +620,16 @@ export interface IStorage {
   getDailyAttendanceStats(date: string): Promise<any>;
   upsertManualAttendance(entries: any[]): Promise<any[]>;
   getDailyAttendanceStatus(userId: number, date: string): Promise<any>;
+  createAttendanceWithdrawal(
+    data: InsertAttendanceWithdrawal,
+  ): Promise<AttendanceWithdrawal>;
+  getAttendanceWithdrawalsForDay(
+    userId: number,
+    date: string,
+  ): Promise<{
+    withdrawals: AttendanceWithdrawal[];
+    totalMinutes: number;
+  }>;
 
   // Waste
   getAllWaste(): Promise<any[]>;
@@ -2704,6 +2717,62 @@ export class DatabaseStorage implements IStorage {
       work_hours: latest.work_hours,
       records: records,
     };
+  }
+
+  async createAttendanceWithdrawal(
+    data: InsertAttendanceWithdrawal,
+  ): Promise<AttendanceWithdrawal> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const [created] = await db
+          .insert(attendance_withdrawals)
+          .values(data)
+          .returning();
+        // Update attendance.total_withdrawn_minutes incrementally
+        if (created.duration_minutes && created.duration_minutes > 0) {
+          await db
+            .update(attendance)
+            .set({
+              total_withdrawn_minutes: sql`COALESCE(${attendance.total_withdrawn_minutes}, 0) + ${created.duration_minutes}`,
+              updated_at: new Date(),
+            })
+            .where(eq(attendance.id, created.attendance_id));
+        }
+        return created;
+      },
+      "createAttendanceWithdrawal",
+      "تسجيل فترة انسحاب",
+    );
+  }
+
+  async getAttendanceWithdrawalsForDay(
+    userId: number,
+    date: string,
+  ): Promise<{
+    withdrawals: AttendanceWithdrawal[];
+    totalMinutes: number;
+  }> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const withdrawals = await db
+          .select()
+          .from(attendance_withdrawals)
+          .where(
+            and(
+              eq(attendance_withdrawals.user_id, userId),
+              eq(attendance_withdrawals.date, date),
+            ),
+          )
+          .orderBy(desc(attendance_withdrawals.started_at));
+        const totalMinutes = withdrawals.reduce(
+          (sum, w) => sum + (w.duration_minutes || 0),
+          0,
+        );
+        return { withdrawals, totalMinutes };
+      },
+      "getAttendanceWithdrawalsForDay",
+      "جلب فترات الانسحاب",
+    );
   }
 
   async getAllWaste(): Promise<any[]> {

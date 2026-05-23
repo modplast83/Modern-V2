@@ -146,6 +146,7 @@ import {
   locations,
   users,
   attendance,
+  violations,
   factory_layouts,
   factory_snapshots,
   insertFactorySnapshotSchema,
@@ -164,6 +165,7 @@ import {
   updateSparePartSchema,
   insertViolationSchema,
   updateViolationSchema,
+  insertAttendanceWithdrawalSchema,
   createUserApiSchema,
   updateUserSchema,
   insertMixingRecipeSchema,
@@ -11662,6 +11664,147 @@ Input: ${text}`;
       } catch (error) {
         console.error("Error saving monthly attendance data:", error);
         res.status(500).json({ message: "خطأ في حفظ بيانات الحضور" });
+      }
+    },
+  );
+
+  // Record page-abandonment withdrawal period (Anti-fraud)
+  app.post(
+    "/api/attendance/:id/withdraw",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const att = await storage.getAttendanceById(id);
+        if (!att) {
+          return res.status(404).json({ message: "سجل الحضور غير موجود" });
+        }
+        // Only the owner may record their own withdrawal
+        const reqUserId = (req.user as any)?.id;
+        if (!reqUserId || reqUserId !== att.user_id) {
+          return res.status(403).json({ message: "غير مصرح" });
+        }
+
+        const parsed = z
+          .object({
+            started_at: z.coerce.date(),
+            ended_at: z.coerce.date().optional().nullable(),
+            reason: z.string().max(50).optional().nullable(),
+          })
+          .safeParse(req.body);
+
+        if (!parsed.success) {
+          return res
+            .status(400)
+            .json({ message: "بيانات الانسحاب غير صحيحة", errors: parsed.error.issues });
+        }
+
+        // Server-authoritative duration: NEVER trust client duration_minutes.
+        const now = new Date();
+        const started = parsed.data.started_at;
+        const ended = parsed.data.ended_at ?? now;
+        if (ended.getTime() < started.getTime()) {
+          return res.status(400).json({ message: "وقت الانتهاء قبل البداية" });
+        }
+        // Bound timestamps to today and not in the future
+        const today = now.toISOString().split("T")[0];
+        const todayStart = new Date(`${today}T00:00:00.000Z`);
+        const cappedStart =
+          started < todayStart ? todayStart : started > now ? now : started;
+        const cappedEnd = ended > now ? now : ended;
+        const durationMinutes = Math.min(
+          24 * 60,
+          Math.max(
+            1,
+            Math.round((cappedEnd.getTime() - cappedStart.getTime()) / 60000),
+          ),
+        );
+        if (durationMinutes < 1) {
+          return res.status(400).json({ message: "مدة الانسحاب غير صالحة" });
+        }
+
+        // Optional: only allow recording against an attendance row dated today
+        if (att.date && String(att.date) !== today) {
+          return res
+            .status(400)
+            .json({ message: "لا يمكن تسجيل انسحاب على سجل قديم" });
+        }
+
+        const created = await storage.createAttendanceWithdrawal({
+          attendance_id: id,
+          user_id: att.user_id,
+          date: today as any,
+          started_at: cappedStart,
+          ended_at: cappedEnd,
+          duration_minutes: durationMinutes,
+          reason: parsed.data.reason || "page_abandonment",
+        });
+
+        // Aggregate today's withdrawals; create violation if > 60 minutes.
+        // Atomic dedupe via ON CONFLICT on uniq_violation_per_day_per_type.
+        const { totalMinutes } = await storage.getAttendanceWithdrawalsForDay(
+          att.user_id,
+          today,
+        );
+        let violationCreated = false;
+        if (totalMinutes > 60) {
+          try {
+            const inserted = await db
+              .insert(violations)
+              .values({
+                employee_id: att.user_id,
+                violation_type: "page_abandonment",
+                description: `انسحاب متكرر من صفحة الحضور (${totalMinutes} دقيقة)`,
+                date: today as any,
+                reported_by: null,
+              })
+              .onConflictDoNothing({
+                target: [
+                  violations.employee_id,
+                  violations.violation_type,
+                  violations.date,
+                ],
+              })
+              .returning({ id: violations.id });
+            violationCreated = inserted.length > 0;
+          } catch (vErr) {
+            console.error("Failed to create page_abandonment violation", vErr);
+          }
+        }
+
+        res.json({ withdrawal: created, totalMinutes, violationCreated });
+      } catch (error) {
+        console.error("Error recording withdrawal:", error);
+        res.status(500).json({ message: "خطأ في تسجيل الانسحاب" });
+      }
+    },
+  );
+
+  // Get today's withdrawal summary for a user
+  app.get(
+    "/api/attendance/withdrawals/today/:userId",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const userId = parseInt(req.params.userId);
+        if (isNaN(userId) || userId <= 0) {
+          return res.status(400).json({ message: "معرف المستخدم غير صحيح" });
+        }
+        const reqUserId = (req.user as any)?.id;
+        if (reqUserId !== userId) {
+          // Allow only self-access (others must use reports)
+          return res.status(403).json({ message: "غير مصرح" });
+        }
+        const date =
+          (req.query.date as string) || new Date().toISOString().split("T")[0];
+        const result = await storage.getAttendanceWithdrawalsForDay(
+          userId,
+          date,
+        );
+        res.json({ ...result, date });
+      } catch (error) {
+        console.error("Error fetching withdrawals:", error);
+        res.status(500).json({ message: "خطأ في جلب فترات الانسحاب" });
       }
     },
   );

@@ -4392,7 +4392,16 @@
       "attendanceDays": "Attendance Days",
       "thisMonth": "This Month",
       "totalWorkHours": "Total Work Hours",
-      "noRecords": "No Records"
+      "noRecords": "No Records",
+      "liveTimer": "Live Timer",
+      "elapsedSinceCheckIn": "since check-in",
+      "elapsedOnBreak": "on break for",
+      "withdrawn": "Withdrawn",
+      "withdrawnTime": "Deducted Time",
+      "withdrawnInfo": "Time deducted due to page abandonment",
+      "abandonmentWarning": "⚠️ Page abandonment detected, time will be deducted automatically",
+      "resumedFromAbandonment": "✅ Tracking resumed",
+      "netHoursAfterDeduction": "Net hours after deduction"
     },
     "location": {
       "error": "Location Error",

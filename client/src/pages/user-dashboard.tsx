@@ -16,6 +16,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 
+import AttendancePanel from "../components/dashboard/AttendancePanel";
 import AttendanceStats from "../components/dashboard/AttendanceStats";
 import FaceVerification from "../components/dashboard/FaceVerification";
 import UserProfile from "../components/dashboard/UserProfile";
@@ -537,10 +538,21 @@ export default function UserDashboard() {
     },
   });
 
+  // Fetch today's withdrawal totals (anti-fraud deductions)
+  const { data: withdrawalsToday } = useQuery<{
+    totalMinutes: number;
+    withdrawals: Array<{ id: number; duration_minutes: number }>;
+  }>({
+    queryKey: ["/api/attendance/withdrawals/today", user?.id],
+    enabled: !!user?.id,
+    refetchInterval: 60000,
+  });
+
   // Calculate working hours, overtime, and break time
   const calculateDailyHours = (
     attendanceRecords: AttendanceRecord[] | undefined,
     userId: number,
+    withdrawnMinutes: number = 0,
   ) => {
     const today = new Date().toISOString().split("T")[0];
     const todayRecords =
@@ -562,6 +574,7 @@ export default function UserDashboard() {
         overtimeHours: 0,
         deficitHours: 0,
         breakMinutes: 0,
+        withdrawnMinutes: Math.round(withdrawnMinutes),
         totalMinutes: 0,
         isFriday: false,
       };
@@ -577,6 +590,7 @@ export default function UserDashboard() {
         overtimeHours: 0,
         deficitHours: 0,
         breakMinutes: 0,
+        withdrawnMinutes: Math.round(withdrawnMinutes),
         totalMinutes: 0,
         isFriday: false,
       };
@@ -622,8 +636,11 @@ export default function UserDashboard() {
       );
     }
 
-    // Net working time (excluding break)
-    const netWorkingMinutes = Math.max(0, totalMinutesWorked - breakMinutes);
+    // Net working time (excluding break and withdrawal periods)
+    const netWorkingMinutes = Math.max(
+      0,
+      totalMinutesWorked - breakMinutes - withdrawnMinutes,
+    );
     const netWorkingHours = netWorkingMinutes / 60;
 
     // Check if today is Friday (5 in JavaScript, where Sunday = 0)
@@ -657,6 +674,7 @@ export default function UserDashboard() {
       overtimeHours: Math.round(overtimeHours * 100) / 100,
       deficitHours: Math.round(deficitHours * 100) / 100,
       breakMinutes: Math.round(breakMinutes),
+      withdrawnMinutes: Math.round(withdrawnMinutes),
       totalMinutes: totalMinutesWorked,
       isFriday,
     };
@@ -664,7 +682,11 @@ export default function UserDashboard() {
     return result;
   };
 
-  const dailyHours = calculateDailyHours(attendanceRecords, user?.id || 0);
+  const dailyHours = calculateDailyHours(
+    attendanceRecords,
+    user?.id || 0,
+    withdrawalsToday?.totalMinutes || 0,
+  );
 
   // Request form
   const requestForm = useForm({
@@ -1059,400 +1081,111 @@ export default function UserDashboard() {
               </Card>
             </div>
 
-            {/* Quick Actions */}
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  {t("userDashboard.attendance.quickActions")}
-                </CardTitle>
-                <CardDescription>
-                  {t("userDashboard.attendance.currentStatus")}:{" "}
-                  {dailyAttendanceStatus?.currentStatus ||
-                    t("userDashboard.attendance.notCheckedIn")}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {/* Check In Button */}
-                  <div className="flex flex-col items-center">
-                    <Button
-                      onClick={() => handleAttendanceAction("حاضر")}
-                      className="bg-green-600 hover:bg-green-700 w-full"
-                      disabled={
-                        dailyAttendanceStatus?.hasCheckedIn ||
-                        attendanceMutation.isPending
-                      }
-                    >
-                      {dailyAttendanceStatus?.hasCheckedIn
-                        ? `✓ ${t("userDashboard.attendance.checkedIn")}`
-                        : t("userDashboard.attendance.checkIn")}
-                    </Button>
-                    <div className="text-xs text-gray-500 mt-1 h-4 text-center">
-                      {(() => {
-                        const todayRecords = attendanceRecords?.filter(
-                          (record) =>
-                            record.date ===
-                              new Date().toISOString().split("T")[0] &&
-                            record.user_id === user?.id,
-                        );
-                        const checkInRecord = todayRecords?.find(
-                          (record) => record.check_in_time,
-                        );
-                        return checkInRecord?.check_in_time
-                          ? new Date(checkInRecord.check_in_time)
-                              .toLocaleTimeString("ar-SA", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                hour12: true,
-                              })
-                              .replace("ص", "ص")
-                              .replace("م", "م")
-                          : "";
-                      })()}
-                    </div>
-                  </div>
+            {/* Quick Attendance Actions (mobile-first panel) */}
+            {user?.id && (
+              <AttendancePanel
+                userId={user.id}
+                attendanceRecords={attendanceRecords}
+                dailyStatus={dailyAttendanceStatus}
+                isPending={attendanceMutation.isPending}
+                onAction={handleAttendanceAction}
+              />
+            )}
 
-                  {/* Lunch Start Button */}
-                  <div className="flex flex-col items-center">
-                    <Button
-                      onClick={() => handleAttendanceAction("في الاستراحة")}
-                      className="bg-yellow-600 hover:bg-yellow-700 w-full"
-                      disabled={
-                        !dailyAttendanceStatus?.hasCheckedIn ||
-                        dailyAttendanceStatus?.hasStartedLunch ||
-                        attendanceMutation.isPending
-                      }
-                    >
-                      {dailyAttendanceStatus?.hasStartedLunch
-                        ? `✓ ${t("userDashboard.attendance.breakTaken")}`
-                        : t("userDashboard.attendance.startBreak")}
-                    </Button>
-                    <div className="text-xs text-gray-500 mt-1 h-4 text-center">
-                      {(() => {
-                        const todayRecords = attendanceRecords?.filter(
-                          (record) =>
-                            record.date ===
-                              new Date().toISOString().split("T")[0] &&
-                            record.user_id === user?.id,
-                        );
-                        const lunchStartRecord = todayRecords?.find(
-                          (record) => record.lunch_start_time,
-                        );
-                        return lunchStartRecord?.lunch_start_time
-                          ? new Date(lunchStartRecord.lunch_start_time)
-                              .toLocaleTimeString("ar-SA", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                hour12: true,
-                              })
-                              .replace("ص", "ص")
-                              .replace("م", "م")
-                          : "";
-                      })()}
-                    </div>
-                  </div>
-
-                  {/* Lunch End Button */}
-                  <div className="flex flex-col items-center">
-                    <Button
-                      onClick={() =>
-                        handleAttendanceAction("يعمل", "end_lunch")
-                      }
-                      className="bg-blue-600 hover:bg-blue-700 w-full"
-                      disabled={
-                        !dailyAttendanceStatus?.hasStartedLunch ||
-                        dailyAttendanceStatus?.hasEndedLunch ||
-                        attendanceMutation.isPending
-                      }
-                    >
-                      {dailyAttendanceStatus?.hasEndedLunch
-                        ? `✓ ${t("userDashboard.attendance.breakEnded")}`
-                        : t("userDashboard.attendance.endBreak")}
-                    </Button>
-                    <div className="text-xs text-gray-500 mt-1 h-4 text-center">
-                      {(() => {
-                        const todayRecords = attendanceRecords?.filter(
-                          (record) =>
-                            record.date ===
-                              new Date().toISOString().split("T")[0] &&
-                            record.user_id === user?.id,
-                        );
-                        const lunchEndRecord = todayRecords?.find(
-                          (record) => record.lunch_end_time,
-                        );
-                        return lunchEndRecord?.lunch_end_time
-                          ? new Date(lunchEndRecord.lunch_end_time)
-                              .toLocaleTimeString("ar-SA", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                hour12: true,
-                              })
-                              .replace("ص", "ص")
-                              .replace("م", "م")
-                          : "";
-                      })()}
-                    </div>
-                  </div>
-
-                  {/* Check Out Button */}
-                  <div className="flex flex-col items-center">
-                    <Button
-                      onClick={() => handleAttendanceAction("مغادر")}
-                      className="bg-gray-600 hover:bg-gray-700 w-full"
-                      disabled={
-                        !dailyAttendanceStatus?.hasCheckedIn ||
-                        dailyAttendanceStatus?.hasCheckedOut ||
-                        attendanceMutation.isPending
-                      }
-                    >
-                      {dailyAttendanceStatus?.hasCheckedOut
-                        ? `✓ ${t("userDashboard.attendance.checkedOut")}`
-                        : t("userDashboard.attendance.checkOut")}
-                    </Button>
-                    <div className="text-xs text-gray-500 mt-1 h-4 text-center">
-                      {(() => {
-                        const todayRecords = attendanceRecords?.filter(
-                          (record) =>
-                            record.date ===
-                              new Date().toISOString().split("T")[0] &&
-                            record.user_id === user?.id,
-                        );
-                        const checkOutRecord = todayRecords?.find(
-                          (record) => record.check_out_time,
-                        );
-                        return checkOutRecord?.check_out_time
-                          ? new Date(checkOutRecord.check_out_time)
-                              .toLocaleTimeString("ar-SA", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                hour12: true,
-                              })
-                              .replace("ص", "ص")
-                              .replace("م", "م")
-                          : "";
-                      })()}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Status indicator with timestamps */}
-                <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <h4 className="font-semibold text-sm mb-2">
-                    {t("userDashboard.attendance.todayLog")}:
-                  </h4>
-                  {attendanceRecords
-                    ?.filter(
-                      (record) =>
-                        record.date ===
-                          new Date().toISOString().split("T")[0] &&
-                        record.user_id === user?.id,
-                    )
-                    .map((record, index) => (
-                      <div key={record.id} className="mb-2 last:mb-0">
-                        {record.check_in_time && (
-                          <div className="flex items-center justify-between text-sm py-1">
-                            <span className="text-green-600">
-                              ✓ {t("userDashboard.attendance.checkInRecord")}
-                            </span>
-                            <span className="text-gray-600">
-                              {new Date(
-                                record.check_in_time,
-                              ).toLocaleTimeString("en-US", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                hour12: true,
-                              })}
-                            </span>
-                          </div>
-                        )}
-                        {record.lunch_start_time && (
-                          <div className="flex items-center justify-between text-sm py-1">
-                            <span className="text-yellow-600">
-                              ✓ {t("userDashboard.attendance.breakStart")}
-                            </span>
-                            <span className="text-gray-600">
-                              {new Date(
-                                record.lunch_start_time,
-                              ).toLocaleTimeString("en-US", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                hour12: true,
-                              })}
-                            </span>
-                          </div>
-                        )}
-                        {record.lunch_end_time && (
-                          <div className="flex items-center justify-between text-sm py-1">
-                            <span className="text-blue-600">
-                              ✓ {t("userDashboard.attendance.breakEnd")}
-                            </span>
-                            <span className="text-gray-600">
-                              {new Date(
-                                record.lunch_end_time,
-                              ).toLocaleTimeString("en-US", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                hour12: true,
-                              })}
-                            </span>
-                          </div>
-                        )}
-                        {record.check_out_time && (
-                          <div className="flex items-center justify-between text-sm py-1">
-                            <span className="text-gray-600">
-                              ✓ {t("userDashboard.attendance.checkOutRecord")}
-                            </span>
-                            <span className="text-gray-600">
-                              {new Date(
-                                record.check_out_time,
-                              ).toLocaleTimeString("en-US", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                hour12: true,
-                              })}
-                            </span>
-                          </div>
-                        )}
+            {/* Working Hours Summary */}
+            {dailyAttendanceStatus?.hasCheckedIn && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-primary" />
+                    {t("userDashboard.attendance.workingSummary")}
+                    {dailyHours.isFriday && (
+                      <span className="text-xs text-orange-600 ms-1">
+                        ({t("userDashboard.attendance.friday")})
+                      </span>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-2 text-xs sm:text-sm">
+                    <div className="bg-green-50 dark:bg-green-900/20 p-2.5 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <span className="text-green-700 dark:text-green-300">
+                          ⏰ {t("userDashboard.attendance.workingHours")}
+                        </span>
+                        <span className="font-semibold text-green-800 dark:text-green-200 tabular-nums">
+                          {dailyHours.workingHours.toFixed(1)}{" "}
+                          {t("userDashboard.attendance.hour")}
+                        </span>
                       </div>
-                    ))}
-
-                  {/* Working Hours Summary */}
-                  {dailyAttendanceStatus?.hasCheckedIn && (
-                    <div className="mt-3 pt-3 border-t">
-                      <h5 className="font-medium text-sm mb-2 text-blue-700 dark:text-blue-300">
-                        📊 {t("userDashboard.attendance.workingSummary")}{" "}
-                        {dailyHours.isFriday
-                          ? `(${t("userDashboard.attendance.friday")})`
-                          : ""}
-                        :
-                      </h5>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        {/* Working Hours */}
-                        <div className="bg-green-50 dark:bg-green-900/20 p-2 rounded">
-                          <div className="flex items-center justify-between">
-                            <span className="text-green-700 dark:text-green-300">
-                              ⏰ {t("userDashboard.attendance.workingHours")}
-                            </span>
-                            <span className="font-medium text-green-800 dark:text-green-200">
-                              {dailyHours.workingHours.toFixed(1)}{" "}
-                              {t("userDashboard.attendance.hour")}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Overtime Hours */}
-                        <div className="bg-orange-50 dark:bg-orange-900/20 p-2 rounded">
-                          <div className="flex items-center justify-between">
-                            <span className="text-orange-700 dark:text-orange-300">
-                              ⚡ {t("userDashboard.attendance.overtimeHours")}
-                            </span>
-                            <span className="font-medium text-orange-800 dark:text-orange-200">
-                              {dailyHours.overtimeHours.toFixed(1)}{" "}
-                              {t("userDashboard.attendance.hour")}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Break Time */}
-                        <div className="bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded">
-                          <div className="flex items-center justify-between">
-                            <span className="text-yellow-700 dark:text-yellow-300">
-                              ☕ {t("userDashboard.attendance.breakTime")}
-                            </span>
-                            <span className="font-medium text-yellow-800 dark:text-yellow-200">
-                              {dailyHours.breakMinutes}{" "}
-                              {t("userDashboard.attendance.minute")}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Deficit Hours (if any) */}
-                        {dailyHours.deficitHours > 0 && (
-                          <div className="bg-red-50 dark:bg-red-900/20 p-2 rounded">
-                            <div className="flex items-center justify-between">
-                              <span className="text-red-700 dark:text-red-300">
-                                ⚠️ {t("userDashboard.attendance.deficitHours")}
-                              </span>
-                              <span className="font-medium text-red-800 dark:text-red-200">
-                                {dailyHours.deficitHours.toFixed(1)}{" "}
-                                {t("userDashboard.attendance.hour")}
-                              </span>
-                            </div>
-                          </div>
-                        )}
+                    </div>
+                    <div className="bg-orange-50 dark:bg-orange-900/20 p-2.5 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <span className="text-orange-700 dark:text-orange-300">
+                          ⚡ {t("userDashboard.attendance.overtimeHours")}
+                        </span>
+                        <span className="font-semibold text-orange-800 dark:text-orange-200 tabular-nums">
+                          {dailyHours.overtimeHours.toFixed(1)}{" "}
+                          {t("userDashboard.attendance.hour")}
+                        </span>
                       </div>
-
-                      {/* Additional Info */}
-                      <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">
-                        <div className="flex justify-between">
-                          <span>
-                            {t("userDashboard.attendance.totalTime")}:
+                    </div>
+                    <div className="bg-yellow-50 dark:bg-yellow-900/20 p-2.5 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <span className="text-yellow-700 dark:text-yellow-300">
+                          ☕ {t("userDashboard.attendance.breakTime")}
+                        </span>
+                        <span className="font-semibold text-yellow-800 dark:text-yellow-200 tabular-nums">
+                          {dailyHours.breakMinutes}{" "}
+                          {t("userDashboard.attendance.minute")}
+                        </span>
+                      </div>
+                    </div>
+                    {dailyHours.withdrawnMinutes > 0 && (
+                      <div className="bg-red-50 dark:bg-red-900/20 p-2.5 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <span className="text-red-700 dark:text-red-300">
+                            ⛔ {t("userDashboard.attendance.withdrawnTime")}
                           </span>
-                          <span>
-                            {Math.floor(dailyHours.totalMinutes / 60)}:
-                            {(dailyHours.totalMinutes % 60)
-                              .toString()
-                              .padStart(2, "0")}
+                          <span className="font-semibold text-red-800 dark:text-red-200 tabular-nums">
+                            -{dailyHours.withdrawnMinutes}{" "}
+                            {t("userDashboard.attendance.minute")}
                           </span>
                         </div>
-                        {dailyHours.isFriday && (
-                          <div className="text-orange-600 dark:text-orange-400 mt-1 font-medium">
-                            * {t("userDashboard.attendance.fridayNote")}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Status indicators for missing actions */}
-                  <div className="mt-2 pt-2 border-t">
-                    {!dailyAttendanceStatus?.hasCheckedIn && (
-                      <div className="flex items-center justify-between text-sm py-1">
-                        <span className="text-gray-400">
-                          ⏳ {t("userDashboard.attendance.checkInRecord")}
-                        </span>
-                        <span className="text-gray-400">
-                          {t("userDashboard.attendance.notDone")}
-                        </span>
                       </div>
                     )}
-                    {!dailyAttendanceStatus?.hasStartedLunch &&
-                      dailyAttendanceStatus?.hasCheckedIn && (
-                        <div className="flex items-center justify-between text-sm py-1">
-                          <span className="text-gray-400">
-                            ⏳ {t("userDashboard.attendance.breakStart")}
+                    {dailyHours.deficitHours > 0 && (
+                      <div className="bg-red-50 dark:bg-red-900/20 p-2.5 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <span className="text-red-700 dark:text-red-300">
+                            ⚠️ {t("userDashboard.attendance.deficitHours")}
                           </span>
-                          <span className="text-gray-400">
-                            {t("userDashboard.attendance.notDone")}
-                          </span>
-                        </div>
-                      )}
-                    {!dailyAttendanceStatus?.hasEndedLunch &&
-                      dailyAttendanceStatus?.hasStartedLunch && (
-                        <div className="flex items-center justify-between text-sm py-1">
-                          <span className="text-gray-400">
-                            ⏳ {t("userDashboard.attendance.breakEnd")}
-                          </span>
-                          <span className="text-gray-400">
-                            {t("userDashboard.attendance.notDone")}
+                          <span className="font-semibold text-red-800 dark:text-red-200 tabular-nums">
+                            {dailyHours.deficitHours.toFixed(1)}{" "}
+                            {t("userDashboard.attendance.hour")}
                           </span>
                         </div>
-                      )}
-                    {!dailyAttendanceStatus?.hasCheckedOut &&
-                      dailyAttendanceStatus?.hasCheckedIn && (
-                        <div className="flex items-center justify-between text-sm py-1">
-                          <span className="text-gray-400">
-                            ⏳ {t("userDashboard.attendance.checkOutRecord")}
-                          </span>
-                          <span className="text-gray-400">
-                            {t("userDashboard.attendance.notDone")}
-                          </span>
-                        </div>
-                      )}
+                      </div>
+                    )}
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                  <div className="mt-3 flex justify-between text-xs text-gray-600 dark:text-gray-400">
+                    <span>{t("userDashboard.attendance.totalTime")}:</span>
+                    <span className="font-mono tabular-nums">
+                      {Math.floor(dailyHours.totalMinutes / 60)}:
+                      {(dailyHours.totalMinutes % 60)
+                        .toString()
+                        .padStart(2, "0")}
+                    </span>
+                  </div>
+                  {dailyHours.isFriday && (
+                    <p className="mt-1.5 text-xs text-orange-600 dark:text-orange-400 font-medium">
+                      * {t("userDashboard.attendance.fridayNote")}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
           </TabsContent>
 
           {/* Statistics Tab */}

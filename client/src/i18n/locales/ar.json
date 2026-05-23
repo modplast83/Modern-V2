@@ -4910,7 +4910,16 @@
       "attendanceDays": "أيام الحضور",
       "thisMonth": "هذا الشهر",
       "totalWorkHours": "إجمالي ساعات العمل",
-      "noRecords": "لا توجد سجلات"
+      "noRecords": "لا توجد سجلات",
+      "liveTimer": "المؤقت المباشر",
+      "elapsedSinceCheckIn": "منذ تسجيل الحضور",
+      "elapsedOnBreak": "في الاستراحة منذ",
+      "withdrawn": "منسحب",
+      "withdrawnTime": "الوقت المخصوم",
+      "withdrawnInfo": "وقت المخصوم بسبب الانسحاب من الصفحة",
+      "abandonmentWarning": "⚠️ تم رصد مغادرتك للصفحة، سيتم خصم الوقت تلقائياً",
+      "resumedFromAbandonment": "✅ تم استئناف التسجيل",
+      "netHoursAfterDeduction": "صافي الساعات بعد الخصم"
     },
     "location": {
       "error": "خطأ في الموقع",
