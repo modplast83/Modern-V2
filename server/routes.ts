@@ -856,6 +856,89 @@ export async function registerRoutes(
     }
   });
 
+  // ==========================================================================
+  // PUBLIC: Order view endpoint — no auth required (for QR code scanning)
+  // ==========================================================================
+  app.get("/api/public/orders/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id) || id <= 0) {
+        return res.status(400).json({ success: false, message: "معرف الطلب غير صحيح" });
+      }
+
+      const order = await storage.getOrderById(id);
+      if (!order) {
+        return res.status(404).json({ success: false, message: "الطلب غير موجود" });
+      }
+
+      // Fetch related data
+      const customer = order.customer_id
+        ? await storage.getCustomerById(order.customer_id)
+        : null;
+
+      const productionOrdersList = await db
+        .select()
+        .from(production_orders)
+        .where(eq(production_orders.order_id, id))
+        .orderBy(production_orders.id);
+
+      // Fetch customer products for each production order
+      const productionOrdersWithProducts = await Promise.all(
+        productionOrdersList.map(async (po: any) => {
+          const cp = po.customer_product_id
+            ? await storage.getCustomerProductById(Number(po.customer_product_id))
+            : null;
+          return { ...po, customerProduct: cp };
+        }),
+      );
+
+      res.set("Cache-Control", "no-cache");
+      res.json({
+        success: true,
+        order: {
+          id: order.id,
+          order_number: order.order_number,
+          status: order.status,
+          created_at: order.created_at,
+          delivery_days: order.delivery_days,
+          notes: order.notes,
+          priority: order.priority,
+        },
+        customer: customer
+          ? {
+              name_ar: customer.name_ar,
+              name: customer.name,
+              phone: customer.phone,
+              commercial_name: customer.commercial_name,
+            }
+          : null,
+        production_orders: productionOrdersWithProducts.map((po: any) => ({
+          id: po.id,
+          production_order_number: po.production_order_number,
+          status: po.status,
+          quantity_kg: po.quantity_kg,
+          produced_quantity_kg: po.produced_quantity_kg,
+          notes: po.notes,
+          customer_product: po.customerProduct
+            ? {
+                size_caption: po.customerProduct.size_caption,
+                width: po.customerProduct.width,
+                cutting_length_cm: po.customerProduct.cutting_length_cm,
+                thickness: po.customerProduct.thickness,
+                raw_material: po.customerProduct.raw_material,
+                print_colors: po.customerProduct.print_colors,
+                handle_type: po.customerProduct.handle_type,
+                unit_weight_gram: po.customerProduct.unit_weight_gram,
+              }
+            : null,
+        })),
+      });
+    } catch (error: any) {
+      console.error("Error fetching public order:", error);
+      res.status(500).json({ success: false, message: "خطأ في جلب بيانات الطلب" });
+    }
+  });
+
   // Replit Auth user endpoint
   app.get("/api/auth/user", isAuthenticatedReplit, async (req: any, res) => {
     try {

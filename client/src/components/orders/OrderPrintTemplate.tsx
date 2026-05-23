@@ -257,11 +257,10 @@ export default function OrderPrintTemplate({
   }, [sortedOrders]);
 
   const qrUrl = useMemo(() => {
-    // رابط طباعة الطلب مباشرة
     const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
-    const printUrl = `${baseUrl}/orders?print=${order?.id}`;
+    const publicUrl = `${baseUrl}/view/order/${order?.id}`;
     return `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
-      printUrl,
+      publicUrl,
     )}&color=000000`;
   }, [order?.id]);
 

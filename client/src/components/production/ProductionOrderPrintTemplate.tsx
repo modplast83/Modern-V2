@@ -36,15 +36,10 @@ export default function ProductionOrderPrintTemplate({
     const generateQRCode = async () => {
       try {
         const QRCode = (await import("qrcode")).default;
-        const qrData = JSON.stringify({
-          type: "production_order",
-          production_order_id: productionOrder.id,
-          production_order_number: productionOrder.production_order_number,
-          order_number: order?.order_number,
-          customer: ln(customer?.name_ar, customer?.name),
-          date: productionOrder.created_at,
-        });
-        const qrUrl = await QRCode.toDataURL(qrData, {
+        const orderId = order?.id || productionOrder.order_id;
+        const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+        const publicUrl = orderId ? `${baseUrl}/view/order/${orderId}` : `${baseUrl}/view/order/0`;
+        const qrUrl = await QRCode.toDataURL(publicUrl, {
           width: 120,
           margin: 1,
           errorCorrectionLevel: "M",
@@ -56,7 +51,7 @@ export default function ProductionOrderPrintTemplate({
     };
 
     generateQRCode();
-  }, [productionOrder, order, customer]);
+  }, [productionOrder, order]);
 
   const handlePrint = () => {
     window.print();

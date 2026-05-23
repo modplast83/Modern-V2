@@ -116,6 +116,7 @@ const MaterialMixing = lazyWithRetry(() => import("./pages/material-mixing"));
 const MyOrders = lazyWithRetry(() => import("./pages/my-orders"));
 const McpSettings = lazyWithRetry(() => import("./pages/mcp-settings"));
 const MpbfBagQuote = lazyWithRetry(() => import("./pages/mpbf-bag-quote"));
+const ViewOrder = lazyWithRetry(() => import("./pages/view-order"));
 
 function PageLoadingFallback() {
   return (
@@ -171,6 +172,11 @@ function AppRoutes() {
         {/* Public mobile-friendly bag design quote — no login required */}
         <Route path="/mpbf">
           <MpbfBagQuote />
+        </Route>
+
+        {/* Public order view — no login required (QR code scanning) */}
+        <Route path="/view/order/:id">
+          <ViewOrder />
         </Route>
 
         <Route path="/bag-configurator">
