@@ -355,6 +355,68 @@ export class NotificationService {
   }
 
   /**
+   * Resolve which external channels are available for a given
+   * recipient. Acts as the single, preference-aware decision
+   * point for outbound delivery. Today the "preferences" are
+   * driven by what is actually deliverable for the user:
+   *   - WhatsApp is available when the user has a phone number
+   *     AND the WhatsApp provider (Meta or Twilio) is wired up.
+   *   - SMS is available when the user has a phone number AND
+   *     the Taqnyat SMS provider has an API key configured.
+   * A future per-user preferences table can plug in here
+   * without touching call sites.
+   */
+  resolveExternalChannels(phone: string | null | undefined): {
+    whatsapp: boolean;
+    sms: boolean;
+  } {
+    if (!phone) return { whatsapp: false, sms: false };
+    const whatsapp = this.useMetaAPI || !!this.twilioClient;
+    const sms = !!process.env.TAQNYAT_API_KEY;
+    return { whatsapp, sms };
+  }
+
+  /**
+   * Deliver a single external alert to a recipient using the
+   * preference-aware channel picker. Tries WhatsApp first and
+   * falls back to SMS if WhatsApp is unavailable or fails.
+   * Returns which channel actually delivered (if any).
+   */
+  async deliverExternalAlert(
+    phone: string | null | undefined,
+    message: string,
+    options: {
+      title?: string;
+      priority?: string;
+      context_type?: string;
+      context_id?: string;
+    } = {},
+  ): Promise<{ delivered: "whatsapp" | "sms" | "none"; error?: string }> {
+    const channels = this.resolveExternalChannels(phone);
+    if (!phone || (!channels.whatsapp && !channels.sms)) {
+      return { delivered: "none" };
+    }
+    if (channels.whatsapp) {
+      try {
+        const r = await this.sendWhatsAppMessage(phone, message, options);
+        if (r.success) return { delivered: "whatsapp" };
+      } catch (e: any) {
+        // fall through to SMS
+      }
+    }
+    if (channels.sms) {
+      try {
+        const r = await this.sendSMS(phone, message, options);
+        if (r.success) return { delivered: "sms" };
+        return { delivered: "none", error: r.error };
+      } catch (e: any) {
+        return { delivered: "none", error: e?.message };
+      }
+    }
+    return { delivered: "none" };
+  }
+
+  /**
    * إرسال إشعار إلى مستخدم محدد
    */
   async notifyUser(

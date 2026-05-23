@@ -11799,6 +11799,7 @@ Input: ${text}`;
           today,
         );
         let violationCreated = false;
+        let createdViolationId: number | null = null;
         if (totalMinutes > 60) {
           try {
             const inserted = await db
@@ -11819,9 +11820,110 @@ Input: ${text}`;
               })
               .returning({ id: violations.id });
             violationCreated = inserted.length > 0;
+            createdViolationId = inserted[0]?.id ?? null;
           } catch (vErr) {
             console.error("Failed to create page_abandonment violation", vErr);
           }
+        }
+
+        if (violationCreated && createdViolationId != null) {
+          const violationId = createdViolationId;
+          const offenderId = att.user_id;
+          const minutesTotal = totalMinutes;
+          // Fire-and-forget: alert managers without blocking the response.
+          (async () => {
+            try {
+              const offender = await storage.getSafeUser(offenderId);
+              const employeeName =
+                offender?.display_name_ar ||
+                offender?.display_name ||
+                offender?.full_name ||
+                offender?.username ||
+                `موظف #${offenderId}`;
+
+              const allRoles = await db.select().from(roles);
+              const eligibleRoleIds = allRoles
+                .filter((r) => {
+                  const perms = Array.isArray(r.permissions)
+                    ? r.permissions
+                    : [];
+                  return perms.some(
+                    (p) => p === "manage_hr" || p === "view_attendance",
+                  );
+                })
+                .map((r) => r.id);
+
+              if (eligibleRoleIds.length === 0) return;
+
+              const lists = await Promise.all(
+                eligibleRoleIds.map((id) => storage.getSafeUsersByRole(id)),
+              );
+              const recipients = new Map<number, (typeof lists)[number][number]>();
+              for (const list of lists) {
+                for (const u of list) {
+                  if (u.id === offenderId) continue;
+                  if (u.status && u.status !== "active") continue;
+                  recipients.set(u.id, u);
+                }
+              }
+              if (recipients.size === 0) return;
+
+              const titleAr = "تجاوز حد الانسحاب اليومي";
+              const titleEn = "Page-abandonment threshold exceeded";
+              const messageAr = `${employeeName} تجاوز حد الانسحاب اليومي بإجمالي ${minutesTotal} دقيقة اليوم`;
+              const messageEn = `${employeeName} exceeded the daily page-abandonment limit with ${minutesTotal} minutes withdrawn today`;
+
+              const nm =
+                notificationManager || getNotificationManager(storage);
+
+              for (const recipient of Array.from(recipients.values())) {
+                try {
+                  await nm.sendToUser(recipient.id, {
+                    title: titleEn,
+                    title_ar: titleAr,
+                    message: messageEn,
+                    message_ar: messageAr,
+                    type: "hr",
+                    priority: "high",
+                    context_type: "violation",
+                    context_id: String(violationId),
+                  });
+                } catch (e) {
+                  console.error(
+                    `Failed to send in-app page_abandonment alert to user ${recipient.id}`,
+                    e,
+                  );
+                }
+                // External-channel selection is centralized in
+                // notificationService.deliverExternalAlert: it
+                // resolves the recipient's available channels
+                // (WhatsApp / SMS), tries WhatsApp first and
+                // falls back to SMS if WhatsApp is unavailable
+                // or fails. Each recipient is pinged on at most
+                // one external channel.
+                if (recipient.phone) {
+                  notificationService
+                    .deliverExternalAlert(recipient.phone, messageAr, {
+                      title: titleAr,
+                      priority: "high",
+                      context_type: "violation",
+                      context_id: String(violationId),
+                    })
+                    .catch((e) =>
+                      console.error(
+                        `Failed to send external page_abandonment alert to user ${recipient.id}`,
+                        e,
+                      ),
+                    );
+                }
+              }
+            } catch (notifyErr) {
+              console.error(
+                "Failed to dispatch page_abandonment manager alerts",
+                notifyErr,
+              );
+            }
+          })();
         }
 
         res.json({
