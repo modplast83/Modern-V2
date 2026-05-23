@@ -29,6 +29,13 @@
       "when": 1778976000000,
       "tag": "0003_packaging_units_default_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1779494400000,
+      "tag": "0004_attendance_withdrawals",
+      "breakpoints": true
     }
   ]
 }

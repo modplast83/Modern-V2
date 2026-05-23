@@ -130,7 +130,7 @@ export default function AttendancePanel({
     enabled: watchdogEnabled,
     attendanceId: activeAttendanceId,
     userId,
-    onWithdrawalRecorded: () => {
+    onWithdrawalChanged: () => {
       void refetchWithdrawals();
     },
   });

@@ -486,20 +486,25 @@ POST /api/attendance/check-out
 نفس تنسيق check-in بالضبط.
 
 POST /api/attendance/:id/withdraw
-// تسجيل فترة انسحاب (مغادرة الصفحة) — يخصم الوقت من ساعات العمل اليومية
-// المالك فقط: req.user.id يجب أن يطابق صاحب سجل الحضور
+// فتح/إغلاق فترة انسحاب (مغادرة الصفحة) — المالك فقط
+// السيرفر هو المرجع الوحيد للأوقات (لا يقبل timestamps من العميل).
+// Body:
 {
-"started_at": "2026-03-12T08:15:00.000Z", // ISO timestamp — اختياري (الافتراضي: الآن - duration)
-"ended_at": "2026-03-12T08:20:00.000Z",   // ISO timestamp — اختياري (الافتراضي: الآن)
-"duration_minutes": 5,                      // integer >= 1 — مطلوب
-"reason": "page_abandonment"                // اختياري، الافتراضي "page_abandonment"
+"action": "start" | "end",            // مطلوب
+"reason": "page_abandonment"           // اختياري
 }
-// Response:
-{
-"withdrawal": { "id": 1, "attendance_id": 1, "duration_minutes": 5, ... },
-"totalWithdrawnMinutes": 5
-}
-// عند تجاوز إجمالي الانسحاب اليومي 60 دقيقة، يتم تسجيل violation من نوع page_abandonment تلقائياً (مرة واحدة في اليوم).
+// action = 'start':
+//   - يفتح سجل انسحاب جديد (ended_at = NULL)
+//   - يحفظ الحالة السابقة (previous_status) ثم يحوّل attendance.status إلى "منسحب"
+//   - idempotent: إذا كان هناك سجل مفتوح بالفعل يُعاد كما هو (alreadyOpen: true)
+//   Response: { withdrawal, status: "منسحب", alreadyOpen? }
+// action = 'end':
+//   - يُنهي السجل المفتوح، يحسب duration_minutes من started_at حتى الآن
+//   - يضيفها لإجمالي attendance.total_withdrawn_minutes
+//   - يُرجع attendance.status إلى previous_status (إذا كانت لا تزال "منسحب")
+//   Response: { withdrawal, durationMinutes, totalMinutes, violationCreated, restoredStatus }
+// عند تجاوز إجمالي الانسحاب اليومي 60 دقيقة، يتم تسجيل violation من نوع
+// page_abandonment تلقائياً عبر unique index (atomic).
 
 GET /api/attendance/withdrawals/today/:userId
 // إجمالي الانسحابات لليوم الحالي للمستخدم — للنفس فقط (req.user.id === :userId)

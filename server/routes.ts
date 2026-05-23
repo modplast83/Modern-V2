@@ -11365,6 +11365,14 @@ Input: ${text}`;
               (breakEnd.getTime() - breakStart.getTime()) / (1000 * 60);
           }
 
+          // Subtract any anti-fraud page-abandonment withdrawals
+          const withdrawnMinutes = (attendance as any).total_withdrawn_minutes
+            ? Number((attendance as any).total_withdrawn_minutes)
+            : 0;
+          if (withdrawnMinutes > 0) {
+            totalMinutes -= withdrawnMinutes;
+          }
+
           workHours = Math.max(0, totalMinutes / 60);
 
           // Calculate overtime
@@ -11668,7 +11676,17 @@ Input: ${text}`;
     },
   );
 
-  // Record page-abandonment withdrawal period (Anti-fraud)
+  // Anti-fraud: open/close a page-abandonment withdrawal interval.
+  //
+  // Body: { action: 'start' | 'end', reason?: string }
+  //   - 'start': opens a withdrawal row (ended_at=NULL), saves current
+  //              attendance.status as previous_status, then switches the
+  //              attendance row to "منسحب".
+  //   - 'end':   finalizes the open withdrawal, computes duration on the
+  //              server from started_at..now, adds it to the daily total,
+  //              and restores attendance.status to previous_status (unless
+  //              the user has since checked out or gone on break).
+  // Timestamps are always server-authoritative — clients cannot forge them.
   app.post(
     "/api/attendance/:id/withdraw",
     requireAuth,
@@ -11679,7 +11697,6 @@ Input: ${text}`;
         if (!att) {
           return res.status(404).json({ message: "سجل الحضور غير موجود" });
         }
-        // Only the owner may record their own withdrawal
         const reqUserId = (req.user as any)?.id;
         if (!reqUserId || reqUserId !== att.user_id) {
           return res.status(403).json({ message: "غير مصرح" });
@@ -11687,61 +11704,96 @@ Input: ${text}`;
 
         const parsed = z
           .object({
-            started_at: z.coerce.date(),
-            ended_at: z.coerce.date().optional().nullable(),
+            action: z.enum(["start", "end"]),
             reason: z.string().max(50).optional().nullable(),
           })
           .safeParse(req.body);
-
         if (!parsed.success) {
           return res
             .status(400)
-            .json({ message: "بيانات الانسحاب غير صحيحة", errors: parsed.error.issues });
+            .json({
+              message: "بيانات الانسحاب غير صحيحة",
+              errors: parsed.error.issues,
+            });
         }
 
-        // Server-authoritative duration: NEVER trust client duration_minutes.
         const now = new Date();
-        const started = parsed.data.started_at;
-        const ended = parsed.data.ended_at ?? now;
-        if (ended.getTime() < started.getTime()) {
-          return res.status(400).json({ message: "وقت الانتهاء قبل البداية" });
-        }
-        // Bound timestamps to today and not in the future
         const today = now.toISOString().split("T")[0];
-        const todayStart = new Date(`${today}T00:00:00.000Z`);
-        const cappedStart =
-          started < todayStart ? todayStart : started > now ? now : started;
-        const cappedEnd = ended > now ? now : ended;
-        const durationMinutes = Math.min(
-          24 * 60,
-          Math.max(
-            1,
-            Math.round((cappedEnd.getTime() - cappedStart.getTime()) / 60000),
-          ),
-        );
-        if (durationMinutes < 1) {
-          return res.status(400).json({ message: "مدة الانسحاب غير صالحة" });
-        }
-
-        // Optional: only allow recording against an attendance row dated today
         if (att.date && String(att.date) !== today) {
           return res
             .status(400)
             .json({ message: "لا يمكن تسجيل انسحاب على سجل قديم" });
         }
+        // Only meaningful when the user is actively working
+        if (!att.check_in_time || att.check_out_time) {
+          return res
+            .status(400)
+            .json({ message: "لا يوجد جلسة عمل نشطة" });
+        }
 
-        const created = await storage.createAttendanceWithdrawal({
-          attendance_id: id,
-          user_id: att.user_id,
-          date: today as any,
-          started_at: cappedStart,
-          ended_at: cappedEnd,
-          duration_minutes: durationMinutes,
-          reason: parsed.data.reason || "page_abandonment",
-        });
+        if (parsed.data.action === "start") {
+          // Idempotent: if an open withdrawal already exists, return it.
+          const existing = await storage.getOpenAttendanceWithdrawal(id);
+          if (existing) {
+            return res.json({
+              withdrawal: existing,
+              status: "منسحب",
+              alreadyOpen: true,
+            });
+          }
+          // Only switch if currently in a working state (don't override
+          // a break the user explicitly started).
+          const previous_status = att.status;
+          const switchable =
+            previous_status === "حاضر" || previous_status === "يعمل";
+          const created = await storage.createAttendanceWithdrawal({
+            attendance_id: id,
+            user_id: att.user_id,
+            date: today as any,
+            started_at: now,
+            ended_at: null,
+            duration_minutes: 0,
+            reason: parsed.data.reason || "page_abandonment",
+            previous_status,
+          });
+          if (switchable) {
+            await storage.updateAttendance(id, { status: "منسحب" } as any);
+          }
+          return res.json({
+            withdrawal: created,
+            status: switchable ? "منسحب" : previous_status,
+          });
+        }
 
-        // Aggregate today's withdrawals; create violation if > 60 minutes.
-        // Atomic dedupe via ON CONFLICT on uniq_violation_per_day_per_type.
+        // action === 'end'
+        const open = await storage.getOpenAttendanceWithdrawal(id);
+        if (!open) {
+          // No open period — nothing to finalize.
+          return res.json({ withdrawal: null, totalMinutes: 0 });
+        }
+        const startedMs = new Date(open.started_at as any).getTime();
+        const durationMinutes = Math.min(
+          24 * 60,
+          Math.max(
+            1,
+            Math.round((now.getTime() - startedMs) / 60_000),
+          ),
+        );
+        const finalized = await storage.finalizeAttendanceWithdrawal(
+          open.id,
+          now,
+          durationMinutes,
+        );
+        // Restore previous status only if the row is still "منسحب".
+        // (If the user manually started a break or checked out while
+        // the watchdog was firing, leave their choice alone.)
+        const fresh = await storage.getAttendanceById(id);
+        if (fresh && fresh.status === "منسحب" && open.previous_status) {
+          await storage.updateAttendance(id, {
+            status: open.previous_status,
+          } as any);
+        }
+
         const { totalMinutes } = await storage.getAttendanceWithdrawalsForDay(
           att.user_id,
           today,
@@ -11772,7 +11824,13 @@ Input: ${text}`;
           }
         }
 
-        res.json({ withdrawal: created, totalMinutes, violationCreated });
+        res.json({
+          withdrawal: finalized,
+          durationMinutes,
+          totalMinutes,
+          violationCreated,
+          restoredStatus: open.previous_status ?? null,
+        });
       } catch (error) {
         console.error("Error recording withdrawal:", error);
         res.status(500).json({ message: "خطأ في تسجيل الانسحاب" });

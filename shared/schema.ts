@@ -1002,11 +1002,16 @@ export const attendance_withdrawals = pgTable(
     ended_at: timestamp("ended_at"),
     duration_minutes: integer("duration_minutes").default(0),
     reason: varchar("reason", { length: 50 }).default("page_abandonment"), // page_abandonment | tab_hidden | navigation
+    previous_status: varchar("previous_status", { length: 20 }), // attendance.status before switching to "منسحب"
     created_at: timestamp("created_at").defaultNow(),
   },
   (table) => [
     index("idx_attendance_withdrawals_user_date").on(table.user_id, table.date),
     index("idx_attendance_withdrawals_attendance").on(table.attendance_id),
+    // Only one open withdrawal per attendance at a time
+    uniqueIndex("uniq_attendance_open_withdrawal")
+      .on(table.attendance_id)
+      .where(sql`ended_at IS NULL`),
   ],
 );
 

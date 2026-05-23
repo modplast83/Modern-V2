@@ -252,7 +252,7 @@ import {
   type InsertAdminToolDocument,
 } from "@shared/schema";
 import bcrypt from "bcrypt";
-import { eq, desc, and, sql, count, inArray, or } from "drizzle-orm";
+import { eq, desc, and, sql, count, inArray, or, isNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import ExcelJS from "exceljs";
 import QRCode from "qrcode";
@@ -620,6 +620,14 @@ export interface IStorage {
   getDailyAttendanceStats(date: string): Promise<any>;
   upsertManualAttendance(entries: any[]): Promise<any[]>;
   getDailyAttendanceStatus(userId: number, date: string): Promise<any>;
+  getOpenAttendanceWithdrawal(
+    attendanceId: number,
+  ): Promise<AttendanceWithdrawal | null>;
+  finalizeAttendanceWithdrawal(
+    withdrawalId: number,
+    endedAt: Date,
+    durationMinutes: number,
+  ): Promise<AttendanceWithdrawal | null>;
   createAttendanceWithdrawal(
     data: InsertAttendanceWithdrawal,
   ): Promise<AttendanceWithdrawal>;
@@ -2742,6 +2750,59 @@ export class DatabaseStorage implements IStorage {
       },
       "createAttendanceWithdrawal",
       "تسجيل فترة انسحاب",
+    );
+  }
+
+  async getOpenAttendanceWithdrawal(
+    attendanceId: number,
+  ): Promise<AttendanceWithdrawal | null> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const [row] = await db
+          .select()
+          .from(attendance_withdrawals)
+          .where(
+            and(
+              eq(attendance_withdrawals.attendance_id, attendanceId),
+              isNull(attendance_withdrawals.ended_at),
+            ),
+          )
+          .limit(1);
+        return row ?? null;
+      },
+      "getOpenAttendanceWithdrawal",
+      "جلب فترة انسحاب مفتوحة",
+    );
+  }
+
+  async finalizeAttendanceWithdrawal(
+    withdrawalId: number,
+    endedAt: Date,
+    durationMinutes: number,
+  ): Promise<AttendanceWithdrawal | null> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const [updated] = await db
+          .update(attendance_withdrawals)
+          .set({
+            ended_at: endedAt,
+            duration_minutes: durationMinutes,
+          })
+          .where(eq(attendance_withdrawals.id, withdrawalId))
+          .returning();
+        if (updated && durationMinutes > 0) {
+          await db
+            .update(attendance)
+            .set({
+              total_withdrawn_minutes: sql`COALESCE(${attendance.total_withdrawn_minutes}, 0) + ${durationMinutes}`,
+              updated_at: new Date(),
+            })
+            .where(eq(attendance.id, updated.attendance_id));
+        }
+        return updated ?? null;
+      },
+      "finalizeAttendanceWithdrawal",
+      "إنهاء فترة انسحاب",
     );
   }
 
