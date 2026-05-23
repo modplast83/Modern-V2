@@ -12350,7 +12350,10 @@ Input: ${text}`;
       const id = parseRouteParam(req.params.id, "id");
       const qrData = await storage.getRollQR(id);
       res.json(qrData);
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.message === "Roll not found") {
+        return res.status(404).json({ message: "الرول غير موجود" });
+      }
       console.error("Error fetching roll QR:", error);
       res.status(500).json({ message: "خطأ في جلب رمز QR للرول" });
     }
@@ -13017,6 +13020,11 @@ Input: ${text}`;
       let userId = req.user!.id;
       if (req.query.user_id) {
         const requestedUserId = parseInt(req.query.user_id as string);
+        if (isNaN(requestedUserId) || requestedUserId <= 0) {
+          return res
+            .status(400)
+            .json({ message: "معرف المستخدم غير صحيح" });
+        }
         if (requestedUserId !== req.user!.id && req.user!.role_id !== 1) {
           return res
             .status(403)

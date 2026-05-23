@@ -2128,6 +2128,9 @@ export class DatabaseStorage implements IStorage {
           .set({ ...updates })
           .where(eq(rolls.id, id))
           .returning();
+        if (!updated) {
+          throw Object.assign(new Error(`Roll ${id} not found`), { statusCode: 404 });
+        }
         return updated;
       },
       "updateRoll",
