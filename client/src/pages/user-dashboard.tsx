@@ -593,11 +593,23 @@ export default function UserDashboard() {
       };
     }
 
-    // Find check-in time (first "حاضر" record with check_in_time)
-    const checkInRecord = todayRecords.find(
-      (r) => r.check_in_time && r.status === "حاضر",
-    );
-    if (!checkInRecord?.check_in_time) {
+    // Per-action timestamp resolver: prefer dedicated column, fall back to
+    // `created_at` of the row whose status matches the action. This handles
+    // historic rows where the dedicated timestamp columns are NULL.
+    const stampOf = (
+      column: keyof AttendanceRecord,
+      statuses: string[],
+    ): Date | null => {
+      const byCol = todayRecords.find((r) => r[column]);
+      if (byCol && byCol[column]) return new Date(byCol[column] as string);
+      const byStatus = statuses
+        .flatMap((s) => todayRecords.filter((r) => r.status === s))
+        .pop();
+      return byStatus?.created_at ? new Date(byStatus.created_at) : null;
+    };
+
+    const checkInTime = stampOf("check_in_time", ["حاضر"]);
+    if (!checkInTime) {
       return {
         workingHours: 0,
         overtimeHours: 0,
@@ -609,17 +621,9 @@ export default function UserDashboard() {
       };
     }
 
-    const checkInTime = new Date(checkInRecord.check_in_time);
-
-    // Find check-out time (last "مغادر" record with check_out_time)
-    const checkOutRecord = todayRecords
-      .reverse()
-      .find((r) => r.check_out_time && r.status === "مغادر");
-    const hasCheckedOut = checkOutRecord && checkOutRecord.check_out_time;
-
-    const checkOutTime = hasCheckedOut
-      ? new Date(checkOutRecord.check_out_time!)
-      : new Date(); // Current time if still working
+    const checkOutResolved = stampOf("check_out_time", ["مغادر"]);
+    const hasCheckedOut = !!checkOutResolved;
+    const checkOutTime = checkOutResolved ?? new Date();
 
     // Calculate total time worked in minutes
     const totalMinutesWorked = Math.floor(
@@ -628,21 +632,15 @@ export default function UserDashboard() {
 
     // Calculate break time in minutes
     let breakMinutes = 0;
-    const lunchStartRecord = todayRecords.find((r) => r.lunch_start_time);
-    const lunchEndRecord = todayRecords.find((r) => r.lunch_end_time);
+    const lunchStart = stampOf("lunch_start_time", ["في الاستراحة"]);
+    const lunchEnd = stampOf("lunch_end_time", ["يعمل"]);
 
-    if (lunchStartRecord?.lunch_start_time && lunchEndRecord?.lunch_end_time) {
-      const lunchStart = new Date(lunchStartRecord.lunch_start_time);
-      const lunchEnd = new Date(lunchEndRecord.lunch_end_time);
+    if (lunchStart && lunchEnd) {
       breakMinutes = Math.floor(
         (lunchEnd.getTime() - lunchStart.getTime()) / (1000 * 60),
       );
-    } else if (
-      lunchStartRecord?.lunch_start_time &&
-      !lunchEndRecord?.lunch_end_time
-    ) {
+    } else if (lunchStart && !lunchEnd) {
       // Still on break - calculate from break start to now or check-out
-      const lunchStart = new Date(lunchStartRecord.lunch_start_time);
       const endTime = hasCheckedOut ? checkOutTime : new Date();
       breakMinutes = Math.floor(
         (endTime.getTime() - lunchStart.getTime()) / (1000 * 60),

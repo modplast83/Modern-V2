@@ -11145,8 +11145,32 @@ Input: ${text}`;
         }
 
         // =============== إعداد بيانات الحضور مع معلومات التدقيق ===============
+        // Derive the per-action timestamp from the status so the dashboard
+        // can show real check-in / break / check-out times instead of
+        // relying on `created_at` for everything.
+        const nowTs = new Date();
+        const status = String(req.body.status || "");
+        const action = String(req.body.action || "");
+        const stampOverrides: Record<string, Date | undefined> = {};
+        if (status === "حاضر" && !req.body.check_in_time) {
+          stampOverrides.check_in_time = nowTs;
+        }
+        if (status === "في الاستراحة" && !req.body.lunch_start_time) {
+          stampOverrides.lunch_start_time = nowTs;
+        }
+        if (
+          (status === "يعمل" || action === "end_lunch") &&
+          !req.body.lunch_end_time
+        ) {
+          stampOverrides.lunch_end_time = nowTs;
+        }
+        if (status === "مغادر" && !req.body.check_out_time) {
+          stampOverrides.check_out_time = nowTs;
+        }
+
         const attendanceData = {
           ...req.body,
+          ...stampOverrides,
           location_accuracy: accuracy,
           location_lat: lat,
           location_lng: lng,

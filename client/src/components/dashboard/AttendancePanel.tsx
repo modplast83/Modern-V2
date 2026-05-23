@@ -97,18 +97,47 @@ export default function AttendancePanel({
     void queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
   });
 
-  const todayRecords = useMemo(
-    () =>
-      (attendanceRecords || []).filter(
-        (r) => r.user_id === userId && r.date === todayStr,
-      ),
-    [attendanceRecords, userId, todayStr],
-  );
+  const todayRecords = useMemo(() => {
+    return (attendanceRecords || []).filter((r) => {
+      if (r.user_id !== userId || !r.date) return false;
+      // Drizzle returns `date` columns as either "YYYY-MM-DD" or a full
+      // ISO timestamp depending on the driver — normalize before compare.
+      const d = String(r.date).slice(0, 10);
+      return d === todayStr;
+    });
+  }, [attendanceRecords, userId, todayStr]);
 
-  const checkInRecord = todayRecords.find((r) => r.check_in_time);
-  const lunchStartRecord = todayRecords.find((r) => r.lunch_start_time);
-  const lunchEndRecord = todayRecords.find((r) => r.lunch_end_time);
-  const checkOutRecord = todayRecords.find((r) => r.check_out_time);
+  // Per-action records. Historic rows may not have the dedicated timestamp
+  // columns populated (older bug), so fall back to `created_at` of the row
+  // whose status matches the action.
+  const pickByStatus = (statuses: string[]) =>
+    todayRecords.find((r) => statuses.includes(r.status));
+
+  const checkInRecord =
+    todayRecords.find((r) => r.check_in_time) ||
+    pickByStatus(["حاضر"]);
+  const lunchStartRecord =
+    todayRecords.find((r) => r.lunch_start_time) ||
+    pickByStatus(["في الاستراحة"]);
+  const lunchEndRecord =
+    todayRecords.find((r) => r.lunch_end_time) ||
+    // "يعمل" is set after ending lunch
+    [...todayRecords].reverse().find((r) => r.status === "يعمل");
+  const checkOutRecord =
+    todayRecords.find((r) => r.check_out_time) ||
+    pickByStatus(["مغادر"]);
+
+  // Effective timestamps with `created_at` fallback for historic NULLs.
+  const checkInAt =
+    checkInRecord?.check_in_time || checkInRecord?.created_at || null;
+  const lunchStartAt =
+    lunchStartRecord?.lunch_start_time ||
+    lunchStartRecord?.created_at ||
+    null;
+  const lunchEndAt =
+    lunchEndRecord?.lunch_end_time || lunchEndRecord?.created_at || null;
+  const checkOutAt =
+    checkOutRecord?.check_out_time || checkOutRecord?.created_at || null;
 
   // Find the latest open attendance record for this user (for watchdog target)
   const activeAttendanceId =
@@ -160,31 +189,16 @@ export default function AttendancePanel({
   const isCheckedOut = dailyStatus?.hasCheckedOut;
 
   const counterSeconds = useMemo(() => {
-    if (onBreak && lunchStartRecord?.lunch_start_time) {
-      return (
-        (now.getTime() -
-          new Date(lunchStartRecord.lunch_start_time).getTime()) /
-        1000
-      );
+    if (onBreak && lunchStartAt) {
+      return (now.getTime() - new Date(lunchStartAt).getTime()) / 1000;
     }
-    if (checkInRecord?.check_in_time) {
-      const end = isCheckedOut && checkOutRecord?.check_out_time
-        ? new Date(checkOutRecord.check_out_time)
-        : now;
-      return (
-        (end.getTime() - new Date(checkInRecord.check_in_time).getTime()) /
-        1000
-      );
+    if (checkInAt) {
+      const end =
+        isCheckedOut && checkOutAt ? new Date(checkOutAt) : now;
+      return (end.getTime() - new Date(checkInAt).getTime()) / 1000;
     }
     return 0;
-  }, [
-    now,
-    onBreak,
-    isCheckedOut,
-    lunchStartRecord?.lunch_start_time,
-    checkInRecord?.check_in_time,
-    checkOutRecord?.check_out_time,
-  ]);
+  }, [now, onBreak, isCheckedOut, lunchStartAt, checkInAt, checkOutAt]);
 
   const counterLabel = onBreak
     ? t("userDashboard.attendance.elapsedOnBreak")
@@ -228,7 +242,7 @@ export default function AttendancePanel({
       label: t("userDashboard.attendance.checkIn"),
       icon: LogIn,
       color: "bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800",
-      timestamp: checkInRecord?.check_in_time,
+      timestamp: checkInAt,
       onClick: () => onAction("حاضر"),
       disabled: !!dailyStatus?.hasCheckedIn || isPending,
       done: !!dailyStatus?.hasCheckedIn,
@@ -239,7 +253,7 @@ export default function AttendancePanel({
       label: t("userDashboard.attendance.startBreak"),
       icon: Coffee,
       color: "bg-amber-500 hover:bg-amber-600 active:bg-amber-700",
-      timestamp: lunchStartRecord?.lunch_start_time,
+      timestamp: lunchStartAt,
       onClick: () => onAction("في الاستراحة"),
       disabled:
         !dailyStatus?.hasCheckedIn ||
@@ -253,7 +267,7 @@ export default function AttendancePanel({
       label: t("userDashboard.attendance.endBreak"),
       icon: Play,
       color: "bg-blue-600 hover:bg-blue-700 active:bg-blue-800",
-      timestamp: lunchEndRecord?.lunch_end_time,
+      timestamp: lunchEndAt,
       onClick: () => onAction("يعمل", "end_lunch"),
       disabled:
         !dailyStatus?.hasStartedLunch ||
@@ -267,7 +281,7 @@ export default function AttendancePanel({
       label: t("userDashboard.attendance.checkOut"),
       icon: LogOut,
       color: "bg-slate-600 hover:bg-slate-700 active:bg-slate-800",
-      timestamp: checkOutRecord?.check_out_time,
+      timestamp: checkOutAt,
       onClick: () => onAction("مغادر"),
       disabled:
         !dailyStatus?.hasCheckedIn ||
@@ -360,43 +374,43 @@ export default function AttendancePanel({
             {t("userDashboard.attendance.todayLog")}
           </h4>
           <ul className="space-y-1.5 text-sm">
-            {checkInRecord?.check_in_time && (
+            {checkInAt && (
               <li className="flex items-center justify-between">
                 <span className="text-emerald-600 dark:text-emerald-400">
                   ✓ {t("userDashboard.attendance.checkInRecord")}
                 </span>
                 <span className="text-gray-600 dark:text-gray-300 font-mono">
-                  {formatTime(checkInRecord.check_in_time)}
+                  {formatTime(checkInAt)}
                 </span>
               </li>
             )}
-            {lunchStartRecord?.lunch_start_time && (
+            {lunchStartAt && (
               <li className="flex items-center justify-between">
                 <span className="text-amber-600 dark:text-amber-400">
                   ✓ {t("userDashboard.attendance.breakStart")}
                 </span>
                 <span className="text-gray-600 dark:text-gray-300 font-mono">
-                  {formatTime(lunchStartRecord.lunch_start_time)}
+                  {formatTime(lunchStartAt)}
                 </span>
               </li>
             )}
-            {lunchEndRecord?.lunch_end_time && (
+            {lunchEndAt && (
               <li className="flex items-center justify-between">
                 <span className="text-blue-600 dark:text-blue-400">
                   ✓ {t("userDashboard.attendance.breakEnd")}
                 </span>
                 <span className="text-gray-600 dark:text-gray-300 font-mono">
-                  {formatTime(lunchEndRecord.lunch_end_time)}
+                  {formatTime(lunchEndAt)}
                 </span>
               </li>
             )}
-            {checkOutRecord?.check_out_time && (
+            {checkOutAt && (
               <li className="flex items-center justify-between">
                 <span className="text-gray-700 dark:text-gray-200">
                   ✓ {t("userDashboard.attendance.checkOutRecord")}
                 </span>
                 <span className="text-gray-600 dark:text-gray-300 font-mono">
-                  {formatTime(checkOutRecord.check_out_time)}
+                  {formatTime(checkOutAt)}
                 </span>
               </li>
             )}
@@ -432,7 +446,7 @@ export default function AttendancePanel({
                 )}
               </li>
             )}
-            {!checkInRecord && (
+            {!checkInAt && (
               <li className="text-gray-400 text-center py-2">
                 {t("userDashboard.attendance.notCheckedIn")}
               </li>
