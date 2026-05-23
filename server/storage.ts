@@ -623,6 +623,10 @@ export interface IStorage {
   getOpenAttendanceWithdrawal(
     attendanceId: number,
   ): Promise<AttendanceWithdrawal | null>;
+  getOpenAttendanceWithdrawalForUser(
+    userId: number,
+    date: string,
+  ): Promise<AttendanceWithdrawal | null>;
   finalizeAttendanceWithdrawal(
     withdrawalId: number,
     endedAt: Date,
@@ -2818,6 +2822,31 @@ export class DatabaseStorage implements IStorage {
       },
       "getOpenAttendanceWithdrawal",
       "جلب فترة انسحاب مفتوحة",
+    );
+  }
+
+  async getOpenAttendanceWithdrawalForUser(
+    userId: number,
+    date: string,
+  ): Promise<AttendanceWithdrawal | null> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const [row] = await db
+          .select()
+          .from(attendance_withdrawals)
+          .where(
+            and(
+              eq(attendance_withdrawals.user_id, userId),
+              eq(attendance_withdrawals.date, date),
+              isNull(attendance_withdrawals.ended_at),
+            ),
+          )
+          .orderBy(desc(attendance_withdrawals.started_at))
+          .limit(1);
+        return row ?? null;
+      },
+      "getOpenAttendanceWithdrawalForUser",
+      "جلب فترة انسحاب مفتوحة للمستخدم",
     );
   }
 

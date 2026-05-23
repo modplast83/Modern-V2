@@ -139,15 +139,18 @@ export default function AttendancePanel({
   const checkOutAt =
     checkOutRecord?.check_out_time || checkOutRecord?.created_at || null;
 
-  // Find the latest open attendance record for this user (for watchdog target)
+  // Watchdog target: latest attendance row of the day by `created_at`.
+  // Each user action inserts a new row in this codebase, so the latest
+  // row reflects the user's current state. The server only uses this id
+  // for the ownership check; it resolves the real current state from
+  // the user's full day of rows.
   const activeAttendanceId =
     [...todayRecords]
       .sort((a, b) => {
         const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
         const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
         return tb - ta;
-      })
-      .find((r) => r.check_in_time)?.id ?? null;
+      })[0]?.id ?? null;
 
   // Withdrawals query
   const {

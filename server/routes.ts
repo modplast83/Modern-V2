@@ -11743,21 +11743,34 @@ Input: ${text}`;
 
         const now = new Date();
         const today = now.toISOString().split("T")[0];
-        if (att.date && String(att.date) !== today) {
+        if (att.date && String(att.date).slice(0, 10) !== today) {
           return res
             .status(400)
             .json({ message: "لا يمكن تسجيل انسحاب على سجل قديم" });
         }
-        // Only meaningful when the user is actively working
-        if (!att.check_in_time || att.check_out_time) {
-          return res
-            .status(400)
-            .json({ message: "لا يوجد جلسة عمل نشطة" });
-        }
+
+        // Resolve the user's CURRENT daily state from the canonical
+        // "latest attendance row" instead of trusting the `:id` row.
+        // The action-per-row data model means newer rows reflect newer
+        // state (lunch/check-out/etc.); the :id is only used for the
+        // ownership check above.
+        const dailyStatus = await storage.getDailyAttendanceStatus(
+          att.user_id,
+          today,
+        );
+        const currentStatus: string = dailyStatus?.currentStatus ?? "غائب";
+        const hasCheckedIn: boolean = !!dailyStatus?.hasCheckedIn;
+        const hasCheckedOut: boolean = !!dailyStatus?.hasCheckedOut;
 
         if (parsed.data.action === "start") {
-          // Idempotent: if an open withdrawal already exists, return it.
-          const existing = await storage.getOpenAttendanceWithdrawal(id);
+          // Idempotent: if an open withdrawal already exists for this
+          // user today, return it. We look up by user (not by attendance
+          // id) because the row attached to the open withdrawal may
+          // differ from the param `:id` after status transitions.
+          const existing = await storage.getOpenAttendanceWithdrawalForUser(
+            att.user_id,
+            today,
+          );
           if (existing) {
             return res.json({
               withdrawal: existing,
@@ -11766,63 +11779,96 @@ Input: ${text}`;
             });
           }
           // Hard rule: a withdrawal period can only be opened while the
-          // user is in an active working state. Breaks, check-out, and
-          // absence are not eligible for time deduction.
-          const previous_status = att.status;
-          if (previous_status !== "حاضر" && previous_status !== "يعمل") {
+          // user is actively working. Breaks, check-out, and absence are
+          // not eligible for time deduction. We validate against the
+          // user's CURRENT state, not the (possibly stale) :id row.
+          if (!hasCheckedIn || hasCheckedOut) {
             return res.status(409).json({
-              message: "لا يمكن فتح فترة انسحاب في الحالة الحالية",
-              currentStatus: previous_status,
+              message: "لا يوجد جلسة عمل نشطة",
+              currentStatus,
             });
           }
+          if (currentStatus !== "حاضر" && currentStatus !== "يعمل") {
+            return res.status(409).json({
+              message: "لا يمكن فتح فترة انسحاب في الحالة الحالية",
+              currentStatus,
+            });
+          }
+          // Insert a new attendance row with status "منسحب" so that
+          // `getDailyAttendanceStatus` (which keys off the latest row by
+          // created_at) reflects the withdrawal state on the UI.
+          const withdrawnRow = await storage.createAttendance({
+            user_id: att.user_id,
+            date: today,
+            status: "منسحب",
+            notes: parsed.data.reason || "page_abandonment",
+          } as any);
           const created = await storage.createAttendanceWithdrawal({
-            attendance_id: id,
+            attendance_id: withdrawnRow.id,
             user_id: att.user_id,
             date: today as any,
             started_at: now,
             ended_at: null,
             duration_minutes: 0,
             reason: parsed.data.reason || "page_abandonment",
-            previous_status,
+            previous_status: currentStatus,
           });
-          await storage.updateAttendance(id, { status: "منسحب" } as any);
-          return res.json({ withdrawal: created, status: "منسحب" });
+          return res.json({
+            withdrawal: created,
+            status: "منسحب",
+            attendanceId: withdrawnRow.id,
+          });
         }
 
         // action === 'end'
-        const open = await storage.getOpenAttendanceWithdrawal(id);
+        const open = await storage.getOpenAttendanceWithdrawalForUser(
+          att.user_id,
+          today,
+        );
         if (!open) {
           // No open period — nothing to finalize.
           return res.json({ withdrawal: null, totalMinutes: 0 });
         }
+        const restoreStatus = async () => {
+          // Only restore if the user is still flagged as withdrawn. If
+          // they manually went on break or checked out while the
+          // watchdog was firing, respect that choice.
+          if (!open.previous_status) return null;
+          const after = await storage.getDailyAttendanceStatus(
+            att.user_id,
+            today,
+          );
+          if (after?.currentStatus !== "منسحب") return null;
+          await storage.createAttendance({
+            user_id: att.user_id,
+            date: today,
+            status: open.previous_status,
+            notes: "auto_restore_after_withdrawal",
+          } as any);
+          return open.previous_status;
+        };
+
         const startedMs = new Date(open.started_at as any).getTime();
         const rawDuration = Math.round((now.getTime() - startedMs) / 60_000);
         // Server-enforced threshold: brief flicker (< 1 min) shouldn't
-        // count against the user. Anything longer is rounded to >= 1 min.
+        // count against the user.
         const MIN_DEDUCTIBLE_MINUTES = 1;
         if (rawDuration < MIN_DEDUCTIBLE_MINUTES) {
-          // Close the row at 0 minutes so the open interval is cleared,
-          // but don't add to total_withdrawn_minutes.
           const finalized = await storage.finalizeAttendanceWithdrawal(
             open.id,
             now,
             0,
           );
-          if (open.previous_status) {
-            const fresh = await storage.getAttendanceById(id);
-            if (fresh && fresh.status === "منسحب") {
-              await storage.updateAttendance(id, {
-                status: open.previous_status,
-              } as any);
-            }
-          }
+          const restoredStatus = await restoreStatus();
+          const totals = await storage.getAttendanceWithdrawalsForDay(
+            att.user_id,
+            today,
+          );
           return res.json({
             withdrawal: finalized,
             durationMinutes: 0,
-            totalMinutes: (
-              await storage.getAttendanceWithdrawalsForDay(att.user_id, today)
-            ).totalMinutes,
-            restoredStatus: open.previous_status ?? null,
+            totalMinutes: totals.totalMinutes,
+            restoredStatus,
             belowThreshold: true,
           });
         }
@@ -11833,33 +11879,20 @@ Input: ${text}`;
           durationMinutes,
         );
         if (!finalized) {
-          // Another request already closed this row — treat as no-op and
-          // return current totals so the client converges on truth.
-          const fresh = await storage.getAttendanceById(id);
-          if (fresh && fresh.status === "منسحب" && open.previous_status) {
-            await storage.updateAttendance(id, {
-              status: open.previous_status,
-            } as any);
-          }
+          // Concurrent end already won — restore status if needed and
+          // return current totals so the client converges.
+          const restoredStatus = await restoreStatus();
           const { totalMinutes } =
             await storage.getAttendanceWithdrawalsForDay(att.user_id, today);
           return res.json({
             withdrawal: null,
             durationMinutes: 0,
             totalMinutes,
-            restoredStatus: open.previous_status ?? null,
+            restoredStatus,
             alreadyClosed: true,
           });
         }
-        // Restore previous status only if the row is still "منسحب".
-        // (If the user manually started a break or checked out while
-        // the watchdog was firing, leave their choice alone.)
-        const fresh = await storage.getAttendanceById(id);
-        if (fresh && fresh.status === "منسحب" && open.previous_status) {
-          await storage.updateAttendance(id, {
-            status: open.previous_status,
-          } as any);
-        }
+        const restoredStatus = await restoreStatus();
 
         const { totalMinutes } = await storage.getAttendanceWithdrawalsForDay(
           att.user_id,
