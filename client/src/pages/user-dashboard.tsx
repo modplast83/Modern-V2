@@ -64,6 +64,7 @@ import {
 import { Textarea } from "../components/ui/textarea";
 import { useAuth } from "../hooks/use-auth";
 import { useToast } from "../hooks/use-toast";
+import { useToday } from "../hooks/use-today";
 import { formatNumber } from "../lib/formatNumber";
 
 // دالة حساب المسافة بين نقطتين جغرافيتين (Haversine formula)
@@ -473,9 +474,22 @@ export default function UserDashboard() {
     staleTime: 90000, // Cache for 1.5 minutes
   });
 
+  // Reactive "today" string that flips at local midnight without a page
+  // refresh, and invalidates per-day caches so timers/totals reset.
+  const today = useToday(() => {
+    if (!user?.id) return;
+    void queryClient.invalidateQueries({
+      queryKey: ["/api/attendance/withdrawals/today", user.id],
+    });
+    void queryClient.invalidateQueries({
+      queryKey: ["/api/attendance/daily-status", user.id],
+    });
+    void queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
+  });
+
   // Current attendance status - get the latest record for today
   const todayAttendance = attendanceRecords
-    ?.filter((record) => record.date === new Date().toISOString().split("T")[0])
+    ?.filter((record) => record.date === today)
     .sort((a, b) => {
       const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
       const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
@@ -554,7 +568,6 @@ export default function UserDashboard() {
     userId: number,
     withdrawnMinutes: number = 0,
   ) => {
-    const today = new Date().toISOString().split("T")[0];
     const todayRecords =
       attendanceRecords
         ?.filter((record) => {
@@ -984,8 +997,7 @@ export default function UserDashboard() {
                               {(() => {
                                 const todayRecord = attendanceRecords?.find(
                                   (record) =>
-                                    record.date ===
-                                      new Date().toISOString().split("T")[0] &&
+                                    record.date === today &&
                                     record.user_id === user?.id &&
                                     record.check_in_time,
                                 );

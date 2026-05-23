@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useAttendanceWatchdog } from "../../hooks/use-attendance-watchdog";
+import { useToday } from "../../hooks/use-today";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -83,7 +84,18 @@ export default function AttendancePanel({
     return () => clearInterval(id);
   }, []);
 
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = useToday(() => {
+    // At local midnight rollover, drop yesterday's withdrawal totals and
+    // refresh attendance state so live timers reset cleanly without a
+    // page refresh.
+    void queryClient.invalidateQueries({
+      queryKey: ["/api/attendance/withdrawals/today", userId],
+    });
+    void queryClient.invalidateQueries({
+      queryKey: ["/api/attendance/daily-status", userId],
+    });
+    void queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
+  });
 
   const todayRecords = useMemo(
     () =>
