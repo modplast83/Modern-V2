@@ -11838,6 +11838,53 @@ Input: ${text}`;
     },
   );
 
+  // Manager view: list page-abandonment withdrawals across employees in a date range
+  app.get(
+    "/api/attendance/withdrawals",
+    requireAuth,
+    requirePermission("view_attendance"),
+    async (req, res) => {
+      try {
+        const today = new Date().toISOString().split("T")[0];
+        const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+        const rawStart = (req.query.startDate as string) || today;
+        const rawEnd = (req.query.endDate as string) || today;
+        if (!dateRe.test(rawStart) || !dateRe.test(rawEnd)) {
+          return res
+            .status(400)
+            .json({ message: "صيغة التاريخ غير صحيحة (YYYY-MM-DD)" });
+        }
+        let startDate = rawStart;
+        let endDate = rawEnd;
+        if (startDate > endDate) {
+          [startDate, endDate] = [endDate, startDate];
+        }
+        let userId: number | undefined;
+        if (req.query.userId) {
+          try {
+            userId = parseIntSafe(req.query.userId as string, "userId", {
+              min: 1,
+            });
+          } catch {
+            return res
+              .status(400)
+              .json({ message: "معرف المستخدم غير صحيح" });
+          }
+        }
+
+        const result = await storage.getAttendanceWithdrawalsInRange(
+          startDate,
+          endDate,
+          userId,
+        );
+        res.json({ ...result, startDate, endDate });
+      } catch (error) {
+        console.error("Error fetching withdrawals range:", error);
+        res.status(500).json({ message: "خطأ في جلب فترات الانسحاب" });
+      }
+    },
+  );
+
   // Get today's withdrawal summary for a user
   app.get(
     "/api/attendance/withdrawals/today/:userId",

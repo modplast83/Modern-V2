@@ -638,6 +638,26 @@ export interface IStorage {
     withdrawals: AttendanceWithdrawal[];
     totalMinutes: number;
   }>;
+  getAttendanceWithdrawalsInRange(
+    startDate: string,
+    endDate: string,
+    userId?: number,
+  ): Promise<{
+    withdrawals: (AttendanceWithdrawal & {
+      username?: string | null;
+      display_name?: string | null;
+      display_name_ar?: string | null;
+    })[];
+    summary: {
+      user_id: number;
+      username: string | null;
+      display_name: string | null;
+      display_name_ar: string | null;
+      total_minutes: number;
+      incident_count: number;
+      violation_days: number;
+    }[];
+  }>;
 
   // Waste
   getAllWaste(): Promise<any[]>;
@@ -2833,6 +2853,114 @@ export class DatabaseStorage implements IStorage {
       },
       "getAttendanceWithdrawalsForDay",
       "جلب فترات الانسحاب",
+    );
+  }
+
+  async getAttendanceWithdrawalsInRange(
+    startDate: string,
+    endDate: string,
+    userId?: number,
+  ): Promise<{
+    withdrawals: (AttendanceWithdrawal & {
+      username?: string | null;
+      display_name?: string | null;
+      display_name_ar?: string | null;
+    })[];
+    summary: {
+      user_id: number;
+      username: string | null;
+      display_name: string | null;
+      display_name_ar: string | null;
+      total_minutes: number;
+      incident_count: number;
+      violation_days: number;
+    }[];
+  }> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const conditions = [
+          sql`${attendance_withdrawals.date} >= ${startDate}`,
+          sql`${attendance_withdrawals.date} <= ${endDate}`,
+        ];
+        if (userId !== undefined) {
+          conditions.push(eq(attendance_withdrawals.user_id, userId));
+        }
+
+        const rows = await db
+          .select({
+            id: attendance_withdrawals.id,
+            attendance_id: attendance_withdrawals.attendance_id,
+            user_id: attendance_withdrawals.user_id,
+            date: attendance_withdrawals.date,
+            started_at: attendance_withdrawals.started_at,
+            ended_at: attendance_withdrawals.ended_at,
+            duration_minutes: attendance_withdrawals.duration_minutes,
+            reason: attendance_withdrawals.reason,
+            previous_status: attendance_withdrawals.previous_status,
+            created_at: attendance_withdrawals.created_at,
+            username: users.username,
+            display_name: users.display_name,
+            display_name_ar: users.display_name_ar,
+          })
+          .from(attendance_withdrawals)
+          .leftJoin(users, eq(users.id, attendance_withdrawals.user_id))
+          .where(and(...conditions))
+          .orderBy(desc(attendance_withdrawals.started_at));
+
+        const map = new Map<
+          number,
+          {
+            user_id: number;
+            username: string | null;
+            display_name: string | null;
+            display_name_ar: string | null;
+            total_minutes: number;
+            incident_count: number;
+            dailyMinutes: Map<string, number>;
+          }
+        >();
+        for (const r of rows) {
+          let entry = map.get(r.user_id);
+          if (!entry) {
+            entry = {
+              user_id: r.user_id,
+              username: r.username ?? null,
+              display_name: r.display_name ?? null,
+              display_name_ar: r.display_name_ar ?? null,
+              total_minutes: 0,
+              incident_count: 0,
+              dailyMinutes: new Map<string, number>(),
+            };
+            map.set(r.user_id, entry);
+          }
+          const mins = r.duration_minutes || 0;
+          entry.total_minutes += mins;
+          entry.incident_count += 1;
+          const dateKey = String(r.date);
+          entry.dailyMinutes.set(
+            dateKey,
+            (entry.dailyMinutes.get(dateKey) || 0) + mins,
+          );
+        }
+
+        const summary = Array.from(map.values())
+          .map((e) => ({
+            user_id: e.user_id,
+            username: e.username,
+            display_name: e.display_name,
+            display_name_ar: e.display_name_ar,
+            total_minutes: e.total_minutes,
+            incident_count: e.incident_count,
+            violation_days: Array.from(e.dailyMinutes.values()).filter(
+              (m) => m > 60,
+            ).length,
+          }))
+          .sort((a, b) => b.total_minutes - a.total_minutes);
+
+        return { withdrawals: rows as any, summary };
+      },
+      "getAttendanceWithdrawalsInRange",
+      "جلب فترات الانسحاب خلال الفترة",
     );
   }
 

@@ -5,6 +5,7 @@ import {
   Clock,
   FileText,
   FileEdit,
+  AlertTriangle,
 } from "lucide-react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
@@ -13,6 +14,7 @@ import AttendanceManagement from "./AttendanceManagement.tsx";
 import AttendanceReports from "./AttendanceReports.tsx";
 import LeaveManagement from "./LeaveManagement.tsx";
 import MonthlyAttendanceEditor from "./MonthlyAttendanceEditor.tsx";
+import PageAbandonmentReport from "./PageAbandonmentReport.tsx";
 import PerformanceReviews from "./PerformanceReviews.tsx";
 import SimpleFieldTraining from "./SimpleFieldTraining.tsx";
 
@@ -29,7 +31,7 @@ export default function HRTabs() {
       </div>
 
       <Tabs defaultValue="attendance" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 gap-1 bg-gray-100 dark:bg-gray-800 h-auto p-1">
+        <TabsList className="grid w-full grid-cols-3 md:grid-cols-7 gap-1 bg-gray-100 dark:bg-gray-800 h-auto p-1">
           <TabsTrigger
             value="attendance"
             className="flex items-center justify-center gap-1 md:gap-2 text-xs md:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700"
@@ -78,6 +80,14 @@ export default function HRTabs() {
             <span className="hidden sm:inline">إدارة الطلبات</span>
             <span className="sm:hidden">الطلبات</span>
           </TabsTrigger>
+          <TabsTrigger
+            value="page-abandonment"
+            className="flex items-center justify-center gap-1 md:gap-2 text-xs md:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700"
+          >
+            <AlertTriangle className="w-4 h-4" />
+            <span className="hidden sm:inline">الانسحاب من الصفحة</span>
+            <span className="sm:hidden">الانسحاب</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="attendance" className="space-y-4">
@@ -102,6 +112,10 @@ export default function HRTabs() {
 
         <TabsContent value="leaves" className="space-y-4">
           <LeaveManagement />
+        </TabsContent>
+
+        <TabsContent value="page-abandonment" className="space-y-4">
+          <PageAbandonmentReport />
         </TabsContent>
       </Tabs>
     </div>
