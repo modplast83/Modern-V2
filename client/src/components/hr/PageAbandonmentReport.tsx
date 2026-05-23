@@ -13,6 +13,7 @@ import { useMemo, useState } from "react";
 
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import EmployeeAbandonmentDetailDialog from "./EmployeeAbandonmentDetailDialog";
 import {
   Card,
   CardHeader,
@@ -96,6 +97,10 @@ export default function PageAbandonmentReport() {
   const [startDate, setStartDate] = useState<string>(todayStr());
   const [endDate, setEndDate] = useState<string>(todayStr());
   const [search, setSearch] = useState("");
+  const [selectedEmployee, setSelectedEmployee] = useState<SummaryRow | null>(
+    null,
+  );
+  const [detailOpen, setDetailOpen] = useState(false);
 
   const handlePeriod = (p: "today" | "7d" | "30d") => {
     setPeriod(p);
@@ -365,7 +370,15 @@ export default function PageAbandonmentReport() {
                 </TableHeader>
                 <TableBody>
                   {filteredSummary.map((s) => (
-                    <TableRow key={s.user_id}>
+                    <TableRow
+                      key={s.user_id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => {
+                        setSelectedEmployee(s);
+                        setDetailOpen(true);
+                      }}
+                      data-testid={`row-employee-${s.user_id}`}
+                    >
                       <TableCell className="font-medium">
                         {s.display_name_ar ||
                           s.display_name ||
@@ -472,6 +485,17 @@ export default function PageAbandonmentReport() {
           )}
         </CardContent>
       </Card>
+
+      <EmployeeAbandonmentDetailDialog
+        employee={selectedEmployee}
+        startDate={startDate}
+        endDate={endDate}
+        open={detailOpen}
+        onOpenChange={(o) => {
+          setDetailOpen(o);
+          if (!o) setSelectedEmployee(null);
+        }}
+      />
     </div>
   );
 }

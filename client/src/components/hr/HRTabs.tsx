@@ -7,6 +7,8 @@ import {
   FileEdit,
   AlertTriangle,
 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useSearch } from "wouter";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 
@@ -30,7 +32,43 @@ export default function HRTabs() {
         </p>
       </div>
 
-      <Tabs defaultValue="attendance" className="w-full">
+      <HRTabsContent />
+    </div>
+  );
+}
+
+const VALID_TABS = [
+  "attendance",
+  "monthly-editor",
+  "reports",
+  "page-abandonment",
+  "training",
+  "performance",
+  "leaves",
+] as const;
+type HRTab = (typeof VALID_TABS)[number];
+
+function HRTabsContent() {
+  const search = useSearch();
+  const initialTab: HRTab = (() => {
+    const params = new URLSearchParams(search);
+    const t = params.get("tab");
+    return (VALID_TABS as readonly string[]).includes(t || "")
+      ? (t as HRTab)
+      : "attendance";
+  })();
+  const [tab, setTab] = useState<HRTab>(initialTab);
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    const t = params.get("tab");
+    if (t && (VALID_TABS as readonly string[]).includes(t)) {
+      setTab(t as HRTab);
+    }
+  }, [search]);
+
+  return (
+    <>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as HRTab)} className="w-full">
         <TabsList className="grid w-full grid-cols-3 md:grid-cols-7 gap-1 bg-gray-100 dark:bg-gray-800 h-auto p-1">
           <TabsTrigger
             value="attendance"
@@ -118,6 +156,6 @@ export default function HRTabs() {
           <PageAbandonmentReport />
         </TabsContent>
       </Tabs>
-    </div>
+    </>
   );
 }
