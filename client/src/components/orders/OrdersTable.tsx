@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
 
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -110,6 +111,39 @@ export default function OrdersTable({
       else next.add(orderId);
       return next;
     });
+  };
+
+  const { data: masterBatchColors = [] } = useQuery<any[]>({
+    queryKey: ["/api/master-batch-colors"],
+    queryFn: async () => {
+      const response = await fetch("/api/master-batch-colors");
+      if (!response.ok) return [];
+      const result = await response.json();
+      return result.data || result || [];
+    },
+  });
+
+  const getMasterBatchName = (code?: string | null) => {
+    if (!code) return "-";
+    const normalized = String(code).toUpperCase().trim();
+    const match = masterBatchColors.find((c: any) => {
+      if (!c?.id) return false;
+      if (String(c.id).toUpperCase() === normalized) return true;
+      if (c.aliases) {
+        return c.aliases
+          .split(",")
+          .map((a: string) => a.trim().toUpperCase())
+          .includes(normalized);
+      }
+      return false;
+    });
+    return match?.name_ar || match?.name || code;
+  };
+
+  const formatThickness = (val: any) => {
+    const n = parseFloat(val ?? "");
+    if (!isFinite(n)) return "-";
+    return Math.round(n).toString();
   };
 
   const getPoStatusBadgeClass = (status: string) => {
@@ -653,16 +687,16 @@ export default function OrdersTable({
                                     رقم المنتج
                                   </TableHead>
                                   <TableHead className="text-right text-xs">
-                                    المقاس
+                                    المقاس / الطول (سم)
                                   </TableHead>
                                   <TableHead className="text-right text-xs">
                                     السماكة
                                   </TableHead>
                                   <TableHead className="text-right text-xs">
-                                    لون الماستر باتش
+                                    المادة الخام
                                   </TableHead>
                                   <TableHead className="text-right text-xs">
-                                    الطول (سم)
+                                    لون الماستر باتش
                                   </TableHead>
                                   <TableHead className="text-right text-xs">
                                     الكمية المطلوبة (كجم)
@@ -693,16 +727,21 @@ export default function OrdersTable({
                                         {cp?.id ?? "-"}
                                       </TableCell>
                                       <TableCell className="text-sm">
-                                        {cp?.size_caption || "-"}
+                                        {(cp?.size_caption || "-") +
+                                          (cp?.cutting_length_cm != null
+                                            ? ` / ${cp.cutting_length_cm}`
+                                            : "")}
                                       </TableCell>
                                       <TableCell className="text-sm">
-                                        {cp?.thickness ?? "-"}
+                                        {formatThickness(cp?.thickness)}
                                       </TableCell>
                                       <TableCell className="text-sm">
-                                        {cp?.master_batch_id || "-"}
+                                        {cp?.raw_material || "-"}
                                       </TableCell>
                                       <TableCell className="text-sm">
-                                        {cp?.cutting_length_cm ?? "-"}
+                                        {getMasterBatchName(
+                                          cp?.master_batch_id,
+                                        )}
                                       </TableCell>
                                       <TableCell className="text-sm">
                                         {required.toFixed(2)}
@@ -918,27 +957,30 @@ export default function OrdersTable({
                                 </span>
                               </span>
                               <span>
-                                المقاس:{" "}
+                                المقاس / الطول (سم):{" "}
                                 <span className="font-medium">
-                                  {cp?.size_caption || "-"}
+                                  {(cp?.size_caption || "-") +
+                                    (cp?.cutting_length_cm != null
+                                      ? ` / ${cp.cutting_length_cm}`
+                                      : "")}
                                 </span>
                               </span>
                               <span>
                                 السماكة:{" "}
                                 <span className="font-medium">
-                                  {cp?.thickness ?? "-"}
+                                  {formatThickness(cp?.thickness)}
+                                </span>
+                              </span>
+                              <span>
+                                المادة الخام:{" "}
+                                <span className="font-medium">
+                                  {cp?.raw_material || "-"}
                                 </span>
                               </span>
                               <span>
                                 لون الماستر باتش:{" "}
                                 <span className="font-medium">
-                                  {cp?.master_batch_id || "-"}
-                                </span>
-                              </span>
-                              <span>
-                                الطول (سم):{" "}
-                                <span className="font-medium">
-                                  {cp?.cutting_length_cm ?? "-"}
+                                  {getMasterBatchName(cp?.master_batch_id)}
                                 </span>
                               </span>
                               <span>
