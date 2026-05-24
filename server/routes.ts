@@ -11740,6 +11740,9 @@ Input: ${text}`;
           .object({
             action: z.enum(["start", "end"]),
             reason: z.string().max(50).optional().nullable(),
+            lat: z.number().min(-90).max(90).optional(),
+            lng: z.number().min(-180).max(180).optional(),
+            accuracy: z.number().min(0).optional(),
           })
           .safeParse(req.body);
         if (!parsed.success) {
@@ -11802,6 +11805,73 @@ Input: ${text}`;
             return res.status(409).json({
               message: "لا يمكن فتح فترة انسحاب في الحالة الحالية",
               currentStatus,
+            });
+          }
+          // Geofence enforcement: the only legitimate trigger for an
+          // automatic withdrawal is the device physically leaving the
+          // factory's allowed radius. Tab hide / network drop / window
+          // blur must NOT flip status. We require client-supplied
+          // coordinates and re-validate them server-side so a stale or
+          // spoofed "I'm outside" claim still has to clear the same
+          // Haversine check the check-in flow uses.
+          const { lat, lng, accuracy } = parsed.data;
+          if (
+            typeof lat !== "number" ||
+            typeof lng !== "number" ||
+            !Number.isFinite(lat) ||
+            !Number.isFinite(lng)
+          ) {
+            return res.status(400).json({
+              message: "إحداثيات الموقع مطلوبة لتسجيل الانسحاب",
+              code: "LOCATION_REQUIRED",
+            });
+          }
+          const activeFactoryLocations =
+            await storage.getActiveFactoryLocations();
+          if (!activeFactoryLocations || activeFactoryLocations.length === 0) {
+            return res.status(409).json({
+              message: "لا توجد مواقع مصانع نشطة للتحقق من النطاق",
+              code: "NO_ACTIVE_LOCATIONS",
+            });
+          }
+          const haversine = (
+            lat1: number,
+            lon1: number,
+            lat2: number,
+            lon2: number,
+          ): number => {
+            const R = 6371e3;
+            const toRad = (d: number) => (d * Math.PI) / 180;
+            const dLat = toRad(lat2 - lat1);
+            const dLon = toRad(lon2 - lon1);
+            const a =
+              Math.sin(dLat / 2) ** 2 +
+              Math.cos(toRad(lat1)) *
+                Math.cos(toRad(lat2)) *
+                Math.sin(dLon / 2) ** 2;
+            return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+          };
+          let stillInside = false;
+          let nearestDistance = Infinity;
+          for (const loc of activeFactoryLocations) {
+            const d = haversine(
+              lat,
+              lng,
+              parseFloat(loc.latitude as any),
+              parseFloat(loc.longitude as any),
+            );
+            if (d < nearestDistance) nearestDistance = d;
+            const slack = accuracy && accuracy < 200 ? accuracy : 0;
+            if (d <= (loc.allowed_radius || 500) + slack) {
+              stillInside = true;
+              break;
+            }
+          }
+          if (stillInside) {
+            return res.status(409).json({
+              message: "لا يزال المستخدم داخل نطاق المصنع",
+              code: "STILL_INSIDE_GEOFENCE",
+              distance: Math.round(nearestDistance),
             });
           }
           // Insert a new attendance row with status "منسحب" so that

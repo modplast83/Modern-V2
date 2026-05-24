@@ -3,7 +3,10 @@ import { Clock, LogIn, LogOut, Coffee, Play, AlertOctagon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useAttendanceWatchdog } from "../../hooks/use-attendance-watchdog";
+import {
+  useAttendanceWatchdog,
+  type FactoryGeofence,
+} from "../../hooks/use-attendance-watchdog";
 import { useToday } from "../../hooks/use-today";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -172,10 +175,20 @@ export default function AttendancePanel({
     dailyStatus?.currentStatus !== "غائب" &&
     dailyStatus?.currentStatus !== "منسحب";
 
+  // Active factory geofences for the GPS-based watchdog. Withdrawals
+  // only fire when the device leaves all of these radii — tab hide /
+  // network drop / window blur intentionally do nothing.
+  const { data: factoryLocations } = useQuery<FactoryGeofence[]>({
+    queryKey: ["/api/factory-locations/active"],
+    enabled: watchdogEnabled,
+    staleTime: 5 * 60_000,
+  });
+
   useAttendanceWatchdog({
     enabled: watchdogEnabled,
     attendanceId: activeAttendanceId,
     userId,
+    factoryLocations,
     onWithdrawalChanged: () => {
       void refetchWithdrawals();
       // Refresh daily status + attendance list so the restored "حاضر"

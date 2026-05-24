@@ -3,71 +3,119 @@ import { useEffect, useRef } from "react";
 import { useToast } from "./use-toast";
 
 /**
- * Anti-fraud watchdog for page abandonment.
+ * Geofence-based attendance watchdog.
  *
- * Wire protocol (server is authoritative):
- *   POST /api/attendance/:id/withdraw  body: { action: 'start' | 'end' }
+ * Behaviour
+ *   - Polls the device GPS (via `navigator.geolocation.watchPosition`)
+ *     while the user is checked in and actively working.
+ *   - When the device is OUTSIDE *all* active factory geofences for a
+ *     sustained grace period (default 60s, to absorb GPS jitter),
+ *     POSTs `action: 'start'` to open a withdrawal. The server
+ *     independently re-validates the coordinates against
+ *     `factory_locations` and refuses the start if the user is still
+ *     inside any allowed radius.
+ *   - When the device returns INSIDE any factory radius, POSTs
+ *     `action: 'end'` to close the open withdrawal.
  *
- * Strategy
- *   - On visibilitychange→hidden / pagehide: OPEN a withdrawal interval
- *     **immediately**. Background tabs throttle setTimeout heavily on
- *     mobile and some desktop browsers, so a delayed "after Xs hidden"
- *     start would be unreliable (the user could come back before the
- *     timer ever fires and the absence would never be recorded).
- *   - We intentionally do NOT listen to window `blur`/`focus`. Those
- *     fire whenever the window loses focus for any reason — clicking
- *     into devtools, switching to another iframe in the page,
- *     interacting with the Replit preview chrome, etc. — and that
- *     produced spurious withdrawals right after login. The Page
- *     Visibility API is the canonical "user actually left this tab"
- *     signal.
- *   - On visible / pageshow: CLOSE the open interval. The server
- *     computes the duration from the row's `started_at` and only
- *     subtracts time when the gap is >= 1 minute (`MIN_DEDUCTIBLE_MINUTES`
- *     in the route). Sub-minute flickers close the row at 0 minutes.
- *   - A localStorage heartbeat (15s) lets the watchdog detect a full
- *     reload/crash on next mount and close the dangling row.
+ * What this hook deliberately does NOT do
+ *   - It does not react to `visibilitychange`, `pagehide`, `blur`, or
+ *     network disconnect. Hiding the tab or losing connectivity are
+ *     not, by themselves, evidence that the employee physically left
+ *     the factory, so they must not flip the user to "منسحب".
+ *   - If GPS permission is denied or unavailable, the hook stays
+ *     silent — it never opens a withdrawal without a real coordinate.
  */
-
-const HEARTBEAT_KEY = "attendance_watchdog_heartbeat";
-const HEARTBEAT_INTERVAL_MS = 15_000;
+export interface FactoryGeofence {
+  id: number;
+  latitude: string | number;
+  longitude: string | number;
+  allowed_radius: number;
+  name?: string;
+  name_ar?: string;
+}
 
 interface UseAttendanceWatchdogParams {
   enabled: boolean;
   attendanceId: number | null | undefined;
   userId: number | null | undefined;
+  factoryLocations?: FactoryGeofence[];
   onWithdrawalChanged?: () => void;
+  /** Sustained out-of-range duration before opening a withdrawal. */
+  outsideGraceMs?: number;
+}
+
+function haversineMeters(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
+  const R = 6371e3;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 export function useAttendanceWatchdog({
   enabled,
   attendanceId,
   userId,
+  factoryLocations,
   onWithdrawalChanged,
+  outsideGraceMs = 60_000,
 }: UseAttendanceWatchdogParams) {
   const { toast } = useToast();
   const isOpenRef = useRef(false);
   const inFlightRef = useRef<Promise<unknown> | null>(null);
-  const heartbeatTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const outsideSinceRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!enabled || !attendanceId || !userId) return;
+    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+    if (!factoryLocations || factoryLocations.length === 0) return;
 
-    const heartbeatKey = `${HEARTBEAT_KEY}_${userId}_${attendanceId}`;
+    const fences = factoryLocations
+      .map((f) => ({
+        lat: Number(f.latitude),
+        lng: Number(f.longitude),
+        radius: Number(f.allowed_radius) || 500,
+      }))
+      .filter(
+        (f) =>
+          Number.isFinite(f.lat) &&
+          Number.isFinite(f.lng) &&
+          Number.isFinite(f.radius),
+      );
+    if (fences.length === 0) return;
+
+    let cancelled = false;
 
     const callAction = async (
       action: "start" | "end",
+      coords?: { lat: number; lng: number; accuracy?: number },
     ): Promise<Response | null> => {
       try {
         const res = await fetch(`/api/attendance/${attendanceId}/withdraw`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ action, reason: "page_abandonment" }),
-          // keepalive lets the request survive a page unload — critical
-          // for closing the row when the user navigates away or closes the
-          // tab. Most browsers cap the body at 64KB; ours is tiny.
-          keepalive: true,
+          body: JSON.stringify({
+            action,
+            reason: "left_factory_geofence",
+            ...(coords
+              ? {
+                  lat: coords.lat,
+                  lng: coords.lng,
+                  accuracy: coords.accuracy,
+                }
+              : {}),
+          }),
         });
         if (res.ok) onWithdrawalChanged?.();
         return res;
@@ -77,7 +125,6 @@ export function useAttendanceWatchdog({
       }
     };
 
-    // Serialize start/end so a rapid visibility flip can't interleave.
     const enqueue = async (fn: () => Promise<unknown>) => {
       const prev = inFlightRef.current ?? Promise.resolve();
       const next = prev.then(fn, fn);
@@ -89,24 +136,32 @@ export function useAttendanceWatchdog({
       }
     };
 
-    const startWithdrawal = () =>
+    const openWithdrawal = (coords: {
+      lat: number;
+      lng: number;
+      accuracy?: number;
+    }) =>
       enqueue(async () => {
-        if (isOpenRef.current) return;
+        if (cancelled || isOpenRef.current) return;
         isOpenRef.current = true;
-        const res = await callAction("start");
-        // 409 means server refused (e.g. user is on break) — back out so
-        // we don't try to close a non-existent row on return.
-        if (res && (res.status === 409 || res.status === 400)) {
+        const res = await callAction("start", coords);
+        // 409 = server refused (still inside factory / wrong status).
+        // Drop the optimistic flag so the next position-update can try again.
+        if (!res || !res.ok) {
           isOpenRef.current = false;
         }
       });
 
-    const endWithdrawal = (showToast: boolean) =>
+    const closeWithdrawal = (coords?: {
+      lat: number;
+      lng: number;
+      accuracy?: number;
+    }) =>
       enqueue(async () => {
-        if (!isOpenRef.current) return;
+        if (cancelled || !isOpenRef.current) return;
         isOpenRef.current = false;
-        const res = await callAction("end");
-        if (showToast && res?.ok) {
+        const res = await callAction("end", coords);
+        if (res?.ok) {
           try {
             const data = (await res.clone().json()) as {
               durationMinutes?: number;
@@ -115,7 +170,7 @@ export function useAttendanceWatchdog({
               toast({
                 title: "⚠️",
                 description:
-                  "تم رصد مغادرتك للصفحة، تم خصم الوقت تلقائياً • Page abandonment detected, time deducted",
+                  "تم رصد مغادرتك لنطاق المصنع، تم خصم الوقت تلقائياً • Out-of-geofence detected, time deducted",
                 variant: "destructive",
               });
             }
@@ -123,65 +178,80 @@ export function useAttendanceWatchdog({
         }
       });
 
-    // Reload/crash recovery: if the last heartbeat is stale, the previous
-    // session likely had an open row that never closed. Mark ourselves as
-    // "open" so the next end call closes it server-side.
-    try {
-      const prev = localStorage.getItem(heartbeatKey);
-      if (prev) {
-        const prevTime = parseInt(prev, 10);
-        if (!Number.isNaN(prevTime)) {
-          const gap = Date.now() - prevTime;
-          if (gap >= HEARTBEAT_INTERVAL_MS * 2) {
-            isOpenRef.current = true;
-            void endWithdrawal(true);
-          }
+    const handlePosition = (pos: GeolocationPosition) => {
+      if (cancelled) return;
+      const { latitude, longitude, accuracy } = pos.coords;
+      // Find the nearest fence and decide membership using the GPS
+      // accuracy as slack on the allowed radius (same convention the
+      // server-side check-in flow uses).
+      let nearest = Infinity;
+      let inside = false;
+      for (const f of fences) {
+        const d = haversineMeters(latitude, longitude, f.lat, f.lng);
+        if (d < nearest) nearest = d;
+        const slack = accuracy && accuracy < 200 ? accuracy : 0;
+        if (d <= f.radius + slack) {
+          inside = true;
+          break;
         }
       }
-    } catch {}
 
-    const writeHeartbeat = () => {
-      try {
-        localStorage.setItem(heartbeatKey, String(Date.now()));
-      } catch {}
+      const coords = { lat: latitude, lng: longitude, accuracy };
+
+      if (inside) {
+        outsideSinceRef.current = null;
+        if (isOpenRef.current) void closeWithdrawal(coords);
+        return;
+      }
+
+      const nowTs = Date.now();
+      if (outsideSinceRef.current == null) {
+        outsideSinceRef.current = nowTs;
+        return;
+      }
+      if (
+        !isOpenRef.current &&
+        nowTs - outsideSinceRef.current >= outsideGraceMs
+      ) {
+        void openWithdrawal(coords);
+      }
     };
-    writeHeartbeat();
-    heartbeatTimerRef.current = setInterval(
-      writeHeartbeat,
-      HEARTBEAT_INTERVAL_MS,
+
+    const handleError = (err: GeolocationPositionError) => {
+      // Permission denied / position unavailable / timeout. Reset the
+      // outside-grace timer so a future fix doesn't immediately open a
+      // withdrawal, and DO NOT change the user's status. A missing GPS
+      // signal is not proof that the user left the factory.
+      outsideSinceRef.current = null;
+      console.warn(
+        "[attendance-watchdog] geolocation error",
+        err.code,
+        err.message,
+      );
+    };
+
+    const watchId = navigator.geolocation.watchPosition(
+      handlePosition,
+      handleError,
+      {
+        enableHighAccuracy: true,
+        maximumAge: 30_000,
+        timeout: 30_000,
+      },
     );
 
-    const onHide = () => {
-      // Open the interval *now* — do not wait. Background-tab timer
-      // throttling on mobile and modern desktop browsers would otherwise
-      // swallow the start request entirely.
-      void startWithdrawal();
-    };
-    const onShow = () => {
-      writeHeartbeat();
-      void endWithdrawal(true);
-    };
-
-    const onVisibility = () => {
-      if (document.visibilityState === "hidden") onHide();
-      else onShow();
-    };
-
-    document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("pagehide", onHide);
-    window.addEventListener("pageshow", onShow);
-
     return () => {
-      document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("pagehide", onHide);
-      window.removeEventListener("pageshow", onShow);
-      if (heartbeatTimerRef.current) {
-        clearInterval(heartbeatTimerRef.current);
-        heartbeatTimerRef.current = null;
-      }
-      try {
-        localStorage.removeItem(heartbeatKey);
-      } catch {}
+      cancelled = true;
+      navigator.geolocation.clearWatch(watchId);
+      outsideSinceRef.current = null;
     };
-  }, [enabled, attendanceId, userId, toast, onWithdrawalChanged]);
+  }, [
+    enabled,
+    attendanceId,
+    userId,
+    factoryLocations,
+    outsideGraceMs,
+    toast,
+    onWithdrawalChanged,
+  ]);
 }
