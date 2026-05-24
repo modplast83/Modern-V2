@@ -5408,7 +5408,8 @@ Input: ${text}`;
           { role: "user", content: prompt },
         ],
         temperature: 0.3,
-        max_tokens: 150,
+        // Short translations need few tokens; lower cap reduces latency.
+        max_tokens: 60,
       });
 
       let translatedText = response.choices[0]?.message?.content?.trim() || "";
@@ -9150,6 +9151,16 @@ Input: ${text}`;
         const results: { orderId: number; success: boolean; error?: string }[] =
           [];
 
+        // Fetch all production orders once and index by order_id instead of
+        // re-querying inside the loop (previously O(N) full-table scans).
+        const allProdOrders = await storage.getAllProductionOrders();
+        const prodOrdersByOrderId = new Map<number, any[]>();
+        for (const po of allProdOrders) {
+          const list = prodOrdersByOrderId.get(po.order_id) || [];
+          list.push(po);
+          prodOrdersByOrderId.set(po.order_id, list);
+        }
+
         for (const orderId of order_ids) {
           try {
             const order = await storage.getOrderById(orderId);
@@ -9173,23 +9184,22 @@ Input: ${text}`;
               order.status,
             );
 
-            const allProdOrders = await storage.getAllProductionOrders();
-            const orderProdOrders = allProdOrders.filter(
-              (po: any) => po.order_id === orderId,
-            );
-            for (const po of orderProdOrders) {
-              if (
-                ["pending", "active", "completed", "cancelled"].includes(
-                  po.status,
+            const orderProdOrders = prodOrdersByOrderId.get(orderId) || [];
+            await Promise.all(
+              orderProdOrders
+                .filter((po: any) =>
+                  ["pending", "active", "completed", "cancelled"].includes(
+                    po.status,
+                  ),
                 )
-              ) {
-                await storage.updateProductionOrderStatusWithPrevious(
-                  po.id,
-                  "archived",
-                  po.status,
-                );
-              }
-            }
+                .map((po: any) =>
+                  storage.updateProductionOrderStatusWithPrevious(
+                    po.id,
+                    "archived",
+                    po.status,
+                  ),
+                ),
+            );
 
             results.push({ orderId, success: true });
           } catch (err: any) {

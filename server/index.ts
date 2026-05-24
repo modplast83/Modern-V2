@@ -17,6 +17,34 @@ import { populateUserFromSession } from "./middleware/session-auth";
 import monitoringRoutes from "./routes/monitoring";
 import { setupVite, serveStatic, log } from "./vite";
 
+function sanitizeErrorForLog(error: any): any {
+  if (!error || typeof error !== "object") return error;
+  try {
+    const truncate = (v: any, n = 200): any => {
+      if (v == null) return v;
+      if (typeof v === "string")
+        return v.length > n ? `${v.slice(0, n)}…(${v.length} chars)` : v;
+      if (Array.isArray(v)) return v.map((x) => truncate(x, n));
+      return v;
+    };
+    const safe: any = {
+      name: error.name,
+      message: error.message,
+      code: error.code,
+    };
+    if (error.detail) safe.detail = truncate(error.detail, 300);
+    if (error.query) safe.query = truncate(error.query, 500);
+    if (Array.isArray(error.params)) safe.params = truncate(error.params, 120);
+    else if (Array.isArray(error.parameters))
+      safe.params = truncate(error.parameters, 120);
+    if (error.stack)
+      safe.stack = String(error.stack).split("\n").slice(0, 6).join("\n");
+    return safe;
+  } catch {
+    return error;
+  }
+}
+
 process.on("uncaughtException", (err) => {
   try {
     console.error("Uncaught exception:", err?.message || String(err));
@@ -775,14 +803,14 @@ function sanitizeResponseForLogging(response: any): any {
       if (!res.headersSent) {
         res.status(status).json({ message });
       }
-      console.error("API Error:", err);
+      console.error("API Error:", sanitizeErrorForLog(err));
     },
   );
 
   // General error handling middleware
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
-    console.error("Unhandled error:", err);
+    console.error("Unhandled error:", sanitizeErrorForLog(err));
     res.status(status).json({ message: "حدث خطأ في الخادم" });
   });
 

@@ -415,12 +415,52 @@ class DatabaseError extends Error {
   }
 }
 
+function truncateForLog(value: any, maxLen = 200): any {
+  if (value == null) return value;
+  if (typeof value === "string") {
+    return value.length > maxLen
+      ? `${value.slice(0, maxLen)}…(${value.length} chars)`
+      : value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((v) => truncateForLog(v, maxLen));
+  }
+  return value;
+}
+
+function sanitizeDbError(error: any): any {
+  if (!error || typeof error !== "object") return error;
+  try {
+    // Drizzle/Neon errors expose .query and .params (a long array including
+    // base64 image fields like cliche_front_design). Clone and truncate so
+    // logs don't grow into kilobytes per failure.
+    const safe: any = {
+      name: error.name,
+      message: error.message,
+      code: error.code,
+    };
+    if (error.detail) safe.detail = truncateForLog(error.detail, 300);
+    if (error.query) safe.query = truncateForLog(error.query, 500);
+    if (Array.isArray(error.params)) {
+      safe.params = truncateForLog(error.params, 120);
+    } else if (Array.isArray((error as any).parameters)) {
+      safe.params = truncateForLog((error as any).parameters, 120);
+    }
+    if (error.stack) {
+      safe.stack = String(error.stack).split("\n").slice(0, 6).join("\n");
+    }
+    return safe;
+  } catch {
+    return error;
+  }
+}
+
 function handleDatabaseError(
   error: any,
   operation: string,
   context?: string,
 ): never {
-  console.error(`Database error during ${operation}:`, error);
+  console.error(`Database error during ${operation}:`, sanitizeDbError(error));
 
   // Handle specific database errors
   if (error.code === "23505") {
