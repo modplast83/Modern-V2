@@ -904,19 +904,7 @@ export default function OrderPrintTemplate({
                         <div style={{ direction: "ltr", fontWeight: 900 }}>
                           {formatNumber(cp.unit_weight_kg)} Kg ×{" "}
                           {formatNumber(cp.unit_quantity)}{" "}
-                          {(() => {
-                            const map: Record<string, string> = {
-                              "كيلو": "Kg",
-                              "باكت": "PKT",
-                              "كيس": "Pecs",
-                              "رول": "Roll",
-                              "كرتون": "Box",
-                              "بندل": "Bundle",
-                            };
-                            const u = cp.cutting_unit?.trim();
-                            if (!u) return "";
-                            return map[u] || u;
-                          })()}
+                          {cp.cutting_unit?.trim() || ""}
                         </div>
                       ) : (
                         "-"
