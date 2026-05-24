@@ -665,7 +665,7 @@ export default function OrdersTable({
                   {expandedOrderIds.has(order.id) &&
                     orderProductionOrders.length > 0 && (
                       <TableRow
-                        className="border-b bg-slate-50/70"
+                        className="border-b bg-slate-50/70 dark:bg-slate-900/40"
                         data-testid={`production-orders-row-${order.id}`}
                       >
                         <TableCell
@@ -676,7 +676,7 @@ export default function OrdersTable({
                             {t("orders.productionOrders")} (
                             {orderProductionOrders.length})
                           </div>
-                          <div className="overflow-x-auto rounded border bg-white">
+                          <div className="overflow-x-auto rounded border bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700">
                             <Table>
                               <TableHeader>
                                 <TableRow>
@@ -934,7 +934,7 @@ export default function OrdersTable({
                         return (
                           <div
                             key={po.id}
-                            className="rounded border bg-gray-50 p-2 text-xs"
+                            className="rounded border bg-gray-50 text-gray-900 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700 p-2 text-xs"
                             data-testid={`production-order-mobile-${po.id}`}
                           >
                             <div className="flex items-center justify-between">
