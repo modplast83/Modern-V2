@@ -2802,13 +2802,20 @@ export class DatabaseStorage implements IStorage {
         // NOTHING + a follow-up SELECT lets concurrent `start` requests
         // race safely: only one row is inserted; the loser returns the
         // existing open row instead of crashing with a 500.
+        // NOTE: drizzle's onConflictDoNothing uses `where` (not
+        // `targetWhere`) for the partial-index predicate. Passing
+        // `targetWhere` silently dropped the `WHERE ended_at IS NULL`
+        // clause, so Postgres couldn't match the partial unique index
+        // `uniq_attendance_open_withdrawal` and the insert blew up with
+        // "no unique or exclusion constraint matching the ON CONFLICT
+        // specification".
         const inserted = await db
           .insert(attendance_withdrawals)
           .values(data)
           .onConflictDoNothing({
             target: attendance_withdrawals.attendance_id,
-            targetWhere: isNull(attendance_withdrawals.ended_at),
-          } as any)
+            where: isNull(attendance_withdrawals.ended_at),
+          })
           .returning();
         let created: AttendanceWithdrawal | undefined = inserted[0];
         if (!created) {
