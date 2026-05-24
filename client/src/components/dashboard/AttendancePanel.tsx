@@ -169,7 +169,8 @@ export default function AttendancePanel({
     !dailyStatus?.hasCheckedOut &&
     dailyStatus?.currentStatus !== "في الاستراحة" &&
     dailyStatus?.currentStatus !== "مغادر" &&
-    dailyStatus?.currentStatus !== "غائب";
+    dailyStatus?.currentStatus !== "غائب" &&
+    dailyStatus?.currentStatus !== "منسحب";
 
   useAttendanceWatchdog({
     enabled: watchdogEnabled,

@@ -9,12 +9,19 @@ import { useToast } from "./use-toast";
  *   POST /api/attendance/:id/withdraw  body: { action: 'start' | 'end' }
  *
  * Strategy
- *   - On hide / blur / pagehide: OPEN a withdrawal interval **immediately**.
- *     Background tabs throttle setTimeout heavily on mobile and some
- *     desktop browsers, so a delayed "after Xs hidden" start would be
- *     unreliable (the user could come back before the timer ever fires
- *     and the absence would never be recorded).
- *   - On visible / focus / pageshow: CLOSE the open interval. The server
+ *   - On visibilitychange→hidden / pagehide: OPEN a withdrawal interval
+ *     **immediately**. Background tabs throttle setTimeout heavily on
+ *     mobile and some desktop browsers, so a delayed "after Xs hidden"
+ *     start would be unreliable (the user could come back before the
+ *     timer ever fires and the absence would never be recorded).
+ *   - We intentionally do NOT listen to window `blur`/`focus`. Those
+ *     fire whenever the window loses focus for any reason — clicking
+ *     into devtools, switching to another iframe in the page,
+ *     interacting with the Replit preview chrome, etc. — and that
+ *     produced spurious withdrawals right after login. The Page
+ *     Visibility API is the canonical "user actually left this tab"
+ *     signal.
+ *   - On visible / pageshow: CLOSE the open interval. The server
  *     computes the duration from the row's `started_at` and only
  *     subtracts time when the gap is >= 1 minute (`MIN_DEDUCTIBLE_MINUTES`
  *     in the route). Sub-minute flickers close the row at 0 minutes.
@@ -161,15 +168,11 @@ export function useAttendanceWatchdog({
     };
 
     document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("blur", onHide);
-    window.addEventListener("focus", onShow);
     window.addEventListener("pagehide", onHide);
     window.addEventListener("pageshow", onShow);
 
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("blur", onHide);
-      window.removeEventListener("focus", onShow);
       window.removeEventListener("pagehide", onHide);
       window.removeEventListener("pageshow", onShow);
       if (heartbeatTimerRef.current) {
