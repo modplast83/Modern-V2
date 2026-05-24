@@ -647,29 +647,28 @@ export default function OrdersTable({
                               <TableHeader>
                                 <TableRow>
                                   <TableHead className="text-right text-xs">
-                                    {t("orders.productionOrderNumber") ||
-                                      "رقم أمر الإنتاج"}
+                                    رقم الإنتاج
                                   </TableHead>
                                   <TableHead className="text-right text-xs">
-                                    {t("orders.product") || "الصنف"}
+                                    رقم المنتج
                                   </TableHead>
                                   <TableHead className="text-right text-xs">
-                                    {t("orders.requiredQuantityKg") ||
-                                      "الكمية المطلوبة (كجم)"}
+                                    المقاس
                                   </TableHead>
                                   <TableHead className="text-right text-xs">
-                                    {t("orders.producedQuantityKg") ||
-                                      "الكمية المنتجة (كجم)"}
+                                    السماكة
                                   </TableHead>
                                   <TableHead className="text-right text-xs">
-                                    {t("orders.netQuantityKg") ||
-                                      "الكمية الصافية (كجم)"}
+                                    لون الماستر باتش
                                   </TableHead>
                                   <TableHead className="text-right text-xs">
-                                    {t("orders.wasteKg") || "الهدر (كجم)"}
+                                    الطول (سم)
                                   </TableHead>
                                   <TableHead className="text-right text-xs">
-                                    {t("common.status") || "الحالة"}
+                                    الكمية المطلوبة (كجم)
+                                  </TableHead>
+                                  <TableHead className="text-right text-xs">
+                                    الحالة
                                   </TableHead>
                                 </TableRow>
                               </TableHeader>
@@ -679,17 +678,8 @@ export default function OrdersTable({
                                     (c: any) =>
                                       c.id === po.customer_product_id,
                                   );
-                                  const item = safeItems.find(
-                                    (i: any) => i.id === cp?.item_id,
-                                  );
                                   const required =
                                     parseFloat(po.quantity_kg ?? 0) || 0;
-                                  const produced =
-                                    parseFloat(po.produced_quantity_kg ?? 0) ||
-                                    0;
-                                  const net =
-                                    parseFloat(po.net_quantity_kg ?? 0) || 0;
-                                  const waste = Math.max(0, produced - net);
                                   return (
                                     <TableRow
                                       key={po.id}
@@ -700,29 +690,22 @@ export default function OrdersTable({
                                           `PO-${po.id}`}
                                       </TableCell>
                                       <TableCell className="text-sm">
-                                        <div className="font-medium">
-                                          {item?.name_ar ||
-                                            item?.name ||
-                                            t("orders.unspecifiedProduct") ||
-                                            "-"}
-                                        </div>
-                                        {cp?.size_caption && (
-                                          <div className="text-xs text-muted-foreground">
-                                            {cp.size_caption}
-                                          </div>
-                                        )}
+                                        {cp?.id ?? "-"}
+                                      </TableCell>
+                                      <TableCell className="text-sm">
+                                        {cp?.size_caption || "-"}
+                                      </TableCell>
+                                      <TableCell className="text-sm">
+                                        {cp?.thickness ?? "-"}
+                                      </TableCell>
+                                      <TableCell className="text-sm">
+                                        {cp?.master_batch_id || "-"}
+                                      </TableCell>
+                                      <TableCell className="text-sm">
+                                        {cp?.cutting_length_cm ?? "-"}
                                       </TableCell>
                                       <TableCell className="text-sm">
                                         {required.toFixed(2)}
-                                      </TableCell>
-                                      <TableCell className="text-sm text-green-700">
-                                        {produced.toFixed(2)}
-                                      </TableCell>
-                                      <TableCell className="text-sm text-blue-700">
-                                        {net.toFixed(2)}
-                                      </TableCell>
-                                      <TableCell className="text-sm text-red-700">
-                                        {waste.toFixed(2)}
                                       </TableCell>
                                       <TableCell>
                                         <Badge
@@ -907,13 +890,8 @@ export default function OrdersTable({
                         const cp = safeCustomerProducts.find(
                           (c: any) => c.id === po.customer_product_id,
                         );
-                        const item = safeItems.find(
-                          (i: any) => i.id === cp?.item_id,
-                        );
                         const required =
                           parseFloat(po.quantity_kg ?? 0) || 0;
-                        const produced =
-                          parseFloat(po.produced_quantity_kg ?? 0) || 0;
                         return (
                           <div
                             key={po.id}
@@ -932,21 +910,41 @@ export default function OrdersTable({
                                 })}
                               </Badge>
                             </div>
-                            <div className="mt-1 text-muted-foreground">
-                              {item?.name_ar || item?.name || "-"}
-                              {cp?.size_caption ? ` - ${cp.size_caption}` : ""}
-                            </div>
-                            <div className="mt-1 flex gap-3">
+                            <div className="mt-1 grid grid-cols-2 gap-1">
                               <span>
-                                {t("orders.requiredQuantityKg") || "مطلوب"}:{" "}
+                                رقم المنتج:{" "}
                                 <span className="font-medium">
-                                  {required.toFixed(2)}
+                                  {cp?.id ?? "-"}
                                 </span>
                               </span>
-                              <span className="text-green-700">
-                                {t("orders.producedQuantityKg") || "منتج"}:{" "}
+                              <span>
+                                المقاس:{" "}
                                 <span className="font-medium">
-                                  {produced.toFixed(2)}
+                                  {cp?.size_caption || "-"}
+                                </span>
+                              </span>
+                              <span>
+                                السماكة:{" "}
+                                <span className="font-medium">
+                                  {cp?.thickness ?? "-"}
+                                </span>
+                              </span>
+                              <span>
+                                لون الماستر باتش:{" "}
+                                <span className="font-medium">
+                                  {cp?.master_batch_id || "-"}
+                                </span>
+                              </span>
+                              <span>
+                                الطول (سم):{" "}
+                                <span className="font-medium">
+                                  {cp?.cutting_length_cm ?? "-"}
+                                </span>
+                              </span>
+                              <span>
+                                الكمية المطلوبة:{" "}
+                                <span className="font-medium">
+                                  {required.toFixed(2)}
                                 </span>
                               </span>
                             </div>
