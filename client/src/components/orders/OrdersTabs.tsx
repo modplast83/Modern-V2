@@ -391,6 +391,8 @@ export default function OrdersTabs({
               customers={customers}
               users={users}
               productionOrders={productionOrders}
+              customerProducts={customerProducts}
+              items={items}
               onViewOrder={onViewOrder}
               onPrintOrder={onPrintOrder}
               onEditOrder={isAdmin ? onEditOrder : undefined}

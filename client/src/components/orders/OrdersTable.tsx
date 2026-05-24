@@ -12,8 +12,10 @@ import {
   Settings2,
   Archive,
   ArchiveRestore,
+  ChevronDown,
+  ChevronLeft,
 } from "lucide-react";
-import React from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Badge } from "../ui/badge";
@@ -48,6 +50,8 @@ interface OrdersTableProps {
   customers: any[];
   users: any[];
   productionOrders?: any[];
+  customerProducts?: any[];
+  items?: any[];
   onViewOrder: (order: any) => void;
   onPrintOrder: (order: any, mode?: PrintMode) => void;
   onEditOrder?: (order: any) => void;
@@ -67,6 +71,8 @@ export default function OrdersTable({
   customers,
   users,
   productionOrders = [],
+  customerProducts = [],
+  items = [],
   onViewOrder,
   onPrintOrder,
   onEditOrder,
@@ -88,6 +94,35 @@ export default function OrdersTable({
   const safeProductionOrders = Array.isArray(productionOrders)
     ? productionOrders
     : [];
+  const safeCustomerProducts = Array.isArray(customerProducts)
+    ? customerProducts
+    : [];
+  const safeItems = Array.isArray(items) ? items : [];
+
+  // Per-order expand state for the inline production-orders dropdown.
+  const [expandedOrderIds, setExpandedOrderIds] = useState<Set<number>>(
+    new Set(),
+  );
+  const toggleExpand = (orderId: number) => {
+    setExpandedOrderIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(orderId)) next.delete(orderId);
+      else next.add(orderId);
+      return next;
+    });
+  };
+
+  const getPoStatusBadgeClass = (status: string) => {
+    const map: Record<string, string> = {
+      pending: "bg-yellow-100 text-yellow-800",
+      active: "bg-blue-100 text-blue-800",
+      in_production: "bg-blue-100 text-blue-800",
+      completed: "bg-green-100 text-green-800",
+      cancelled: "bg-red-100 text-red-800",
+      paused: "bg-orange-100 text-orange-800",
+    };
+    return map[status] || "bg-gray-100 text-gray-800";
+  };
 
   // Check if all orders are selected
   const allOrdersSelected =
@@ -194,6 +229,7 @@ export default function OrdersTable({
                   />
                 </TableHead>
               )}
+              <TableHead className="w-10" />
               <TableHead className="text-right">
                 {t("orders.orderNumber")}
               </TableHead>
@@ -305,6 +341,27 @@ export default function OrdersTable({
                         />
                       </TableCell>
                     )}
+                    <TableCell className="w-10 p-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => toggleExpand(order.id)}
+                        disabled={orderProductionOrders.length === 0}
+                        title={
+                          orderProductionOrders.length === 0
+                            ? t("orders.noProductionOrders")
+                            : t("orders.productionOrders")
+                        }
+                        data-testid={`button-expand-${order.id}`}
+                      >
+                        {expandedOrderIds.has(order.id) ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronLeft className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TableCell>
                     <TableCell
                       className="font-medium"
                       data-testid={`order-number-${order.id}`}
@@ -558,7 +615,7 @@ export default function OrdersTable({
                       className={`border-b ${selectedOrders.includes(order.id) ? "bg-blue-50" : "bg-gray-50/50"}`}
                     >
                       <TableCell
-                        colSpan={onOrderSelect && onSelectAll ? 9 : 8}
+                        colSpan={onOrderSelect && onSelectAll ? 10 : 9}
                         className="py-1.5 px-4 text-right"
                         data-testid={`notes-${order.id}`}
                       >
@@ -571,6 +628,123 @@ export default function OrdersTable({
                       </TableCell>
                     </TableRow>
                   )}
+                  {expandedOrderIds.has(order.id) &&
+                    orderProductionOrders.length > 0 && (
+                      <TableRow
+                        className="border-b bg-slate-50/70"
+                        data-testid={`production-orders-row-${order.id}`}
+                      >
+                        <TableCell
+                          colSpan={onOrderSelect && onSelectAll ? 10 : 9}
+                          className="p-3 text-right"
+                        >
+                          <div className="text-xs font-semibold text-muted-foreground mb-2">
+                            {t("orders.productionOrders")} (
+                            {orderProductionOrders.length})
+                          </div>
+                          <div className="overflow-x-auto rounded border bg-white">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead className="text-right text-xs">
+                                    {t("orders.productionOrderNumber") ||
+                                      "رقم أمر الإنتاج"}
+                                  </TableHead>
+                                  <TableHead className="text-right text-xs">
+                                    {t("orders.product") || "الصنف"}
+                                  </TableHead>
+                                  <TableHead className="text-right text-xs">
+                                    {t("orders.requiredQuantityKg") ||
+                                      "الكمية المطلوبة (كجم)"}
+                                  </TableHead>
+                                  <TableHead className="text-right text-xs">
+                                    {t("orders.producedQuantityKg") ||
+                                      "الكمية المنتجة (كجم)"}
+                                  </TableHead>
+                                  <TableHead className="text-right text-xs">
+                                    {t("orders.netQuantityKg") ||
+                                      "الكمية الصافية (كجم)"}
+                                  </TableHead>
+                                  <TableHead className="text-right text-xs">
+                                    {t("orders.wasteKg") || "الهدر (كجم)"}
+                                  </TableHead>
+                                  <TableHead className="text-right text-xs">
+                                    {t("common.status") || "الحالة"}
+                                  </TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {orderProductionOrders.map((po: any) => {
+                                  const cp = safeCustomerProducts.find(
+                                    (c: any) =>
+                                      c.id === po.customer_product_id,
+                                  );
+                                  const item = safeItems.find(
+                                    (i: any) => i.id === cp?.item_id,
+                                  );
+                                  const required =
+                                    parseFloat(po.quantity_kg ?? 0) || 0;
+                                  const produced =
+                                    parseFloat(po.produced_quantity_kg ?? 0) ||
+                                    0;
+                                  const net =
+                                    parseFloat(po.net_quantity_kg ?? 0) || 0;
+                                  const waste = Math.max(0, produced - net);
+                                  return (
+                                    <TableRow
+                                      key={po.id}
+                                      data-testid={`production-order-${po.id}`}
+                                    >
+                                      <TableCell className="font-medium text-sm">
+                                        {po.production_order_number ||
+                                          `PO-${po.id}`}
+                                      </TableCell>
+                                      <TableCell className="text-sm">
+                                        <div className="font-medium">
+                                          {item?.name_ar ||
+                                            item?.name ||
+                                            t("orders.unspecifiedProduct") ||
+                                            "-"}
+                                        </div>
+                                        {cp?.size_caption && (
+                                          <div className="text-xs text-muted-foreground">
+                                            {cp.size_caption}
+                                          </div>
+                                        )}
+                                      </TableCell>
+                                      <TableCell className="text-sm">
+                                        {required.toFixed(2)}
+                                      </TableCell>
+                                      <TableCell className="text-sm text-green-700">
+                                        {produced.toFixed(2)}
+                                      </TableCell>
+                                      <TableCell className="text-sm text-blue-700">
+                                        {net.toFixed(2)}
+                                      </TableCell>
+                                      <TableCell className="text-sm text-red-700">
+                                        {waste.toFixed(2)}
+                                      </TableCell>
+                                      <TableCell>
+                                        <Badge
+                                          className={getPoStatusBadgeClass(
+                                            po.status,
+                                          )}
+                                        >
+                                          {t(
+                                            `orders.statuses.${po.status}`,
+                                            { defaultValue: po.status },
+                                          )}
+                                        </Badge>
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
                 </React.Fragment>
               );
             })}
@@ -703,6 +877,84 @@ export default function OrdersTable({
                     printingPercentage={avgPrintingPercentage}
                     cuttingPercentage={avgCuttingPercentage}
                   />
+                </div>
+              )}
+
+              {orderProductionOrders.length > 0 && (
+                <div className="border-t pt-2">
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 text-xs font-medium text-blue-600"
+                    onClick={() => toggleExpand(order.id)}
+                    data-testid={`button-expand-mobile-${order.id}`}
+                  >
+                    {expandedOrderIds.has(order.id) ? (
+                      <ChevronDown className="h-3 w-3" />
+                    ) : (
+                      <ChevronLeft className="h-3 w-3" />
+                    )}
+                    <span>
+                      {t("orders.productionOrders")} (
+                      {orderProductionOrders.length})
+                    </span>
+                  </button>
+                  {expandedOrderIds.has(order.id) && (
+                    <div
+                      className="mt-2 space-y-2"
+                      data-testid={`production-orders-mobile-${order.id}`}
+                    >
+                      {orderProductionOrders.map((po: any) => {
+                        const cp = safeCustomerProducts.find(
+                          (c: any) => c.id === po.customer_product_id,
+                        );
+                        const item = safeItems.find(
+                          (i: any) => i.id === cp?.item_id,
+                        );
+                        const required =
+                          parseFloat(po.quantity_kg ?? 0) || 0;
+                        const produced =
+                          parseFloat(po.produced_quantity_kg ?? 0) || 0;
+                        return (
+                          <div
+                            key={po.id}
+                            className="rounded border bg-gray-50 p-2 text-xs"
+                            data-testid={`production-order-mobile-${po.id}`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium">
+                                {po.production_order_number || `PO-${po.id}`}
+                              </span>
+                              <Badge
+                                className={getPoStatusBadgeClass(po.status)}
+                              >
+                                {t(`orders.statuses.${po.status}`, {
+                                  defaultValue: po.status,
+                                })}
+                              </Badge>
+                            </div>
+                            <div className="mt-1 text-muted-foreground">
+                              {item?.name_ar || item?.name || "-"}
+                              {cp?.size_caption ? ` - ${cp.size_caption}` : ""}
+                            </div>
+                            <div className="mt-1 flex gap-3">
+                              <span>
+                                {t("orders.requiredQuantityKg") || "مطلوب"}:{" "}
+                                <span className="font-medium">
+                                  {required.toFixed(2)}
+                                </span>
+                              </span>
+                              <span className="text-green-700">
+                                {t("orders.producedQuantityKg") || "منتج"}:{" "}
+                                <span className="font-medium">
+                                  {produced.toFixed(2)}
+                                </span>
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
 
