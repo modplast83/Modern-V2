@@ -3990,29 +3990,36 @@ export async function registerRoutes(
         const isLastRoll = req.body.is_last_roll || false;
 
         if (!isLastRoll) {
-          const po = await storage.getProductionOrderById(
-            validatedData.production_order_id,
-          );
-          if (po) {
-            const finalQty = parseFloat(
-              po.final_quantity_kg?.toString() || "0",
-            );
+          // Combine PO lookup + existing rolls SUM into a single query
+          // instead of fetching the full PO row plus the entire rolls list.
+          const [check] = await db
+            .execute(
+              sql`
+                SELECT
+                  po.final_quantity_kg,
+                  po.quantity_kg,
+                  po.overrun_percentage,
+                  COALESCE((
+                    SELECT SUM(r.weight_kg) FROM rolls r
+                    WHERE r.production_order_id = ${validatedData.production_order_id}
+                  ), 0) AS total_produced
+                FROM production_orders po
+                WHERE po.id = ${validatedData.production_order_id}
+              `,
+            )
+            .then((r) => r.rows as any[]);
+
+          if (check) {
+            const finalQty = parseFloat(check.final_quantity_kg?.toString() || "0");
             const targetKg =
               finalQty > 0
                 ? finalQty
-                : parseFloat(po.quantity_kg?.toString() || "0");
+                : parseFloat(check.quantity_kg?.toString() || "0");
             const overrunPct = parseFloat(
-              po.overrun_percentage?.toString() || "0",
+              check.overrun_percentage?.toString() || "0",
             );
             const maxAllowed = targetKg * (1 + overrunPct / 100);
-            const existingRolls = await storage.getRollsByProductionOrder(
-              validatedData.production_order_id,
-            );
-            const totalProduced = existingRolls.reduce(
-              (sum: number, r: any) =>
-                sum + parseFloat(r.weight_kg?.toString() || "0"),
-              0,
-            );
+            const totalProduced = parseFloat(check.total_produced?.toString() || "0");
             const newRollWeight = parseFloat(
               req.body.weight_kg?.toString() || "0",
             );
@@ -9593,25 +9600,71 @@ Input: ${text}`;
 
   let companyLogoCache: { logo_url: string | null; expiresAt: number } | null =
     null;
-  const COMPANY_LOGO_CACHE_TTL_MS = 5 * 60 * 1000;
+  const COMPANY_LOGO_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour (busted on POST)
+  let companyLogoInFlight: Promise<string | null> | null = null;
+  // Monotonically increasing version. Each authoritative write (POST) bumps
+  // this; in-flight background reads capture the version at start and refuse
+  // to overwrite the cache if it has advanced (i.e. a POST happened mid-read).
+  let companyLogoVersion = 0;
+
+  async function loadCompanyLogo(): Promise<string | null> {
+    if (companyLogoInFlight) return companyLogoInFlight;
+    const startedVersion = companyLogoVersion;
+    companyLogoInFlight = (async () => {
+      try {
+        const [profile] = await db
+          .select({ logo_url: company_profile.logo_url })
+          .from(company_profile)
+          .limit(1);
+        const logo_url = profile?.logo_url || null;
+        // Only update the cache if no POST happened during this read.
+        if (companyLogoVersion === startedVersion) {
+          companyLogoCache = {
+            logo_url,
+            expiresAt: Date.now() + COMPANY_LOGO_CACHE_TTL_MS,
+          };
+        }
+        return logo_url;
+      } finally {
+        companyLogoInFlight = null;
+      }
+    })();
+    return companyLogoInFlight;
+  }
+
+  // Pre-warm the cache so the first request after a cold start doesn't pay
+  // the DB round-trip on a user-facing path. Fire-and-forget.
+  loadCompanyLogo().catch((err) =>
+    console.warn("Company logo pre-warm failed:", err?.message || err),
+  );
 
   app.get("/api/company/logo", async (_req, res) => {
     try {
       const now = Date.now();
+      // Serve from cache when fresh.
       if (companyLogoCache && companyLogoCache.expiresAt > now) {
-        res.set("Cache-Control", "public, max-age=300");
+        res.set(
+          "Cache-Control",
+          "public, max-age=3600, stale-while-revalidate=86400",
+        );
         return res.json({ logo_url: companyLogoCache.logo_url });
       }
-      const [profile] = await db
-        .select({ logo_url: company_profile.logo_url })
-        .from(company_profile)
-        .limit(1);
-      const logo_url = profile?.logo_url || null;
-      companyLogoCache = {
-        logo_url,
-        expiresAt: now + COMPANY_LOGO_CACHE_TTL_MS,
-      };
-      res.set("Cache-Control", "public, max-age=300");
+      // Stale-while-revalidate: if we have *any* cached value, serve it
+      // immediately and refresh in the background. Only block when there is
+      // truly nothing cached yet.
+      if (companyLogoCache) {
+        loadCompanyLogo().catch(() => {});
+        res.set(
+          "Cache-Control",
+          "public, max-age=3600, stale-while-revalidate=86400",
+        );
+        return res.json({ logo_url: companyLogoCache.logo_url });
+      }
+      const logo_url = await loadCompanyLogo();
+      res.set(
+        "Cache-Control",
+        "public, max-age=3600, stale-while-revalidate=86400",
+      );
       res.json({ logo_url });
     } catch (error) {
       console.error("Error fetching company logo:", error);
@@ -9644,6 +9697,7 @@ Input: ${text}`;
             .insert(company_profile)
             .values({ name: "Company", logo_url });
         }
+        companyLogoVersion += 1;
         companyLogoCache = {
           logo_url,
           expiresAt: Date.now() + COMPANY_LOGO_CACHE_TTL_MS,
@@ -17513,6 +17567,14 @@ Input: ${text}`;
   // No write/update/delete endpoints are exposed.
   const { getLegacyPool, isLegacyDbConfigured } = await import("./legacy-db");
 
+  // Short-lived in-memory cache for unfiltered total counts on the legacy
+  // customer_products endpoint. The base table is large and the count is
+  // stable on the scale of seconds, so a 60s TTL avoids repeated scans.
+  const legacyCountCache = new Map<
+    string,
+    { total: number; expiresAt: number }
+  >();
+
   app.get(
     "/api/legacy/customer-products",
     requireAuth,
@@ -17589,28 +17651,57 @@ Input: ${text}`;
           OR COALESCE(cp.packing,'') ILIKE ${p}`;
       }
 
+      // Optimization: combine data + count in a single query using COUNT(*) OVER()
+      // to avoid running the 4-join + multi-ILIKE scan twice. For the unfiltered
+      // case (initial page load), cache the total briefly to skip the window.
+      let total: number | null = null;
+      const cacheKey = "legacy_cp_total";
+      const now = Date.now();
+      if (!q) {
+        const cached = legacyCountCache.get(cacheKey);
+        if (cached && cached.expiresAt > now) total = cached.total;
+      }
+
       const dataParams = [...params, limit, offset];
-      const dataSql = `SELECT ${cols} FROM public.customer_products cp
+      const totalExpr = total === null ? "COUNT(*) OVER()::int" : "NULL::int";
+      const dataSql = `SELECT ${cols}, ${totalExpr} AS __total
+        FROM public.customer_products cp
         ${joins}
         ${where}
         ORDER BY cp.id DESC
         LIMIT $${dataParams.length - 1} OFFSET $${dataParams.length}`;
 
-      const countSql = `SELECT COUNT(*)::int AS total FROM public.customer_products cp
-        ${joins}
-        ${where}`;
+      const dataRes = await pool.query(dataSql, dataParams);
 
-      const [dataRes, countRes] = await Promise.all([
-        pool.query(dataSql, dataParams),
-        pool.query(countSql, params),
-      ]);
+      if (total === null) {
+        if (dataRes.rows.length > 0) {
+          total = dataRes.rows[0]?.__total ?? 0;
+        } else {
+          // Empty page (e.g. offset past the end): COUNT(*) OVER() returns
+          // no row, so we must run a fallback count query to preserve the
+          // correct total for pagination UIs.
+          const countSql = `SELECT COUNT(*)::int AS total
+            FROM public.customer_products cp
+            ${joins}
+            ${where}`;
+          const countRes = await pool.query(countSql, params);
+          total = countRes.rows[0]?.total ?? 0;
+        }
+        if (!q && typeof total === "number") {
+          legacyCountCache.set(cacheKey, {
+            total,
+            expiresAt: now + 60_000, // 60s
+          });
+        }
+      }
 
-      res.json({
-        rows: dataRes.rows,
-        total: countRes.rows[0]?.total ?? 0,
-        limit,
-        offset,
+      // Strip the helper column from response rows
+      const rows = dataRes.rows.map((r: any) => {
+        const { __total, ...rest } = r;
+        return rest;
       });
+
+      res.json({ rows, total: total ?? 0, limit, offset });
     } catch (error) {
       const detail =
         error instanceof Error ? error.message : String(error);

@@ -5675,28 +5675,29 @@ export class DatabaseStorage implements IStorage {
     return withDatabaseErrorHandling(
       async () => {
         const roll = await db.transaction(async (tx) => {
+          // Acquire the advisory lock FIRST to serialize concurrent roll
+          // creations for this production order. Only then is it safe to
+          // read MAX(roll_seq) without racing.
           await tx.execute(
             sql`SELECT pg_advisory_xact_lock(1003, ${data.production_order_id})`,
           );
 
-          const [po] = await tx
-            .select({
-              production_order_number:
-                production_orders.production_order_number,
-            })
-            .from(production_orders)
-            .where(eq(production_orders.id, data.production_order_id));
+          // Combine PO lookup + max(roll_seq) into a single round-trip.
+          const lookup = await tx.execute(sql`
+            SELECT
+              po.production_order_number,
+              COALESCE((
+                SELECT MAX(r.roll_seq) FROM rolls r
+                WHERE r.production_order_id = ${data.production_order_id}
+              ), 0) AS max_seq
+            FROM production_orders po
+            WHERE po.id = ${data.production_order_id}
+          `);
+          const po = (lookup.rows as any[])[0];
 
           if (!po) throw new Error("أمر الإنتاج غير موجود");
 
-          const [seqResult] = await tx
-            .select({
-              maxSeq: sql<number>`COALESCE(MAX(${rolls.roll_seq}), 0)`,
-            })
-            .from(rolls)
-            .where(eq(rolls.production_order_id, data.production_order_id));
-
-          const nextSeq = (seqResult?.maxSeq ?? 0) + 1;
+          const nextSeq = parseInt(po.max_seq ?? "0", 10) + 1;
           const rollNumber = `${po.production_order_number}-R${String(nextSeq).padStart(3, "0")}`;
 
           const qrCodeText = JSON.stringify({
@@ -7112,35 +7113,47 @@ export class DatabaseStorage implements IStorage {
   ): Promise<ProductionOrder> {
     return withDatabaseErrorHandling(
       async () => {
-        const [po] = await db
-          .select()
-          .from(production_orders)
-          .where(eq(production_orders.id, id));
-        if (!po) throw new Error(`أمر الإنتاج ${id} غير موجود`);
-
-        const finalQty = parseFloat(po.final_quantity_kg?.toString() || "0");
-        const targetKg =
-          finalQty > 0
-            ? finalQty
-            : parseFloat(po.quantity_kg?.toString() || "0");
-
+        // Combine PO lookup + rolls aggregate into a single round-trip.
         const [stats] = await db
           .execute(
             sql`
           SELECT
-            COUNT(*) AS total_rolls,
-            COALESCE(SUM(weight_kg), 0) AS total_weight,
-            COALESCE(SUM(CASE WHEN stage IN ('printing', 'done') THEN weight_kg ELSE 0 END), 0) AS printing_weight,
-            COALESCE(SUM(CASE WHEN stage = 'done' THEN COALESCE(cut_weight_total_kg, weight_kg) + COALESCE(waste_kg, 0) ELSE 0 END), 0) AS cutting_weight,
-            COALESCE(SUM(CASE WHEN stage = 'film' THEN 1 ELSE 0 END), 0) AS film_rolls,
-            COALESCE(SUM(CASE WHEN stage = 'printing' THEN 1 ELSE 0 END), 0) AS printing_rolls,
-            COALESCE(SUM(CASE WHEN stage = 'cutting' THEN 1 ELSE 0 END), 0) AS cutting_rolls,
-            COALESCE(SUM(CASE WHEN stage = 'done' THEN 1 ELSE 0 END), 0) AS done_rolls
-          FROM rolls
-          WHERE production_order_id = ${id}
+            po.final_quantity_kg,
+            po.quantity_kg,
+            agg.total_rolls,
+            agg.total_weight,
+            agg.printing_weight,
+            agg.cutting_weight,
+            agg.film_rolls,
+            agg.printing_rolls,
+            agg.cutting_rolls,
+            agg.done_rolls
+          FROM production_orders po
+          LEFT JOIN LATERAL (
+            SELECT
+              COUNT(*) AS total_rolls,
+              COALESCE(SUM(weight_kg), 0) AS total_weight,
+              COALESCE(SUM(CASE WHEN stage IN ('printing', 'done') THEN weight_kg ELSE 0 END), 0) AS printing_weight,
+              COALESCE(SUM(CASE WHEN stage = 'done' THEN COALESCE(cut_weight_total_kg, weight_kg) + COALESCE(waste_kg, 0) ELSE 0 END), 0) AS cutting_weight,
+              COALESCE(SUM(CASE WHEN stage = 'film' THEN 1 ELSE 0 END), 0) AS film_rolls,
+              COALESCE(SUM(CASE WHEN stage = 'printing' THEN 1 ELSE 0 END), 0) AS printing_rolls,
+              COALESCE(SUM(CASE WHEN stage = 'cutting' THEN 1 ELSE 0 END), 0) AS cutting_rolls,
+              COALESCE(SUM(CASE WHEN stage = 'done' THEN 1 ELSE 0 END), 0) AS done_rolls
+            FROM rolls
+            WHERE production_order_id = po.id
+          ) agg ON TRUE
+          WHERE po.id = ${id}
         `,
           )
           .then((r) => r.rows as any[]);
+
+        if (!stats) throw new Error(`أمر الإنتاج ${id} غير موجود`);
+
+        const finalQty = parseFloat(stats.final_quantity_kg?.toString() || "0");
+        const targetKg =
+          finalQty > 0
+            ? finalQty
+            : parseFloat(stats.quantity_kg?.toString() || "0");
 
         const totalRolls = parseInt(stats?.total_rolls || "0");
         const totalWeight = parseFloat(stats?.total_weight || "0");
