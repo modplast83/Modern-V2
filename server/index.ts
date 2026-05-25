@@ -10,7 +10,7 @@ import { sql } from "drizzle-orm";
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 
-import { db, pool } from "./db";
+import { db, pool, sessionPool } from "./db";
 import { MemoryMonitor } from "./middleware/memory-monitor";
 import { performanceMonitor } from "./middleware/performance-monitor";
 import { populateUserFromSession } from "./middleware/session-auth";
@@ -365,7 +365,7 @@ if (isProduction && !process.env.SESSION_SECRET) {
 // Configure PostgreSQL session store for all environments to prevent session loss during restarts
 const PgSession = connectPgSimple(session);
 const sessionStore = new PgSession({
-  pool: pool,
+  pool: sessionPool,
   tableName: "user_sessions",
   createTableIfMissing: true,
   pruneSessionInterval: 60 * 60, // Clean expired sessions every 60 minutes (reduces Neon rate-limit pressure)
