@@ -915,7 +915,6 @@ export async function registerRoutes(
           ? {
               name_ar: customer.name_ar,
               name: customer.name,
-              phone: customer.phone,
               commercial_name: customer.commercial_name,
             }
           : null,
@@ -2186,6 +2185,38 @@ export async function registerRoutes(
           logger.warn("Twilio webhook received without signature header");
           return res.status(401).send("Missing signature");
         }
+        // Validate actual HMAC-SHA1 signature (Twilio spec)
+        try {
+          const protocol = req.headers["x-forwarded-proto"] || req.protocol;
+          const host = req.headers["x-forwarded-host"] || req.headers.host;
+          const fullUrl = `${protocol}://${host}${req.originalUrl}`;
+          const params: Record<string, string> = req.body || {};
+          const sortedKeys = Object.keys(params).sort();
+          let hashInput = fullUrl;
+          for (const key of sortedKeys) {
+            hashInput += key + (params[key] ?? "");
+          }
+          const expectedSig = crypto
+            .createHmac("sha1", twilioAuthToken)
+            .update(hashInput, "utf8")
+            .digest("base64");
+          if (
+            !crypto.timingSafeEqual(
+              Buffer.from(twilioSignature),
+              Buffer.from(expectedSig),
+            )
+          ) {
+            logger.warn("Twilio webhook signature mismatch");
+            return res.status(403).send("Invalid signature");
+          }
+        } catch {
+          logger.warn("Twilio webhook signature validation failed");
+          return res.status(403).send("Invalid signature");
+        }
+      } else {
+        logger.warn(
+          "[Security] TWILIO_AUTH_TOKEN not set — Twilio webhook signature validation is DISABLED",
+        );
       }
 
       const { MessageSid, MessageStatus, ErrorMessage } = req.body;
@@ -9445,9 +9476,24 @@ Input: ${text}`;
   });
 
   let setupInProgress = false;
+  // Simple IP-rate-limiter for the setup endpoint — max 5 attempts per IP per 15 min.
+  const setupAttempts = new Map<string, { count: number; resetAt: number }>();
 
   app.post("/api/setup/initialize", async (req, res) => {
     try {
+      const ip = (req.headers["x-forwarded-for"] as string || req.socket.remoteAddress || "unknown").split(",")[0].trim();
+      const now = Date.now();
+      const window = 15 * 60 * 1000;
+      const entry = setupAttempts.get(ip);
+      if (entry && now < entry.resetAt) {
+        if (entry.count >= 5) {
+          return res.status(429).json({ message: "محاولات كثيرة جداً. حاول مرة أخرى بعد 15 دقيقة." });
+        }
+        entry.count++;
+      } else {
+        setupAttempts.set(ip, { count: 1, resetAt: now + window });
+      }
+
       if (setupInProgress) {
         return res
           .status(409)

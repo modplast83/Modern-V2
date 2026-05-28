@@ -411,10 +411,14 @@ function cleanupOldDocs() {
           if (now - stat.mtimeMs > DOCS_MAX_AGE_MS) {
             fs.unlinkSync(filePath);
           }
-        } catch {}
+        } catch (e) {
+          logger.warn(`[cleanupOldDocs] Could not remove file ${filePath}:`, e);
+        }
       }
     }
-  } catch {}
+  } catch (e) {
+    logger.warn("[cleanupOldDocs] Error reading docs directory:", e);
+  }
 }
 setInterval(cleanupOldDocs, 60 * 60 * 1000);
 cleanupOldDocs();
@@ -3315,6 +3319,7 @@ async function executeFunction(
   name: string,
   args: Record<string, unknown>,
   userPermissions?: string[],
+  userId?: number,
 ): Promise<string> {
   const perms = userPermissions || [];
   const hasPermission = (perm: string) =>
@@ -5098,11 +5103,11 @@ async function executeFunction(
         }
 
         const sensitiveTablePattern =
-          /\b(UPDATE|INSERT\s+INTO)\b[^;]*\b(users|roles|system_settings|mobile_sessions)\b/i;
+          /\b(UPDATE|INSERT\s+INTO)\b[^;]*\b(users|roles|system_settings|mobile_sessions|role_permissions|user_permissions|ai_agent_settings|ai_agent_feature_instructions|ai_agent_knowledge|sessions)\b/i;
         if (sensitiveTablePattern.test(queryStr)) {
           return JSON.stringify({
             error:
-              "لا يُسمح بتعديل الجداول الحساسة (users, roles, system_settings, mobile_sessions) عبر الاستعلامات المباشرة.",
+              "لا يُسمح بتعديل الجداول الحساسة عبر الاستعلامات المباشرة.",
           });
         }
 
@@ -5322,7 +5327,9 @@ async function executeFunction(
         const label = (args.label as string) || dataType;
         const records = args.records as any[];
         const clearPrev = (args.clear_previous as boolean) || false;
-        const batchId = `${dataType}_${Date.now()}`;
+        // Prefix batchId with user scope so different users' sandbox data is isolated
+        const userScope = `u${userId ?? 0}`;
+        const batchId = `${userScope}_${dataType}_${Date.now()}`;
 
         if (!records || records.length === 0) {
           return JSON.stringify({
@@ -5332,7 +5339,7 @@ async function executeFunction(
 
         if (clearPrev) {
           await db.execute(
-            sql`DELETE FROM ai_sandbox_data WHERE data_type = ${dataType}`,
+            sql`DELETE FROM ai_sandbox_data WHERE data_type = ${dataType} AND batch_id LIKE ${userScope + "_%"}`,
           );
         }
 
@@ -5361,14 +5368,15 @@ async function executeFunction(
         const qLimit = (args.limit as number) || 50;
         const qSummary = (args.summary as boolean) || false;
         const safeLimit = Math.min(qLimit, 200);
+        const qUserScope = `u${userId ?? 0}`;
 
         if (qSummary) {
           const summaryResult = qType
             ? await db.execute(
-                sql`SELECT data_type, COUNT(*) as count, MIN(created_at) as first_created, MAX(created_at) as last_created FROM ai_sandbox_data WHERE data_type = ${qType} GROUP BY data_type ORDER BY count DESC`,
+                sql`SELECT data_type, COUNT(*) as count, MIN(created_at) as first_created, MAX(created_at) as last_created FROM ai_sandbox_data WHERE data_type = ${qType} AND batch_id LIKE ${qUserScope + "_%"} GROUP BY data_type ORDER BY count DESC`,
               )
             : await db.execute(
-                sql`SELECT data_type, COUNT(*) as count, MIN(created_at) as first_created, MAX(created_at) as last_created FROM ai_sandbox_data GROUP BY data_type ORDER BY count DESC`,
+                sql`SELECT data_type, COUNT(*) as count, MIN(created_at) as first_created, MAX(created_at) as last_created FROM ai_sandbox_data WHERE batch_id LIKE ${qUserScope + "_%"} GROUP BY data_type ORDER BY count DESC`,
               );
 
           const attCount = await db.execute(
@@ -5385,19 +5393,19 @@ async function executeFunction(
         let result;
         if (qType && qBatch) {
           result = await db.execute(
-            sql`SELECT id, data_type, data_label, data, batch_id, created_at FROM ai_sandbox_data WHERE data_type = ${qType} AND batch_id = ${qBatch} ORDER BY created_at DESC LIMIT ${safeLimit}`,
+            sql`SELECT id, data_type, data_label, data, batch_id, created_at FROM ai_sandbox_data WHERE data_type = ${qType} AND batch_id = ${qBatch} AND batch_id LIKE ${qUserScope + "_%"} ORDER BY created_at DESC LIMIT ${safeLimit}`,
           );
         } else if (qType) {
           result = await db.execute(
-            sql`SELECT id, data_type, data_label, data, batch_id, created_at FROM ai_sandbox_data WHERE data_type = ${qType} ORDER BY created_at DESC LIMIT ${safeLimit}`,
+            sql`SELECT id, data_type, data_label, data, batch_id, created_at FROM ai_sandbox_data WHERE data_type = ${qType} AND batch_id LIKE ${qUserScope + "_%"} ORDER BY created_at DESC LIMIT ${safeLimit}`,
           );
         } else if (qBatch) {
           result = await db.execute(
-            sql`SELECT id, data_type, data_label, data, batch_id, created_at FROM ai_sandbox_data WHERE batch_id = ${qBatch} ORDER BY created_at DESC LIMIT ${safeLimit}`,
+            sql`SELECT id, data_type, data_label, data, batch_id, created_at FROM ai_sandbox_data WHERE batch_id = ${qBatch} AND batch_id LIKE ${qUserScope + "_%"} ORDER BY created_at DESC LIMIT ${safeLimit}`,
           );
         } else {
           result = await db.execute(
-            sql`SELECT id, data_type, data_label, data, batch_id, created_at FROM ai_sandbox_data ORDER BY created_at DESC LIMIT ${safeLimit}`,
+            sql`SELECT id, data_type, data_label, data, batch_id, created_at FROM ai_sandbox_data WHERE batch_id LIKE ${qUserScope + "_%"} ORDER BY created_at DESC LIMIT ${safeLimit}`,
           );
         }
 
@@ -5575,23 +5583,28 @@ async function executeFunction(
         const dType = args.data_type as string;
         const dBatch = args.batch_id as string;
         const deleteAll = (args.delete_all as boolean) || false;
+        const dUserScope = `u${userId ?? 0}`;
+        const isAdmin = (userPermissions || []).includes("admin");
 
         let deletedGeneric = 0;
         let deletedAttendance = 0;
 
         if (deleteAll) {
-          const r1 = await db.execute(sql`DELETE FROM ai_sandbox_data`);
+          // Admins may wipe all sandbox data; regular users only wipe their own scope
+          const r1 = isAdmin
+            ? await db.execute(sql`DELETE FROM ai_sandbox_data`)
+            : await db.execute(sql`DELETE FROM ai_sandbox_data WHERE batch_id LIKE ${dUserScope + "_%"}`);
           const r2 = await db.execute(sql`DELETE FROM ai_sandbox_attendance`);
           deletedGeneric = (r1 as any).rowCount || 0;
           deletedAttendance = (r2 as any).rowCount || 0;
         } else if (dBatch) {
           const r1 = await db.execute(
-            sql`DELETE FROM ai_sandbox_data WHERE batch_id = ${dBatch}`,
+            sql`DELETE FROM ai_sandbox_data WHERE batch_id = ${dBatch} AND batch_id LIKE ${dUserScope + "_%"}`,
           );
           deletedGeneric = (r1 as any).rowCount || 0;
         } else if (dType) {
           const r1 = await db.execute(
-            sql`DELETE FROM ai_sandbox_data WHERE data_type = ${dType}`,
+            sql`DELETE FROM ai_sandbox_data WHERE data_type = ${dType} AND batch_id LIKE ${dUserScope + "_%"}`,
           );
           deletedGeneric = (r1 as any).rowCount || 0;
           if (dType === "attendance") {
@@ -6011,7 +6024,7 @@ export function registerAiAgentRoutes(app: Express): void {
 
             let result: string;
             try {
-              result = await executeFunction(fn.name, args, userPerms);
+              result = await executeFunction(fn.name, args, userPerms, (req as any).user?.id);
             } catch (toolErr) {
               console.error(
                 `[AI Agent] Tool '${fn.name}' threw uncaught error:`,

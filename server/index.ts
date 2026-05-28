@@ -416,7 +416,7 @@ app.use(
             process.exit(1);
           })()
         : "dev-secret-key-not-for-production"),
-    resave: true, // Force session persistence - ensures PostgreSQL session store reliability
+    resave: false, // Session extension middleware calls req.session.save() manually; resave:true causes needless writes
     saveUninitialized: false, // Don't create session until something stored
     rolling: true, // Reset expiry on activity - crucial for keeping session alive
     cookie: {
