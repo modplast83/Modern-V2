@@ -13,6 +13,7 @@ interface AuthContextType {
   user: AuthUser | null;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
   isLoading: boolean;
   isAuthenticated: boolean;
 }
@@ -28,31 +29,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const response = await fetch("/api/me", {
-          credentials: "include",
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.user) {
-            setUser(data.user);
-          } else {
-            setUser(null);
-          }
-        } else {
-          setUser(null);
+  const refreshUser = async () => {
+    try {
+      const response = await fetch("/api/me", { credentials: "include" });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.user) {
+          setUser(data.user);
+          return;
         }
-      } catch (error) {
-        console.warn("Error checking auth session:", error);
-        setUser(null);
       }
-      setIsLoading(false);
-    };
+      setUser(null);
+    } catch (error) {
+      console.warn("Error checking auth session:", error);
+      setUser(null);
+    }
+  };
 
-    checkAuth();
+  useEffect(() => {
+    (async () => {
+      await refreshUser();
+      setIsLoading(false);
+    })();
   }, []);
 
   useEffect(() => {
@@ -105,7 +103,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, login, logout, isLoading, isAuthenticated: !!user }}
+      value={{
+        user,
+        login,
+        logout,
+        refreshUser,
+        isLoading,
+        isAuthenticated: !!user,
+      }}
     >
       {children}
     </AuthContext.Provider>
@@ -128,7 +133,8 @@ export function useAuth() {
         login: async () => {
           throw new Error("Auth not available - please refresh page");
         },
-        logout: () => {},
+        logout: async () => {},
+        refreshUser: async () => {},
         isLoading: false,
         isAuthenticated: false,
       };

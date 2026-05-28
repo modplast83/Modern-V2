@@ -11,14 +11,16 @@ import InstallPrompt from "./components/pwa/InstallPrompt";
 import { AuthProvider, useAuth } from "./hooks/use-auth";
 import { lazyWithRetry } from "./lib/lazyWithRetry";
 import Login from "./pages/login";
+import ForceChangePassword from "./pages/force-change-password";
 
 import { shouldShowChrome } from "./config/chromeRoutes";
 
 function PersistentChrome() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [location] = useLocation();
 
   if (!isAuthenticated) return null;
+  if (user?.must_change_password) return null;
   if (!shouldShowChrome(location)) return null;
 
   return (
@@ -139,8 +141,25 @@ function PageLoadingFallback() {
 }
 
 function AppRoutes() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const { t } = useTranslation();
+  const [location] = useLocation();
+
+  const mustChange = !!user?.must_change_password;
+  const isPublicPath =
+    location.startsWith("/mpbf") ||
+    location.startsWith("/view/order/") ||
+    location === "/login";
+
+  if (
+    !isLoading &&
+    isAuthenticated &&
+    mustChange &&
+    location !== "/change-password" &&
+    !isPublicPath
+  ) {
+    return <Redirect to="/change-password" />;
+  }
 
   if (isLoading) {
     return (
@@ -167,6 +186,10 @@ function AppRoutes() {
       <Switch>
         <Route path="/login">
           {isAuthenticated ? <Redirect to="/" /> : <Login />}
+        </Route>
+
+        <Route path="/change-password">
+          {isAuthenticated ? <ForceChangePassword /> : <Redirect to="/login" />}
         </Route>
 
         {/* Public mobile-friendly bag design quote — no login required */}

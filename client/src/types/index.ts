@@ -16,6 +16,7 @@ export interface User {
   permissions?: string[];
   role_name?: string;
   role_name_ar?: string;
+  must_change_password?: boolean;
 }
 
 export interface AuthUser extends User {

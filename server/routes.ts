@@ -1149,6 +1149,7 @@ export async function registerRoutes(
               role_name_ar: roleNameAr,
               section_id: user.section_id ?? null,
               permissions: permissions,
+              must_change_password: !!(user as any).must_change_password,
             },
           });
         });
@@ -1240,6 +1241,7 @@ export async function registerRoutes(
         role_name_ar: roleNameAr,
         section_id: user.section_id ?? null,
         permissions: permissions,
+        must_change_password: !!(user as any).must_change_password,
       };
 
       res.json({
@@ -1253,6 +1255,95 @@ export async function registerRoutes(
         message: "خطأ في الخادم",
         success: false,
       });
+    }
+  });
+
+  // Change password (used for forced first-login password change and self-service updates)
+  const changePasswordAttempts = new Map<
+    number,
+    { count: number; lastAttempt: number }
+  >();
+  const CHANGE_PW_WINDOW_MS = 15 * 60 * 1000;
+  const CHANGE_PW_MAX_ATTEMPTS = 10;
+
+  app.post("/api/change-password", async (req, res) => {
+    try {
+      const sessionUser = await resolveSessionUser(req);
+      if (!sessionUser) {
+        return res.status(401).json({ message: "غير مصرح" });
+      }
+
+      const attempts = changePasswordAttempts.get(sessionUser.id);
+      if (attempts) {
+        if (Date.now() - attempts.lastAttempt > CHANGE_PW_WINDOW_MS) {
+          changePasswordAttempts.delete(sessionUser.id);
+        } else if (attempts.count >= CHANGE_PW_MAX_ATTEMPTS) {
+          return res.status(429).json({
+            message: "تم تجاوز عدد المحاولات المسموح. حاول مرة أخرى لاحقاً.",
+          });
+        }
+      }
+
+      const user = await storage.getUserById(sessionUser.id);
+      if (!user) {
+        return res.status(401).json({ message: "غير مصرح" });
+      }
+
+      const { current_password, new_password } = req.body || {};
+      if (
+        typeof current_password !== "string" ||
+        typeof new_password !== "string" ||
+        !current_password.trim() ||
+        !new_password.trim()
+      ) {
+        return res
+          .status(400)
+          .json({ message: "كلمة المرور الحالية والجديدة مطلوبة" });
+      }
+
+      if (new_password.length < 8) {
+        return res
+          .status(400)
+          .json({ message: "كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل" });
+      }
+
+      if (new_password === current_password) {
+        return res.status(400).json({
+          message: "كلمة المرور الجديدة يجب أن تختلف عن الحالية",
+        });
+      }
+
+      if (!user.password) {
+        return res.status(400).json({ message: "لا توجد كلمة مرور حالية للحساب" });
+      }
+
+      const ok = await bcrypt.compare(current_password, user.password);
+      if (!ok) {
+        const current = changePasswordAttempts.get(user.id) || {
+          count: 0,
+          lastAttempt: 0,
+        };
+        changePasswordAttempts.set(user.id, {
+          count: current.count + 1,
+          lastAttempt: Date.now(),
+        });
+        return res
+          .status(401)
+          .json({ message: "كلمة المرور الحالية غير صحيحة" });
+      }
+
+      const newHash = await bcrypt.hash(new_password, 10);
+      await db
+        .update(users)
+        .set({ password: newHash, must_change_password: false })
+        .where(eq(users.id, user.id));
+
+      changePasswordAttempts.delete(user.id);
+      logger.info(`Password changed for user ${user.id}`);
+      return res.json({ success: true });
+    } catch (error) {
+      logger.error("Change password error", error);
+      return res.status(500).json({ message: "خطأ في الخادم" });
     }
   });
 

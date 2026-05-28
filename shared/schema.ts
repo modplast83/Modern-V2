@@ -135,6 +135,7 @@ export const users = pgTable(
     role_id: integer("role_id").references(() => roles.id),
     section_id: integer("section_id"),
     status: varchar("status", { length: 20 }).default("active"), // active / suspended / deleted
+    must_change_password: boolean("must_change_password").default(false),
     created_at: timestamp("created_at").defaultNow(),
 
     // Replit Auth fields (from integration blueprint)
