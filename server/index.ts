@@ -108,14 +108,19 @@ app.use(
 // Carve-outs: heavy upload/import endpoints get a larger limit (10mb).
 // Everything else is capped at 1mb to prevent payload-based DoS.
 const HEAVY_UPLOAD_PREFIXES = [
-  "/api/database/import",
-  "/api/database/restore",
   "/api/company/upload-logo",
   "/api/upload",
   "/api/customer-products", // base64 cliché design images
   "/api/factory-3d/snapshots",
   "/api/mobile/upload",
   "/webhook/",
+];
+
+// Database backup/restore can be very large (full DB dumps). These need
+// a much higher limit. Admin-only routes — DoS risk is bounded by RBAC.
+const HUGE_UPLOAD_PREFIXES = [
+  "/api/database/import",
+  "/api/database/restore",
 ];
 
 // Webhook prefixes that need raw-body capture for signature verification.
@@ -132,6 +137,8 @@ const captureRawBody = (req: any, _res: any, buf: Buffer) => {
   }
 };
 
+const hugeJson = express.json({ limit: "500mb", verify: captureRawBody });
+const hugeUrlencoded = express.urlencoded({ extended: false, limit: "500mb" });
 const heavyJson = express.json({ limit: "10mb", verify: captureRawBody });
 const heavyUrlencoded = express.urlencoded({ extended: false, limit: "10mb" });
 const standardJson = express.json({ limit: "1mb", verify: captureRawBody });
@@ -141,6 +148,14 @@ const standardUrlencoded = express.urlencoded({
 });
 
 app.use((req, res, next) => {
+  const isHuge = HUGE_UPLOAD_PREFIXES.some((p) => req.path.startsWith(p));
+  if (isHuge) {
+    hugeJson(req, res, (err) => {
+      if (err) return next(err);
+      hugeUrlencoded(req, res, next);
+    });
+    return;
+  }
   const isHeavy = HEAVY_UPLOAD_PREFIXES.some((p) => req.path.startsWith(p));
   if (isHeavy) {
     heavyJson(req, res, (err) => {
