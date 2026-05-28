@@ -85,7 +85,12 @@ const mobileUpload = multer({
   limits: { fileSize: 10 * 1024 * 1024, files: 1 },
 });
 
-function getAuthUserId(req: any): number | undefined {
+type RequestWithAuth = {
+  user?: { id?: number } | null;
+  session?: { userId?: number } | null;
+};
+
+function getAuthUserId(req: RequestWithAuth): number | undefined {
   return req.user?.id ?? req.session?.userId;
 }
 
@@ -3221,24 +3226,9 @@ export async function registerRoutes(
   app.get(
     "/api/production-orders/management",
     requireAuth,
+    requirePermission("manage_production"),
     async (req: AuthRequest, res) => {
       try {
-        // التحقق من صلاحيات المدير أو مدير الإنتاج
-        const user = req.user;
-        if (!user) {
-          return res.status(401).json({ message: "غير مصرح" });
-        }
-
-        const userRole = await storage.getRoleById(user.role_id);
-        if (
-          !userRole ||
-          (userRole.name !== "admin" && userRole.name !== "production_manager")
-        ) {
-          return res.status(403).json({
-            message: "هذه الصفحة متاحة فقط للمدير ومدير الإنتاج",
-          });
-        }
-
         const productionOrders = await storage.getProductionOrdersWithDetails();
         res.json({
           success: true,
@@ -3257,26 +3247,15 @@ export async function registerRoutes(
   app.patch(
     "/api/production-orders/:id/activate",
     requireAuth,
+    requirePermission("manage_production"),
     async (req: AuthRequest, res) => {
       try {
-        const user = req.user;
-        if (!user) {
-          return res.status(401).json({ message: "غير مصرح" });
-        }
-
-        // التحقق من صلاحيات المدير أو مدير الإنتاج
-        const userRole = await storage.getRoleById(user.role_id);
-        if (
-          !userRole ||
-          (userRole.name !== "admin" && userRole.name !== "production_manager")
-        ) {
-          return res.status(403).json({
-            message: "غير مصرح لك بتفعيل أوامر الإنتاج",
-          });
-        }
-
         const id = parseRouteParam(req.params.id, "Production Order ID");
-        const { machineId, operatorId } = req.body;
+        const assignSchema = z.object({
+          machineId: z.union([z.string(), z.number()]).optional(),
+          operatorId: z.union([z.string(), z.number()]).optional(),
+        });
+        const { machineId, operatorId } = assignSchema.parse(req.body);
 
         const activatedOrder = await storage.activateProductionOrder(id, {
           machine_id: machineId,
@@ -3301,26 +3280,15 @@ export async function registerRoutes(
   app.patch(
     "/api/production-orders/:id/assign",
     requireAuth,
+    requirePermission("manage_production"),
     async (req: AuthRequest, res) => {
       try {
-        const user = req.user;
-        if (!user) {
-          return res.status(401).json({ message: "غير مصرح" });
-        }
-
-        // التحقق من صلاحيات المدير أو مدير الإنتاج
-        const userRole = await storage.getRoleById(user.role_id);
-        if (
-          !userRole ||
-          (userRole.name !== "admin" && userRole.name !== "production_manager")
-        ) {
-          return res.status(403).json({
-            message: "غير مصرح لك بتخصيص أوامر الإنتاج",
-          });
-        }
-
         const id = parseRouteParam(req.params.id, "Production Order ID");
-        const { machineId, operatorId } = req.body;
+        const assignSchema = z.object({
+          machineId: z.union([z.string(), z.number()]).optional(),
+          operatorId: z.union([z.string(), z.number()]).optional(),
+        });
+        const { machineId, operatorId } = assignSchema.parse(req.body);
 
         const updatedOrder = await storage.updateProductionOrderAssignment(id, {
           machine_id: machineId,
@@ -3623,7 +3591,19 @@ export async function registerRoutes(
   );
 
   // Rolls routes with pagination support
-  app.get("/api/rolls", requireAuth, async (req, res) => {
+  app.get("/api/rolls", requireAuth, requirePermission(
+    "view_production",
+    "manage_production",
+    "add_production",
+    "edit_production",
+    "view_film_dashboard",
+    "view_printing_dashboard",
+    "view_cutting_dashboard",
+    "view_production_monitoring",
+    "view_production_reports",
+    "view_quality",
+    "manage_quality",
+  ), async (req, res) => {
     try {
       const { stage } = req.query;
       if (stage) {
@@ -3940,7 +3920,27 @@ export async function registerRoutes(
   });
 
   // Machines routes
-  app.get("/api/machines", requireAuth, async (req, res) => {
+  app.get("/api/machines", requireAuth, requirePermission(
+    "manage_machines",
+    "add_machines",
+    "edit_machines",
+    "view_production",
+    "manage_production",
+    "view_film_dashboard",
+    "view_printing_dashboard",
+    "view_cutting_dashboard",
+    "view_maintenance",
+    "manage_maintenance",
+    "view_maintenance_requests",
+    "create_maintenance_requests",
+    "manage_definitions",
+    "view_warehouse",
+    "manage_warehouse",
+    "view_mixing",
+    "manage_mixing",
+    "view_quality",
+    "manage_quality",
+  ), async (req, res) => {
     try {
       const machines = await storage.getMachines();
       res.json(machines);
@@ -3951,7 +3951,24 @@ export async function registerRoutes(
   });
 
   // Customers routes
-  app.get("/api/customers", requireAuth, async (req, res) => {
+  app.get("/api/customers", requireAuth, requirePermission(
+    "manage_customers",
+    "add_customers",
+    "edit_customers",
+    "manage_orders",
+    "view_orders",
+    "view_my_orders",
+    "manage_quality",
+    "view_quality",
+    "view_warehouse",
+    "manage_warehouse",
+    "view_maintenance",
+    "manage_maintenance",
+    "view_reports",
+    "view_financial_reports",
+    "view_bag_configurator",
+    "manage_definitions",
+  ), async (req, res) => {
     try {
       const { search, page, limit, offset, all } = req.query;
 
@@ -4080,63 +4097,68 @@ export async function registerRoutes(
 
         const isLastRoll = req.body.is_last_roll || false;
 
-        if (!isLastRoll) {
-          // Combine PO lookup + existing rolls SUM into a single query
-          // instead of fetching the full PO row plus the entire rolls list.
-          const [check] = await db
-            .execute(
-              sql`
-                SELECT
-                  po.final_quantity_kg,
-                  po.quantity_kg,
-                  po.overrun_percentage,
-                  COALESCE((
-                    SELECT SUM(r.weight_kg) FROM rolls r
-                    WHERE r.production_order_id = ${validatedData.production_order_id}
-                  ), 0) AS total_produced
-                FROM production_orders po
-                WHERE po.id = ${validatedData.production_order_id}
-              `,
-            )
-            .then((r) => r.rows as any[]);
-
-          if (check) {
-            const finalQty = parseFloat(check.final_quantity_kg?.toString() || "0");
-            const targetKg =
-              finalQty > 0
-                ? finalQty
-                : parseFloat(check.quantity_kg?.toString() || "0");
-            const overrunPct = parseFloat(
-              check.overrun_percentage?.toString() || "0",
-            );
-            const maxAllowed = targetKg * (1 + overrunPct / 100);
-            const totalProduced = parseFloat(check.total_produced?.toString() || "0");
-            const newRollWeight = parseFloat(
-              req.body.weight_kg?.toString() || "0",
-            );
-
-            if (totalProduced + newRollWeight > maxAllowed) {
-              return res.status(400).json({
-                success: false,
-                message: `سيتجاوز الإنتاج الكمية المسموحة (${maxAllowed.toFixed(1)} كجم). الكمية المنتجة حالياً: ${totalProduced.toFixed(1)} كجم + رول جديد: ${newRollWeight.toFixed(1)} كجم = ${(totalProduced + newRollWeight).toFixed(1)} كجم. استخدم "رول نهائي" لإغلاق الأمر.`,
-              });
-            }
-          }
-        }
-
         const rollData = {
           ...validatedData,
           is_last_roll: isLastRoll,
         };
 
-        const newRoll = await storage.createRollWithTiming(rollData);
+        // Race-safe: lock the production_orders row, re-check the quota under
+        // the lock, then create the roll — all inside a single transaction.
+        const newRoll = await db.transaction(async (tx) => {
+          if (!isLastRoll) {
+            const [check] = (await tx.execute(sql`
+              SELECT
+                po.final_quantity_kg,
+                po.quantity_kg,
+                po.overrun_percentage,
+                COALESCE((
+                  SELECT SUM(r.weight_kg) FROM rolls r
+                  WHERE r.production_order_id = ${validatedData.production_order_id}
+                ), 0) AS total_produced
+              FROM production_orders po
+              WHERE po.id = ${validatedData.production_order_id}
+              FOR UPDATE
+            `)).rows as any[];
+
+            if (check) {
+              const finalQty = parseFloat(check.final_quantity_kg?.toString() || "0");
+              const targetKg =
+                finalQty > 0
+                  ? finalQty
+                  : parseFloat(check.quantity_kg?.toString() || "0");
+              const overrunPct = parseFloat(
+                check.overrun_percentage?.toString() || "0",
+              );
+              const maxAllowed = targetKg * (1 + overrunPct / 100);
+              const totalProduced = parseFloat(check.total_produced?.toString() || "0");
+              const newRollWeight = parseFloat(
+                req.body.weight_kg?.toString() || "0",
+              );
+
+              if (totalProduced + newRollWeight > maxAllowed) {
+                const err: any = new Error("OVERRUN");
+                err.userMessage = `سيتجاوز الإنتاج الكمية المسموحة (${maxAllowed.toFixed(1)} كجم). الكمية المنتجة حالياً: ${totalProduced.toFixed(1)} كجم + رول جديد: ${newRollWeight.toFixed(1)} كجم = ${(totalProduced + newRollWeight).toFixed(1)} كجم. استخدم "رول نهائي" لإغلاق الأمر.`;
+                err.status = 400;
+                throw err;
+              }
+            }
+          }
+
+          return await storage.createRollWithTiming(rollData);
+        });
         res.status(201).json({
           success: true,
           message: "تم إنشاء الرول بنجاح",
           roll: newRoll,
           roll_number: newRoll.roll_number,
         });
-      } catch (error) {
+      } catch (error: any) {
+        if (error?.status === 400 && error?.userMessage) {
+          return res.status(400).json({
+            success: false,
+            message: error.userMessage,
+          });
+        }
         console.error(
           "Error creating roll with timing:",
           error instanceof Error ? error.message : String(error),

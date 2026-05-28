@@ -181,6 +181,13 @@ export default function RollCreationModalEnhanced({
       queryClient.invalidateQueries({ queryKey: ["/api/rolls"] });
       queryClient.invalidateQueries({ queryKey: ["/api/production-orders"] });
       queryClient.invalidateQueries({ queryKey: ["/api/production-queues"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/machine-queues"] });
+      if (productionOrderId) {
+        queryClient.invalidateQueries({
+          queryKey: ["/api/production-orders", productionOrderId],
+        });
+      }
 
       onClose();
       form.reset();

@@ -374,8 +374,14 @@ function setCachedData(key: string, data: any, ttl: number): void {
 }
 
 // Import notification manager to broadcast production updates
-let notificationManager: any = null;
-export function setNotificationManager(nm: any): void {
+export interface NotificationManager {
+  broadcast?: (event: string, payload: unknown) => void;
+  broadcastProductionUpdate?: (payload: unknown) => void;
+  notify?: (channel: string, payload: unknown) => void;
+  [key: string]: unknown;
+}
+let notificationManager: NotificationManager | null = null;
+export function setNotificationManager(nm: NotificationManager): void {
   notificationManager = nm;
 }
 
@@ -9076,11 +9082,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getMachineQueues(): Promise<any[]> {
-    const allMachines = await this.getAllMachines();
-    const queues = await Promise.all(
-      allMachines.map((m) => this.getMachineQueue(m.id as any)),
-    );
-    return allMachines.map((m, i) => ({ machine: m, queue: queues[i] }));
+    // Single query for the full queue across all machines (avoids the
+    // previous one-SELECT-per-machine pattern that would exhaust the pool).
+    // Returns a flat list of queue items — the shape consumed by the
+    // ProductionQueues page (item.machine_id, item.queue_position, ...).
+    const result = await db.execute(sql`
+      SELECT q.*
+      FROM machine_queues q
+      JOIN machines m ON m.id = q.machine_id
+      ORDER BY q.machine_id, q.queue_position
+    `);
+    return result.rows as any[];
   }
 
   async getMachineUtilizationStats(
