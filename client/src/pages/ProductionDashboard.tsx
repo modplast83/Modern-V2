@@ -1,4 +1,4 @@
-import { Film, Printer, Scissors, AlertCircle } from "lucide-react";
+import { Film, Printer, Scissors, AlertCircle, Focus } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -19,6 +19,7 @@ import {
 } from "../components/ui/tabs";
 import { useAuth } from "../hooks/use-auth";
 import { userHasPermission } from "../utils/roleUtils";
+import OperatorFocusView from "../components/production/OperatorFocusView";
 
 import CuttingOperatorDashboard from "./CuttingOperatorDashboard";
 import FilmOperatorDashboard from "./FilmOperatorDashboard";
@@ -43,6 +44,17 @@ export default function ProductionDashboard() {
     [user],
   );
 
+  // A "line operator" can view dashboards but cannot manage production overall.
+  // They get the simplified Operator Focus Mode instead of the full tabbed view.
+  const isLineOperator = useMemo(
+    () =>
+      (canViewFilm || canViewPrinting || canViewCutting) &&
+      !userHasPermission(user, "manage_production") &&
+      !userHasPermission(user, "manage_production_hall") &&
+      !userHasPermission(user, "admin"),
+    [user, canViewFilm, canViewPrinting, canViewCutting],
+  );
+
   const availableTabs = useMemo(() => {
     const tabs = [];
     if (canViewFilm) tabs.push("film");
@@ -52,6 +64,22 @@ export default function ProductionDashboard() {
   }, [canViewFilm, canViewPrinting, canViewCutting]);
 
   const [activeTab, setActiveTab] = useState(availableTabs[0] || "film");
+
+  // Line operators see a focused, distraction-free roll-entry interface
+  if (isLineOperator) {
+    return (
+      <PageLayout
+        title={t("production.dashboard.title")}
+        description={t("production.dashboard.description")}
+      >
+        <div className="flex items-center gap-2 mb-4 text-muted-foreground text-sm">
+          <Focus className="h-4 w-4" />
+          <span>وضع المشغل المبسط</span>
+        </div>
+        <OperatorFocusView />
+      </PageLayout>
+    );
+  }
 
   if (availableTabs.length === 0) {
     return (

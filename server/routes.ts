@@ -7321,7 +7321,89 @@ Input: ${text}`;
               : req.body.capacity_large_kg_per_hour,
         };
 
+        // Fetch current status before the update to detect transitions
+        const prevResult = await db.execute(
+          sql`SELECT status, name_ar, type FROM machines WHERE id = ${id} LIMIT 1`,
+        );
+        const prevStatus = (prevResult.rows[0] as any)?.status;
+        const machineNameAr = (prevResult.rows[0] as any)?.name_ar || id;
+        const machineType = (prevResult.rows[0] as any)?.type;
+
         const machine = await storage.updateMachine(id, cleanedData);
+
+        // ── Dynamic Load Balancing ──────────────────────────────────────────
+        // When a machine transitions from active → down/maintenance, suggest
+        // redistributing its queued production orders to backup machines.
+        const newStatus = cleanedData.status;
+        if (
+          (newStatus === "down" || newStatus === "maintenance") &&
+          prevStatus === "active"
+        ) {
+          try {
+            const queueResult = await db.execute(sql`
+              SELECT mq.id, mq.production_order_id, po.production_order_number
+              FROM machine_queues mq
+              JOIN production_orders po ON mq.production_order_id = po.id
+              WHERE mq.machine_id = ${id}
+              ORDER BY mq.queue_position
+            `);
+
+            if (queueResult.rows.length > 0) {
+              const backupResult = await db.execute(sql`
+                SELECT id, name_ar FROM machines
+                WHERE type = ${machineType}
+                  AND status = 'active'
+                  AND id != ${id}
+              `);
+
+              const suggestions = (queueResult.rows as any[]).map(
+                (row, index) => {
+                  const backup = (backupResult.rows as any[])[
+                    index % Math.max(backupResult.rows.length, 1)
+                  ];
+                  return {
+                    productionOrderId: row.production_order_id,
+                    orderNumber: row.production_order_number,
+                    fromMachine: id,
+                    fromMachineName: machineNameAr,
+                    toMachine: backup?.id || null,
+                    toMachineName: backup?.name_ar || "لا توجد ماكينة بديلة نشطة",
+                  };
+                },
+              );
+
+              if (notificationManager) {
+                const suggestionLines = suggestions
+                  .slice(0, 3)
+                  .map(
+                    (s) =>
+                      `• أمر ${s.orderNumber} → ${s.toMachineName}`,
+                  )
+                  .join("\n");
+                const extra =
+                  suggestions.length > 3
+                    ? `\n...و${suggestions.length - 3} أوامر أخرى`
+                    : "";
+
+                await notificationManager.sendToAll({
+                  title: "موازنة الأحمال الديناميكية",
+                  title_ar: `⚠️ تعطل ماكينة — مقترح إعادة جدولة`,
+                  message: `الماكينة ${machineNameAr} (${newStatus === "down" ? "معطلة" : "صيانة"}) — ${suggestions.length} أوامر تحتاج إعادة توزيع:\n${suggestionLines}${extra}`,
+                  message_ar: `الماكينة ${machineNameAr} (${newStatus === "down" ? "معطلة" : "صيانة"}) — ${suggestions.length} أوامر تحتاج إعادة توزيع:\n${suggestionLines}${extra}`,
+                  type: "production",
+                  priority: "high",
+                  context_type: "load_balancing_suggestion",
+                  context_id: id,
+                  sound: true,
+                } as any);
+              }
+            }
+          } catch (lbErr) {
+            logger.error("[LoadBalancing] Failed to compute redistribution suggestions:", lbErr);
+          }
+        }
+        // ───────────────────────────────────────────────────────────────────
+
         res.json(machine);
       } catch (error) {
         console.error("Machine update error:", error);
@@ -7329,6 +7411,67 @@ Input: ${text}`;
           message: "خطأ في تحديث الماكينة",
           error: "خطأ داخلي",
         });
+      }
+    },
+  );
+
+  // Active production order for a specific machine (used by Operator Focus Mode)
+  app.get(
+    "/api/production/active-by-machine/:machineId",
+    requireAuth,
+    requirePermission(
+      "view_film_dashboard",
+      "view_printing_dashboard",
+      "view_cutting_dashboard",
+      "manage_production",
+      "manage_production_hall",
+    ),
+    async (req, res) => {
+      try {
+        const { machineId } = req.params;
+        const result = await db.execute(sql`
+          SELECT
+            po.id,
+            po.production_order_number,
+            po.status,
+            po.film_completed,
+            po.printing_completed,
+            po.cutting_completed,
+            po.quantity_kg,
+            po.final_quantity_kg,
+            po.overrun_percentage,
+            po.assigned_machine_id,
+            cp.size_caption,
+            cp.raw_material,
+            cp.master_batch_id,
+            cp.width_cm,
+            cp.thickness_micron,
+            o.order_number,
+            c.name_ar AS customer_name_ar,
+            COALESCE((
+              SELECT SUM(r.weight_kg::numeric)
+              FROM rolls r
+              WHERE r.production_order_id = po.id
+            ), 0) AS produced_quantity_kg,
+            (SELECT COUNT(*) FROM rolls r WHERE r.production_order_id = po.id) AS rolls_count
+          FROM production_orders po
+          JOIN customer_products cp ON po.customer_product_id = cp.id
+          JOIN orders o ON po.order_id = o.id
+          JOIN customers c ON o.customer_id = c.id
+          WHERE po.assigned_machine_id = ${machineId}
+            AND po.film_completed = false
+            AND po.status NOT IN ('cancelled', 'done')
+          ORDER BY po.created_at ASC
+          LIMIT 1
+        `);
+
+        if (result.rows.length === 0) {
+          return res.json(null);
+        }
+        res.json(result.rows[0]);
+      } catch (error) {
+        logger.error("Error fetching active-by-machine:", error);
+        res.status(500).json({ message: "خطأ في جلب أمر الإنتاج النشط" });
       }
     },
   );
