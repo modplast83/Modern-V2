@@ -46,6 +46,7 @@ interface ActiveOrder {
   final_quantity_kg: string | null;
   overrun_percentage: string | null;
   size_caption: string | null;
+  thickness: number | string | null;
   raw_material: string | null;
   master_batch_name_ar: string | null;
   customer_name_ar: string | null;
@@ -295,13 +296,31 @@ export default function OperatorFocusView() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 text-center">
+          <div className="bg-slate-800/80 p-3 rounded-lg border border-slate-700 text-center">
+            <span className="text-xs text-slate-400 block mb-1">اسم المنتج</span>
+            <span className="text-base font-black text-white leading-tight">
+              {activeOrder.product_name_ar || "—"}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 text-center">
+            <div className="bg-slate-800/80 p-2 rounded-lg border border-slate-700">
+              <span className="text-xs text-slate-400 block mb-1">السماكة</span>
+              <span className="text-sm font-bold text-amber-400">
+                {activeOrder.thickness != null && activeOrder.thickness !== ""
+                  ? `${Math.round(Number(activeOrder.thickness))} ميكرون`
+                  : "—"}
+              </span>
+            </div>
             <div className="bg-slate-800/80 p-2 rounded-lg border border-slate-700">
               <span className="text-xs text-slate-400 block mb-1">الخامة</span>
               <span className="text-sm font-bold text-slate-200">
                 {activeOrder.raw_material || "HDPE"}
               </span>
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 text-center">
             <div className="bg-slate-800/80 p-2 rounded-lg border border-slate-700">
               <span className="text-xs text-slate-400 block mb-1">اللون</span>
               <span className="text-sm font-bold text-emerald-400">
