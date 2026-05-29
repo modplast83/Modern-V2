@@ -241,9 +241,7 @@ function AppRoutes() {
         </Route>
 
         <Route path="/production">
-          <ProtectedRoute path="/production">
-            <Production />
-          </ProtectedRoute>
+          <Redirect to="/production-dashboard" />
         </Route>
 
         {/* Redirects from old routes to Orders page with tabs */}
