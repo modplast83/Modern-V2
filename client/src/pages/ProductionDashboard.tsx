@@ -44,11 +44,15 @@ export default function ProductionDashboard() {
     [user],
   );
 
-  // A "line operator" can view dashboards but cannot manage production overall.
-  // They get the simplified Operator Focus Mode instead of the full tabbed view.
+  // A film "line operator" can view the film dashboard but cannot manage
+  // production overall. They get the simplified Operator Focus Mode (a film
+  // roll-entry UI) instead of the full tabbed view. Printing/cutting-only
+  // operators keep their own tabbed dashboards since Focus Mode is film-only.
   const isLineOperator = useMemo(
     () =>
-      (canViewFilm || canViewPrinting || canViewCutting) &&
+      canViewFilm &&
+      !canViewPrinting &&
+      !canViewCutting &&
       !userHasPermission(user, "manage_production") &&
       !userHasPermission(user, "manage_production_hall") &&
       !userHasPermission(user, "admin"),

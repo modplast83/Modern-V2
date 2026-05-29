@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Weight,
   CheckCircle2,
   AlertTriangle,
   Settings2,
+  Package,
 } from "lucide-react";
 import {
   Card,
@@ -27,6 +28,7 @@ import { useToast } from "../../hooks/use-toast";
 import { apiRequest } from "../../lib/queryClient";
 
 const MACHINE_STORAGE_KEY = "operator_focus_machine_id";
+const ORDER_STORAGE_KEY = "operator_focus_order_id";
 
 interface Machine {
   id: string;
@@ -43,15 +45,13 @@ interface ActiveOrder {
   quantity_kg: string;
   final_quantity_kg: string | null;
   overrun_percentage: string | null;
-  size_caption: string;
+  size_caption: string | null;
   raw_material: string | null;
-  master_batch_id: string | null;
-  width_cm: string | null;
-  thickness_micron: string | null;
-  order_number: string;
-  customer_name_ar: string;
-  produced_quantity_kg: string;
-  rolls_count: string;
+  master_batch_name_ar: string | null;
+  customer_name_ar: string | null;
+  product_name_ar: string | null;
+  total_weight_produced: string | number;
+  rolls_count: string | number;
 }
 
 export default function OperatorFocusView() {
@@ -59,6 +59,9 @@ export default function OperatorFocusView() {
   const queryClient = useQueryClient();
   const [selectedMachineId, setSelectedMachineId] = useState<string>(
     () => localStorage.getItem(MACHINE_STORAGE_KEY) || "",
+  );
+  const [selectedOrderId, setSelectedOrderId] = useState<string>(
+    () => localStorage.getItem(ORDER_STORAGE_KEY) || "",
   );
   const [weightInput, setWeightInput] = useState("");
   const [isLastRoll, setIsLastRoll] = useState(false);
@@ -68,27 +71,56 @@ export default function OperatorFocusView() {
     localStorage.setItem(MACHINE_STORAGE_KEY, id);
   };
 
-  // Fetch available film machines for the picker
+  const handleOrderChange = (id: string) => {
+    setSelectedOrderId(id);
+    localStorage.setItem(ORDER_STORAGE_KEY, id);
+  };
+
+  // Fetch available film (extruder) machines for the picker
   const { data: machines = [] } = useQuery<Machine[]>({
     queryKey: ["/api/machines"],
     select: (data: any) => {
       const rows = Array.isArray(data) ? data : data?.data ?? [];
       return rows.filter(
-        (m: Machine) => m.type === "film" && m.status !== "retired",
+        (m: Machine) =>
+          (m.type === "extruder" || m.type === "film") &&
+          m.status !== "retired",
       );
     },
   });
 
-  // Active production order on the selected machine
-  const {
-    data: activeOrder,
-    isLoading,
-    isFetching,
-  } = useQuery<ActiveOrder | null>({
-    queryKey: [`/api/production/active-by-machine/${selectedMachineId}`],
-    enabled: !!selectedMachineId,
+  // Active film production orders (operator chooses which one they're producing)
+  const { data: orders = [], isLoading } = useQuery<ActiveOrder[]>({
+    queryKey: ["/api/production-orders/active-for-operator"],
     refetchInterval: 30_000,
   });
+
+  // Resolve the currently selected order (fallback to the first one)
+  const activeOrder = useMemo<ActiveOrder | null>(() => {
+    if (orders.length === 0) return null;
+    const found = orders.find((o) => String(o.id) === selectedOrderId);
+    return found ?? orders[0];
+  }, [orders, selectedOrderId]);
+
+  // Keep persisted selection in sync when it falls back to the first order
+  useEffect(() => {
+    if (activeOrder && String(activeOrder.id) !== selectedOrderId) {
+      setSelectedOrderId(String(activeOrder.id));
+      localStorage.setItem(ORDER_STORAGE_KEY, String(activeOrder.id));
+    }
+  }, [activeOrder, selectedOrderId]);
+
+  // Clear a stale persisted machine ID if it no longer exists (e.g. retired)
+  useEffect(() => {
+    if (
+      selectedMachineId &&
+      machines.length > 0 &&
+      !machines.some((m) => m.id === selectedMachineId)
+    ) {
+      setSelectedMachineId("");
+      localStorage.removeItem(MACHINE_STORAGE_KEY);
+    }
+  }, [machines, selectedMachineId]);
 
   const createRollMutation = useMutation({
     mutationFn: async (payload: {
@@ -98,12 +130,16 @@ export default function OperatorFocusView() {
       const endpoint = payload.is_last_roll
         ? "/api/rolls/create-final"
         : "/api/rolls/create-with-timing";
-      const response = await apiRequest("POST", endpoint, {
-        production_order_id: activeOrder!.id,
-        film_machine_id: selectedMachineId,
-        weight_kg: payload.weight_kg,
-        is_last_roll: payload.is_last_roll,
-        stage: "film",
+      const response = await apiRequest(endpoint, {
+        method: "POST",
+        body: JSON.stringify({
+          production_order_id: activeOrder!.id,
+          film_machine_id: selectedMachineId,
+          machine_id: selectedMachineId,
+          weight_kg: payload.weight_kg,
+          is_last_roll: payload.is_last_roll,
+          stage: "film",
+        }),
       });
       return response.json();
     },
@@ -116,9 +152,7 @@ export default function OperatorFocusView() {
       setWeightInput("");
       setIsLastRoll(false);
       queryClient.invalidateQueries({
-        queryKey: [
-          `/api/production/active-by-machine/${selectedMachineId}`,
-        ],
+        queryKey: ["/api/production-orders/active-for-operator"],
       });
     },
     onError: (error: any) => {
@@ -132,6 +166,14 @@ export default function OperatorFocusView() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedMachineId) {
+      toast({
+        title: "خطأ",
+        description: "يرجى اختيار الماكينة أولاً",
+        variant: "destructive",
+      });
+      return;
+    }
     const weight = parseFloat(weightInput);
     if (isNaN(weight) || weight <= 0) {
       toast({
@@ -144,76 +186,75 @@ export default function OperatorFocusView() {
     createRollMutation.mutate({ weight_kg: weight, is_last_roll: isLastRoll });
   };
 
-  // ── Machine selector ──────────────────────────────────────────────────────
-  const machinePicker = (
+  // ── Selectors (machine + order) ───────────────────────────────────────────
+  const selectors = (
     <Card className="border border-slate-200 dark:border-slate-700">
-      <CardContent className="flex items-center gap-3 py-3">
-        <Settings2 className="h-5 w-5 text-muted-foreground shrink-0" />
-        <span className="text-sm font-medium shrink-0">الماكينة:</span>
-        <Select value={selectedMachineId} onValueChange={handleMachineChange}>
-          <SelectTrigger className="h-9 max-w-xs">
-            <SelectValue placeholder="اختر الماكينة لهذه الوردية…" />
-          </SelectTrigger>
-          <SelectContent>
-            {machines.map((m) => (
-              <SelectItem key={m.id} value={m.id}>
-                {m.name_ar} ({m.id})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {isFetching && (
-          <span className="text-xs text-muted-foreground">جاري التحديث…</span>
-        )}
+      <CardContent className="flex flex-col sm:flex-row sm:items-center gap-3 py-3">
+        <div className="flex items-center gap-2 flex-1">
+          <Settings2 className="h-5 w-5 text-muted-foreground shrink-0" />
+          <span className="text-sm font-medium shrink-0">الماكينة:</span>
+          <Select value={selectedMachineId} onValueChange={handleMachineChange}>
+            <SelectTrigger className="h-9 flex-1">
+              <SelectValue placeholder="اختر الماكينة…" />
+            </SelectTrigger>
+            <SelectContent>
+              {machines.map((m) => (
+                <SelectItem key={m.id} value={m.id}>
+                  {m.name_ar} ({m.id})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center gap-2 flex-1">
+          <Package className="h-5 w-5 text-muted-foreground shrink-0" />
+          <span className="text-sm font-medium shrink-0">أمر الإنتاج:</span>
+          <Select
+            value={activeOrder ? String(activeOrder.id) : ""}
+            onValueChange={handleOrderChange}
+            disabled={orders.length === 0}
+          >
+            <SelectTrigger className="h-9 flex-1">
+              <SelectValue placeholder="اختر أمر الإنتاج…" />
+            </SelectTrigger>
+            <SelectContent>
+              {orders.map((o) => (
+                <SelectItem key={o.id} value={String(o.id)}>
+                  {o.production_order_number} — {o.size_caption || "—"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </CardContent>
     </Card>
   );
-
-  // ── No machine selected ───────────────────────────────────────────────────
-  if (!selectedMachineId) {
-    return (
-      <div className="max-w-2xl mx-auto space-y-4 p-4" dir="rtl">
-        {machinePicker}
-        <Card className="border-2 border-dashed border-slate-300 text-center p-8">
-          <CardHeader>
-            <CardTitle className="text-xl text-muted-foreground">
-              اختر الماكينة للبدء
-            </CardTitle>
-            <CardDescription>
-              حدد الماكينة التي ستعمل عليها خلال هذه الوردية
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    );
-  }
 
   // ── Loading ───────────────────────────────────────────────────────────────
   if (isLoading) {
     return (
       <div className="max-w-2xl mx-auto space-y-4 p-4" dir="rtl">
-        {machinePicker}
+        {selectors}
         <div className="p-8 text-center text-lg text-muted-foreground">
-          جاري تحميل بيانات خط الإنتاج…
+          جاري تحميل أوامر الإنتاج…
         </div>
       </div>
     );
   }
 
-  // ── No active order ───────────────────────────────────────────────────────
+  // ── No active order anywhere ──────────────────────────────────────────────
   if (!activeOrder) {
     return (
       <div className="max-w-2xl mx-auto space-y-4 p-4" dir="rtl">
-        {machinePicker}
+        {selectors}
         <Card className="border-2 border-dashed border-yellow-400 bg-yellow-50/30 dark:bg-yellow-900/10 text-center p-8">
           <CardHeader className="flex items-center justify-center">
-            <AlertTriangle className="h-14 w-14 text-yellow-500 animate-bounce" />
+            <AlertTriangle className="h-14 w-14 text-yellow-500" />
             <CardTitle className="text-2xl mt-4 text-yellow-800 dark:text-yellow-400">
-              لا يوجد أمر إنتاج نشط
+              لا توجد أوامر إنتاج نشطة
             </CardTitle>
             <CardDescription className="text-base text-yellow-700 dark:text-yellow-500">
-              لا يوجد أمر إنتاج مخصص حالياً للماكينة ({selectedMachineId}).
-              يرجى مراجعة مشرف الصالة للتخصيص.
+              لا توجد حالياً أوامر إنتاج فيلم نشطة. يرجى مراجعة مشرف الصالة.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -225,14 +266,14 @@ export default function OperatorFocusView() {
   const targetQty = parseFloat(
     activeOrder.final_quantity_kg || activeOrder.quantity_kg || "0",
   );
-  const producedQty = parseFloat(activeOrder.produced_quantity_kg || "0");
+  const producedQty = parseFloat(String(activeOrder.total_weight_produced || "0"));
   const progressPercent =
     targetQty > 0 ? Math.min(100, (producedQty / targetQty) * 100) : 0;
-  const rollsCount = parseInt(activeOrder.rolls_count || "0", 10);
+  const rollsCount = parseInt(String(activeOrder.rolls_count || "0"), 10);
 
   return (
     <div className="max-w-2xl mx-auto space-y-4 p-2 md:p-4" dir="rtl">
-      {machinePicker}
+      {selectors}
 
       {/* ── Order identity card ── */}
       <Card className="border-2 shadow-xl bg-gradient-to-br from-slate-900 to-slate-800 text-white">
@@ -256,27 +297,21 @@ export default function OperatorFocusView() {
 
           <div className="grid grid-cols-3 gap-3 text-center">
             <div className="bg-slate-800/80 p-2 rounded-lg border border-slate-700">
-              <span className="text-xs text-slate-400 block mb-1">
-                الخامة
-              </span>
+              <span className="text-xs text-slate-400 block mb-1">الخامة</span>
               <span className="text-sm font-bold text-slate-200">
                 {activeOrder.raw_material || "HDPE"}
               </span>
             </div>
             <div className="bg-slate-800/80 p-2 rounded-lg border border-slate-700">
-              <span className="text-xs text-slate-400 block mb-1">
-                اللون
-              </span>
+              <span className="text-xs text-slate-400 block mb-1">اللون</span>
               <span className="text-sm font-bold text-emerald-400">
-                {activeOrder.master_batch_id || "شفاف"}
+                {activeOrder.master_batch_name_ar || "شفاف"}
               </span>
             </div>
             <div className="bg-slate-800/80 p-2 rounded-lg border border-slate-700">
-              <span className="text-xs text-slate-400 block mb-1">
-                العميل
-              </span>
+              <span className="text-xs text-slate-400 block mb-1">العميل</span>
               <span className="text-xs font-bold text-slate-300 leading-tight">
-                {activeOrder.customer_name_ar}
+                {activeOrder.customer_name_ar || "—"}
               </span>
             </div>
           </div>
@@ -287,7 +322,7 @@ export default function OperatorFocusView() {
       <Card className="border-2 shadow-lg text-center">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm text-muted-foreground">
-            الوزن المنتج للوردية
+            الوزن المنتج لأمر الإنتاج
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -304,7 +339,10 @@ export default function OperatorFocusView() {
               <span>{rollsCount} رول مسجل</span>
               <span>{progressPercent.toFixed(1)}%</span>
             </div>
-            <Progress value={progressPercent} className="h-4 border border-slate-200 dark:border-slate-700" />
+            <Progress
+              value={progressPercent}
+              className="h-4 border border-slate-200 dark:border-slate-700"
+            />
           </div>
         </CardContent>
       </Card>
@@ -312,6 +350,12 @@ export default function OperatorFocusView() {
       {/* ── Roll entry form ── */}
       <Card className="border-2 border-primary/30 shadow-xl bg-slate-50 dark:bg-slate-900/20">
         <CardContent className="pt-6">
+          {!selectedMachineId && (
+            <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-900/20 p-3 text-sm text-amber-800 dark:text-amber-300">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              اختر الماكينة من الأعلى قبل تسجيل اللفة.
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
               <label className="text-base font-black text-slate-800 dark:text-slate-200 flex items-center gap-2">
@@ -357,7 +401,7 @@ export default function OperatorFocusView() {
               type="submit"
               size="lg"
               className="w-full h-16 text-lg font-black rounded-xl shadow-lg transition-transform active:scale-95"
-              disabled={createRollMutation.isPending}
+              disabled={createRollMutation.isPending || !selectedMachineId}
             >
               {createRollMutation.isPending
                 ? "جاري الحفظ…"
