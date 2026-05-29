@@ -1,0 +1,1 @@
+- [Security fixes pass 1 & 2](security-fixes.md) — Two-pass security audit completed; key patterns and decisions documented for future consistency.
