@@ -222,7 +222,7 @@ export default function OperatorFocusView() {
             <SelectContent>
               {machines.map((m) => (
                 <SelectItem key={m.id} value={m.id}>
-                  {m.name_ar} ({m.id})
+                  {m.name_ar}
                 </SelectItem>
               ))}
             </SelectContent>
