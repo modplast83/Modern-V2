@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Weight,
@@ -49,14 +50,20 @@ interface ActiveOrder {
   thickness: number | string | null;
   raw_material: string | null;
   master_batch_name_ar: string | null;
+  master_batch_name_en: string | null;
   customer_name_ar: string | null;
+  customer_name_en: string | null;
   product_name_ar: string | null;
+  product_name_en: string | null;
   total_weight_produced: string | number;
   rolls_count: string | number;
 }
 
 export default function OperatorFocusView() {
   const { toast } = useToast();
+  const { i18n } = useTranslation();
+  const isArabic = i18n.language === "ar";
+  const dir = isArabic ? "rtl" : "ltr";
   const queryClient = useQueryClient();
   const [selectedMachineId, setSelectedMachineId] = useState<string>(
     () => localStorage.getItem(MACHINE_STORAGE_KEY) || "",
@@ -147,8 +154,10 @@ export default function OperatorFocusView() {
     onSuccess: (data) => {
       const rollNum = data.roll_number ?? data.roll?.roll_number ?? "—";
       toast({
-        title: "✅ تم تسجيل اللفة بنجاح",
-        description: `رقم الرول: ${rollNum}`,
+        title: isArabic ? "✅ تم تسجيل اللفة بنجاح" : "✅ Roll saved successfully",
+        description: isArabic
+          ? `رقم الرول: ${rollNum}`
+          : `Roll number: ${rollNum}`,
       });
       setWeightInput("");
       setIsLastRoll(false);
@@ -158,8 +167,12 @@ export default function OperatorFocusView() {
     },
     onError: (error: any) => {
       toast({
-        title: "❌ فشل تسجيل اللفة",
-        description: error?.message || "تجاوزت الكمية المسموحة لأمر الإنتاج",
+        title: isArabic ? "❌ فشل تسجيل اللفة" : "❌ Failed to save roll",
+        description:
+          error?.message ||
+          (isArabic
+            ? "تجاوزت الكمية المسموحة لأمر الإنتاج"
+            : "Exceeded the allowed quantity for this production order"),
         variant: "destructive",
       });
     },
@@ -169,8 +182,10 @@ export default function OperatorFocusView() {
     e.preventDefault();
     if (!selectedMachineId) {
       toast({
-        title: "خطأ",
-        description: "يرجى اختيار الماكينة أولاً",
+        title: isArabic ? "خطأ" : "Error",
+        description: isArabic
+          ? "يرجى اختيار الماكينة أولاً"
+          : "Please select a machine first",
         variant: "destructive",
       });
       return;
@@ -178,8 +193,10 @@ export default function OperatorFocusView() {
     const weight = parseFloat(weightInput);
     if (isNaN(weight) || weight <= 0) {
       toast({
-        title: "خطأ",
-        description: "يرجى إدخال وزن صحيح أكبر من الصفر",
+        title: isArabic ? "خطأ" : "Error",
+        description: isArabic
+          ? "يرجى إدخال وزن صحيح أكبر من الصفر"
+          : "Please enter a valid weight greater than zero",
         variant: "destructive",
       });
       return;
@@ -193,10 +210,14 @@ export default function OperatorFocusView() {
       <CardContent className="flex flex-col sm:flex-row sm:items-center gap-3 py-3">
         <div className="flex items-center gap-2 flex-1">
           <Settings2 className="h-5 w-5 text-muted-foreground shrink-0" />
-          <span className="text-sm font-medium shrink-0">الماكينة:</span>
+          <span className="text-sm font-medium shrink-0">
+            {isArabic ? "الماكينة:" : "Machine:"}
+          </span>
           <Select value={selectedMachineId} onValueChange={handleMachineChange}>
             <SelectTrigger className="h-9 flex-1">
-              <SelectValue placeholder="اختر الماكينة…" />
+              <SelectValue
+                placeholder={isArabic ? "اختر الماكينة…" : "Select machine…"}
+              />
             </SelectTrigger>
             <SelectContent>
               {machines.map((m) => (
@@ -209,14 +230,20 @@ export default function OperatorFocusView() {
         </div>
         <div className="flex items-center gap-2 flex-1">
           <Package className="h-5 w-5 text-muted-foreground shrink-0" />
-          <span className="text-sm font-medium shrink-0">أمر الإنتاج:</span>
+          <span className="text-sm font-medium shrink-0">
+            {isArabic ? "أمر الإنتاج:" : "Production order:"}
+          </span>
           <Select
             value={activeOrder ? String(activeOrder.id) : ""}
             onValueChange={handleOrderChange}
             disabled={orders.length === 0}
           >
             <SelectTrigger className="h-9 flex-1">
-              <SelectValue placeholder="اختر أمر الإنتاج…" />
+              <SelectValue
+                placeholder={
+                  isArabic ? "اختر أمر الإنتاج…" : "Select production order…"
+                }
+              />
             </SelectTrigger>
             <SelectContent>
               {orders.map((o) => (
@@ -234,10 +261,12 @@ export default function OperatorFocusView() {
   // ── Loading ───────────────────────────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="max-w-2xl mx-auto space-y-4 p-4" dir="rtl">
+      <div className="max-w-2xl mx-auto space-y-4 p-4" dir={dir}>
         {selectors}
         <div className="p-8 text-center text-lg text-muted-foreground">
-          جاري تحميل أوامر الإنتاج…
+          {isArabic
+            ? "جاري تحميل أوامر الإنتاج…"
+            : "Loading production orders…"}
         </div>
       </div>
     );
@@ -246,16 +275,20 @@ export default function OperatorFocusView() {
   // ── No active order anywhere ──────────────────────────────────────────────
   if (!activeOrder) {
     return (
-      <div className="max-w-2xl mx-auto space-y-4 p-4" dir="rtl">
+      <div className="max-w-2xl mx-auto space-y-4 p-4" dir={dir}>
         {selectors}
         <Card className="border-2 border-dashed border-yellow-400 bg-yellow-50/30 dark:bg-yellow-900/10 text-center p-8">
           <CardHeader className="flex items-center justify-center">
             <AlertTriangle className="h-14 w-14 text-yellow-500" />
             <CardTitle className="text-2xl mt-4 text-yellow-800 dark:text-yellow-400">
-              لا توجد أوامر إنتاج نشطة
+              {isArabic
+                ? "لا توجد أوامر إنتاج نشطة"
+                : "No active production orders"}
             </CardTitle>
             <CardDescription className="text-base text-yellow-700 dark:text-yellow-500">
-              لا توجد حالياً أوامر إنتاج فيلم نشطة. يرجى مراجعة مشرف الصالة.
+              {isArabic
+                ? "لا توجد حالياً أوامر إنتاج فيلم نشطة. يرجى مراجعة مشرف الصالة."
+                : "There are currently no active film production orders. Please check with the hall supervisor."}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -272,8 +305,18 @@ export default function OperatorFocusView() {
     targetQty > 0 ? Math.min(100, (producedQty / targetQty) * 100) : 0;
   const rollsCount = parseInt(String(activeOrder.rolls_count || "0"), 10);
 
+  const productName = isArabic
+    ? activeOrder.product_name_ar
+    : activeOrder.product_name_en || activeOrder.product_name_ar;
+  const colorName = isArabic
+    ? activeOrder.master_batch_name_ar
+    : activeOrder.master_batch_name_en || activeOrder.master_batch_name_ar;
+  const customerName = isArabic
+    ? activeOrder.customer_name_ar
+    : activeOrder.customer_name_en || activeOrder.customer_name_ar;
+
   return (
-    <div className="max-w-2xl mx-auto space-y-4 p-2 md:p-4" dir="rtl">
+    <div className="max-w-2xl mx-auto space-y-4 p-2 md:p-4" dir={dir}>
       {selectors}
 
       {/* ── Order identity card ── */}
@@ -282,14 +325,16 @@ export default function OperatorFocusView() {
           <div className="flex justify-between items-center border-b border-slate-700 pb-3">
             <div>
               <span className="text-xs text-slate-400 block">
-                رقم أمر الإنتاج
+                {isArabic ? "رقم أمر الإنتاج" : "Production order #"}
               </span>
               <span className="text-2xl font-black tracking-wider text-cyan-400">
                 {activeOrder.production_order_number}
               </span>
             </div>
-            <div className="text-left">
-              <span className="text-xs text-slate-400 block">المواصفات</span>
+            <div className={isArabic ? "text-left" : "text-right"}>
+              <span className="text-xs text-slate-400 block">
+                {isArabic ? "المواصفات" : "Specs"}
+              </span>
               <span className="text-base font-bold bg-cyan-500/20 text-cyan-300 px-3 py-1 rounded-full border border-cyan-500/30">
                 {activeOrder.size_caption || "—"}
               </span>
@@ -297,23 +342,29 @@ export default function OperatorFocusView() {
           </div>
 
           <div className="bg-slate-800/80 p-3 rounded-lg border border-slate-700 text-center">
-            <span className="text-xs text-slate-400 block mb-1">اسم المنتج</span>
+            <span className="text-xs text-slate-400 block mb-1">
+              {isArabic ? "اسم المنتج" : "Product name"}
+            </span>
             <span className="text-base font-black text-white leading-tight">
-              {activeOrder.product_name_ar || "—"}
+              {productName || "—"}
             </span>
           </div>
 
           <div className="grid grid-cols-2 gap-3 text-center">
             <div className="bg-slate-800/80 p-2 rounded-lg border border-slate-700">
-              <span className="text-xs text-slate-400 block mb-1">السماكة</span>
+              <span className="text-xs text-slate-400 block mb-1">
+                {isArabic ? "السماكة" : "Thickness"}
+              </span>
               <span className="text-sm font-bold text-amber-400">
                 {activeOrder.thickness != null && activeOrder.thickness !== ""
-                  ? `${Math.round(Number(activeOrder.thickness))} ميكرون`
+                  ? `${Math.round(Number(activeOrder.thickness))} ${isArabic ? "ميكرون" : "micron"}`
                   : "—"}
               </span>
             </div>
             <div className="bg-slate-800/80 p-2 rounded-lg border border-slate-700">
-              <span className="text-xs text-slate-400 block mb-1">الخامة</span>
+              <span className="text-xs text-slate-400 block mb-1">
+                {isArabic ? "الخامة" : "Material"}
+              </span>
               <span className="text-sm font-bold text-slate-200">
                 {activeOrder.raw_material || "HDPE"}
               </span>
@@ -322,15 +373,19 @@ export default function OperatorFocusView() {
 
           <div className="grid grid-cols-2 gap-3 text-center">
             <div className="bg-slate-800/80 p-2 rounded-lg border border-slate-700">
-              <span className="text-xs text-slate-400 block mb-1">اللون</span>
+              <span className="text-xs text-slate-400 block mb-1">
+                {isArabic ? "اللون" : "Color"}
+              </span>
               <span className="text-sm font-bold text-emerald-400">
-                {activeOrder.master_batch_name_ar || "شفاف"}
+                {colorName || (isArabic ? "شفاف" : "Clear")}
               </span>
             </div>
             <div className="bg-slate-800/80 p-2 rounded-lg border border-slate-700">
-              <span className="text-xs text-slate-400 block mb-1">العميل</span>
+              <span className="text-xs text-slate-400 block mb-1">
+                {isArabic ? "العميل" : "Customer"}
+              </span>
               <span className="text-xs font-bold text-slate-300 leading-tight">
-                {activeOrder.customer_name_ar || "—"}
+                {customerName || "—"}
               </span>
             </div>
           </div>
@@ -341,7 +396,9 @@ export default function OperatorFocusView() {
       <Card className="border-2 shadow-lg text-center">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm text-muted-foreground">
-            الوزن المنتج لأمر الإنتاج
+            {isArabic
+              ? "الوزن المنتج لأمر الإنتاج"
+              : "Weight produced for this order"}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -350,12 +407,14 @@ export default function OperatorFocusView() {
               {producedQty.toFixed(1)}
             </span>
             <span className="text-lg text-muted-foreground font-bold">
-              / {targetQty.toFixed(0)} كجم
+              / {targetQty.toFixed(0)} {isArabic ? "كجم" : "kg"}
             </span>
           </div>
           <div className="space-y-1">
             <div className="flex justify-between text-xs font-semibold text-muted-foreground px-1">
-              <span>{rollsCount} رول مسجل</span>
+              <span>
+                {rollsCount} {isArabic ? "رول مسجل" : "rolls recorded"}
+              </span>
               <span>{progressPercent.toFixed(1)}%</span>
             </div>
             <Progress
@@ -372,14 +431,18 @@ export default function OperatorFocusView() {
           {!selectedMachineId && (
             <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-900/20 p-3 text-sm text-amber-800 dark:text-amber-300">
               <AlertTriangle className="h-4 w-4 shrink-0" />
-              اختر الماكينة من الأعلى قبل تسجيل اللفة.
+              {isArabic
+                ? "اختر الماكينة من الأعلى قبل تسجيل اللفة."
+                : "Select a machine above before recording a roll."}
             </div>
           )}
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
               <label className="text-base font-black text-slate-800 dark:text-slate-200 flex items-center gap-2">
                 <Weight className="h-5 w-5 text-primary" />
-                وزن الرول المنتج (كجم):
+                {isArabic
+                  ? "وزن الرول المنتج (كجم):"
+                  : "Produced roll weight (kg):"}
               </label>
               <Input
                 type="number"
@@ -401,10 +464,14 @@ export default function OperatorFocusView() {
                 />
                 <div>
                   <span className="font-black text-sm block">
-                    هل هذا هو الرول النهائي؟
+                    {isArabic
+                      ? "هل هذا هو الرول النهائي؟"
+                      : "Is this the final roll?"}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    سيغلق مرحلة الفيلم تلقائياً عند التأكيد.
+                    {isArabic
+                      ? "سيغلق مرحلة الفيلم تلقائياً عند التأكيد."
+                      : "This will automatically close the film stage when confirmed."}
                   </span>
                 </div>
               </div>
@@ -423,8 +490,12 @@ export default function OperatorFocusView() {
               disabled={createRollMutation.isPending || !selectedMachineId}
             >
               {createRollMutation.isPending
-                ? "جاري الحفظ…"
-                : "💾 حفظ اللفة وإصدار الملصق"}
+                ? isArabic
+                  ? "جاري الحفظ…"
+                  : "Saving…"
+                : isArabic
+                  ? "💾 حفظ اللفة وإصدار الملصق"
+                  : "💾 Save roll & print label"}
             </Button>
           </form>
         </CardContent>
