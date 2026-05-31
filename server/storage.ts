@@ -6831,6 +6831,7 @@ export class DatabaseStorage implements IStorage {
       LEFT JOIN rolls r ON r.production_order_id = po.id
       WHERE po.film_completed = false
         AND po.is_final_roll_created = false
+        AND po.production_stage = 'film'
         AND (
           po.status = 'active'
           OR (po.status = 'pending' AND o.status = 'in_production')
