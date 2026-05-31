@@ -6876,7 +6876,7 @@ export class DatabaseStorage implements IStorage {
       WHERE r.stage = 'film'
         AND COALESCE(cp.is_printed, false) = true
         AND po.status IN ('pending', 'active')
-      ORDER BY po.id, r.roll_seq
+      ORDER BY po.id DESC, r.roll_seq
     `);
 
     const grouped = new Map<number, any>();
@@ -6955,7 +6955,7 @@ export class DatabaseStorage implements IStorage {
               OR (r.stage = 'film' AND COALESCE(cp.is_printed, false) = false)
             )
         AND po.status IN ('pending', 'active')
-      ORDER BY po.id, r.roll_seq
+      ORDER BY po.id DESC, r.roll_seq
     `);
 
     const grouped = new Map<number, any>();
