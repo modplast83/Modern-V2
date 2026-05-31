@@ -909,7 +909,6 @@ export async function registerRoutes(
           created_at: order.created_at,
           delivery_days: order.delivery_days,
           notes: order.notes,
-          priority: order.priority,
         },
         customer: customer
           ? {

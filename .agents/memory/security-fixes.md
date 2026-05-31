@@ -41,3 +41,9 @@ description: Two-pass security audit fixes — patterns, decisions, and what was
 
 ### Silent catch blocks
 - `cleanupOldDocs` inner and outer `catch {}` now log with `logger.warn` so file-system errors appear in server logs.
+- **Gotcha:** `server/ai-agent-routes.ts` did not import `logger` — the `logger.warn` calls would have thrown `ReferenceError` on any fs error. Fixed by adding `import { logger } from "./lib/logger";`. When adding `logger.*` to a file, confirm the import exists.
+
+## Bug-check pass (type errors)
+- **SafeUser selects must be complete:** `SafeUser = Omit<User, "password">`. Any `db.select({...})` in a function typed to return `SafeUser` must list every non-password user column (esp. `must_change_password`, consumed by the force-password-change flow), or `tsc` errors and the field is silently undefined at runtime. `getSafeUser`/`getSafeUsers`/`getSafeUsersByRole` were missing it.
+- `orders` table has NO `priority` column — `priority` lives on `user_requests`. The public order endpoint was sending `priority: order.priority` (always undefined); removed.
+- `NotificationManager` interface in `server/storage.ts` must mirror the real signature in `server/services/notification-manager.ts` (`broadcastProductionUpdate(updateType?: "film"|"printing"|"cutting"|"all")`); the old `[key: string]: unknown` index signature blocked assigning the real class instance. Call site uses optional chaining since the methods are optional.

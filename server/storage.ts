@@ -376,9 +376,10 @@ function setCachedData(key: string, data: any, ttl: number): void {
 // Import notification manager to broadcast production updates
 export interface NotificationManager {
   broadcast?: (event: string, payload: unknown) => void;
-  broadcastProductionUpdate?: (payload: unknown) => void;
+  broadcastProductionUpdate?: (
+    updateType?: "film" | "printing" | "cutting" | "all",
+  ) => void;
   notify?: (channel: string, payload: unknown) => void;
-  [key: string]: unknown;
 }
 let notificationManager: NotificationManager | null = null;
 export function setNotificationManager(nm: NotificationManager): void {
@@ -399,7 +400,7 @@ function invalidateProductionCache(
 
   // Broadcast production update via SSE if notification manager is available
   if (notificationManager) {
-    notificationManager.broadcastProductionUpdate(updateType);
+    notificationManager.broadcastProductionUpdate?.(updateType);
   }
 }
 
@@ -1353,6 +1354,7 @@ export class DatabaseStorage implements IStorage {
             role_id: users.role_id,
             section_id: users.section_id,
             status: users.status,
+            must_change_password: users.must_change_password,
             replit_user_id: users.replit_user_id,
             first_name: users.first_name,
             last_name: users.last_name,
@@ -1384,6 +1386,7 @@ export class DatabaseStorage implements IStorage {
             role_id: users.role_id,
             section_id: users.section_id,
             status: users.status,
+            must_change_password: users.must_change_password,
             replit_user_id: users.replit_user_id,
             first_name: users.first_name,
             last_name: users.last_name,
@@ -1414,6 +1417,7 @@ export class DatabaseStorage implements IStorage {
             role_id: users.role_id,
             section_id: users.section_id,
             status: users.status,
+            must_change_password: users.must_change_password,
             replit_user_id: users.replit_user_id,
             first_name: users.first_name,
             last_name: users.last_name,
