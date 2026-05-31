@@ -774,6 +774,46 @@ function sanitizeResponseForLogging(response: any): any {
         stageErr?.message,
       );
     }
+
+    // Ensure machines.inline_printer_id column exists, then auto-link the three
+    // physically-combined extruder+printer pairs by name. Safe & idempotent:
+    // the column is added IF NOT EXISTS and the link is only set when currently
+    // NULL, so re-running never overwrites a manually-changed pairing.
+    try {
+      await db.execute(sql`
+        ALTER TABLE machines
+        ADD COLUMN IF NOT EXISTS inline_printer_id varchar(20)
+      `);
+      const inlinePairs: Array<[string, string]> = [
+        ["Extruder C", "Printer Inline C"],
+        ["Extruder G", "Printer Inline G"],
+        ["Extruder H", "Printer Inline H"],
+      ];
+      let linkedCount = 0;
+      for (const [extruderName, printerName] of inlinePairs) {
+        const linked = await db.execute(sql`
+          UPDATE machines AS ext
+          SET inline_printer_id = prn.id
+          FROM machines AS prn
+          WHERE LOWER(ext.type) = 'extruder'
+            AND LOWER(prn.type) IN ('printing', 'printer')
+            AND ext.inline_printer_id IS NULL
+            AND LOWER(TRIM(ext.name)) = LOWER(${extruderName})
+            AND LOWER(TRIM(prn.name)) = LOWER(${printerName})
+        `);
+        linkedCount += (linked as any)?.rowCount ?? 0;
+      }
+      if (linkedCount > 0) {
+        console.log(
+          `🔗 تم ربط ${linkedCount} ماكينة فيلم مدمجة بطابعتها الإنلاين`,
+        );
+      }
+    } catch (inlineErr: any) {
+      console.warn(
+        "⚠️ فشل تهيئة ربط الطابعات الإنلاين (سيتم المحاولة لاحقاً):",
+        inlineErr?.message,
+      );
+    }
   } catch (error: any) {
     console.error("❌ فشل تهيئة قاعدة البيانات:", error?.message || error);
     if (isProduction) {

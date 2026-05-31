@@ -6815,6 +6815,7 @@ export class DatabaseStorage implements IStorage {
         cp.raw_material,
         cp.thickness,
         cp.master_batch_id,
+        COALESCE(cp.is_printed, false) AS is_printed,
         COALESCE(mb.name_ar, mb.name, cp.master_batch_id) AS master_batch_name,
         COALESCE(mb.name_ar, mb.name, cp.master_batch_id) AS master_batch_name_ar,
         COALESCE(mb.name, mb.name_ar, cp.master_batch_id) AS master_batch_name_en,

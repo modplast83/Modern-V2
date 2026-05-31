@@ -6182,6 +6182,8 @@
       "selectMachine": "اختر الماكينة",
       "finalRollLabel": "الرول الأخير",
       "finalRollDescription": "هذا سيكون آخر رول في هذا الأمر",
+      "inlinePrintedLabel": "طُبع الرول إنلاين (يذهب مباشرة للتقطيع)",
+      "inlinePrintedDescription": "هذه الماكينة مدمجة مع طابعة إنلاين. سيُعلَّم الرول كمطبوع ويذهب مباشرةً إلى التقطيع متخطّياً قائمة الطباعة.",
       "warningFinalRoll": "تحذير: الرول الأخير",
       "afterCreatingRoll": "بعد إنشاء هذا الرول",
       "filmStageWillClose": "سيتم إغلاق مرحلة الفيلم",

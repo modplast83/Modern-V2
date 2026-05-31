@@ -4093,6 +4093,80 @@ export async function registerRoutes(
     },
   );
 
+  // Resolve + validate inline-printing fields for a roll being created on a
+  // combined extruder+printer machine. Returns the field overrides to merge
+  // into the roll insert (stage/printed_at/printing_machine_id/printed_by), or
+  // an empty object when inline printing was not requested. Throws a 400-style
+  // error (status + userMessage) when the request is invalid; both roll-create
+  // routes surface that message to the operator.
+  const resolveInlinePrintedFields = async (
+    enabled: boolean,
+    filmMachineId: string,
+    productionOrderId: number,
+    userId: number,
+  ): Promise<Record<string, any>> => {
+    if (!enabled) return {};
+
+    const [info] = (
+      await db.execute(sql`
+        SELECT
+          m.inline_printer_id AS inline_printer_id,
+          COALESCE(cp.is_printed, false) AS is_printed
+        FROM machines m
+        LEFT JOIN production_orders po ON po.id = ${productionOrderId}
+        LEFT JOIN customer_products cp ON cp.id = po.customer_product_id
+        WHERE m.id = ${filmMachineId}
+      `)
+    ).rows as any[];
+
+    if (!info || !info.inline_printer_id) {
+      const err: any = new Error("INLINE_NOT_SUPPORTED");
+      err.status = 400;
+      err.userMessage = "هذه الماكينة غير مدمجة مع طابعة إنلاين";
+      throw err;
+    }
+    if (!info.is_printed) {
+      const err: any = new Error("INLINE_NOT_PRINTED_PRODUCT");
+      err.status = 400;
+      err.userMessage = "الطباعة الإنلاين متاحة فقط للمنتجات المطبوعة";
+      throw err;
+    }
+
+    // Use one server-side timestamp for both created_at and printed_at so the
+    // rolls temporal CHECK (printed_at >= created_at) can never be violated by a
+    // JS time landing a few ms before the DB default now().
+    const now = new Date();
+    return {
+      stage: "printing",
+      printing_machine_id: info.inline_printer_id,
+      printed_by: userId,
+      created_at: now,
+      printed_at: now,
+    };
+  };
+
+  // Roll creation must always start at stage='film'. insertRollSchema still
+  // accepts client-supplied stage-transition fields (stage, printing/cutting
+  // machine, printed_at, cut_completed_at), so a caller could otherwise submit
+  // stage='printing' directly and skip the printing queue WITHOUT going through
+  // the server-side inline validation in resolveInlinePrintedFields. Strip those
+  // fields here and force stage='film'; only resolveInlinePrintedFields may
+  // legitimately advance a freshly-created roll to stage='printing'.
+  const sanitizeRollCreateInput = <T extends Record<string, any>>(
+    data: T,
+  ): Record<string, any> => {
+    const {
+      stage: _stage,
+      printing_machine_id: _printingMachineId,
+      cutting_machine_id: _cuttingMachineId,
+      printed_at: _printedAt,
+      cut_completed_at: _cutCompletedAt,
+      completed_at: _completedAt,
+      ...rest
+    } = data as any;
+    return { ...rest, stage: "film" };
+  };
+
   // Create roll with timing calculation
   app.post(
     "/api/rolls/create-with-timing",
@@ -4127,9 +4201,21 @@ export async function registerRoutes(
 
         const isLastRoll = req.body.is_last_roll || false;
 
+        // Inline printing: if the operator marked the roll as printed inline,
+        // resolve and validate the pairing server-side (never trust the client),
+        // then create the roll already at stage='printing' so it bypasses the
+        // printing queue and lands directly in the cutting queue.
+        const inlineFields = await resolveInlinePrintedFields(
+          req.body.inline_printed === true,
+          validatedData.film_machine_id,
+          validatedData.production_order_id,
+          userId,
+        );
+
         const rollData = {
-          ...validatedData,
+          ...sanitizeRollCreateInput(validatedData),
           is_last_roll: isLastRoll,
+          ...inlineFields,
         };
 
         // Race-safe: lock the production_orders row, re-check the quota under
@@ -4194,7 +4280,7 @@ export async function registerRoutes(
         // not turn into a 500 — log it and still return success.
         try {
           await storage.updateProductionOrderCompletionPercentages(
-            rollData.production_order_id,
+            validatedData.production_order_id,
           );
         } catch (pctError) {
           console.error(
@@ -4260,14 +4346,30 @@ export async function registerRoutes(
           });
         }
 
-        const newRoll = await storage.createFinalRoll(validatedData);
+        const inlineFields = await resolveInlinePrintedFields(
+          req.body.inline_printed === true,
+          validatedData.film_machine_id,
+          validatedData.production_order_id,
+          userId,
+        );
+
+        const newRoll = await storage.createFinalRoll({
+          ...sanitizeRollCreateInput(validatedData),
+          ...inlineFields,
+        });
         res.status(201).json({
           success: true,
           message: "تم إنشاء آخر رول وإغلاق مرحلة الفيلم بنجاح",
           roll: newRoll,
           roll_number: newRoll.roll_number,
         });
-      } catch (error) {
+      } catch (error: any) {
+        if (error?.status === 400 && error?.userMessage) {
+          return res.status(400).json({
+            success: false,
+            message: error.userMessage,
+          });
+        }
         console.error("Error creating final roll:", error);
         res.status(500).json({
           success: false,

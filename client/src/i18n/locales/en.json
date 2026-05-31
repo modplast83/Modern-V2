@@ -5618,6 +5618,8 @@
       "selectMachine": "Select Machine",
       "finalRollLabel": "Final Roll Label",
       "finalRollDescription": "Final Roll Description",
+      "inlinePrintedLabel": "Printed inline (skip to cutting)",
+      "inlinePrintedDescription": "This machine is combined with an inline printer. The roll is marked as printed and goes straight to cutting, skipping the printing queue.",
       "warningFinalRoll": "Warning Final Roll",
       "afterCreatingRoll": "After Creating Roll",
       "filmStageWillClose": "Film Stage Will Close",

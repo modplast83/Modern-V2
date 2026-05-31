@@ -1,3 +1,4 @@
 - [Security fixes pass 1 & 2](security-fixes.md) — Two-pass security audit completed; key patterns and decisions documented for future consistency.
 - [Roll creation deadlock](roll-creation-deadlock.md) — roll-create paths must share one transaction + a single lock order (advisory then row); nested cross-connection txns hang undetectably.
 - [Film dashboard visibility](film-dashboard-visibility.md) — film-operator order list must filter `production_stage='film'`; film_completed only set by Final Roll button, so quantity-complete orders otherwise linger.
+- [Roll-create stage trust](roll-create-stage-trust.md) — roll-create routes must force stage='film' & strip client transition fields; only server logic advances to printing (inline-printing bypass risk).

@@ -60,6 +60,7 @@ const rollFormSchema = z.object({
     }, "الوزن يجب أن يكون رقمًا أكبر من 0"),
   film_machine_id: z.string().min(1, "يرجى اختيار ماكينة الفيلم"),
   is_final_roll: z.boolean().default(false),
+  inline_printed: z.boolean().default(false),
 });
 
 export type RollFormData = z.infer<typeof rollFormSchema>;
@@ -84,6 +85,7 @@ export default function RollCreationModalEnhanced({
       weight_kg: "",
       film_machine_id: "",
       is_final_roll: isFinalRoll,
+      inline_printed: false,
     },
     mode: "onChange",
   });
@@ -108,6 +110,23 @@ export default function RollCreationModalEnhanced({
       (m) => m.section_id === "SEC03" && m.status === "active",
     );
   }, [machines]);
+
+  // Inline printing: the selected film machine is physically combined with an
+  // inline printer (inline_printer_id set) AND the order's product is printed.
+  const selectedMachineId = form.watch("film_machine_id");
+  const productIsPrinted = Boolean(productionOrderData?.is_printed);
+  const inlinePrintingAvailable = useMemo(() => {
+    const selected = machines.find((m) => m.id === selectedMachineId);
+    return Boolean(selected?.inline_printer_id) && productIsPrinted;
+  }, [machines, selectedMachineId, productIsPrinted]);
+
+  // Clear the inline flag whenever it becomes unavailable (e.g. operator
+  // switches to a non-inline machine) so we never submit a stale `true`.
+  useEffect(() => {
+    if (!inlinePrintingAvailable && form.getValues("inline_printed")) {
+      form.setValue("inline_printed", false);
+    }
+  }, [inlinePrintingAvailable, form]);
 
   // Calculate remaining quantity
   const remainingQuantity = useMemo(() => {
@@ -152,6 +171,7 @@ export default function RollCreationModalEnhanced({
           weight_kg: weightParsed,
           film_machine_id: data.film_machine_id,
           is_last_roll: data.is_final_roll,
+          inline_printed: data.inline_printed,
         }),
       });
 
@@ -355,6 +375,35 @@ export default function RollCreationModalEnhanced({
                 </FormItem>
               )}
             />
+
+            {/* Inline Printing Checkbox (combined extruder + inline printer) */}
+            {inlinePrintingAvailable && (
+              <FormField
+                control={form.control}
+                name="inline_printed"
+                render={({ field }) => (
+                  <FormItem className="flex items-center space-x-2 space-y-0 bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="checkbox-inline-printed"
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none mr-2">
+                      <FormLabel className="cursor-pointer">
+                        {t("modals.rollCreationEnhanced.inlinePrintedLabel")}
+                      </FormLabel>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                        {t(
+                          "modals.rollCreationEnhanced.inlinePrintedDescription",
+                        )}
+                      </p>
+                    </div>
+                  </FormItem>
+                )}
+              />
+            )}
 
             {/* Final Roll Checkbox */}
             {!isFinalRoll && productionOrderData?.rolls_count > 0 && (

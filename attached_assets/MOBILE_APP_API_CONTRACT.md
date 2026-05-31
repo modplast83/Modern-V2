@@ -301,7 +301,8 @@ POST /api/rolls/create-with-timing
 "weight_kg": 90, // ← number (NOT string)
 "film_machine_id": "MAC01", // ← string
 "is_last_roll": false,
-"production_time_minutes": 30 // ← integer
+"production_time_minutes": 30, // ← integer
+"inline_printed": false // ← boolean (optional). true فقط على ماكينات الفيلم المدمجة مع طابعة إنلاين (Extruder C/G/H) ولمنتج مطبوع: يُنشأ الرول كمطبوع ويذهب مباشرة للتقطيع
 }
 POST /api/rolls/create-final
 // Body
@@ -309,7 +310,8 @@ POST /api/rolls/create-final
 "production_order_id": 115,
 "weight_kg": 90,
 "film_machine_id": "MAC01",
-"production_time_minutes": 30
+"production_time_minutes": 30,
+"inline_printed": false // ← boolean (optional). نفس سلوك create-with-timing
 }
 4.5 الطباعة (Printing)
 PATCH /api/rolls/:id/print
