@@ -4135,6 +4135,14 @@ export async function registerRoutes(
         // Race-safe: lock the production_orders row, re-check the quota under
         // the lock, then create the roll — all inside a single transaction.
         const newRoll = await db.transaction(async (tx) => {
+          // Acquire the advisory lock FIRST (before the row lock) so every
+          // roll-create path uses the same lock order (advisory -> row lock).
+          // The final-roll path acquires the advisory lock first too; matching
+          // the order here avoids cross-path deadlocks under concurrency.
+          await tx.execute(
+            sql`SELECT pg_advisory_xact_lock(1003, ${validatedData.production_order_id})`,
+          );
+
           if (!isLastRoll) {
             const [check] = (await tx.execute(sql`
               SELECT
@@ -4174,8 +4182,27 @@ export async function registerRoutes(
             }
           }
 
-          return await storage.createRollWithTiming(rollData);
+          // Reuse THIS transaction for the insert so the roll INSERT runs on
+          // the same connection that holds the FOR UPDATE lock above. Passing a
+          // separate transaction would deadlock on the production_orders row.
+          return await storage.createRollWithTiming(rollData, tx);
         });
+
+        // Recalculate completion percentages AFTER the transaction commits, so
+        // the UPDATE doesn't contend with the FOR UPDATE row lock held above.
+        // The roll is already committed at this point, so a failure here must
+        // not turn into a 500 — log it and still return success.
+        try {
+          await storage.updateProductionOrderCompletionPercentages(
+            rollData.production_order_id,
+          );
+        } catch (pctError) {
+          console.error(
+            "Roll created but completion recalculation failed:",
+            pctError instanceof Error ? pctError.message : String(pctError),
+          );
+        }
+
         res.status(201).json({
           success: true,
           message: "تم إنشاء الرول بنجاح",

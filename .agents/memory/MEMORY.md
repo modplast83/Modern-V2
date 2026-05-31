@@ -1,1 +1,2 @@
 - [Security fixes pass 1 & 2](security-fixes.md) — Two-pass security audit completed; key patterns and decisions documented for future consistency.
+- [Roll creation deadlock](roll-creation-deadlock.md) — roll-create paths must share one transaction + a single lock order (advisory then row); nested cross-connection txns hang undetectably.

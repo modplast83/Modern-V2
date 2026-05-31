@@ -5681,13 +5681,14 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(rolls.created_at));
   }
 
-  async createRollWithTiming(data: any): Promise<Roll> {
+  async createRollWithTiming(data: any, existingTx?: any): Promise<Roll> {
     return withDatabaseErrorHandling(
       async () => {
-        const roll = await db.transaction(async (tx) => {
-          // Acquire the advisory lock FIRST to serialize concurrent roll
-          // creations for this production order. Only then is it safe to
-          // read MAX(roll_seq) without racing.
+        // Performs the advisory lock + sequence lookup + insert on the given
+        // transaction. Acquiring the advisory lock FIRST serializes concurrent
+        // roll creations for this production order, so MAX(roll_seq) is read
+        // without racing.
+        const insertRoll = async (tx: any): Promise<Roll> => {
           await tx.execute(
             sql`SELECT pg_advisory_xact_lock(1003, ${data.production_order_id})`,
           );
@@ -5727,8 +5728,20 @@ export class DatabaseStorage implements IStorage {
 
           const [created] = await tx.insert(rolls).values(rollData).returning();
           return created;
-        });
+        };
 
+        // When the caller already owns a transaction (e.g. the route locks the
+        // production_orders row FOR UPDATE before this call), reuse it so the
+        // roll INSERT runs on the SAME connection. Opening a separate
+        // transaction here would deadlock: the insert needs an FK lock on the
+        // production_orders row the caller's transaction already holds.
+        // In that case the caller is responsible for running the completion
+        // recalculation AFTER its transaction commits.
+        if (existingTx) {
+          return await insertRoll(existingTx);
+        }
+
+        const roll = await db.transaction(insertRoll);
         await this.updateProductionOrderCompletionPercentages(
           data.production_order_id,
         );

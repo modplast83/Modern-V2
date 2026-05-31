@@ -124,7 +124,7 @@ export default function RollCreationModalEnhanced({
   // Suggest roll number
   const suggestedRollNumber = useMemo(() => {
     if (!productionOrderData) return "";
-    const rollsCount = productionOrderData.rolls_count || 0;
+    const rollsCount = Number(productionOrderData.rolls_count) || 0;
     return `${productionOrderData.production_order_number}-R${String(rollsCount + 1).padStart(3, "0")}`;
   }, [productionOrderData]);
 
