@@ -22,6 +22,7 @@ import {
   TabsTrigger,
 } from "../components/ui/tabs";
 import { useAuth } from "../hooks/use-auth";
+import { fetchAllCustomerProducts } from "../lib/queryClient";
 import { useToast } from "../hooks/use-toast";
 import { isUserAdmin } from "../utils/roleUtils";
 
@@ -182,8 +183,9 @@ export default function Orders() {
     data: any[];
     total: number;
   }>({
-    queryKey: ["/api/customer-products"],
+    queryKey: ["/api/customer-products", "all"],
     staleTime: 0,
+    queryFn: ({ signal }) => fetchAllCustomerProducts(signal),
   });
   const customerProducts = customerProductsResponse?.data || [];
 

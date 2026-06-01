@@ -137,6 +137,32 @@ export async function apiRequest(
   }
 }
 
+export async function fetchAllCustomerProducts(
+  signal?: AbortSignal,
+): Promise<{ data: any[]; total: number }> {
+  const pageSize = 500;
+  const maxPages = 1000;
+  const allRows: any[] = [];
+  let page = 1;
+  let total = 0;
+  while (page <= maxPages) {
+    const res = await fetch(
+      `/api/customer-products?page=${page}&limit=${pageSize}`,
+      { credentials: "include", signal },
+    );
+    await throwIfResNotOk(res);
+    const json = await res.json();
+    const batch: any[] = json?.data || [];
+    allRows.push(...batch);
+    total = typeof json?.total === "number" ? json.total : allRows.length;
+    if (batch.length < pageSize || allRows.length >= total) {
+      break;
+    }
+    page += 1;
+  }
+  return { data: allRows, total };
+}
+
 type UnauthorizedBehavior = "returnNull" | "throw";
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
