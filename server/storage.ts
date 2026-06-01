@@ -5656,7 +5656,112 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRollLabelData(id: number): Promise<any> {
-    return this.getRollById(id);
+    return withDatabaseErrorHandling(
+      async () => {
+        // The label component (RollLabelPrint) expects a structured payload of
+        // { roll, productionOrder, order } with joined customer / product /
+        // operator / machine names. A flat rolls row is NOT enough — returning
+        // it makes the client throw "Invalid label data received".
+        const result = await db.execute(sql`
+          SELECT
+            r.id AS roll_id,
+            r.roll_number,
+            r.roll_seq,
+            r.weight_kg,
+            r.machine_id,
+            r.film_machine_id,
+            r.printing_machine_id,
+            r.cutting_machine_id,
+            r.qr_code_text,
+            r.qr_png_base64,
+            r.created_at,
+            r.printed_at,
+            r.cut_completed_at,
+            r.status,
+            fm.name AS film_machine_name_en,
+            fm.name_ar AS film_machine_name_ar,
+            pm.name AS printing_machine_name_en,
+            pm.name_ar AS printing_machine_name_ar,
+            cm.name AS cutting_machine_name_en,
+            cm.name_ar AS cutting_machine_name_ar,
+            COALESCE(cbu.display_name_ar, cbu.display_name, cbu.full_name, cbu.username) AS created_by_name,
+            COALESCE(pbu.display_name_ar, pbu.display_name, pbu.full_name, pbu.username) AS printed_by_name,
+            COALESCE(cutu.display_name_ar, cutu.display_name, cutu.full_name, cutu.username) AS cut_by_name,
+            po.production_order_number,
+            cp.size_caption,
+            cp.thickness,
+            cp.raw_material,
+            cp.punching,
+            i.name AS item_name,
+            i.name_ar AS item_name_ar,
+            COALESCE(cat.name_ar, cat.name) AS category_name,
+            o.order_number,
+            c.name AS customer_name,
+            c.name_ar AS customer_name_ar
+          FROM rolls r
+          JOIN production_orders po ON r.production_order_id = po.id
+          JOIN orders o ON po.order_id = o.id
+          JOIN customers c ON o.customer_id = c.id
+          JOIN customer_products cp ON po.customer_product_id = cp.id
+          LEFT JOIN items i ON cp.item_id = i.id
+          LEFT JOIN categories cat ON cp.category_id = cat.id
+          LEFT JOIN machines fm ON r.film_machine_id = fm.id
+          LEFT JOIN machines pm ON r.printing_machine_id = pm.id
+          LEFT JOIN machines cm ON r.cutting_machine_id = cm.id
+          LEFT JOIN users cbu ON r.created_by = cbu.id
+          LEFT JOIN users pbu ON r.printed_by = pbu.id
+          LEFT JOIN users cutu ON r.cut_by = cutu.id
+          WHERE r.id = ${id}
+        `);
+
+        const row = (result.rows as any[])[0];
+        if (!row) {
+          throw new Error("الرول غير موجود");
+        }
+
+        return {
+          roll: {
+            id: Number(row.roll_id),
+            roll_number: row.roll_number,
+            roll_seq: row.roll_seq,
+            weight_kg: row.weight_kg,
+            machine_id: row.machine_id,
+            film_machine_id: row.film_machine_id,
+            printing_machine_id: row.printing_machine_id,
+            cutting_machine_id: row.cutting_machine_id,
+            film_machine_name: row.film_machine_name_ar || row.film_machine_name_en,
+            printing_machine_name: row.printing_machine_name_ar || row.printing_machine_name_en,
+            cutting_machine_name: row.cutting_machine_name_ar || row.cutting_machine_name_en,
+            qr_code_text: row.qr_code_text,
+            qr_png_base64: row.qr_png_base64,
+            created_at: row.created_at,
+            printed_at: row.printed_at,
+            cut_at: row.cut_completed_at,
+            created_by_name: row.created_by_name,
+            printed_by_name: row.printed_by_name,
+            cut_by_name: row.cut_by_name,
+            status: row.status,
+          },
+          productionOrder: {
+            production_order_number: row.production_order_number,
+            item_name: row.item_name,
+            item_name_ar: row.item_name_ar,
+            category_name: row.category_name,
+            size_caption: row.size_caption,
+            thickness: row.thickness,
+            raw_material: row.raw_material,
+            punching: row.punching,
+          },
+          order: {
+            order_number: row.order_number,
+            customer_name: row.customer_name,
+            customer_name_ar: row.customer_name_ar,
+          },
+        };
+      },
+      "getRollLabelData",
+      `جلب بيانات ليبل الرول ${id}`,
+    );
   }
 
   async getRollQR(id: number): Promise<string> {
