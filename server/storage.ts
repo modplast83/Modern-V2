@@ -7145,6 +7145,7 @@ export class DatabaseStorage implements IStorage {
           SELECT
             po.final_quantity_kg,
             po.quantity_kg,
+            po.film_completed,
             agg.total_rolls,
             agg.total_weight,
             agg.printing_weight,
@@ -7204,11 +7205,22 @@ export class DatabaseStorage implements IStorage {
         // Suppress unused-variable warnings (kept for SQL aggregation clarity)
         void printingRolls;
         void cuttingRolls;
+        // Film is "done" only when the operator explicitly closed it (final roll
+        // -> film_completed) OR the produced weight reached the target. This must
+        // gate the move past 'film': inline-printed rolls are created directly at
+        // stage='printing', so `filmRolls === 0` is NOT a reliable signal that
+        // film production finished — without this guard a single inline roll would
+        // push an unfinished order straight to 'cutting' and drop it off the film
+        // board before the required quantity is produced.
+        const filmCompleted =
+          stats?.film_completed === true || stats?.film_completed === "t";
+        const filmDone =
+          filmCompleted || (targetKg > 0 && totalWeight >= targetKg - 0.001);
         let computedStage: "film" | "printing" | "cutting" | "done" = "film";
         if (totalRolls > 0) {
           if (doneRolls === totalRolls) {
             computedStage = "done";
-          } else if (filmRolls === 0) {
+          } else if (filmRolls === 0 && filmDone) {
             computedStage = "cutting";
           } else if (targetKg > 0 && totalWeight >= targetKg - 0.001) {
             computedStage = "printing";
@@ -7290,7 +7302,11 @@ export class DatabaseStorage implements IStorage {
           WITH stats AS (
             SELECT
               po.id,
-              GREATEST(po.final_quantity_kg::numeric, 0) AS target_kg,
+              CASE
+                WHEN po.final_quantity_kg::numeric > 0 THEN po.final_quantity_kg::numeric
+                ELSE COALESCE(po.quantity_kg::numeric, 0)
+              END AS target_kg,
+              COALESCE(po.film_completed, false) AS film_completed,
               COALESCE(SUM(r.weight_kg::numeric), 0) AS total_weight,
               COUNT(r.id)::int AS total_rolls,
               COALESCE(SUM(CASE WHEN r.stage = 'film' THEN 1 ELSE 0 END), 0)::int AS film_rolls,
@@ -7304,7 +7320,10 @@ export class DatabaseStorage implements IStorage {
           SET production_stage = CASE
             WHEN s.total_rolls = 0 THEN 'film'
             WHEN s.done_rolls = s.total_rolls THEN 'done'
-            WHEN s.film_rolls = 0 THEN 'cutting'
+            WHEN s.film_rolls = 0
+              AND (s.film_completed
+                   OR (s.target_kg > 0 AND s.total_weight >= s.target_kg - 0.001))
+              THEN 'cutting'
             WHEN s.target_kg > 0
               AND s.total_weight >= s.target_kg - 0.001 THEN 'printing'
             ELSE 'film'
@@ -7315,7 +7334,10 @@ export class DatabaseStorage implements IStorage {
               CASE
                 WHEN s.total_rolls = 0 THEN 'film'
                 WHEN s.done_rolls = s.total_rolls THEN 'done'
-                WHEN s.film_rolls = 0 THEN 'cutting'
+                WHEN s.film_rolls = 0
+                  AND (s.film_completed
+                       OR (s.target_kg > 0 AND s.total_weight >= s.target_kg - 0.001))
+                  THEN 'cutting'
                 WHEN s.target_kg > 0
                   AND s.total_weight >= s.target_kg - 0.001 THEN 'printing'
                 ELSE 'film'
