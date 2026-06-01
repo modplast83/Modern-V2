@@ -145,12 +145,23 @@ export default function Definitions() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
   const [quickSearch, setQuickSearch] = useState("");
+  // Customers-tab extra filters
+  const [customerSalesRepFilter, setCustomerSalesRepFilter] = useState("all");
+  const [customerDrawerCodeFilter, setCustomerDrawerCodeFilter] =
+    useState("all");
+  // Users-tab extra filters
+  const [userRoleFilter, setUserRoleFilter] = useState("all");
+  const [userSectionFilter, setUserSectionFilter] = useState("all");
   const [packagingItem, setPackagingItem] = useState<any>(null);
 
   // Reset search and filters when changing tabs
   useEffect(() => {
     setQuickSearch("");
     setStatusFilter("all");
+    setCustomerSalesRepFilter("all");
+    setCustomerDrawerCodeFilter("all");
+    setUserRoleFilter("all");
+    setUserSectionFilter("all");
   }, [selectedTab]);
 
   // Prevent mouse wheel from changing number inputs
@@ -1138,6 +1149,18 @@ export default function Definitions() {
       });
   };
 
+  // Distinct, sorted cliché-drawer codes present on customers (for the filter)
+  const drawerCodeOptions = useMemo(() => {
+    const codes = new Set<string>();
+    (customers as any[]).forEach((c: any) => {
+      const code = (c.plate_drawer_code ?? "").trim();
+      if (code) codes.add(code);
+    });
+    return Array.from(codes).sort((a, b) =>
+      a.localeCompare(b, "ar", { numeric: true }),
+    );
+  }, [customers]);
+
   // Specific filter functions
   const getFilteredCustomers = () => {
     // Sort descending (newest first) for customers
@@ -1148,7 +1171,16 @@ export default function Definitions() {
       "email",
       "address",
       "id",
-    ]);
+      "plate_drawer_code",
+    ]).filter((customer: any) => {
+      const repMatch =
+        customerSalesRepFilter === "all" ||
+        String(customer.sales_rep_id ?? "") === customerSalesRepFilter;
+      const drawerMatch =
+        customerDrawerCodeFilter === "all" ||
+        (customer.plate_drawer_code ?? "") === customerDrawerCodeFilter;
+      return repMatch && drawerMatch;
+    });
     return filtered.sort((a, b) => {
       const aId =
         typeof a.id === "string"
@@ -1215,7 +1247,15 @@ export default function Definitions() {
       "display_name",
       "display_name_ar",
       "id",
-    ]);
+    ]).filter((user: any) => {
+      const roleMatch =
+        userRoleFilter === "all" ||
+        String(user.role_id ?? "") === userRoleFilter;
+      const sectionMatch =
+        userSectionFilter === "all" ||
+        String(user.section_id ?? "") === userSectionFilter;
+      return roleMatch && sectionMatch;
+    });
 
   const handlePrintCustomer = useCallback(
     async (customer: any) => {
@@ -2153,6 +2193,91 @@ export default function Definitions() {
                 </SelectContent>
               </Select>
             </div>
+
+            {selectedTab === "customers" && (
+              <>
+                <Select
+                  value={customerSalesRepFilter}
+                  onValueChange={setCustomerSalesRepFilter}
+                >
+                  <SelectTrigger className="w-48" data-testid="filter-sales-rep">
+                    <SelectValue placeholder="المندوب" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">كل المندوبين</SelectItem>
+                    {(Array.isArray(salesReps) ? salesReps : []).map(
+                      (rep: any) => (
+                        <SelectItem key={rep.id} value={rep.id.toString()}>
+                          {rep.display_name_ar ||
+                            rep.display_name ||
+                            rep.username}
+                        </SelectItem>
+                      ),
+                    )}
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={customerDrawerCodeFilter}
+                  onValueChange={setCustomerDrawerCodeFilter}
+                >
+                  <SelectTrigger
+                    className="w-48"
+                    data-testid="filter-drawer-code"
+                  >
+                    <SelectValue placeholder="كود درج الكليشة" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">كل أكواد الدرج</SelectItem>
+                    {drawerCodeOptions.map((code) => (
+                      <SelectItem key={code} value={code}>
+                        {code}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </>
+            )}
+
+            {selectedTab === "users" && (
+              <>
+                <Select value={userRoleFilter} onValueChange={setUserRoleFilter}>
+                  <SelectTrigger className="w-48" data-testid="filter-role">
+                    <SelectValue placeholder="الدور" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">كل الأدوار</SelectItem>
+                    {(Array.isArray(roles) ? roles : []).map((role: any) => (
+                      <SelectItem key={role.id} value={role.id.toString()}>
+                        {role.name_ar || role.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={userSectionFilter}
+                  onValueChange={setUserSectionFilter}
+                >
+                  <SelectTrigger className="w-48" data-testid="filter-section">
+                    <SelectValue placeholder="القسم" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">كل الأقسام</SelectItem>
+                    {(Array.isArray(sections) ? sections : []).map(
+                      (section: any) => (
+                        <SelectItem
+                          key={section.id}
+                          value={section.id.toString()}
+                        >
+                          {section.name_ar || section.name}
+                        </SelectItem>
+                      ),
+                    )}
+                  </SelectContent>
+                </Select>
+              </>
+            )}
           </div>
         </div>
 
