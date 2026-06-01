@@ -855,8 +855,35 @@ export default function Definitions() {
   });
   const { data: customerProductsResponse, isLoading: customerProductsLoading } =
     useQuery<{ data: any[]; total: number }>({
-      queryKey: ["/api/customer-products"],
+      queryKey: ["/api/customer-products", "all"],
       staleTime: 0,
+      queryFn: async ({ signal }) => {
+        const pageSize = 500;
+        const maxPages = 1000;
+        const allRows: any[] = [];
+        let page = 1;
+        let total = 0;
+        while (page <= maxPages) {
+          const res = await fetch(
+            `/api/customer-products?page=${page}&limit=${pageSize}`,
+            { credentials: "include", signal },
+          );
+          if (!res.ok) {
+            const error = new Error(`${res.status}: ${res.statusText}`);
+            (error as any).status = res.status;
+            throw error;
+          }
+          const json = await res.json();
+          const batch: any[] = json?.data || [];
+          allRows.push(...batch);
+          total = typeof json?.total === "number" ? json.total : allRows.length;
+          if (batch.length < pageSize || allRows.length >= total) {
+            break;
+          }
+          page += 1;
+        }
+        return { data: allRows, total };
+      },
     });
   const customerProducts = customerProductsResponse?.data || [];
   const { data: machines = [], isLoading: machinesLoading } = useQuery({
