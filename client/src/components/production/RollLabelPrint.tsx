@@ -260,7 +260,7 @@ export function printRollLabel({
             ${productionOrder ? row("نوع الخام", "Material", productionOrder.raw_material) : ""}
             ${
               productionOrder && productionOrder.thickness != null
-                ? row("السماكة", "Thickness", `${productionOrder.thickness} مم`)
+                ? row("السماكة", "Thickness", `${parseFloat(String(productionOrder.thickness))} ميكرون / µm`)
                 : ""
             }
             ${productionOrder ? row("أمر الإنتاج", "PO", productionOrder.production_order_number) : ""}
