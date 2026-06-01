@@ -21,7 +21,13 @@ import {
   Languages,
   Loader2,
 } from "lucide-react";
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import { useTranslation } from "react-i18next";
 
 import LegacyCustomerProductsTab from "../components/definitions/legacy-customer-products";
@@ -87,6 +93,15 @@ const DEFINITIONS_TABS = [
   },
   { value: "legacy", labelKey: "definitions.tabs.legacy" },
 ];
+
+// Normalize Arabic-Indic (٠-٩) and Persian (۰-۹) digits to Latin and lowercase
+// so searches match regardless of numeral type or letter case.
+const normalizeSearchText = (value: any): string =>
+  String(value ?? "")
+    .replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+    .replace(/[\u06f0-\u06f9]/g, (d) => String(d.charCodeAt(0) - 0x06f0))
+    .toLowerCase()
+    .trim();
 
 export default function Definitions() {
   const { t } = useTranslation();
@@ -860,6 +875,59 @@ export default function Definitions() {
       queryFn: ({ signal }) => fetchAllCustomerProducts(signal),
     });
   const customerProducts = customerProductsResponse?.data || [];
+  // Precomputed normalized search index: maps each product id to a single
+  // searchable string built from all its fields + related names/ids. Rebuilt
+  // only when the underlying data changes, so per-keystroke filtering is cheap.
+  const customerProductSearchIndex = useMemo(() => {
+    const customerMap = new Map(
+      (customers as any[]).map((c: any) => [c.id, c]),
+    );
+    const itemMap = new Map((items as any[]).map((i: any) => [i.id, i]));
+    const categoryMap = new Map(
+      (categories as any[]).map((c: any) => [c.id, c]),
+    );
+    const index = new Map<any, string>();
+    for (const product of customerProducts as any[]) {
+      const customer = customerMap.get(product.customer_id);
+      const item = itemMap.get(product.item_id);
+      const category = categoryMap.get(product.category_id);
+      index.set(
+        product.id,
+        normalizeSearchText(
+          [
+            product.id,
+            product.size_caption,
+            product.width,
+            product.left_facing,
+            product.right_facing,
+            product.thickness,
+            product.printing_cylinder,
+            product.cutting_length_cm,
+            product.raw_material,
+            product.master_batch_id,
+            product.cutting_unit,
+            product.punching,
+            product.unit_weight_kg,
+            product.unit_quantity,
+            product.package_weight_kg,
+            product.notes,
+            product.status,
+            product.is_printed ? "مطبوع printed" : "غير مطبوع unprinted",
+            product.customer_id,
+            product.item_id,
+            product.category_id,
+            customer?.name_ar,
+            customer?.name,
+            item?.name_ar,
+            item?.name,
+            category?.name_ar,
+            category?.name,
+          ].join(" "),
+        ),
+      );
+    }
+    return index;
+  }, [customerProducts, customers, items, categories]);
   const { data: machines = [], isLoading: machinesLoading } = useQuery({
     queryKey: ["/api/machines"],
     staleTime: 0,
@@ -1100,6 +1168,12 @@ export default function Definitions() {
   const getFilteredItems = () =>
     filterData(items as any[], ["name", "name_ar", "category_id", "id"]);
   const getFilteredCustomerProducts = () => {
+    // Multi-term search: every whitespace-separated term must match somewhere
+    // in the product's precomputed, digit-normalized search string.
+    const searchTerms = normalizeSearchText(quickSearch)
+      .split(/\s+/)
+      .filter(Boolean);
+
     const filtered = (customerProducts as any[])
       .filter((product: any) => {
         // Status filter
@@ -1108,31 +1182,13 @@ export default function Definitions() {
           (statusFilter === "active" && product.status === "active") ||
           (statusFilter === "inactive" && product.status === "inactive");
 
-        // Search filter - enhanced for customer products
-        const searchMatch =
-          !quickSearch ||
-          [
-            product.size_caption,
-            product.raw_material,
-            product.master_batch_id,
-            product.notes,
-            product.id,
-            // Search in related customer name
-            (customers as any[]).find((c: any) => c.id === product.customer_id)
-              ?.name_ar,
-            (customers as any[]).find((c: any) => c.id === product.customer_id)
-              ?.name,
-            // Search in related item name
-            (items as any[]).find((i: any) => i.id === product.item_id)
-              ?.name_ar,
-            (items as any[]).find((i: any) => i.id === product.item_id)?.name,
-          ].some((field: any) => {
-            if (field === null || field === undefined) return false;
-            return field
-              .toString()
-              .toLowerCase()
-              .includes(quickSearch.toLowerCase());
-          });
+        // Search filter - matches across all customer-product fields plus
+        // related customer / item / category names and ids.
+        let searchMatch = true;
+        if (searchTerms.length > 0) {
+          const haystack = customerProductSearchIndex.get(product.id) || "";
+          searchMatch = searchTerms.every((term) => haystack.includes(term));
+        }
 
         return statusMatch && searchMatch;
       })
