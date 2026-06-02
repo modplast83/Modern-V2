@@ -7379,6 +7379,41 @@ Input: ${text}`;
     return result;
   }
 
+  function validateMachineDimensionRanges(
+    data: Record<string, any>,
+  ): string | null {
+    const ranges: Array<{ min: string; max: string; label: string }> = [
+      { min: "min_width_cm", max: "max_width_cm", label: "العرض" },
+      {
+        min: "min_cylinder_inch",
+        max: "max_cylinder_inch",
+        label: "الأسطوانة",
+      },
+      { min: "min_length_cm", max: "max_length_cm", label: "الطول" },
+    ];
+    for (const { min, max, label } of ranges) {
+      const minVal = data[min];
+      const maxVal = data[max];
+      if (
+        minVal === null ||
+        minVal === undefined ||
+        minVal === "" ||
+        maxVal === null ||
+        maxVal === undefined ||
+        maxVal === ""
+      ) {
+        continue;
+      }
+      const minNum = Number(minVal);
+      const maxNum = Number(maxVal);
+      if (Number.isNaN(minNum) || Number.isNaN(maxNum)) continue;
+      if (minNum > maxNum) {
+        return `الحد الأدنى لـ${label} لا يمكن أن يكون أكبر من الحد الأقصى`;
+      }
+    }
+    return null;
+  }
+
   app.post(
     "/api/machines",
     requireAuth,
@@ -7413,6 +7448,15 @@ Input: ${text}`;
           id: machineId,
           ...cleanMachineDimensionFields(req.body),
         };
+
+        const dimensionRangeError =
+          validateMachineDimensionRanges(processedData);
+        if (dimensionRangeError) {
+          return res.status(400).json({
+            message: dimensionRangeError,
+            success: false,
+          });
+        }
 
         // STEP 1: DataValidator integration for business rules
         const validationResult = await getDataValidator(storage).validateData(
@@ -7479,6 +7523,15 @@ Input: ${text}`;
               : req.body.capacity_large_kg_per_hour,
           ...cleanMachineDimensionFields(req.body),
         };
+
+        const dimensionRangeError =
+          validateMachineDimensionRanges(cleanedData);
+        if (dimensionRangeError) {
+          return res.status(400).json({
+            message: dimensionRangeError,
+            success: false,
+          });
+        }
 
         // Fetch current status before the update to detect transitions
         const prevResult = await db.execute(

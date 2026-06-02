@@ -6331,6 +6331,51 @@ export default function Definitions() {
                 </Button>
                 <Button
                   onClick={() => {
+                    const dimensionRanges: Array<{
+                      min: string;
+                      max: string;
+                      label: string;
+                    }> = [
+                      {
+                        min: "min_width_cm",
+                        max: "max_width_cm",
+                        label: "العرض",
+                      },
+                      {
+                        min: "min_cylinder_inch",
+                        max: "max_cylinder_inch",
+                        label: "الأسطوانة",
+                      },
+                      {
+                        min: "min_length_cm",
+                        max: "max_length_cm",
+                        label: "الطول",
+                      },
+                    ];
+                    for (const { min, max, label } of dimensionRanges) {
+                      const minVal = (machineForm as any)[min];
+                      const maxVal = (machineForm as any)[max];
+                      if (
+                        minVal === "" ||
+                        minVal === null ||
+                        minVal === undefined ||
+                        maxVal === "" ||
+                        maxVal === null ||
+                        maxVal === undefined
+                      ) {
+                        continue;
+                      }
+                      const minNum = Number(minVal);
+                      const maxNum = Number(maxVal);
+                      if (Number.isNaN(minNum) || Number.isNaN(maxNum)) continue;
+                      if (minNum > maxNum) {
+                        toast({
+                          title: `الحد الأدنى لـ${label} لا يمكن أن يكون أكبر من الحد الأقصى`,
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                    }
                     if (editingItem) {
                       updateMachineMutation.mutate({
                         id: editingItem.id,
