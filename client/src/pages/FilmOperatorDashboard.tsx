@@ -473,7 +473,7 @@ export default function FilmOperatorDashboard({
                               className="font-medium"
                               data-testid={`text-thickness-${order.id}`}
                             >
-                              {order.thickness}
+                              {parseFloat(String(order.thickness))} ميكرون / µm
                             </p>
                           </div>
                         )}
