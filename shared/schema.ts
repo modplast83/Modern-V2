@@ -2510,6 +2510,20 @@ export type InsertUserSetting = z.infer<typeof insertUserSettingSchema>;
 export type MachineQueue = typeof machine_queues.$inferSelect;
 export type InsertMachineQueue = z.infer<typeof insertMachineQueueSchema>;
 
+// Print color slots: up to 4 entries, each either empty (unused slot) or a
+// 6-digit hex color like #aabbcc. Rejects malformed/oversized data.
+const printColorsArraySchema = z
+  .array(
+    z
+      .string()
+      .refine((val) => val === "" || /^#[0-9a-fA-F]{6}$/.test(val), {
+        message: "لون الطباعة يجب أن يكون رمزاً سداسياً صحيحاً مثل ‎#aabbcc",
+      }),
+  )
+  .max(4, { message: "لا يمكن إضافة أكثر من 4 ألوان طباعة" })
+  .nullable()
+  .optional();
+
 export const insertCustomerProductSchema = createInsertSchema(customer_products)
   .omit({
     id: true,
@@ -2546,8 +2560,8 @@ export const insertCustomerProductSchema = createInsertSchema(customer_products)
         val === "" || val === undefined || val === "none" ? null : val,
       z.string().nullable().optional(),
     ),
-    front_print_colors: z.array(z.string()).max(4).nullable().optional(),
-    back_print_colors: z.array(z.string()).max(4).nullable().optional(),
+    front_print_colors: printColorsArraySchema,
+    back_print_colors: printColorsArraySchema,
     // Transform decimal fields to handle both string and number inputs
     width: z.preprocess((val): string | undefined => {
       if (val === null || val === undefined || val === "") return undefined;
