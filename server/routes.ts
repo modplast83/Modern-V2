@@ -7350,6 +7350,35 @@ Input: ${text}`;
     }
   });
 
+  // Normalize machine type-specific dimensional fields:
+  // empty/blank decimal fields -> null; max_print_colors -> integer or null.
+  function cleanMachineDimensionFields(body: any): Record<string, any> {
+    const toNullableDecimal = (v: any) =>
+      v === "" || v === null || v === undefined ? null : v;
+    const result: Record<string, any> = {};
+    const decimalFields = [
+      "min_width_cm",
+      "max_width_cm",
+      "min_cylinder_inch",
+      "max_cylinder_inch",
+      "min_length_cm",
+      "max_length_cm",
+    ];
+    for (const f of decimalFields) {
+      if (f in body) result[f] = toNullableDecimal(body[f]);
+    }
+    if ("max_print_colors" in body) {
+      const raw = body.max_print_colors;
+      if (raw === "" || raw === null || raw === undefined) {
+        result.max_print_colors = null;
+      } else {
+        const parsed = parseInt(String(raw), 10);
+        result.max_print_colors = Number.isNaN(parsed) ? null : parsed;
+      }
+    }
+    return result;
+  }
+
   app.post(
     "/api/machines",
     requireAuth,
@@ -7382,6 +7411,7 @@ Input: ${text}`;
         const processedData = {
           ...req.body,
           id: machineId,
+          ...cleanMachineDimensionFields(req.body),
         };
 
         // STEP 1: DataValidator integration for business rules
@@ -7447,6 +7477,7 @@ Input: ${text}`;
             req.body.capacity_large_kg_per_hour === null
               ? null
               : req.body.capacity_large_kg_per_hour,
+          ...cleanMachineDimensionFields(req.body),
         };
 
         // Fetch current status before the update to detect transitions

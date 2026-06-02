@@ -334,6 +334,21 @@ export const machines = pgTable(
       (): any => machines.id,
       { onDelete: "set null" },
     ),
+
+    // قيود الأبعاد حسب نوع الماكينة
+    // ماكينات الفيلم (extruder): الحد الأدنى/الأقصى لعرض الكيس بالسنتيمتر
+    min_width_cm: decimal("min_width_cm", { precision: 8, scale: 2 }),
+    max_width_cm: decimal("max_width_cm", { precision: 8, scale: 2 }),
+
+    // ماكينات الطباعة (printer): أقصى عدد ألوان الطباعة (1..4 تمثل N+N)
+    max_print_colors: integer("max_print_colors"),
+    // ماكينات الطباعة (printer): الحد الأدنى/الأقصى لمقاس السلندر بالإنش
+    min_cylinder_inch: decimal("min_cylinder_inch", { precision: 8, scale: 2 }),
+    max_cylinder_inch: decimal("max_cylinder_inch", { precision: 8, scale: 2 }),
+
+    // ماكينات التقطيع (cutter): الحد الأدنى/الأقصى لطول التقطيع بالسنتيمتر
+    min_length_cm: decimal("min_length_cm", { precision: 8, scale: 2 }),
+    max_length_cm: decimal("max_length_cm", { precision: 8, scale: 2 }),
   },
   (table) => ({
     // Check constraints for machine integrity

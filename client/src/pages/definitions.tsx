@@ -429,6 +429,13 @@ export default function Definitions() {
     capacity_small_kg_per_hour: "",
     capacity_medium_kg_per_hour: "",
     capacity_large_kg_per_hour: "",
+    min_width_cm: "",
+    max_width_cm: "",
+    max_print_colors: "",
+    min_cylinder_inch: "",
+    max_cylinder_inch: "",
+    min_length_cm: "",
+    max_length_cm: "",
   });
   const [userForm, setUserForm] = useState({
     username: "",
@@ -2204,6 +2211,13 @@ export default function Definitions() {
       capacity_small_kg_per_hour: "",
       capacity_medium_kg_per_hour: "",
       capacity_large_kg_per_hour: "",
+      min_width_cm: "",
+      max_width_cm: "",
+      max_print_colors: "",
+      min_cylinder_inch: "",
+      max_cylinder_inch: "",
+      min_length_cm: "",
+      max_length_cm: "",
     });
     setUserForm({
       username: "",
@@ -3711,6 +3725,24 @@ export default function Definitions() {
                                             capacity_large_kg_per_hour:
                                               machine.capacity_large_kg_per_hour ||
                                               "",
+                                            min_width_cm:
+                                              machine.min_width_cm || "",
+                                            max_width_cm:
+                                              machine.max_width_cm || "",
+                                            max_print_colors:
+                                              machine.max_print_colors != null
+                                                ? String(
+                                                    machine.max_print_colors,
+                                                  )
+                                                : "",
+                                            min_cylinder_inch:
+                                              machine.min_cylinder_inch || "",
+                                            max_cylinder_inch:
+                                              machine.max_cylinder_inch || "",
+                                            min_length_cm:
+                                              machine.min_length_cm || "",
+                                            max_length_cm:
+                                              machine.max_length_cm || "",
                                           });
                                           setSelectedTab("machines");
                                           setIsDialogOpen(true);
@@ -6096,6 +6128,199 @@ export default function Definitions() {
                     </div>
                   </div>
                 </div>
+
+                {/* قيود الأبعاد حسب نوع الماكينة */}
+                {machineForm.type?.toLowerCase() === "extruder" && (
+                  <div className="border-t pt-4 mt-4">
+                    <h3 className="text-sm font-medium mb-3">
+                      {t("definitions.form.widthConstraints")}
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="min_width_cm">
+                          {t("definitions.form.minWidthCm")}
+                        </Label>
+                        <Input
+                          id="min_width_cm"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={machineForm.min_width_cm}
+                          onChange={(e) =>
+                            setMachineForm({
+                              ...machineForm,
+                              min_width_cm: e.target.value,
+                            })
+                          }
+                          placeholder={t("common.cm")}
+                          className="mt-1"
+                          data-testid="input-min-width-cm"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="max_width_cm">
+                          {t("definitions.form.maxWidthCm")}
+                        </Label>
+                        <Input
+                          id="max_width_cm"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={machineForm.max_width_cm}
+                          onChange={(e) =>
+                            setMachineForm({
+                              ...machineForm,
+                              max_width_cm: e.target.value,
+                            })
+                          }
+                          placeholder={t("common.cm")}
+                          className="mt-1"
+                          data-testid="input-max-width-cm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {["printing", "printer"].includes(
+                  machineForm.type?.toLowerCase(),
+                ) && (
+                  <div className="border-t pt-4 mt-4">
+                    <h3 className="text-sm font-medium mb-3">
+                      {t("definitions.form.printingConstraints")}
+                    </h3>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <Label htmlFor="max_print_colors">
+                          {t("definitions.form.maxPrintColors")}
+                        </Label>
+                        <Select
+                          value={machineForm.max_print_colors || "none"}
+                          onValueChange={(value) =>
+                            setMachineForm({
+                              ...machineForm,
+                              max_print_colors: value === "none" ? "" : value,
+                            })
+                          }
+                        >
+                          <SelectTrigger
+                            className="mt-1"
+                            data-testid="select-max-print-colors"
+                          >
+                            <SelectValue
+                              placeholder={t("definitions.form.selectColors")}
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">
+                              {t("definitions.form.noColorLimit")}
+                            </SelectItem>
+                            <SelectItem value="1">1+1</SelectItem>
+                            <SelectItem value="2">2+2</SelectItem>
+                            <SelectItem value="3">3+3</SelectItem>
+                            <SelectItem value="4">4+4</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="min_cylinder_inch">
+                          {t("definitions.form.minCylinderInch")}
+                        </Label>
+                        <Input
+                          id="min_cylinder_inch"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={machineForm.min_cylinder_inch}
+                          onChange={(e) =>
+                            setMachineForm({
+                              ...machineForm,
+                              min_cylinder_inch: e.target.value,
+                            })
+                          }
+                          placeholder={t("definitions.form.inch")}
+                          className="mt-1"
+                          data-testid="input-min-cylinder-inch"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="max_cylinder_inch">
+                          {t("definitions.form.maxCylinderInch")}
+                        </Label>
+                        <Input
+                          id="max_cylinder_inch"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={machineForm.max_cylinder_inch}
+                          onChange={(e) =>
+                            setMachineForm({
+                              ...machineForm,
+                              max_cylinder_inch: e.target.value,
+                            })
+                          }
+                          placeholder={t("definitions.form.inch")}
+                          className="mt-1"
+                          data-testid="input-max-cylinder-inch"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {["cutting", "cutter"].includes(
+                  machineForm.type?.toLowerCase(),
+                ) && (
+                  <div className="border-t pt-4 mt-4">
+                    <h3 className="text-sm font-medium mb-3">
+                      {t("definitions.form.lengthConstraints")}
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="min_length_cm">
+                          {t("definitions.form.minLengthCm")}
+                        </Label>
+                        <Input
+                          id="min_length_cm"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={machineForm.min_length_cm}
+                          onChange={(e) =>
+                            setMachineForm({
+                              ...machineForm,
+                              min_length_cm: e.target.value,
+                            })
+                          }
+                          placeholder={t("common.cm")}
+                          className="mt-1"
+                          data-testid="input-min-length-cm"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="max_length_cm">
+                          {t("definitions.form.maxLengthCm")}
+                        </Label>
+                        <Input
+                          id="max_length_cm"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={machineForm.max_length_cm}
+                          onChange={(e) =>
+                            setMachineForm({
+                              ...machineForm,
+                              max_length_cm: e.target.value,
+                            })
+                          }
+                          placeholder={t("common.cm")}
+                          className="mt-1"
+                          data-testid="input-max-length-cm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
               <DialogFooter>
                 <Button
