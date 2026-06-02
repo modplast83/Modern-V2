@@ -103,6 +103,70 @@ const normalizeSearchText = (value: any): string =>
     .toLowerCase()
     .trim();
 
+// Always return an array of exactly 4 color strings ("" = unset).
+const toFourColors = (arr?: any): string[] => {
+  const a = Array.isArray(arr) ? arr : [];
+  return [0, 1, 2, 3].map((i) => (typeof a[i] === "string" ? a[i] : ""));
+};
+
+// Four medium color-picker squares for print colors on one design side.
+// The number of filled squares equals the number of print colors for that side.
+function PrintColorSquares({
+  label,
+  pickLabel,
+  clearLabel,
+  colors,
+  onChange,
+}: {
+  label: string;
+  pickLabel: string;
+  clearLabel: string;
+  colors: string[];
+  onChange: (colors: string[]) => void;
+}) {
+  const normalized = toFourColors(colors);
+  const setAt = (i: number, value: string) => {
+    const next = [...normalized];
+    next[i] = value;
+    onChange(next);
+  };
+  return (
+    <div className="mt-3">
+      <Label className="text-sm text-muted-foreground">{label}</Label>
+      <div className="flex gap-2 mt-2">
+        {normalized.map((color, i) => (
+          <div key={i} className="relative">
+            <label
+              className="flex h-12 w-12 items-center justify-center rounded-md border-2 border-gray-300 cursor-pointer overflow-hidden"
+              style={{ backgroundColor: color || "transparent" }}
+              title={pickLabel}
+            >
+              <input
+                type="color"
+                value={color || "#ffffff"}
+                onChange={(e) => setAt(i, e.target.value)}
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                aria-label={`${label} ${i + 1}`}
+              />
+              {!color && <span className="text-lg text-gray-400">+</span>}
+            </label>
+            {color && (
+              <button
+                type="button"
+                onClick={() => setAt(i, "")}
+                title={clearLabel}
+                className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] leading-none text-white"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Definitions() {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -341,6 +405,8 @@ export default function Definitions() {
     package_weight_kg: "",
     cliche_front_design: "",
     cliche_back_design: "",
+    front_print_colors: ["", "", "", ""] as string[],
+    back_print_colors: ["", "", "", ""] as string[],
     front_design_filename: "",
     back_design_filename: "",
     notes: "",
@@ -439,6 +505,8 @@ export default function Definitions() {
       package_weight_kg: product.package_weight_kg || "",
       cliche_front_design: product.cliche_front_design || "",
       cliche_back_design: product.cliche_back_design || "",
+      front_print_colors: toFourColors(product.front_print_colors),
+      back_print_colors: toFourColors(product.back_print_colors),
       notes: product.notes || "",
       status: "active",
     };
@@ -2112,6 +2180,8 @@ export default function Definitions() {
       package_weight_kg: "",
       cliche_front_design: "",
       cliche_back_design: "",
+      front_print_colors: ["", "", "", ""] as string[],
+      back_print_colors: ["", "", "", ""] as string[],
       front_design_filename: "",
       back_design_filename: "",
       notes: "",
@@ -3347,6 +3417,12 @@ export default function Definitions() {
                                               cliche_back_design:
                                                 product.cliche_back_design ||
                                                 "",
+                                              front_print_colors: toFourColors(
+                                                product.front_print_colors,
+                                              ),
+                                              back_print_colors: toFourColors(
+                                                product.back_print_colors,
+                                              ),
                                               front_design_filename: "",
                                               back_design_filename: "",
                                               notes: product.notes || "",
@@ -5603,6 +5679,18 @@ export default function Definitions() {
                           </div>
                         )}
                       </div>
+                      <PrintColorSquares
+                        label={t("definitions.form.frontPrintColors")}
+                        pickLabel={t("definitions.form.pickColor")}
+                        clearLabel={t("definitions.form.clearColor")}
+                        colors={customerProductForm.front_print_colors}
+                        onChange={(colors) =>
+                          setCustomerProductForm({
+                            ...customerProductForm,
+                            front_print_colors: colors,
+                          })
+                        }
+                      />
                     </div>
                     <div>
                       <Label htmlFor="cliche_back_design">
@@ -5667,6 +5755,18 @@ export default function Definitions() {
                           </div>
                         )}
                       </div>
+                      <PrintColorSquares
+                        label={t("definitions.form.backPrintColors")}
+                        pickLabel={t("definitions.form.pickColor")}
+                        clearLabel={t("definitions.form.clearColor")}
+                        colors={customerProductForm.back_print_colors}
+                        onChange={(colors) =>
+                          setCustomerProductForm({
+                            ...customerProductForm,
+                            back_print_colors: colors,
+                          })
+                        }
+                      />
                     </div>
                   </div>
                 </div>

@@ -281,6 +281,8 @@ export const customer_products = pgTable(
     package_weight_kg: decimal("package_weight_kg", { precision: 8, scale: 2 }),
     cliche_front_design: text("cliche_front_design"), // Base64 encoded image data
     cliche_back_design: text("cliche_back_design"), // Base64 encoded image data
+    front_print_colors: text("front_print_colors").array(), // up to 4 print colors (front side)
+    back_print_colors: text("back_print_colors").array(), // up to 4 print colors (back side)
     notes: text("notes"),
     status: varchar("status", { length: 20 }).default("active"),
     created_at: timestamp("created_at").defaultNow(),
@@ -2544,6 +2546,8 @@ export const insertCustomerProductSchema = createInsertSchema(customer_products)
         val === "" || val === undefined || val === "none" ? null : val,
       z.string().nullable().optional(),
     ),
+    front_print_colors: z.array(z.string()).nullable().optional(),
+    back_print_colors: z.array(z.string()).nullable().optional(),
     // Transform decimal fields to handle both string and number inputs
     width: z.preprocess((val): string | undefined => {
       if (val === null || val === undefined || val === "") return undefined;
