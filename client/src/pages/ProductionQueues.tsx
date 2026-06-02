@@ -819,7 +819,7 @@ function StageBoard({ stage }: { stage: Stage }) {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid flex-1 min-w-[20rem] grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid flex-1 min-w-[20rem] grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3">
               {board.machines.map((machine) => (
                 <MachineColumn
                   key={machine.id}
