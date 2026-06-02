@@ -226,14 +226,19 @@ export default function ProductionMonitoring() {
     [machinesList, ln],
   );
 
-  const workerChartData = useMemo(
-    () =>
-      workersList.slice(0, 10).map((w: any) => ({
-        name: ln(w.name_ar, w.name),
-        total: w.total_kg,
-      })),
-    [workersList, ln],
-  );
+  const departmentWorkerCharts = useMemo(() => {
+    const build = (kgKey: string) =>
+      workersList
+        .filter((w: any) => (w[kgKey] || 0) > 0)
+        .sort((a: any, b: any) => (b[kgKey] || 0) - (a[kgKey] || 0))
+        .slice(0, 10)
+        .map((w: any) => ({ name: ln(w.name_ar, w.name), total: w[kgKey] }));
+    return {
+      film: build("film_kg"),
+      printing: build("printing_kg"),
+      cutting: build("cutting_kg"),
+    };
+  }, [workersList, ln]);
 
   if (isLoading && !dashboard) {
     return (
@@ -492,44 +497,67 @@ export default function ProductionMonitoring() {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Users className="h-5 w-5 text-primary" />
-                    أعلى 10 عمال إنتاجاً
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {workerChartData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={280}>
-                      <BarChart
-                        data={workerChartData}
-                        layout="vertical"
-                        margin={{ right: 80 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis type="number" />
-                        <YAxis
-                          dataKey="name"
-                          type="category"
-                          width={100}
-                          tick={{ fontSize: 11 }}
-                        />
-                        <Tooltip formatter={(v: number) => formatKg(v)} />
-                        <Bar
-                          dataKey="total"
-                          fill="#22C55E"
-                          radius={[0, 4, 4, 0]}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="flex items-center justify-center h-[280px] text-muted-foreground">
-                      لا توجد بيانات
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              {(
+                [
+                  {
+                    key: "film" as const,
+                    label: "أعلى 10 عمال إنتاجاً - قسم الفيلم",
+                    color: SECTION_COLORS.film,
+                  },
+                  {
+                    key: "printing" as const,
+                    label: "أعلى 10 عمال إنتاجاً - قسم الطباعة",
+                    color: SECTION_COLORS.printing,
+                  },
+                  {
+                    key: "cutting" as const,
+                    label: "أعلى 10 عمال إنتاجاً - قسم التقطيع",
+                    color: SECTION_COLORS.cutting,
+                  },
+                ]
+              ).map((dept) => (
+                <Card key={dept.key}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Users
+                        className="h-5 w-5"
+                        style={{ color: dept.color }}
+                      />
+                      {dept.label}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {departmentWorkerCharts[dept.key].length > 0 ? (
+                      <ResponsiveContainer width="100%" height={280}>
+                        <BarChart
+                          data={departmentWorkerCharts[dept.key]}
+                          layout="vertical"
+                          margin={{ right: 80 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis type="number" />
+                          <YAxis
+                            dataKey="name"
+                            type="category"
+                            width={100}
+                            tick={{ fontSize: 11 }}
+                          />
+                          <Tooltip formatter={(v: number) => formatKg(v)} />
+                          <Bar
+                            dataKey="total"
+                            fill={dept.color}
+                            radius={[0, 4, 4, 0]}
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex items-center justify-center h-[280px] text-muted-foreground">
+                        لا توجد بيانات
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
 
               <Card>
                 <CardHeader className="pb-2">
