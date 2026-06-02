@@ -791,7 +791,7 @@ function StageBoard({ stage }: { stage: Stage }) {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex gap-3 overflow-x-auto pb-3">
+        <div className="flex flex-wrap gap-3 pb-3">
           <BacklogColumn
             backlog={board.backlog}
             machines={board.machines}

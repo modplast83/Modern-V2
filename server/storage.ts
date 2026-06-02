@@ -9248,6 +9248,7 @@ export class DatabaseStorage implements IStorage {
   // by callers, so the resulting column names are safe to inline.
   private getStageInfo(stage: string): {
     machineType: string;
+    machineTypes: string[];
     completedCol: string;
     completionPctCol: string;
   } | null {
@@ -9255,24 +9256,38 @@ export class DatabaseStorage implements IStorage {
       case "film":
         return {
           machineType: "extruder",
+          machineTypes: ["extruder", "film"],
           completedCol: "film_completed",
           completionPctCol: "film_completion_percentage",
         };
       case "printing":
         return {
           machineType: "printer",
+          machineTypes: ["printer", "printing"],
           completedCol: "printing_completed",
           completionPctCol: "printing_completion_percentage",
         };
       case "cutting":
         return {
           machineType: "cutter",
+          machineTypes: ["cutter", "cutting"],
           completedCol: "cutting_completed",
           completionPctCol: "cutting_completion_percentage",
         };
       default:
         return null;
     }
+  }
+
+  // The machines table stores inconsistent department/type values (e.g.
+  // "printer" vs "printing", "Cutter" vs "cutting"). Match all accepted
+  // variants for a stage, case-insensitively, instead of one exact string.
+  private machineTypeMatchSql(machineTypes: string[]) {
+    const list = sql.join(
+      machineTypes.map((t) => sql`${t.toLowerCase()}`),
+      sql`, `,
+    );
+    return sql`LOWER(m.type) IN (${list})`;
   }
 
   // Representative production rate (kg/hour) for a machine. Prefers the medium
@@ -9412,8 +9427,9 @@ export class DatabaseStorage implements IStorage {
     if (!info) {
       throw new Error("مرحلة غير صالحة");
     }
-    const { machineType, completedCol } = info;
+    const { completedCol } = info;
     const completed = sql.raw(`po.${completedCol}`);
+    const machineTypeMatch = this.machineTypeMatchSql(info.machineTypes);
     const printedFilter =
       stage === "printing" ? sql`AND cp.is_printed = true` : sql``;
 
@@ -9425,7 +9441,7 @@ export class DatabaseStorage implements IStorage {
                m.capacity_medium_kg_per_hour,
                m.capacity_large_kg_per_hour
         FROM machines m
-        WHERE m.type = ${machineType}
+        WHERE ${machineTypeMatch}
         ORDER BY m.id
       `)
     ).rows as any[];
@@ -9442,7 +9458,7 @@ export class DatabaseStorage implements IStorage {
         JOIN production_orders po ON po.id = q.production_order_id
         LEFT JOIN users u ON u.id = q.assigned_by
         ${this.enrichedPoJoins()}
-        WHERE m.type = ${machineType}
+        WHERE ${machineTypeMatch}
           AND po.status <> 'cancelled'
           AND ${completed} IS NOT TRUE
         ORDER BY q.machine_id, q.queue_position
@@ -9463,7 +9479,7 @@ export class DatabaseStorage implements IStorage {
             SELECT q.production_order_id
             FROM machine_queues q
             JOIN machines m ON m.id = q.machine_id
-            WHERE m.type = ${machineType}
+            WHERE ${machineTypeMatch}
           )
         ORDER BY po.id
       `)
@@ -9552,7 +9568,7 @@ export class DatabaseStorage implements IStorage {
       .from(machines)
       .where(eq(machines.id, machineId));
     if (!machine) throw new Error("الماكينة غير موجودة");
-    if (machine.type !== info.machineType)
+    if (!info.machineTypes.includes(String(machine.type).toLowerCase()))
       throw new Error("الماكينة لا تناسب هذه المرحلة");
     if (machine.status !== "active")
       throw new Error("الماكينة غير متاحة (ليست نشطة)");
@@ -9578,7 +9594,7 @@ export class DatabaseStorage implements IStorage {
         SELECT q.id
         FROM machine_queues q
         JOIN machines m ON m.id = q.machine_id
-        WHERE m.type = ${info.machineType}
+        WHERE ${this.machineTypeMatchSql(info.machineTypes)}
           AND q.production_order_id = ${productionOrderId}
       `)
     ).rows as any[];
