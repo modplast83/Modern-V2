@@ -9259,6 +9259,150 @@ Input: ${text}`;
     },
   );
 
+  // ============ Production Queues Planning API (department-based) ============
+
+  const VALID_QUEUE_STAGES = ["film", "printing", "cutting"];
+
+  app.get(
+    "/api/production-queues/board",
+    requireAuth,
+    requirePermission(
+      "view_production",
+      "manage_production",
+      "view_orders",
+      "manage_orders",
+    ),
+    async (req, res) => {
+      try {
+        const stage = String(req.query.stage || "");
+        if (!VALID_QUEUE_STAGES.includes(stage)) {
+          return res.status(400).json({ message: "مرحلة غير صالحة" });
+        }
+        const board = await storage.getProductionQueueBoard(stage);
+        res.json({ data: board });
+      } catch (error: any) {
+        console.error("Error fetching production queue board:", error);
+        res.status(500).json({ message: "خطأ في جلب طوابير الإنتاج" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/production-queues/assign",
+    requireAuth,
+    requirePermission("edit_production", "manage_production", "manage_orders"),
+    async (req, res) => {
+      try {
+        const { productionOrderId, machineId, stage } = req.body;
+        if (
+          !productionOrderId ||
+          !machineId ||
+          !VALID_QUEUE_STAGES.includes(String(stage))
+        ) {
+          return res.status(400).json({
+            message:
+              "بيانات غير كاملة - مطلوب معرف أمر الإنتاج والماكينة والمرحلة",
+          });
+        }
+        const assignUserId = getAuthUserId(req);
+        if (!assignUserId) {
+          return res.status(401).json({ message: "يجب تسجيل الدخول" });
+        }
+        const entry = await storage.assignToProductionQueue(
+          Number(productionOrderId),
+          String(machineId),
+          String(stage),
+          assignUserId,
+        );
+        res.json({
+          data: entry,
+          message: "تم تخصيص أمر الإنتاج للماكينة بنجاح",
+        });
+      } catch (error: any) {
+        console.error("Error assigning to production queue:", error);
+        res
+          .status(400)
+          .json({ message: error?.message || "خطأ في تخصيص أمر الإنتاج" });
+      }
+    },
+  );
+
+  app.put(
+    "/api/production-queues/reorder",
+    requireAuth,
+    requirePermission("edit_production", "manage_production", "manage_orders"),
+    async (req, res) => {
+      try {
+        const { machineId, orderedQueueIds } = req.body;
+        if (!machineId || !Array.isArray(orderedQueueIds)) {
+          return res.status(400).json({
+            message: "بيانات غير كاملة - مطلوب معرف الماكينة وترتيب الطابور",
+          });
+        }
+        await storage.reorderMachineQueue(
+          String(machineId),
+          orderedQueueIds.map((id: any) => Number(id)),
+        );
+        res.json({ message: "تم تحديث ترتيب الطابور بنجاح", success: true });
+      } catch (error: any) {
+        console.error("Error reordering production queue:", error);
+        res
+          .status(400)
+          .json({ message: error?.message || "خطأ في تحديث ترتيب الطابور" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/production-queues/:queueId",
+    requireAuth,
+    requirePermission("edit_production", "manage_production", "manage_orders"),
+    async (req, res) => {
+      try {
+        const queueId = parseInt(req.params.queueId);
+        if (isNaN(queueId)) {
+          return res.status(400).json({ message: "معرف طابور غير صحيح" });
+        }
+        await storage.removeFromQueue(queueId);
+        res.json({ message: "تم إزالة أمر الإنتاج من الطابور بنجاح", success: true });
+      } catch (error: any) {
+        console.error("Error removing from production queue:", error);
+        res
+          .status(400)
+          .json({ message: error?.message || "خطأ في إزالة أمر الإنتاج" });
+      }
+    },
+  );
+
+  app.get(
+    "/api/production-queues/suggest",
+    requireAuth,
+    requirePermission(
+      "view_production",
+      "manage_production",
+      "view_orders",
+      "manage_orders",
+    ),
+    async (req, res) => {
+      try {
+        const stage = String(req.query.stage || "");
+        const machineId = String(req.query.machineId || "");
+        if (!VALID_QUEUE_STAGES.includes(stage) || !machineId) {
+          return res
+            .status(400)
+            .json({ message: "مطلوب معرف الماكينة والمرحلة" });
+        }
+        const suggestion = await storage.suggestQueueOrder(machineId, stage);
+        res.json({ data: suggestion });
+      } catch (error: any) {
+        console.error("Error suggesting queue order:", error);
+        res
+          .status(400)
+          .json({ message: error?.message || "خطأ في اقتراح ترتيب الطابور" });
+      }
+    },
+  );
+
   // ============ Orders Management API ============
 
   app.post(

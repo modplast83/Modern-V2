@@ -250,7 +250,9 @@ function AppRoutes() {
         </Route>
 
         <Route path="/production-queues">
-          <Redirect to="/orders?tab=production-queues" />
+          <ProtectedRoute path="/production-queues">
+            <ProductionQueues />
+          </ProtectedRoute>
         </Route>
 
         <Route path="/roll-search">

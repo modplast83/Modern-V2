@@ -9241,6 +9241,393 @@ export class DatabaseStorage implements IStorage {
     return result.rows as any[];
   }
 
+  // ===== Production Queues planning (department-based) =====
+
+  // Map a department/stage to its machine type, completion column, and
+  // completion-percentage column. Stage is validated against this whitelist
+  // by callers, so the resulting column names are safe to inline.
+  private getStageInfo(stage: string): {
+    machineType: string;
+    completedCol: string;
+    completionPctCol: string;
+  } | null {
+    switch (stage) {
+      case "film":
+        return {
+          machineType: "extruder",
+          completedCol: "film_completed",
+          completionPctCol: "film_completion_percentage",
+        };
+      case "printing":
+        return {
+          machineType: "printer",
+          completedCol: "printing_completed",
+          completionPctCol: "printing_completion_percentage",
+        };
+      case "cutting":
+        return {
+          machineType: "cutter",
+          completedCol: "cutting_completed",
+          completionPctCol: "cutting_completion_percentage",
+        };
+      default:
+        return null;
+    }
+  }
+
+  // Representative production rate (kg/hour) for a machine. Prefers the medium
+  // capacity, otherwise averages whatever sizes are defined.
+  private machineRateKgPerHour(machine: any): number {
+    const vals = [
+      machine.capacity_small_kg_per_hour,
+      machine.capacity_medium_kg_per_hour,
+      machine.capacity_large_kg_per_hour,
+    ]
+      .map((v) => (v == null ? NaN : parseFloat(String(v))))
+      .filter((v) => !isNaN(v) && v > 0);
+    if (vals.length === 0) return 0;
+    const medium =
+      machine.capacity_medium_kg_per_hour != null
+        ? parseFloat(String(machine.capacity_medium_kg_per_hour))
+        : NaN;
+    if (!isNaN(medium) && medium > 0) return medium;
+    return vals.reduce((a, b) => a + b, 0) / vals.length;
+  }
+
+  private countPrintColors(front?: any, back?: any): number {
+    const countSide = (arr: any) =>
+      Array.isArray(arr)
+        ? arr.filter((c) => typeof c === "string" && c.trim() !== "").length
+        : 0;
+    return countSide(front) + countSide(back);
+  }
+
+  private isClearProduct(row: any): boolean {
+    const tokens = [
+      row.master_batch_id,
+      row.master_batch_name,
+      row.master_batch_name_ar,
+    ]
+      .map((v) => String(v ?? "").toLowerCase())
+      .join(" ");
+    return (
+      tokens.includes("clear") ||
+      tokens.includes("شفاف") ||
+      tokens.includes("بدون") ||
+      tokens.includes("transparent")
+    );
+  }
+
+  // Shared enriched-PO column list + joins used by both the queue and backlog
+  // queries. `po` is the production_orders alias.
+  private enrichedPoColumns() {
+    return sql`
+      po.id AS production_order_id,
+      po.production_order_number,
+      po.quantity_kg,
+      po.final_quantity_kg,
+      po.status,
+      po.production_stage,
+      po.film_completed,
+      po.printing_completed,
+      po.cutting_completed,
+      po.film_completion_percentage,
+      po.printing_completion_percentage,
+      po.cutting_completion_percentage,
+      c.name AS customer_name,
+      c.name_ar AS customer_name_ar,
+      it.name AS item_name,
+      it.name_ar AS item_name_ar,
+      cp.size_caption,
+      cp.raw_material,
+      cp.is_printed,
+      cp.printing_cylinder,
+      cp.master_batch_id,
+      mb.name AS master_batch_name,
+      mb.name_ar AS master_batch_name_ar,
+      mb.color_hex AS master_batch_color_hex,
+      cp.front_print_colors,
+      cp.back_print_colors
+    `;
+  }
+
+  private enrichedPoJoins() {
+    return sql`
+      LEFT JOIN orders o ON o.id = po.order_id
+      LEFT JOIN customers c ON c.id = o.customer_id
+      LEFT JOIN customer_products cp ON cp.id = po.customer_product_id
+      LEFT JOIN items it ON it.id = cp.item_id
+      LEFT JOIN master_batch_colors mb ON mb.id = cp.master_batch_id
+    `;
+  }
+
+  private mapEnrichedRow(row: any): any {
+    return {
+      ...row,
+      print_colors_count: this.countPrintColors(
+        row.front_print_colors,
+        row.back_print_colors,
+      ),
+    };
+  }
+
+  async getProductionQueueBoard(stage: string): Promise<any> {
+    const info = this.getStageInfo(stage);
+    if (!info) {
+      throw new Error("مرحلة غير صالحة");
+    }
+    const { machineType, completedCol } = info;
+    const completed = sql.raw(`po.${completedCol}`);
+    const printedFilter =
+      stage === "printing" ? sql`AND cp.is_printed = true` : sql``;
+
+    // Machines for this department (all statuses so planning can see them).
+    const machineRows = (
+      await db.execute(sql`
+        SELECT m.id, m.name, m.name_ar, m.type, m.status,
+               m.capacity_small_kg_per_hour,
+               m.capacity_medium_kg_per_hour,
+               m.capacity_large_kg_per_hour
+        FROM machines m
+        WHERE m.type = ${machineType}
+        ORDER BY m.id
+      `)
+    ).rows as any[];
+
+    // Queue items for those machines, excluding stage-completed / cancelled.
+    const queueRows = (
+      await db.execute(sql`
+        SELECT q.id AS queue_id, q.machine_id, q.queue_position, q.assigned_at,
+               u.display_name AS assigned_by_name,
+               u.display_name_ar AS assigned_by_name_ar,
+               ${this.enrichedPoColumns()}
+        FROM machine_queues q
+        JOIN machines m ON m.id = q.machine_id
+        JOIN production_orders po ON po.id = q.production_order_id
+        LEFT JOIN users u ON u.id = q.assigned_by
+        ${this.enrichedPoJoins()}
+        WHERE m.type = ${machineType}
+          AND po.status <> 'cancelled'
+          AND ${completed} IS NOT TRUE
+        ORDER BY q.machine_id, q.queue_position
+      `)
+    ).rows as any[];
+
+    // Backlog: eligible orders for this stage not assigned to any machine of
+    // this department's type.
+    const backlogRows = (
+      await db.execute(sql`
+        SELECT ${this.enrichedPoColumns()}
+        FROM production_orders po
+        ${this.enrichedPoJoins()}
+        WHERE po.status IN ('pending', 'active', 'in_production')
+          AND ${completed} IS NOT TRUE
+          ${printedFilter}
+          AND po.id NOT IN (
+            SELECT q.production_order_id
+            FROM machine_queues q
+            JOIN machines m ON m.id = q.machine_id
+            WHERE m.type = ${machineType}
+          )
+        ORDER BY po.id
+      `)
+    ).rows as any[];
+
+    const HOURS_PER_DAY = 20;
+    const queueByMachine = new Map<string, any[]>();
+    for (const row of queueRows) {
+      const list = queueByMachine.get(row.machine_id) || [];
+      list.push(this.mapEnrichedRow(row));
+      queueByMachine.set(row.machine_id, list);
+    }
+
+    const machines = machineRows.map((m) => {
+      const queue = queueByMachine.get(m.id) || [];
+      const totalKg = queue.reduce(
+        (sum, q) => sum + (parseFloat(String(q.final_quantity_kg)) || 0),
+        0,
+      );
+      const rate = this.machineRateKgPerHour(m);
+      const estimatedHours = rate > 0 ? totalKg / rate : 0;
+      const estimatedDays =
+        estimatedHours > 0 ? Math.ceil(estimatedHours / HOURS_PER_DAY) : 0;
+      const finishDate =
+        estimatedDays > 0
+          ? new Date(
+              Date.now() + estimatedDays * 24 * 60 * 60 * 1000,
+            ).toISOString()
+          : null;
+      return {
+        ...m,
+        queue,
+        stats: {
+          orderCount: queue.length,
+          totalKg: Math.round(totalKg * 100) / 100,
+          ratePerHour: Math.round(rate * 100) / 100,
+          estimatedHours: Math.round(estimatedHours * 100) / 100,
+          estimatedDays,
+          projectedFinish: finishDate,
+        },
+      };
+    });
+
+    const backlog = backlogRows.map((r) => this.mapEnrichedRow(r));
+    return { stage, machines, backlog };
+  }
+
+  // Validate that a machine can run an order for a stage, then append it to the
+  // end of that machine's queue.
+  async assignToProductionQueue(
+    productionOrderId: number,
+    machineId: string,
+    stage: string,
+    userId?: number,
+  ): Promise<any> {
+    const info = this.getStageInfo(stage);
+    if (!info) throw new Error("مرحلة غير صالحة");
+
+    const [machine] = await db
+      .select()
+      .from(machines)
+      .where(eq(machines.id, machineId));
+    if (!machine) throw new Error("الماكينة غير موجودة");
+    if (machine.type !== info.machineType)
+      throw new Error("الماكينة لا تناسب هذه المرحلة");
+    if (machine.status !== "active")
+      throw new Error("الماكينة غير متاحة (ليست نشطة)");
+
+    const [po] = await db
+      .select()
+      .from(production_orders)
+      .where(eq(production_orders.id, productionOrderId));
+    if (!po) throw new Error("أمر الإنتاج غير موجود");
+
+    if (stage === "printing") {
+      const [cp] = await db
+        .select({ is_printed: customer_products.is_printed })
+        .from(customer_products)
+        .where(eq(customer_products.id, po.customer_product_id));
+      if (!cp?.is_printed)
+        throw new Error("هذا المنتج غير مطبوع - لا يمكن إضافته لطابور الطباعة");
+    }
+
+    // Prevent duplicate assignment to a machine of the same department type.
+    const existing = (
+      await db.execute(sql`
+        SELECT q.id
+        FROM machine_queues q
+        JOIN machines m ON m.id = q.machine_id
+        WHERE m.type = ${info.machineType}
+          AND q.production_order_id = ${productionOrderId}
+      `)
+    ).rows as any[];
+    if (existing.length > 0)
+      throw new Error("أمر الإنتاج مخصص بالفعل لماكينة في هذه المرحلة");
+
+    const queueItems = await this.getMachineQueue(machineId as any);
+    const newItem: InsertMachineQueue = {
+      machine_id: machineId,
+      production_order_id: productionOrderId,
+      queue_position: queueItems.length + 1,
+    };
+    if (userId) (newItem as any).assigned_by = userId;
+    const [created] = await db
+      .insert(machine_queues)
+      .values(newItem)
+      .returning();
+    return created;
+  }
+
+  // Persist a full ordering for one machine's queue.
+  async reorderMachineQueue(
+    machineId: string,
+    orderedQueueIds: number[],
+  ): Promise<void> {
+    const current = await this.getMachineQueue(machineId as any);
+    const validIds = new Set(current.map((q) => q.id));
+    for (const id of orderedQueueIds) {
+      if (!validIds.has(id))
+        throw new Error("عنصر طابور غير صالح لهذه الماكينة");
+    }
+    for (let i = 0; i < orderedQueueIds.length; i++) {
+      await db
+        .update(machine_queues)
+        .set({ queue_position: i + 1 })
+        .where(eq(machine_queues.id, orderedQueueIds[i]));
+    }
+  }
+
+  // Suggest a queue ordering for one machine that minimizes color/setup
+  // changes. Returns the queue items in the recommended order.
+  async suggestQueueOrder(machineId: string, stage: string): Promise<any[]> {
+    const info = this.getStageInfo(stage);
+    if (!info) throw new Error("مرحلة غير صالحة");
+    const { completedCol } = info;
+    const completed = sql.raw(`po.${completedCol}`);
+
+    const rows = (
+      await db.execute(sql`
+        SELECT q.id AS queue_id, q.machine_id, q.queue_position,
+               ${this.enrichedPoColumns()}
+        FROM machine_queues q
+        JOIN production_orders po ON po.id = q.production_order_id
+        ${this.enrichedPoJoins()}
+        WHERE q.machine_id = ${machineId}
+          AND po.status <> 'cancelled'
+          AND ${completed} IS NOT TRUE
+        ORDER BY q.queue_position
+      `)
+    ).rows as any[];
+
+    const items = rows.map((r) => this.mapEnrichedRow(r));
+
+    const colorSig = (r: any) =>
+      [
+        ...(Array.isArray(r.front_print_colors) ? r.front_print_colors : []),
+        "|",
+        ...(Array.isArray(r.back_print_colors) ? r.back_print_colors : []),
+      ]
+        .map((c) => String(c ?? "").toLowerCase())
+        .join(",");
+
+    const withIndex = items.map((it, idx) => ({ it, idx }));
+    let sorted: typeof withIndex;
+
+    if (stage === "film") {
+      sorted = withIndex.sort((a, b) => {
+        const aClear = this.isClearProduct(a.it) ? 0 : 1;
+        const bClear = this.isClearProduct(b.it) ? 0 : 1;
+        if (aClear !== bClear) return aClear - bClear;
+        const aKey = String(a.it.master_batch_id ?? "");
+        const bKey = String(b.it.master_batch_id ?? "");
+        if (aKey !== bKey) return aKey.localeCompare(bKey);
+        return a.idx - b.idx;
+      });
+    } else if (stage === "printing") {
+      sorted = withIndex.sort((a, b) => {
+        if (a.it.print_colors_count !== b.it.print_colors_count)
+          return a.it.print_colors_count - b.it.print_colors_count;
+        const aSig = colorSig(a.it);
+        const bSig = colorSig(b.it);
+        if (aSig !== bSig) return aSig.localeCompare(bSig);
+        return a.idx - b.idx;
+      });
+    } else {
+      // cutting / default: cluster by size then material.
+      sorted = withIndex.sort((a, b) => {
+        const aKey = String(a.it.size_caption ?? "");
+        const bKey = String(b.it.size_caption ?? "");
+        if (aKey !== bKey) return aKey.localeCompare(bKey);
+        const aMat = String(a.it.raw_material ?? "");
+        const bMat = String(b.it.raw_material ?? "");
+        if (aMat !== bMat) return aMat.localeCompare(bMat);
+        return a.idx - b.idx;
+      });
+    }
+
+    return sorted.map((s) => s.it);
+  }
+
   async getMachineUtilizationStats(
     dateFrom?: string,
     dateTo?: string,

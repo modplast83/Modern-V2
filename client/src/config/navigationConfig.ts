@@ -19,6 +19,7 @@ import {
   Plug,
   Wand2,
   ClipboardList,
+  ListOrdered,
 } from "lucide-react";
 
 export interface NavigationItem {
@@ -75,6 +76,15 @@ export const navigationItems: NavigationItem[] = [
     icon: Monitor,
     path: "/production-monitoring",
     priority: 6,
+    group: "primary",
+  },
+  {
+    name: "طوابير الإنتاج",
+    name_ar: "طوابير الإنتاج",
+    name_en: "Production Queues",
+    icon: ListOrdered,
+    path: "/production-queues",
+    priority: 6.5,
     group: "primary",
   },
   {
