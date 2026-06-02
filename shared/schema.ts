@@ -2546,8 +2546,8 @@ export const insertCustomerProductSchema = createInsertSchema(customer_products)
         val === "" || val === undefined || val === "none" ? null : val,
       z.string().nullable().optional(),
     ),
-    front_print_colors: z.array(z.string()).nullable().optional(),
-    back_print_colors: z.array(z.string()).nullable().optional(),
+    front_print_colors: z.array(z.string()).max(4).nullable().optional(),
+    back_print_colors: z.array(z.string()).max(4).nullable().optional(),
     // Transform decimal fields to handle both string and number inputs
     width: z.preprocess((val): string | undefined => {
       if (val === null || val === undefined || val === "") return undefined;

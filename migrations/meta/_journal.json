@@ -36,6 +36,13 @@
       "when": 1779494400000,
       "tag": "0004_attendance_withdrawals",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1780531200000,
+      "tag": "0005_customer_product_print_colors",
+      "breakpoints": true
     }
   ]
 }
