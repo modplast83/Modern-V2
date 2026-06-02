@@ -485,6 +485,7 @@
       "days": "d",
       "printColors": "colors",
       "smartSuggest": "Smart Order",
+      "smartDistribute": "Smart Distribution",
       "suggestionTitle": "Suggested Order",
       "suggestionDescription": "Suggested order to minimize color and setup changes. Review the preview then apply.",
       "applySuggestion": "Apply Order",

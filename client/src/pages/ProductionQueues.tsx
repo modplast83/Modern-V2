@@ -34,6 +34,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 import PageLayout from "../components/layout/PageLayout";
+import SmartDistributionModal from "../components/modals/SmartDistributionModal";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import {
@@ -595,6 +596,7 @@ function StageBoard({ stage }: { stage: Stage }) {
   );
   const [suggestion, setSuggestion] = useState<QueueOrder[] | null>(null);
   const [suggestLoading, setSuggestLoading] = useState(false);
+  const [distributeOpen, setDistributeOpen] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -775,7 +777,15 @@ function StageBoard({ stage }: { stage: Stage }) {
 
   return (
     <div>
-      <div className="flex justify-end mb-3">
+      <div className="flex justify-end gap-2 mb-3">
+        <Button
+          size="sm"
+          onClick={() => setDistributeOpen(true)}
+          data-testid={`smart-distribute-${stage}`}
+        >
+          <Sparkles className="h-4 w-4" />
+          {t("production.queues.smartDistribute")}
+        </Button>
         <Button
           variant="outline"
           size="sm"
@@ -894,6 +904,13 @@ function StageBoard({ stage }: { stage: Stage }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <SmartDistributionModal
+        isOpen={distributeOpen}
+        stage={stage}
+        onClose={() => setDistributeOpen(false)}
+        onDistribute={() => invalidate()}
+      />
     </div>
   );
 }

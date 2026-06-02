@@ -7500,11 +7500,351 @@ export class DatabaseStorage implements IStorage {
     return u;
   }
 
+  // Map a utilization percentage to a coarse capacity status label.
+  private capacityStatusFromUtilization(util: number): string {
+    if (util < 40) return "low";
+    if (util < 70) return "moderate";
+    if (util < 90) return "high";
+    return "overloaded";
+  }
+
+  // The kg weight of an order, preferring the final (produced) quantity and
+  // falling back to the planned quantity.
+  private orderWeightKg(r: any): number {
+    const fin = parseFloat(String(r.final_quantity_kg));
+    if (!isNaN(fin) && fin > 0) return fin;
+    const q = parseFloat(String(r.quantity_kg));
+    return !isNaN(q) && q > 0 ? q : 0;
+  }
+
+  // Shared per-stage view of the active machines for a department together with
+  // their current queue load (kg), work-content hours, and order count. Used by
+  // both the capacity-stats endpoint and the smart-distribution engine.
+  private async getStageMachineStates(stage: string): Promise<{
+    states: any[];
+    hoursPerDay: number;
+  }> {
+    const info = this.getStageInfo(stage);
+    if (!info) throw new Error("مرحلة غير صالحة");
+    const { completedCol } = info;
+    const completed = sql.raw(`po.${completedCol}`);
+    const machineTypeMatch = this.machineTypeMatchSql(info.machineTypes);
+
+    const machineRows = (
+      await db.execute(sql`
+        SELECT m.id, m.name, m.name_ar, m.type, m.status,
+               m.capacity_small_kg_per_hour,
+               m.capacity_medium_kg_per_hour,
+               m.capacity_large_kg_per_hour
+        FROM machines m
+        WHERE ${machineTypeMatch}
+          AND LOWER(m.status) = 'active'
+        ORDER BY m.id
+      `)
+    ).rows as any[];
+
+    const queueRows = (
+      await db.execute(sql`
+        SELECT q.machine_id, po.final_quantity_kg, po.quantity_kg, cp.width
+        FROM machine_queues q
+        JOIN machines m ON m.id = q.machine_id
+        JOIN production_orders po ON po.id = q.production_order_id
+        LEFT JOIN customer_products cp ON cp.id = po.customer_product_id
+        WHERE ${machineTypeMatch}
+          AND po.status <> 'cancelled'
+          AND ${completed} IS NOT TRUE
+      `)
+    ).rows as any[];
+
+    const profileRows = (
+      await db.execute(sql`
+        SELECT working_hours_per_day FROM company_profile LIMIT 1
+      `)
+    ).rows as any[];
+    const parsedHours =
+      profileRows[0]?.working_hours_per_day == null
+        ? NaN
+        : parseFloat(String(profileRows[0].working_hours_per_day));
+    const hoursPerDay =
+      !isNaN(parsedHours) && parsedHours > 0 ? parsedHours : 20;
+
+    const states = machineRows.map((m) => {
+      const rate = this.machineRateKgPerHour(m);
+      const maxCapacity = rate > 0 ? rate * hoursPerDay : 0;
+      let currentLoad = 0;
+      let currentHours = 0;
+      let orderCount = 0;
+      for (const q of queueRows) {
+        if (q.machine_id !== m.id) continue;
+        const kg = this.orderWeightKg(q);
+        currentLoad += kg;
+        const r = this.machineRateForWidth(m, q.width);
+        currentHours += r > 0 ? kg / r : 0;
+        orderCount += 1;
+      }
+      return {
+        machine: m,
+        rate,
+        maxCapacity,
+        currentLoad,
+        currentHours,
+        orderCount,
+        addedKg: 0,
+        addedHours: 0,
+        assigned: [] as any[],
+      };
+    });
+
+    return { states, hoursPerDay };
+  }
+
+  // Core smart-distribution engine. Distributes the unassigned eligible backlog
+  // for a stage across that stage's active machines according to the chosen
+  // algorithm. Pure computation — does not persist anything. Both the preview
+  // and the apply paths use this.
+  private async computeStageDistribution(
+    stage: string,
+    algorithm: string,
+    params: any = {},
+  ): Promise<{
+    totalOrders: number;
+    machineCount: number;
+    efficiency: number;
+    preview: any[];
+    states: any[];
+  }> {
+    const info = this.getStageInfo(stage);
+    if (!info) throw new Error("مرحلة غير صالحة");
+    const { completedCol } = info;
+    const completed = sql.raw(`po.${completedCol}`);
+    const machineTypeMatch = this.machineTypeMatchSql(info.machineTypes);
+    const printedFilter =
+      stage === "printing" ? sql`AND cp.is_printed = true` : sql``;
+
+    const { states } = await this.getStageMachineStates(stage);
+    // Only machines with a usable production rate can receive work.
+    const usable = states.filter((s) => s.rate > 0);
+
+    const backlog = (
+      await db.execute(sql`
+        SELECT ${this.enrichedPoColumns()}
+        FROM production_orders po
+        ${this.enrichedPoJoins()}
+        WHERE po.status IN ('pending', 'active', 'in_production')
+          AND ${completed} IS NOT TRUE
+          ${printedFilter}
+          AND po.id NOT IN (
+            SELECT q.production_order_id
+            FROM machine_queues q
+            JOIN machines m ON m.id = q.machine_id
+            WHERE ${machineTypeMatch}
+          )
+        ORDER BY po.id
+      `)
+    ).rows.map((r: any) => this.mapEnrichedRow(r)) as any[];
+
+    const hybrid = {
+      loadWeight: Number(params?.loadWeight) || 0,
+      capacityWeight: Number(params?.capacityWeight) || 0,
+      priorityWeight: Number(params?.priorityWeight) || 0,
+      typeWeight: Number(params?.typeWeight) || 0,
+    };
+
+    // Lower score = more preferred machine for the next order.
+    const scoreFor = (st: any, kg: number, width: any): number => {
+      const r = this.machineRateForWidth(st.machine, width) || st.rate;
+      const addHours = r > 0 ? kg / r : 0;
+      const projHours = st.currentHours + st.addedHours + addHours;
+      const projKg = st.currentLoad + st.addedKg + kg;
+      if (algorithm === "load-based") return projKg;
+      if (algorithm === "hybrid") {
+        const util =
+          st.maxCapacity > 0 ? (projKg / st.maxCapacity) * 100 : 100;
+        const wSum =
+          hybrid.loadWeight +
+            hybrid.capacityWeight +
+            hybrid.priorityWeight +
+            hybrid.typeWeight || 1;
+        return (
+          (projHours * (hybrid.loadWeight + hybrid.priorityWeight) +
+            util * (hybrid.capacityWeight + hybrid.typeWeight)) /
+          wSum
+        );
+      }
+      // balanced / priority / default → even out work-content hours.
+      return projHours;
+    };
+
+    const place = (st: any, order: any) => {
+      const kg = this.orderWeightKg(order);
+      const r = this.machineRateForWidth(st.machine, order.width) || st.rate;
+      st.addedKg += kg;
+      st.addedHours += r > 0 ? kg / r : 0;
+      st.assigned.push(order);
+    };
+
+    const bestMachine = (kg: number, width: any) => {
+      let best: any = null;
+      let bestScore = Infinity;
+      for (const st of usable) {
+        const s = scoreFor(st, kg, width);
+        if (s < bestScore) {
+          bestScore = s;
+          best = st;
+        }
+      }
+      return best;
+    };
+
+    if (usable.length > 0 && backlog.length > 0) {
+      let ordered = [...backlog];
+      if (algorithm === "priority") {
+        const rank = (s: string) =>
+          s === "in_production" ? 0 : s === "active" ? 1 : 2;
+        ordered.sort(
+          (a, b) =>
+            rank(String(a.status)) - rank(String(b.status)) ||
+            Number(a.production_order_id) - Number(b.production_order_id),
+        );
+      }
+
+      if (algorithm === "product-type") {
+        // Cluster similar products (size + material) onto the same machine to
+        // minimize setup changes.
+        const groups = new Map<string, any[]>();
+        for (const o of ordered) {
+          const key = `${o.size_caption ?? ""}|${o.raw_material ?? ""}`;
+          const list = groups.get(key) || [];
+          list.push(o);
+          groups.set(key, list);
+        }
+        for (const list of Array.from(groups.values())) {
+          const groupKg = list.reduce(
+            (sum, o) => sum + this.orderWeightKg(o),
+            0,
+          );
+          const best = bestMachine(groupKg, list[0].width);
+          if (!best) continue;
+          for (const o of list) place(best, o);
+        }
+      } else {
+        for (const o of ordered) {
+          const best = bestMachine(this.orderWeightKg(o), o.width);
+          if (best) place(best, o);
+        }
+      }
+    }
+
+    const preview = states.map((st) => {
+      const proposedTotal = st.currentLoad + st.addedKg;
+      const utilization =
+        st.maxCapacity > 0 ? (proposedTotal / st.maxCapacity) * 100 : 0;
+      return {
+        machineId: st.machine.id,
+        machineName: st.machine.name,
+        machineNameAr: st.machine.name_ar,
+        currentLoad: Math.round(st.currentLoad * 100) / 100,
+        proposedLoad: Math.round(st.addedKg * 100) / 100,
+        proposedUtilization: Math.round(utilization * 10) / 10,
+        newCapacityStatus: this.capacityStatusFromUtilization(utilization),
+        proposedOrders: st.assigned,
+        productionRate: Math.round(st.rate * 100) / 100,
+      };
+    });
+
+    const totalOrders = states.reduce((sum, st) => sum + st.assigned.length, 0);
+
+    // Efficiency = how balanced the resulting utilizations are across machines
+    // that hold or received work (100 = perfectly even).
+    const utils = preview
+      .filter((p) => p.proposedLoad > 0 || p.currentLoad > 0)
+      .map((p) => p.proposedUtilization);
+    let efficiency = 0;
+    if (utils.length > 0) {
+      const avg = utils.reduce((a, b) => a + b, 0) / utils.length;
+      const variance =
+        utils.reduce((a, b) => a + (b - avg) ** 2, 0) / utils.length;
+      efficiency = Math.max(
+        0,
+        Math.min(100, Math.round(100 - Math.sqrt(variance))),
+      );
+    }
+
+    return {
+      totalOrders,
+      machineCount: states.length,
+      efficiency,
+      preview,
+      states,
+    };
+  }
+
   async smartDistributeOrders(algorithm: string, params?: any): Promise<any> {
+    const stage = String(params?.stage || "");
+    if (!this.getStageInfo(stage)) {
+      throw new Error("مرحلة غير صالحة");
+    }
+    const userId = params?.userId;
+
+    let distributed = 0;
+    await db.transaction(async (tx) => {
+      // Serialize concurrent distribution applies for the same stage. Without
+      // this, two callers could each read the same unassigned backlog and the
+      // same MAX(queue_position) and then both insert — producing duplicate
+      // order assignments and colliding queue positions. The xact-scoped
+      // advisory lock blocks other appliers until this transaction commits, so
+      // the compute + position reads below always see fresh committed state.
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext(${"smart_distribute_" + stage}))`,
+      );
+
+      const dist = await this.computeStageDistribution(
+        stage,
+        algorithm,
+        params,
+      );
+      if (dist.totalOrders === 0) return;
+
+      // Append positions continue after each machine's current maximum.
+      const posRows = (
+        await tx.execute(sql`
+          SELECT machine_id, COALESCE(MAX(queue_position), 0) AS maxpos
+          FROM machine_queues
+          GROUP BY machine_id
+        `)
+      ).rows as any[];
+      const posMap = new Map<string, number>(
+        posRows.map((r) => [String(r.machine_id), Number(r.maxpos) || 0]),
+      );
+
+      for (const st of dist.states) {
+        if (!st.assigned.length) continue;
+        let pos = posMap.get(String(st.machine.id)) || 0;
+        for (const o of st.assigned) {
+          pos += 1;
+          await tx.insert(machine_queues).values({
+            machine_id: st.machine.id,
+            production_order_id: o.production_order_id,
+            queue_position: pos,
+            ...(userId ? { assigned_by: userId } : {}),
+          } as InsertMachineQueue);
+          distributed += 1;
+        }
+      }
+    });
+
+    if (distributed === 0) {
+      return {
+        success: true,
+        distributed: 0,
+        message: "لا توجد أوامر غير موزّعة لهذه المرحلة",
+      };
+    }
+
     return {
       success: true,
-      distributed: 0,
-      message: "التوزيع الذكي غير متاح حالياً",
+      distributed,
+      message: `تم توزيع ${distributed} أمر إنتاج على المكائن`,
     };
   }
 
@@ -9194,7 +9534,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDistributionPreview(algorithm: string, params?: any): Promise<any> {
-    return { preview: [], suggestions: [] };
+    const stage = String(params?.stage || "");
+    if (!this.getStageInfo(stage)) {
+      throw new Error("مرحلة غير صالحة");
+    }
+    const dist = await this.computeStageDistribution(stage, algorithm, params);
+    return {
+      totalOrders: dist.totalOrders,
+      machineCount: dist.machineCount,
+      efficiency: dist.efficiency,
+      preview: dist.preview,
+    };
   }
 
   async getFactoryLocation(id: number): Promise<FactoryLocation | undefined> {
@@ -9209,8 +9559,27 @@ export class DatabaseStorage implements IStorage {
     return { reports: [] };
   }
 
-  async getMachineCapacityStats(): Promise<any> {
-    return { machines: [], totalCapacity: 0, usedCapacity: 0 };
+  async getMachineCapacityStats(stage?: string): Promise<any> {
+    const s = String(stage || "");
+    if (!this.getStageInfo(s)) {
+      throw new Error("مرحلة غير صالحة");
+    }
+    const { states } = await this.getStageMachineStates(s);
+    return states.map((st) => {
+      const utilization =
+        st.maxCapacity > 0 ? (st.currentLoad / st.maxCapacity) * 100 : 0;
+      return {
+        machineId: st.machine.id,
+        machineName: st.machine.name,
+        machineNameAr: st.machine.name_ar,
+        currentLoad: Math.round(st.currentLoad * 100) / 100,
+        maxCapacity: Math.round(st.maxCapacity * 100) / 100,
+        utilizationPercentage: Math.round(utilization * 10) / 10,
+        capacityStatus: this.capacityStatusFromUtilization(utilization),
+        orderCount: st.orderCount,
+        productionRate: Math.round(st.rate * 100) / 100,
+      };
+    });
   }
 
   async getMachineDetailAllStages(

@@ -44,6 +44,7 @@ interface SmartDistributionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onDistribute: () => void;
+  stage: string;
 }
 
 interface DistributionAlgorithm {
@@ -103,6 +104,7 @@ export default function SmartDistributionModal({
   isOpen,
   onClose,
   onDistribute,
+  stage,
 }: SmartDistributionModalProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -162,11 +164,13 @@ export default function SmartDistributionModal({
     useQuery<DistributionPreviewResponse>({
       queryKey: [
         "/api/machine-queues/distribution-preview",
+        stage,
         selectedAlgorithm,
         hybridParams,
       ],
       queryFn: async () => {
         const params = new URLSearchParams({
+          stage,
           algorithm: selectedAlgorithm,
           ...(selectedAlgorithm === "hybrid"
             ? {
@@ -191,7 +195,7 @@ export default function SmartDistributionModal({
 
   // Fetch machine capacity stats
   const { data: capacityStats } = useQuery<CapacityStatsResponse>({
-    queryKey: ["/api/machines/capacity-stats"],
+    queryKey: ["/api/machines/capacity-stats", { stage }],
     enabled: isOpen,
   });
 
@@ -204,7 +208,10 @@ export default function SmartDistributionModal({
           method: "POST",
           body: JSON.stringify({
             algorithm: selectedAlgorithm,
-            params: selectedAlgorithm === "hybrid" ? hybridParams : {},
+            params: {
+              stage,
+              ...(selectedAlgorithm === "hybrid" ? hybridParams : {}),
+            },
           }),
         },
       );

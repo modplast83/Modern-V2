@@ -9219,6 +9219,7 @@ Input: ${text}`;
   app.post(
     "/api/machine-queues/smart-distribute",
     requireAuth,
+    requirePermission("edit_production", "manage_production", "manage_orders"),
     async (req, res) => {
       try {
         const { algorithm, params } = req.body;
@@ -9300,7 +9301,9 @@ Input: ${text}`;
   // Get machine capacity statistics
   app.get("/api/machines/capacity-stats", requireAuth, async (req, res) => {
     try {
-      const stats = await storage.getMachineCapacityStats();
+      const stats = await storage.getMachineCapacityStats(
+        String(req.query.stage || ""),
+      );
 
       res.json({
         success: true,
