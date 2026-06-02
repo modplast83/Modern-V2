@@ -9433,7 +9433,8 @@ export class DatabaseStorage implements IStorage {
     const printedFilter =
       stage === "printing" ? sql`AND cp.is_printed = true` : sql``;
 
-    // Machines for this department (all statuses so planning can see them).
+    // Active machines for this department only (inactive/down machines are
+    // hidden from the planning board).
     const machineRows = (
       await db.execute(sql`
         SELECT m.id, m.name, m.name_ar, m.type, m.status,
@@ -9442,6 +9443,7 @@ export class DatabaseStorage implements IStorage {
                m.capacity_large_kg_per_hour
         FROM machines m
         WHERE ${machineTypeMatch}
+          AND LOWER(m.status) = 'active'
         ORDER BY m.id
       `)
     ).rows as any[];
