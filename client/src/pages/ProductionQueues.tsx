@@ -29,12 +29,14 @@ import {
   ChevronDown,
   X,
   Loader2,
+  MonitorPlay,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 import PageLayout from "../components/layout/PageLayout";
 import SmartDistributionModal from "../components/modals/SmartDistributionModal";
+import QueueSlideshow from "../components/production/QueueSlideshow";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import {
@@ -918,6 +920,7 @@ function StageBoard({ stage }: { stage: Stage }) {
 export default function ProductionQueues() {
   const { t } = useTranslation();
   const [tab, setTab] = useState<Stage>("film");
+  const [slideshowOpen, setSlideshowOpen] = useState(false);
 
   useEffect(() => {
     STAGES.forEach((s) => {
@@ -932,6 +935,19 @@ export default function ProductionQueues() {
       title={t("production.queues.title")}
       description={t("production.queues.planningDescription")}
     >
+      <div className="mb-4 flex justify-end">
+        <Button
+          onClick={() => setSlideshowOpen(true)}
+          data-testid="open-slideshow"
+        >
+          <MonitorPlay className="h-4 w-4" />
+          {t("production.queues.slideshow.button")}
+        </Button>
+      </div>
+      <QueueSlideshow
+        isOpen={slideshowOpen}
+        onClose={() => setSlideshowOpen(false)}
+      />
       <Tabs value={tab} onValueChange={(v) => setTab(v as Stage)}>
         <TabsList className="mb-4">
           <TabsTrigger value="film" data-testid="tab-film">
