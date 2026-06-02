@@ -348,7 +348,7 @@ function MachineColumn({
 
   return (
     <Card
-      className="w-80 flex-shrink-0"
+      className="w-full"
       data-testid={`column-machine-${machine.id}`}
     >
       <CardHeader className="pb-2">
@@ -792,33 +792,37 @@ function StageBoard({ stage }: { stage: Stage }) {
         onDragEnd={handleDragEnd}
       >
         <div className="flex flex-wrap gap-3 pb-3">
-          <BacklogColumn
-            backlog={board.backlog}
-            machines={board.machines}
-            t={t}
-            ln={ln}
-            stage={stage}
-            onAssign={handleAssign}
-          />
+          <div className="w-80 flex-shrink-0">
+            <BacklogColumn
+              backlog={board.backlog}
+              machines={board.machines}
+              t={t}
+              ln={ln}
+              stage={stage}
+              onAssign={handleAssign}
+            />
+          </div>
           {board.machines.length === 0 ? (
-            <Card className="w-80 flex-shrink-0">
+            <Card className="flex-1 min-w-[20rem]">
               <CardContent className="text-center text-muted-foreground py-12">
                 {t("production.queues.noMachines")}
               </CardContent>
             </Card>
           ) : (
-            board.machines.map((machine) => (
-              <MachineColumn
-                key={machine.id}
-                machine={machine}
-                stage={stage}
-                t={t}
-                ln={ln}
-                onReorder={handleReorder}
-                onRemove={handleRemove}
-                onSuggest={openSuggestion}
-              />
-            ))
+            <div className="grid flex-1 min-w-[20rem] grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {board.machines.map((machine) => (
+                <MachineColumn
+                  key={machine.id}
+                  machine={machine}
+                  stage={stage}
+                  t={t}
+                  ln={ln}
+                  onReorder={handleReorder}
+                  onRemove={handleRemove}
+                  onSuggest={openSuggestion}
+                />
+              ))}
+            </div>
           )}
         </div>
       </DndContext>
