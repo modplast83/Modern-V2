@@ -9294,6 +9294,41 @@ export class DatabaseStorage implements IStorage {
     return vals.reduce((a, b) => a + b, 0) / vals.length;
   }
 
+  // Product width (cm) thresholds used to classify an order's size so the
+  // size-appropriate machine capacity can be applied. Below SMALL_MAX uses the
+  // small capacity, at/above LARGE_MIN uses the large capacity, otherwise medium.
+  private static SIZE_WIDTH_SMALL_MAX_CM = 30;
+  private static SIZE_WIDTH_LARGE_MIN_CM = 60;
+
+  // Size-appropriate production rate (kg/hour) for a single order on a machine,
+  // chosen from the product width. Falls back to the medium/average rate when
+  // the width is unknown or the matching capacity is not configured.
+  private machineRateForWidth(machine: any, width: any): number {
+    const small =
+      machine.capacity_small_kg_per_hour != null
+        ? parseFloat(String(machine.capacity_small_kg_per_hour))
+        : NaN;
+    const medium =
+      machine.capacity_medium_kg_per_hour != null
+        ? parseFloat(String(machine.capacity_medium_kg_per_hour))
+        : NaN;
+    const large =
+      machine.capacity_large_kg_per_hour != null
+        ? parseFloat(String(machine.capacity_large_kg_per_hour))
+        : NaN;
+
+    const w = width == null ? NaN : parseFloat(String(width));
+    let preferred = NaN;
+    if (!isNaN(w)) {
+      if (w < DatabaseStorage.SIZE_WIDTH_SMALL_MAX_CM) preferred = small;
+      else if (w >= DatabaseStorage.SIZE_WIDTH_LARGE_MIN_CM) preferred = large;
+      else preferred = medium;
+    }
+    if (!isNaN(preferred) && preferred > 0) return preferred;
+    // Fall back to the representative (medium/average) rate.
+    return this.machineRateKgPerHour(machine);
+  }
+
   private countPrintColors(front?: any, back?: any): number {
     const countSide = (arr: any) =>
       Array.isArray(arr)
@@ -9339,6 +9374,7 @@ export class DatabaseStorage implements IStorage {
       it.name AS item_name,
       it.name_ar AS item_name_ar,
       cp.size_caption,
+      cp.width,
       cp.raw_material,
       cp.is_printed,
       cp.printing_cylinder,
@@ -9433,7 +9469,18 @@ export class DatabaseStorage implements IStorage {
       `)
     ).rows as any[];
 
-    const HOURS_PER_DAY = 20;
+    // Configured shift length (working hours per day). Falls back to 20 (the
+    // previous fixed multi-shift assumption) when not configured.
+    const profileRows = (
+      await db.execute(sql`
+        SELECT working_hours_per_day FROM company_profile LIMIT 1
+      `)
+    ).rows as any[];
+    const configuredHours = profileRows[0]?.working_hours_per_day;
+    const parsedHours =
+      configuredHours == null ? NaN : parseFloat(String(configuredHours));
+    const HOURS_PER_DAY = !isNaN(parsedHours) && parsedHours > 0 ? parsedHours : 20;
+
     const queueByMachine = new Map<string, any[]>();
     for (const row of queueRows) {
       const list = queueByMachine.get(row.machine_id) || [];
@@ -9447,12 +9494,24 @@ export class DatabaseStorage implements IStorage {
         (sum, q) => sum + (parseFloat(String(q.final_quantity_kg)) || 0),
         0,
       );
-      const rate = this.machineRateKgPerHour(m);
-      const estimatedHours = rate > 0 ? totalKg / rate : 0;
+      // Sum work content using the size-appropriate rate for each order rather
+      // than a single blended machine rate.
+      const estimatedHours = queue.reduce((sum, q) => {
+        const kg = parseFloat(String(q.final_quantity_kg)) || 0;
+        const rate = this.machineRateForWidth(m, q.width);
+        return sum + (rate > 0 ? kg / rate : 0);
+      }, 0);
+      // Effective average throughput for display (kg / total work hours).
+      const rate =
+        estimatedHours > 0 ? totalKg / estimatedHours : this.machineRateKgPerHour(m);
       const estimatedDays =
         estimatedHours > 0 ? Math.ceil(estimatedHours / HOURS_PER_DAY) : 0;
+      // Only machines that are actively running can be given a projected finish
+      // date. Machines in maintenance or down are not producing, so no finish
+      // date is projected (the work content/days are still reported).
+      const available = m.status === "active";
       const finishDate =
-        estimatedDays > 0
+        available && estimatedDays > 0
           ? new Date(
               Date.now() + estimatedDays * 24 * 60 * 60 * 1000,
             ).toISOString()
@@ -9466,6 +9525,8 @@ export class DatabaseStorage implements IStorage {
           ratePerHour: Math.round(rate * 100) / 100,
           estimatedHours: Math.round(estimatedHours * 100) / 100,
           estimatedDays,
+          hoursPerDay: HOURS_PER_DAY,
+          available,
           projectedFinish: finishDate,
         },
       };

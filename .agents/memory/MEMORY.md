@@ -3,3 +3,4 @@
 - [Production stage computation](production-stage-computation.md) — never advance a PO past 'film' on filmRolls===0 alone; inline-printed rolls skip film stage, so gate on film actually being done.
 - [Film dashboard visibility](film-dashboard-visibility.md) — film-operator order list must filter `production_stage='film'`; film_completed only set by Final Roll button, so quantity-complete orders otherwise linger.
 - [Roll-create stage trust](roll-create-stage-trust.md) — roll-create routes must force stage='film' & strip client transition fields; only server logic advances to printing (inline-printing bypass risk).
+- [Production queue estimates](production-queue-estimates.md) — finish estimate uses configured shift hours, per-order size-appropriate capacity (width buckets), and gates finish date on machine status.

@@ -107,6 +107,8 @@ interface MachineStats {
   ratePerHour: number;
   estimatedHours: number;
   estimatedDays: number;
+  hoursPerDay: number;
+  available: boolean;
   projectedFinish: string | null;
 }
 
@@ -378,7 +380,9 @@ function MachineColumn({
             label={t("production.queues.days")}
             value={
               machine.stats.estimatedDays > 0
-                ? `${machine.stats.estimatedDays} · ${finish}`
+                ? machine.stats.available
+                  ? `${machine.stats.estimatedDays} · ${finish}`
+                  : `${machine.stats.estimatedDays} · —`
                 : "—"
             }
           />
