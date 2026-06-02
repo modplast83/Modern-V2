@@ -401,7 +401,7 @@ function MachineColumn({
         </Button>
       </CardHeader>
       <CardContent className="pt-0">
-        <ScrollArea className="h-[440px] pr-1">
+        <ScrollArea className="h-[260px] pr-1">
           <SortableContext items={items} strategy={verticalListSortingStrategy}>
             <div
               ref={setNodeRef}
