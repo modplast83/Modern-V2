@@ -269,6 +269,20 @@ export const customer_products = pgTable(
     left_facing: decimal("left_facing", { precision: 8, scale: 2 }),
     right_facing: decimal("right_facing", { precision: 8, scale: 2 }),
     thickness: decimal("thickness", { precision: 8, scale: 3 }),
+    // السماكة العالمية — auto-computed, DB-only (not shown in the UI).
+    // Flat bag (no side gussets): thickness / 2 * 10.
+    // Gusseted bag (both sides folded): thickness / 4 * 10.
+    // Any other case (incl. a single gusset) falls back to the flat formula.
+    universal_thickness: decimal("universal_thickness", {
+      precision: 12,
+      scale: 4,
+    }).generatedAlwaysAs(
+      sql`CASE
+        WHEN (COALESCE(left_facing, 0) = 0 AND COALESCE(right_facing, 0) = 0) THEN thickness / 2 * 10
+        WHEN (left_facing > 0 AND right_facing > 0) THEN thickness / 4 * 10
+        ELSE thickness / 2 * 10
+      END`,
+    ),
     printing_cylinder: varchar("printing_cylinder", { length: 10 }), // 8" to 38" + 39"
     cutting_length_cm: integer("cutting_length_cm"),
     raw_material: varchar("raw_material", { length: 20 }), // HDPE-LDPE-Regrind

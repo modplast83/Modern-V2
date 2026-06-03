@@ -64,6 +64,13 @@
       "when": 1781481600000,
       "tag": "0008_machine_thickness_range",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1781654400000,
+      "tag": "0009_customer_product_universal_thickness",
+      "breakpoints": true
     }
   ]
 }
