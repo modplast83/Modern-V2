@@ -352,6 +352,10 @@ export async function registerRoutes(
   // Setup Replit Auth (OpenID Connect)
   await setupAuth(app);
 
+  // Register quote & quote-template routes
+  const { registerQuoteRoutes } = await import("./quote-routes");
+  registerQuoteRoutes(app);
+
   // Register MCP OAuth 2.1 routes (must be before MCP routes)
   const { registerMcpOAuthRoutes } = await import("./mcp-oauth");
   registerMcpOAuthRoutes(app);
