@@ -80,6 +80,12 @@ export function ModernAgentSettingsContent() {
         <TabsTrigger value="knowledge" data-testid="tab-knowledge">
           قاعدة المعرفة
         </TabsTrigger>
+        <TabsTrigger value="access" data-testid="tab-access">
+          الصلاحيات
+        </TabsTrigger>
+        <TabsTrigger value="profiles" data-testid="tab-profiles">
+          ملفات المستخدمين
+        </TabsTrigger>
       </TabsList>
       <TabsContent value="general">
         <GeneralSettings />
@@ -89,6 +95,12 @@ export function ModernAgentSettingsContent() {
       </TabsContent>
       <TabsContent value="knowledge">
         <KnowledgeManager />
+      </TabsContent>
+      <TabsContent value="access">
+        <AccessManager />
+      </TabsContent>
+      <TabsContent value="profiles">
+        <ProfilesManager />
       </TabsContent>
     </Tabs>
   );
@@ -682,6 +694,262 @@ function KnowledgeManager() {
           </Card>
         ))}
       </div>
+    </div>
+  );
+}
+
+interface UserLite {
+  id: number;
+  username: string;
+  display_name: string | null;
+  display_name_ar: string | null;
+}
+interface RoleLite {
+  id: number;
+  name: string;
+}
+interface AccessEntry {
+  id: number;
+  user_id: number | null;
+  role_id: number | null;
+  enabled: boolean;
+}
+
+function AccessManager() {
+  const { toast } = useToast();
+  const { data: access = [] } = useQuery<AccessEntry[]>({
+    queryKey: ["/api/modern-agent/access"],
+  });
+  const { data: users = [] } = useQuery<UserLite[]>({
+    queryKey: ["/api/users"],
+  });
+  const { data: roles = [] } = useQuery<RoleLite[]>({
+    queryKey: ["/api/modern-agent/roles"],
+  });
+  const [mode, setMode] = useState<"user" | "role">("user");
+  const [selected, setSelected] = useState<string>("");
+
+  const add = useMutation({
+    mutationFn: async () => {
+      if (!selected) return;
+      await apiRequest("/api/modern-agent/access", {
+        method: "POST",
+        body: JSON.stringify(
+          mode === "user"
+            ? { user_id: Number(selected) }
+            : { role_id: Number(selected) },
+        ),
+      });
+    },
+    onSuccess: () => {
+      setSelected("");
+      invalidate("/api/modern-agent/access");
+      toast({ title: "تمت الإضافة إلى قائمة المسموح لهم" });
+    },
+    onError: () => toast({ title: "فشل الحفظ", variant: "destructive" }),
+  });
+  const del = useMutation({
+    mutationFn: async (id: number) =>
+      apiRequest(`/api/modern-agent/access/${id}`, { method: "DELETE" }),
+    onSuccess: () => invalidate("/api/modern-agent/access"),
+  });
+
+  const userName = (id: number) => {
+    const u = users.find((x) => x.id === id);
+    return u ? u.display_name_ar || u.display_name || u.username : `#${id}`;
+  };
+  const roleName = (id: number) => roles.find((x) => x.id === id)?.name || `#${id}`;
+
+  return (
+    <div className="space-y-4" dir="rtl">
+      <p className="text-sm text-muted-foreground">
+        إذا كانت القائمة فارغة، يمكن لكل من يملك صلاحية استخدام الوكيل الوصول
+        إليه. عند إضافة مستخدمين أو أدوار، يقتصر الوصول عليهم فقط.
+      </p>
+      <Card className="p-4 flex flex-wrap items-end gap-3">
+        <div>
+          <Label>النوع</Label>
+          <Select value={mode} onValueChange={(v) => { setMode(v as "user" | "role"); setSelected(""); }}>
+            <SelectTrigger className="w-32" data-testid="select-access-mode">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="user">مستخدم</SelectItem>
+              <SelectItem value="role">دور</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex-1 min-w-48">
+          <Label>{mode === "user" ? "المستخدم" : "الدور"}</Label>
+          <Select value={selected} onValueChange={setSelected}>
+            <SelectTrigger data-testid="select-access-target">
+              <SelectValue placeholder="اختر..." />
+            </SelectTrigger>
+            <SelectContent>
+              {mode === "user"
+                ? users.map((u) => (
+                    <SelectItem key={u.id} value={String(u.id)}>
+                      {u.display_name_ar || u.display_name || u.username}
+                    </SelectItem>
+                  ))
+                : roles.map((r) => (
+                    <SelectItem key={r.id} value={String(r.id)}>
+                      {r.name}
+                    </SelectItem>
+                  ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <Button
+          onClick={() => add.mutate()}
+          disabled={!selected || add.isPending}
+          data-testid="button-add-access"
+        >
+          <Plus className="h-4 w-4 ml-1" /> إضافة
+        </Button>
+      </Card>
+      <div className="space-y-2">
+        {access.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            القائمة فارغة — الوصول مفتوح لكل من يملك الصلاحية.
+          </p>
+        )}
+        {access.map((a) => (
+          <Card
+            key={a.id}
+            className="p-3 flex items-center justify-between"
+            data-testid={`access-${a.id}`}
+          >
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">
+                {a.user_id ? "مستخدم" : "دور"}
+              </Badge>
+              <span>
+                {a.user_id ? userName(a.user_id) : roleName(a.role_id!)}
+              </span>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => del.mutate(a.id)}
+              data-testid={`delete-access-${a.id}`}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+interface ProfileRow {
+  user_id: number;
+  username: string;
+  user_display_name: string | null;
+  user_display_name_ar: string | null;
+  profile_id: number | null;
+  display_name: string | null;
+  notes: string | null;
+}
+
+function ProfilesManager() {
+  const { toast } = useToast();
+  const { data: profiles = [] } = useQuery<ProfileRow[]>({
+    queryKey: ["/api/modern-agent/profiles"],
+  });
+  const [drafts, setDrafts] = useState<
+    Record<number, { display_name: string; notes: string }>
+  >({});
+
+  const save = useMutation({
+    mutationFn: async (userId: number) => {
+      const d = drafts[userId];
+      await apiRequest(`/api/modern-agent/profiles/${userId}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          display_name: d?.display_name ?? null,
+          notes: d?.notes ?? null,
+        }),
+      });
+    },
+    onSuccess: () => {
+      invalidate("/api/modern-agent/profiles");
+      toast({ title: "تم حفظ الملف الشخصي" });
+    },
+    onError: () => toast({ title: "فشل الحفظ", variant: "destructive" }),
+  });
+
+  const valueFor = (p: ProfileRow, field: "display_name" | "notes") =>
+    drafts[p.user_id]?.[field] ?? (p[field] || "");
+
+  const setField = (
+    userId: number,
+    field: "display_name" | "notes",
+    value: string,
+  ) =>
+    setDrafts((prev) => ({
+      ...prev,
+      [userId]: {
+        display_name:
+          field === "display_name"
+            ? value
+            : prev[userId]?.display_name ??
+              profiles.find((x) => x.user_id === userId)?.display_name ??
+              "",
+        notes:
+          field === "notes"
+            ? value
+            : prev[userId]?.notes ??
+              profiles.find((x) => x.user_id === userId)?.notes ??
+              "",
+      },
+    }));
+
+  return (
+    <div className="space-y-3" dir="rtl">
+      <p className="text-sm text-muted-foreground">
+        اضبط كيف يخاطب الوكيل كل مستخدم (الاسم المعروض) وأي ملاحظات توجيهية
+        خاصة به.
+      </p>
+      {profiles.map((p) => (
+        <Card key={p.user_id} className="p-4 space-y-3" data-testid={`profile-${p.user_id}`}>
+          <div className="font-medium">
+            {p.user_display_name_ar || p.user_display_name || p.username}{" "}
+            <span className="text-xs text-muted-foreground">
+              ({p.username})
+            </span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label>الاسم المعروض للوكيل</Label>
+              <Input
+                value={valueFor(p, "display_name")}
+                onChange={(e) =>
+                  setField(p.user_id, "display_name", e.target.value)
+                }
+                data-testid={`input-profile-name-${p.user_id}`}
+              />
+            </div>
+            <div>
+              <Label>ملاحظات توجيهية</Label>
+              <Input
+                value={valueFor(p, "notes")}
+                onChange={(e) => setField(p.user_id, "notes", e.target.value)}
+                data-testid={`input-profile-notes-${p.user_id}`}
+              />
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => save.mutate(p.user_id)}
+            disabled={save.isPending}
+            data-testid={`button-save-profile-${p.user_id}`}
+          >
+            <Save className="h-4 w-4 ml-1" /> حفظ
+          </Button>
+        </Card>
+      ))}
     </div>
   );
 }

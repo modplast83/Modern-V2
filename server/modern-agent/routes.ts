@@ -15,6 +15,8 @@ import {
   insertModernAgentKnowledgeSchema,
   insertModernAgentAccessSchema,
   insertModernAgentSettingsSchema,
+  users,
+  roles,
   type ModernAgentTask,
 } from "@shared/schema";
 import {
@@ -104,8 +106,8 @@ async function ensureSeeded(): Promise<void> {
       },
       {
         task_key: "data_entry",
-        name_ar: "إدخال البيانات",
-        name_en: "Data Entry",
+        name_ar: "إدخال بيانات العملاء",
+        name_en: "Customer Data Entry",
         description: "إنشاء وتعديل سجلات العملاء",
         response_guidance:
           "تحقق من البيانات قبل الكتابة، وأكّد للمستخدم بعد إتمام العملية.",
@@ -114,6 +116,34 @@ async function ensureSeeded(): Promise<void> {
         is_write: true,
         required_permission: "manage_customers",
         sort_order: 4,
+        enabled: true,
+      },
+      {
+        task_key: "order_management",
+        name_ar: "إدارة الطلبات",
+        name_en: "Order Management",
+        description: "إنشاء وتعديل طلبات العملاء",
+        response_guidance:
+          "تأكد من معرّف العميل وبيانات التسليم قبل الإنشاء، وأكّد رقم الطلب الناتج للمستخدم.",
+        language: "auto",
+        allowed_tools: ["create_order", "update_order"],
+        is_write: true,
+        required_permission: "manage_orders",
+        sort_order: 5,
+        enabled: true,
+      },
+      {
+        task_key: "production_order_management",
+        name_ar: "إدارة أوامر الإنتاج",
+        name_en: "Production Order Management",
+        description: "إنشاء وتعديل أوامر الإنتاج",
+        response_guidance:
+          "تأكد من الطلب ومواصفات منتج العميل والكميات قبل الإنشاء، وأكّد النتيجة للمستخدم.",
+        language: "auto",
+        allowed_tools: ["create_production_order", "update_production_order"],
+        is_write: true,
+        required_permission: "manage_production",
+        sort_order: 6,
         enabled: true,
       },
     ]);
@@ -862,6 +892,76 @@ export function registerModernAgentRoutes(app: Express): void {
       const id = Number(req.params.id);
       await db.delete(modern_agent_access).where(eq(modern_agent_access.id, id));
       res.json({ ok: true });
+    },
+  );
+
+  // Lightweight roles list for the access allow-list selector (avoids
+  // requiring the broader manage_roles permission just to view role names).
+  app.get(
+    "/api/modern-agent/roles",
+    requireAuth,
+    requirePermission("manage_modern_agent"),
+    async (_req: AuthRequest, res: Response) => {
+      const rows = await db
+        .select({ id: roles.id, name: roles.name })
+        .from(roles)
+        .orderBy(roles.id);
+      res.json(rows);
+    },
+  );
+
+  // ---------- per-user profiles (admin) ----------
+  app.get(
+    "/api/modern-agent/profiles",
+    requireAuth,
+    requirePermission("manage_modern_agent"),
+    async (_req: AuthRequest, res: Response) => {
+      const rows = await db
+        .select({
+          user_id: users.id,
+          username: users.username,
+          user_display_name: users.display_name,
+          user_display_name_ar: users.display_name_ar,
+          profile_id: modern_agent_profiles.id,
+          display_name: modern_agent_profiles.display_name,
+          notes: modern_agent_profiles.notes,
+        })
+        .from(users)
+        .leftJoin(
+          modern_agent_profiles,
+          eq(modern_agent_profiles.user_id, users.id),
+        )
+        .orderBy(users.id);
+      res.json(rows);
+    },
+  );
+
+  app.put(
+    "/api/modern-agent/profiles/:userId",
+    requireAuth,
+    requirePermission("manage_modern_agent"),
+    async (req: AuthRequest, res: Response) => {
+      const userId = Number(req.params.userId);
+      if (!userId) return res.status(400).json({ error: "invalid user id" });
+      const display_name = req.body?.display_name ?? null;
+      const notes = req.body?.notes ?? null;
+      const existing = await db
+        .select()
+        .from(modern_agent_profiles)
+        .where(eq(modern_agent_profiles.user_id, userId));
+      if (existing[0]) {
+        const updated = await db
+          .update(modern_agent_profiles)
+          .set({ display_name, notes, updated_at: new Date() })
+          .where(eq(modern_agent_profiles.user_id, userId))
+          .returning();
+        return res.json(updated[0]);
+      }
+      const created = await db
+        .insert(modern_agent_profiles)
+        .values({ user_id: userId, display_name, notes })
+        .returning();
+      res.json(created[0]);
     },
   );
 

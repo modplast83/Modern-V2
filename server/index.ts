@@ -775,6 +775,120 @@ function sanitizeResponseForLogging(response: any): any {
       );
     }
 
+    // Ensure the Modern AI agent tables exist on existing databases.
+    // drizzle-kit push only runs for fresh databases, so create them here
+    // idempotently (CREATE TABLE IF NOT EXISTS never drops or alters data).
+    try {
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS modern_agent_settings (
+          id serial PRIMARY KEY,
+          model varchar(100) NOT NULL DEFAULT 'gpt-4.1',
+          default_language varchar(10) NOT NULL DEFAULT 'auto',
+          base_persona text,
+          temperature numeric(3,2) NOT NULL DEFAULT '0.30',
+          max_tool_iterations integer NOT NULL DEFAULT 6,
+          enabled boolean NOT NULL DEFAULT true,
+          updated_at timestamp DEFAULT now()
+        )
+      `);
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS modern_agent_tasks (
+          id serial PRIMARY KEY,
+          task_key varchar(80) NOT NULL UNIQUE,
+          name_ar varchar(200) NOT NULL,
+          name_en varchar(200) NOT NULL,
+          description text,
+          response_guidance text,
+          language varchar(10) NOT NULL DEFAULT 'auto',
+          allowed_tools text[] NOT NULL DEFAULT '{}'::text[],
+          is_write boolean NOT NULL DEFAULT false,
+          required_permission varchar(80),
+          max_daily_interactions integer,
+          sort_order integer NOT NULL DEFAULT 0,
+          enabled boolean NOT NULL DEFAULT true,
+          created_at timestamp DEFAULT now(),
+          updated_at timestamp DEFAULT now()
+        )
+      `);
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS modern_agent_knowledge (
+          id serial PRIMARY KEY,
+          title varchar(300) NOT NULL,
+          content text NOT NULL,
+          category varchar(40) NOT NULL DEFAULT 'general',
+          is_private boolean NOT NULL DEFAULT false,
+          enabled boolean NOT NULL DEFAULT true,
+          created_at timestamp DEFAULT now(),
+          updated_at timestamp DEFAULT now()
+        )
+      `);
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS modern_agent_profiles (
+          id serial PRIMARY KEY,
+          user_id integer NOT NULL UNIQUE REFERENCES users(id),
+          display_name varchar(200),
+          notes text,
+          preferences jsonb,
+          created_at timestamp DEFAULT now(),
+          updated_at timestamp DEFAULT now()
+        )
+      `);
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS modern_agent_access (
+          id serial PRIMARY KEY,
+          user_id integer REFERENCES users(id),
+          role_id integer REFERENCES roles(id),
+          enabled boolean NOT NULL DEFAULT true,
+          created_at timestamp DEFAULT now()
+        )
+      `);
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS modern_agent_conversations (
+          id serial PRIMARY KEY,
+          user_id integer NOT NULL REFERENCES users(id),
+          title varchar(300),
+          created_at timestamp DEFAULT now(),
+          updated_at timestamp DEFAULT now()
+        )
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_modern_agent_conv_user
+        ON modern_agent_conversations (user_id)
+      `);
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS modern_agent_messages (
+          id serial PRIMARY KEY,
+          conversation_id integer NOT NULL REFERENCES modern_agent_conversations(id),
+          role varchar(20) NOT NULL,
+          content text NOT NULL DEFAULT '',
+          metadata jsonb,
+          created_at timestamp DEFAULT now()
+        )
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_modern_agent_msg_conv
+        ON modern_agent_messages (conversation_id)
+      `);
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS modern_agent_usage (
+          id serial PRIMARY KEY,
+          user_id integer NOT NULL REFERENCES users(id),
+          task_key varchar(80) NOT NULL,
+          usage_date date NOT NULL,
+          count integer NOT NULL DEFAULT 0
+        )
+      `);
+      await db.execute(sql`
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_modern_agent_usage
+        ON modern_agent_usage (user_id, task_key, usage_date)
+      `);
+    } catch (modernErr: any) {
+      console.warn(
+        "⚠️ فشل تهيئة جداول الوكيل الذكي مودرن (سيتم المحاولة لاحقاً):",
+        modernErr?.message,
+      );
+    }
+
     // Ensure machines.inline_printer_id column exists, then auto-link the three
     // physically-combined extruder+printer pairs by name. Safe & idempotent:
     // the column is added IF NOT EXISTS and the link is only set when currently

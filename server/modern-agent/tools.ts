@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "../db";
 import { storage } from "../storage";
 import { users } from "@shared/schema";
@@ -135,6 +135,53 @@ export const TOOL_REGISTRY: ToolDefinition[] = [
         section_id: m.section_id,
         status: m.status,
       }));
+    },
+  },
+  {
+    name: "get_machine",
+    kind: "read",
+    permission: "view_production",
+    description:
+      "Get a single machine by id with its full specifications and measurements (capacities by size, screw type, raw material type, supported thickness range, inline printer, status).",
+    parameters: {
+      type: "object",
+      properties: { id: { type: "string" } },
+      required: ["id"],
+    },
+    handler: async (args) => {
+      const m = await storage.getMachineById(args.id);
+      if (!m) return { error: "not_found" };
+      return {
+        id: m.id,
+        name: m.name,
+        name_ar: m.name_ar,
+        type: m.type,
+        section_id: m.section_id,
+        status: m.status,
+        capacity_small_kg_per_hour: m.capacity_small_kg_per_hour,
+        capacity_medium_kg_per_hour: m.capacity_medium_kg_per_hour,
+        capacity_large_kg_per_hour: m.capacity_large_kg_per_hour,
+        screw_type: m.screw_type,
+        raw_material_type: m.raw_material_type,
+        min_thickness: m.min_thickness,
+        max_thickness: m.max_thickness,
+        inline_printer_id: m.inline_printer_id,
+      };
+    },
+  },
+  {
+    name: "list_production_queues",
+    kind: "read",
+    permission: "view_production",
+    description:
+      "List the production queue across all machines (each item: machine_id, queue_position, production_order_id and related fields). Use to answer questions about what is queued and in what order.",
+    parameters: {
+      type: "object",
+      properties: { limit: { type: "number" } },
+    },
+    handler: async (args) => {
+      const list = await storage.getMachineQueues();
+      return (list as any[]).slice(0, clampLimit(args?.limit));
     },
   },
   {
@@ -348,6 +395,157 @@ export const TOOL_REGISTRY: ToolDefinition[] = [
       }
       const updated = await storage.updateCustomer(id, updates);
       return { ok: true, customer: updated };
+    },
+  },
+
+  {
+    name: "create_order",
+    kind: "write",
+    permission: "manage_orders",
+    description:
+      "Create a new customer order. Requires customer_id. Optional: delivery_days (>0), delivery_date (YYYY-MM-DD, today or later), notes. The order number is generated automatically.",
+    parameters: {
+      type: "object",
+      properties: {
+        customer_id: { type: "string" },
+        delivery_days: { type: "number" },
+        delivery_date: { type: "string" },
+        notes: { type: "string" },
+      },
+      required: ["customer_id"],
+    },
+    handler: async (args, ctx) => {
+      if (!args?.customer_id) return { error: "customer_id_required" };
+      // Generate a unique order_number with retry-on-collision, mirroring the
+      // /api/orders route so concurrent calls never produce duplicate numbers.
+      let lastErr: any = null;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const result = await db.execute(
+          sql`SELECT MAX(CAST(SUBSTRING(order_number FROM 4) AS INTEGER)) as max_num
+              FROM orders WHERE order_number ~ '^ORD[0-9]+$'`,
+        );
+        const maxNum = (result as any).rows?.[0]?.max_num || 0;
+        const order_number = `ORD${(maxNum + 1 + attempt)
+          .toString()
+          .padStart(3, "0")}`;
+        try {
+          const created = await storage.createOrder({
+            order_number,
+            customer_id: args.customer_id,
+            delivery_days: args.delivery_days ?? undefined,
+            delivery_date: args.delivery_date ?? undefined,
+            notes: args.notes ?? undefined,
+            created_by: ctx.userId,
+          } as any);
+          return { ok: true, order: created };
+        } catch (e: any) {
+          // 23505 = unique_violation (order_number collision); retry with next.
+          const code = e?.code || e?.cause?.code;
+          const dup =
+            code === "23505" ||
+            /duplicate key|unique/i.test(e?.message || "");
+          if (!dup) throw e;
+          lastErr = e;
+        }
+      }
+      return { error: "order_number_conflict", detail: lastErr?.message };
+    },
+  },
+  {
+    name: "update_order",
+    kind: "write",
+    permission: "manage_orders",
+    description:
+      "Update an existing order by numeric id. Provide the fields to change: status, notes, delivery_days, delivery_date.",
+    parameters: {
+      type: "object",
+      properties: {
+        id: { type: "number" },
+        status: { type: "string" },
+        notes: { type: "string" },
+        delivery_days: { type: "number" },
+        delivery_date: { type: "string" },
+      },
+      required: ["id"],
+    },
+    handler: async (args) => {
+      const id = Number(args?.id);
+      if (!id) return { error: "id_required" };
+      const updates: Record<string, any> = {};
+      for (const k of ["status", "notes", "delivery_days", "delivery_date"]) {
+        if (args[k] !== undefined) updates[k] = args[k];
+      }
+      if (Object.keys(updates).length === 0) return { error: "no_fields" };
+      const updated = await storage.updateOrder(id, updates);
+      return { ok: true, order: updated };
+    },
+  },
+  {
+    name: "create_production_order",
+    kind: "write",
+    permission: "manage_production",
+    description:
+      "Create a production order under an existing order. Requires order_id, customer_product_id, quantity_kg, final_quantity_kg. Optional: overrun_percentage. The production order number is generated automatically.",
+    parameters: {
+      type: "object",
+      properties: {
+        order_id: { type: "number" },
+        customer_product_id: { type: "number" },
+        quantity_kg: { type: "number" },
+        final_quantity_kg: { type: "number" },
+        overrun_percentage: { type: "number" },
+      },
+      required: ["order_id", "customer_product_id", "quantity_kg", "final_quantity_kg"],
+    },
+    handler: async (args) => {
+      if (!args?.order_id || !args?.customer_product_id) {
+        return { error: "order_id_and_customer_product_id_required" };
+      }
+      const created = await storage.createProductionOrder({
+        order_id: Number(args.order_id),
+        customer_product_id: Number(args.customer_product_id),
+        quantity_kg: String(args.quantity_kg),
+        final_quantity_kg: String(args.final_quantity_kg),
+        overrun_percentage:
+          args.overrun_percentage !== undefined
+            ? String(args.overrun_percentage)
+            : undefined,
+      } as any);
+      return { ok: true, production_order: created };
+    },
+  },
+  {
+    name: "update_production_order",
+    kind: "write",
+    permission: "manage_production",
+    description:
+      "Update a production order by numeric id. Provide the fields to change, e.g. quantity_kg, final_quantity_kg, overrun_percentage, assigned_machine_id, assigned_operator_id, status.",
+    parameters: {
+      type: "object",
+      properties: {
+        id: { type: "number" },
+        quantity_kg: { type: "number" },
+        final_quantity_kg: { type: "number" },
+        overrun_percentage: { type: "number" },
+        assigned_machine_id: { type: "string" },
+        assigned_operator_id: { type: "number" },
+        status: { type: "string" },
+      },
+      required: ["id"],
+    },
+    handler: async (args) => {
+      const id = Number(args?.id);
+      if (!id) return { error: "id_required" };
+      const updates: Record<string, any> = {};
+      for (const k of ["quantity_kg", "final_quantity_kg", "overrun_percentage"]) {
+        if (args[k] !== undefined) updates[k] = String(args[k]);
+      }
+      for (const k of ["assigned_machine_id", "assigned_operator_id", "status"]) {
+        if (args[k] !== undefined) updates[k] = args[k];
+      }
+      if (Object.keys(updates).length === 0) return { error: "no_fields" };
+      const updated = await storage.updateProductionOrder(id, updates);
+      return { ok: true, production_order: updated };
     },
   },
 

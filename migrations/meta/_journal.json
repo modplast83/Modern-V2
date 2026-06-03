@@ -71,6 +71,13 @@
       "when": 1781654400000,
       "tag": "0009_customer_product_universal_thickness",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1748908800000,
+      "tag": "0010_modern_agent",
+      "breakpoints": true
     }
   ]
 }
