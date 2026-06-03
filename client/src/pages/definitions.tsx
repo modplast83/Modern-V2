@@ -6438,7 +6438,7 @@ export default function Definitions() {
                       {
                         min: "min_thickness",
                         max: "max_thickness",
-                        label: "السماكة",
+                        label: "السماكة العالمية",
                       },
                       {
                         min: "min_cylinder_inch",

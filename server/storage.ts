@@ -7721,7 +7721,7 @@ export class DatabaseStorage implements IStorage {
     // runtime rule holds.
     //  - raw material type: machine capability (HDPE/LDPE/HDPE\LDPE/any) vs order
     //  - width within the machine's [min_width_cm, max_width_cm] range
-    //  - thickness within the machine's [min_thickness, max_thickness] range
+    //  - universal thickness (السماكة العالمية) within [min_thickness, max_thickness]
     //  - single-material rule: an empty machine accepts any order; a machine
     //    already holding exactly one material accepts only that same material; a
     //    machine with >1 distinct material (legacy mixed data) is ineligible.
@@ -7735,7 +7735,13 @@ export class DatabaseStorage implements IStorage {
         return false;
       if (!this.numInRange(order.width, m.min_width_cm, m.max_width_cm))
         return false;
-      if (!this.numInRange(order.thickness, m.min_thickness, m.max_thickness))
+      if (
+        !this.numInRange(
+          order.universal_thickness,
+          m.min_thickness,
+          m.max_thickness,
+        )
+      )
         return false;
       const mats: string[] = st.materials || [];
       if (mats.length === 0) return true;
@@ -7789,7 +7795,7 @@ export class DatabaseStorage implements IStorage {
         // material, thickness) and the representative order is valid for all.
         const groups = new Map<string, any[]>();
         for (const o of ordered) {
-          const key = `${o.size_caption ?? ""}|${o.raw_material ?? ""}|${o.thickness ?? ""}`;
+          const key = `${o.size_caption ?? ""}|${o.raw_material ?? ""}|${o.universal_thickness ?? ""}`;
           const list = groups.get(key) || [];
           list.push(o);
           groups.set(key, list);
@@ -9865,6 +9871,7 @@ export class DatabaseStorage implements IStorage {
       cp.size_caption,
       cp.width,
       cp.thickness,
+      cp.universal_thickness,
       cp.raw_material,
       cp.is_printed,
       cp.printing_cylinder,
@@ -10086,7 +10093,7 @@ export class DatabaseStorage implements IStorage {
         .select({
           raw_material: customer_products.raw_material,
           width: customer_products.width,
-          thickness: customer_products.thickness,
+          universal_thickness: customer_products.universal_thickness,
         })
         .from(customer_products)
         .where(eq(customer_products.id, po.customer_product_id));
@@ -10108,9 +10115,9 @@ export class DatabaseStorage implements IStorage {
           `عرض المنتج (${cp?.width ?? "غير محدد"} سم) خارج النطاق المدعوم لهذه الماكينة. يرجى اختيار ماكينة مناسبة.`,
         );
       }
-      if (!this.numInRange(cp?.thickness, (machine as any).min_thickness, (machine as any).max_thickness)) {
+      if (!this.numInRange(cp?.universal_thickness, (machine as any).min_thickness, (machine as any).max_thickness)) {
         throw new Error(
-          `سماكة المنتج (${cp?.thickness ?? "غير محدد"} ميكرون) خارج النطاق المدعوم لهذه الماكينة. يرجى اختيار ماكينة مناسبة.`,
+          `السماكة العالمية للمنتج (${cp?.universal_thickness ?? "غير محدد"}) خارج النطاق المدعوم لهذه الماكينة. يرجى اختيار ماكينة مناسبة.`,
         );
       }
 

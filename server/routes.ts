@@ -7386,7 +7386,7 @@ Input: ${text}`;
   ): string | null {
     const ranges: Array<{ min: string; max: string; label: string }> = [
       { min: "min_width_cm", max: "max_width_cm", label: "العرض" },
-      { min: "min_thickness", max: "max_thickness", label: "السماكة" },
+      { min: "min_thickness", max: "max_thickness", label: "السماكة العالمية" },
       {
         min: "min_cylinder_inch",
         max: "max_cylinder_inch",
