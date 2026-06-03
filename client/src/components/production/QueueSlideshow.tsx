@@ -493,9 +493,12 @@ function OrderTile({
         {customer && (
           <div className="truncate text-sm text-white/80">{customer}</div>
         )}
-        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-white/50">
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-white/50">
           {order.size_caption && (
             <span className="font-bold text-red-400">{order.size_caption}</span>
+          )}
+          {order.size_caption && order.thickness && (
+            <span className="text-white/30">•</span>
           )}
           {order.thickness && (
             <span className="font-semibold text-white/70">
