@@ -484,6 +484,7 @@
       "hours": "h",
       "days": "d",
       "printColors": "colors",
+      "thickness": "Thickness",
       "slideshow": {
         "button": "Display Screen",
         "title": "Production Queues Display",

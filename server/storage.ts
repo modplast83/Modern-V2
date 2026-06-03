@@ -9759,6 +9759,7 @@ export class DatabaseStorage implements IStorage {
       it.name_ar AS item_name_ar,
       cp.size_caption,
       cp.width,
+      cp.thickness,
       cp.raw_material,
       cp.is_printed,
       cp.printing_cylinder,

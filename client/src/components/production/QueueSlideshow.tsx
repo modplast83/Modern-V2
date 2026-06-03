@@ -34,6 +34,7 @@ interface QueueOrder {
   customer_name?: string;
   customer_name_ar?: string;
   size_caption?: string;
+  thickness?: string;
   raw_material?: string;
   master_batch_name?: string;
   master_batch_name_ar?: string;
@@ -493,8 +494,20 @@ function OrderTile({
           <div className="truncate text-sm text-white/80">{customer}</div>
         )}
         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-white/50">
-          {order.size_caption && <span>{order.size_caption}</span>}
-          {order.raw_material && <span>{order.raw_material}</span>}
+          {order.size_caption && (
+            <span className="font-bold text-red-400">{order.size_caption}</span>
+          )}
+          {order.thickness && (
+            <span className="font-semibold text-white/70">
+              {t("production.queues.thickness")}:{" "}
+              {formatNumber(parseFloat(order.thickness) || 0)}
+            </span>
+          )}
+          {order.raw_material && (
+            <span className="font-bold text-orange-400">
+              {order.raw_material}
+            </span>
+          )}
           {(colorName || order.master_batch_color_hex) && (
             <span className="inline-flex items-center gap-1">
               {order.master_batch_color_hex && (

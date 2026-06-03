@@ -86,6 +86,7 @@ interface BoardOrder {
   item_name?: string;
   item_name_ar?: string;
   size_caption?: string;
+  thickness?: string;
   raw_material?: string;
   is_printed?: boolean;
   printing_cylinder?: string;
@@ -171,11 +172,27 @@ function OrderDetails({
           {customer}
         </div>
       )}
-      {order.size_caption && (
-        <div className="text-xs text-muted-foreground">{order.size_caption}</div>
+      {(order.size_caption || order.thickness) && (
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+          {order.size_caption && (
+            <span className="font-bold text-red-600 dark:text-red-400">
+              {order.size_caption}
+            </span>
+          )}
+          {order.thickness && (
+            <span className="font-semibold text-muted-foreground">
+              {t("production.queues.thickness")}:{" "}
+              {formatNumber(parseFloat(order.thickness) || 0)}
+            </span>
+          )}
+        </div>
       )}
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-        {order.raw_material && <span>{order.raw_material}</span>}
+        {order.raw_material && (
+          <span className="font-bold text-orange-600 dark:text-orange-400">
+            {order.raw_material}
+          </span>
+        )}
         {(colorName || order.master_batch_color_hex) && (
           <span className="inline-flex items-center gap-1">
             <ColorSwatch order={order} />
