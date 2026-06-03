@@ -50,6 +50,13 @@
       "when": 1781136000000,
       "tag": "0006_machine_dimensional_constraints",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1781308800000,
+      "tag": "0007_machine_raw_material_type",
+      "breakpoints": true
     }
   ]
 }

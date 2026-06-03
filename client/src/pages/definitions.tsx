@@ -429,6 +429,7 @@ export default function Definitions() {
     capacity_small_kg_per_hour: "",
     capacity_medium_kg_per_hour: "",
     capacity_large_kg_per_hour: "",
+    raw_material_type: "",
     min_width_cm: "",
     max_width_cm: "",
     max_print_colors: "",
@@ -2211,6 +2212,7 @@ export default function Definitions() {
       capacity_small_kg_per_hour: "",
       capacity_medium_kg_per_hour: "",
       capacity_large_kg_per_hour: "",
+      raw_material_type: "",
       min_width_cm: "",
       max_width_cm: "",
       max_print_colors: "",
@@ -3725,6 +3727,8 @@ export default function Definitions() {
                                             capacity_large_kg_per_hour:
                                               machine.capacity_large_kg_per_hour ||
                                               "",
+                                            raw_material_type:
+                                              machine.raw_material_type || "",
                                             min_width_cm:
                                               machine.min_width_cm || "",
                                             max_width_cm:
@@ -6178,6 +6182,41 @@ export default function Definitions() {
                           data-testid="input-max-width-cm"
                         />
                       </div>
+                    </div>
+                    <div className="mt-4">
+                      <Label htmlFor="raw_material_type">
+                        {t("definitions.form.rawMaterialType")}
+                      </Label>
+                      <Select
+                        value={machineForm.raw_material_type || "none"}
+                        onValueChange={(value) =>
+                          setMachineForm({
+                            ...machineForm,
+                            raw_material_type: value === "none" ? "" : value,
+                          })
+                        }
+                      >
+                        <SelectTrigger
+                          className="mt-1"
+                          data-testid="select-raw-material-type"
+                        >
+                          <SelectValue
+                            placeholder={t(
+                              "definitions.form.selectRawMaterialType",
+                            )}
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">
+                            {t("definitions.form.noRawMaterialType")}
+                          </SelectItem>
+                          <SelectItem value="HDPE">HDPE</SelectItem>
+                          <SelectItem value="LDPE">LDPE</SelectItem>
+                          <SelectItem value={"HDPE\\LDPE"}>
+                            {"HDPE\\LDPE"}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 )}
