@@ -35,7 +35,6 @@ An MRP system for plastic bag manufacturing, managing the entire production life
     - Entry Point: `server/index.ts`
     - Main API Routes: `server/routes.ts`
     - Database Access Layer: `server/storage.ts`
-    - AI Agent Routes: `server/ai-agent-routes.ts`
     - Middleware: `server/middleware/`
     - Shared Services: `server/services/`
 - **Shared Code (Frontend/Backend)**: `shared/`

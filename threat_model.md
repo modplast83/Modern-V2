@@ -18,7 +18,7 @@ Production users include administrators, managers, sales representatives, produc
 ## Trust Boundaries
 
 - **Browser/mobile client to Express API** — all client input is untrusted and every protected route must authenticate and authorize server-side.
-- **Authenticated user to privileged user boundary** — the RBAC model distinguishes ordinary users from users with permissions such as `manage_orders`, `manage_settings`, `manage_ai_agent`, `manage_hr`, and others. Backend routes must enforce those distinctions even if the frontend hides pages.
+- **Authenticated user to privileged user boundary** — the RBAC model distinguishes ordinary users from users with permissions such as `manage_orders`, `manage_settings`, `manage_hr`, and others. Backend routes must enforce those distinctions even if the frontend hides pages.
 - **Public to authenticated boundary** — a small number of routes are intentionally public (for example bootstrap/setup or selected sharing/webhook flows), but documents and operational records must not cross into the public surface without an explicit access token or equivalent server-side check.
 - **Express API to PostgreSQL** — the backend has broad database access; any injection or permission bypass at the route or AI-tool layer can expose or modify core business data.
 - **Express API to external services** — the server talks to OpenAI, messaging providers, OAuth/MCP components, and object storage; outbound calls and secrets handling must be constrained.
@@ -26,7 +26,7 @@ Production users include administrators, managers, sales representatives, produc
 
 ## Scan Anchors
 
-- **Primary production entry points:** `server/index.ts`, `server/routes.ts`, `server/ai-agent-routes.ts`, `server/mcp-routes.ts`, `server/mcp-oauth.ts`
+- **Primary production entry points:** `server/index.ts`, `server/routes.ts`, `server/mcp-routes.ts`, `server/mcp-oauth.ts`
 - **Authentication and authorization:** `server/middleware/auth.ts`, `server/middleware/session-auth.ts`, `server/replitAuth.ts`, `shared/permissions.ts`
 - **High-risk code areas:** AI agent tool execution and document generation, quote/PDF handling, authenticated business-data routes, webhook/public endpoints, object-storage access
 - **Public surfaces to re-check on future scans:** setup/bootstrap endpoints, share/download links, webhook endpoints, unauthenticated quote/document routes

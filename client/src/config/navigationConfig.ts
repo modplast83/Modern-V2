@@ -13,7 +13,6 @@ import {
   BarChart3,
   Settings,
   Gauge,
-  Bot,
   Box,
   Tv,
   Plug,
@@ -158,15 +157,6 @@ export const navigationItems: NavigationItem[] = [
     path: "/admin-tools",
     priority: 12,
     group: "admin",
-  },
-  {
-    name: "الوكيل الذكي",
-    name_ar: "الوكيل الذكي",
-    name_en: "AI Agent",
-    icon: Bot,
-    path: "/ai-agent",
-    priority: 5,
-    group: "primary",
   },
   {
     name: "الإعدادات",

@@ -1,4 +1,5 @@
 - [Security fixes pass 1 & 2](security-fixes.md) — Two-pass security audit completed; key patterns and decisions documented for future consistency.
+- [AI agent vs MCP](ai-agent-vs-mcp.md) — the in-app AI agent and the MCP system are independent; remove/replace one without touching the other.
 - [Roll creation deadlock](roll-creation-deadlock.md) — roll-create paths must share one transaction + a single lock order (advisory then row); nested cross-connection txns hang undetectably.
 - [Production stage computation](production-stage-computation.md) — never advance a PO past 'film' on filmRolls===0 alone; inline-printed rolls skip film stage, so gate on film actually being done.
 - [Film dashboard visibility](film-dashboard-visibility.md) — film-operator order list must filter `production_stage='film'`; film_completed only set by Final Roll button, so quantity-complete orders otherwise linger.

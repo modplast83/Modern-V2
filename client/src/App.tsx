@@ -101,10 +101,6 @@ const ProductionReports = lazyWithRetry(
 const SystemMonitoring = lazyWithRetry(
   () => import("./pages/system-monitoring"),
 );
-const AiAgent = lazyWithRetry(() => import("./pages/ai-agent"));
-const AiAgentSettings = lazyWithRetry(
-  () => import("./pages/ai-agent-settings"),
-);
 const FactorySimulation3D = lazyWithRetry(
   () => import("./pages/FactorySimulation3D"),
 );
@@ -411,16 +407,6 @@ function AppRoutes() {
 
         <Route path="/system-monitoring">
           <Redirect to="/settings?section=system-monitoring" />
-        </Route>
-
-        <Route path="/ai-agent">
-          <ProtectedRoute path="/ai-agent">
-            <AiAgent />
-          </ProtectedRoute>
-        </Route>
-
-        <Route path="/ai-agent-settings">
-          <Redirect to="/settings?section=ai-agent" />
         </Route>
 
         <Route path="/factory-simulation">

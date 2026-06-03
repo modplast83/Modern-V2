@@ -302,7 +302,6 @@ import { calculateProductionQuantities } from "@shared/quantity-utils";
 import ExcelJS from "exceljs";
 import multer from "multer";
 
-import { registerAiAgentRoutes } from "./ai-agent-routes";
 import { resolveSessionUser } from "./auth/sessionUser";
 import {
   createPerformanceIndexes,
@@ -352,9 +351,6 @@ export async function registerRoutes(
 ): Promise<Server> {
   // Setup Replit Auth (OpenID Connect)
   await setupAuth(app);
-
-  // Register AI Agent routes
-  registerAiAgentRoutes(app);
 
   // Register MCP OAuth 2.1 routes (must be before MCP routes)
   const { registerMcpOAuthRoutes } = await import("./mcp-oauth");

@@ -59,7 +59,6 @@ const CATEGORY_TRANSLATION_MAP: Record<string, string> = {
   التقارير: "reports",
   المراقبة: "monitoring",
   التكامل: "integration",
-  "الوكيل الذكي": "aiAgent",
   "محاكاة المصنع": "factorySimulation",
   "شاشة العرض": "displayScreen",
   التعريفات: "definitions",

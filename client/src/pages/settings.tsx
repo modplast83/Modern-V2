@@ -26,7 +26,7 @@ import {
   FileText,
   X,
 } from "lucide-react";
-import { Plug, Gauge, Sparkles } from "lucide-react";
+import { Plug, Gauge } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
@@ -80,7 +80,6 @@ import {
   canEditInArea,
 } from "../utils/roleUtils";
 
-import { AiAgentSettingsContent } from "./ai-agent-settings";
 import { McpSettingsContent } from "./mcp-settings";
 import { SystemMonitoringContent } from "./system-monitoring";
 
@@ -93,7 +92,6 @@ const SECTIONS = [
   { id: "notifications", icon: Bell, label: "الإشعارات" },
   { id: "location", icon: MapPin, label: "المواقع" },
   { id: "letter-template", icon: FileText, label: "ترويسة الخطابات" },
-  { id: "ai-agent", icon: Sparkles, label: "إعدادات الوكيل الذكي" },
   { id: "system-monitoring", icon: Gauge, label: "مراقبة النظام" },
   { id: "mcp", icon: Plug, label: "إعدادات MCP" },
 ] as const;
@@ -194,20 +192,6 @@ export default function Settings() {
           {activeSection === "notifications" && <NotificationsSection />}
           {activeSection === "location" && <LocationSection />}
           {activeSection === "letter-template" && <LetterTemplateSection />}
-          {activeSection === "ai-agent" && (
-            <div className="space-y-6">
-              <div className="flex items-center gap-3 mb-2">
-                <Sparkles className="h-6 w-6 text-primary" />
-                <div>
-                  <h2 className="text-xl font-bold">إعدادات الوكيل الذكي</h2>
-                  <p className="text-sm text-muted-foreground">
-                    إدارة المعرفة، التعليمات والقوالب الخاصة بالوكيل الذكي
-                  </p>
-                </div>
-              </div>
-              <AiAgentSettingsContent />
-            </div>
-          )}
           {activeSection === "system-monitoring" && (
             <div className="space-y-6">
               <div className="flex items-center gap-3 mb-2">

@@ -45,9 +45,6 @@ export type PermissionKey =
   | "view_tools"
   | "view_production_reports"
   | "view_orders"
-  | "view_ai_agent"
-  | "use_ai_agent"
-  | "manage_ai_agent"
   | "view_attendance"
   | "manage_attendance"
   | "view_attendance_reports"
@@ -128,7 +125,6 @@ export type PermissionKey =
   | "view_bag_configurator"
   | "view_mcp_settings"
   | "view_system_monitoring_tab"
-  | "view_ai_agent_settings"
   | "view_legacy_database"
   | "manage_legacy_database"
   | "admin"; // Super admin permission
@@ -961,28 +957,6 @@ export const PERMISSIONS: Permission[] = [
     description: "View orders assigned to the sales representative",
   },
 
-  // AI Agent
-  {
-    id: "view_ai_agent",
-    name: "View AI Agent",
-    name_ar: "عرض الوكيل الذكي",
-    category: "الوكيل الذكي",
-    description: "Access to view AI agent interface",
-  },
-  {
-    id: "use_ai_agent",
-    name: "Use AI Agent",
-    name_ar: "استخدام الوكيل الذكي",
-    category: "الوكيل الذكي",
-    description: "Use AI agent chat and tools",
-  },
-  {
-    id: "manage_ai_agent",
-    name: "Manage AI Agent",
-    name_ar: "إدارة الوكيل الذكي",
-    category: "الوكيل الذكي",
-    description: "Manage AI agent settings and knowledge base",
-  },
 
   // Factory Simulation
   {
@@ -1039,13 +1013,6 @@ export const PERMISSIONS: Permission[] = [
     name_ar: "عرض مراقبة النظام (الإعدادات)",
     category: "النظام",
     description: "Access to system monitoring tab inside settings",
-  },
-  {
-    id: "view_ai_agent_settings",
-    name: "View AI Agent Settings",
-    name_ar: "عرض إعدادات الوكيل الذكي",
-    category: "الوكيل الذكي",
-    description: "Access to AI agent settings tab inside settings",
   },
 
   // Legacy Database (read-only reference)
@@ -1179,9 +1146,6 @@ export const ROUTE_PERMISSIONS: Record<string, PermissionKey[]> = {
   "/whatsapp-template-test": ["manage_whatsapp", "admin"],
   "/whatsapp-webhooks": ["manage_whatsapp", "admin"],
 
-  // AI Agent
-  "/ai-agent": ["view_ai_agent", "use_ai_agent"],
-  "/ai-agent-settings": ["manage_ai_agent", "admin"],
 
   // Display Screen
   "/display-screen": ["view_display_screen", "admin"],
@@ -1232,7 +1196,6 @@ export const SETTINGS_TAB_PERMISSIONS: Record<string, PermissionKey[]> = {
     "view_system_health",
     "admin",
   ],
-  "ai-agent": ["view_ai_agent_settings", "manage_ai_agent", "admin"],
   "letter-template": ["manage_settings", "admin"],
   user: [],
 };
@@ -1295,6 +1258,5 @@ export const PERMISSION_CATEGORIES = [
   "محاكاة المصنع",
   "شاشة العرض",
   "التكامل",
-  "الوكيل الذكي",
   "النظام",
 ];
