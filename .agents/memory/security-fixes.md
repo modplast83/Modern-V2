@@ -47,3 +47,17 @@ description: Two-pass security audit fixes — patterns, decisions, and what was
 - **SafeUser selects must be complete:** `SafeUser = Omit<User, "password">`. Any `db.select({...})` in a function typed to return `SafeUser` must list every non-password user column (esp. `must_change_password`, consumed by the force-password-change flow), or `tsc` errors and the field is silently undefined at runtime. `getSafeUser`/`getSafeUsers`/`getSafeUsersByRole` were missing it.
 - `orders` table has NO `priority` column — `priority` lives on `user_requests`. The public order endpoint was sending `priority: order.priority` (always undefined); removed.
 - `NotificationManager` interface in `server/storage.ts` must mirror the real signature in `server/services/notification-manager.ts` (`broadcastProductionUpdate(updateType?: "film"|"printing"|"cutting"|"all")`); the old `[key: string]: unknown` index signature blocked assigning the real class instance. Call site uses optional chaining since the methods are optional.
+
+## Pass 3 fixes (Modern AI agent — private knowledge & doc access)
+
+### Private-knowledge non-disclosure must be enforced server-side, not just by prompt
+- Prompt instructions ("never quote verbatim") are NOT a control. Added deterministic `detectPrivateLeak()` (in `server/modern-agent/tools.ts`, exported + reused by routes) that substring-matches normalized private KB content against any user-visible output.
+- Windowing rule: `win = min(60, content.length)`, step 20, PLUS an always-checked trailing window `content.slice(-win)`. A naive fixed `win=60` silently skips secrets of length 40–59 (the loop never runs) and skips the tail — both are exploitable gaps.
+- Apply the guardrail to BOTH surfaces: the final assistant reply AND generated documents (combine title/intro/sections/table cells/footer before checking). A reply-only check is bypassable by asking the agent to put the secret in a PDF/Word doc, then downloading it.
+- **How to apply:** fetch private contents once per chat request, pass into every tool's ToolContext (`privateKnowledge`), reuse for the final reply check. generate_document returns `{error:"private_content_blocked"}` and writes no file on a hit.
+
+### Agent-generated documents need owner binding (IDOR)
+- Temp-file docs are bound to creator via filename prefix `u{userId}-`; `getDocOwnerId()` parses it; download route enforces `ownerId === req.user.id || isManager`. Same pattern as the AI sandbox `u{userId}_` batch isolation.
+
+### Access allow-list must gate ALL user routes, not just chat
+- `blockIfNoAccess()` (wraps `isAllowedToUse`) must run on conversations (GET/DELETE), messages (GET), profile (GET/PUT), and document download — not only `/chat`. A user blocked by the allow-list but still holding `use_modern_agent` could otherwise reach prior artifacts via the other endpoints.

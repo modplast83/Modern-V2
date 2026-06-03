@@ -364,6 +364,10 @@ export async function registerRoutes(
   const { registerMcpRoutes } = await import("./mcp-routes");
   registerMcpRoutes(app);
 
+  // Register Modern AI Agent routes
+  const { registerModernAgentRoutes } = await import("./modern-agent/routes");
+  registerModernAgentRoutes(app);
+
   // Register Object Storage routes (serves /objects/* for uploaded files)
   const { registerObjectStorageRoutes } =
     await import("./replit_integrations/object_storage");

@@ -5662,5 +5662,15 @@
       "createdBy": "Created by",
       "all": "All"
     }
+  },
+  "modernAgent": {
+    "title": "Modern AI Agent",
+    "subtitle": "Your intelligent executive assistant for factory management",
+    "newChat": "New chat",
+    "untitled": "Untitled conversation",
+    "greeting": "Hello! I'm Modern, your AI assistant.",
+    "greetingHint": "Ask me about orders, production, customers, or request a document.",
+    "inputPlaceholder": "Type your message here...",
+    "error": "An error occurred while processing your request"
   }
 }

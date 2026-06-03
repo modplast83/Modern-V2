@@ -127,6 +127,8 @@ export type PermissionKey =
   | "view_system_monitoring_tab"
   | "view_legacy_database"
   | "manage_legacy_database"
+  | "use_modern_agent"
+  | "manage_modern_agent"
   | "admin"; // Super admin permission
 
 export interface Permission {
@@ -1031,6 +1033,23 @@ export const PERMISSIONS: Permission[] = [
     description: "Manage access and configuration for the legacy database",
   },
 
+  // Modern AI Agent
+  {
+    id: "use_modern_agent",
+    name: "Use Modern AI Agent",
+    name_ar: "استخدام الوكيل الذكي مودرن",
+    category: "الذكاء الاصطناعي",
+    description: "Chat with the Modern AI assistant",
+  },
+  {
+    id: "manage_modern_agent",
+    name: "Manage Modern AI Agent",
+    name_ar: "إدارة الوكيل الذكي مودرن",
+    category: "الذكاء الاصطناعي",
+    description:
+      "Configure Modern AI agent tasks, knowledge, access and settings",
+  },
+
   // Admin
   {
     id: "admin",
@@ -1159,6 +1178,9 @@ export const ROUTE_PERMISSIONS: Record<string, PermissionKey[]> = {
 
   // Bag Configurator
   "/bag-configurator": ["view_bag_configurator", "manage_orders", "admin"],
+
+  // Modern AI Agent
+  "/modern-agent": ["use_modern_agent", "manage_modern_agent", "admin"],
 };
 
 // Settings tabs permissions
@@ -1197,6 +1219,7 @@ export const SETTINGS_TAB_PERMISSIONS: Record<string, PermissionKey[]> = {
     "admin",
   ],
   "letter-template": ["manage_settings", "admin"],
+  "modern-agent": ["manage_modern_agent", "admin"],
   user: [],
 };
 
@@ -1258,5 +1281,6 @@ export const PERMISSION_CATEGORIES = [
   "محاكاة المصنع",
   "شاشة العرض",
   "التكامل",
+  "الذكاء الاصطناعي",
   "النظام",
 ];

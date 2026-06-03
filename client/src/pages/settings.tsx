@@ -26,7 +26,8 @@ import {
   FileText,
   X,
 } from "lucide-react";
-import { Plug, Gauge } from "lucide-react";
+import { Plug, Gauge, Bot } from "lucide-react";
+import { ModernAgentSettingsContent } from "./modern-agent-settings";
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
@@ -94,6 +95,7 @@ const SECTIONS = [
   { id: "letter-template", icon: FileText, label: "ترويسة الخطابات" },
   { id: "system-monitoring", icon: Gauge, label: "مراقبة النظام" },
   { id: "mcp", icon: Plug, label: "إعدادات MCP" },
+  { id: "modern-agent", icon: Bot, label: "الوكيل الذكي مودرن" },
 ] as const;
 
 type SectionId = (typeof SECTIONS)[number]["id"];
@@ -218,6 +220,20 @@ export default function Settings() {
                 </div>
               </div>
               <McpSettingsContent />
+            </div>
+          )}
+          {activeSection === "modern-agent" && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-3 mb-2">
+                <Bot className="h-6 w-6 text-indigo-600" />
+                <div>
+                  <h2 className="text-xl font-bold">الوكيل الذكي مودرن</h2>
+                  <p className="text-sm text-muted-foreground">
+                    إدارة المهام، قاعدة المعرفة، والإعدادات العامة للمساعد الذكي
+                  </p>
+                </div>
+              </div>
+              <ModernAgentSettingsContent />
             </div>
           )}
         </main>

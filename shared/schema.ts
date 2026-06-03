@@ -4491,3 +4491,196 @@ export type InsertAdminToolDocument = z.infer<
   typeof insertAdminToolDocumentSchema
 >;
 export type AdminToolDocument = typeof admin_tool_documents.$inferSelect;
+
+/**
+ * =================================================================
+ * 🤖 MODERN AI AGENT (مودرن) — tables
+ * =================================================================
+ */
+
+// Singleton settings row (id = 1)
+export const modern_agent_settings = pgTable("modern_agent_settings", {
+  id: serial("id").primaryKey(),
+  model: varchar("model", { length: 100 }).notNull().default("gpt-4.1"),
+  default_language: varchar("default_language", { length: 10 })
+    .notNull()
+    .default("auto"), // ar | en | auto
+  base_persona: text("base_persona"),
+  temperature: decimal("temperature", { precision: 3, scale: 2 })
+    .notNull()
+    .default("0.30"),
+  max_tool_iterations: integer("max_tool_iterations").notNull().default(6),
+  enabled: boolean("enabled").notNull().default(true),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+export const insertModernAgentSettingsSchema = createInsertSchema(
+  modern_agent_settings,
+).omit({ id: true, updated_at: true });
+export type InsertModernAgentSettings = z.infer<
+  typeof insertModernAgentSettingsSchema
+>;
+export type ModernAgentSettings = typeof modern_agent_settings.$inferSelect;
+
+// Task definitions — each defines a capability: allowed tools, guidance, language, limits
+export const modern_agent_tasks = pgTable("modern_agent_tasks", {
+  id: serial("id").primaryKey(),
+  task_key: varchar("task_key", { length: 80 }).notNull().unique(),
+  name_ar: varchar("name_ar", { length: 200 }).notNull(),
+  name_en: varchar("name_en", { length: 200 }).notNull(),
+  description: text("description"),
+  response_guidance: text("response_guidance"),
+  language: varchar("language", { length: 10 }).notNull().default("auto"), // ar | en | auto
+  allowed_tools: text("allowed_tools").array().notNull().default(sql`'{}'::text[]`),
+  is_write: boolean("is_write").notNull().default(false),
+  required_permission: varchar("required_permission", { length: 80 }),
+  max_daily_interactions: integer("max_daily_interactions"),
+  sort_order: integer("sort_order").notNull().default(0),
+  enabled: boolean("enabled").notNull().default(true),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+export const insertModernAgentTaskSchema = createInsertSchema(
+  modern_agent_tasks,
+).omit({ id: true, created_at: true, updated_at: true });
+export type InsertModernAgentTask = z.infer<typeof insertModernAgentTaskSchema>;
+export type ModernAgentTask = typeof modern_agent_tasks.$inferSelect;
+
+// Knowledge base entries — public guidance, factory concepts, and private (never-disclosed) notes
+export const modern_agent_knowledge = pgTable("modern_agent_knowledge", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 300 }).notNull(),
+  content: text("content").notNull(),
+  category: varchar("category", { length: 40 }).notNull().default("general"), // general | factory_concept
+  is_private: boolean("is_private").notNull().default(false),
+  enabled: boolean("enabled").notNull().default(true),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+export const insertModernAgentKnowledgeSchema = createInsertSchema(
+  modern_agent_knowledge,
+).omit({ id: true, created_at: true, updated_at: true });
+export type InsertModernAgentKnowledge = z.infer<
+  typeof insertModernAgentKnowledgeSchema
+>;
+export type ModernAgentKnowledge = typeof modern_agent_knowledge.$inferSelect;
+
+// Per-user agent profile — name preference, notes, free-form preferences
+export const modern_agent_profiles = pgTable("modern_agent_profiles", {
+  id: serial("id").primaryKey(),
+  user_id: integer("user_id")
+    .notNull()
+    .unique()
+    .references(() => users.id),
+  display_name: varchar("display_name", { length: 200 }),
+  notes: text("notes"),
+  preferences: jsonb("preferences"),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+export const insertModernAgentProfileSchema = createInsertSchema(
+  modern_agent_profiles,
+).omit({ id: true, created_at: true, updated_at: true });
+export type InsertModernAgentProfile = z.infer<
+  typeof insertModernAgentProfileSchema
+>;
+export type ModernAgentProfile = typeof modern_agent_profiles.$inferSelect;
+
+// Access control — which users/roles may use the agent (when populated, restricts the allow-list)
+export const modern_agent_access = pgTable("modern_agent_access", {
+  id: serial("id").primaryKey(),
+  user_id: integer("user_id").references(() => users.id),
+  role_id: integer("role_id").references(() => roles.id),
+  enabled: boolean("enabled").notNull().default(true),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+export const insertModernAgentAccessSchema = createInsertSchema(
+  modern_agent_access,
+).omit({ id: true, created_at: true });
+export type InsertModernAgentAccess = z.infer<
+  typeof insertModernAgentAccessSchema
+>;
+export type ModernAgentAccess = typeof modern_agent_access.$inferSelect;
+
+// Conversations
+export const modern_agent_conversations = pgTable(
+  "modern_agent_conversations",
+  {
+    id: serial("id").primaryKey(),
+    user_id: integer("user_id")
+      .notNull()
+      .references(() => users.id),
+    title: varchar("title", { length: 300 }),
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [index("idx_modern_agent_conv_user").on(table.user_id)],
+);
+
+export const insertModernAgentConversationSchema = createInsertSchema(
+  modern_agent_conversations,
+).omit({ id: true, created_at: true, updated_at: true });
+export type InsertModernAgentConversation = z.infer<
+  typeof insertModernAgentConversationSchema
+>;
+export type ModernAgentConversation =
+  typeof modern_agent_conversations.$inferSelect;
+
+// Messages
+export const modern_agent_messages = pgTable(
+  "modern_agent_messages",
+  {
+    id: serial("id").primaryKey(),
+    conversation_id: integer("conversation_id")
+      .notNull()
+      .references(() => modern_agent_conversations.id),
+    role: varchar("role", { length: 20 }).notNull(), // user | assistant
+    content: text("content").notNull().default(""),
+    metadata: jsonb("metadata"), // documents, tool summaries, etc.
+    created_at: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_modern_agent_msg_conv").on(table.conversation_id),
+  ],
+);
+
+export const insertModernAgentMessageSchema = createInsertSchema(
+  modern_agent_messages,
+).omit({ id: true, created_at: true });
+export type InsertModernAgentMessage = z.infer<
+  typeof insertModernAgentMessageSchema
+>;
+export type ModernAgentMessage = typeof modern_agent_messages.$inferSelect;
+
+// Per-task daily usage counter
+export const modern_agent_usage = pgTable(
+  "modern_agent_usage",
+  {
+    id: serial("id").primaryKey(),
+    user_id: integer("user_id")
+      .notNull()
+      .references(() => users.id),
+    task_key: varchar("task_key", { length: 80 }).notNull(),
+    usage_date: date("usage_date").notNull(),
+    count: integer("count").notNull().default(0),
+  },
+  (table) => [
+    uniqueIndex("uq_modern_agent_usage").on(
+      table.user_id,
+      table.task_key,
+      table.usage_date,
+    ),
+  ],
+);
+
+export const insertModernAgentUsageSchema = createInsertSchema(
+  modern_agent_usage,
+).omit({ id: true });
+export type InsertModernAgentUsage = z.infer<
+  typeof insertModernAgentUsageSchema
+>;
+export type ModernAgentUsage = typeof modern_agent_usage.$inferSelect;
