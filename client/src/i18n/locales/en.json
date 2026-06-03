@@ -468,6 +468,7 @@
       "error": "Error",
       "assignError": "Failed to assign production order",
       "reorderError": "Failed to reorder",
+      "materialConflict": "Cannot mix raw material types on a single film machine. Please choose a machine dedicated to the same raw material.",
       "refreshed": "Refreshed",
       "refreshSuccess": "Queue data refreshed successfully",
       "noSuggestions": "No suggestions",

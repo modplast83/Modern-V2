@@ -7545,7 +7545,7 @@ export class DatabaseStorage implements IStorage {
 
     const queueRows = (
       await db.execute(sql`
-        SELECT q.machine_id, po.final_quantity_kg, po.quantity_kg, cp.width
+        SELECT q.machine_id, po.final_quantity_kg, po.quantity_kg, cp.width, cp.raw_material
         FROM machine_queues q
         JOIN machines m ON m.id = q.machine_id
         JOIN production_orders po ON po.id = q.production_order_id
@@ -7574,6 +7574,7 @@ export class DatabaseStorage implements IStorage {
       let currentLoad = 0;
       let currentHours = 0;
       let orderCount = 0;
+      const materialSet = new Set<string>();
       for (const q of queueRows) {
         if (q.machine_id !== m.id) continue;
         const kg = this.orderWeightKg(q);
@@ -7581,6 +7582,8 @@ export class DatabaseStorage implements IStorage {
         const r = this.machineRateForWidth(m, q.width);
         currentHours += r > 0 ? kg / r : 0;
         orderCount += 1;
+        const mat = q.raw_material ? String(q.raw_material).trim() : "";
+        if (mat) materialSet.add(mat);
       }
       return {
         machine: m,
@@ -7589,6 +7592,10 @@ export class DatabaseStorage implements IStorage {
         currentLoad,
         currentHours,
         orderCount,
+        // Distinct raw materials already queued on this machine. Used by the
+        // film-stage constraint; a machine with >1 distinct material (legacy
+        // mixed data) becomes ineligible for new film assignments.
+        materials: Array.from(materialSet),
         addedKg: 0,
         addedHours: 0,
         assigned: [] as any[],
@@ -7675,18 +7682,41 @@ export class DatabaseStorage implements IStorage {
       return projHours;
     };
 
+    const isFilm = stage === "film";
+    const matOf = (o: any) =>
+      o?.raw_material ? String(o.raw_material).trim() : "";
+
     const place = (st: any, order: any) => {
       const kg = this.orderWeightKg(order);
       const r = this.machineRateForWidth(st.machine, order.width) || st.rate;
       st.addedKg += kg;
       st.addedHours += r > 0 ? kg / r : 0;
       st.assigned.push(order);
+      // Film machines hold a single raw-material type; record each material
+      // placed so later orders can't mix (e.g. HDPE+LDPE) on one machine.
+      if (isFilm) {
+        const mat = matOf(order);
+        if (mat && !st.materials.includes(mat)) st.materials.push(mat);
+      }
     };
 
-    const bestMachine = (kg: number, width: any) => {
+    // For the film stage a machine can only accept orders whose raw material
+    // matches what it already holds. An empty machine accepts any order; a
+    // machine already holding exactly one material accepts only orders of that
+    // same material; a machine with >1 distinct material (legacy mixed data),
+    // or an order with no material, cannot join a non-empty machine.
+    const compatible = (st: any, material: string) => {
+      if (!isFilm) return true;
+      const mats: string[] = st.materials || [];
+      if (mats.length === 0) return true;
+      return mats.length === 1 && mats[0] === material;
+    };
+
+    const bestMachine = (kg: number, width: any, material = "") => {
       let best: any = null;
       let bestScore = Infinity;
       for (const st of usable) {
+        if (!compatible(st, material)) continue;
         const s = scoreFor(st, kg, width);
         if (s < bestScore) {
           bestScore = s;
@@ -7723,13 +7753,13 @@ export class DatabaseStorage implements IStorage {
             (sum, o) => sum + this.orderWeightKg(o),
             0,
           );
-          const best = bestMachine(groupKg, list[0].width);
+          const best = bestMachine(groupKg, list[0].width, matOf(list[0]));
           if (!best) continue;
           for (const o of list) place(best, o);
         }
       } else {
         for (const o of ordered) {
-          const best = bestMachine(this.orderWeightKg(o), o.width);
+          const best = bestMachine(this.orderWeightKg(o), o.width, matOf(o));
           if (best) place(best, o);
         }
       }
@@ -9972,6 +10002,49 @@ export class DatabaseStorage implements IStorage {
     ).rows as any[];
     if (existing.length > 0)
       throw new Error("أمر الإنتاج مخصص بالفعل لماكينة في هذه المرحلة");
+
+    // Film machines must hold orders of a single raw-material type. Block
+    // assigning an order whose material differs from what the machine already
+    // holds (e.g. cannot mix HDPE with LDPE on the same film machine).
+    if (stage === "film") {
+      const [cp] = await db
+        .select({ raw_material: customer_products.raw_material })
+        .from(customer_products)
+        .where(eq(customer_products.id, po.customer_product_id));
+      const newMaterial = cp?.raw_material
+        ? String(cp.raw_material).trim()
+        : "";
+      const matRows = (
+        await db.execute(sql`
+          SELECT DISTINCT TRIM(cp.raw_material) AS raw_material
+          FROM machine_queues q
+          JOIN production_orders po ON po.id = q.production_order_id
+          JOIN customer_products cp ON cp.id = po.customer_product_id
+          WHERE q.machine_id = ${machineId}
+            AND cp.raw_material IS NOT NULL
+            AND TRIM(cp.raw_material) <> ''
+        `)
+      ).rows as any[];
+      const distinct = Array.from(
+        new Set(
+          matRows
+            .map((r) => String(r.raw_material).trim())
+            .filter((m) => m.length > 0),
+        ),
+      );
+      // Empty machine accepts any order; otherwise the machine must already
+      // hold exactly one material that equals this order's material.
+      const eligible =
+        distinct.length === 0 ||
+        (distinct.length === 1 && distinct[0] === newMaterial);
+      if (!eligible) {
+        const machineMat = distinct[0] || "غير محدد";
+        const orderMat = newMaterial || "غير محدد";
+        throw new Error(
+          `لا يمكن خلط أنواع المواد الخام في ماكينة الفيلم الواحدة. هذه الماكينة مخصصة للمادة (${machineMat})، ولا يمكن إضافة أمر بمادة (${orderMat}). يرجى اختيار ماكينة أخرى.`,
+        );
+      }
+    }
 
     const queueItems = await this.getMachineQueue(machineId as any);
     const newItem: InsertMachineQueue = {

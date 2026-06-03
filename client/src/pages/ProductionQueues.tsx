@@ -692,6 +692,29 @@ function StageBoard({ stage }: { stage: Stage }) {
   const handleDragStart = (e: DragStartEvent) =>
     setActiveId(e.active.id as string);
 
+  // Film machines hold a single raw-material type. Returns true if placing an
+  // order of `orderMaterial` onto the target machine would mix materials.
+  const hasFilmMaterialConflict = (
+    orderMaterial: string | undefined | null,
+    targetMachineId: string,
+  ): boolean => {
+    if (stage !== "film" || !board) return false;
+    const mat = (orderMaterial || "").trim();
+    const machine = board.machines.find((m) => m.id === targetMachineId);
+    if (!machine) return false;
+    const distinct = Array.from(
+      new Set(
+        machine.queue
+          .map((q) => (q.raw_material || "").trim())
+          .filter((m) => m.length > 0),
+      ),
+    );
+    // Empty machine accepts any order; otherwise it must already hold exactly
+    // one material that equals this order's material.
+    if (distinct.length === 0) return false;
+    return !(distinct.length === 1 && distinct[0] === mat);
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveId(null);
     const { active, over } = event;
@@ -735,6 +758,14 @@ function StageBoard({ stage }: { stage: Stage }) {
       } else {
         // Move across machines: remove then assign.
         const target = targetMachineId;
+        if (hasFilmMaterialConflict(q.raw_material, target)) {
+          toast({
+            title: t("production.queues.error"),
+            description: t("production.queues.materialConflict"),
+            variant: "destructive",
+          });
+          return;
+        }
         removeMutation.mutate(q.queue_id, {
           onSuccess: () =>
             assignMutation.mutate({
@@ -746,6 +777,19 @@ function StageBoard({ stage }: { stage: Stage }) {
     } else {
       // From backlog to a machine.
       if (targetMachineId) {
+        if (
+          hasFilmMaterialConflict(
+            (item as BoardOrder).raw_material,
+            targetMachineId,
+          )
+        ) {
+          toast({
+            title: t("production.queues.error"),
+            description: t("production.queues.materialConflict"),
+            variant: "destructive",
+          });
+          return;
+        }
         handleAssign((item as BoardOrder).production_order_id, targetMachineId);
       }
     }
