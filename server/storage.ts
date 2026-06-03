@@ -7535,7 +7535,10 @@ export class DatabaseStorage implements IStorage {
         SELECT m.id, m.name, m.name_ar, m.type, m.status,
                m.capacity_small_kg_per_hour,
                m.capacity_medium_kg_per_hour,
-               m.capacity_large_kg_per_hour
+               m.capacity_large_kg_per_hour,
+               m.min_width_cm, m.max_width_cm,
+               m.min_thickness, m.max_thickness,
+               m.raw_material_type
         FROM machines m
         WHERE ${machineTypeMatch}
           AND LOWER(m.status) = 'active'
@@ -7545,7 +7548,8 @@ export class DatabaseStorage implements IStorage {
 
     const queueRows = (
       await db.execute(sql`
-        SELECT q.machine_id, po.final_quantity_kg, po.quantity_kg, cp.width, cp.raw_material
+        SELECT q.machine_id, po.final_quantity_kg, po.quantity_kg,
+               cp.width, cp.raw_material, cp.master_batch_id
         FROM machine_queues q
         JOIN machines m ON m.id = q.machine_id
         JOIN production_orders po ON po.id = q.production_order_id
@@ -7575,6 +7579,7 @@ export class DatabaseStorage implements IStorage {
       let currentHours = 0;
       let orderCount = 0;
       const materialSet = new Set<string>();
+      const colorSet = new Set<string>();
       for (const q of queueRows) {
         if (q.machine_id !== m.id) continue;
         const kg = this.orderWeightKg(q);
@@ -7584,6 +7589,8 @@ export class DatabaseStorage implements IStorage {
         orderCount += 1;
         const mat = q.raw_material ? String(q.raw_material).trim() : "";
         if (mat) materialSet.add(mat);
+        const color = q.master_batch_id ? String(q.master_batch_id).trim() : "";
+        if (color) colorSet.add(color);
       }
       return {
         machine: m,
@@ -7596,6 +7603,10 @@ export class DatabaseStorage implements IStorage {
         // film-stage constraint; a machine with >1 distinct material (legacy
         // mixed data) becomes ineligible for new film assignments.
         materials: Array.from(materialSet),
+        // Distinct raw-material colors (master_batch) already queued. Used as a
+        // SOFT grouping preference in the film stage (prefer same color, but
+        // mixing is allowed) — never an eligibility constraint.
+        colors: Array.from(colorSet),
         addedKg: 0,
         addedHours: 0,
         assigned: [] as any[],
@@ -7685,6 +7696,8 @@ export class DatabaseStorage implements IStorage {
     const isFilm = stage === "film";
     const matOf = (o: any) =>
       o?.raw_material ? String(o.raw_material).trim() : "";
+    const colorOf = (o: any) =>
+      o?.master_batch_id ? String(o.master_batch_id).trim() : "";
 
     const place = (st: any, order: any) => {
       const kg = this.orderWeightKg(order);
@@ -7694,30 +7707,61 @@ export class DatabaseStorage implements IStorage {
       st.assigned.push(order);
       // Film machines hold a single raw-material type; record each material
       // placed so later orders can't mix (e.g. HDPE+LDPE) on one machine.
+      // Also track colors for the soft same-color grouping preference.
       if (isFilm) {
         const mat = matOf(order);
         if (mat && !st.materials.includes(mat)) st.materials.push(mat);
+        const color = colorOf(order);
+        if (color && !st.colors.includes(color)) st.colors.push(color);
       }
     };
 
-    // For the film stage a machine can only accept orders whose raw material
-    // matches what it already holds. An empty machine accepts any order; a
-    // machine already holding exactly one material accepts only orders of that
-    // same material; a machine with >1 distinct material (legacy mixed data),
-    // or an order with no material, cannot join a non-empty machine.
-    const compatible = (st: any, material: string) => {
+    // Film-stage HARD eligibility: an order can go on a machine only if the
+    // machine's capability matches the order's specs and the single-material
+    // runtime rule holds.
+    //  - raw material type: machine capability (HDPE/LDPE/HDPE\LDPE/any) vs order
+    //  - width within the machine's [min_width_cm, max_width_cm] range
+    //  - thickness within the machine's [min_thickness, max_thickness] range
+    //  - single-material rule: an empty machine accepts any order; a machine
+    //    already holding exactly one material accepts only that same material; a
+    //    machine with >1 distinct material (legacy mixed data) is ineligible.
+    // Color (master_batch) is intentionally NOT checked here — it is a soft
+    // preference applied via scoring, never a hard constraint.
+    const eligible = (st: any, order: any) => {
       if (!isFilm) return true;
+      const m = st.machine;
+      const material = matOf(order);
+      if (!this.filmMaterialTypeMatch(m.raw_material_type, material))
+        return false;
+      if (!this.numInRange(order.width, m.min_width_cm, m.max_width_cm))
+        return false;
+      if (!this.numInRange(order.thickness, m.min_thickness, m.max_thickness))
+        return false;
       const mats: string[] = st.materials || [];
       if (mats.length === 0) return true;
       return mats.length === 1 && mats[0] === material;
     };
 
-    const bestMachine = (kg: number, width: any, material = "") => {
+    // Soft same-color grouping: prefer a machine already running this order's
+    // color, mildly avoid introducing a new color onto a machine that already
+    // holds others, neutral for empty/colorless machines. Returns a multiplier
+    // applied to the base score (lower = more preferred).
+    const colorFactor = (st: any, order: any) => {
+      if (!isFilm) return 1;
+      const color = colorOf(order);
+      if (!color) return 1;
+      const colors: string[] = st.colors || [];
+      if (colors.length === 0) return 1;
+      if (colors.includes(color)) return 0.85;
+      return 1.15;
+    };
+
+    const bestMachine = (kg: number, order: any) => {
       let best: any = null;
       let bestScore = Infinity;
       for (const st of usable) {
-        if (!compatible(st, material)) continue;
-        const s = scoreFor(st, kg, width);
+        if (!eligible(st, order)) continue;
+        const s = scoreFor(st, kg, order.width) * colorFactor(st, order);
         if (s < bestScore) {
           bestScore = s;
           best = st;
@@ -7739,11 +7783,13 @@ export class DatabaseStorage implements IStorage {
       }
 
       if (algorithm === "product-type") {
-        // Cluster similar products (size + material) onto the same machine to
-        // minimize setup changes.
+        // Cluster similar products onto the same machine to minimize setup
+        // changes. The group key includes thickness so a cluster stays
+        // homogeneous on every film hard-eligibility dimension (size/width,
+        // material, thickness) and the representative order is valid for all.
         const groups = new Map<string, any[]>();
         for (const o of ordered) {
-          const key = `${o.size_caption ?? ""}|${o.raw_material ?? ""}`;
+          const key = `${o.size_caption ?? ""}|${o.raw_material ?? ""}|${o.thickness ?? ""}`;
           const list = groups.get(key) || [];
           list.push(o);
           groups.set(key, list);
@@ -7753,13 +7799,13 @@ export class DatabaseStorage implements IStorage {
             (sum, o) => sum + this.orderWeightKg(o),
             0,
           );
-          const best = bestMachine(groupKg, list[0].width, matOf(list[0]));
+          const best = bestMachine(groupKg, list[0]);
           if (!best) continue;
           for (const o of list) place(best, o);
         }
       } else {
         for (const o of ordered) {
-          const best = bestMachine(this.orderWeightKg(o), o.width, matOf(o));
+          const best = bestMachine(this.orderWeightKg(o), o);
           if (best) place(best, o);
         }
       }
@@ -9743,6 +9789,35 @@ export class DatabaseStorage implements IStorage {
     return this.machineRateKgPerHour(machine);
   }
 
+  // True when a numeric value lies within an optional [min, max] capability
+  // range. Missing bounds impose no constraint; a missing/invalid value passes
+  // (we never block on absent product data). Used for film width/thickness.
+  private numInRange(value: any, min: any, max: any): boolean {
+    const v = value == null ? NaN : parseFloat(String(value));
+    if (isNaN(v)) return true;
+    const lo = min == null ? NaN : parseFloat(String(min));
+    const hi = max == null ? NaN : parseFloat(String(max));
+    if (!isNaN(lo) && v < lo) return false;
+    if (!isNaN(hi) && v > hi) return false;
+    return true;
+  }
+
+  // Whether a film machine whose raw-material capability is `capability`
+  // (HDPE / LDPE / "HDPE\LDPE" / null) can run an order of `material`.
+  // No capability set → accepts any. No order material → not blocked. A dual
+  // "HDPE\LDPE" machine accepts either HDPE or LDPE; otherwise exact match.
+  private filmMaterialTypeMatch(capability: any, material: any): boolean {
+    const cap = String(capability ?? "").trim().toUpperCase();
+    const mat = String(material ?? "").trim().toUpperCase();
+    // Unrestricted machine: no capability configured (stored as empty by the
+    // UI's "none" option) or an explicit "ANY" sentinel.
+    if (cap === "" || cap === "ANY") return true;
+    if (mat === "") return true;
+    const dual = cap === "HDPE\\LDPE" || cap === "HDPE/LDPE";
+    if (dual) return mat === "HDPE" || mat === "LDPE";
+    return cap === mat;
+  }
+
   private countPrintColors(front?: any, back?: any): number {
     const countSide = (arr: any) =>
       Array.isArray(arr)
@@ -10008,12 +10083,37 @@ export class DatabaseStorage implements IStorage {
     // holds (e.g. cannot mix HDPE with LDPE on the same film machine).
     if (stage === "film") {
       const [cp] = await db
-        .select({ raw_material: customer_products.raw_material })
+        .select({
+          raw_material: customer_products.raw_material,
+          width: customer_products.width,
+          thickness: customer_products.thickness,
+        })
         .from(customer_products)
         .where(eq(customer_products.id, po.customer_product_id));
       const newMaterial = cp?.raw_material
         ? String(cp.raw_material).trim()
         : "";
+
+      // HARD capability checks against the machine's specs. Color
+      // (master_batch) is intentionally not enforced (soft preference only).
+      if (!this.filmMaterialTypeMatch((machine as any).raw_material_type, newMaterial)) {
+        const machineType = String((machine as any).raw_material_type || "").trim() || "غير محدد";
+        const orderType = newMaterial || "غير محدد";
+        throw new Error(
+          `نوع المادة الخام للأمر (${orderType}) لا يطابق قدرة هذه الماكينة (${machineType}). يرجى اختيار ماكينة مناسبة.`,
+        );
+      }
+      if (!this.numInRange(cp?.width, (machine as any).min_width_cm, (machine as any).max_width_cm)) {
+        throw new Error(
+          `عرض المنتج (${cp?.width ?? "غير محدد"} سم) خارج النطاق المدعوم لهذه الماكينة. يرجى اختيار ماكينة مناسبة.`,
+        );
+      }
+      if (!this.numInRange(cp?.thickness, (machine as any).min_thickness, (machine as any).max_thickness)) {
+        throw new Error(
+          `سماكة المنتج (${cp?.thickness ?? "غير محدد"} ميكرون) خارج النطاق المدعوم لهذه الماكينة. يرجى اختيار ماكينة مناسبة.`,
+        );
+      }
+
       const matRows = (
         await db.execute(sql`
           SELECT DISTINCT TRIM(cp.raw_material) AS raw_material

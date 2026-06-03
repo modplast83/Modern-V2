@@ -331,6 +331,10 @@ export const machines = pgTable(
     // نوع المادة الخام لمكائن الفيلم (HDPE / LDPE / HDPE\LDPE)
     raw_material_type: varchar("raw_material_type", { length: 20 }),
 
+    // نطاق السماكة المدعوم لمكائن الفيلم (ميكرون) — يُستخدم في مطابقة التوزيع الذكي
+    min_thickness: decimal("min_thickness", { precision: 8, scale: 3 }),
+    max_thickness: decimal("max_thickness", { precision: 8, scale: 3 }),
+
     // الطابعة الإنلاين المدمجة فيزيائياً مع ماكينة الفيلم (Extruder C/G/H ↔ Printer Inline C/G/H)
     // عند ضبطها، يمكن لعامل الفيلم وضع علامة "طُبع الرول إنلاين" ليتخطى الرول قائمة الطباعة مباشرةً إلى التقطيع
     inline_printer_id: varchar("inline_printer_id", { length: 20 }).references(

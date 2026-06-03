@@ -432,6 +432,8 @@ export default function Definitions() {
     raw_material_type: "",
     min_width_cm: "",
     max_width_cm: "",
+    min_thickness: "",
+    max_thickness: "",
     max_print_colors: "",
     min_cylinder_inch: "",
     max_cylinder_inch: "",
@@ -2215,6 +2217,8 @@ export default function Definitions() {
       raw_material_type: "",
       min_width_cm: "",
       max_width_cm: "",
+      min_thickness: "",
+      max_thickness: "",
       max_print_colors: "",
       min_cylinder_inch: "",
       max_cylinder_inch: "",
@@ -3733,6 +3737,10 @@ export default function Definitions() {
                                               machine.min_width_cm || "",
                                             max_width_cm:
                                               machine.max_width_cm || "",
+                                            min_thickness:
+                                              machine.min_thickness || "",
+                                            max_thickness:
+                                              machine.max_thickness || "",
                                             max_print_colors:
                                               machine.max_print_colors != null
                                                 ? String(
@@ -6183,6 +6191,53 @@ export default function Definitions() {
                         />
                       </div>
                     </div>
+                    <h3 className="text-sm font-medium mb-3 mt-4">
+                      {t("definitions.form.thicknessConstraints")}
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="min_thickness">
+                          {t("definitions.form.minThickness")}
+                        </Label>
+                        <Input
+                          id="min_thickness"
+                          type="number"
+                          step="0.001"
+                          min="0"
+                          value={machineForm.min_thickness}
+                          onChange={(e) =>
+                            setMachineForm({
+                              ...machineForm,
+                              min_thickness: e.target.value,
+                            })
+                          }
+                          placeholder={t("common.micron")}
+                          className="mt-1"
+                          data-testid="input-min-thickness"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="max_thickness">
+                          {t("definitions.form.maxThickness")}
+                        </Label>
+                        <Input
+                          id="max_thickness"
+                          type="number"
+                          step="0.001"
+                          min="0"
+                          value={machineForm.max_thickness}
+                          onChange={(e) =>
+                            setMachineForm({
+                              ...machineForm,
+                              max_thickness: e.target.value,
+                            })
+                          }
+                          placeholder={t("common.micron")}
+                          className="mt-1"
+                          data-testid="input-max-thickness"
+                        />
+                      </div>
+                    </div>
                     <div className="mt-4">
                       <Label htmlFor="raw_material_type">
                         {t("definitions.form.rawMaterialType")}
@@ -6379,6 +6434,11 @@ export default function Definitions() {
                         min: "min_width_cm",
                         max: "max_width_cm",
                         label: "العرض",
+                      },
+                      {
+                        min: "min_thickness",
+                        max: "max_thickness",
+                        label: "السماكة",
                       },
                       {
                         min: "min_cylinder_inch",
