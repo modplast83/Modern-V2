@@ -2,7 +2,7 @@ import { format } from "date-fns";
 import { Printer } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { formatNumberAr } from "@shared/number-utils";
+import { formatNumberAr } from "../../../../shared/number-utils";
 
 import { Button } from "../ui/button";
 import {

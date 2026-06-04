@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { formatNumberAr } from "@shared/number-utils";
+import { formatNumberAr } from "../../../../shared/number-utils";
 
 import { useLocalizedName } from "../../hooks/use-localized-name";
 import { useToast } from "../../hooks/use-toast";

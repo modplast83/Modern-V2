@@ -19,7 +19,7 @@ import {
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { formatNumberAr } from "@shared/number-utils";
+import { formatNumberAr } from "../../../../shared/number-utils";
 
 import { useToast } from "../../hooks/use-toast";
 import { apiRequest, queryClient } from "../../lib/queryClient";

@@ -42,7 +42,7 @@ import {
 import { useAuth } from "../hooks/use-auth";
 import { useLocalizedName } from "../hooks/use-localized-name";
 import { queryClient, apiRequest } from "../lib/queryClient";
-import { formatNumberAr } from "@shared/number-utils";
+import { formatNumberAr } from "../../../shared/number-utils";
 
 type Material = {
   id: string;

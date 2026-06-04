@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useLocalizedName } from "../../hooks/use-localized-name";
-import { formatNumberAr } from "@shared/number-utils";
+import { formatNumberAr } from "../../../../shared/number-utils";
 import "../../print.css";
 
 interface ProductionOrderPrintTemplateProps {

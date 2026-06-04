@@ -20,7 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import { formatNumberAr } from "@shared/number-utils";
+import { formatNumberAr } from "../../../../shared/number-utils";
 
 import OrdersForm from "./OrdersForm";
 import OrdersSearch from "./OrdersSearch";

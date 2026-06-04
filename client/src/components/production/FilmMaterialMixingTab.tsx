@@ -12,7 +12,7 @@ import {
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
-import { formatNumberAr } from "@shared/number-utils";
+import { formatNumberAr } from "../../../../shared/number-utils";
 
 import { useAuth } from "../../hooks/use-auth";
 import { useLocalizedName } from "../../hooks/use-localized-name";

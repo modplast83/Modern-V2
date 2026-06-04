@@ -27,7 +27,7 @@ import {
 } from "../ui/select";
 import { useToast } from "../../hooks/use-toast";
 import { apiRequest } from "../../lib/queryClient";
-import { formatNumberAr } from "@shared/number-utils";
+import { formatNumberAr } from "../../../../shared/number-utils";
 
 const MACHINE_STORAGE_KEY = "operator_focus_machine_id";
 const ORDER_STORAGE_KEY = "operator_focus_order_id";

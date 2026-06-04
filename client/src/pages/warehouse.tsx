@@ -77,7 +77,7 @@ import { useToast } from "../hooks/use-toast";
 import { packagingUnitErrorToast } from "../lib/packagingUnitErrors";
 import { apiRequest } from "../lib/queryClient";
 import { userHasPermission } from "../utils/roleUtils";
-import { formatNumberAr } from "@shared/number-utils";
+import { formatNumberAr } from "../../../shared/number-utils";
 
 export default function Warehouse() {
   const { t } = useTranslation();

@@ -48,7 +48,7 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { formatNumberAr } from "@shared/number-utils";
+import { formatNumberAr } from "../../../shared/number-utils";
 import { useAuth } from "../hooks/use-auth";
 import { useLocalizedName } from "../hooks/use-localized-name";
 

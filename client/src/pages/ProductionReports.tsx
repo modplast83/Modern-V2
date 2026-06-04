@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { formatNumberAr } from "@shared/number-utils";
+import { formatNumberAr } from "../../../shared/number-utils";
 import {
   LineChart,
   Line,
