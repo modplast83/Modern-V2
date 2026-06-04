@@ -415,7 +415,7 @@ export default function FilmOperatorDashboard({
                             {t("operators.common.product")}
                           </p>
                           <p
-                            className="font-medium"
+                            className="font-bold text-red-600 dark:text-red-400"
                             data-testid={`text-product-${order.id}`}
                           >
                             {ln(order.product_name_ar, order.product_name_en) ||
@@ -444,7 +444,7 @@ export default function FilmOperatorDashboard({
                               {t("operators.common.size")}
                             </p>
                             <p
-                              className="font-medium"
+                              className="font-bold text-orange-600 dark:text-orange-400"
                               data-testid={`text-size-${order.id}`}
                             >
                               {order.size_caption}
@@ -457,7 +457,7 @@ export default function FilmOperatorDashboard({
                               {t("operators.common.rawMaterialType")}
                             </p>
                             <p
-                              className="font-medium"
+                              className="font-bold text-red-600 dark:text-red-400"
                               data-testid={`text-raw-material-${order.id}`}
                             >
                               {order.raw_material}
@@ -470,7 +470,7 @@ export default function FilmOperatorDashboard({
                               {t("operators.common.thickness")}
                             </p>
                             <p
-                              className="font-medium"
+                              className="font-bold text-orange-600 dark:text-orange-400"
                               data-testid={`text-thickness-${order.id}`}
                             >
                               {parseFloat(String(order.thickness))} ميكرون / µm
@@ -488,15 +488,29 @@ export default function FilmOperatorDashboard({
                               className="font-medium flex items-center gap-2"
                               data-testid={`text-masterbatch-${order.id}`}
                             >
-                              {order.master_batch_color_hex && (
-                                <span
-                                  className="inline-block w-4 h-4 rounded-full border border-gray-300 dark:border-gray-600 flex-shrink-0"
-                                  style={{
-                                    backgroundColor:
-                                      order.master_batch_color_hex,
-                                  }}
-                                />
-                              )}
+                              {order.master_batch_color_hex && (() => {
+                                const hex = order.master_batch_color_hex
+                                  .trim()
+                                  .toLowerCase();
+                                const isBlack =
+                                  hex === "#000" ||
+                                  hex === "#000000" ||
+                                  hex === "black" ||
+                                  hex === "rgb(0,0,0)" ||
+                                  hex === "rgb(0, 0, 0)";
+                                return (
+                                  <span
+                                    className="inline-block w-6 h-6 rounded-full flex-shrink-0"
+                                    style={{
+                                      backgroundColor:
+                                        order.master_batch_color_hex,
+                                      border: `2px solid ${
+                                        isBlack ? "#ffffff" : "#000000"
+                                      }`,
+                                    }}
+                                  />
+                                );
+                              })()}
                               {(isArabic
                                 ? order.master_batch_name_ar
                                 : order.master_batch_name_en) ||
