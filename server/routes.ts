@@ -903,6 +903,58 @@ export async function registerRoutes(
         }),
       );
 
+      // Aggregate roll progress (film / printing / cutting) per production order
+      const poIds = productionOrdersList.map((po: any) => po.id);
+      const rollSummaryByPo: Record<
+        number,
+        {
+          film_rolls: number;
+          film_weight_kg: number;
+          printed_rolls: number;
+          printed_weight_kg: number;
+          cut_rolls: number;
+          cut_weight_kg: number;
+        }
+      > = {};
+      if (poIds.length > 0) {
+        const orderRolls = await db
+          .select({
+            production_order_id: rolls.production_order_id,
+            weight_kg: rolls.weight_kg,
+            cut_weight_total_kg: rolls.cut_weight_total_kg,
+            printed_at: rolls.printed_at,
+            cut_completed_at: rolls.cut_completed_at,
+          })
+          .from(rolls)
+          .where(inArray(rolls.production_order_id, poIds));
+
+        for (const r of orderRolls) {
+          const poId = Number(r.production_order_id);
+          if (!rollSummaryByPo[poId]) {
+            rollSummaryByPo[poId] = {
+              film_rolls: 0,
+              film_weight_kg: 0,
+              printed_rolls: 0,
+              printed_weight_kg: 0,
+              cut_rolls: 0,
+              cut_weight_kg: 0,
+            };
+          }
+          const agg = rollSummaryByPo[poId];
+          const w = Number(r.weight_kg) || 0;
+          agg.film_rolls += 1;
+          agg.film_weight_kg += w;
+          if (r.printed_at) {
+            agg.printed_rolls += 1;
+            agg.printed_weight_kg += w;
+          }
+          if (r.cut_completed_at) {
+            agg.cut_rolls += 1;
+            agg.cut_weight_kg += Number(r.cut_weight_total_kg) || 0;
+          }
+        }
+      }
+
       res.set("Cache-Control", "no-cache");
       res.json({
         success: true,
@@ -928,6 +980,14 @@ export async function registerRoutes(
           quantity_kg: po.quantity_kg,
           produced_quantity_kg: po.produced_quantity_kg,
           notes: po.notes,
+          roll_summary: rollSummaryByPo[po.id] || {
+            film_rolls: 0,
+            film_weight_kg: 0,
+            printed_rolls: 0,
+            printed_weight_kg: 0,
+            cut_rolls: 0,
+            cut_weight_kg: 0,
+          },
           customer_product: po.customerProduct
             ? {
                 size_caption: po.customerProduct.size_caption,
@@ -936,6 +996,7 @@ export async function registerRoutes(
                 thickness: po.customerProduct.thickness,
                 raw_material: po.customerProduct.raw_material,
                 print_colors: po.customerProduct.print_colors,
+                is_printed: po.customerProduct.is_printed,
                 handle_type: po.customerProduct.handle_type,
                 unit_weight_gram: po.customerProduct.unit_weight_gram,
               }

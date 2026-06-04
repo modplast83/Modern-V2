@@ -229,9 +229,47 @@ export default function ViewOrder() {
                   )}
 
                   <InfoRow label="الكمية المطلوبة" value={`${fmt(po.quantity_kg)} كجم`} />
-                  {Number(po.produced_quantity_kg) > 0 && (
-                    <InfoRow label="المُنتج حتى الآن" value={`${fmt(po.produced_quantity_kg)} كجم`} />
-                  )}
+
+                  {(() => {
+                    const rs = po.roll_summary;
+                    if (!rs || Number(rs.film_rolls) === 0) return null;
+                    const isPrinted = cp?.is_printed;
+                    const cutDenom = isPrinted ? rs.printed_rolls : rs.film_rolls;
+                    const stages: {
+                      key: string;
+                      label: string;
+                      color: string;
+                      bg: string;
+                      count: number;
+                      denom: number | null;
+                      weight: number;
+                    }[] = [
+                      { key: "film", label: "إنتاج الفيلم", color: "#2563eb", bg: "#eff6ff", count: rs.film_rolls, denom: null, weight: rs.film_weight_kg },
+                      ...(isPrinted
+                        ? [{ key: "print", label: "الطباعة", color: "#7c3aed", bg: "#f5f3ff", count: rs.printed_rolls, denom: rs.film_rolls, weight: rs.printed_weight_kg }]
+                        : []),
+                      { key: "cut", label: "التقطيع (جاهز للاستلام)", color: "#059669", bg: "#ecfdf5", count: rs.cut_rolls, denom: cutDenom, weight: rs.cut_weight_kg },
+                    ];
+                    return (
+                      <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#475569" }}>تقدّم الإنتاج (الرولات)</div>
+                        {stages.map((s) => (
+                          <div key={s.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: s.bg, borderRadius: 10, padding: "8px 12px", borderRight: `3px solid ${s.color}` }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <span style={{ width: 8, height: 8, borderRadius: "50%", background: s.color, flexShrink: 0 }} />
+                              <span style={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>{s.label}</span>
+                            </div>
+                            <div style={{ textAlign: "left", whiteSpace: "nowrap" }}>
+                              <span style={{ fontSize: 13, fontWeight: 800, color: s.color }}>
+                                {s.denom != null ? `${fmt(s.count)} من ${fmt(s.denom)} رول` : `${fmt(s.count)} رول`}
+                              </span>
+                              <span style={{ fontSize: 12, color: "#64748b", marginRight: 8 }}>{fmt(s.weight)} كجم</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
 
                   {/* Progress bar */}
                   {po.quantity_kg && Number(po.quantity_kg) > 0 && (
