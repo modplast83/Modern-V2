@@ -79,7 +79,10 @@ export function formatNumberAr(value: number, decimals: number = 0): string {
     return "0";
   }
 
-  return value.toFixed(decimals);
+  return value.toLocaleString("en-US", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
 }
 
 /**

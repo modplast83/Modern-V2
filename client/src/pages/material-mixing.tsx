@@ -42,6 +42,7 @@ import {
 import { useAuth } from "../hooks/use-auth";
 import { useLocalizedName } from "../hooks/use-localized-name";
 import { queryClient, apiRequest } from "../lib/queryClient";
+import { formatNumberAr } from "@shared/number-utils";
 
 type Material = {
   id: string;
@@ -371,11 +372,11 @@ export default function MaterialMixing() {
                               {order.master_batch_id &&
                                 ` | ${getMasterBatchColorKey(order.master_batch_id) ? t(getMasterBatchColorKey(order.master_batch_id)!) : order.master_batch_id}`}{" "}
                               |{" "}
-                              {parseFloat(
+                              {formatNumberAr(parseFloat(
                                 order.final_quantity_kg ||
                                   order.quantity_kg ||
                                   0,
-                              ).toFixed(2)}{" "}
+                              ), 2)}{" "}
                               {t("common.kg")} |{" "}
                               {ln(order.customer_name_ar, order.customer_name)}
                             </div>
@@ -543,7 +544,7 @@ export default function MaterialMixing() {
                   <div className="flex justify-between items-center text-lg font-semibold">
                     <span>{t("mixing.totalWeight")}</span>
                     <span data-testid="text-total-weight">
-                      {totalWeight.toFixed(2)} {t("common.kg")}
+                      {formatNumberAr(totalWeight, 2)} {t("common.kg")}
                     </span>
                   </div>
                 </div>
@@ -671,9 +672,9 @@ export default function MaterialMixing() {
                                         batch.machine_id}
                                     </td>
                                     <td>
-                                      {parseFloat(
+                                      {formatNumberAr(parseFloat(
                                         batch.total_weight_kg,
-                                      ).toFixed(2)}
+                                      ), 2)}
                                     </td>
                                     <td>
                                       {new Date(
@@ -708,13 +709,12 @@ export default function MaterialMixing() {
                             <tr className="total-row">
                               <td colSpan={3}>المجموع</td>
                               <td>
-                                {batches
+                                {formatNumberAr(batches
                                   .filter((b) => b.screw_assignment === "A")
                                   .reduce(
                                     (s, b) => s + parseFloat(b.total_weight_kg),
                                     0,
-                                  )
-                                  .toFixed(2)}{" "}
+                                  ), 2)}{" "}
                                 كغ
                               </td>
                               <td colSpan={3}></td>
@@ -756,9 +756,9 @@ export default function MaterialMixing() {
                                         batch.machine_id}
                                     </td>
                                     <td>
-                                      {parseFloat(
+                                      {formatNumberAr(parseFloat(
                                         batch.total_weight_kg,
-                                      ).toFixed(2)}
+                                      ), 2)}
                                     </td>
                                     <td>
                                       {new Date(
@@ -793,13 +793,12 @@ export default function MaterialMixing() {
                             <tr className="total-row">
                               <td colSpan={3}>المجموع</td>
                               <td>
-                                {batches
+                                {formatNumberAr(batches
                                   .filter((b) => b.screw_assignment === "B")
                                   .reduce(
                                     (s, b) => s + parseFloat(b.total_weight_kg),
                                     0,
-                                  )
-                                  .toFixed(2)}{" "}
+                                  ), 2)}{" "}
                                 كغ
                               </td>
                               <td colSpan={3}></td>
@@ -859,7 +858,7 @@ export default function MaterialMixing() {
                             {label}
                             <span className="text-sm font-normal mr-2 opacity-90">
                               ({screwBatches.length} خلطة —{" "}
-                              {screwTotal.toFixed(2)} كغ)
+                              {formatNumberAr(screwTotal, 2)} كغ)
                             </span>
                           </div>
                           <div className="overflow-x-auto">
@@ -925,9 +924,9 @@ export default function MaterialMixing() {
                                               batch.machine_id}
                                           </TableCell>
                                           <TableCell className="px-2 py-1.5 font-medium">
-                                            {parseFloat(
+                                            {formatNumberAr(parseFloat(
                                               batch.total_weight_kg,
-                                            ).toFixed(2)}
+                                            ), 2)}
                                           </TableCell>
                                           <TableCell
                                             className="px-2 py-1.5"
@@ -996,7 +995,7 @@ export default function MaterialMixing() {
                                         المجموع
                                       </TableCell>
                                       <TableCell className="font-bold px-2 py-2">
-                                        {screwTotal.toFixed(2)} كغ
+                                        {formatNumberAr(screwTotal, 2)} كغ
                                       </TableCell>
                                       <TableCell colSpan={4}></TableCell>
                                     </TableRow>
@@ -1065,7 +1064,7 @@ export default function MaterialMixing() {
                     {t("mixing.totalWeightKg")}
                   </Label>
                   <p className="font-semibold">
-                    {parseFloat(selectedBatch.total_weight_kg).toFixed(2)}{" "}
+                    {formatNumberAr(parseFloat(selectedBatch.total_weight_kg), 2)}{" "}
                     {t("common.kg")}
                   </p>
                 </div>
@@ -1109,9 +1108,7 @@ export default function MaterialMixing() {
                               ) || ingredient.item_id}
                             </TableCell>
                             <TableCell>
-                              {parseFloat(ingredient.actual_weight_kg).toFixed(
-                                2,
-                              )}
+                              {formatNumberAr(parseFloat(ingredient.actual_weight_kg), 2)}
                             </TableCell>
                             <TableCell>
                               {parseFloat(ingredient.percentage).toFixed(2)}%

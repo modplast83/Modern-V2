@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { formatNumberAr } from "@shared/number-utils";
 import {
   LineChart,
   Line,
@@ -736,7 +737,7 @@ export default function ProductionReports() {
                           {machine.machineName}
                         </TableCell>
                         <TableCell>{machine.rollsCount}</TableCell>
-                        <TableCell>{machine.totalWeight?.toFixed(2)}</TableCell>
+                        <TableCell>{formatNumberAr(Number(machine.totalWeight), 2)}</TableCell>
                         <TableCell>{machine.avgTime?.toFixed(2)}</TableCell>
                         <TableCell>
                           <Badge

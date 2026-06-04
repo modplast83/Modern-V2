@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import { formatNumberAr } from "@shared/number-utils";
 
 import OrdersForm from "./OrdersForm";
 import OrdersSearch from "./OrdersSearch";
@@ -559,25 +560,25 @@ export default function OrdersTabs({
                                     className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
                                     data-testid={`text-required-quantity-${po.id}`}
                                   >
-                                    {required.toFixed(2)}
+                                    {formatNumberAr(required, 2)}
                                   </td>
                                   <td
                                     className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600"
                                     data-testid={`text-produced-quantity-${po.id}`}
                                   >
-                                    {produced.toFixed(2)}
+                                    {formatNumberAr(produced, 2)}
                                   </td>
                                   <td
                                     className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600"
                                     data-testid={`text-net-quantity-${po.id}`}
                                   >
-                                    {net.toFixed(2)}
+                                    {formatNumberAr(net, 2)}
                                   </td>
                                   <td
                                     className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600"
                                     data-testid={`text-waste-${po.id}`}
                                   >
-                                    {waste.toFixed(2)}
+                                    {formatNumberAr(waste, 2)}
                                   </td>
                                 </>
                               );
@@ -676,7 +677,7 @@ export default function OrdersTabs({
                                     {t("orders.requiredQuantityKg")}:
                                   </span>
                                   <span className="font-medium">
-                                    {required.toFixed(2)}
+                                    {formatNumberAr(required, 2)}
                                   </span>
                                 </div>
                                 <div className="flex justify-between">
@@ -684,7 +685,7 @@ export default function OrdersTabs({
                                     {t("orders.producedQuantityKg")}:
                                   </span>
                                   <span className="font-medium text-green-600">
-                                    {produced.toFixed(2)}
+                                    {formatNumberAr(produced, 2)}
                                   </span>
                                 </div>
                                 <div className="flex justify-between">
@@ -692,7 +693,7 @@ export default function OrdersTabs({
                                     {t("orders.netQuantityKg")}:
                                   </span>
                                   <span className="font-medium text-blue-600">
-                                    {net.toFixed(2)}
+                                    {formatNumberAr(net, 2)}
                                   </span>
                                 </div>
                                 <div className="flex justify-between">
@@ -700,7 +701,7 @@ export default function OrdersTabs({
                                     {t("orders.wasteKg")}:
                                   </span>
                                   <span className="font-medium text-red-600">
-                                    {waste.toFixed(2)}
+                                    {formatNumberAr(waste, 2)}
                                   </span>
                                 </div>
                               </>

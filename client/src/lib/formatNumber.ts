@@ -15,13 +15,8 @@ export function formatNumber(
     return "0";
   }
 
-  // إذا كان الرقم صحيحاً (بدون كسور)، أظهره بدون فاصلة عشرية
-  if (num % 1 === 0) {
-    return num.toString();
-  }
-
-  // إذا كان الرقم يحتوي على كسور، أظهره بفاصلة عشرية محدودة
-  return num.toFixed(2).replace(/\.?0+$/, "");
+  // عرض الرقم مع فاصلة الآلاف، وبكسور عشرية محدودة (حتى منزلتين) عند الحاجة
+  return num.toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
 
 /**
@@ -31,14 +26,17 @@ export function formatNumber(
 export function formatNumberWithCommas(
   value: number | string | null | undefined,
 ): string {
-  const formatted = formatNumber(value);
-  const num = parseFloat(formatted);
+  if (value === null || value === undefined || value === "") {
+    return "0";
+  }
+
+  const num = typeof value === "string" ? parseFloat(value) : value;
 
   if (isNaN(num)) {
     return "0";
   }
 
-  return num.toLocaleString("en-US");
+  return num.toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
 
 /**

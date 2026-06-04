@@ -48,6 +48,7 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { formatNumberAr } from "@shared/number-utils";
 import { useAuth } from "../hooks/use-auth";
 import { useLocalizedName } from "../hooks/use-localized-name";
 
@@ -797,7 +798,7 @@ function PrintProductionOrderWrapper({
               </div>
               <div class="info-box highlight">
                 <div class="info-label">${t("production.printTemplate.requiredQuantity")}</div>
-                <div class="info-value">${targetWeight.toFixed(2)} ${t("production.kg")}</div>
+                <div class="info-value">${formatNumberAr(targetWeight, 2)} ${t("production.kg")}</div>
               </div>
               <div class="info-box">
                 <div class="info-label">${t("production.printTemplate.creationDate")}</div>
@@ -811,31 +812,31 @@ function PrintProductionOrderWrapper({
                 <div class="stage-icon">🎬</div>
                 <div class="stage-name">${t("production.printTemplate.filmStage")}</div>
                 <div class="stage-count stage-film">${filmRolls.length} ${t("production.printTemplate.roll")}</div>
-                <div class="stage-weight">${filmRolls.reduce((s: number, r: any) => s + parseFloat(r.weight_kg || 0), 0).toFixed(2)} ${t("production.kg")}</div>
+                <div class="stage-weight">${formatNumberAr(filmRolls.reduce((s: number, r: any) => s + parseFloat(r.weight_kg || 0), 0), 2)} ${t("production.kg")}</div>
               </div>
               <div class="workflow-stage printing">
                 <div class="stage-icon">🖨️</div>
                 <div class="stage-name">${t("production.printTemplate.printingStage")}</div>
                 <div class="stage-count stage-printing">${printingRolls.length} ${t("production.printTemplate.roll")}</div>
-                <div class="stage-weight">${printingRolls.reduce((s: number, r: any) => s + parseFloat(r.weight_kg || 0), 0).toFixed(2)} ${t("production.kg")}</div>
+                <div class="stage-weight">${formatNumberAr(printingRolls.reduce((s: number, r: any) => s + parseFloat(r.weight_kg || 0), 0), 2)} ${t("production.kg")}</div>
               </div>
               <div class="workflow-stage cutting">
                 <div class="stage-icon">✂️</div>
                 <div class="stage-name">${t("production.printTemplate.cuttingStage")}</div>
                 <div class="stage-count stage-cutting">${cuttingRolls.length} ${t("production.printTemplate.roll")}</div>
-                <div class="stage-weight">${cuttingRolls.reduce((s: number, r: any) => s + parseFloat(r.weight_kg || 0), 0).toFixed(2)} ${t("production.kg")}</div>
+                <div class="stage-weight">${formatNumberAr(cuttingRolls.reduce((s: number, r: any) => s + parseFloat(r.weight_kg || 0), 0), 2)} ${t("production.kg")}</div>
               </div>
               <div class="workflow-stage done">
                 <div class="stage-icon">✅</div>
                 <div class="stage-name">${t("production.stages.done")}</div>
                 <div class="stage-count stage-done">${doneRolls.length} ${t("production.printTemplate.roll")}</div>
-                <div class="stage-weight">${doneRolls.reduce((s: number, r: any) => s + parseFloat(r.weight_kg || 0), 0).toFixed(2)} ${t("production.kg")}</div>
+                <div class="stage-weight">${formatNumberAr(doneRolls.reduce((s: number, r: any) => s + parseFloat(r.weight_kg || 0), 0), 2)} ${t("production.kg")}</div>
               </div>
             </div>
 
             <div class="progress-bar">
               <div class="progress-fill" style="width: ${progress}%"></div>
-              <div class="progress-text">${progress.toFixed(1)}% (${totalWeight.toFixed(2)} / ${targetWeight.toFixed(2)} ${t("production.kg")})</div>
+              <div class="progress-text">${progress.toFixed(1)}% (${formatNumberAr(totalWeight, 2)} / ${formatNumberAr(targetWeight, 2)} ${t("production.kg")})</div>
             </div>
 
             ${
@@ -863,7 +864,7 @@ function PrintProductionOrderWrapper({
                       <td>${index + 1}</td>
                       <td><strong>${roll.roll_number}</strong></td>
                       <td class="stage-${roll.stage}"><strong>${getStageLabel(roll.stage)}</strong></td>
-                      <td>${parseFloat(roll.weight_kg || 0).toFixed(2)} ${t("production.kg")}</td>
+                      <td>${formatNumberAr(parseFloat(roll.weight_kg || 0), 2)} ${t("production.kg")}</td>
                       <td>${roll.created_by_name || "-"}</td>
                       <td>${roll.printed_by_name || "-"}</td>
                       <td>${roll.cut_by_name || "-"}</td>

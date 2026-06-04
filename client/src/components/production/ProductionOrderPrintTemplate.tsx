@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useLocalizedName } from "../../hooks/use-localized-name";
+import { formatNumberAr } from "@shared/number-utils";
 import "../../print.css";
 
 interface ProductionOrderPrintTemplateProps {
@@ -313,11 +314,14 @@ function PrintContentInner({
             {t("production.print.requiredQuantity")}
           </div>
           <div className="print-info-value large">
-            {parseFloat(
-              productionOrder.final_quantity_kg ||
-                productionOrder.quantity_kg ||
-                0,
-            ).toFixed(2)}{" "}
+            {formatNumberAr(
+              parseFloat(
+                productionOrder.final_quantity_kg ||
+                  productionOrder.quantity_kg ||
+                  0,
+              ),
+              2,
+            )}{" "}
             {t("production.print.kg")}
             {parseFloat(productionOrder.overrun_percentage || 0) > 0 && (
               <span
@@ -438,7 +442,7 @@ function PrintContentInner({
               {t("production.print.producedWeight")}
             </div>
             <div className="print-stat-value">
-              {totalWeight.toFixed(2)} {t("production.print.kg")}
+              {formatNumberAr(totalWeight, 2)} {t("production.print.kg")}
             </div>
           </div>
           <div className="print-stat-card">
@@ -484,7 +488,7 @@ function PrintContentInner({
                   <td className="text-center">{index + 1}</td>
                   <td className="text-center font-bold">{roll.roll_number}</td>
                   <td className="text-center">
-                    {parseFloat(roll.weight_kg || 0).toFixed(2)}
+                    {formatNumberAr(parseFloat(roll.weight_kg || 0), 2)}
                   </td>
                   <td className="text-center">
                     <span
@@ -513,7 +517,7 @@ function PrintContentInner({
                 </td>
                 <td colSpan={4}>
                   <strong>
-                    {totalWeight.toFixed(2)} {t("production.print.kg")}
+                    {formatNumberAr(totalWeight, 2)} {t("production.print.kg")}
                   </strong>
                 </td>
               </tr>

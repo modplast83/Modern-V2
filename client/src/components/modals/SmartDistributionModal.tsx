@@ -19,6 +19,8 @@ import {
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { formatNumberAr } from "@shared/number-utils";
+
 import { useToast } from "../../hooks/use-toast";
 import { apiRequest, queryClient } from "../../lib/queryClient";
 import { Alert, AlertDescription } from "../ui/alert";
@@ -504,7 +506,7 @@ export default function SmartDistributionModal({
                                 {t("modals.smartDistribution.currentLoad")}:
                               </span>
                               <span className="font-medium">
-                                {machine.currentLoad?.toFixed(2)}{" "}
+                                {formatNumberAr(Number(machine.currentLoad), 2)}{" "}
                                 {t("modals.smartDistribution.kg")}
                               </span>
                             </div>
@@ -513,7 +515,7 @@ export default function SmartDistributionModal({
                                 {t("modals.smartDistribution.proposedLoad")}:
                               </span>
                               <span className="font-medium">
-                                {machine.proposedLoad?.toFixed(2)}{" "}
+                                {formatNumberAr(Number(machine.proposedLoad), 2)}{" "}
                                 {t("modals.smartDistribution.kg")}
                               </span>
                             </div>
@@ -603,7 +605,7 @@ export default function SmartDistributionModal({
                               {t("modals.smartDistribution.currentLoad")}:
                             </span>
                             <p className="font-medium">
-                              {stat.currentLoad?.toFixed(2)}{" "}
+                              {formatNumberAr(Number(stat.currentLoad), 2)}{" "}
                               {t("modals.smartDistribution.kg")}
                             </p>
                           </div>
@@ -612,7 +614,7 @@ export default function SmartDistributionModal({
                               {t("modals.smartDistribution.maxCapacity")}:
                             </span>
                             <p className="font-medium">
-                              {stat.maxCapacity?.toFixed(2)}{" "}
+                              {formatNumberAr(Number(stat.maxCapacity), 2)}{" "}
                               {t("modals.smartDistribution.kg")}
                             </p>
                           </div>

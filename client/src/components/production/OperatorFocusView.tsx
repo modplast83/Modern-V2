@@ -27,6 +27,7 @@ import {
 } from "../ui/select";
 import { useToast } from "../../hooks/use-toast";
 import { apiRequest } from "../../lib/queryClient";
+import { formatNumberAr } from "@shared/number-utils";
 
 const MACHINE_STORAGE_KEY = "operator_focus_machine_id";
 const ORDER_STORAGE_KEY = "operator_focus_order_id";
@@ -404,10 +405,10 @@ export default function OperatorFocusView() {
         <CardContent className="space-y-3">
           <div className="flex justify-center items-baseline gap-2">
             <span className="text-5xl font-black text-primary tracking-tight">
-              {producedQty.toFixed(1)}
+              {formatNumberAr(producedQty, 1)}
             </span>
             <span className="text-lg text-muted-foreground font-bold">
-              / {targetQty.toFixed(0)} {isArabic ? "كجم" : "kg"}
+              / {formatNumberAr(targetQty, 0)} {isArabic ? "كجم" : "kg"}
             </span>
           </div>
           <div className="space-y-1">

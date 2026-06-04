@@ -12,6 +12,8 @@ import {
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
+import { formatNumberAr } from "@shared/number-utils";
+
 import { useAuth } from "../../hooks/use-auth";
 import { useLocalizedName } from "../../hooks/use-localized-name";
 import { useToast } from "../../hooks/use-toast";
@@ -780,9 +782,9 @@ export default function FilmMaterialMixingTab() {
                             {order.master_batch_id &&
                               ` | ${getMasterBatchText(order.master_batch_id)}`}
                             {" | "}
-                            {parseFloat(
+                            {formatNumberAr(parseFloat(
                               order.final_quantity_kg || order.quantity_kg || 0,
-                            ).toFixed(1)}{" "}
+                            ), 1)}{" "}
                             كغ
                           </div>
                         </div>
@@ -886,7 +888,7 @@ export default function FilmMaterialMixingTab() {
                         الكمية الإجمالية:
                       </span>
                       <p className="font-bold text-base">
-                        {orderQuantity.toFixed(2)} كغ
+                        {formatNumberAr(orderQuantity, 2)} كغ
                       </p>
                     </div>
                     <div>
@@ -894,10 +896,10 @@ export default function FilmMaterialMixingTab() {
                         المخلوط سابقاً (A+B):
                       </span>
                       <p className="font-semibold">
-                        {previouslyMixed.toFixed(2)} كغ
+                        {formatNumberAr(previouslyMixed, 2)} كغ
                         <span className="text-xs text-muted-foreground mr-1">
-                          (A: {previouslyMixedA.toFixed(1)} | B:{" "}
-                          {previouslyMixedB.toFixed(1)})
+                          (A: {formatNumberAr(previouslyMixedA, 1)} | B:{" "}
+                          {formatNumberAr(previouslyMixedB, 1)})
                         </span>
                       </p>
                     </div>
@@ -906,7 +908,7 @@ export default function FilmMaterialMixingTab() {
                         الخلطة الحالية:
                       </span>
                       <p className="font-semibold">
-                        {totalWeight.toFixed(2)} كغ
+                        {formatNumberAr(totalWeight, 2)} كغ
                       </p>
                     </div>
                     <div>
@@ -914,7 +916,7 @@ export default function FilmMaterialMixingTab() {
                       <p
                         className={`font-bold text-base ${isOverLimit ? "text-red-600" : remainingQuantity <= 0 ? "text-green-600" : ""}`}
                       >
-                        {remainingQuantity.toFixed(2)} كغ
+                        {formatNumberAr(remainingQuantity, 2)} كغ
                       </p>
                     </div>
                   </div>
@@ -938,7 +940,7 @@ export default function FilmMaterialMixingTab() {
                       <AlertTriangle className="h-4 w-4 shrink-0" />
                       <span>
                         مجموع كميات الخلط يتجاوز الكمية المطلوبة بـ{" "}
-                        {Math.abs(remainingQuantity).toFixed(2)} كغ
+                        {formatNumberAr(Math.abs(remainingQuantity), 2)} كغ
                       </span>
                     </div>
                   )}
@@ -1068,7 +1070,7 @@ export default function FilmMaterialMixingTab() {
                 <div className="flex justify-between items-center text-lg font-semibold">
                   <span>{t("production.mixing.totalWeight")}:</span>
                   <span data-testid="text-total-weight">
-                    {totalWeight.toFixed(2)} {t("production.mixing.kg")}
+                    {formatNumberAr(totalWeight, 2)} {t("production.mixing.kg")}
                   </span>
                 </div>
               </div>
@@ -1170,14 +1172,14 @@ export default function FilmMaterialMixingTab() {
                         </span>
                         {group.orderQty > 0 && (
                           <span className="po-meta">
-                            كمية الأمر: {group.orderQty.toFixed(2)} كغ • المتبقي:{" "}
-                            {group.remaining.toFixed(2)} كغ
+                            كمية الأمر: {formatNumberAr(group.orderQty, 2)} كغ • المتبقي:{" "}
+                            {formatNumberAr(group.remaining, 2)} كغ
                           </span>
                         )}
                         <span className="po-meta">
-                          سكرو A: {group.totalA.toFixed(2)} كغ • سكرو B:{" "}
-                          {group.totalB.toFixed(2)} كغ • الإجمالي:{" "}
-                          {group.total.toFixed(2)} كغ
+                          سكرو A: {formatNumberAr(group.totalA, 2)} كغ • سكرو B:{" "}
+                          {formatNumberAr(group.totalB, 2)} كغ • الإجمالي:{" "}
+                          {formatNumberAr(group.total, 2)} كغ
                         </span>
                       </div>
                       <div className="tables-wrapper">
@@ -1232,9 +1234,9 @@ export default function FilmMaterialMixingTab() {
                                               batch.machine_id}
                                           </td>
                                           <td>
-                                            {parseFloat(
+                                            {formatNumberAr(parseFloat(
                                               batch.total_weight_kg,
-                                            ).toFixed(2)}
+                                            ), 2)}
                                           </td>
                                           <td>
                                             {new Date(
@@ -1268,7 +1270,7 @@ export default function FilmMaterialMixingTab() {
                                                       >
                                                         {comp.material_name_ar ||
                                                           comp.material_name}{" "}
-                                                        — {qty.toFixed(2)} كغ (
+                                                        — {formatNumberAr(qty, 2)} كغ (
                                                         {pct.toFixed(1)}%)
                                                       </div>
                                                     );
@@ -1283,7 +1285,7 @@ export default function FilmMaterialMixingTab() {
                                   {screwBatches.length > 0 && (
                                     <tr className="total-row">
                                       <td colSpan={2}>المجموع</td>
-                                      <td>{screwTotal.toFixed(2)} كغ</td>
+                                      <td>{formatNumberAr(screwTotal, 2)} كغ</td>
                                       <td colSpan={3}></td>
                                     </tr>
                                   )}
@@ -1316,20 +1318,20 @@ export default function FilmMaterialMixingTab() {
                         </span>
                         {group.orderQty > 0 && (
                           <span className="text-xs text-muted-foreground">
-                            كمية الأمر: <span className="font-semibold text-foreground">{group.orderQty.toFixed(2)} كغ</span>
-                            {" • "}المتبقي: <span className="font-semibold text-foreground">{group.remaining.toFixed(2)} كغ</span>
+                            كمية الأمر: <span className="font-semibold text-foreground">{formatNumberAr(group.orderQty, 2)} كغ</span>
+                            {" • "}المتبقي: <span className="font-semibold text-foreground">{formatNumberAr(group.remaining, 2)} كغ</span>
                           </span>
                         )}
                       </div>
                       <div className="flex gap-3 text-xs font-semibold flex-wrap">
                         <span className="px-2 py-1 rounded bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300">
-                          سكرو A: {group.totalA.toFixed(2)} كغ ({group.pctA.toFixed(1)}%)
+                          سكرو A: {formatNumberAr(group.totalA, 2)} كغ ({group.pctA.toFixed(1)}%)
                         </span>
                         <span className="px-2 py-1 rounded bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300">
-                          سكرو B: {group.totalB.toFixed(2)} كغ ({group.pctB.toFixed(1)}%)
+                          سكرو B: {formatNumberAr(group.totalB, 2)} كغ ({group.pctB.toFixed(1)}%)
                         </span>
                         <span className="px-2 py-1 rounded bg-amber-200 dark:bg-amber-900/50 text-amber-900 dark:text-amber-100">
-                          الإجمالي: {group.total.toFixed(2)} كغ
+                          الإجمالي: {formatNumberAr(group.total, 2)} كغ
                         </span>
                       </div>
                     </div>
@@ -1371,7 +1373,7 @@ export default function FilmMaterialMixingTab() {
                                         {row.name_ar || row.name || row.key}
                                       </TableCell>
                                       <TableCell className="px-2 py-1.5 font-semibold text-blue-700 dark:text-blue-300">
-                                        {row.qty.toFixed(2)}
+                                        {formatNumberAr(row.qty, 2)}
                                       </TableCell>
                                       <TableCell className="px-2 py-1.5">
                                         {row.pctInScrew.toFixed(1)}%
@@ -1380,7 +1382,7 @@ export default function FilmMaterialMixingTab() {
                                         {row.pctInTotal.toFixed(1)}%
                                       </TableCell>
                                       <TableCell className="px-2 py-1.5 text-amber-700 dark:text-amber-300 font-medium">
-                                        {row.materialTotalQty.toFixed(2)} ({row.materialTotalPct.toFixed(1)}%)
+                                        {formatNumberAr(row.materialTotalQty, 2)} ({row.materialTotalPct.toFixed(1)}%)
                                       </TableCell>
                                     </TableRow>
                                   ))}
@@ -1391,7 +1393,7 @@ export default function FilmMaterialMixingTab() {
                                         مجموع سكرو A
                                       </TableCell>
                                       <TableCell className="px-2 py-1.5 font-bold text-blue-800 dark:text-blue-200">
-                                        {group.totalA.toFixed(2)}
+                                        {formatNumberAr(group.totalA, 2)}
                                       </TableCell>
                                       <TableCell className="px-2 py-1.5 font-bold text-blue-800 dark:text-blue-200">
                                         100%
@@ -1411,7 +1413,7 @@ export default function FilmMaterialMixingTab() {
                                         {row.name_ar || row.name || row.key}
                                       </TableCell>
                                       <TableCell className="px-2 py-1.5 font-semibold text-emerald-700 dark:text-emerald-300">
-                                        {row.qty.toFixed(2)}
+                                        {formatNumberAr(row.qty, 2)}
                                       </TableCell>
                                       <TableCell className="px-2 py-1.5">
                                         {row.pctInScrew.toFixed(1)}%
@@ -1420,7 +1422,7 @@ export default function FilmMaterialMixingTab() {
                                         {row.pctInTotal.toFixed(1)}%
                                       </TableCell>
                                       <TableCell className="px-2 py-1.5 text-amber-700 dark:text-amber-300 font-medium">
-                                        {row.materialTotalQty.toFixed(2)} ({row.materialTotalPct.toFixed(1)}%)
+                                        {formatNumberAr(row.materialTotalQty, 2)} ({row.materialTotalPct.toFixed(1)}%)
                                       </TableCell>
                                     </TableRow>
                                   ))}
@@ -1431,7 +1433,7 @@ export default function FilmMaterialMixingTab() {
                                         مجموع سكرو B
                                       </TableCell>
                                       <TableCell className="px-2 py-1.5 font-bold text-emerald-800 dark:text-emerald-200">
-                                        {group.totalB.toFixed(2)}
+                                        {formatNumberAr(group.totalB, 2)}
                                       </TableCell>
                                       <TableCell className="px-2 py-1.5 font-bold text-emerald-800 dark:text-emerald-200">
                                         100%
@@ -1448,7 +1450,7 @@ export default function FilmMaterialMixingTab() {
                                       الإجمالي الكلي
                                     </TableCell>
                                     <TableCell className="px-2 py-2 font-bold text-amber-900 dark:text-amber-100">
-                                      {group.total.toFixed(2)}
+                                      {formatNumberAr(group.total, 2)}
                                     </TableCell>
                                     <TableCell className="px-2 py-2"></TableCell>
                                     <TableCell className="px-2 py-2 font-bold text-amber-900 dark:text-amber-100">
@@ -1505,7 +1507,7 @@ export default function FilmMaterialMixingTab() {
                             >
                               {label}
                               <span className="text-xs font-normal mr-2 opacity-90">
-                                ({screwBatches.length} خلطة — {screwTotal.toFixed(2)} كغ)
+                                ({screwBatches.length} خلطة — {formatNumberAr(screwTotal, 2)} كغ)
                               </span>
                             </div>
                             <div className="overflow-x-auto">
@@ -1564,7 +1566,7 @@ export default function FilmMaterialMixingTab() {
                                                 batch.machine_id}
                                             </TableCell>
                                             <TableCell className="px-2 py-1.5 font-medium">
-                                              {parseFloat(batch.total_weight_kg).toFixed(2)}
+                                              {formatNumberAr(parseFloat(batch.total_weight_kg), 2)}
                                             </TableCell>
                                             <TableCell className="px-2 py-1.5" dir="ltr">
                                               {new Date(batch.created_at).toLocaleDateString("en-US")}
@@ -1586,7 +1588,7 @@ export default function FilmMaterialMixingTab() {
                                                           {comp.material_name_ar || comp.material_name}
                                                         </span>
                                                         <span className="text-blue-700 dark:text-blue-300 font-semibold">
-                                                          {qty.toFixed(2)} كغ
+                                                          {formatNumberAr(qty, 2)} كغ
                                                         </span>
                                                         <span className="text-muted-foreground">
                                                           ({pct.toFixed(1)}%)
@@ -1641,7 +1643,7 @@ export default function FilmMaterialMixingTab() {
                                           المجموع
                                         </TableCell>
                                         <TableCell className="font-bold px-2 py-2">
-                                          {screwTotal.toFixed(2)} كغ
+                                          {formatNumberAr(screwTotal, 2)} كغ
                                         </TableCell>
                                         <TableCell colSpan={4}></TableCell>
                                       </TableRow>
@@ -1711,7 +1713,7 @@ export default function FilmMaterialMixingTab() {
                     {t("production.mixing.totalWeightLabel")}
                   </Label>
                   <p className="font-semibold">
-                    {parseFloat(selectedBatch.total_weight_kg).toFixed(2)}{" "}
+                    {formatNumberAr(parseFloat(selectedBatch.total_weight_kg), 2)}{" "}
                     {t("production.mixing.kg")}
                   </p>
                 </div>
@@ -1753,7 +1755,7 @@ export default function FilmMaterialMixingTab() {
                                 ing.item_id}
                             </TableCell>
                             <TableCell>
-                              {parseFloat(ing.actual_weight_kg).toFixed(2)}
+                              {formatNumberAr(parseFloat(ing.actual_weight_kg), 2)}
                             </TableCell>
                             <TableCell>
                               {parseFloat(ing.percentage).toFixed(2)}%
@@ -1970,7 +1972,7 @@ export default function FilmMaterialMixingTab() {
                   </TableBody>
                 </Table>
                 <div className="mt-2 flex justify-end text-sm font-semibold">
-                  المجموع: {editTotalWeight.toFixed(2)}{" "}
+                  المجموع: {formatNumberAr(editTotalWeight, 2)}{" "}
                   {t("production.mixing.kg")}
                 </div>
               </div>

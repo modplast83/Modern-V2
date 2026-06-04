@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
+import { formatNumberAr } from "@shared/number-utils";
 
 interface ProductionOrder {
   id: number;
@@ -212,7 +213,7 @@ export default function OrderProgress() {
                     {t("production.stages.film")}
                   </p>
                   <p className="font-bold text-lg">
-                    {progress.progress?.film_weight?.toFixed(2) || 0}{" "}
+                    {formatNumberAr(Number(progress.progress?.film_weight) || 0, 2)}{" "}
                     {t("production.units.kg")}
                   </p>
                   <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
@@ -231,7 +232,7 @@ export default function OrderProgress() {
                     {t("production.stages.printing")}
                   </p>
                   <p className="font-bold text-lg">
-                    {progress.progress?.printed_weight?.toFixed(2) || 0}{" "}
+                    {formatNumberAr(Number(progress.progress?.printed_weight) || 0, 2)}{" "}
                     {t("production.units.kg")}
                   </p>
                   <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
@@ -250,7 +251,7 @@ export default function OrderProgress() {
                     {t("production.stages.cutting")}
                   </p>
                   <p className="font-bold text-lg">
-                    {progress.progress?.cut_weight?.toFixed(2) || 0}{" "}
+                    {formatNumberAr(Number(progress.progress?.cut_weight) || 0, 2)}{" "}
                     {t("production.units.kg")}
                   </p>
                   <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
@@ -269,7 +270,7 @@ export default function OrderProgress() {
                     {t("production.stages.warehouse")}
                   </p>
                   <p className="font-bold text-lg">
-                    {progress.progress?.warehouse_weight?.toFixed(2) || 0}{" "}
+                    {formatNumberAr(Number(progress.progress?.warehouse_weight) || 0, 2)}{" "}
                     {t("production.units.kg")}
                   </p>
                   <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
@@ -380,7 +381,7 @@ export default function OrderProgress() {
                           {roll.roll_number}
                         </p>
                         <p className="text-sm text-gray-500">
-                          {roll.weight_kg?.toFixed(2)}{" "}
+                          {formatNumberAr(Number(roll.weight_kg) || 0, 2)}{" "}
                           {t("production.units.kg")} - {roll.machine_id}
                         </p>
                       </div>
@@ -438,7 +439,7 @@ export default function OrderProgress() {
                           {t("production.orderProgress.receipt")} #{receipt.id}
                         </p>
                         <p className="text-sm text-gray-500">
-                          {receipt.received_weight_kg?.toFixed(2)}{" "}
+                          {formatNumberAr(Number(receipt.received_weight_kg) || 0, 2)}{" "}
                           {t("production.units.kg")}
                         </p>
                       </div>

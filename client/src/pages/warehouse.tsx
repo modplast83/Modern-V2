@@ -77,6 +77,7 @@ import { useToast } from "../hooks/use-toast";
 import { packagingUnitErrorToast } from "../lib/packagingUnitErrors";
 import { apiRequest } from "../lib/queryClient";
 import { userHasPermission } from "../utils/roleUtils";
+import { formatNumberAr } from "@shared/number-utils";
 
 export default function Warehouse() {
   const { t } = useTranslation();
@@ -582,7 +583,7 @@ function DeliveryHallContent() {
                                 {order.production_order_number}
                               </span>
                               <Badge variant="outline" className="text-xs">
-                                {order.available_for_delivery.toFixed(2)}{" "}
+                                {formatNumberAr(order.available_for_delivery, 2)}{" "}
                                 {t("warehouse.delivery.kgAvailable")}
                               </Badge>
                             </div>
@@ -781,10 +782,10 @@ function DeliveryHallContent() {
                                 {order.product_name_ar || order.product_name}
                               </td>
                               <td className="py-2 px-3 text-center whitespace-nowrap">
-                                {order.warehouse_received_kg.toFixed(2)}
+                                {formatNumberAr(order.warehouse_received_kg, 2)}
                               </td>
                               <td className="py-2 px-3 text-center whitespace-nowrap">
-                                {order.warehouse_delivered_kg.toFixed(2)}
+                                {formatNumberAr(order.warehouse_delivered_kg, 2)}
                               </td>
                               <td className="py-2 px-3 text-center whitespace-nowrap">
                                 <Badge
@@ -794,7 +795,7 @@ function DeliveryHallContent() {
                                       : "secondary"
                                   }
                                 >
-                                  {order.available_for_delivery.toFixed(2)}
+                                  {formatNumberAr(order.available_for_delivery, 2)}
                                 </Badge>
                               </td>
                               <td className="py-2 px-3 text-center whitespace-nowrap">
@@ -853,7 +854,7 @@ function DeliveryHallContent() {
                                   : "secondary"
                               }
                             >
-                              {order.available_for_delivery.toFixed(2)}{" "}
+                              {formatNumberAr(order.available_for_delivery, 2)}{" "}
                               {t("warehouse.delivery.kg")}
                             </Badge>
                           </div>
@@ -866,7 +867,7 @@ function DeliveryHallContent() {
                                 {t("warehouse.delivery.receivedLabel")}:
                               </span>
                               <span className="font-medium">
-                                {order.warehouse_received_kg.toFixed(2)}{" "}
+                                {formatNumberAr(order.warehouse_received_kg, 2)}{" "}
                                 {t("warehouse.delivery.kg")}
                               </span>
                             </div>
@@ -875,7 +876,7 @@ function DeliveryHallContent() {
                                 {t("warehouse.delivery.deliveredLabel")}:
                               </span>
                               <span className="font-medium">
-                                {order.warehouse_delivered_kg.toFixed(2)}{" "}
+                                {formatNumberAr(order.warehouse_delivered_kg, 2)}{" "}
                                 {t("warehouse.delivery.kg")}
                               </span>
                             </div>
@@ -1288,7 +1289,7 @@ function ProductionHallContent({
                                 {order.production_order_number}
                               </span>
                               <Badge variant="outline" className="text-xs">
-                                {order.remaining_to_receive.toFixed(2)}{" "}
+                                {formatNumberAr(order.remaining_to_receive, 2)}{" "}
                                 {t("warehouse.units.kilo")}{" "}
                                 {t("warehouse.production.remaining")}
                               </Badge>
@@ -1516,12 +1517,12 @@ function ProductionHallContent({
                                 {order.product_name_ar || order.product_name}
                               </td>
                               <td className="py-2 px-3 whitespace-nowrap">
-                                {order.quantity_required.toFixed(2)}
+                                {formatNumberAr(order.quantity_required, 2)}
                               </td>
                               <td className="py-2 px-3 whitespace-nowrap">
                                 {order.total_film_weight > 0 ? (
                                   <span className="text-blue-600">
-                                    {order.total_film_weight.toFixed(2)}
+                                    {formatNumberAr(order.total_film_weight, 2)}
                                   </span>
                                 ) : (
                                   <span className="text-gray-400">-</span>
@@ -1530,7 +1531,7 @@ function ProductionHallContent({
                               <td className="py-2 px-3 whitespace-nowrap">
                                 {order.total_print_weight > 0 ? (
                                   <span className="text-purple-600">
-                                    {order.total_print_weight.toFixed(2)}
+                                    {formatNumberAr(order.total_print_weight, 2)}
                                   </span>
                                 ) : (
                                   <span className="text-gray-400">-</span>
@@ -1538,24 +1539,24 @@ function ProductionHallContent({
                               </td>
                               <td className="py-2 px-3 whitespace-nowrap">
                                 <span className="text-green-600 font-medium">
-                                  {order.total_cut_weight.toFixed(2)}
+                                  {formatNumberAr(order.total_cut_weight, 2)}
                                 </span>
                               </td>
                               <td className="py-2 px-3 whitespace-nowrap">
                                 <span className="text-orange-600 font-medium">
-                                  {order.total_received_weight.toFixed(2)}
+                                  {formatNumberAr(order.total_received_weight, 2)}
                                 </span>
                               </td>
                               <td className="py-2 px-3 whitespace-nowrap">
                                 <span
                                   className={`font-bold ${remaining > 0 ? "text-purple-600" : "text-green-600"}`}
                                 >
-                                  {remaining.toFixed(2)}
+                                  {formatNumberAr(remaining, 2)}
                                 </span>
                               </td>
                               <td className="py-2 px-3 whitespace-nowrap">
                                 <span className="text-red-600">
-                                  {order.waste_weight.toFixed(2)}
+                                  {formatNumberAr(order.waste_weight, 2)}
                                 </span>
                               </td>
                               <td className="py-2 px-3">
@@ -1654,7 +1655,7 @@ function ProductionHallContent({
                                 {t("warehouse.production.requiredQuantity")}:
                               </span>
                               <span className="font-medium">
-                                {order.quantity_required.toFixed(2)}
+                                {formatNumberAr(order.quantity_required, 2)}
                               </span>
                             </div>
                             <div className="flex justify-between">
@@ -1662,7 +1663,7 @@ function ProductionHallContent({
                                 {t("warehouse.production.cutQuantity")}:
                               </span>
                               <span className="text-green-600 font-medium">
-                                {order.total_cut_weight.toFixed(2)}
+                                {formatNumberAr(order.total_cut_weight, 2)}
                               </span>
                             </div>
                             <div className="flex justify-between">
@@ -1670,7 +1671,7 @@ function ProductionHallContent({
                                 {t("warehouse.production.received")}:
                               </span>
                               <span className="text-orange-600 font-medium">
-                                {order.total_received_weight.toFixed(2)}
+                                {formatNumberAr(order.total_received_weight, 2)}
                               </span>
                             </div>
                             <div className="flex justify-between">
@@ -1680,7 +1681,7 @@ function ProductionHallContent({
                               <span
                                 className={`font-bold ${remaining > 0 ? "text-purple-600" : "text-green-600"}`}
                               >
-                                {remaining.toFixed(2)}
+                                {formatNumberAr(remaining, 2)}
                               </span>
                             </div>
                             {order.total_film_weight > 0 && (
@@ -1689,7 +1690,7 @@ function ProductionHallContent({
                                   {t("warehouse.production.producedFilm")}:
                                 </span>
                                 <span className="text-blue-600">
-                                  {order.total_film_weight.toFixed(2)}
+                                  {formatNumberAr(order.total_film_weight, 2)}
                                 </span>
                               </div>
                             )}
@@ -1699,7 +1700,7 @@ function ProductionHallContent({
                                   {t("warehouse.production.waste")}:
                                 </span>
                                 <span className="text-red-600">
-                                  {order.waste_weight.toFixed(2)}
+                                  {formatNumberAr(order.waste_weight, 2)}
                                 </span>
                               </div>
                             )}

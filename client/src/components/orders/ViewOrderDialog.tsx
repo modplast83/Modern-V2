@@ -2,6 +2,8 @@ import { format } from "date-fns";
 import { Printer } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { formatNumberAr } from "@shared/number-utils";
+
 import { Button } from "../ui/button";
 import {
   Dialog,
@@ -237,7 +239,7 @@ export default function ViewOrderDialog({
                                 {t("orders.requiredQuantityKg")}:
                               </span>
                               <p className="font-medium">
-                                {required.toFixed(2)}
+                                {formatNumberAr(required, 2)}
                               </p>
                             </div>
                             <div>
@@ -245,7 +247,7 @@ export default function ViewOrderDialog({
                                 {t("orders.producedQuantityKg")}:
                               </span>
                               <p className="font-medium text-green-600">
-                                {produced.toFixed(2)}
+                                {formatNumberAr(produced, 2)}
                               </p>
                             </div>
                             <div>
@@ -253,7 +255,7 @@ export default function ViewOrderDialog({
                                 {t("orders.netQuantityKg")}:
                               </span>
                               <p className="font-medium text-blue-600">
-                                {net.toFixed(2)}
+                                {formatNumberAr(net, 2)}
                               </p>
                             </div>
                             <div>
@@ -261,7 +263,7 @@ export default function ViewOrderDialog({
                                 {t("orders.wasteKg")}:
                               </span>
                               <p className="font-medium text-red-600">
-                                {waste.toFixed(2)}
+                                {formatNumberAr(waste, 2)}
                               </p>
                             </div>
                           </div>

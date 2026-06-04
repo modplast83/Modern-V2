@@ -27,6 +27,8 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { formatNumberAr } from "@shared/number-utils";
+
 import { useLocalizedName } from "../../hooks/use-localized-name";
 import { useToast } from "../../hooks/use-toast";
 import { Badge } from "../ui/badge";
@@ -396,7 +398,8 @@ export default function RollDetailsCard({
                         {t("production.originalWeight")}
                       </span>
                       <span className="font-medium">
-                        {rollDetails.weight_kg} {t("production.units.kg")}
+                        {formatNumberAr(Number(rollDetails.weight_kg), 2)}{" "}
+                        {t("production.units.kg")}
                       </span>
                     </div>
                     {rollDetails.cut_weight_total_kg &&
@@ -408,7 +411,10 @@ export default function RollDetailsCard({
                               {t("production.cuttingWeight")}
                             </span>
                             <span className="font-medium">
-                              {rollDetails.cut_weight_total_kg}{" "}
+                              {formatNumberAr(
+                                Number(rollDetails.cut_weight_total_kg),
+                                2,
+                              )}{" "}
                               {t("production.units.kg")}
                             </span>
                           </div>
@@ -418,7 +424,10 @@ export default function RollDetailsCard({
                               {t("production.waste")}
                             </span>
                             <span className="font-medium text-destructive">
-                              {rollDetails.waste_kg || "0"}{" "}
+                              {formatNumberAr(
+                                Number(rollDetails.waste_kg || "0"),
+                                2,
+                              )}{" "}
                               {t("production.units.kg")} (
                               {(
                                 (parseFloat(rollDetails.waste_kg || "0") /
@@ -540,7 +549,10 @@ export default function RollDetailsCard({
                         {t("production.productionQuantity")}
                       </span>
                       <span className="font-medium">
-                        {rollDetails.production_quantity_kg}{" "}
+                        {formatNumberAr(
+                          Number(rollDetails.production_quantity_kg),
+                          2,
+                        )}{" "}
                         {t("production.units.kg")}
                       </span>
                     </div>
@@ -846,7 +858,8 @@ export default function RollDetailsCard({
                                 {event.weight_kg && (
                                   <div className="flex items-center gap-2 text-muted-foreground">
                                     <Weight className="h-3 w-3" />
-                                    {event.weight_kg} {t("production.units.kg")}
+                                    {formatNumberAr(Number(event.weight_kg), 2)}{" "}
+                                    {t("production.units.kg")}
                                   </div>
                                 )}
                                 {event.cut_number && (
@@ -900,7 +913,7 @@ export default function RollDetailsCard({
                   <Card className="p-3">
                     <div className="text-center">
                       <p className="text-2xl font-bold">
-                        {rollDetails.total_cuts_weight?.toFixed(2) || 0}
+                        {formatNumberAr(Number(rollDetails.total_cuts_weight) || 0, 2)}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {t("production.totalWeightKg")}
@@ -937,7 +950,8 @@ export default function RollDetailsCard({
                             </div>
                             <div className="flex items-center gap-4 text-sm text-muted-foreground">
                               <span>
-                                {cut.weight_kg} {t("production.units.kg")}
+                                {formatNumberAr(Number(cut.weight_kg), 2)}{" "}
+                                {t("production.units.kg")}
                               </span>
                               {cut.pkt_count && (
                                 <span>
