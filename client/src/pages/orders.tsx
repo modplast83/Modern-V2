@@ -154,7 +154,8 @@ export default function Orders() {
   });
 
   // Fetch production orders
-  const { data: productionOrders = [] } = useQuery({
+  const { data: productionOrders = [], isLoading: productionOrdersLoading } =
+    useQuery({
     queryKey: ["/api/production-orders"],
     queryFn: async () => {
       const response = await fetch("/api/production-orders");
@@ -1065,6 +1066,7 @@ export default function Orders() {
           <RollsTab
             customers={safeCustomers}
             productionOrders={safeProductionOrders}
+            productionOrdersLoading={productionOrdersLoading}
           />
         </TabsContent>
       </Tabs>

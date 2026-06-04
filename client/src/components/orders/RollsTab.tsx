@@ -86,11 +86,13 @@ interface RollData {
 interface RollsTabProps {
   customers?: any[];
   productionOrders?: any[];
+  productionOrdersLoading?: boolean;
 }
 
 export default function RollsTab({
   customers = [],
   productionOrders = [],
+  productionOrdersLoading = false,
 }: RollsTabProps) {
   const { t } = useTranslation();
   const ln = useLocalizedName();
@@ -117,8 +119,24 @@ export default function RollsTab({
     },
   });
 
+  const isRollsLoading = isLoading || productionOrdersLoading;
+
+  const archivedProductionOrderIds = useMemo(() => {
+    const set = new Set<number>();
+    for (const po of productionOrders) {
+      if (po?.status === "archived" && po?.id != null) {
+        set.add(po.id);
+      }
+    }
+    return set;
+  }, [productionOrders]);
+
   const filteredRolls = useMemo(() => {
     return rolls.filter((roll) => {
+      if (archivedProductionOrderIds.has(roll.production_order_id)) {
+        return false;
+      }
+
       const searchLower = searchTerm.toLowerCase();
       const matchesSearch =
         !searchTerm ||
@@ -160,6 +178,7 @@ export default function RollsTab({
     productionOrderFilter,
     startDate,
     endDate,
+    archivedProductionOrderIds,
   ]);
 
   const stats = useMemo(() => {
@@ -725,7 +744,7 @@ export default function RollsTab({
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          {isLoading ? (
+          {isRollsLoading ? (
             <div className="p-6 space-y-4">
               <Skeleton className="h-12 w-full" />
               <Skeleton className="h-12 w-full" />
@@ -954,7 +973,7 @@ export default function RollsTab({
       </Card>
 
       {/* Results Info */}
-      {!isLoading && filteredRolls.length > 0 && (
+      {!isRollsLoading && filteredRolls.length > 0 && (
         <div className="text-sm text-muted-foreground text-center">
           {t("orders.rolls.showing", {
             filtered: filteredRolls.length.toLocaleString("en-US"),

@@ -136,6 +136,10 @@ export default function ProductionOrdersManagement() {
       ? ordersData
       : ordersData?.data || [];
     return orders.filter((order: any) => {
+      if (order.status === "archived") {
+        return false;
+      }
+
       if (statusFilter !== "all" && order.status !== statusFilter) {
         return false;
       }
@@ -157,9 +161,10 @@ export default function ProductionOrdersManagement() {
   }, [ordersData, statusFilter, searchTerm]);
 
   const stats = useMemo(() => {
-    const orders = Array.isArray(ordersData)
+    const allOrders = Array.isArray(ordersData)
       ? ordersData
       : ordersData?.data || [];
+    const orders = allOrders.filter((o: any) => o.status !== "archived");
     const pending = orders.filter((o: any) => o.status === "pending").length;
     const active = orders.filter(
       (o: any) => o.status === "active" || o.status === "in_production",
