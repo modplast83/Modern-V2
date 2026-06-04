@@ -18,6 +18,8 @@ description: Durable security/authorization patterns and gotchas for this codeba
 
 ## AI agent / tool boundary
 - The AI tool layer bypasses route-level checks, so authorize EACH tool separately (per-tool `required_permission` + `userCanUseTool`).
+- AI write tools must also replicate the standard route's server-side business-rule computation; never trust model-supplied *derived* fields. E.g. production-order tools recompute final_quantity_kg/overrun via `calculateProductionQuantities(qty, product.punching)` and drop those fields from the tool schema, matching `/api/production-orders`.
+- Task-level gating alone is insufficient: a tool needs its own `permission` because `ensureSeeded` only inserts tasks when the table is empty, so existing-DB task rows won't pick up a newly-added `required_permission` (update the row separately for consistency).
 - AI-generated SQL: block `UPDATE`/`INSERT INTO` against sensitive tables (permissions, agent settings/knowledge, sessions); SELECT may stay allowed.
 - Per-user data isolation: scope sandbox/agent data by an owner prefix (`u{userId}_`) on reads/writes/deletes; admins may wipe all, regular users only their prefix.
 

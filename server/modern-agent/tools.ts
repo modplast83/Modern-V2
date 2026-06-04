@@ -3,6 +3,7 @@ import { db } from "../db";
 import { storage } from "../storage";
 import { users } from "@shared/schema";
 import { hasPermission, type PermissionKey } from "@shared/permissions";
+import { calculateProductionQuantities } from "@shared/quantity-utils";
 import {
   generateAgentPdf,
   generateAgentWord,
@@ -485,32 +486,47 @@ export const TOOL_REGISTRY: ToolDefinition[] = [
     kind: "write",
     permission: "manage_production",
     description:
-      "Create a production order under an existing order. Requires order_id, customer_product_id, quantity_kg, final_quantity_kg. Optional: overrun_percentage. The production order number is generated automatically.",
+      "Create a production order under an existing order. Requires order_id, customer_product_id, quantity_kg. The final quantity and overrun percentage are calculated automatically from the product's punching type (factory standards) — do not provide them. The production order number is generated automatically.",
     parameters: {
       type: "object",
       properties: {
         order_id: { type: "number" },
         customer_product_id: { type: "number" },
         quantity_kg: { type: "number" },
-        final_quantity_kg: { type: "number" },
-        overrun_percentage: { type: "number" },
       },
-      required: ["order_id", "customer_product_id", "quantity_kg", "final_quantity_kg"],
+      required: ["order_id", "customer_product_id", "quantity_kg"],
     },
     handler: async (args) => {
       if (!args?.order_id || !args?.customer_product_id) {
         return { error: "order_id_and_customer_product_id_required" };
       }
-      const created = await storage.createProductionOrder({
-        order_id: Number(args.order_id),
-        customer_product_id: Number(args.customer_product_id),
-        quantity_kg: String(args.quantity_kg),
-        final_quantity_kg: String(args.final_quantity_kg),
-        overrun_percentage:
-          args.overrun_percentage !== undefined
-            ? String(args.overrun_percentage)
-            : undefined,
-      } as any);
+      const baseQuantityKg = Number(args.quantity_kg);
+      if (!Number.isFinite(baseQuantityKg) || baseQuantityKg <= 0) {
+        return { error: "quantity_kg_must_be_positive" };
+      }
+      // Mirror the standard /api/production-orders route: derive final quantity
+      // and overrun from the product's punching type using factory standards.
+      // Never trust an AI-provided final quantity or overrun.
+      const customerProduct = await storage.getCustomerProductById(
+        Number(args.customer_product_id),
+      );
+      if (!customerProduct) {
+        return { error: "customer_product_not_found" };
+      }
+      const quantityCalculation = calculateProductionQuantities(
+        baseQuantityKg,
+        customerProduct.punching,
+      );
+      const created = await storage.createProductionOrder(
+        {
+          order_id: Number(args.order_id),
+          customer_product_id: Number(args.customer_product_id),
+          quantity_kg: String(baseQuantityKg),
+          final_quantity_kg: String(quantityCalculation.finalQuantityKg),
+          overrun_percentage: String(quantityCalculation.overrunPercentage),
+        } as any,
+        { final_quantity_kg: quantityCalculation.finalQuantityKg },
+      );
       return { ok: true, production_order: created };
     },
   },
@@ -553,6 +569,7 @@ export const TOOL_REGISTRY: ToolDefinition[] = [
   {
     name: "generate_document",
     kind: "write",
+    permission: "view_reports",
     description:
       "Generate a downloadable document (PDF and/or Word) in Arabic or English. Use 'language':'ar' for Arabic (RTL).",
     parameters: {

@@ -100,6 +100,7 @@ async function ensureSeeded(): Promise<void> {
           "استخدم أداة generate_document. اختر اللغة المناسبة (ar للعربية).",
         language: "auto",
         allowed_tools: ["generate_document"],
+        required_permission: "view_reports",
         is_write: false,
         sort_order: 3,
         enabled: true,
