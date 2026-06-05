@@ -4905,6 +4905,8 @@ export class DatabaseStorage implements IStorage {
       LEFT JOIN items i ON cp.item_id = i.id
       WHERE CAST(po.warehouse_received_kg AS NUMERIC) > 0
         AND CAST(po.warehouse_delivered_kg AS NUMERIC) < CAST(po.warehouse_received_kg AS NUMERIC)
+        AND po.status IS DISTINCT FROM 'archived'
+        AND o.status IS DISTINCT FROM 'archived'
       ORDER BY po.id
     `);
     return (rows.rows as any[]).map((row) => ({
@@ -8837,6 +8839,8 @@ export class DatabaseStorage implements IStorage {
       LEFT JOIN rolls r ON r.production_order_id = po.id
       WHERE EXISTS (SELECT 1 FROM rolls r2 WHERE r2.production_order_id = po.id AND r2.stage = 'done')
         AND CAST(po.warehouse_received_kg AS NUMERIC) < CAST(po.quantity_kg AS NUMERIC)
+        AND po.status IS DISTINCT FROM 'archived'
+        AND o.status IS DISTINCT FROM 'archived'
       GROUP BY po.id, po.production_order_number, po.order_id, po.quantity_kg, po.final_quantity_kg,
                po.warehouse_received_kg, po.status, o.order_number, c.name, c.name_ar, i.name, i.name_ar, cp.id, cp.item_id
       ORDER BY po.id
