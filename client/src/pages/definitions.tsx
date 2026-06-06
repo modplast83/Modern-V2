@@ -439,6 +439,14 @@ export default function Definitions() {
     max_cylinder_inch: "",
     min_length_cm: "",
     max_length_cm: "",
+    width_cm: "",
+    length_cm: "",
+    height_cm: "",
+    weight_kg: "",
+    manufacturer: "",
+    metal_plate: "",
+    manufacture_date: "",
+    serial_number: "",
   });
   const [userForm, setUserForm] = useState({
     username: "",
@@ -2224,6 +2232,14 @@ export default function Definitions() {
       max_cylinder_inch: "",
       min_length_cm: "",
       max_length_cm: "",
+      width_cm: "",
+      length_cm: "",
+      height_cm: "",
+      weight_kg: "",
+      manufacturer: "",
+      metal_plate: "",
+      manufacture_date: "",
+      serial_number: "",
     });
     setUserForm({
       username: "",
@@ -3755,6 +3771,18 @@ export default function Definitions() {
                                               machine.min_length_cm || "",
                                             max_length_cm:
                                               machine.max_length_cm || "",
+                                            width_cm: machine.width_cm || "",
+                                            length_cm: machine.length_cm || "",
+                                            height_cm: machine.height_cm || "",
+                                            weight_kg: machine.weight_kg || "",
+                                            manufacturer:
+                                              machine.manufacturer || "",
+                                            metal_plate:
+                                              machine.metal_plate || "",
+                                            manufacture_date:
+                                              machine.manufacture_date || "",
+                                            serial_number:
+                                              machine.serial_number || "",
                                           });
                                           setSelectedTab("machines");
                                           setIsDialogOpen(true);
@@ -6136,6 +6164,161 @@ export default function Definitions() {
                         placeholder={t("common.kgPerHour")}
                         className="mt-1"
                         data-testid="input-capacity-large"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* أبعاد الماكينة ومعلومات الشركة المصنعة */}
+                <div className="border-t pt-4 mt-4">
+                  <h3 className="text-sm font-medium mb-3">
+                    أبعاد الماكينة ومعلومات الشركة المصنعة
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="width_cm">عرض الماكينة (سم)</Label>
+                      <Input
+                        id="width_cm"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={machineForm.width_cm}
+                        onChange={(e) =>
+                          setMachineForm({
+                            ...machineForm,
+                            width_cm: e.target.value,
+                          })
+                        }
+                        placeholder="سم"
+                        className="mt-1"
+                        data-testid="input-machine-width-cm"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="length_cm">طول الماكينة (سم)</Label>
+                      <Input
+                        id="length_cm"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={machineForm.length_cm}
+                        onChange={(e) =>
+                          setMachineForm({
+                            ...machineForm,
+                            length_cm: e.target.value,
+                          })
+                        }
+                        placeholder="سم"
+                        className="mt-1"
+                        data-testid="input-machine-length-cm"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="height_cm">ارتفاع الماكينة (سم)</Label>
+                      <Input
+                        id="height_cm"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={machineForm.height_cm}
+                        onChange={(e) =>
+                          setMachineForm({
+                            ...machineForm,
+                            height_cm: e.target.value,
+                          })
+                        }
+                        placeholder="سم"
+                        className="mt-1"
+                        data-testid="input-machine-height-cm"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="weight_kg">وزن الماكينة (كجم)</Label>
+                      <Input
+                        id="weight_kg"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={machineForm.weight_kg}
+                        onChange={(e) =>
+                          setMachineForm({
+                            ...machineForm,
+                            weight_kg: e.target.value,
+                          })
+                        }
+                        placeholder="كجم"
+                        className="mt-1"
+                        data-testid="input-machine-weight-kg"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="manufacturer">الشركة المصنعة</Label>
+                      <Input
+                        id="manufacturer"
+                        list="manufacturer-options"
+                        value={machineForm.manufacturer}
+                        onChange={(e) =>
+                          setMachineForm({
+                            ...machineForm,
+                            manufacturer: e.target.value,
+                          })
+                        }
+                        placeholder="اختر أو اكتب اسماً جديداً"
+                        className="mt-1"
+                        data-testid="input-machine-manufacturer"
+                      />
+                      <datalist id="manufacturer-options">
+                        <option value="KING HSING" />
+                        <option value="DIING KUNE" />
+                        <option value="LUNG MENG" />
+                        <option value="HIMENGSTON" />
+                        <option value="LEE YEUN" />
+                      </datalist>
+                    </div>
+                    <div>
+                      <Label htmlFor="serial_number">الرقم التسلسلي</Label>
+                      <Input
+                        id="serial_number"
+                        value={machineForm.serial_number}
+                        onChange={(e) =>
+                          setMachineForm({
+                            ...machineForm,
+                            serial_number: e.target.value,
+                          })
+                        }
+                        className="mt-1"
+                        data-testid="input-machine-serial-number"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="manufacture_date">تاريخ الصنع</Label>
+                      <Input
+                        id="manufacture_date"
+                        type="date"
+                        value={machineForm.manufacture_date}
+                        onChange={(e) =>
+                          setMachineForm({
+                            ...machineForm,
+                            manufacture_date: e.target.value,
+                          })
+                        }
+                        className="mt-1"
+                        data-testid="input-machine-manufacture-date"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="metal_plate">اللوحة المعدنية</Label>
+                      <Input
+                        id="metal_plate"
+                        value={machineForm.metal_plate}
+                        onChange={(e) =>
+                          setMachineForm({
+                            ...machineForm,
+                            metal_plate: e.target.value,
+                          })
+                        }
+                        className="mt-1"
+                        data-testid="input-machine-metal-plate"
                       />
                     </div>
                   </div>

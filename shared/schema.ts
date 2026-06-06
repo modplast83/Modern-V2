@@ -370,6 +370,16 @@ export const machines = pgTable(
     // ماكينات التقطيع (cutter): الحد الأدنى/الأقصى لطول التقطيع بالسنتيمتر
     min_length_cm: decimal("min_length_cm", { precision: 8, scale: 2 }),
     max_length_cm: decimal("max_length_cm", { precision: 8, scale: 2 }),
+
+    // أبعاد الماكينة الفيزيائية ومعلومات الشركة المصنعة
+    width_cm: decimal("width_cm", { precision: 10, scale: 2 }), // عرض الماكينة (سم)
+    length_cm: decimal("length_cm", { precision: 10, scale: 2 }), // طول الماكينة (سم)
+    height_cm: decimal("height_cm", { precision: 10, scale: 2 }), // ارتفاع الماكينة (سم)
+    weight_kg: decimal("weight_kg", { precision: 10, scale: 2 }), // وزن الماكينة (كجم)
+    manufacturer: varchar("manufacturer", { length: 100 }), // الشركة المصنعة
+    metal_plate: text("metal_plate"), // اللوحة المعدنية
+    manufacture_date: date("manufacture_date"), // تاريخ الصنع
+    serial_number: varchar("serial_number", { length: 100 }), // الرقم التسلسلي
   },
   (table) => ({
     // Check constraints for machine integrity

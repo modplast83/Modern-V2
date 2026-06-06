@@ -7430,9 +7430,16 @@ Input: ${text}`;
       "max_cylinder_inch",
       "min_length_cm",
       "max_length_cm",
+      "width_cm",
+      "length_cm",
+      "height_cm",
+      "weight_kg",
     ];
     for (const f of decimalFields) {
       if (f in body) result[f] = toNullableDecimal(body[f]);
+    }
+    if ("manufacture_date" in body) {
+      result.manufacture_date = toNullableDecimal(body.manufacture_date);
     }
     if ("max_print_colors" in body) {
       const raw = body.max_print_colors;
