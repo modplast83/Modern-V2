@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
+  Banknote,
   CalendarDays,
   ChevronsUpDown,
   ClipboardList,
@@ -395,7 +396,8 @@ type AdminDocType =
   | "meeting_minutes"
   | "asset_handover"
   | "salary_calc"
-  | "violation_notice";
+  | "violation_notice"
+  | "cash_voucher";
 
 type SavedAdminDoc<T = any> = {
   id: number;
@@ -4349,6 +4351,442 @@ function ViolationNoticeTab({ logoUrl }: { logoUrl: string }) {
   );
 }
 
+// ------------------------------- Cash Disbursement Voucher ----------------------------------
+type VoucherItem = {
+  id: string;
+  amount: string;
+  description: string;
+  signature: string;
+};
+
+const newVoucherItem = (): VoucherItem => ({
+  id: Math.random().toString(36).slice(2),
+  amount: "",
+  description: "",
+  signature: "",
+});
+
+function CashVoucherTab({ logoUrl }: { logoUrl: string }) {
+  const { toast } = useToast();
+
+  const { data: sysSettings } = useQuery<any>({
+    queryKey: ["/api/settings/system"],
+    staleTime: 5 * 60 * 1000,
+  });
+  const settingsObj: Record<string, any> = Array.isArray(sysSettings)
+    ? sysSettings.reduce((acc: any, s: any) => {
+        acc[s.setting_key] = s.setting_value;
+        return acc;
+      }, {})
+    : {};
+  const companyNameAr = settingsObj.companyName || "مصنع أكياس البلاستيك الحديث";
+  const companyNameEn = "Modern Plastic Bag Factory";
+
+  const [voucherDate, setVoucherDate] = useState(todayISO());
+  const [reference, setReference] = useState(
+    `CV-${Date.now().toString().slice(-6)}`,
+  );
+  const [accountName, setAccountName] = useState("");
+  const [notes, setNotes] = useState("");
+  const [items, setItems] = useState<VoucherItem[]>([newVoucherItem()]);
+  const printArea = useRef<HTMLDivElement>(null);
+
+  const updItem = (id: string, k: keyof VoucherItem, v: string) =>
+    setItems((arr) => arr.map((it) => (it.id === id ? { ...it, [k]: v } : it)));
+
+  const addItem = () => setItems((arr) => [...arr, newVoucherItem()]);
+
+  const removeItem = (id: string) =>
+    setItems((arr) =>
+      arr.length > 1 ? arr.filter((it) => it.id !== id) : arr,
+    );
+
+  const total = useMemo(
+    () =>
+      items.reduce((sum, it) => {
+        const n = parseFloat(it.amount);
+        return sum + (Number.isFinite(n) ? n : 0);
+      }, 0),
+    [items],
+  );
+
+  const resetForm = () => {
+    setVoucherDate(todayISO());
+    setReference(`CV-${Date.now().toString().slice(-6)}`);
+    setAccountName("");
+    setNotes("");
+    setItems([newVoucherItem()]);
+  };
+
+  const docsCtx = useAdminDocs<any>({
+    docType: "cash_voucher",
+    getPayload: () => ({
+      reference,
+      title: `${accountName || "سند صرف"} — ${formatNumberAr(total)}`,
+      data: { voucherDate, reference, accountName, notes, items },
+    }),
+    applyDoc: (data, ref) => {
+      setReference(ref || data?.reference || "");
+      setVoucherDate(data?.voucherDate || todayISO());
+      setAccountName(data?.accountName || "");
+      setNotes(data?.notes || "");
+      setItems(
+        Array.isArray(data?.items) && data.items.length > 0
+          ? data.items.map((it: any) => ({
+              id: it.id || Math.random().toString(36).slice(2),
+              amount: String(it.amount ?? ""),
+              description: String(it.description ?? ""),
+              signature: String(it.signature ?? ""),
+            }))
+          : [newVoucherItem()],
+      );
+    },
+    resetForm,
+  });
+
+  const validate = (): string | null => {
+    const filled = items.filter(
+      (it) => it.amount.trim() !== "" || it.description.trim() !== "",
+    );
+    if (filled.length === 0) {
+      toast({
+        title: "تنبيه",
+        description: "أضف بنداً واحداً على الأقل قبل الحفظ",
+        variant: "destructive",
+      });
+      return "no-items";
+    }
+    return null;
+  };
+
+  const handlePrint = () => {
+    if (validate()) return;
+    printRef(printArea.current, `Voucher-${reference}`);
+  };
+
+  const printItems = items.filter(
+    (it) => it.amount.trim() !== "" || it.description.trim() !== "",
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="space-y-4">
+          <Card>
+            <CardContent className="pt-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>رقم السند</Label>
+                  <Input
+                    value={reference}
+                    onChange={(e) => setReference(e.target.value)}
+                    data-testid="input-voucher-reference"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>التاريخ</Label>
+                  <Input
+                    type="date"
+                    value={voucherDate}
+                    onChange={(e) => setVoucherDate(e.target.value)}
+                    data-testid="input-voucher-date"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>اسم الحساب المصروف له</Label>
+                <Input
+                  value={accountName}
+                  onChange={(e) => setAccountName(e.target.value)}
+                  placeholder="مثال: المصروفات النثرية / اسم الموظف / المورد"
+                  data-testid="input-voucher-account"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-semibold flex items-center gap-2">
+                    <Banknote className="h-4 w-4 text-green-600" />
+                    بنود الصرف
+                  </Label>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={addItem}
+                    data-testid="btn-add-voucher-item"
+                  >
+                    <Plus className="h-4 w-4 me-1" /> إضافة بند
+                  </Button>
+                </div>
+                <div className="border rounded-md overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="p-2 text-center w-10">م</th>
+                        <th className="p-2 text-start">البيان</th>
+                        <th className="p-2 text-start w-28">المبلغ</th>
+                        <th className="p-2 text-start w-32">توقيع</th>
+                        <th className="p-2 text-center w-12"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((it, i) => (
+                        <tr key={it.id} className="border-t align-top">
+                          <td className="p-2 text-center text-muted-foreground">
+                            {i + 1}
+                          </td>
+                          <td className="p-2">
+                            <Input
+                              value={it.description}
+                              onChange={(e) =>
+                                updItem(it.id, "description", e.target.value)
+                              }
+                              placeholder="بيان الصرف"
+                              data-testid={`input-voucher-desc-${i}`}
+                            />
+                          </td>
+                          <td className="p-2">
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={it.amount}
+                              onChange={(e) =>
+                                updItem(it.id, "amount", e.target.value)
+                              }
+                              placeholder="0.00"
+                              data-testid={`input-voucher-amount-${i}`}
+                            />
+                          </td>
+                          <td className="p-2">
+                            <Input
+                              value={it.signature}
+                              onChange={(e) =>
+                                updItem(it.id, "signature", e.target.value)
+                              }
+                              placeholder="الاسم/التوقيع"
+                              data-testid={`input-voucher-sign-${i}`}
+                            />
+                          </td>
+                          <td className="p-2 text-center">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => removeItem(it.id)}
+                              disabled={items.length <= 1}
+                              aria-label="حذف البند"
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t bg-muted/50 font-semibold">
+                        <td className="p-2 text-center" colSpan={2}>
+                          إجمالي المبالغ
+                        </td>
+                        <td className="p-2" colSpan={3}>
+                          {formatNumberAr(total)} ريال
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>ملاحظات (اختياري)</Label>
+                <Textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={2}
+                  placeholder="أي ملاحظات إضافية على السند"
+                  data-testid="input-voucher-notes"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <AdminDocsActions
+            ctx={docsCtx}
+            onPrint={handlePrint}
+            onValidate={validate}
+          />
+          <AdminDocsPanel label="سندات محفوظة" ctx={docsCtx} />
+          <AdminDocsDeleteDialog ctx={docsCtx} />
+        </div>
+
+        <div className="space-y-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="rounded-md border p-4 bg-white text-black text-sm space-y-3">
+                <div className="text-center border-b pb-2">
+                  <div className="font-bold text-base">{companyNameAr}</div>
+                  <div className="text-xs text-gray-600">{companyNameEn}</div>
+                  <div className="mt-1 font-semibold">سند صرف نقدي</div>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span>
+                    <b>رقم السند:</b> {reference || "-"}
+                  </span>
+                  <span>
+                    <b>التاريخ:</b> {fmtAr(voucherDate)}
+                  </span>
+                </div>
+                <div className="text-xs">
+                  <b>صُرف إلى:</b> {accountName || "-"}
+                </div>
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="border p-1 w-8">م</th>
+                      <th className="border p-1 text-start">البيان</th>
+                      <th className="border p-1 w-20 text-start">المبلغ</th>
+                      <th className="border p-1 w-24 text-start">توقيع</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {printItems.length === 0 ? (
+                      <tr>
+                        <td className="border p-1 text-center" colSpan={4}>
+                          -
+                        </td>
+                      </tr>
+                    ) : (
+                      printItems.map((it, i) => (
+                        <tr key={it.id}>
+                          <td className="border p-1 text-center">{i + 1}</td>
+                          <td className="border p-1">{it.description || "-"}</td>
+                          <td className="border p-1">
+                            {it.amount
+                              ? formatNumberAr(parseFloat(it.amount) || 0)
+                              : "-"}
+                          </td>
+                          <td className="border p-1">{it.signature || ""}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-gray-100 font-semibold">
+                      <td className="border p-1 text-center" colSpan={2}>
+                        الإجمالي
+                      </td>
+                      <td className="border p-1" colSpan={2}>
+                        {formatNumberAr(total)} ريال
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+                {notes && (
+                  <div className="text-xs">
+                    <b>ملاحظات:</b> {notes}
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-3 text-center">
+                هذه معاينة مبسطة. اضغط «طباعة A4» للحصول على النموذج الكامل.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Hidden printable area */}
+      <div style={{ display: "none" }}>
+        <div ref={printArea} className="doc">
+          <div className="doc-header">
+            <img src={logoUrl} alt="logo" />
+            <div style={{ flex: 1, textAlign: "center" }}>
+              <h1 className="doc-title">{companyNameAr}</h1>
+              <p
+                className="doc-subtitle"
+                style={{ fontSize: 14, fontWeight: 600, color: "#333" }}
+              >
+                {companyNameEn}
+              </p>
+              <div style={{ marginTop: 8, fontSize: 16, fontWeight: 700 }}>
+                سند صرف نقدي
+              </div>
+            </div>
+            <div style={{ width: 64 }} />
+          </div>
+          <div className="doc-meta">
+            <div>
+              <b>رقم السند:</b> {reference || "-"}
+            </div>
+            <div>
+              <b>التاريخ:</b> {fmtAr(voucherDate)}
+            </div>
+            <div>
+              <b>صُرف إلى:</b> {accountName || "-"}
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th style={{ width: 40 }}>م</th>
+                <th>البيان</th>
+                <th style={{ width: 120 }}>المبلغ</th>
+                <th style={{ width: 140 }}>توقيع</th>
+              </tr>
+            </thead>
+            <tbody>
+              {printItems.length === 0 ? (
+                <tr>
+                  <td colSpan={4}>-</td>
+                </tr>
+              ) : (
+                printItems.map((it, i) => (
+                  <tr key={it.id}>
+                    <td style={{ textAlign: "center" }}>{i + 1}</td>
+                    <td>{it.description || "-"}</td>
+                    <td>
+                      {it.amount
+                        ? formatNumberAr(parseFloat(it.amount) || 0)
+                        : "-"}
+                    </td>
+                    <td>{it.signature || ""}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colSpan={2} style={{ fontWeight: 700, textAlign: "center" }}>
+                  إجمالي المبالغ
+                </td>
+                <td colSpan={2} style={{ fontWeight: 700 }}>
+                  {formatNumberAr(total)} ريال
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+          {notes && (
+            <>
+              <h2 className="section">ملاحظات</h2>
+              <div className="body-text">{notes}</div>
+            </>
+          )}
+          <SignatureBlock
+            labels={[
+              { label: "المستلم" },
+              { label: "المحاسب" },
+              { label: "المدير" },
+            ]}
+          />
+          <div className="footer">
+            تم إصدار هذا السند إلكترونياً • نظام MPBF
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminToolsPage() {
   const { t } = useTranslation();
   const { logoUrl } = useCompanyLogo();
@@ -4363,7 +4801,7 @@ export default function AdminToolsPage() {
       )}
     >
       <Tabs value={tab} onValueChange={setTab} dir="rtl">
-        <TabsList className="grid grid-cols-2 md:grid-cols-8 h-auto w-full bg-muted p-1 gap-1">
+        <TabsList className="grid grid-cols-2 md:grid-cols-9 h-auto w-full bg-muted p-1 gap-1">
           <TabsTrigger value="delivery" className="flex items-center gap-2">
             <FileSignature className="h-4 w-4" />
             <span className="hidden sm:inline">تسليم وإخلاء مسؤولية</span>
@@ -4404,6 +4842,11 @@ export default function AdminToolsPage() {
             <span className="hidden sm:inline">إشعار مخالفة</span>
             <span className="sm:hidden">مخالفة</span>
           </TabsTrigger>
+          <TabsTrigger value="voucher" className="flex items-center gap-2">
+            <Banknote className="h-4 w-4" />
+            <span className="hidden sm:inline">سند صرف نقدي</span>
+            <span className="sm:hidden">سند صرف</span>
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="delivery" className="border-0 mt-4">
           <DeliveryDisclaimerTab logoUrl={logoUrl} />
@@ -4428,6 +4871,9 @@ export default function AdminToolsPage() {
         </TabsContent>
         <TabsContent value="violation" className="border-0 mt-4">
           <ViolationNoticeTab logoUrl={logoUrl} />
+        </TabsContent>
+        <TabsContent value="voucher" className="border-0 mt-4">
+          <CashVoucherTab logoUrl={logoUrl} />
         </TabsContent>
       </Tabs>
     </PageLayout>

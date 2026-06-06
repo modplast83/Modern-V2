@@ -18663,6 +18663,7 @@ Input: ${text}`;
     "asset_handover",
     "salary_calc",
     "violation_notice",
+    "cash_voucher",
   ] as const;
 
   const adminToolDocPayloadSchema = insertAdminToolDocumentSchema.extend({
