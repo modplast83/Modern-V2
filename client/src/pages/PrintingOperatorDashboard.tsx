@@ -62,6 +62,8 @@ interface ProductionOrderWithRolls {
   total_weight: number;
   printing_cylinder?: string;
   plate_drawer_code?: string | null;
+  front_print_colors?: string[];
+  back_print_colors?: string[];
 }
 
 interface Machine {
@@ -74,6 +76,36 @@ interface Machine {
 
 interface PrintingOperatorDashboardProps {
   hideLayout?: boolean;
+}
+
+function PrintColorsRow({
+  label,
+  colors,
+  side,
+}: {
+  label: string;
+  colors: string[];
+  side: string;
+}) {
+  if (!colors || colors.length === 0) return null;
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+        {label} ({formatNumberAr(colors.length)})
+      </span>
+      <div className="flex flex-wrap gap-1.5">
+        {colors.map((color, i) => (
+          <span
+            key={`${color}-${i}`}
+            className="h-6 w-6 rounded-md border-2 border-gray-300 dark:border-gray-600 shadow-sm"
+            style={{ backgroundColor: color || "transparent" }}
+            title={color}
+            data-testid={`color-box-${side}-${i}`}
+          />
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function PrintingOperatorDashboard({
@@ -417,6 +449,27 @@ export default function PrintingOperatorDashboard({
                       </div>
                     )}
                   </div>
+
+                  {((order.front_print_colors &&
+                    order.front_print_colors.length > 0) ||
+                    (order.back_print_colors &&
+                      order.back_print_colors.length > 0)) && (
+                    <div
+                      className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg space-y-2"
+                      data-testid={`print-colors-${order.production_order_id}`}
+                    >
+                      <PrintColorsRow
+                        label={t("operators.printing.frontColors")}
+                        colors={order.front_print_colors || []}
+                        side="front"
+                      />
+                      <PrintColorsRow
+                        label={t("operators.printing.backColors")}
+                        colors={order.back_print_colors || []}
+                        side="back"
+                      />
+                    </div>
+                  )}
 
                   {(order.printing_cylinder || order.plate_drawer_code) && (
                     <div className="bg-purple-50 dark:bg-purple-900/20 p-3 rounded-lg text-sm grid grid-cols-2 gap-3">

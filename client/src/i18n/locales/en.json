@@ -2738,6 +2738,8 @@
       "noRollsReady": "No rolls ready for printing currently",
       "cylinderSize": "Cylinder Size",
       "plateDrawerCode": "Plate Drawer Code",
+      "frontColors": "Front Colors",
+      "backColors": "Back Colors",
       "print": "Print",
       "rollMoved": "Roll moved to printing stage",
       "moveRollFailed": "Failed to move roll",

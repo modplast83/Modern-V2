@@ -6974,7 +6974,9 @@ export class DatabaseStorage implements IStorage {
         i.name_ar AS product_name_ar,
         i.name AS product_name_en,
         cp.size_caption,
-        cp.printing_cylinder
+        cp.printing_cylinder,
+        cp.front_print_colors,
+        cp.back_print_colors
       FROM rolls r
       JOIN production_orders po ON r.production_order_id = po.id
       JOIN orders o ON po.order_id = o.id
@@ -7004,6 +7006,16 @@ export class DatabaseStorage implements IStorage {
           product_name_en: row.product_name_en,
           size_caption: row.size_caption,
           printing_cylinder: row.printing_cylinder,
+          front_print_colors: Array.isArray(row.front_print_colors)
+            ? row.front_print_colors
+                .map((c: any) => (typeof c === "string" ? c.trim() : ""))
+                .filter((c: string) => c !== "")
+            : [],
+          back_print_colors: Array.isArray(row.back_print_colors)
+            ? row.back_print_colors
+                .map((c: any) => (typeof c === "string" ? c.trim() : ""))
+                .filter((c: string) => c !== "")
+            : [],
           rolls: [],
           total_rolls: 0,
           total_weight: 0,

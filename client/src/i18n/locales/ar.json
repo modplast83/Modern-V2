@@ -3256,6 +3256,8 @@
       "noRollsReady": "لا توجد رولات جاهزة للطباعة حالياً",
       "cylinderSize": "مقاس السلندر",
       "plateDrawerCode": "رقم درج الكليشة",
+      "frontColors": "ألوان الوجه الأمامي",
+      "backColors": "ألوان الوجه الخلفي",
       "print": "طباعة",
       "rollMoved": "تم نقل الرول إلى مرحلة الطباعة",
       "moveRollFailed": "فشل نقل الرول",
