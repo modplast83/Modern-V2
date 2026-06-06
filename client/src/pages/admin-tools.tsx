@@ -305,7 +305,12 @@ function escapeHtml(s: string) {
     .replace(/'/g, "&#39;");
 }
 
-function printRef(el: HTMLElement | null, title: string) {
+function printRef(
+  el: HTMLElement | null,
+  title: string,
+  dir: "rtl" | "ltr" = "rtl",
+  lang: string = "ar",
+) {
   if (!el) return;
   const w = window.open("", "_blank", "width=900,height=1100");
   if (!w) return;
@@ -334,7 +339,7 @@ function printRef(el: HTMLElement | null, title: string) {
     .footer { margin-top: 32px; font-size: 11px; color: #666; text-align: center; border-top: 1px dashed #999; padding-top: 8px; }
     @media print { .no-print { display: none !important; } }
   `;
-  w.document.write(`<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>${safeTitle}</title><style>${styles}</style></head><body>${el.outerHTML}</body></html>`);
+  w.document.write(`<!doctype html><html dir="${dir}" lang="${lang}"><head><meta charset="utf-8"><title>${safeTitle}</title><style>${styles}</style></head><body>${el.outerHTML}</body></html>`);
   w.document.close();
   setTimeout(() => {
     w.focus();
@@ -622,10 +627,12 @@ function AdminDocsPanel<T>({
 function AdminDocsActions<T>({
   ctx,
   onPrint,
+  onPrintEn,
   onValidate,
 }: {
   ctx: ReturnType<typeof useAdminDocs<T>>;
   onPrint: () => void;
+  onPrintEn?: () => void;
   onValidate?: () => string | null;
 }) {
   const { saveMutation, currentId, handleNew } = ctx;
@@ -658,6 +665,11 @@ function AdminDocsActions<T>({
       <Button onClick={onPrint}>
         <Printer className="h-4 w-4 me-2" /> طباعة A4
       </Button>
+      {onPrintEn && (
+        <Button variant="secondary" onClick={onPrintEn}>
+          <Printer className="h-4 w-4 me-2" /> Print A4 EN
+        </Button>
+      )}
     </div>
   );
 }
@@ -3397,10 +3409,29 @@ const PENALTY_TYPES: { key: string; label: string }[] = [
   { key: "dismissal", label: "فصل" },
 ];
 
+const VIOLATION_LABELS_EN: Record<string, string> = {
+  absence: "Unexcused Absence",
+  early_leave: "Leaving Before End of Shift",
+  late: "Late Attendance",
+  tasks: "Failure to Perform Assigned Duties",
+  negligence: "Job Negligence",
+};
+
+const PENALTY_LABELS_EN: Record<string, string> = {
+  warning1: "First Warning",
+  warning2: "Second Warning",
+  warning_final: "Final Warning",
+  deduction: "Financial Deduction",
+  suspension: "Suspension from Work",
+  dismissal: "Dismissal",
+};
+
 const violationLabel = (key: string) =>
   VIOLATION_TYPES.find((v) => v.key === key)?.label || key;
 const penaltyLabel = (key: string) =>
   PENALTY_TYPES.find((p) => p.key === key)?.label || key;
+const violationLabelEn = (key: string) => VIOLATION_LABELS_EN[key] || key;
+const penaltyLabelEn = (key: string) => PENALTY_LABELS_EN[key] || key;
 
 const fmtIso = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
@@ -3411,6 +3442,18 @@ const fmtAr = (iso: string) => {
   if (!iso) return "";
   try {
     return isoToDate(iso).toLocaleDateString("ar-EG", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  } catch {
+    return iso;
+  }
+};
+const fmtEn = (iso: string) => {
+  if (!iso) return "";
+  try {
+    return isoToDate(iso).toLocaleDateString("en-GB", {
       day: "numeric",
       month: "long",
       year: "numeric",
@@ -3454,6 +3497,7 @@ function ViolationNoticeTab({ logoUrl }: { logoUrl: string }) {
   const [deductionAmount, setDeductionAmount] = useState("");
   const [ackOverride, setAckOverride] = useState<string | null>(null);
   const printArea = useRef<HTMLDivElement>(null);
+  const printAreaEn = useRef<HTMLDivElement>(null);
 
   const upd = (k: string, v: any) =>
     setDetails((d) => ({ ...d, [k]: v }));
@@ -3566,6 +3610,54 @@ function ViolationNoticeTab({ logoUrl }: { logoUrl: string }) {
       : penaltyLabel(p),
   );
 
+  const violationPhraseEn = (key: string): string => {
+    switch (key) {
+      case "absence": {
+        if (details.absenceMode === "range") {
+          if (details.absenceFrom && details.absenceTo)
+            return `Unexcused absence from ${fmtEn(details.absenceFrom)} to ${fmtEn(
+              details.absenceTo,
+            )}`;
+          return "Unexcused absence";
+        }
+        const days: string[] = details.absenceDays || [];
+        if (days.length)
+          return `Unexcused absence on: ${days
+            .slice()
+            .sort()
+            .map(fmtEn)
+            .join(", ")}`;
+        return "Unexcused absence";
+      }
+      case "early_leave":
+        return `Leaving before end of shift${
+          details.earlyLeaveDate ? ` on ${fmtEn(details.earlyLeaveDate)}` : ""
+        }${details.earlyLeaveTime ? ` at ${details.earlyLeaveTime}` : ""}`;
+      case "late":
+        return `Late attendance${
+          details.lateDate ? ` on ${fmtEn(details.lateDate)}` : ""
+        }${details.lateTime ? ` at ${details.lateTime}` : ""}`;
+      case "tasks":
+        return `Failure to perform assigned duties${
+          details.tasksDate ? ` on ${fmtEn(details.tasksDate)}` : ""
+        }${details.tasksDesc ? ` — ${details.tasksDesc}` : ""}`;
+      case "negligence":
+        return `Job negligence${
+          details.negligenceDate ? ` on ${fmtEn(details.negligenceDate)}` : ""
+        }${details.negligenceDesc ? ` — ${details.negligenceDesc}` : ""}`;
+      default:
+        return violationLabelEn(key);
+    }
+  };
+
+  const violationPhrasesEn = violations.map(violationPhraseEn);
+
+  const penaltyPhrasesEn = penalties.map((p) =>
+    p === "deduction"
+      ? `Financial Deduction${dedAmt > 0 ? ` of ${dedAmt.toFixed(2)} SAR` : ""}`
+      : penaltyLabelEn(p),
+  );
+
   const generatedAck = useMemo(() => {
     const name = employeeName || "..............";
     const list = violations.length
@@ -3578,6 +3670,19 @@ function ViolationNoticeTab({ logoUrl }: { logoUrl: string }) {
   }, [employeeName, violations, penalties, penaltyPhrases]);
 
   const ackText = ackOverride !== null ? ackOverride : generatedAck;
+
+  const ackTextEn = useMemo(() => {
+    const name = employeeName || "..............";
+    const list = violationPhrasesEn.length
+      ? violationPhrasesEn.join("; ")
+      : "............";
+    const pen = penaltyPhrasesEn.length
+      ? ` I have also been informed of the resulting penalty: ${penaltyPhrasesEn.join(
+          ", ",
+        )}.`
+      : "";
+    return `I, the employee ${name}, acknowledge that I have reviewed this notice and admit committing the following violation(s): ${list}. I undertake not to repeat this in the future and accept full responsibility for any recurrence.${pen}`;
+  }, [employeeName, violationPhrasesEn, penaltyPhrasesEn]);
 
   const employeeKey = selectedUserId
     ? `user:${selectedUserId}`
@@ -3642,6 +3747,13 @@ function ViolationNoticeTab({ logoUrl }: { logoUrl: string }) {
 
   const handlePrint = () =>
     printRef(printArea.current, `Violation-${employeeName}-${noticeDate}`);
+  const handlePrintEn = () =>
+    printRef(
+      printAreaEn.current,
+      `Violation-${employeeName}-${noticeDate}`,
+      "ltr",
+      "en",
+    );
 
   const validate = (): string | null => {
     if (!employeeName) {
@@ -3968,6 +4080,7 @@ function ViolationNoticeTab({ logoUrl }: { logoUrl: string }) {
         <AdminDocsActions
           ctx={docsCtx}
           onPrint={handlePrint}
+          onPrintEn={handlePrintEn}
           onValidate={validate}
         />
         <AdminDocsPanel label="إشعارات محفوظة" ctx={docsCtx} />
@@ -4148,6 +4261,87 @@ function ViolationNoticeTab({ logoUrl }: { logoUrl: string }) {
           />
           <div className="footer">
             تم إصدار هذا الإشعار إلكترونياً • نظام MPBF
+          </div>
+        </div>
+      </div>
+
+      {/* Hidden printable area — English (LTR) */}
+      <div style={{ display: "none" }}>
+        <div ref={printAreaEn} className="doc">
+          <div className="doc-header">
+            <img src={logoUrl} alt="logo" />
+            <div style={{ flex: 1, textAlign: "center" }}>
+              <h1 className="doc-title">{companyNameEn}</h1>
+              <p
+                className="doc-subtitle"
+                style={{ fontSize: 14, fontWeight: 600, color: "#333" }}
+              >
+                {companyNameAr}
+              </p>
+              <div style={{ marginTop: 8, fontSize: 16, fontWeight: 700 }}>
+                Violation Notice
+              </div>
+            </div>
+            <div style={{ width: 64 }} />
+          </div>
+          <div className="doc-meta">
+            <div>
+              <b>Employee:</b> {employeeName || "-"}
+            </div>
+            <div>
+              <b>Date:</b> {fmtEn(noticeDate)}
+            </div>
+          </div>
+          <h2 className="section">Violation Type</h2>
+          <table>
+            <thead>
+              <tr>
+                <th style={{ width: 40 }}>#</th>
+                <th>Violation</th>
+              </tr>
+            </thead>
+            <tbody>
+              {violationPhrasesEn.length === 0 ? (
+                <tr>
+                  <td colSpan={2}>-</td>
+                </tr>
+              ) : (
+                violationPhrasesEn.map((p, i) => (
+                  <tr key={i}>
+                    <td>{i + 1}</td>
+                    <td>{p}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+          <h2 className="section">Penalty</h2>
+          <table>
+            <tbody>
+              {penaltyPhrasesEn.length === 0 ? (
+                <tr>
+                  <td>-</td>
+                </tr>
+              ) : (
+                penaltyPhrasesEn.map((p, i) => (
+                  <tr key={i}>
+                    <td>{p}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+          <h2 className="section">Employee Acknowledgment</h2>
+          <div className="body-text">{ackTextEn}</div>
+          <SignatureBlock
+            labels={[
+              { label: "Employee Signature", name: employeeName },
+              { label: "Direct Manager" },
+              { label: "General Manager" },
+            ]}
+          />
+          <div className="footer">
+            This notice was issued electronically • MPBF System
           </div>
         </div>
       </div>
