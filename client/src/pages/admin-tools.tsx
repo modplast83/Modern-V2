@@ -2921,6 +2921,21 @@ const ARABIC_MONTHS = [
   "ديسمبر",
 ];
 
+const ENGLISH_MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
 function SalaryRow({
   label,
   value,
@@ -2964,6 +2979,19 @@ function SalaryCalculatorTab({ logoUrl }: { logoUrl: string }) {
       ? usersResp.data
       : [];
 
+  const { data: sysSettings } = useQuery<any>({
+    queryKey: ["/api/settings/system"],
+    staleTime: 5 * 60 * 1000,
+  });
+  const settingsObj: Record<string, any> = Array.isArray(sysSettings)
+    ? sysSettings.reduce((acc: any, s: any) => {
+        acc[s.setting_key] = s.setting_value;
+        return acc;
+      }, {})
+    : {};
+  const companyNameAr = settingsObj.companyName || "مصنع أكياس البلاستيك الحديث";
+  const companyNameEn = "Modern Plastic Bag Factory";
+
   const now = new Date();
   const [selectedUserId, setSelectedUserId] = useState("");
   const [manualName, setManualName] = useState("");
@@ -2995,6 +3023,7 @@ function SalaryCalculatorTab({ logoUrl }: { logoUrl: string }) {
     "";
 
   const monthLabel = `${ARABIC_MONTHS[Number(month) - 1] || month} ${year}`;
+  const monthLabelEn = `${ENGLISH_MONTHS[Number(month) - 1] || month} ${year}`;
   const monthKey = `${year}-${String(month).padStart(2, "0")}`;
 
   const toNonNeg = (v: string) => {
@@ -3264,59 +3293,80 @@ function SalaryCalculatorTab({ logoUrl }: { logoUrl: string }) {
       {/* Hidden printable area */}
       <div style={{ display: "none" }}>
         <div ref={printArea} className="doc">
-          <DocHeader
-            logoUrl={logoUrl}
-            title="كشف راتب موظف"
-            subtitle="Employee Salary Slip"
-          />
+          <div className="doc-header">
+            <img src={logoUrl} alt="logo" />
+            <div style={{ flex: 1, textAlign: "center" }}>
+              <h1 className="doc-title">{companyNameAr}</h1>
+              <p
+                className="doc-subtitle"
+                style={{ fontSize: 14, fontWeight: 600, color: "#333" }}
+              >
+                {companyNameEn}
+              </p>
+              <div style={{ marginTop: 8, fontSize: 16, fontWeight: 700 }}>
+                كشف راتب موظف
+              </div>
+              <div style={{ fontSize: 12, color: "#555" }}>
+                Employee Salary Slip
+              </div>
+            </div>
+            <div style={{ width: 64 }} />
+          </div>
           <div className="doc-meta">
             <div>
-              <b>الموظف:</b> {employeeName || "-"}
+              <b>الموظف / Employee:</b> {employeeName || "-"}
             </div>
             <div>
-              <b>الشهر:</b> {monthLabel}
+              <b>الشهر / Month:</b> {monthLabel} — {monthLabelEn}
             </div>
           </div>
-          <h2 className="section">تفاصيل الراتب</h2>
+          <h2 className="section">تفاصيل الراتب / Salary Details</h2>
           <table>
             <thead>
               <tr>
-                <th>البند</th>
-                <th>القيمة (ريال)</th>
+                <th>البند / Item</th>
+                <th>القيمة (ريال) / Amount (SAR)</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td>الراتب الأساسي</td>
+                <td>الراتب الأساسي / Basic Salary</td>
                 <td>{money(basic)}</td>
               </tr>
               <tr>
-                <td>بدل الطعام</td>
+                <td>بدل الطعام / Food Allowance</td>
                 <td>{money(food)}</td>
               </tr>
               <tr>
-                <td>الإضافي ({money(otHours)} ساعة)</td>
+                <td>
+                  الإضافي ({money(otHours)} ساعة) / Overtime ({money(otHours)} h)
+                </td>
                 <td>{money(overtimeAmount)}</td>
               </tr>
               <tr>
-                <td>خصم الغياب ({money(absDays)} يوم)</td>
+                <td>
+                  خصم الغياب ({money(absDays)} يوم) / Absence Deduction (
+                  {money(absDays)} d)
+                </td>
                 <td>- {money(absenceDeduction)}</td>
               </tr>
               <tr>
-                <td style={{ fontWeight: 700 }}>صافي الراتب</td>
+                <td style={{ fontWeight: 700 }}>صافي الراتب / Net Salary</td>
                 <td style={{ fontWeight: 700 }}>{money(netSalary)}</td>
               </tr>
             </tbody>
           </table>
           <SignatureBlock
             labels={[
-              { label: "توقيع الموظف", name: employeeName },
-              { label: "المحاسب" },
-              { label: "المدير" },
+              { label: "توقيع الموظف / Employee Signature", name: employeeName },
+              { label: "المحاسب / Accountant" },
+              { label: "المدير / Manager" },
             ]}
           />
           <div className="footer">
             تم إصدار هذا الكشف إلكترونياً • نظام MPBF
+            <br />
+            This payslip was generated electronically • MPBF System
           </div>
         </div>
       </div>
