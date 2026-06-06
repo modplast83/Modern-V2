@@ -3007,7 +3007,7 @@ function SalaryCalculatorTab({ logoUrl }: { logoUrl: string }) {
   const absDays = toNonNeg(absenceDays);
 
   const overtimeAmount = basic > 0 ? (basic / 30 / 8) * 1.5 * otHours : 0;
-  const dailyRate = basic > 0 ? basic / 30 : 0;
+  const dailyRate = (basic + food) / 30;
   const absenceDeduction = dailyRate * absDays;
   const netSalary = basic + food + overtimeAmount - absenceDeduction;
 
@@ -3255,7 +3255,7 @@ function SalaryCalculatorTab({ logoUrl }: { logoUrl: string }) {
             <p className="text-xs text-muted-foreground leading-6">
               معادلة الإضافي: الراتب الأساسي ÷ 30 ÷ 8 × 1.5 × ساعات الإضافي
               <br />
-              خصم الغياب: الراتب الأساسي ÷ 30 × أيام الغياب
+              خصم الغياب: (الراتب الأساسي + بدل الطعام) ÷ 30 × أيام الغياب
             </p>
           </CardContent>
         </Card>
