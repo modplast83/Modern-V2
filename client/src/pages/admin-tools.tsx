@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   ChevronsUpDown,
   ClipboardList,
+  Calculator,
   FileSignature,
   FileText,
   Plus,
@@ -36,6 +37,11 @@ import {
 } from "../components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Textarea } from "../components/ui/textarea";
+import {
+  SearchableSelect,
+  type SearchableSelectOption,
+} from "../components/ui/searchable-select";
+import { formatNumberAr } from "../../../shared/number-utils";
 import {
   Popover,
   PopoverContent,
@@ -377,7 +383,8 @@ type AdminDocType =
   | "admin_order"
   | "custom_report"
   | "meeting_minutes"
-  | "asset_handover";
+  | "asset_handover"
+  | "salary_calc";
 
 type SavedAdminDoc<T = any> = {
   id: number;
@@ -2898,6 +2905,425 @@ function DeliveryRouteTab({ logoUrl }: { logoUrl: string }) {
 }
 
 // ============================== Page Root ===============================
+// ------------------------------- Tab: Salary Calculator ----------------------------------
+const ARABIC_MONTHS = [
+  "يناير",
+  "فبراير",
+  "مارس",
+  "أبريل",
+  "مايو",
+  "يونيو",
+  "يوليو",
+  "أغسطس",
+  "سبتمبر",
+  "أكتوبر",
+  "نوفمبر",
+  "ديسمبر",
+];
+
+function SalaryRow({
+  label,
+  value,
+  bold,
+  positive,
+  negative,
+}: {
+  label: string;
+  value: string;
+  bold?: boolean;
+  positive?: boolean;
+  negative?: boolean;
+}) {
+  return (
+    <div
+      className={`flex items-center justify-between px-3 py-2 ${
+        bold ? "bg-muted text-base font-bold" : ""
+      }`}
+    >
+      <span className="text-muted-foreground">{label}</span>
+      <span
+        className={`font-medium ${positive ? "text-green-600" : ""} ${
+          negative ? "text-red-600" : ""
+        } ${bold ? "text-foreground" : ""}`}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function SalaryCalculatorTab({ logoUrl }: { logoUrl: string }) {
+  const { toast } = useToast();
+  const { data: usersResp } = useQuery<any>({
+    queryKey: ["/api/users"],
+    staleTime: 5 * 60 * 1000,
+  });
+  const usersList: any[] = Array.isArray(usersResp)
+    ? usersResp
+    : Array.isArray(usersResp?.data)
+      ? usersResp.data
+      : [];
+
+  const now = new Date();
+  const [selectedUserId, setSelectedUserId] = useState("");
+  const [manualName, setManualName] = useState("");
+  const [month, setMonth] = useState(String(now.getMonth() + 1));
+  const [year, setYear] = useState(String(now.getFullYear()));
+  const [basicSalary, setBasicSalary] = useState("");
+  const [foodAllowance, setFoodAllowance] = useState("");
+  const [overtimeHours, setOvertimeHours] = useState("");
+  const [absenceDays, setAbsenceDays] = useState("");
+  const printArea = useRef<HTMLDivElement>(null);
+
+  const userOptions: SearchableSelectOption[] = usersList.map((u) => ({
+    value: String(u.id),
+    label:
+      u.display_name_ar ||
+      u.display_name ||
+      u.full_name ||
+      u.username ||
+      `#${u.id}`,
+  }));
+
+  const selectedUser = usersList.find((u) => String(u.id) === selectedUserId);
+  const employeeName =
+    manualName.trim() ||
+    selectedUser?.display_name_ar ||
+    selectedUser?.display_name ||
+    selectedUser?.full_name ||
+    selectedUser?.username ||
+    "";
+
+  const monthLabel = `${ARABIC_MONTHS[Number(month) - 1] || month} ${year}`;
+  const monthKey = `${year}-${String(month).padStart(2, "0")}`;
+
+  const toNonNeg = (v: string) => {
+    const n = parseFloat(v);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  };
+  const basic = toNonNeg(basicSalary);
+  const food = toNonNeg(foodAllowance);
+  const otHours = toNonNeg(overtimeHours);
+  const absDays = toNonNeg(absenceDays);
+
+  const overtimeAmount = basic > 0 ? (basic / 30 / 8) * 1.5 * otHours : 0;
+  const dailyRate = basic > 0 ? basic / 30 : 0;
+  const absenceDeduction = dailyRate * absDays;
+  const netSalary = basic + food + overtimeAmount - absenceDeduction;
+
+  const money = (n: number) => formatNumberAr(n, 2);
+
+  const resetForm = () => {
+    const d = new Date();
+    setSelectedUserId("");
+    setManualName("");
+    setMonth(String(d.getMonth() + 1));
+    setYear(String(d.getFullYear()));
+    setBasicSalary("");
+    setFoodAllowance("");
+    setOvertimeHours("");
+    setAbsenceDays("");
+  };
+
+  const docsCtx = useAdminDocs<any>({
+    docType: "salary_calc",
+    getPayload: () => ({
+      reference: employeeName || "موظف",
+      title: `${monthLabel} — صافي ${money(netSalary)}`,
+      data: {
+        selectedUserId,
+        manualName,
+        employeeName,
+        month,
+        year,
+        basicSalary,
+        foodAllowance,
+        overtimeHours,
+        absenceDays,
+        computed: { overtimeAmount, absenceDeduction, netSalary },
+      },
+    }),
+    applyDoc: (data) => {
+      const d = new Date();
+      setSelectedUserId(data?.selectedUserId || "");
+      setManualName(data?.manualName || "");
+      setMonth(data?.month || String(d.getMonth() + 1));
+      setYear(data?.year || String(d.getFullYear()));
+      setBasicSalary(data?.basicSalary || "");
+      setFoodAllowance(data?.foodAllowance || "");
+      setOvertimeHours(data?.overtimeHours || "");
+      setAbsenceDays(data?.absenceDays || "");
+    },
+    resetForm,
+  });
+
+  const handlePrint = () =>
+    printRef(printArea.current, `Salary-${employeeName}-${monthKey}`);
+
+  const validate = (): string | null => {
+    if (!employeeName) {
+      toast({
+        title: "تنبيه",
+        description: "اختر اسم الموظف أو اكتبه",
+        variant: "destructive",
+      });
+      return "no-name";
+    }
+    if (basic <= 0) {
+      toast({
+        title: "تنبيه",
+        description: "أدخل الراتب الأساسي",
+        variant: "destructive",
+      });
+      return "no-basic";
+    }
+    const numericFields: [string, string][] = [
+      ["الراتب الأساسي", basicSalary],
+      ["بدل الطعام", foodAllowance],
+      ["عدد ساعات الإضافي", overtimeHours],
+      ["عدد أيام الغياب", absenceDays],
+    ];
+    for (const [label, raw] of numericFields) {
+      if (raw.trim() === "") continue;
+      const n = parseFloat(raw);
+      if (!Number.isFinite(n) || n < 0) {
+        toast({
+          title: "تنبيه",
+          description: `${label} يجب أن يكون رقماً موجباً صحيحاً`,
+          variant: "destructive",
+        });
+        return "invalid-number";
+      }
+    }
+    return null;
+  };
+
+  const years: string[] = [];
+  for (let y = now.getFullYear() - 3; y <= now.getFullYear() + 1; y++) {
+    years.push(String(y));
+  }
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="space-y-4">
+        <Card>
+          <CardContent className="pt-6 space-y-4">
+            <div className="space-y-2">
+              <Label>اسم الموظف</Label>
+              <SearchableSelect
+                options={userOptions}
+                value={selectedUserId}
+                onValueChange={(v) => {
+                  setSelectedUserId(v);
+                  if (v) setManualName("");
+                }}
+                placeholder="اختر من قائمة المستخدمين"
+                searchPlaceholder="ابحث عن مستخدم..."
+              />
+              <Input
+                value={manualName}
+                onChange={(e) => {
+                  setManualName(e.target.value);
+                  if (e.target.value) setSelectedUserId("");
+                }}
+                placeholder="أو اكتب اسماً من خارج القائمة"
+                data-testid="input-salary-manual-name"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>الشهر</Label>
+                <Select value={month} onValueChange={setMonth}>
+                  <SelectTrigger data-testid="select-salary-month">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ARABIC_MONTHS.map((m, i) => (
+                      <SelectItem key={i} value={String(i + 1)}>
+                        {m}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>السنة</Label>
+                <Select value={year} onValueChange={setYear}>
+                  <SelectTrigger data-testid="select-salary-year">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {years.map((y) => (
+                      <SelectItem key={y} value={y}>
+                        {y}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>الراتب الأساسي</Label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  value={basicSalary}
+                  onChange={(e) => setBasicSalary(e.target.value)}
+                  placeholder="0"
+                  data-testid="input-salary-basic"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>بدل الطعام</Label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  value={foodAllowance}
+                  onChange={(e) => setFoodAllowance(e.target.value)}
+                  placeholder="0"
+                  data-testid="input-salary-food"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>عدد ساعات الإضافي</Label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  value={overtimeHours}
+                  onChange={(e) => setOvertimeHours(e.target.value)}
+                  placeholder="0"
+                  data-testid="input-salary-overtime"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>عدد أيام الغياب</Label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  value={absenceDays}
+                  onChange={(e) => setAbsenceDays(e.target.value)}
+                  placeholder="0"
+                  data-testid="input-salary-absence"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <AdminDocsActions
+          ctx={docsCtx}
+          onPrint={handlePrint}
+          onValidate={validate}
+        />
+        <AdminDocsPanel label="رواتب محفوظة" ctx={docsCtx} />
+        <AdminDocsDeleteDialog ctx={docsCtx} />
+      </div>
+
+      <div className="space-y-4">
+        <Card>
+          <CardContent className="pt-6 space-y-3">
+            <Label className="text-base font-semibold">
+              ملخص الراتب — {monthLabel}
+            </Label>
+            <div className="rounded-md border divide-y text-sm">
+              <SalaryRow label="الموظف" value={employeeName || "-"} />
+              <SalaryRow label="الراتب الأساسي" value={money(basic)} />
+              <SalaryRow label="بدل الطعام" value={money(food)} />
+              <SalaryRow
+                label={`الإضافي (${money(otHours)} ساعة)`}
+                value={`+ ${money(overtimeAmount)}`}
+                positive
+              />
+              <SalaryRow
+                label={`خصم الغياب (${money(absDays)} يوم)`}
+                value={`- ${money(absenceDeduction)}`}
+                negative
+              />
+              <SalaryRow
+                label="صافي الراتب"
+                value={money(netSalary)}
+                bold
+              />
+            </div>
+            <p className="text-xs text-muted-foreground leading-6">
+              معادلة الإضافي: الراتب الأساسي ÷ 30 ÷ 8 × 1.5 × ساعات الإضافي
+              <br />
+              خصم الغياب: الراتب الأساسي ÷ 30 × أيام الغياب
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Hidden printable area */}
+      <div style={{ display: "none" }}>
+        <div ref={printArea} className="doc">
+          <DocHeader
+            logoUrl={logoUrl}
+            title="كشف راتب موظف"
+            subtitle="Employee Salary Slip"
+          />
+          <div className="doc-meta">
+            <div>
+              <b>الموظف:</b> {employeeName || "-"}
+            </div>
+            <div>
+              <b>الشهر:</b> {monthLabel}
+            </div>
+          </div>
+          <h2 className="section">تفاصيل الراتب</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>البند</th>
+                <th>القيمة (ريال)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>الراتب الأساسي</td>
+                <td>{money(basic)}</td>
+              </tr>
+              <tr>
+                <td>بدل الطعام</td>
+                <td>{money(food)}</td>
+              </tr>
+              <tr>
+                <td>الإضافي ({money(otHours)} ساعة)</td>
+                <td>{money(overtimeAmount)}</td>
+              </tr>
+              <tr>
+                <td>خصم الغياب ({money(absDays)} يوم)</td>
+                <td>- {money(absenceDeduction)}</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>صافي الراتب</td>
+                <td style={{ fontWeight: 700 }}>{money(netSalary)}</td>
+              </tr>
+            </tbody>
+          </table>
+          <SignatureBlock
+            labels={[
+              { label: "توقيع الموظف", name: employeeName },
+              { label: "المحاسب" },
+              { label: "المدير" },
+            ]}
+          />
+          <div className="footer">
+            تم إصدار هذا الكشف إلكترونياً • نظام MPBF
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminToolsPage() {
   const { t } = useTranslation();
   const { logoUrl } = useCompanyLogo();
@@ -2912,7 +3338,7 @@ export default function AdminToolsPage() {
       )}
     >
       <Tabs value={tab} onValueChange={setTab} dir="rtl">
-        <TabsList className="grid grid-cols-2 md:grid-cols-6 h-auto w-full bg-muted p-1 gap-1">
+        <TabsList className="grid grid-cols-2 md:grid-cols-7 h-auto w-full bg-muted p-1 gap-1">
           <TabsTrigger value="delivery" className="flex items-center gap-2">
             <FileSignature className="h-4 w-4" />
             <span className="hidden sm:inline">تسليم وإخلاء مسؤولية</span>
@@ -2943,6 +3369,11 @@ export default function AdminToolsPage() {
             <span className="hidden sm:inline">كشف توصيل</span>
             <span className="sm:hidden">توصيل</span>
           </TabsTrigger>
+          <TabsTrigger value="salary" className="flex items-center gap-2">
+            <Calculator className="h-4 w-4" />
+            <span className="hidden sm:inline">حساب راتب موظف</span>
+            <span className="sm:hidden">راتب</span>
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="delivery" className="border-0 mt-4">
           <DeliveryDisclaimerTab logoUrl={logoUrl} />
@@ -2961,6 +3392,9 @@ export default function AdminToolsPage() {
         </TabsContent>
         <TabsContent value="route" className="border-0 mt-4">
           <DeliveryRouteTab logoUrl={logoUrl} />
+        </TabsContent>
+        <TabsContent value="salary" className="border-0 mt-4">
+          <SalaryCalculatorTab logoUrl={logoUrl} />
         </TabsContent>
       </Tabs>
     </PageLayout>
