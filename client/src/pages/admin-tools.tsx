@@ -1,5 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
+  AlertTriangle,
+  CalendarDays,
   ChevronsUpDown,
   ClipboardList,
   Calculator,
@@ -12,6 +14,7 @@ import {
   FilePlus,
   FolderOpen,
   PenLine,
+  RotateCcw,
   Save,
   Search,
   Truck,
@@ -37,6 +40,8 @@ import {
 } from "../components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Textarea } from "../components/ui/textarea";
+import { Calendar } from "../components/ui/calendar";
+import { Checkbox } from "../components/ui/checkbox";
 import {
   SearchableSelect,
   type SearchableSelectOption,
@@ -384,7 +389,8 @@ type AdminDocType =
   | "custom_report"
   | "meeting_minutes"
   | "asset_handover"
-  | "salary_calc";
+  | "salary_calc"
+  | "violation_notice";
 
 type SavedAdminDoc<T = any> = {
   id: number;
@@ -3374,6 +3380,781 @@ function SalaryCalculatorTab({ logoUrl }: { logoUrl: string }) {
   );
 }
 
+const VIOLATION_TYPES: { key: string; label: string }[] = [
+  { key: "absence", label: "غياب بدون عذر" },
+  { key: "early_leave", label: "انسحاب قبل نهاية الدوام" },
+  { key: "late", label: "تأخير حضور" },
+  { key: "tasks", label: "عدم القيام بالمهام الموكلة" },
+  { key: "negligence", label: "الإهمال الوظيفي" },
+];
+
+const PENALTY_TYPES: { key: string; label: string }[] = [
+  { key: "warning1", label: "إنذار أول" },
+  { key: "warning2", label: "إنذار ثانٍ" },
+  { key: "warning_final", label: "إنذار نهائي" },
+  { key: "deduction", label: "خصم مالي" },
+  { key: "suspension", label: "إيقاف عن العمل" },
+  { key: "dismissal", label: "فصل" },
+];
+
+const violationLabel = (key: string) =>
+  VIOLATION_TYPES.find((v) => v.key === key)?.label || key;
+const penaltyLabel = (key: string) =>
+  PENALTY_TYPES.find((p) => p.key === key)?.label || key;
+
+const fmtIso = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate(),
+  ).padStart(2, "0")}`;
+const isoToDate = (iso: string) => new Date(`${iso}T00:00:00`);
+const fmtAr = (iso: string) => {
+  if (!iso) return "";
+  try {
+    return isoToDate(iso).toLocaleDateString("ar-EG", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  } catch {
+    return iso;
+  }
+};
+
+function ViolationNoticeTab({ logoUrl }: { logoUrl: string }) {
+  const { toast } = useToast();
+  const { data: usersResp } = useQuery<any>({
+    queryKey: ["/api/users"],
+    staleTime: 5 * 60 * 1000,
+  });
+  const usersList: any[] = Array.isArray(usersResp)
+    ? usersResp
+    : Array.isArray(usersResp?.data)
+      ? usersResp.data
+      : [];
+
+  const { data: sysSettings } = useQuery<any>({
+    queryKey: ["/api/settings/system"],
+    staleTime: 5 * 60 * 1000,
+  });
+  const settingsObj: Record<string, any> = Array.isArray(sysSettings)
+    ? sysSettings.reduce((acc: any, s: any) => {
+        acc[s.setting_key] = s.setting_value;
+        return acc;
+      }, {})
+    : {};
+  const companyNameAr = settingsObj.companyName || "مصنع أكياس البلاستيك الحديث";
+  const companyNameEn = "Modern Plastic Bag Factory";
+
+  const [selectedUserId, setSelectedUserId] = useState("");
+  const [manualName, setManualName] = useState("");
+  const [noticeDate, setNoticeDate] = useState(todayISO());
+  const [violations, setViolations] = useState<string[]>([]);
+  const [details, setDetails] = useState<Record<string, any>>({});
+  const [penalties, setPenalties] = useState<string[]>([]);
+  const [deductionAmount, setDeductionAmount] = useState("");
+  const [ackOverride, setAckOverride] = useState<string | null>(null);
+  const printArea = useRef<HTMLDivElement>(null);
+
+  const upd = (k: string, v: any) =>
+    setDetails((d) => ({ ...d, [k]: v }));
+
+  const userOptions: SearchableSelectOption[] = usersList.map((u) => ({
+    value: String(u.id),
+    label:
+      u.display_name_ar ||
+      u.display_name ||
+      u.full_name ||
+      u.username ||
+      `#${u.id}`,
+  }));
+
+  const selectedUser = usersList.find((u) => String(u.id) === selectedUserId);
+  const employeeName =
+    manualName.trim() ||
+    selectedUser?.display_name_ar ||
+    selectedUser?.display_name ||
+    selectedUser?.full_name ||
+    selectedUser?.username ||
+    "";
+
+  const toggleViolation = (key: string) => {
+    setViolations((prev) => {
+      const exists = prev.includes(key);
+      const next = exists ? prev.filter((k) => k !== key) : [...prev, key];
+      if (!exists) {
+        setDetails((d) => {
+          const nd = { ...d };
+          if (key === "early_leave" && !nd.earlyLeaveDate)
+            nd.earlyLeaveDate = todayISO();
+          if (key === "late" && !nd.lateDate) nd.lateDate = todayISO();
+          if (key === "tasks") {
+            if (!nd.tasksDate) nd.tasksDate = todayISO();
+            if (!nd.tasksDesc)
+              nd.tasksDesc =
+                "لم يقم الموظف بإنجاز المهام الموكلة إليه على الوجه المطلوب وفي الوقت المحدد.";
+          }
+          if (key === "negligence") {
+            if (!nd.negligenceDate) nd.negligenceDate = todayISO();
+            if (!nd.negligenceDesc)
+              nd.negligenceDesc =
+                "أظهر الموظف إهمالاً في أداء واجباته الوظيفية مما أثر على سير العمل.";
+          }
+          if (key === "absence" && !nd.absenceMode) nd.absenceMode = "days";
+          return nd;
+        });
+      }
+      return next;
+    });
+  };
+
+  const togglePenalty = (key: string) => {
+    setPenalties((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
+    );
+  };
+
+  const violationPhrase = (key: string): string => {
+    switch (key) {
+      case "absence": {
+        if (details.absenceMode === "range") {
+          if (details.absenceFrom && details.absenceTo)
+            return `الغياب بدون عذر من ${fmtAr(details.absenceFrom)} إلى ${fmtAr(
+              details.absenceTo,
+            )}`;
+          return "الغياب بدون عذر";
+        }
+        const days: string[] = details.absenceDays || [];
+        if (days.length)
+          return `الغياب بدون عذر بتاريخ: ${days
+            .slice()
+            .sort()
+            .map(fmtAr)
+            .join("، ")}`;
+        return "الغياب بدون عذر";
+      }
+      case "early_leave":
+        return `الانسحاب قبل نهاية الدوام${
+          details.earlyLeaveDate ? ` بتاريخ ${fmtAr(details.earlyLeaveDate)}` : ""
+        }${details.earlyLeaveTime ? ` الساعة ${details.earlyLeaveTime}` : ""}`;
+      case "late":
+        return `التأخر في الحضور${
+          details.lateDate ? ` بتاريخ ${fmtAr(details.lateDate)}` : ""
+        }${details.lateTime ? ` الساعة ${details.lateTime}` : ""}`;
+      case "tasks":
+        return `عدم القيام بالمهام الموكلة${
+          details.tasksDate ? ` بتاريخ ${fmtAr(details.tasksDate)}` : ""
+        }${details.tasksDesc ? ` — ${details.tasksDesc}` : ""}`;
+      case "negligence":
+        return `الإهمال الوظيفي${
+          details.negligenceDate ? ` بتاريخ ${fmtAr(details.negligenceDate)}` : ""
+        }${details.negligenceDesc ? ` — ${details.negligenceDesc}` : ""}`;
+      default:
+        return violationLabel(key);
+    }
+  };
+
+  const violationPhrases = violations.map(violationPhrase);
+
+  const dedAmt = (() => {
+    const n = parseFloat(deductionAmount);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  })();
+
+  const penaltyPhrases = penalties.map((p) =>
+    p === "deduction"
+      ? `خصم مالي${dedAmt > 0 ? ` بمبلغ ${formatNumberAr(dedAmt, 2)} ريال` : ""}`
+      : penaltyLabel(p),
+  );
+
+  const generatedAck = useMemo(() => {
+    const name = employeeName || "..............";
+    const list = violations.length
+      ? violations.map((v) => `(${violationLabel(v)})`).join("، ")
+      : "............";
+    const pen = penalties.length
+      ? ` كما أُحطت علماً بالجزاء المترتب: ${penaltyPhrases.join("، ")}.`
+      : "";
+    return `أقر أنا الموظف / ${name} بأنني اطّلعت على هذا الإشعار، وأقر بارتكابي المخالفة/المخالفات التالية: ${list}. وأتعهد بعدم تكرار ذلك مستقبلاً، وأتحمل المسؤولية الكاملة عن أي تكرار.${pen}`;
+  }, [employeeName, violations, penalties, penaltyPhrases]);
+
+  const ackText = ackOverride !== null ? ackOverride : generatedAck;
+
+  const employeeKey = selectedUserId
+    ? `user:${selectedUserId}`
+    : manualName.trim()
+      ? `external:${manualName.trim().toLowerCase()}`
+      : "";
+  const priorCountKey = employeeKey;
+
+  const resetForm = () => {
+    setSelectedUserId("");
+    setManualName("");
+    setNoticeDate(todayISO());
+    setViolations([]);
+    setDetails({});
+    setPenalties([]);
+    setDeductionAmount("");
+    setAckOverride(null);
+  };
+
+  const docsCtx = useAdminDocs<any>({
+    docType: "violation_notice",
+    getPayload: () => ({
+      reference: employeeName || "موظف",
+      title: `${fmtAr(noticeDate)} — ${violations.length} مخالفة`,
+      data: {
+        selectedUserId,
+        manualName,
+        employeeName,
+        employeeKey,
+        noticeDate,
+        violations,
+        details,
+        penalties,
+        deductionAmount,
+        acknowledgment: ackText,
+      },
+    }),
+    applyDoc: (data) => {
+      setSelectedUserId(data?.selectedUserId || "");
+      setManualName(data?.manualName || "");
+      setNoticeDate(data?.noticeDate || todayISO());
+      setViolations(Array.isArray(data?.violations) ? data.violations : []);
+      setDetails(data?.details && typeof data.details === "object" ? data.details : {});
+      setPenalties(Array.isArray(data?.penalties) ? data.penalties : []);
+      setDeductionAmount(data?.deductionAmount || "");
+      setAckOverride(typeof data?.acknowledgment === "string" ? data.acknowledgment : null);
+    },
+    resetForm,
+  });
+
+  const priorNotices = docsCtx.docs.filter((d) => {
+    if (priorCountKey === "" || d.id === docsCtx.currentId) return false;
+    const docKey =
+      d.data?.employeeKey ||
+      (d.data?.selectedUserId
+        ? `user:${d.data.selectedUserId}`
+        : d.reference?.trim()
+          ? `external:${d.reference.trim().toLowerCase()}`
+          : "");
+    return docKey === priorCountKey;
+  });
+
+  const handlePrint = () =>
+    printRef(printArea.current, `Violation-${employeeName}-${noticeDate}`);
+
+  const validate = (): string | null => {
+    if (!employeeName) {
+      toast({
+        title: "تنبيه",
+        description: "اختر اسم الموظف أو اكتبه",
+        variant: "destructive",
+      });
+      return "no-name";
+    }
+    if (violations.length === 0) {
+      toast({
+        title: "تنبيه",
+        description: "اختر نوع المخالفة (نوع واحد على الأقل)",
+        variant: "destructive",
+      });
+      return "no-violation";
+    }
+    if (violations.includes("absence")) {
+      const hasDays = (details.absenceDays || []).length > 0;
+      const hasRange = details.absenceFrom && details.absenceTo;
+      if (details.absenceMode === "range" ? !hasRange : !hasDays) {
+        toast({
+          title: "تنبيه",
+          description: "حدد أيام الغياب أو نطاق التاريخ",
+          variant: "destructive",
+        });
+        return "no-absence-dates";
+      }
+    }
+    const requiredDates: [string, string, string][] = [
+      ["early_leave", details.earlyLeaveDate, "حدد تاريخ الانسحاب قبل نهاية الدوام"],
+      ["late", details.lateDate, "حدد تاريخ التأخير في الحضور"],
+      ["tasks", details.tasksDate, "حدد تاريخ مخالفة عدم القيام بالمهام"],
+      ["negligence", details.negligenceDate, "حدد تاريخ مخالفة الإهمال الوظيفي"],
+    ];
+    for (const [key, value, msg] of requiredDates) {
+      if (violations.includes(key) && !value) {
+        toast({ title: "تنبيه", description: msg, variant: "destructive" });
+        return `no-date-${key}`;
+      }
+    }
+    if (penalties.includes("deduction")) {
+      const n = parseFloat(deductionAmount);
+      if (!Number.isFinite(n) || n <= 0) {
+        toast({
+          title: "تنبيه",
+          description: "أدخل مبلغ الخصم المالي (رقم موجب)",
+          variant: "destructive",
+        });
+        return "no-deduction";
+      }
+    }
+    return null;
+  };
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="space-y-4">
+        <Card>
+          <CardContent className="pt-6 space-y-4">
+            <div className="space-y-2">
+              <Label>اسم الموظف</Label>
+              <SearchableSelect
+                options={userOptions}
+                value={selectedUserId}
+                onValueChange={(v) => {
+                  setSelectedUserId(v);
+                  if (v) setManualName("");
+                }}
+                placeholder="اختر من قائمة المستخدمين"
+                searchPlaceholder="ابحث عن مستخدم..."
+              />
+              <Input
+                value={manualName}
+                onChange={(e) => {
+                  setManualName(e.target.value);
+                  if (e.target.value) setSelectedUserId("");
+                }}
+                placeholder="أو اكتب اسماً من خارج القائمة"
+                data-testid="input-violation-manual-name"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>تاريخ الإشعار</Label>
+              <Input
+                type="date"
+                value={noticeDate}
+                onChange={(e) => setNoticeDate(e.target.value)}
+                data-testid="input-violation-notice-date"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-base font-semibold flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                نوع المخالفة (اختيار متعدد)
+              </Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {VIOLATION_TYPES.map((v) => (
+                  <label
+                    key={v.key}
+                    className="flex items-center gap-2 rounded-md border p-2 cursor-pointer hover:bg-muted/50"
+                  >
+                    <Checkbox
+                      checked={violations.includes(v.key)}
+                      onCheckedChange={() => toggleViolation(v.key)}
+                      data-testid={`check-violation-${v.key}`}
+                    />
+                    <span className="text-sm">{v.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {violations.length > 0 && (
+          <Card>
+            <CardContent className="pt-6 space-y-4">
+              <Label className="text-base font-semibold flex items-center gap-2">
+                <CalendarDays className="h-4 w-4" />
+                تفاصيل المخالفة
+              </Label>
+
+              {violations.includes("absence") && (
+                <div className="rounded-md border p-3 space-y-3">
+                  <div className="font-medium text-sm">غياب بدون عذر</div>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={
+                        details.absenceMode !== "range" ? "default" : "outline"
+                      }
+                      onClick={() => upd("absenceMode", "days")}
+                    >
+                      أيام محددة
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={
+                        details.absenceMode === "range" ? "default" : "outline"
+                      }
+                      onClick={() => upd("absenceMode", "range")}
+                    >
+                      نطاق (من - إلى)
+                    </Button>
+                  </div>
+                  {details.absenceMode === "range" ? (
+                    <Calendar
+                      mode="range"
+                      selected={{
+                        from: details.absenceFrom
+                          ? isoToDate(details.absenceFrom)
+                          : undefined,
+                        to: details.absenceTo
+                          ? isoToDate(details.absenceTo)
+                          : undefined,
+                      }}
+                      onSelect={(range: any) => {
+                        upd("absenceFrom", range?.from ? fmtIso(range.from) : "");
+                        upd("absenceTo", range?.to ? fmtIso(range.to) : "");
+                      }}
+                      className="rounded-md border"
+                    />
+                  ) : (
+                    <Calendar
+                      mode="multiple"
+                      selected={(details.absenceDays || []).map(isoToDate)}
+                      onSelect={(days: any) =>
+                        upd(
+                          "absenceDays",
+                          ((days as Date[]) || []).map(fmtIso),
+                        )
+                      }
+                      className="rounded-md border"
+                    />
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    {violationPhrase("absence")}
+                  </p>
+                </div>
+              )}
+
+              {violations.includes("early_leave") && (
+                <div className="rounded-md border p-3 space-y-3">
+                  <div className="font-medium text-sm">
+                    انسحاب قبل نهاية الدوام
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">التاريخ</Label>
+                      <Input
+                        type="date"
+                        value={details.earlyLeaveDate || ""}
+                        onChange={(e) => upd("earlyLeaveDate", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">الوقت (اختياري)</Label>
+                      <Input
+                        type="time"
+                        value={details.earlyLeaveTime || ""}
+                        onChange={(e) => upd("earlyLeaveTime", e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {violations.includes("late") && (
+                <div className="rounded-md border p-3 space-y-3">
+                  <div className="font-medium text-sm">تأخير حضور</div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">التاريخ</Label>
+                      <Input
+                        type="date"
+                        value={details.lateDate || ""}
+                        onChange={(e) => upd("lateDate", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">الوقت (اختياري)</Label>
+                      <Input
+                        type="time"
+                        value={details.lateTime || ""}
+                        onChange={(e) => upd("lateTime", e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {violations.includes("tasks") && (
+                <div className="rounded-md border p-3 space-y-3">
+                  <div className="font-medium text-sm">
+                    عدم القيام بالمهام الموكلة
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">التاريخ</Label>
+                    <Input
+                      type="date"
+                      value={details.tasksDate || ""}
+                      onChange={(e) => upd("tasksDate", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">الوصف (قابل للتعديل)</Label>
+                    <Textarea
+                      rows={2}
+                      value={details.tasksDesc || ""}
+                      onChange={(e) => upd("tasksDesc", e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {violations.includes("negligence") && (
+                <div className="rounded-md border p-3 space-y-3">
+                  <div className="font-medium text-sm">الإهمال الوظيفي</div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">التاريخ</Label>
+                    <Input
+                      type="date"
+                      value={details.negligenceDate || ""}
+                      onChange={(e) => upd("negligenceDate", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">الوصف (قابل للتعديل)</Label>
+                    <Textarea
+                      rows={2}
+                      value={details.negligenceDesc || ""}
+                      onChange={(e) => upd("negligenceDesc", e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        <Card>
+          <CardContent className="pt-6 space-y-3">
+            <Label className="text-base font-semibold">
+              الجزاء (اختيار متعدد)
+            </Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {PENALTY_TYPES.map((p) => (
+                <label
+                  key={p.key}
+                  className="flex items-center gap-2 rounded-md border p-2 cursor-pointer hover:bg-muted/50"
+                >
+                  <Checkbox
+                    checked={penalties.includes(p.key)}
+                    onCheckedChange={() => togglePenalty(p.key)}
+                    data-testid={`check-penalty-${p.key}`}
+                  />
+                  <span className="text-sm">{p.label}</span>
+                </label>
+              ))}
+            </div>
+            {penalties.includes("deduction") && (
+              <div className="space-y-1">
+                <Label className="text-xs">مبلغ الخصم (ريال)</Label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  value={deductionAmount}
+                  onChange={(e) => setDeductionAmount(e.target.value)}
+                  placeholder="0"
+                  data-testid="input-deduction-amount"
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <AdminDocsActions
+          ctx={docsCtx}
+          onPrint={handlePrint}
+          onValidate={validate}
+        />
+        <AdminDocsPanel label="إشعارات محفوظة" ctx={docsCtx} />
+        <AdminDocsDeleteDialog ctx={docsCtx} />
+      </div>
+
+      <div className="space-y-4">
+        {priorCountKey !== "" && (
+          <Card
+            className={
+              priorNotices.length > 0
+                ? "border-amber-300 bg-amber-50 dark:bg-amber-950/20"
+                : ""
+            }
+          >
+            <CardContent className="pt-6 space-y-2">
+              <Label className="text-sm font-semibold flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                سجل المخالفات السابقة لـ {employeeName}
+              </Label>
+              {priorNotices.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  لا توجد مخالفات سابقة مسجلة لهذا الموظف
+                </p>
+              ) : (
+                <>
+                  <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                    عدد المخالفات السابقة: {priorNotices.length}
+                  </p>
+                  <ul className="text-xs text-muted-foreground list-disc pe-4 space-y-1 max-h-32 overflow-y-auto">
+                    {priorNotices.map((d) => (
+                      <li key={d.id}>{d.title || d.reference}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        <Card>
+          <CardContent className="pt-6 space-y-3">
+            <Label className="text-base font-semibold">ملخص الإشعار</Label>
+            <div className="rounded-md border p-3 space-y-2 text-sm">
+              <div>
+                <span className="text-muted-foreground">الموظف: </span>
+                <span className="font-medium">{employeeName || "-"}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">التاريخ: </span>
+                <span className="font-medium">{fmtAr(noticeDate)}</span>
+              </div>
+              <div className="pt-1">
+                <span className="text-muted-foreground">المخالفات:</span>
+                {violationPhrases.length === 0 ? (
+                  <span className="ms-1">-</span>
+                ) : (
+                  <ul className="list-disc pe-5 mt-1 space-y-1">
+                    {violationPhrases.map((p, i) => (
+                      <li key={i}>{p}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div className="pt-1">
+                <span className="text-muted-foreground">الجزاء:</span>
+                {penaltyPhrases.length === 0 ? (
+                  <span className="ms-1">-</span>
+                ) : (
+                  <ul className="list-disc pe-5 mt-1 space-y-1">
+                    {penaltyPhrases.map((p, i) => (
+                      <li key={i}>{p}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold">إقرار الموظف</Label>
+                {ackOverride !== null && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setAckOverride(null)}
+                  >
+                    <RotateCcw className="h-3 w-3 me-1" /> إعادة توليد
+                  </Button>
+                )}
+              </div>
+              <Textarea
+                rows={4}
+                value={ackText}
+                onChange={(e) => setAckOverride(e.target.value)}
+                data-testid="textarea-acknowledgment"
+              />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Hidden printable area */}
+      <div style={{ display: "none" }}>
+        <div ref={printArea} className="doc">
+          <div className="doc-header">
+            <img src={logoUrl} alt="logo" />
+            <div style={{ flex: 1, textAlign: "center" }}>
+              <h1 className="doc-title">{companyNameAr}</h1>
+              <p
+                className="doc-subtitle"
+                style={{ fontSize: 14, fontWeight: 600, color: "#333" }}
+              >
+                {companyNameEn}
+              </p>
+              <div style={{ marginTop: 8, fontSize: 16, fontWeight: 700 }}>
+                إشعار مخالفة
+              </div>
+            </div>
+            <div style={{ width: 64 }} />
+          </div>
+          <div className="doc-meta">
+            <div>
+              <b>الموظف:</b> {employeeName || "-"}
+            </div>
+            <div>
+              <b>التاريخ:</b> {fmtAr(noticeDate)}
+            </div>
+          </div>
+          <h2 className="section">نوع المخالفة</h2>
+          <table>
+            <thead>
+              <tr>
+                <th style={{ width: 40 }}>#</th>
+                <th>المخالفة</th>
+              </tr>
+            </thead>
+            <tbody>
+              {violationPhrases.length === 0 ? (
+                <tr>
+                  <td colSpan={2}>-</td>
+                </tr>
+              ) : (
+                violationPhrases.map((p, i) => (
+                  <tr key={i}>
+                    <td>{i + 1}</td>
+                    <td>{p}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+          <h2 className="section">الجزاء</h2>
+          <table>
+            <tbody>
+              {penaltyPhrases.length === 0 ? (
+                <tr>
+                  <td>-</td>
+                </tr>
+              ) : (
+                penaltyPhrases.map((p, i) => (
+                  <tr key={i}>
+                    <td>{p}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+          <h2 className="section">إقرار الموظف</h2>
+          <div className="body-text">{ackText}</div>
+          <SignatureBlock
+            labels={[
+              { label: "توقيع الموظف", name: employeeName },
+              { label: "المدير المباشر" },
+              { label: "المدير العام" },
+            ]}
+          />
+          <div className="footer">
+            تم إصدار هذا الإشعار إلكترونياً • نظام MPBF
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminToolsPage() {
   const { t } = useTranslation();
   const { logoUrl } = useCompanyLogo();
@@ -3388,7 +4169,7 @@ export default function AdminToolsPage() {
       )}
     >
       <Tabs value={tab} onValueChange={setTab} dir="rtl">
-        <TabsList className="grid grid-cols-2 md:grid-cols-7 h-auto w-full bg-muted p-1 gap-1">
+        <TabsList className="grid grid-cols-2 md:grid-cols-8 h-auto w-full bg-muted p-1 gap-1">
           <TabsTrigger value="delivery" className="flex items-center gap-2">
             <FileSignature className="h-4 w-4" />
             <span className="hidden sm:inline">تسليم وإخلاء مسؤولية</span>
@@ -3424,6 +4205,11 @@ export default function AdminToolsPage() {
             <span className="hidden sm:inline">حساب راتب موظف</span>
             <span className="sm:hidden">راتب</span>
           </TabsTrigger>
+          <TabsTrigger value="violation" className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            <span className="hidden sm:inline">إشعار مخالفة</span>
+            <span className="sm:hidden">مخالفة</span>
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="delivery" className="border-0 mt-4">
           <DeliveryDisclaimerTab logoUrl={logoUrl} />
@@ -3445,6 +4231,9 @@ export default function AdminToolsPage() {
         </TabsContent>
         <TabsContent value="salary" className="border-0 mt-4">
           <SalaryCalculatorTab logoUrl={logoUrl} />
+        </TabsContent>
+        <TabsContent value="violation" className="border-0 mt-4">
+          <ViolationNoticeTab logoUrl={logoUrl} />
         </TabsContent>
       </Tabs>
     </PageLayout>

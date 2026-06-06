@@ -18655,6 +18655,7 @@ Input: ${text}`;
     "meeting_minutes",
     "asset_handover",
     "salary_calc",
+    "violation_notice",
   ] as const;
 
   const adminToolDocPayloadSchema = insertAdminToolDocumentSchema.extend({
