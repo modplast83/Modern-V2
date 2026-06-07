@@ -755,6 +755,18 @@ export function CustodyTab({ userId }: { userId: number }) {
 export function TrainingTab({ userId }: { userId: number }) {
   const { isRTL } = useLanguage();
   const L: L = (ar, en) => (isRTL ? ar : en);
+  const enrollmentStatusLabel = (s?: string | null) => {
+    switch (s) {
+      case "completed":
+        return L("مكتمل", "Completed");
+      case "failed":
+        return L("غير مجتاز", "Failed");
+      case "not_started":
+        return L("لم يبدأ", "Not started");
+      default:
+        return s || "—";
+    }
+  };
   const { toast } = useToast();
   const { canAdd, canDelete } = useHrPerms();
   const invalidate = useInvalidate(userId, "training");
@@ -840,7 +852,7 @@ export function TrainingTab({ userId }: { userId: number }) {
                   <TableHead>{L("البرنامج", "Program")}</TableHead>
                   <TableHead>{L("الحالة", "Status")}</TableHead>
                   <TableHead>{L("تاريخ التسجيل", "Enrolled")}</TableHead>
-                  <TableHead>{L("تاريخ الإكمال", "Completed")}</TableHead>
+                  <TableHead>{L("تاريخ التدريب", "Training date")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -851,12 +863,14 @@ export function TrainingTab({ userId }: { userId: number }) {
                         e.program_title ||
                         "—"}
                     </TableCell>
-                    <TableCell>{e.status || "—"}</TableCell>
+                    <TableCell>{enrollmentStatusLabel(e.status)}</TableCell>
                     <TableCell className="whitespace-nowrap">
-                      {e.enrolled_date || "—"}
+                      {e.enrolled_date
+                        ? String(e.enrolled_date).slice(0, 10)
+                        : "—"}
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
-                      {e.completion_date || "—"}
+                      {e.training_date || "—"}
                     </TableCell>
                   </TableRow>
                 ))}

@@ -3794,9 +3794,10 @@ export class DatabaseStorage implements IStorage {
           .select({
             id: training_enrollments.id,
             program_id: training_enrollments.program_id,
-            status: training_enrollments.status,
+            status: training_enrollments.completion_status,
+            attendance_status: training_enrollments.attendance_status,
             enrolled_date: training_enrollments.enrolled_date,
-            completion_date: training_enrollments.completion_date,
+            training_date: training_enrollments.training_date,
             program_title: training_programs.title,
             program_title_ar: training_programs.title_ar,
           })
