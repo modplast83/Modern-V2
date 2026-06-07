@@ -179,6 +179,12 @@ import {
   insertAdminToolDocumentSchema,
   insertPackagingUnitSchema,
   insertShiftAssignmentSchema,
+  insertRewardSchema,
+  updateRewardSchema,
+  insertEmployeeCustodySchema,
+  updateEmployeeCustodySchema,
+  insertEmployeeTraitSchema,
+  updateEmployeeTraitSchema,
 } from "@shared/schema";
 import { isShiftType, factoryNowParts } from "@shared/shifts";
 import { hasPermission } from "@shared/permissions";
@@ -12391,17 +12397,26 @@ Input: ${text}`;
 
   // ============ User Violations Management API ============
 
-  app.get("/api/violations", requireAuth, async (req, res) => {
-    try {
-      const violations = await storage.getViolations();
-      res.json(violations);
-    } catch (error) {
-      console.error("Error fetching violations:", error);
-      res.status(500).json({ message: "خطأ في جلب بيانات المخالفات" });
-    }
-  });
+  app.get(
+    "/api/violations",
+    requireAuth,
+    requirePermission("view_hr", "manage_hr", "manage_attendance"),
+    async (req, res) => {
+      try {
+        const violations = await storage.getViolations();
+        res.json(violations);
+      } catch (error) {
+        console.error("Error fetching violations:", error);
+        res.status(500).json({ message: "خطأ في جلب بيانات المخالفات" });
+      }
+    },
+  );
 
-  app.post("/api/violations", requireAuth, async (req, res) => {
+  app.post(
+    "/api/violations",
+    requireAuth,
+    requirePermission("add_hr", "manage_hr", "manage_attendance"),
+    async (req, res) => {
     try {
       // Accept legacy field names from older clients (user_id, type) and map
       // them to the actual DB columns (employee_id, violation_type).
@@ -12429,9 +12444,14 @@ Input: ${text}`;
       console.error("Error creating violation:", error);
       res.status(500).json({ message: "خطأ في إنشاء المخالفة" });
     }
-  });
+    },
+  );
 
-  app.put("/api/violations/:id", requireAuth, async (req, res) => {
+  app.put(
+    "/api/violations/:id",
+    requireAuth,
+    requirePermission("edit_hr", "manage_hr", "manage_attendance"),
+    async (req, res) => {
     try {
       const id = parseRouteParam(req.params.id, "id");
       const body: Record<string, any> = { ...(req.body ?? {}) };
@@ -12451,7 +12471,8 @@ Input: ${text}`;
       console.error("Error updating violation:", error);
       res.status(500).json({ message: "خطأ في تحديث المخالفة" });
     }
-  });
+    },
+  );
 
   app.delete(
     "/api/violations/:id",
@@ -12465,6 +12486,447 @@ Input: ${text}`;
       } catch (error) {
         console.error("Error deleting violation:", error);
         res.status(500).json({ message: "خطأ في حذف المخالفة" });
+      }
+    },
+  );
+
+  // ============ HR Module API (Phase 2) — per-employee file tabs ============
+
+  const HR_VIEW = requirePermission("view_hr", "manage_hr");
+  const HR_CREATE = requirePermission("manage_hr", "add_hr");
+  const HR_EDIT = requirePermission("manage_hr", "edit_hr");
+  const HR_DELETE = requirePermission("manage_hr", "delete_hr");
+
+  function parseEmployeeId(req: any, res: any): number | null {
+    const userId = parseInt(req.params.userId, 10);
+    if (isNaN(userId) || userId <= 0) {
+      res.status(400).json({ message: "معرف الموظف غير صحيح" });
+      return null;
+    }
+    return userId;
+  }
+
+  // ----- المخالفات لكل موظف (قراءة) -----
+  app.get(
+    "/api/hr/employees/:userId/violations",
+    requireAuth,
+    HR_VIEW,
+    async (req, res) => {
+      try {
+        const userId = parseEmployeeId(req, res);
+        if (userId === null) return;
+        const data = await storage.getViolationsByEmployee(userId);
+        res.json({ data });
+      } catch (error) {
+        console.error("Error fetching employee violations:", error);
+        res.status(500).json({ message: "خطأ في جلب مخالفات الموظف" });
+      }
+    },
+  );
+
+  // ----- المكافآت -----
+  app.get(
+    "/api/hr/employees/:userId/rewards",
+    requireAuth,
+    HR_VIEW,
+    async (req, res) => {
+      try {
+        const userId = parseEmployeeId(req, res);
+        if (userId === null) return;
+        const data = await storage.getRewardsByEmployee(userId);
+        res.json({ data });
+      } catch (error) {
+        console.error("Error fetching rewards:", error);
+        res.status(500).json({ message: "خطأ في جلب المكافآت" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/hr/employees/:userId/rewards",
+    requireAuth,
+    HR_CREATE,
+    async (req, res) => {
+      try {
+        const userId = parseEmployeeId(req, res);
+        if (userId === null) return;
+        const parsed = insertRewardSchema.safeParse({
+          ...req.body,
+          employee_id: userId,
+          granted_by: getAuthUserId(req) ?? undefined,
+        });
+        if (!parsed.success) {
+          return res.status(400).json({
+            message: "بيانات المكافأة غير صحيحة",
+            errors: parsed.error.flatten().fieldErrors,
+          });
+        }
+        const data = await storage.createReward(parsed.data);
+        res.status(201).json({ data });
+      } catch (error) {
+        console.error("Error creating reward:", error);
+        res.status(500).json({ message: "خطأ في إضافة المكافأة" });
+      }
+    },
+  );
+
+  app.put(
+    "/api/hr/rewards/:id",
+    requireAuth,
+    HR_EDIT,
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const parsed = updateRewardSchema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({
+            message: "بيانات التحديث غير صحيحة",
+            errors: parsed.error.flatten().fieldErrors,
+          });
+        }
+        const data = await storage.updateReward(id, parsed.data);
+        res.json({ data });
+      } catch (error) {
+        console.error("Error updating reward:", error);
+        res.status(500).json({ message: "خطأ في تحديث المكافأة" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/hr/rewards/:id",
+    requireAuth,
+    HR_DELETE,
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        await storage.deleteReward(id);
+        res.json({ message: "تم حذف المكافأة بنجاح" });
+      } catch (error) {
+        console.error("Error deleting reward:", error);
+        res.status(500).json({ message: "خطأ في حذف المكافأة" });
+      }
+    },
+  );
+
+  // ----- العهد والأصول -----
+  app.get(
+    "/api/hr/employees/:userId/custody",
+    requireAuth,
+    HR_VIEW,
+    async (req, res) => {
+      try {
+        const userId = parseEmployeeId(req, res);
+        if (userId === null) return;
+        const data = await storage.getCustodyByEmployee(userId);
+        res.json({ data });
+      } catch (error) {
+        console.error("Error fetching custody:", error);
+        res.status(500).json({ message: "خطأ في جلب العهد" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/hr/employees/:userId/custody",
+    requireAuth,
+    HR_CREATE,
+    async (req, res) => {
+      try {
+        const userId = parseEmployeeId(req, res);
+        if (userId === null) return;
+        const parsed = insertEmployeeCustodySchema.safeParse({
+          ...req.body,
+          employee_id: userId,
+          recorded_by: getAuthUserId(req) ?? undefined,
+        });
+        if (!parsed.success) {
+          return res.status(400).json({
+            message: "بيانات العهدة غير صحيحة",
+            errors: parsed.error.flatten().fieldErrors,
+          });
+        }
+        const data = await storage.createCustody(parsed.data);
+        res.status(201).json({ data });
+      } catch (error) {
+        console.error("Error creating custody:", error);
+        res.status(500).json({ message: "خطأ في إضافة العهدة" });
+      }
+    },
+  );
+
+  app.put(
+    "/api/hr/custody/:id",
+    requireAuth,
+    HR_EDIT,
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const parsed = updateEmployeeCustodySchema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({
+            message: "بيانات التحديث غير صحيحة",
+            errors: parsed.error.flatten().fieldErrors,
+          });
+        }
+        const data = await storage.updateCustody(id, parsed.data);
+        res.json({ data });
+      } catch (error) {
+        console.error("Error updating custody:", error);
+        res.status(500).json({ message: "خطأ في تحديث العهدة" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/hr/custody/:id",
+    requireAuth,
+    HR_DELETE,
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        await storage.deleteCustody(id);
+        res.json({ message: "تم حذف العهدة بنجاح" });
+      } catch (error) {
+        console.error("Error deleting custody:", error);
+        res.status(500).json({ message: "خطأ في حذف العهدة" });
+      }
+    },
+  );
+
+  // ----- السمات الشخصية -----
+  app.get(
+    "/api/hr/employees/:userId/traits",
+    requireAuth,
+    HR_VIEW,
+    async (req, res) => {
+      try {
+        const userId = parseEmployeeId(req, res);
+        if (userId === null) return;
+        const data = await storage.getTraitsByEmployee(userId);
+        res.json({ data });
+      } catch (error) {
+        console.error("Error fetching traits:", error);
+        res.status(500).json({ message: "خطأ في جلب السمات" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/hr/employees/:userId/traits",
+    requireAuth,
+    HR_CREATE,
+    async (req, res) => {
+      try {
+        const userId = parseEmployeeId(req, res);
+        if (userId === null) return;
+        const parsed = insertEmployeeTraitSchema.safeParse({
+          ...req.body,
+          employee_id: userId,
+          recorded_by: getAuthUserId(req) ?? undefined,
+        });
+        if (!parsed.success) {
+          return res.status(400).json({
+            message: "بيانات السمة غير صحيحة",
+            errors: parsed.error.flatten().fieldErrors,
+          });
+        }
+        const data = await storage.createTrait(parsed.data);
+        res.status(201).json({ data });
+      } catch (error) {
+        console.error("Error creating trait:", error);
+        res.status(500).json({ message: "خطأ في إضافة السمة" });
+      }
+    },
+  );
+
+  app.put(
+    "/api/hr/traits/:id",
+    requireAuth,
+    HR_EDIT,
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const parsed = updateEmployeeTraitSchema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({
+            message: "بيانات التحديث غير صحيحة",
+            errors: parsed.error.flatten().fieldErrors,
+          });
+        }
+        const data = await storage.updateTrait(id, parsed.data);
+        res.json({ data });
+      } catch (error) {
+        console.error("Error updating trait:", error);
+        res.status(500).json({ message: "خطأ في تحديث السمة" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/hr/traits/:id",
+    requireAuth,
+    HR_DELETE,
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        await storage.deleteTrait(id);
+        res.json({ message: "تم حذف السمة بنجاح" });
+      } catch (error) {
+        console.error("Error deleting trait:", error);
+        res.status(500).json({ message: "خطأ في حذف السمة" });
+      }
+    },
+  );
+
+  // ----- التدريبات لكل موظف -----
+  app.get(
+    "/api/hr/employees/:userId/training",
+    requireAuth,
+    requirePermission("view_hr", "manage_hr", "view_training", "manage_training"),
+    async (req, res) => {
+      try {
+        const userId = parseEmployeeId(req, res);
+        if (userId === null) return;
+        const data = await storage.getTrainingByEmployee(userId);
+        res.json({ data });
+      } catch (error) {
+        console.error("Error fetching employee training:", error);
+        res.status(500).json({ message: "خطأ في جلب تدريبات الموظف" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/hr/employees/:userId/training",
+    requireAuth,
+    requirePermission("manage_hr", "add_hr", "manage_training"),
+    async (req, res) => {
+      try {
+        const userId = parseEmployeeId(req, res);
+        if (userId === null) return;
+        const parsed = insertTrainingRecordSchema.safeParse({
+          ...req.body,
+          employee_id: userId,
+        });
+        if (!parsed.success) {
+          return res.status(400).json({
+            message: "بيانات التدريب غير صحيحة",
+            errors: parsed.error.flatten().fieldErrors,
+          });
+        }
+        const data = await storage.createTrainingRecord(parsed.data);
+        res.status(201).json({ data });
+      } catch (error) {
+        console.error("Error creating training record:", error);
+        res.status(500).json({ message: "خطأ في إضافة سجل التدريب" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/hr/training-records/:id",
+    requireAuth,
+    requirePermission("manage_hr", "delete_hr", "manage_training"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        await storage.deleteTrainingRecord(id);
+        res.json({ message: "تم حذف سجل التدريب بنجاح" });
+      } catch (error) {
+        console.error("Error deleting training record:", error);
+        res.status(500).json({ message: "خطأ في حذف سجل التدريب" });
+      }
+    },
+  );
+
+  // ----- الأجور (محسوبة من محرك الحضور) -----
+  app.get(
+    "/api/hr/employees/:userId/wages",
+    requireAuth,
+    HR_VIEW,
+    async (req, res) => {
+      try {
+        const userId = parseEmployeeId(req, res);
+        if (userId === null) return;
+        const data = await storage.getWageRecordsByEmployee(userId);
+        res.json({ data });
+      } catch (error) {
+        console.error("Error fetching wages:", error);
+        res.status(500).json({ message: "خطأ في جلب سجلات الأجور" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/hr/employees/:userId/wages/compute",
+    requireAuth,
+    requirePermission("manage_hr"),
+    async (req, res) => {
+      try {
+        const userId = parseEmployeeId(req, res);
+        if (userId === null) return;
+        const body = req.body ?? {};
+        const year = parseInt(String(body.year), 10);
+        const month = parseInt(String(body.month), 10);
+        const baseHourlyRate = Number(body.base_hourly_rate);
+        const overtimeMultiplier =
+          body.overtime_multiplier != null
+            ? Number(body.overtime_multiplier)
+            : 1.5;
+        if (
+          isNaN(year) ||
+          isNaN(month) ||
+          month < 1 ||
+          month > 12 ||
+          year < 2000 ||
+          year > 2100
+        ) {
+          return res.status(400).json({ message: "الشهر أو السنة غير صحيحة" });
+        }
+        if (isNaN(baseHourlyRate) || baseHourlyRate < 0) {
+          return res
+            .status(400)
+            .json({ message: "أجر الساعة الأساسي غير صحيح" });
+        }
+        if (
+          isNaN(overtimeMultiplier) ||
+          overtimeMultiplier < 1 ||
+          overtimeMultiplier > 5
+        ) {
+          return res
+            .status(400)
+            .json({ message: "معامل الساعات الإضافية غير صحيح" });
+        }
+        const result = await storage.computeAndSaveWage({
+          employeeId: userId,
+          year,
+          month,
+          baseHourlyRate,
+          overtimeMultiplier,
+          notes: typeof body.notes === "string" ? body.notes : null,
+          computedBy: getAuthUserId(req) ?? null,
+        });
+        res.json({ data: result.record, breakdown: result.breakdown });
+      } catch (error) {
+        console.error("Error computing wage:", error);
+        res.status(500).json({ message: "خطأ في حساب الأجر" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/hr/wages/:id",
+    requireAuth,
+    requirePermission("manage_hr", "delete_hr"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        await storage.deleteWageRecord(id);
+        res.json({ message: "تم حذف سجل الأجر بنجاح" });
+      } catch (error) {
+        console.error("Error deleting wage record:", error);
+        res.status(500).json({ message: "خطأ في حذف سجل الأجر" });
       }
     },
   );

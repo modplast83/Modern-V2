@@ -27,6 +27,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useLanguage } from "../../contexts/LanguageContext";
+import {
+  ViolationsTab,
+  RewardsTab,
+  CustodyTab,
+  TrainingTab,
+  WagesTab,
+  TraitsTab,
+} from "./EmployeeFileTabs";
 
 interface Props {
   userId: number;
@@ -226,13 +234,24 @@ export default function EmployeeFile({ userId, onBack }: Props) {
                 </TabsTrigger>
               ))}
             </TabsList>
-            {phase2Tabs.map((t) => (
-              <TabsContent key={t.key} value={t.key}>
-                <div className="py-10 text-center text-gray-500">
-                  {L(t.ar, t.en)} — {L("قريباً (المرحلة الثانية)", "Coming soon (Phase 2)")}
-                </div>
-              </TabsContent>
-            ))}
+            <TabsContent value="violations">
+              <ViolationsTab userId={userId} />
+            </TabsContent>
+            <TabsContent value="rewards">
+              <RewardsTab userId={userId} />
+            </TabsContent>
+            <TabsContent value="custody">
+              <CustodyTab userId={userId} />
+            </TabsContent>
+            <TabsContent value="training">
+              <TrainingTab userId={userId} />
+            </TabsContent>
+            <TabsContent value="wages">
+              <WagesTab userId={userId} />
+            </TabsContent>
+            <TabsContent value="traits">
+              <TraitsTab userId={userId} />
+            </TabsContent>
           </Tabs>
         </CardContent>
       </Card>

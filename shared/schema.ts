@@ -1106,8 +1106,122 @@ export const violations = pgTable("violations", {
   description: text("description"),
   date: date("date").notNull(),
   action_taken: text("action_taken"),
+  // قيمة الجزاء المالي المخصوم من الأجر (إن وجد)
+  penalty_amount: decimal("penalty_amount", { precision: 12, scale: 2 })
+    .notNull()
+    .default("0"),
+  // حالة المخالفة: open / resolved / cancelled
+  status: varchar("status", { length: 20 }).notNull().default("open"),
   reported_by: integer("reported_by").references(() => users.id),
 });
+
+// 🎁 جدول المكافآت والحوافز لكل موظف
+export const rewards = pgTable("rewards", {
+  id: serial("id").primaryKey(),
+  employee_id: integer("employee_id")
+    .notNull()
+    .references(() => users.id),
+  reward_type: varchar("reward_type", { length: 50 }).notNull(), // bonus / incentive / appreciation
+  reason: text("reason"),
+  amount: decimal("amount", { precision: 12, scale: 2 })
+    .notNull()
+    .default("0"),
+  date: date("date").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("approved"), // approved / pending / cancelled
+  granted_by: integer("granted_by").references(() => users.id),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+// 📦 جدول العهد والأصول المسلّمة للموظف
+export const employee_custody = pgTable("employee_custody", {
+  id: serial("id").primaryKey(),
+  employee_id: integer("employee_id")
+    .notNull()
+    .references(() => users.id),
+  item_name: varchar("item_name", { length: 200 }).notNull(),
+  description: text("description"),
+  quantity: integer("quantity").notNull().default(1),
+  handover_date: date("handover_date").notNull(),
+  return_date: date("return_date"),
+  status: varchar("status", { length: 20 }).notNull().default("handed"), // handed / returned / lost / damaged
+  notes: text("notes"),
+  recorded_by: integer("recorded_by").references(() => users.id),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+// 🌟 جدول السمات الشخصية وتقييم الموظف
+export const employee_traits = pgTable("employee_traits", {
+  id: serial("id").primaryKey(),
+  employee_id: integer("employee_id")
+    .notNull()
+    .references(() => users.id),
+  trait: varchar("trait", { length: 200 }).notNull(),
+  category: varchar("category", { length: 50 }), // skill / behavior / strength / development
+  rating: integer("rating"), // 1-5 (اختياري)
+  notes: text("notes"),
+  recorded_by: integer("recorded_by").references(() => users.id),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+// 💰 جدول سجلات الأجور الشهرية (محسوبة من محرك الحضور)
+export const wage_records = pgTable(
+  "wage_records",
+  {
+    id: serial("id").primaryKey(),
+    employee_id: integer("employee_id")
+      .notNull()
+      .references(() => users.id),
+    year: integer("year").notNull(),
+    month: integer("month").notNull(), // 1-12
+    base_hourly_rate: decimal("base_hourly_rate", { precision: 10, scale: 2 })
+      .notNull()
+      .default("0"),
+    overtime_multiplier: decimal("overtime_multiplier", {
+      precision: 4,
+      scale: 2,
+    })
+      .notNull()
+      .default("1.50"),
+    base_hours: decimal("base_hours", { precision: 10, scale: 2 })
+      .notNull()
+      .default("0"),
+    basic_pay: decimal("basic_pay", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
+    overtime_hours: decimal("overtime_hours", { precision: 10, scale: 2 })
+      .notNull()
+      .default("0"),
+    overtime_pay: decimal("overtime_pay", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
+    deductions_amount: decimal("deductions_amount", {
+      precision: 12,
+      scale: 2,
+    })
+      .notNull()
+      .default("0"),
+    rewards_amount: decimal("rewards_amount", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
+    penalties_amount: decimal("penalties_amount", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
+    net_pay: decimal("net_pay", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
+    notes: text("notes"),
+    computed_by: integer("computed_by").references(() => users.id),
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+  (table) => ({
+    uniqueEmployeeMonth: uniqueIndex("wage_records_employee_month_uniq").on(
+      table.employee_id,
+      table.year,
+      table.month,
+    ),
+  }),
+);
 
 // 📦 جدول الأصناف والمواد
 export const items = pgTable("items", {
@@ -2410,10 +2524,74 @@ export const insertViolationSchema = createInsertSchema(violations)
     description: z.string().optional().nullable(),
     date: z.coerce.date(),
     action_taken: z.string().optional().nullable(),
+    penalty_amount: z.coerce.number().min(0).optional(),
+    status: z.enum(["open", "resolved", "cancelled"]).optional(),
     reported_by: z.coerce.number().int().positive().optional().nullable(),
   });
 export const updateViolationSchema = insertViolationSchema.partial();
 export type InsertViolation = z.infer<typeof insertViolationSchema>;
+
+// 🎁 المكافآت
+export const insertRewardSchema = createInsertSchema(rewards)
+  .omit({ id: true, created_at: true })
+  .extend({
+    employee_id: z.coerce.number().int().positive(),
+    reward_type: z.string().min(1).max(50),
+    reason: z.string().optional().nullable(),
+    amount: z.coerce.number().min(0),
+    date: z.coerce.date(),
+    status: z.enum(["approved", "pending", "cancelled"]).optional(),
+    granted_by: z.coerce.number().int().positive().optional().nullable(),
+  });
+export const updateRewardSchema = insertRewardSchema.partial();
+export type InsertReward = z.infer<typeof insertRewardSchema>;
+export type Reward = typeof rewards.$inferSelect;
+
+// 📦 العهد
+export const insertEmployeeCustodySchema = createInsertSchema(employee_custody)
+  .omit({ id: true, created_at: true })
+  .extend({
+    employee_id: z.coerce.number().int().positive(),
+    item_name: z.string().min(1).max(200),
+    description: z.string().optional().nullable(),
+    quantity: z.coerce.number().int().positive().optional(),
+    handover_date: z.coerce.date(),
+    return_date: z.coerce.date().optional().nullable(),
+    status: z.enum(["handed", "returned", "lost", "damaged"]).optional(),
+    notes: z.string().optional().nullable(),
+    recorded_by: z.coerce.number().int().positive().optional().nullable(),
+  });
+export const updateEmployeeCustodySchema =
+  insertEmployeeCustodySchema.partial();
+export type InsertEmployeeCustody = z.infer<typeof insertEmployeeCustodySchema>;
+export type EmployeeCustody = typeof employee_custody.$inferSelect;
+
+// 🌟 السمات الشخصية
+export const insertEmployeeTraitSchema = createInsertSchema(employee_traits)
+  .omit({ id: true, created_at: true })
+  .extend({
+    employee_id: z.coerce.number().int().positive(),
+    trait: z.string().min(1).max(200),
+    category: z
+      .enum(["skill", "behavior", "strength", "development"])
+      .optional()
+      .nullable(),
+    rating: z.coerce.number().int().min(1).max(5).optional().nullable(),
+    notes: z.string().optional().nullable(),
+    recorded_by: z.coerce.number().int().positive().optional().nullable(),
+  });
+export const updateEmployeeTraitSchema = insertEmployeeTraitSchema.partial();
+export type InsertEmployeeTrait = z.infer<typeof insertEmployeeTraitSchema>;
+export type EmployeeTrait = typeof employee_traits.$inferSelect;
+
+// 💰 سجلات الأجور
+export const insertWageRecordSchema = createInsertSchema(wage_records).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+export type InsertWageRecord = z.infer<typeof insertWageRecordSchema>;
+export type WageRecord = typeof wage_records.$inferSelect;
 
 export const createUserApiSchema = z
   .object({

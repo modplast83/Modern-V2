@@ -889,6 +889,92 @@ function sanitizeResponseForLogging(response: any): any {
       );
     }
 
+    // Ensure HR Phase 2 tables/columns exist on existing databases.
+    // drizzle-kit push only runs for fresh databases, so create them here
+    // idempotently (CREATE TABLE / ADD COLUMN IF NOT EXISTS never drops data).
+    try {
+      // Extend violations with disciplinary penalty + status fields.
+      await db.execute(sql`
+        ALTER TABLE violations
+        ADD COLUMN IF NOT EXISTS penalty_amount numeric(12,2) NOT NULL DEFAULT '0'
+      `);
+      await db.execute(sql`
+        ALTER TABLE violations
+        ADD COLUMN IF NOT EXISTS status varchar(20) NOT NULL DEFAULT 'open'
+      `);
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS rewards (
+          id serial PRIMARY KEY,
+          employee_id integer NOT NULL REFERENCES users(id),
+          reward_type varchar(50) NOT NULL,
+          reason text,
+          amount numeric(12,2) NOT NULL DEFAULT '0',
+          date date NOT NULL,
+          status varchar(20) NOT NULL DEFAULT 'approved',
+          granted_by integer REFERENCES users(id),
+          created_at timestamp DEFAULT now()
+        )
+      `);
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS employee_custody (
+          id serial PRIMARY KEY,
+          employee_id integer NOT NULL REFERENCES users(id),
+          item_name varchar(200) NOT NULL,
+          description text,
+          quantity integer NOT NULL DEFAULT 1,
+          handover_date date NOT NULL,
+          return_date date,
+          status varchar(20) NOT NULL DEFAULT 'handed',
+          notes text,
+          recorded_by integer REFERENCES users(id),
+          created_at timestamp DEFAULT now()
+        )
+      `);
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS employee_traits (
+          id serial PRIMARY KEY,
+          employee_id integer NOT NULL REFERENCES users(id),
+          trait varchar(200) NOT NULL,
+          category varchar(50),
+          rating integer,
+          notes text,
+          recorded_by integer REFERENCES users(id),
+          created_at timestamp DEFAULT now()
+        )
+      `);
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS wage_records (
+          id serial PRIMARY KEY,
+          employee_id integer NOT NULL REFERENCES users(id),
+          year integer NOT NULL,
+          month integer NOT NULL,
+          base_hourly_rate numeric(10,2) NOT NULL DEFAULT '0',
+          overtime_multiplier numeric(4,2) NOT NULL DEFAULT '1.50',
+          base_hours numeric(10,2) NOT NULL DEFAULT '0',
+          basic_pay numeric(12,2) NOT NULL DEFAULT '0',
+          overtime_hours numeric(10,2) NOT NULL DEFAULT '0',
+          overtime_pay numeric(12,2) NOT NULL DEFAULT '0',
+          deductions_amount numeric(12,2) NOT NULL DEFAULT '0',
+          rewards_amount numeric(12,2) NOT NULL DEFAULT '0',
+          penalties_amount numeric(12,2) NOT NULL DEFAULT '0',
+          net_pay numeric(12,2) NOT NULL DEFAULT '0',
+          notes text,
+          computed_by integer REFERENCES users(id),
+          created_at timestamp DEFAULT now(),
+          updated_at timestamp DEFAULT now()
+        )
+      `);
+      await db.execute(sql`
+        CREATE UNIQUE INDEX IF NOT EXISTS wage_records_employee_month_uniq
+        ON wage_records (employee_id, year, month)
+      `);
+    } catch (hrErr: any) {
+      console.warn(
+        "⚠️ فشل تهيئة جداول الموارد البشرية المرحلة الثانية (سيتم المحاولة لاحقاً):",
+        hrErr?.message,
+      );
+    }
+
     // Ensure machines.inline_printer_id column exists, then auto-link the three
     // physically-combined extruder+printer pairs by name. Safe & idempotent:
     // the column is added IF NOT EXISTS and the link is only set when currently

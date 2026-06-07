@@ -74,6 +74,10 @@ import {
   type MachineQueue,
   type InsertMachineQueue,
   violations,
+  rewards,
+  employee_custody,
+  employee_traits,
+  wage_records,
   quality_issues,
   quality_issue_responsibles,
   quality_issue_actions,
@@ -113,6 +117,13 @@ import {
   type InsertAttendanceWithdrawal,
   type ShiftAssignment,
   type InsertShiftAssignment,
+  type Reward,
+  type InsertReward,
+  type EmployeeCustody,
+  type InsertEmployeeCustody,
+  type EmployeeTrait,
+  type InsertEmployeeTrait,
+  type WageRecord,
   type Section,
   type Cut,
   type InsertCut,
@@ -266,7 +277,12 @@ import {
   type EmployeeAttendanceResult,
 } from "./services/attendance-engine";
 import { getDataValidator } from "./services/data-validator";
-import { isShiftType, factoryNowParts, type ShiftType } from "@shared/shifts";
+import {
+  isShiftType,
+  factoryNowParts,
+  BASE_WORK_HOURS,
+  type ShiftType,
+} from "@shared/shifts";
 
 // Enhanced cache system with memory optimization
 class OptimizedCache {
@@ -3581,6 +3597,422 @@ export class DatabaseStorage implements IStorage {
       },
       "getAttendanceReportByRange",
       "إعداد تقرير الحضور",
+    );
+  }
+
+  // ===== HR Phase 2: violations / rewards / custody / traits / training / wages =====
+
+  // المخالفات لكل موظف
+  async getViolationsByEmployee(employeeId: number): Promise<Violation[]> {
+    return withDatabaseErrorHandling(
+      async () =>
+        await db
+          .select()
+          .from(violations)
+          .where(eq(violations.employee_id, employeeId))
+          .orderBy(desc(violations.date)),
+      "getViolationsByEmployee",
+      "جلب مخالفات الموظف",
+    );
+  }
+
+  // المكافآت
+  async getRewardsByEmployee(employeeId: number): Promise<Reward[]> {
+    return withDatabaseErrorHandling(
+      async () =>
+        await db
+          .select()
+          .from(rewards)
+          .where(eq(rewards.employee_id, employeeId))
+          .orderBy(desc(rewards.date)),
+      "getRewardsByEmployee",
+      "جلب مكافآت الموظف",
+    );
+  }
+
+  async createReward(data: InsertReward): Promise<Reward> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const [row] = await db.insert(rewards).values(data as any).returning();
+        return row;
+      },
+      "createReward",
+      "إضافة مكافأة",
+    );
+  }
+
+  async updateReward(
+    id: number,
+    data: Partial<InsertReward>,
+  ): Promise<Reward> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const [row] = await db
+          .update(rewards)
+          .set(data as any)
+          .where(eq(rewards.id, id))
+          .returning();
+        return row;
+      },
+      "updateReward",
+      "تحديث مكافأة",
+    );
+  }
+
+  async deleteReward(id: number): Promise<void> {
+    return withDatabaseErrorHandling(
+      async () => {
+        await db.delete(rewards).where(eq(rewards.id, id));
+      },
+      "deleteReward",
+      "حذف مكافأة",
+    );
+  }
+
+  // العهد والأصول
+  async getCustodyByEmployee(employeeId: number): Promise<EmployeeCustody[]> {
+    return withDatabaseErrorHandling(
+      async () =>
+        await db
+          .select()
+          .from(employee_custody)
+          .where(eq(employee_custody.employee_id, employeeId))
+          .orderBy(desc(employee_custody.handover_date)),
+      "getCustodyByEmployee",
+      "جلب عهد الموظف",
+    );
+  }
+
+  async createCustody(
+    data: InsertEmployeeCustody,
+  ): Promise<EmployeeCustody> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const [row] = await db
+          .insert(employee_custody)
+          .values(data as any)
+          .returning();
+        return row;
+      },
+      "createCustody",
+      "إضافة عهدة",
+    );
+  }
+
+  async updateCustody(
+    id: number,
+    data: Partial<InsertEmployeeCustody>,
+  ): Promise<EmployeeCustody> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const [row] = await db
+          .update(employee_custody)
+          .set(data as any)
+          .where(eq(employee_custody.id, id))
+          .returning();
+        return row;
+      },
+      "updateCustody",
+      "تحديث عهدة",
+    );
+  }
+
+  async deleteCustody(id: number): Promise<void> {
+    return withDatabaseErrorHandling(
+      async () => {
+        await db.delete(employee_custody).where(eq(employee_custody.id, id));
+      },
+      "deleteCustody",
+      "حذف عهدة",
+    );
+  }
+
+  // السمات الشخصية
+  async getTraitsByEmployee(employeeId: number): Promise<EmployeeTrait[]> {
+    return withDatabaseErrorHandling(
+      async () =>
+        await db
+          .select()
+          .from(employee_traits)
+          .where(eq(employee_traits.employee_id, employeeId))
+          .orderBy(desc(employee_traits.id)),
+      "getTraitsByEmployee",
+      "جلب سمات الموظف",
+    );
+  }
+
+  async createTrait(data: InsertEmployeeTrait): Promise<EmployeeTrait> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const [row] = await db
+          .insert(employee_traits)
+          .values(data as any)
+          .returning();
+        return row;
+      },
+      "createTrait",
+      "إضافة سمة",
+    );
+  }
+
+  async updateTrait(
+    id: number,
+    data: Partial<InsertEmployeeTrait>,
+  ): Promise<EmployeeTrait> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const [row] = await db
+          .update(employee_traits)
+          .set(data as any)
+          .where(eq(employee_traits.id, id))
+          .returning();
+        return row;
+      },
+      "updateTrait",
+      "تحديث سمة",
+    );
+  }
+
+  async deleteTrait(id: number): Promise<void> {
+    return withDatabaseErrorHandling(
+      async () => {
+        await db.delete(employee_traits).where(eq(employee_traits.id, id));
+      },
+      "deleteTrait",
+      "حذف سمة",
+    );
+  }
+
+  // التدريبات لكل موظف: التحاقات (مع تفاصيل البرنامج) + سجلات تدريب ميدانية
+  async getTrainingByEmployee(employeeId: number): Promise<{
+    enrollments: any[];
+    records: any[];
+  }> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const enrollments = await db
+          .select({
+            id: training_enrollments.id,
+            program_id: training_enrollments.program_id,
+            status: training_enrollments.status,
+            enrolled_date: training_enrollments.enrolled_date,
+            completion_date: training_enrollments.completion_date,
+            program_title: training_programs.title,
+            program_title_ar: training_programs.title_ar,
+          })
+          .from(training_enrollments)
+          .leftJoin(
+            training_programs,
+            eq(training_enrollments.program_id, training_programs.id),
+          )
+          .where(eq(training_enrollments.employee_id, employeeId))
+          .orderBy(desc(training_enrollments.id));
+
+        const records = await db
+          .select()
+          .from(training_records)
+          .where(eq(training_records.employee_id, employeeId))
+          .orderBy(desc(training_records.date));
+
+        return { enrollments, records };
+      },
+      "getTrainingByEmployee",
+      "جلب تدريبات الموظف",
+    );
+  }
+
+  async deleteTrainingRecord(id: number): Promise<void> {
+    return withDatabaseErrorHandling(
+      async () => {
+        await db.delete(training_records).where(eq(training_records.id, id));
+      },
+      "deleteTrainingRecord",
+      "حذف سجل تدريب",
+    );
+  }
+
+  // الأجور: سجلات شهرية محسوبة من محرك الحضور
+  async getWageRecordsByEmployee(employeeId: number): Promise<WageRecord[]> {
+    return withDatabaseErrorHandling(
+      async () =>
+        await db
+          .select()
+          .from(wage_records)
+          .where(eq(wage_records.employee_id, employeeId))
+          .orderBy(desc(wage_records.year), desc(wage_records.month)),
+      "getWageRecordsByEmployee",
+      "جلب سجلات الأجور",
+    );
+  }
+
+  async deleteWageRecord(id: number): Promise<void> {
+    return withDatabaseErrorHandling(
+      async () => {
+        await db.delete(wage_records).where(eq(wage_records.id, id));
+      },
+      "deleteWageRecord",
+      "حذف سجل الأجر",
+    );
+  }
+
+  // يحسب أجر موظف لشهر محدد من محرك الحضور + المكافآت + جزاءات المخالفات،
+  // ثم يحفظ (upsert) السجل الناتج. الأجر يُبنى على الساعات المجدولة (8/يوم)
+  // مع خصم الغياب/التأخير/المغادرة المبكرة/الانسحاب، وإضافة الإضافي الفعلي.
+  async computeAndSaveWage(params: {
+    employeeId: number;
+    year: number;
+    month: number;
+    baseHourlyRate: number;
+    overtimeMultiplier?: number;
+    notes?: string | null;
+    computedBy?: number | null;
+  }): Promise<{ record: WageRecord; breakdown: any }> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const {
+          employeeId,
+          year,
+          month,
+          baseHourlyRate,
+          overtimeMultiplier = 1.5,
+          notes = null,
+          computedBy = null,
+        } = params;
+
+        const from = `${year}-${String(month).padStart(2, "0")}-01`;
+        const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+        const to = `${year}-${String(month).padStart(2, "0")}-${String(
+          lastDay,
+        ).padStart(2, "0")}`;
+
+        const attendanceResult = await this.getComputedAttendance(
+          employeeId,
+          from,
+          to,
+        );
+        const t = attendanceResult.totals;
+
+        const rate = baseHourlyRate;
+        const baseHours = t.scheduledDays * BASE_WORK_HOURS;
+        const basicPay = baseHours * rate;
+
+        const overtimeHours = t.totalOvertimeHours;
+        const overtimePay = overtimeHours * rate * overtimeMultiplier;
+
+        const absenceDeduction = t.absentDays * BASE_WORK_HOURS * rate;
+        // أيام الحضور بدون تسجيل انصراف (غير مكتملة): لا يمكن التحقق من ساعات
+        // العمل الفعلية، لذا تُعامل كغير مدفوعة لتجنّب صرف أجر يوم كامل بالخطأ.
+        // عند تصحيح وقت الانصراف وإعادة الحساب يُحتسب اليوم بشكل صحيح.
+        const incompleteDeduction = t.incompleteDays * BASE_WORK_HOURS * rate;
+        const lateDeduction = (t.totalLateMinutes / 60) * rate;
+        const earlyLeaveDeduction = (t.totalEarlyLeaveMinutes / 60) * rate;
+        const withdrawalDeduction = (t.totalWithdrawnMinutes / 60) * rate;
+        const deductionsAmount =
+          absenceDeduction +
+          incompleteDeduction +
+          lateDeduction +
+          earlyLeaveDeduction +
+          withdrawalDeduction;
+
+        // المكافآت المعتمدة خلال الشهر
+        const rewardRows = await db
+          .select({ amount: rewards.amount })
+          .from(rewards)
+          .where(
+            and(
+              eq(rewards.employee_id, employeeId),
+              eq(rewards.status, "approved"),
+              sql`${rewards.date} BETWEEN ${from} AND ${to}`,
+            ),
+          );
+        const rewardsAmount = rewardRows.reduce(
+          (sum, r) => sum + Number(r.amount || 0),
+          0,
+        );
+
+        // جزاءات المخالفات (غير الملغاة) خلال الشهر
+        const penaltyRows = await db
+          .select({ penalty_amount: violations.penalty_amount })
+          .from(violations)
+          .where(
+            and(
+              eq(violations.employee_id, employeeId),
+              sql`${violations.status} <> 'cancelled'`,
+              sql`${violations.date} BETWEEN ${from} AND ${to}`,
+            ),
+          );
+        const penaltiesAmount = penaltyRows.reduce(
+          (sum, r) => sum + Number(r.penalty_amount || 0),
+          0,
+        );
+
+        const netPay =
+          basicPay +
+          overtimePay -
+          deductionsAmount -
+          penaltiesAmount +
+          rewardsAmount;
+
+        const round2 = (n: number) => (Math.round(n * 100) / 100).toFixed(2);
+
+        const values = {
+          employee_id: employeeId,
+          year,
+          month,
+          base_hourly_rate: round2(rate),
+          overtime_multiplier: round2(overtimeMultiplier),
+          base_hours: round2(baseHours),
+          basic_pay: round2(basicPay),
+          overtime_hours: round2(overtimeHours),
+          overtime_pay: round2(overtimePay),
+          deductions_amount: round2(deductionsAmount),
+          rewards_amount: round2(rewardsAmount),
+          penalties_amount: round2(penaltiesAmount),
+          net_pay: round2(netPay),
+          notes,
+          computed_by: computedBy,
+        };
+
+        const [record] = await db
+          .insert(wage_records)
+          .values(values as any)
+          .onConflictDoUpdate({
+            target: [
+              wage_records.employee_id,
+              wage_records.year,
+              wage_records.month,
+            ],
+            set: {
+              base_hourly_rate: sql`excluded.base_hourly_rate`,
+              overtime_multiplier: sql`excluded.overtime_multiplier`,
+              base_hours: sql`excluded.base_hours`,
+              basic_pay: sql`excluded.basic_pay`,
+              overtime_hours: sql`excluded.overtime_hours`,
+              overtime_pay: sql`excluded.overtime_pay`,
+              deductions_amount: sql`excluded.deductions_amount`,
+              rewards_amount: sql`excluded.rewards_amount`,
+              penalties_amount: sql`excluded.penalties_amount`,
+              net_pay: sql`excluded.net_pay`,
+              notes: sql`excluded.notes`,
+              computed_by: sql`excluded.computed_by`,
+              updated_at: sql`now()`,
+            },
+          })
+          .returning();
+
+        const breakdown = {
+          totals: t,
+          absenceDeduction: Number(round2(absenceDeduction)),
+          incompleteDeduction: Number(round2(incompleteDeduction)),
+          lateDeduction: Number(round2(lateDeduction)),
+          earlyLeaveDeduction: Number(round2(earlyLeaveDeduction)),
+          withdrawalDeduction: Number(round2(withdrawalDeduction)),
+        };
+
+        return { record, breakdown };
+      },
+      "computeAndSaveWage",
+      "حساب وحفظ أجر الموظف",
     );
   }
 
