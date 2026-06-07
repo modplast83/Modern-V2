@@ -20,6 +20,7 @@ import {
   quality_checks,
   attendance,
   attendance_withdrawals,
+  shift_assignments,
   waste,
   sections,
   cuts,
@@ -110,6 +111,8 @@ import {
   type InsertAttendance,
   type AttendanceWithdrawal,
   type InsertAttendanceWithdrawal,
+  type ShiftAssignment,
+  type InsertShiftAssignment,
   type Section,
   type Cut,
   type InsertCut,
@@ -258,7 +261,12 @@ import ExcelJS from "exceljs";
 import QRCode from "qrcode";
 
 import { db, pool } from "./db";
+import {
+  computeEmployeeAttendance,
+  type EmployeeAttendanceResult,
+} from "./services/attendance-engine";
 import { getDataValidator } from "./services/data-validator";
+import { isShiftType, factoryNowParts, type ShiftType } from "@shared/shifts";
 
 // Enhanced cache system with memory optimization
 class OptimizedCache {
@@ -709,6 +717,43 @@ export interface IStorage {
       violation_days: number;
     }[];
   }>;
+
+  // Shift assignments (monthly day/night scheduling)
+  getShiftAssignmentsByPeriod(
+    year: number,
+    month: number,
+  ): Promise<ShiftAssignment[]>;
+  getShiftAssignmentForUserMonth(
+    userId: number,
+    year: number,
+    month: number,
+  ): Promise<ShiftAssignment | null>;
+  getShiftAssignmentsForUser(userId: number): Promise<ShiftAssignment[]>;
+  upsertShiftAssignments(
+    entries: InsertShiftAssignment[],
+    createdBy: number | null,
+  ): Promise<ShiftAssignment[]>;
+  saveShiftRoster(
+    year: number,
+    month: number,
+    upsertEntries: InsertShiftAssignment[],
+    deleteUserIds: number[],
+    createdBy: number | null,
+  ): Promise<ShiftAssignment[]>;
+
+  // HR module (employee directory, file, computed attendance)
+  getHREmployees(): Promise<any[]>;
+  getEmployeeFile(userId: number): Promise<any | null>;
+  getComputedAttendance(
+    userId: number,
+    from: string,
+    to: string,
+  ): Promise<EmployeeAttendanceResult>;
+  getAttendanceReportByRange(
+    from: string,
+    to: string,
+    sectionId?: number,
+  ): Promise<any[]>;
 
   // Waste
   getAllWaste(): Promise<any[]>;
@@ -3083,6 +3128,459 @@ export class DatabaseStorage implements IStorage {
       },
       "getAttendanceWithdrawalsInRange",
       "جلب فترات الانسحاب خلال الفترة",
+    );
+  }
+
+  // ===== Shift assignments (monthly day/night scheduling) =====
+  async getShiftAssignmentsByPeriod(
+    year: number,
+    month: number,
+  ): Promise<ShiftAssignment[]> {
+    return withDatabaseErrorHandling(
+      async () =>
+        await db
+          .select()
+          .from(shift_assignments)
+          .where(
+            and(
+              eq(shift_assignments.year, year),
+              eq(shift_assignments.month, month),
+            ),
+          ),
+      "getShiftAssignmentsByPeriod",
+      "جلب جدول الورديات الشهري",
+    );
+  }
+
+  async getShiftAssignmentForUserMonth(
+    userId: number,
+    year: number,
+    month: number,
+  ): Promise<ShiftAssignment | null> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const [row] = await db
+          .select()
+          .from(shift_assignments)
+          .where(
+            and(
+              eq(shift_assignments.user_id, userId),
+              eq(shift_assignments.year, year),
+              eq(shift_assignments.month, month),
+            ),
+          )
+          .limit(1);
+        return row ?? null;
+      },
+      "getShiftAssignmentForUserMonth",
+      "جلب وردية الموظف للشهر",
+    );
+  }
+
+  async getShiftAssignmentsForUser(
+    userId: number,
+  ): Promise<ShiftAssignment[]> {
+    return withDatabaseErrorHandling(
+      async () =>
+        await db
+          .select()
+          .from(shift_assignments)
+          .where(eq(shift_assignments.user_id, userId)),
+      "getShiftAssignmentsForUser",
+      "جلب ورديات الموظف",
+    );
+  }
+
+  async upsertShiftAssignments(
+    entries: InsertShiftAssignment[],
+    createdBy: number | null,
+  ): Promise<ShiftAssignment[]> {
+    return withDatabaseErrorHandling(
+      async () => {
+        if (!entries.length) return [];
+        const values = entries.map((e) => ({
+          user_id: e.user_id,
+          year: e.year,
+          month: e.month,
+          shift: e.shift,
+          notes: e.notes ?? null,
+          created_by: createdBy,
+        }));
+        return await db
+          .insert(shift_assignments)
+          .values(values)
+          .onConflictDoUpdate({
+            target: [
+              shift_assignments.user_id,
+              shift_assignments.year,
+              shift_assignments.month,
+            ],
+            set: {
+              shift: sql`excluded.shift`,
+              notes: sql`excluded.notes`,
+              updated_at: sql`now()`,
+            },
+          })
+          .returning();
+      },
+      "upsertShiftAssignments",
+      "حفظ جدول الورديات",
+    );
+  }
+
+  // حفظ جدول الورديات لشهر محدد بشكل موثوق: حذف من أُلغيت جدولتهم
+  // وإضافة/تحديث الباقين داخل معاملة واحدة مع قفل لمنع التعارض.
+  async saveShiftRoster(
+    year: number,
+    month: number,
+    upsertEntries: InsertShiftAssignment[],
+    deleteUserIds: number[],
+    createdBy: number | null,
+  ): Promise<ShiftAssignment[]> {
+    return withDatabaseErrorHandling(
+      async () => {
+        return await db.transaction(async (tx) => {
+          // قفل استشاري على مستوى الفترة لمنع تعديلين متزامنين لنفس الشهر.
+          await tx.execute(
+            sql`SELECT pg_advisory_xact_lock(424242, ${year * 100 + month})`,
+          );
+
+          if (deleteUserIds.length) {
+            await tx
+              .delete(shift_assignments)
+              .where(
+                and(
+                  eq(shift_assignments.year, year),
+                  eq(shift_assignments.month, month),
+                  inArray(shift_assignments.user_id, deleteUserIds),
+                ),
+              );
+          }
+
+          if (upsertEntries.length) {
+            const values = upsertEntries.map((e) => ({
+              user_id: e.user_id,
+              year,
+              month,
+              shift: e.shift,
+              notes: e.notes ?? null,
+              created_by: createdBy,
+            }));
+            await tx
+              .insert(shift_assignments)
+              .values(values)
+              .onConflictDoUpdate({
+                target: [
+                  shift_assignments.user_id,
+                  shift_assignments.year,
+                  shift_assignments.month,
+                ],
+                set: {
+                  shift: sql`excluded.shift`,
+                  notes: sql`excluded.notes`,
+                  updated_at: sql`now()`,
+                },
+              });
+          }
+
+          return await tx
+            .select()
+            .from(shift_assignments)
+            .where(
+              and(
+                eq(shift_assignments.year, year),
+                eq(shift_assignments.month, month),
+              ),
+            );
+        });
+      },
+      "saveShiftRoster",
+      "حفظ جدول الورديات",
+    );
+  }
+
+  // ===== HR module: directory, employee file, computed attendance =====
+  async getHREmployees(): Promise<any[]> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const { year, month } = factoryNowParts();
+
+        const rows = await db
+          .select({
+            id: users.id,
+            username: users.username,
+            display_name: users.display_name,
+            display_name_ar: users.display_name_ar,
+            full_name: users.full_name,
+            phone: users.phone,
+            email: users.email,
+            status: users.status,
+            role_id: users.role_id,
+            section_id: users.section_id,
+            created_at: users.created_at,
+            role_name: roles.name,
+            role_name_ar: roles.name_ar,
+          })
+          .from(users)
+          .leftJoin(roles, eq(users.role_id, roles.id))
+          .orderBy(users.display_name);
+
+        const sectionsMap = await this.getSectionsMap();
+        const assignments = await this.getShiftAssignmentsByPeriod(
+          year,
+          month,
+        );
+        const shiftByUser = new Map<number, string>();
+        for (const a of assignments) shiftByUser.set(a.user_id, a.shift);
+
+        return rows.map((r) => {
+          const sec =
+            r.section_id != null
+              ? sectionsMap.get(String(r.section_id))
+              : undefined;
+          return {
+            ...r,
+            section_name: sec?.name ?? null,
+            section_name_ar: sec?.name_ar ?? null,
+            current_shift: shiftByUser.get(r.id) ?? null,
+            is_active: r.status === "active",
+          };
+        });
+      },
+      "getHREmployees",
+      "جلب قائمة الموظفين",
+    );
+  }
+
+  async getEmployeeFile(userId: number): Promise<any | null> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const [profile] = await db
+          .select({
+            id: users.id,
+            username: users.username,
+            display_name: users.display_name,
+            display_name_ar: users.display_name_ar,
+            full_name: users.full_name,
+            phone: users.phone,
+            email: users.email,
+            status: users.status,
+            role_id: users.role_id,
+            section_id: users.section_id,
+            profile_image_url: users.profile_image_url,
+            created_at: users.created_at,
+            role_name: roles.name,
+            role_name_ar: roles.name_ar,
+          })
+          .from(users)
+          .leftJoin(roles, eq(users.role_id, roles.id))
+          .where(eq(users.id, userId))
+          .limit(1);
+
+        if (!profile) return null;
+
+        const sectionsMap = await this.getSectionsMap();
+        const sec =
+          profile.section_id != null
+            ? sectionsMap.get(String(profile.section_id))
+            : undefined;
+        const profileWithSection = {
+          ...profile,
+          section_name: sec?.name ?? null,
+          section_name_ar: sec?.name_ar ?? null,
+        };
+
+        const now = new Date();
+        const { year, month, dateStr: todayStr } = factoryNowParts(now);
+        const current = await this.getShiftAssignmentForUserMonth(
+          userId,
+          year,
+          month,
+        );
+
+        // مدة الخدمة محسوبة من تاريخ إضافة الموظف للنظام (لا يوجد حقل تاريخ تعيين منفصل).
+        const serviceStart = profile.created_at
+          ? new Date(profile.created_at)
+          : null;
+        const serviceDays = serviceStart
+          ? Math.max(
+              0,
+              Math.floor(
+                (now.getTime() - serviceStart.getTime()) / 86400000,
+              ),
+            )
+          : null;
+
+        // تاريخ الإجازة القادمة: أقرب إجازة معتمدة قادمة (إن وجدت).
+        const [nextLeave] = await db
+          .select({ start_date: leave_requests.start_date })
+          .from(leave_requests)
+          .where(
+            and(
+              eq(leave_requests.employee_id, String(userId)),
+              eq(leave_requests.hr_status, "approved"),
+              sql`${leave_requests.start_date} >= ${todayStr}`,
+            ),
+          )
+          .orderBy(leave_requests.start_date)
+          .limit(1);
+
+        return {
+          ...profileWithSection,
+          is_active: profileWithSection.status === "active",
+          current_shift: current ? current.shift : null,
+          service_start_date: serviceStart ? serviceStart.toISOString() : null,
+          service_days: serviceDays,
+          next_leave_date: nextLeave?.start_date ?? null,
+        };
+      },
+      "getEmployeeFile",
+      "جلب ملف الموظف",
+    );
+  }
+
+  private addDaysStr(dateStr: string, days: number): string {
+    const [y, m, d] = dateStr.slice(0, 10).split("-").map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d + days));
+    const yy = dt.getUTCFullYear();
+    const mm = String(dt.getUTCMonth() + 1).padStart(2, "0");
+    const dd = String(dt.getUTCDate()).padStart(2, "0");
+    return `${yy}-${mm}-${dd}`;
+  }
+
+  private buildShiftMap(assignments: ShiftAssignment[]): Map<string, ShiftType> {
+    const map = new Map<string, ShiftType>();
+    for (const a of assignments) {
+      if (isShiftType(a.shift)) map.set(`${a.year}-${a.month}`, a.shift);
+    }
+    return map;
+  }
+
+  // users.section_id (integer) و sections.id (varchar) غير متطابقين في النوع،
+  // لذلك نحل اسم القسم عبر خريطة مفتاحها نص المعرّف بدل ربط SQL مباشر.
+  private async getSectionsMap(): Promise<
+    Map<string, { name: string; name_ar: string | null }>
+  > {
+    const all = await db
+      .select({
+        id: sections.id,
+        name: sections.name,
+        name_ar: sections.name_ar,
+      })
+      .from(sections);
+    const map = new Map<string, { name: string; name_ar: string | null }>();
+    for (const s of all) {
+      map.set(String(s.id), { name: s.name, name_ar: s.name_ar });
+    }
+    return map;
+  }
+
+  async getComputedAttendance(
+    userId: number,
+    from: string,
+    to: string,
+  ): Promise<EmployeeAttendanceResult> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const fetchFrom = this.addDaysStr(from, -1);
+        const fetchTo = this.addDaysStr(to, 1);
+        const rows = await db
+          .select()
+          .from(attendance)
+          .where(
+            and(
+              eq(attendance.user_id, userId),
+              sql`${attendance.date} BETWEEN ${fetchFrom} AND ${fetchTo}`,
+            ),
+          );
+        const assignments = await this.getShiftAssignmentsForUser(userId);
+        const shiftMap = this.buildShiftMap(assignments);
+        return computeEmployeeAttendance(rows as any, shiftMap, from, to);
+      },
+      "getComputedAttendance",
+      "حساب حضور الموظف",
+    );
+  }
+
+  async getAttendanceReportByRange(
+    from: string,
+    to: string,
+    sectionId?: number,
+  ): Promise<any[]> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const fetchFrom = this.addDaysStr(from, -1);
+        const fetchTo = this.addDaysStr(to, 1);
+
+        const empRows = await db
+          .select({
+            id: users.id,
+            username: users.username,
+            display_name: users.display_name,
+            display_name_ar: users.display_name_ar,
+            full_name: users.full_name,
+            section_id: users.section_id,
+          })
+          .from(users)
+          .where(sectionId ? eq(users.section_id, sectionId) : sql`true`)
+          .orderBy(users.display_name);
+
+        const userIds = empRows.map((e) => e.id);
+        if (!userIds.length) return [];
+
+        const sectionsMap = await this.getSectionsMap();
+
+        const attRows = await db
+          .select()
+          .from(attendance)
+          .where(
+            and(
+              inArray(attendance.user_id, userIds),
+              sql`${attendance.date} BETWEEN ${fetchFrom} AND ${fetchTo}`,
+            ),
+          );
+        const rowsByUser = new Map<number, any[]>();
+        for (const r of attRows as any[]) {
+          const list = rowsByUser.get(r.user_id) ?? [];
+          list.push(r);
+          rowsByUser.set(r.user_id, list);
+        }
+
+        const allAssignments = await db
+          .select()
+          .from(shift_assignments)
+          .where(inArray(shift_assignments.user_id, userIds));
+        const assignByUser = new Map<number, ShiftAssignment[]>();
+        for (const a of allAssignments) {
+          const list = assignByUser.get(a.user_id) ?? [];
+          list.push(a);
+          assignByUser.set(a.user_id, list);
+        }
+
+        return empRows.map((emp) => {
+          const shiftMap = this.buildShiftMap(assignByUser.get(emp.id) ?? []);
+          const result = computeEmployeeAttendance(
+            rowsByUser.get(emp.id) ?? [],
+            shiftMap,
+            from,
+            to,
+          );
+          const sec =
+            emp.section_id != null
+              ? sectionsMap.get(String(emp.section_id))
+              : undefined;
+          return {
+            employee: {
+              ...emp,
+              section_name: sec?.name ?? null,
+              section_name_ar: sec?.name_ar ?? null,
+            },
+            totals: result.totals,
+          };
+        });
+      },
+      "getAttendanceReportByRange",
+      "إعداد تقرير الحضور",
     );
   }
 

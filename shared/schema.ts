@@ -1071,6 +1071,33 @@ export const attendance_withdrawals = pgTable(
   ],
 );
 
+// 📋 جدول جدولة الورديات الشهرية (تعيين كل موظف لوردية نهارية/ليلية لكل شهر)
+export const shift_assignments = pgTable(
+  "shift_assignments",
+  {
+    id: serial("id").primaryKey(),
+    user_id: integer("user_id")
+      .notNull()
+      .references(() => users.id),
+    year: integer("year").notNull(),
+    month: integer("month").notNull(), // 1-12
+    shift: varchar("shift", { length: 10 }).notNull(), // 'day' | 'night'
+    notes: text("notes"),
+    created_by: integer("created_by").references(() => users.id),
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_shift_assignments_user").on(table.user_id),
+    index("idx_shift_assignments_period").on(table.year, table.month),
+    uniqueIndex("uniq_shift_assignment_user_month").on(
+      table.user_id,
+      table.year,
+      table.month,
+    ),
+  ],
+);
+
 // 📋 جدول المخالفات
 export const violations = pgTable("violations", {
   id: serial("id").primaryKey(),
@@ -2787,6 +2814,18 @@ export const insertAttendanceWithdrawalSchema = createInsertSchema(
 export type AttendanceWithdrawal = typeof attendance_withdrawals.$inferSelect;
 export type InsertAttendanceWithdrawal = z.infer<
   typeof insertAttendanceWithdrawalSchema
+>;
+
+export const insertShiftAssignmentSchema = createInsertSchema(
+  shift_assignments,
+).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+export type ShiftAssignment = typeof shift_assignments.$inferSelect;
+export type InsertShiftAssignment = z.infer<
+  typeof insertShiftAssignmentSchema
 >;
 
 // Maintenance Actions Schemas

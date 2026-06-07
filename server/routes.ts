@@ -178,7 +178,10 @@ import {
   insertDeliveryManifestSchema,
   insertAdminToolDocumentSchema,
   insertPackagingUnitSchema,
+  insertShiftAssignmentSchema,
 } from "@shared/schema";
+import { isShiftType, factoryNowParts } from "@shared/shifts";
+import { hasPermission } from "@shared/permissions";
 import { eq, sql, and, gte, lte, gt, desc, inArray } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -11145,604 +11148,6 @@ Input: ${text}`;
     },
   );
 
-  // Get attendance by date for manual entry (all users)
-  app.get("/api/attendance/manual", requireAuth, async (req, res) => {
-    try {
-      const date =
-        (req.query.date as string) || new Date().toISOString().split("T")[0];
-      const attendanceData = await storage.getAttendanceByDate(date);
-      res.json({ data: attendanceData, date });
-    } catch (error) {
-      console.error("Error fetching attendance by date:", error);
-      res
-        .status(500)
-        .json({ message: "خطأ في جلب بيانات الحضور للتاريخ المحدد" });
-    }
-  });
-
-  // Bulk upsert manual attendance
-  app.post(
-    "/api/attendance/manual",
-    requireAuth,
-    requirePermission("manage_attendance"),
-    async (req, res) => {
-      try {
-        const { entries } = req.body;
-
-        if (!entries || !Array.isArray(entries) || entries.length === 0) {
-          return res.status(400).json({ message: "يجب توفير بيانات الحضور" });
-        }
-
-        const results = await storage.upsertManualAttendance(entries);
-        res.json({
-          success: true,
-          message: `تم حفظ حضور ${results.length} موظف بنجاح`,
-          data: results,
-        });
-      } catch (error) {
-        console.error("Error saving manual attendance:", error);
-        res.status(500).json({ message: "خطأ في حفظ بيانات الحضور اليدوي" });
-      }
-    },
-  );
-
-  // تصدير قالب حضور الموظف للشهر كامل
-  app.get("/api/attendance/template/:userId", requireAuth, async (req, res) => {
-    try {
-      const userId = parseInt(req.params.userId);
-
-      // Validate userId parameter
-      if (isNaN(userId) || userId <= 0) {
-        return res.status(400).json({ message: "رقم الموظف غير صحيح" });
-      }
-
-      const month =
-        (req.query.month as string) || new Date().toISOString().slice(0, 7);
-
-      // Get user info
-      const user = await storage.getUserById(userId);
-      if (!user) {
-        return res.status(404).json({ message: "الموظف غير موجود" });
-      }
-
-      // Generate days of the month
-      const [year, monthNum] = month.split("-").map(Number);
-      const daysInMonth = new Date(year, monthNum, 0).getDate();
-
-      // Create template data with all days of the month
-      const templateData = [];
-      for (let day = 1; day <= daysInMonth; day++) {
-        const dateStr = `${year}-${String(monthNum).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-        const dayDate = new Date(year, monthNum - 1, day);
-        const dayName = dayDate.toLocaleDateString("en-US", {
-          weekday: "long",
-        });
-
-        templateData.push({
-          التاريخ: dateStr,
-          اليوم: dayName,
-          "رقم الموظف": userId,
-          "اسم الموظف":
-            user.display_name_ar || user.display_name || user.username,
-          الحالة: "حاضر",
-          "وقت الحضور": "09:00",
-          "وقت الانصراف": "16:00",
-          "ساعات العمل": 7,
-          "ساعات إضافية": 0,
-          ملاحظات: "",
-        });
-      }
-
-      // Create Excel workbook
-      const wb = new ExcelJS.Workbook();
-      addJsonSheet(
-        wb,
-        templateData,
-        "حضور الموظف",
-        [12, 10, 10, 25, 10, 12, 12, 12, 12, 25],
-      );
-
-      // Add instructions sheet
-      const instructionsData = [
-        { التعليمات: "تعليمات ملء قالب الحضور" },
-        { التعليمات: "-----------------------------" },
-        {
-          التعليمات:
-            "القالب يحتوي افتراضياً على: حاضر، 09:00 حضور، 16:00 انصراف، 7 ساعات عمل",
-        },
-        { التعليمات: "عدّل فقط الأيام التي تختلف عن الحالة الافتراضية" },
-        { التعليمات: "-----------------------------" },
-        {
-          التعليمات:
-            "1. الحالة: أدخل أحد القيم التالية: حاضر، غائب، مغادر، إجازة",
-        },
-        { التعليمات: "2. وقت الحضور: أدخل الوقت بصيغة HH:MM (مثال: 08:00)" },
-        { التعليمات: "3. وقت الانصراف: أدخل الوقت بصيغة HH:MM (مثال: 17:00)" },
-        { التعليمات: "4. ساعات العمل: عدد ساعات العمل الفعلية (رقم)" },
-        { التعليمات: "5. ساعات إضافية: عدد ساعات العمل الإضافي (رقم)" },
-        { التعليمات: "6. لا تغير رقم الموظف أو التاريخ" },
-        { التعليمات: "7. بعد الانتهاء، ارفع الملف من زر الاستيراد" },
-      ];
-      addJsonSheet(wb, instructionsData, "تعليمات", [60]);
-
-      const buffer = Buffer.from(await wb.xlsx.writeBuffer());
-
-      res.setHeader(
-        "Content-Disposition",
-        `attachment; filename=attendance_template_${userId}_${month}.xlsx`,
-      );
-      res.setHeader(
-        "Content-Type",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      );
-      res.send(buffer);
-    } catch (error) {
-      console.error("Error generating attendance template:", error);
-      res.status(500).json({ message: "خطأ في إنشاء قالب الحضور" });
-    }
-  });
-
-  // استيراد بيانات الحضور من ملف Excel
-  app.post(
-    "/api/attendance/import",
-    requireAuth,
-    requirePermission("manage_attendance"),
-    upload.single("file"),
-    async (req, res) => {
-      try {
-        const userId = parseInt(req.body.userId);
-
-        if (!req.file) {
-          return res.status(400).json({ message: "يجب رفع ملف" });
-        }
-
-        if (!userId || isNaN(userId) || userId <= 0) {
-          return res.status(400).json({ message: "رقم الموظف غير صحيح" });
-        }
-
-        // Verify user exists
-        const targetUser = await storage.getUserById(userId);
-        if (!targetUser) {
-          return res.status(404).json({ message: "الموظف غير موجود" });
-        }
-
-        // Parse Excel file
-        const data = await parseExcelBuffer(req.file.buffer);
-
-        if (!data || data.length === 0) {
-          return res.status(400).json({ message: "الملف فارغ أو غير صحيح" });
-        }
-
-        // Process and validate each row
-        const entries = [];
-        const errors: string[] = [];
-        let rowNum = 1;
-
-        for (const row of data) {
-          rowNum++;
-          const dateStr = row["التاريخ"];
-          const status = row["الحالة"];
-          const checkIn = row["وقت الحضور"];
-          const checkOut = row["وقت الانصراف"];
-          const notes = row["ملاحظات"];
-          const fileUserId = row["رقم الموظف"];
-
-          // Skip rows without status
-          if (!status || String(status).trim() === "") {
-            continue;
-          }
-
-          // Validate that the user ID in the file matches the target user
-          if (fileUserId && parseInt(fileUserId) !== userId) {
-            errors.push(
-              `سطر ${rowNum}: رقم الموظف في الملف (${fileUserId}) لا يطابق الموظف المحدد (${userId})`,
-            );
-            continue;
-          }
-
-          // Validate date format
-          if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr))) {
-            errors.push(`سطر ${rowNum}: تاريخ غير صحيح: ${dateStr}`);
-            continue;
-          }
-
-          // Map status to valid values
-          const statusMap: { [key: string]: string } = {
-            حاضر: "حاضر",
-            غائب: "غائب",
-            مغادر: "مغادر",
-            إجازة: "إجازة",
-            اجازة: "إجازة",
-          };
-
-          const mappedStatus = statusMap[String(status).trim()];
-          if (!mappedStatus) {
-            errors.push(
-              `سطر ${rowNum}: حالة غير صحيحة: ${status} (المسموح: حاضر، غائب، مغادر، إجازة)`,
-            );
-            continue;
-          }
-
-          // Format and validate times
-          let formattedCheckIn = null;
-          let formattedCheckOut = null;
-          let hasTimeError = false;
-
-          if (checkIn && String(checkIn).trim() !== "") {
-            const timeMatch = String(checkIn).match(/^(\d{1,2}):(\d{2})$/);
-            if (timeMatch) {
-              const hours = parseInt(timeMatch[1]);
-              const minutes = parseInt(timeMatch[2]);
-              if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
-                formattedCheckIn = `${dateStr}T${timeMatch[1].padStart(2, "0")}:${timeMatch[2]}:00`;
-              } else {
-                errors.push(
-                  `سطر ${rowNum}: وقت حضور غير صالح: ${checkIn} (الساعة 0-23، الدقائق 0-59)`,
-                );
-                hasTimeError = true;
-              }
-            } else {
-              errors.push(
-                `سطر ${rowNum}: صيغة وقت الحضور غير صحيحة: ${checkIn} (المتوقع: HH:MM مثال 08:00)`,
-              );
-              hasTimeError = true;
-            }
-          }
-
-          if (checkOut && String(checkOut).trim() !== "") {
-            const timeMatch = String(checkOut).match(/^(\d{1,2}):(\d{2})$/);
-            if (timeMatch) {
-              const hours = parseInt(timeMatch[1]);
-              const minutes = parseInt(timeMatch[2]);
-              if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
-                formattedCheckOut = `${dateStr}T${timeMatch[1].padStart(2, "0")}:${timeMatch[2]}:00`;
-              } else {
-                errors.push(
-                  `سطر ${rowNum}: وقت انصراف غير صالح: ${checkOut} (الساعة 0-23، الدقائق 0-59)`,
-                );
-                hasTimeError = true;
-              }
-            } else {
-              errors.push(
-                `سطر ${rowNum}: صيغة وقت الانصراف غير صحيحة: ${checkOut} (المتوقع: HH:MM مثال 17:00)`,
-              );
-              hasTimeError = true;
-            }
-          }
-
-          // Skip rows with time validation errors
-          if (hasTimeError) {
-            continue;
-          }
-
-          // Parse work hours and overtime
-          const workHours = row["ساعات العمل"];
-          const overtimeHours = row["ساعات إضافية"];
-
-          let parsedWorkHours = null;
-          let parsedOvertimeHours = null;
-
-          if (
-            workHours !== undefined &&
-            workHours !== "" &&
-            workHours !== null
-          ) {
-            const num = parseFloat(String(workHours));
-            if (!isNaN(num) && num >= 0) {
-              parsedWorkHours = num;
-            }
-          }
-
-          if (
-            overtimeHours !== undefined &&
-            overtimeHours !== "" &&
-            overtimeHours !== null
-          ) {
-            const num = parseFloat(String(overtimeHours));
-            if (!isNaN(num) && num >= 0) {
-              parsedOvertimeHours = num;
-            }
-          }
-
-          entries.push({
-            user_id: userId,
-            date: dateStr,
-            status: mappedStatus,
-            check_in_time: formattedCheckIn,
-            check_out_time: formattedCheckOut,
-            work_hours: parsedWorkHours,
-            overtime_hours: parsedOvertimeHours,
-            notes: notes || "",
-          });
-        }
-
-        if (entries.length === 0) {
-          return res.status(400).json({
-            message: "لم يتم العثور على بيانات صالحة للاستيراد",
-            errors,
-          });
-        }
-
-        // Save attendance data
-        const results = await storage.upsertManualAttendance(entries);
-
-        res.json({
-          success: true,
-          message: `تم استيراد ${results.length} سجل حضور بنجاح`,
-          importedCount: results.length,
-          errors: errors.length > 0 ? errors : undefined,
-        });
-      } catch (error) {
-        console.error("Error importing attendance:", error);
-        res.status(500).json({ message: "خطأ في استيراد بيانات الحضور" });
-      }
-    },
-  );
-
-  // تقرير حضور موظف احترافي مع بيانات المصنع
-  app.get("/api/attendance/report/:userId", requireAuth, async (req, res) => {
-    try {
-      const userId = parseInt(req.params.userId);
-      const startDate = req.query.startDate as string;
-      const endDate = req.query.endDate as string;
-
-      if (isNaN(userId) || userId <= 0) {
-        return res.status(400).json({ message: "رقم الموظف غير صحيح" });
-      }
-
-      if (!startDate || !endDate) {
-        return res
-          .status(400)
-          .json({ message: "يجب تحديد تاريخ البداية والنهاية" });
-      }
-
-      // Get user info
-      const user = await storage.getUserById(userId);
-      if (!user) {
-        return res.status(404).json({ message: "الموظف غير موجود" });
-      }
-
-      // Get attendance records for the period
-      const attendanceRecords = await db
-        .select()
-        .from(attendance)
-        .where(
-          and(
-            eq(attendance.user_id, userId),
-            gte(attendance.date, startDate),
-            lte(attendance.date, endDate),
-          ),
-        )
-        .orderBy(attendance.date);
-
-      // Calculate summary statistics
-      let totalWorkHours = 0;
-      let totalOvertimeHours = 0;
-      let presentDays = 0;
-      let absentDays = 0;
-      let leaveDays = 0;
-      let earlyLeaveDays = 0;
-
-      for (const record of attendanceRecords) {
-        if (record.work_hours) totalWorkHours += Number(record.work_hours);
-        if (record.overtime_hours)
-          totalOvertimeHours += Number(record.overtime_hours);
-
-        switch (record.status) {
-          case "حاضر":
-            presentDays++;
-            break;
-          case "غائب":
-            absentDays++;
-            break;
-          case "إجازة":
-            leaveDays++;
-            break;
-          case "مغادر":
-            earlyLeaveDays++;
-            break;
-        }
-      }
-
-      // Factory info (can be customized from settings)
-      const factoryInfo = {
-        name: "مصنع الأكياس البلاستيكية",
-        address: "المنطقة الصناعية",
-        phone: "+966 XX XXX XXXX",
-        email: "info@factory.com",
-        logo: null,
-      };
-
-      res.json({
-        success: true,
-        report: {
-          factoryInfo,
-          employee: {
-            id: user.id,
-            name: user.display_name_ar || user.display_name || user.username,
-            employeeNumber: `EMP-${user.id}`,
-            department: "غير محدد",
-            position: "غير محدد",
-          },
-          period: {
-            startDate,
-            endDate,
-            totalDays: attendanceRecords.length,
-          },
-          summary: {
-            totalWorkHours: Math.round(totalWorkHours * 10) / 10,
-            totalOvertimeHours: Math.round(totalOvertimeHours * 10) / 10,
-            presentDays,
-            absentDays,
-            leaveDays,
-            earlyLeaveDays,
-            attendanceRate:
-              attendanceRecords.length > 0
-                ? Math.round((presentDays / attendanceRecords.length) * 100)
-                : 0,
-          },
-          records: attendanceRecords.map((r) => ({
-            date: r.date,
-            dayName: new Date(r.date + "T12:00:00").toLocaleDateString(
-              "en-US",
-              { weekday: "long" },
-            ),
-            status: r.status,
-            checkIn: r.check_in_time
-              ? new Date(r.check_in_time).toLocaleTimeString("en-US", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
-              : null,
-            checkOut: r.check_out_time
-              ? new Date(r.check_out_time).toLocaleTimeString("en-US", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
-              : null,
-            workHours: r.work_hours,
-            overtimeHours: r.overtime_hours,
-            notes: r.notes,
-          })),
-          generatedAt: new Date().toISOString(),
-        },
-      });
-    } catch (error) {
-      console.error("Error generating attendance report:", error);
-      res.status(500).json({ message: "خطأ في إنشاء تقرير الحضور" });
-    }
-  });
-
-  // تصدير تقرير حضور موظف كملف Excel احترافي
-  app.get(
-    "/api/attendance/report/:userId/export",
-    requireAuth,
-    async (req, res) => {
-      try {
-        const userId = parseInt(req.params.userId);
-        const startDate = req.query.startDate as string;
-        const endDate = req.query.endDate as string;
-
-        if (isNaN(userId) || userId <= 0) {
-          return res.status(400).json({ message: "رقم الموظف غير صحيح" });
-        }
-
-        if (!startDate || !endDate) {
-          return res
-            .status(400)
-            .json({ message: "يجب تحديد تاريخ البداية والنهاية" });
-        }
-
-        // Get user info
-        const user = await storage.getUserById(userId);
-        if (!user) {
-          return res.status(404).json({ message: "الموظف غير موجود" });
-        }
-
-        // Get attendance records
-        const attendanceRecords = await db
-          .select()
-          .from(attendance)
-          .where(
-            and(
-              eq(attendance.user_id, userId),
-              gte(attendance.date, startDate),
-              lte(attendance.date, endDate),
-            ),
-          )
-          .orderBy(attendance.date);
-
-        // Calculate summary
-        let totalWorkHours = 0;
-        let totalOvertimeHours = 0;
-        let presentDays = 0;
-        let absentDays = 0;
-        let leaveDays = 0;
-
-        for (const record of attendanceRecords) {
-          if (record.work_hours) totalWorkHours += Number(record.work_hours);
-          if (record.overtime_hours)
-            totalOvertimeHours += Number(record.overtime_hours);
-          if (record.status === "حاضر") presentDays++;
-          if (record.status === "غائب") absentDays++;
-          if (record.status === "إجازة") leaveDays++;
-        }
-
-        // Create workbook
-        const wb = new ExcelJS.Workbook();
-
-        // Header sheet with factory and employee info
-        const headerData = [
-          { "": "مصنع الأكياس البلاستيكية" },
-          { "": "تقرير حضور موظف" },
-          { "": "-----------------------------" },
-          {
-            "": `اسم الموظف: ${user.display_name_ar || user.display_name || user.username}`,
-          },
-          { "": `رقم الموظف: EMP-${user.id}` },
-          { "": `الفترة: من ${startDate} إلى ${endDate}` },
-          { "": `تاريخ التقرير: ${new Date().toLocaleDateString("en-US")}` },
-          { "": "-----------------------------" },
-          { "": `إجمالي أيام الحضور: ${presentDays}` },
-          { "": `إجمالي أيام الغياب: ${absentDays}` },
-          { "": `إجمالي أيام الإجازة: ${leaveDays}` },
-          { "": `إجمالي ساعات العمل: ${totalWorkHours.toFixed(1)}` },
-          { "": `إجمالي الساعات الإضافية: ${totalOvertimeHours.toFixed(1)}` },
-          {
-            "": `نسبة الحضور: ${attendanceRecords.length > 0 ? Math.round((presentDays / attendanceRecords.length) * 100) : 0}%`,
-          },
-        ];
-        addJsonSheet(wb, headerData, "ملخص التقرير", [50]);
-
-        // Attendance details sheet
-        const detailsData = attendanceRecords.map((r) => ({
-          التاريخ: r.date,
-          اليوم: new Date(r.date).toLocaleDateString("en-US", {
-            weekday: "long",
-          }),
-          الحالة: r.status,
-          "وقت الحضور": r.check_in_time
-            ? new Date(r.check_in_time).toLocaleTimeString("en-US", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })
-            : "-",
-          "وقت الانصراف": r.check_out_time
-            ? new Date(r.check_out_time).toLocaleTimeString("en-US", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })
-            : "-",
-          "ساعات العمل": r.work_hours || 0,
-          "ساعات إضافية": r.overtime_hours || 0,
-          ملاحظات: r.notes || "",
-        }));
-        addJsonSheet(
-          wb,
-          detailsData,
-          "تفاصيل الحضور",
-          [12, 10, 10, 12, 12, 12, 12, 25],
-        );
-
-        const buffer = Buffer.from(await wb.xlsx.writeBuffer());
-
-        const fileName = `attendance_report_${user.username}_${startDate}_${endDate}.xlsx`;
-        res.setHeader(
-          "Content-Disposition",
-          `attachment; filename=${fileName}`,
-        );
-        res.setHeader(
-          "Content-Type",
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        );
-        res.send(buffer);
-      } catch (error) {
-        console.error("Error exporting attendance report:", error);
-        res.status(500).json({ message: "خطأ في تصدير تقرير الحضور" });
-      }
-    },
-  );
-
   // تسجيل الحضور مع تحقق الموقع الجغرافي المحسّن
   app.post(
     [
@@ -11754,6 +11159,25 @@ Input: ${text}`;
     async (req, res) => {
       try {
         const isDevMode = process.env.NODE_ENV === "development";
+
+        // =============== ربط الهوية: منع تسجيل حضور باسم مستخدم آخر ===============
+        // التسجيل الذاتي مربوط بالمستخدم المسجّل دخوله. يُسمح فقط لمن يملك
+        // صلاحية إدارة الحضور بتسجيل الحضور نيابة عن موظف آخر.
+        const authUserId = getAuthUserId(req);
+        const canManageAttendance = hasPermission(
+          (req as any).user?.permissions || [],
+          "manage_attendance",
+        );
+        if (!canManageAttendance) {
+          if (authUserId == null) {
+            return res
+              .status(401)
+              .json({ message: "غير مصرح: يلزم تسجيل الدخول" });
+          }
+          req.body.user_id = authUserId;
+        } else if (req.body.user_id == null) {
+          req.body.user_id = authUserId;
+        }
 
         // =============== إعدادات الحماية ===============
         const MAX_ACCURACY_METERS = 500; // الحد الأقصى للدقة المسموحة بالأمتار (مرن للمباني الداخلية)
@@ -12082,73 +11506,6 @@ Input: ${text}`;
     },
   );
 
-  // ============ Attendance Reports and Statistics API ============
-
-  // Get attendance summary for a user (monthly/weekly)
-  app.get("/api/attendance/summary/:userId", requireAuth, async (req, res) => {
-    try {
-      const userId = parseInt(req.params.userId);
-      if (isNaN(userId) || userId <= 0) {
-        return res.status(400).json({ message: "معرف المستخدم غير صحيح" });
-      }
-      const { startDate, endDate, period = "month" } = req.query;
-
-      let start: Date, end: Date;
-      const now = new Date();
-
-      if (startDate && endDate) {
-        start = new Date(startDate as string);
-        end = new Date(endDate as string);
-      } else if (period === "week") {
-        start = new Date(now);
-        start.setDate(now.getDate() - now.getDay());
-        end = new Date(now);
-      } else {
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
-        end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      }
-
-      const summary = await storage.getAttendanceSummary(userId, start, end);
-      res.json({ data: summary, startDate: start, endDate: end });
-    } catch (error) {
-      console.error("Error fetching attendance summary:", error);
-      res.status(500).json({ message: "خطأ في جلب ملخص الحضور" });
-    }
-  });
-
-  // Get attendance report for all employees
-  app.get(
-    "/api/attendance/report",
-    requireAuth,
-    requirePermission("view_attendance_reports"),
-    async (req, res) => {
-      try {
-        const { startDate, endDate, sectionId, roleId } = req.query;
-
-        let start: Date, end: Date;
-        const now = new Date();
-
-        if (startDate && endDate) {
-          start = new Date(startDate as string);
-          end = new Date(endDate as string);
-        } else {
-          start = new Date(now.getFullYear(), now.getMonth(), 1);
-          end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        }
-
-        const report = await storage.getAttendanceReport(start, end, {
-          sectionId: sectionId ? parseInt(sectionId as string) : undefined,
-          roleId: roleId ? parseInt(roleId as string) : undefined,
-        });
-
-        res.json({ data: report, startDate: start, endDate: end });
-      } catch (error) {
-        console.error("Error fetching attendance report:", error);
-        res.status(500).json({ message: "خطأ في جلب تقرير الحضور" });
-      }
-    },
-  );
-
   // Calculate and update work hours for an attendance record
   app.put(
     "/api/attendance/:id/calculate-hours",
@@ -12233,269 +11590,6 @@ Input: ${text}`;
       } catch (error) {
         console.error("Error fetching daily attendance stats:", error);
         res.status(500).json({ message: "خطأ في جلب إحصائيات الحضور اليومية" });
-      }
-    },
-  );
-
-  // Monthly attendance editor - Get employee monthly attendance data
-  app.get(
-    "/api/attendance/monthly-editor/:userId",
-    requireAuth,
-    requirePermission("manage_attendance"),
-    async (req, res) => {
-      try {
-        const userId = parseInt(req.params.userId);
-        if (isNaN(userId) || userId <= 0) {
-          return res.status(400).json({ message: "معرف الموظف غير صحيح" });
-        }
-        const startDate = req.query.startDate as string;
-        const endDate = req.query.endDate as string;
-
-        if (!startDate || !endDate) {
-          return res
-            .status(400)
-            .json({ message: "تاريخ البداية والنهاية مطلوبان" });
-        }
-
-        // Get employee info
-        const user = await storage.getUser(userId);
-        if (!user) {
-          return res.status(404).json({ message: "الموظف غير موجود" });
-        }
-
-        // Get user's role and section
-        const allRoles = await getCachedRoles();
-        const allSections = await storage.getSections();
-        const role = user.role_id
-          ? allRoles.find((r) => r.id === user.role_id)
-          : null;
-        const sectionKey = user.section_id
-          ? `SEC${String(user.section_id).padStart(2, "0")}`
-          : null;
-        const section = sectionKey
-          ? allSections.find((s) => s.id === sectionKey)
-          : null;
-
-        // Generate all dates in the range
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        const dates: string[] = [];
-        const dayNames = [
-          "الأحد",
-          "الاثنين",
-          "الثلاثاء",
-          "الأربعاء",
-          "الخميس",
-          "الجمعة",
-          "السبت",
-        ];
-
-        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-          dates.push(d.toISOString().split("T")[0]);
-        }
-
-        // Get existing attendance records for this user in the date range
-        const attendanceRecords = await storage.getAttendanceByUserAndDateRange(
-          userId,
-          startDate,
-          endDate,
-        );
-
-        // Create a map of date -> attendance record
-        const recordMap = new Map<string, any>();
-        for (const record of attendanceRecords) {
-          const dateStr = new Date(record.date).toISOString().split("T")[0];
-          recordMap.set(dateStr, record);
-        }
-
-        // Build the records array with all dates
-        const records = dates.map((dateStr) => {
-          const record = recordMap.get(dateStr);
-          const dayOfWeek = new Date(dateStr).getDay();
-
-          return {
-            date: dateStr,
-            dayName: dayNames[dayOfWeek],
-            status: record?.status || null,
-            check_in_time: record?.check_in_time
-              ? new Date(record.check_in_time).toLocaleTimeString("en-US", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  hour12: false,
-                })
-              : null,
-            check_out_time: record?.check_out_time
-              ? new Date(record.check_out_time).toLocaleTimeString("en-US", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  hour12: false,
-                })
-              : null,
-            work_hours: record?.work_hours || null,
-            overtime_hours: record?.overtime_hours || null,
-            notes: record?.notes || null,
-            attendance_id: record?.id || null,
-          };
-        });
-
-        // Calculate summary
-        const summary = {
-          presentDays: records.filter(
-            (r) => r.status === "حاضر" || r.status === "متأخر",
-          ).length,
-          absentDays: records.filter((r) => r.status === "غائب").length,
-          leaveDays: records.filter((r) => r.status === "إجازة").length,
-          lateDays: records.filter((r) => r.status === "متأخر").length,
-          totalWorkHours: records.reduce(
-            (sum, r) => sum + (r.work_hours || 0),
-            0,
-          ),
-          totalOvertimeHours: records.reduce(
-            (sum, r) => sum + (r.overtime_hours || 0),
-            0,
-          ),
-        };
-
-        res.json({
-          success: true,
-          data: {
-            employee: {
-              id: user.id,
-              name: user.display_name_ar || user.display_name || user.username,
-              employeeNumber: user.username,
-              department: section?.name_ar || section?.name || "-",
-              position: role?.name_ar || role?.name || "-",
-            },
-            records,
-            summary,
-          },
-        });
-      } catch (error) {
-        console.error("Error fetching monthly attendance data:", error);
-        res.status(500).json({ message: "خطأ في جلب بيانات الحضور الشهري" });
-      }
-    },
-  );
-
-  // Monthly attendance editor - Save modified records
-  app.post(
-    "/api/attendance/monthly-editor/save",
-    requireAuth,
-    requirePermission("manage_attendance"),
-    async (req, res) => {
-      try {
-        const { userId, records } = req.body;
-
-        if (!userId || !records || !Array.isArray(records)) {
-          return res.status(400).json({ message: "بيانات غير صحيحة" });
-        }
-
-        let savedCount = 0;
-
-        if (records.length === 0) {
-          return res.json({
-            success: true,
-            message: "لا توجد سجلات لحفظها",
-            savedCount: 0,
-          });
-        }
-
-        const seenDates = new Set<string>();
-        const dedupedRecords = [];
-        for (const record of records) {
-          const dateStr =
-            typeof record.date === "string"
-              ? record.date
-              : new Date(record.date).toISOString().split("T")[0];
-          if (!seenDates.has(dateStr)) {
-            seenDates.add(dateStr);
-            dedupedRecords.push(record);
-          }
-        }
-
-        const allDates = dedupedRecords.map((r: any) =>
-          typeof r.date === "string"
-            ? r.date
-            : new Date(r.date).toISOString().split("T")[0],
-        );
-        const minDate = allDates.reduce((a: string, b: string) =>
-          a < b ? a : b,
-        );
-        const maxDate = allDates.reduce((a: string, b: string) =>
-          a > b ? a : b,
-        );
-        const existingRecords = await storage.getAttendanceByUserAndDateRange(
-          userId,
-          minDate,
-          maxDate,
-        );
-        const existingByDate = new Map<string, any>();
-        for (const rec of existingRecords) {
-          const d =
-            typeof rec.date === "string"
-              ? rec.date
-              : new Date(rec.date).toISOString().split("T")[0];
-          existingByDate.set(d, rec);
-        }
-
-        for (const record of dedupedRecords) {
-          const { date, status, check_in_time, check_out_time, notes } = record;
-          const dateStr =
-            typeof date === "string"
-              ? date
-              : new Date(date).toISOString().split("T")[0];
-          const existing = existingByDate.get(dateStr);
-
-          let checkInTime = null;
-          let checkOutTime = null;
-
-          if (check_in_time) {
-            const [hours, minutes] = check_in_time.split(":").map(Number);
-            checkInTime = new Date(date);
-            checkInTime.setHours(hours, minutes, 0, 0);
-          }
-
-          if (check_out_time) {
-            const [hours, minutes] = check_out_time.split(":").map(Number);
-            checkOutTime = new Date(date);
-            checkOutTime.setHours(hours, minutes, 0, 0);
-          }
-
-          let workHours = null;
-          if (checkInTime && checkOutTime) {
-            workHours =
-              (checkOutTime.getTime() - checkInTime.getTime()) /
-              (1000 * 60 * 60);
-            if (workHours < 0) workHours = 0;
-          }
-
-          const attendanceData = {
-            user_id: userId,
-            date: dateStr,
-            status: status || "غائب",
-            check_in_time: checkInTime,
-            check_out_time: checkOutTime,
-            work_hours: workHours,
-            notes: notes || null,
-          };
-
-          if (existing) {
-            await storage.updateAttendance(existing.id, attendanceData);
-          } else {
-            await storage.createAttendance(attendanceData);
-          }
-
-          savedCount++;
-        }
-
-        res.json({
-          success: true,
-          message: `تم حفظ ${savedCount} سجل بنجاح`,
-          savedCount,
-        });
-      } catch (error) {
-        console.error("Error saving monthly attendance data:", error);
-        res.status(500).json({ message: "خطأ في حفظ بيانات الحضور" });
       }
     },
   );
@@ -13017,6 +12111,280 @@ Input: ${text}`;
       } catch (error) {
         console.error("Error recording break:", error);
         res.status(500).json({ message: "خطأ في تسجيل الاستراحة" });
+      }
+    },
+  );
+
+  // ============ HR Module API (Phase 1) ============
+
+  // قائمة الموظفين (دليل الموارد البشرية) مع الوردية الحالية
+  app.get(
+    "/api/hr/employees",
+    requireAuth,
+    requirePermission("view_hr", "manage_hr", "view_attendance"),
+    async (req, res) => {
+      try {
+        const employees = await storage.getHREmployees();
+        res.json({ data: employees });
+      } catch (error) {
+        console.error("Error fetching HR employees:", error);
+        res.status(500).json({ message: "خطأ في جلب قائمة الموظفين" });
+      }
+    },
+  );
+
+  // ملف الموظف الكامل (المرحلة الأولى)
+  app.get(
+    "/api/hr/employees/:userId/file",
+    requireAuth,
+    requirePermission("view_hr", "manage_hr", "view_attendance"),
+    async (req, res) => {
+      try {
+        const userId = parseInt(req.params.userId, 10);
+        if (isNaN(userId) || userId <= 0) {
+          return res.status(400).json({ message: "معرف الموظف غير صحيح" });
+        }
+        const file = await storage.getEmployeeFile(userId);
+        if (!file) {
+          return res.status(404).json({ message: "الموظف غير موجود" });
+        }
+        res.json({ data: file });
+      } catch (error) {
+        console.error("Error fetching employee file:", error);
+        res.status(500).json({ message: "خطأ في جلب ملف الموظف" });
+      }
+    },
+  );
+
+  // جدول الورديات الشهري لكل الموظفين
+  app.get(
+    "/api/hr/shifts",
+    requireAuth,
+    requirePermission("view_hr", "manage_hr", "view_attendance"),
+    async (req, res) => {
+      try {
+        const fnow = factoryNowParts();
+        const year = parseInt(
+          (req.query.year as string) || String(fnow.year),
+          10,
+        );
+        const month = parseInt(
+          (req.query.month as string) || String(fnow.month),
+          10,
+        );
+        if (
+          isNaN(year) ||
+          isNaN(month) ||
+          month < 1 ||
+          month > 12 ||
+          year < 2000 ||
+          year > 2100
+        ) {
+          return res.status(400).json({ message: "الشهر أو السنة غير صحيحة" });
+        }
+        const assignments = await storage.getShiftAssignmentsByPeriod(
+          year,
+          month,
+        );
+        res.json({ data: assignments, year, month });
+      } catch (error) {
+        console.error("Error fetching shift roster:", error);
+        res.status(500).json({ message: "خطأ في جلب جدول الورديات" });
+      }
+    },
+  );
+
+  // حفظ/تحديث جدول الورديات الشهري (دفعة واحدة)
+  app.post(
+    "/api/hr/shifts",
+    requireAuth,
+    requirePermission("manage_attendance", "manage_hr"),
+    async (req, res) => {
+      try {
+        const body = req.body ?? {};
+        const year = parseInt(String(body.year), 10);
+        const month = parseInt(String(body.month), 10);
+        const rawEntries = Array.isArray(body.assignments)
+          ? body.assignments
+          : [];
+        if (
+          isNaN(year) ||
+          isNaN(month) ||
+          month < 1 ||
+          month > 12 ||
+          year < 2000 ||
+          year > 2100
+        ) {
+          return res.status(400).json({ message: "الشهر أو السنة غير صحيحة" });
+        }
+        const entries = [];
+        const deleteUserIds: number[] = [];
+        for (const e of rawEntries) {
+          const userId = parseInt(String(e.user_id), 10);
+          if (isNaN(userId) || userId <= 0) {
+            return res
+              .status(400)
+              .json({ message: "معرف الموظف غير صحيح في الجدول" });
+          }
+          // "none" / فارغ / null يعني إلغاء جدولة الموظف لهذا الشهر (حذف).
+          if (e.shift === "none" || e.shift == null || e.shift === "") {
+            deleteUserIds.push(userId);
+            continue;
+          }
+          if (!isShiftType(e.shift)) {
+            return res
+              .status(400)
+              .json({ message: "نوع الوردية غير صحيح (نهارية/ليلية فقط)" });
+          }
+          const parsed = insertShiftAssignmentSchema.safeParse({
+            user_id: userId,
+            year,
+            month,
+            shift: e.shift,
+            notes: e.notes ?? null,
+          });
+          if (!parsed.success) {
+            return res.status(400).json({
+              message: "بيانات الوردية غير صحيحة",
+              errors: parsed.error.flatten().fieldErrors,
+            });
+          }
+          entries.push(parsed.data);
+        }
+        const createdBy = getAuthUserId(req) ?? null;
+        const saved = await storage.saveShiftRoster(
+          year,
+          month,
+          entries,
+          deleteUserIds,
+          createdBy,
+        );
+        res.json({ data: saved, year, month });
+      } catch (error) {
+        console.error("Error saving shift roster:", error);
+        res.status(500).json({ message: "خطأ في حفظ جدول الورديات" });
+      }
+    },
+  );
+
+  // ملخص الحضور المحسوب لموظف خلال فترة (يومي + إجماليات)
+  app.get(
+    "/api/hr/attendance/summary/:userId",
+    requireAuth,
+    requirePermission("view_attendance", "view_attendance_reports", "manage_attendance", "view_hr", "manage_hr"),
+    async (req, res) => {
+      try {
+        const userId = parseInt(req.params.userId, 10);
+        if (isNaN(userId) || userId <= 0) {
+          return res.status(400).json({ message: "معرف الموظف غير صحيح" });
+        }
+        const { from, to } = req.query as { from?: string; to?: string };
+        if (!from || !to || !/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+          return res
+            .status(400)
+            .json({ message: "يرجى تحديد فترة صحيحة (من/إلى)" });
+        }
+        if (from > to) {
+          return res
+            .status(400)
+            .json({ message: "تاريخ البداية يجب أن يسبق تاريخ النهاية" });
+        }
+        const result = await storage.getComputedAttendance(userId, from, to);
+        res.json({ data: result, from, to });
+      } catch (error) {
+        console.error("Error computing attendance summary:", error);
+        res.status(500).json({ message: "خطأ في حساب ملخص الحضور" });
+      }
+    },
+  );
+
+  // تقرير الحضور لكل الموظفين خلال فترة
+  app.get(
+    "/api/hr/attendance/report",
+    requireAuth,
+    requirePermission("view_attendance_reports", "manage_attendance", "view_hr", "manage_hr"),
+    async (req, res) => {
+      try {
+        const { from, to, sectionId } = req.query as {
+          from?: string;
+          to?: string;
+          sectionId?: string;
+        };
+        if (!from || !to || !/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+          return res
+            .status(400)
+            .json({ message: "يرجى تحديد فترة صحيحة (من/إلى)" });
+        }
+        if (from > to) {
+          return res
+            .status(400)
+            .json({ message: "تاريخ البداية يجب أن يسبق تاريخ النهاية" });
+        }
+        const secId = sectionId ? parseInt(sectionId, 10) : undefined;
+        const report = await storage.getAttendanceReportByRange(
+          from,
+          to,
+          secId && !isNaN(secId) ? secId : undefined,
+        );
+        res.json({ data: report, from, to });
+      } catch (error) {
+        console.error("Error generating attendance report:", error);
+        res.status(500).json({ message: "خطأ في إعداد تقرير الحضور" });
+      }
+    },
+  );
+
+  // تصدير تقرير الحضور إلى Excel
+  app.get(
+    "/api/hr/attendance/report/export",
+    requireAuth,
+    requirePermission("view_attendance_reports", "manage_attendance", "view_hr", "manage_hr"),
+    async (req, res) => {
+      try {
+        const { from, to, sectionId } = req.query as {
+          from?: string;
+          to?: string;
+          sectionId?: string;
+        };
+        if (!from || !to || !/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+          return res
+            .status(400)
+            .json({ message: "يرجى تحديد فترة صحيحة (من/إلى)" });
+        }
+        const secId = sectionId ? parseInt(sectionId, 10) : undefined;
+        const report = await storage.getAttendanceReportByRange(
+          from,
+          to,
+          secId && !isNaN(secId) ? secId : undefined,
+        );
+        const rows = report.map((r: any) => ({
+          "الموظف": r.employee.display_name_ar || r.employee.display_name || r.employee.username,
+          "القسم": r.employee.section_name_ar || r.employee.section_name || "",
+          "أيام مجدولة": r.totals.scheduledDays,
+          "أيام حضور": r.totals.presentDays,
+          "أيام غياب": r.totals.absentDays,
+          "أيام غير مكتملة": r.totals.incompleteDays,
+          "دقائق تأخير": r.totals.totalLateMinutes,
+          "دقائق مغادرة مبكرة": r.totals.totalEarlyLeaveMinutes,
+          "دقائق انسحاب": r.totals.totalWithdrawnMinutes,
+          "ساعات العمل": r.totals.totalWorkedHours,
+          "ساعات إضافية": r.totals.totalOvertimeHours,
+        }));
+        const workbook = new ExcelJS.Workbook();
+        addJsonSheet(workbook, rows, "تقرير الحضور");
+        const buffer = await workbook.xlsx.writeBuffer();
+        res.setHeader(
+          "Content-Type",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        );
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="attendance-report-${from}_${to}.xlsx"`,
+        );
+        res.send(Buffer.from(buffer));
+      } catch (error) {
+        console.error("Error exporting attendance report:", error);
+        res.status(500).json({ message: "خطأ في تصدير تقرير الحضور" });
       }
     },
   );
