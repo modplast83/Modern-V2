@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Plus, Trash2, Calculator } from "lucide-react";
+import { Plus, Trash2, Calculator, Pencil } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -62,6 +62,7 @@ function useHrPerms() {
   const { user } = useAuth();
   return {
     canAdd: userHasPermission(user, ["manage_hr", "add_hr"]),
+    canEdit: userHasPermission(user, ["manage_hr", "edit_hr"]),
     canDelete: userHasPermission(user, ["manage_hr", "delete_hr"]),
     canManage: userHasPermission(user, ["manage_hr"]),
   };
@@ -209,16 +210,36 @@ export function RewardsTab({ userId }: { userId: number }) {
   const { isRTL } = useLanguage();
   const L: L = (ar, en) => (isRTL ? ar : en);
   const { toast } = useToast();
-  const { canAdd, canDelete } = useHrPerms();
+  const { canAdd, canEdit, canDelete } = useHrPerms();
   const invalidate = useInvalidate(userId, "rewards");
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const emptyForm = {
     reward_type: "bonus",
     amount: "",
     reason: "",
     date: today(),
     status: "approved",
-  });
+  };
+  const [form, setForm] = useState(emptyForm);
+
+  const resetForm = () => {
+    setShowForm(false);
+    setEditingId(null);
+    setForm(emptyForm);
+  };
+
+  const startEdit = (r: any) => {
+    setEditingId(r.id);
+    setForm({
+      reward_type: r.reward_type ?? "bonus",
+      amount: r.amount != null ? String(r.amount) : "",
+      reason: r.reason ?? "",
+      date: r.date ?? today(),
+      status: r.status ?? "approved",
+    });
+    setShowForm(true);
+  };
 
   const { data, isLoading } = useQuery<{ data: any[] }>({
     queryKey: ["/api/hr/employees", userId, "rewards"],
@@ -235,15 +256,29 @@ export function RewardsTab({ userId }: { userId: number }) {
     },
     onSuccess: () => {
       invalidate();
-      setShowForm(false);
-      setForm({
-        reward_type: "bonus",
-        amount: "",
-        reason: "",
-        date: today(),
-        status: "approved",
-      });
+      resetForm();
       toast({ title: L("تمت إضافة المكافأة", "Reward added") });
+    },
+    onError: (e: any) =>
+      toast({
+        variant: "destructive",
+        title: L("خطأ", "Error"),
+        description: e?.message || L("تعذر الحفظ", "Failed to save"),
+      }),
+  });
+
+  const updateMut = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest(`/api/hr/rewards/${editingId}`, {
+        method: "PUT",
+        body: JSON.stringify(form),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      invalidate();
+      resetForm();
+      toast({ title: L("تم تحديث المكافأة", "Reward updated") });
     },
     onError: (e: any) =>
       toast({
@@ -283,16 +318,18 @@ export function RewardsTab({ userId }: { userId: number }) {
           <Button
             size="sm"
             variant={showForm ? "outline" : "default"}
-            onClick={() => setShowForm((s) => !s)}
+            onClick={() => (showForm ? resetForm() : setShowForm(true))}
             data-testid="button-add-reward"
           >
             <Plus className="ml-1 h-4 w-4" />
-            {showForm ? L("إغلاق", "Close") : L("إضافة مكافأة", "Add reward")}
+            {showForm
+              ? L("إغلاق", "Close")
+              : L("إضافة مكافأة", "Add reward")}
           </Button>
         </div>
       )}
 
-      {canAdd && showForm && (
+      {(canAdd || canEdit) && showForm && (
         <div className="grid grid-cols-1 gap-3 rounded-md border p-4 sm:grid-cols-2 lg:grid-cols-3">
           <Field label={L("النوع", "Type")}>
             <Select
@@ -364,11 +401,15 @@ export function RewardsTab({ userId }: { userId: number }) {
           </div>
           <div className="flex items-end">
             <Button
-              onClick={() => createMut.mutate()}
-              disabled={createMut.isPending || !form.amount}
+              onClick={() =>
+                editingId ? updateMut.mutate() : createMut.mutate()
+              }
+              disabled={
+                createMut.isPending || updateMut.isPending || !form.amount
+              }
               data-testid="button-save-reward"
             >
-              {L("حفظ", "Save")}
+              {editingId ? L("تحديث", "Update") : L("حفظ", "Save")}
             </Button>
           </div>
         </div>
@@ -388,7 +429,7 @@ export function RewardsTab({ userId }: { userId: number }) {
                 <TableHead>{L("المبلغ", "Amount")}</TableHead>
                 <TableHead>{L("السبب", "Reason")}</TableHead>
                 <TableHead>{L("الحالة", "Status")}</TableHead>
-                {canDelete && <TableHead></TableHead>}
+                {(canEdit || canDelete) && <TableHead></TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -407,18 +448,33 @@ export function RewardsTab({ userId }: { userId: number }) {
                         ? L("قيد الاعتماد", "Pending")
                         : L("معتمدة", "Approved")}
                   </TableCell>
-                  {canDelete && (
+                  {(canEdit || canDelete) && (
                     <TableCell>
-                      <DeleteButton
-                        testId={`button-delete-reward-${r.id}`}
-                        label={L("حذف المكافأة", "Delete reward")}
-                        message={L(
-                          "هل أنت متأكد من حذف هذه المكافأة؟",
-                          "Are you sure you want to delete this reward?",
+                      <div className="flex items-center gap-1">
+                        {canEdit && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => startEdit(r)}
+                            data-testid={`button-edit-reward-${r.id}`}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                         )}
-                        isPending={deleteMut.isPending}
-                        onConfirm={() => deleteMut.mutate(r.id)}
-                      />
+                        {canDelete && (
+                          <DeleteButton
+                            testId={`button-delete-reward-${r.id}`}
+                            label={L("حذف المكافأة", "Delete reward")}
+                            message={L(
+                              "هل أنت متأكد من حذف هذه المكافأة؟",
+                              "Are you sure you want to delete this reward?",
+                            )}
+                            isPending={deleteMut.isPending}
+                            onConfirm={() => deleteMut.mutate(r.id)}
+                          />
+                        )}
+                      </div>
                     </TableCell>
                   )}
                 </TableRow>
@@ -436,16 +492,36 @@ export function CustodyTab({ userId }: { userId: number }) {
   const { isRTL } = useLanguage();
   const L: L = (ar, en) => (isRTL ? ar : en);
   const { toast } = useToast();
-  const { canAdd, canDelete } = useHrPerms();
+  const { canAdd, canEdit, canDelete } = useHrPerms();
   const invalidate = useInvalidate(userId, "custody");
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const emptyForm = {
     item_name: "",
     quantity: "1",
     handover_date: today(),
     status: "handed",
     notes: "",
-  });
+  };
+  const [form, setForm] = useState(emptyForm);
+
+  const resetForm = () => {
+    setShowForm(false);
+    setEditingId(null);
+    setForm(emptyForm);
+  };
+
+  const startEdit = (c: any) => {
+    setEditingId(c.id);
+    setForm({
+      item_name: c.item_name ?? "",
+      quantity: c.quantity != null ? String(c.quantity) : "1",
+      handover_date: c.handover_date ?? today(),
+      status: c.status ?? "handed",
+      notes: c.notes ?? "",
+    });
+    setShowForm(true);
+  };
 
   const { data, isLoading } = useQuery<{ data: any[] }>({
     queryKey: ["/api/hr/employees", userId, "custody"],
@@ -462,15 +538,29 @@ export function CustodyTab({ userId }: { userId: number }) {
     },
     onSuccess: () => {
       invalidate();
-      setShowForm(false);
-      setForm({
-        item_name: "",
-        quantity: "1",
-        handover_date: today(),
-        status: "handed",
-        notes: "",
-      });
+      resetForm();
       toast({ title: L("تمت إضافة العهدة", "Custody added") });
+    },
+    onError: (e: any) =>
+      toast({
+        variant: "destructive",
+        title: L("خطأ", "Error"),
+        description: e?.message,
+      }),
+  });
+
+  const updateMut = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest(`/api/hr/custody/${editingId}`, {
+        method: "PUT",
+        body: JSON.stringify(form),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      invalidate();
+      resetForm();
+      toast({ title: L("تم تحديث العهدة", "Custody updated") });
     },
     onError: (e: any) =>
       toast({
@@ -512,7 +602,7 @@ export function CustodyTab({ userId }: { userId: number }) {
           <Button
             size="sm"
             variant={showForm ? "outline" : "default"}
-            onClick={() => setShowForm((s) => !s)}
+            onClick={() => (showForm ? resetForm() : setShowForm(true))}
             data-testid="button-add-custody"
           >
             <Plus className="ml-1 h-4 w-4" />
@@ -521,7 +611,7 @@ export function CustodyTab({ userId }: { userId: number }) {
         </div>
       )}
 
-      {canAdd && showForm && (
+      {(canAdd || canEdit) && showForm && (
         <div className="grid grid-cols-1 gap-3 rounded-md border p-4 sm:grid-cols-2 lg:grid-cols-3">
           <Field label={L("اسم الصنف", "Item")}>
             <Input
@@ -579,11 +669,15 @@ export function CustodyTab({ userId }: { userId: number }) {
           </div>
           <div className="flex items-end">
             <Button
-              onClick={() => createMut.mutate()}
-              disabled={createMut.isPending || !form.item_name}
+              onClick={() =>
+                editingId ? updateMut.mutate() : createMut.mutate()
+              }
+              disabled={
+                createMut.isPending || updateMut.isPending || !form.item_name
+              }
               data-testid="button-save-custody"
             >
-              {L("حفظ", "Save")}
+              {editingId ? L("تحديث", "Update") : L("حفظ", "Save")}
             </Button>
           </div>
         </div>
@@ -603,7 +697,7 @@ export function CustodyTab({ userId }: { userId: number }) {
                 <TableHead>{L("تاريخ التسليم", "Handover")}</TableHead>
                 <TableHead>{L("الحالة", "Status")}</TableHead>
                 <TableHead>{L("ملاحظات", "Notes")}</TableHead>
-                {canDelete && <TableHead></TableHead>}
+                {(canEdit || canDelete) && <TableHead></TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -618,18 +712,33 @@ export function CustodyTab({ userId }: { userId: number }) {
                   <TableCell className="max-w-xs truncate">
                     {c.notes || "—"}
                   </TableCell>
-                  {canDelete && (
+                  {(canEdit || canDelete) && (
                     <TableCell>
-                      <DeleteButton
-                        testId={`button-delete-custody-${c.id}`}
-                        label={L("حذف العهدة", "Delete custody")}
-                        message={L(
-                          "هل أنت متأكد من حذف هذه العهدة؟",
-                          "Are you sure you want to delete this item?",
+                      <div className="flex items-center gap-1">
+                        {canEdit && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => startEdit(c)}
+                            data-testid={`button-edit-custody-${c.id}`}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                         )}
-                        isPending={deleteMut.isPending}
-                        onConfirm={() => deleteMut.mutate(c.id)}
-                      />
+                        {canDelete && (
+                          <DeleteButton
+                            testId={`button-delete-custody-${c.id}`}
+                            label={L("حذف العهدة", "Delete custody")}
+                            message={L(
+                              "هل أنت متأكد من حذف هذه العهدة؟",
+                              "Are you sure you want to delete this item?",
+                            )}
+                            isPending={deleteMut.isPending}
+                            onConfirm={() => deleteMut.mutate(c.id)}
+                          />
+                        )}
+                      </div>
                     </TableCell>
                   )}
                 </TableRow>
@@ -913,36 +1022,79 @@ export function TraitsTab({ userId }: { userId: number }) {
   const { isRTL } = useLanguage();
   const L: L = (ar, en) => (isRTL ? ar : en);
   const { toast } = useToast();
-  const { canAdd, canDelete } = useHrPerms();
+  const { canAdd, canEdit, canDelete } = useHrPerms();
   const invalidate = useInvalidate(userId, "traits");
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const emptyForm = {
     trait: "",
     category: "skill",
     rating: "",
     notes: "",
-  });
+  };
+  const [form, setForm] = useState(emptyForm);
+
+  const resetForm = () => {
+    setShowForm(false);
+    setEditingId(null);
+    setForm(emptyForm);
+  };
+
+  const startEdit = (t: any) => {
+    setEditingId(t.id);
+    setForm({
+      trait: t.trait ?? "",
+      category: t.category ?? "skill",
+      rating: t.rating != null ? String(t.rating) : "",
+      notes: t.notes ?? "",
+    });
+    setShowForm(true);
+  };
 
   const { data, isLoading } = useQuery<{ data: any[] }>({
     queryKey: ["/api/hr/employees", userId, "traits"],
   });
   const rows = data?.data ?? [];
 
+  const buildPayload = () => {
+    const payload: any = { ...form };
+    if (payload.rating === "") delete payload.rating;
+    return payload;
+  };
+
   const createMut = useMutation({
     mutationFn: async () => {
-      const payload: any = { ...form };
-      if (payload.rating === "") delete payload.rating;
       const res = await apiRequest(`/api/hr/employees/${userId}/traits`, {
         method: "POST",
-        body: JSON.stringify(payload),
+        body: JSON.stringify(buildPayload()),
       });
       return res.json();
     },
     onSuccess: () => {
       invalidate();
-      setShowForm(false);
-      setForm({ trait: "", category: "skill", rating: "", notes: "" });
+      resetForm();
       toast({ title: L("تمت إضافة السمة", "Trait added") });
+    },
+    onError: (e: any) =>
+      toast({
+        variant: "destructive",
+        title: L("خطأ", "Error"),
+        description: e?.message,
+      }),
+  });
+
+  const updateMut = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest(`/api/hr/traits/${editingId}`, {
+        method: "PUT",
+        body: JSON.stringify(buildPayload()),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      invalidate();
+      resetForm();
+      toast({ title: L("تم تحديث السمة", "Trait updated") });
     },
     onError: (e: any) =>
       toast({
@@ -986,7 +1138,7 @@ export function TraitsTab({ userId }: { userId: number }) {
           <Button
             size="sm"
             variant={showForm ? "outline" : "default"}
-            onClick={() => setShowForm((s) => !s)}
+            onClick={() => (showForm ? resetForm() : setShowForm(true))}
             data-testid="button-add-trait"
           >
             <Plus className="ml-1 h-4 w-4" />
@@ -995,7 +1147,7 @@ export function TraitsTab({ userId }: { userId: number }) {
         </div>
       )}
 
-      {canAdd && showForm && (
+      {(canAdd || canEdit) && showForm && (
         <div className="grid grid-cols-1 gap-3 rounded-md border p-4 sm:grid-cols-2 lg:grid-cols-3">
           <Field label={L("السمة", "Trait")}>
             <Input
@@ -1046,11 +1198,15 @@ export function TraitsTab({ userId }: { userId: number }) {
           </div>
           <div className="flex items-end">
             <Button
-              onClick={() => createMut.mutate()}
-              disabled={createMut.isPending || !form.trait}
+              onClick={() =>
+                editingId ? updateMut.mutate() : createMut.mutate()
+              }
+              disabled={
+                createMut.isPending || updateMut.isPending || !form.trait
+              }
               data-testid="button-save-trait"
             >
-              {L("حفظ", "Save")}
+              {editingId ? L("تحديث", "Update") : L("حفظ", "Save")}
             </Button>
           </div>
         </div>
@@ -1069,7 +1225,7 @@ export function TraitsTab({ userId }: { userId: number }) {
                 <TableHead>{L("الفئة", "Category")}</TableHead>
                 <TableHead>{L("التقييم", "Rating")}</TableHead>
                 <TableHead>{L("ملاحظات", "Notes")}</TableHead>
-                {canDelete && <TableHead></TableHead>}
+                {(canEdit || canDelete) && <TableHead></TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1081,18 +1237,33 @@ export function TraitsTab({ userId }: { userId: number }) {
                   <TableCell className="max-w-xs truncate">
                     {t.notes || "—"}
                   </TableCell>
-                  {canDelete && (
+                  {(canEdit || canDelete) && (
                     <TableCell>
-                      <DeleteButton
-                        testId={`button-delete-trait-${t.id}`}
-                        label={L("حذف السمة", "Delete trait")}
-                        message={L(
-                          "هل أنت متأكد من حذف هذه السمة؟",
-                          "Are you sure you want to delete this trait?",
+                      <div className="flex items-center gap-1">
+                        {canEdit && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => startEdit(t)}
+                            data-testid={`button-edit-trait-${t.id}`}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                         )}
-                        isPending={deleteMut.isPending}
-                        onConfirm={() => deleteMut.mutate(t.id)}
-                      />
+                        {canDelete && (
+                          <DeleteButton
+                            testId={`button-delete-trait-${t.id}`}
+                            label={L("حذف السمة", "Delete trait")}
+                            message={L(
+                              "هل أنت متأكد من حذف هذه السمة؟",
+                              "Are you sure you want to delete this trait?",
+                            )}
+                            isPending={deleteMut.isPending}
+                            onConfirm={() => deleteMut.mutate(t.id)}
+                          />
+                        )}
+                      </div>
                     </TableCell>
                   )}
                 </TableRow>
