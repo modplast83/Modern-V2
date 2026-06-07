@@ -9,3 +9,4 @@
 - [Machine type value inconsistency](machine-type-values.md) — machines.type holds mixed values ('Printer'/'Cutter' vs 'printing'/'cutting' vs 'extruder'); any type-keyed logic must normalize/lowercase and accept both variants.
 - [Smart distribution concurrency](smart-distribution-concurrency.md) — per-stage distribution apply must hold a pg_advisory_xact_lock and compute backlog+positions inside that txn; no global unique on production_order_id (orders span multiple stage queues).
 - [Number display formatting](number-formatting.md) — displayed numbers group thousands via central helpers (formatNumber / formatNumberAr); never group GPS coords/CSS/payloads/percentages, and never re-parse grouped output.
+- [Attendance engine aggregation](attendance-engine-aggregation.md) — self check-in writes many rows per shift-day; coalesce stamps to one record, MAX cumulative withdrawn, compute break once (never per-row sum).

@@ -111,15 +111,24 @@ export function computeEmployeeAttendance(
 ): EmployeeAttendanceResult {
   const days: DailyAttendanceResult[] = [];
 
-  // طبّع صفوف الحضور إلى لحظات لمرة واحدة.
+  // طبّع صفوف الحضور إلى لحظاتها الخام مرة واحدة. ملاحظة مهمة: لوحة الموظف
+  // تُنشئ صفاً منفصلاً لكل إجراء (حضور/استراحة/عودة/انصراف)، لذا قد توجد عدة
+  // صفوف لنفس اليوم. لا نحسب دقائق الاستراحة/الانسحاب لكل صف على حدة (لتفادي
+  // الاحتساب المزدوج)؛ بل نجمّع الأختام الزمنية عبر صفوف اليوم ثم نحسب مرة واحدة.
   const normalized = rows.map((r) => ({
     checkIn: toDate(r.check_in_time),
     checkOut: toDate(r.check_out_time),
-    breakMinutes:
-      pairMinutes(r.lunch_start_time, r.lunch_end_time) +
-      pairMinutes(r.break_start_time, r.break_end_time),
+    lunchStart: toDate(r.lunch_start_time),
+    lunchEnd: toDate(r.lunch_end_time),
+    breakStart: toDate(r.break_start_time),
+    breakEnd: toDate(r.break_end_time),
     withdrawn: r.total_withdrawn_minutes || 0,
   }));
+
+  const minD = (cur: Date | null, cand: Date | null): Date | null =>
+    cand && (!cur || cand.getTime() < cur.getTime()) ? cand : cur;
+  const maxD = (cur: Date | null, cand: Date | null): Date | null =>
+    cand && (!cur || cand.getTime() > cur.getTime()) ? cand : cur;
 
   let cursor = from;
   let guard = 0;
@@ -153,33 +162,42 @@ export function computeEmployeeAttendance(
     // هامش ساعتين لاستيعاب الحضور المبكر/الانصراف المتأخر حول نافذة الوردية.
     const lo = start.getTime() - 2 * 3600000;
     const hi = end.getTime() + 2 * 3600000;
+    const within = (d: Date | null): boolean =>
+      !!d && d.getTime() >= lo && d.getTime() <= hi;
 
+    // اجمع الأختام الزمنية عبر كل صفوف اليوم في سجل فعّال واحد بدل احتسابها لكل صف.
     let earliestIn: Date | null = null;
     let latestOut: Date | null = null;
-    let breakMinutes = 0;
+    let lunchStart: Date | null = null;
+    let lunchEnd: Date | null = null;
+    let breakStart: Date | null = null;
+    let breakEnd: Date | null = null;
     let withdrawnMinutes = 0;
 
     for (const row of normalized) {
-      const inT = row.checkIn;
-      const outT = row.checkOut;
-      const inWindow =
-        (inT && inT.getTime() >= lo && inT.getTime() <= hi) ||
-        (outT && outT.getTime() >= lo && outT.getTime() <= hi);
-      if (!inWindow) continue;
+      // عضوية اليوم/الوردية: أي ختم زمني للصف يقع داخل النافذة يربطه بهذا اليوم.
+      const rowInWindow =
+        within(row.checkIn) ||
+        within(row.checkOut) ||
+        within(row.lunchStart) ||
+        within(row.lunchEnd) ||
+        within(row.breakStart) ||
+        within(row.breakEnd);
+      if (!rowInWindow) continue;
 
-      if (inT && inT.getTime() >= lo && inT.getTime() <= hi) {
-        if (!earliestIn || inT.getTime() < earliestIn.getTime()) {
-          earliestIn = inT;
-        }
-      }
-      if (outT && outT.getTime() >= lo && outT.getTime() <= hi) {
-        if (!latestOut || outT.getTime() > latestOut.getTime()) {
-          latestOut = outT;
-        }
-      }
-      breakMinutes += row.breakMinutes;
-      withdrawnMinutes += row.withdrawn;
+      if (within(row.checkIn)) earliestIn = minD(earliestIn, row.checkIn);
+      if (within(row.checkOut)) latestOut = maxD(latestOut, row.checkOut);
+      if (within(row.lunchStart)) lunchStart = minD(lunchStart, row.lunchStart);
+      if (within(row.lunchEnd)) lunchEnd = maxD(lunchEnd, row.lunchEnd);
+      if (within(row.breakStart)) breakStart = minD(breakStart, row.breakStart);
+      if (within(row.breakEnd)) breakEnd = maxD(breakEnd, row.breakEnd);
+      // total_withdrawn_minutes قيمة تراكمية إجمالية لليوم → نأخذ الأكبر لا المجموع.
+      if (row.withdrawn > withdrawnMinutes) withdrawnMinutes = row.withdrawn;
     }
+
+    // احسب دقائق الاستراحة مرة واحدة من القيم المجمّعة (يمنع الاحتساب المزدوج).
+    const breakMinutes =
+      pairMinutes(lunchStart, lunchEnd) + pairMinutes(breakStart, breakEnd);
 
     const metrics = computeShiftMetrics({
       shift,
