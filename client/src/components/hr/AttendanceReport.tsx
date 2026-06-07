@@ -141,6 +141,8 @@ export default function AttendanceReport() {
                   <TableHead>{L("غياب", "Absent")}</TableHead>
                   <TableHead>{L("غير مكتمل", "Incomplete")}</TableHead>
                   <TableHead>{L("تأخير(د)", "Late(m)")}</TableHead>
+                  <TableHead>{L("خروج مبكر(د)", "Early leave(m)")}</TableHead>
+                  <TableHead>{L("انسحاب(د)", "Withdrawn(m)")}</TableHead>
                   <TableHead>{L("عمل(س)", "Worked(h)")}</TableHead>
                   <TableHead>{L("إضافي(س)", "OT(h)")}</TableHead>
                 </TableRow>
@@ -172,6 +174,12 @@ export default function AttendanceReport() {
                       {r.totals.incompleteDays}
                     </TableCell>
                     <TableCell>{r.totals.totalLateMinutes}</TableCell>
+                    <TableCell className="text-orange-700">
+                      {r.totals.totalEarlyLeaveMinutes}
+                    </TableCell>
+                    <TableCell className="text-rose-700">
+                      {r.totals.totalWithdrawnMinutes}
+                    </TableCell>
                     <TableCell>{r.totals.totalWorkedHours}</TableCell>
                     <TableCell className="text-indigo-700">
                       {r.totals.totalOvertimeHours}
