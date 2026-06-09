@@ -893,6 +893,32 @@ function sanitizeResponseForLogging(response: any): any {
     // drizzle-kit push only runs for fresh databases, so create them here
     // idempotently (CREATE TABLE / ADD COLUMN IF NOT EXISTS never drops data).
     try {
+      // Phase 1 monthly shift roster table (may be missing on older DBs).
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS shift_assignments (
+          id serial PRIMARY KEY,
+          user_id integer NOT NULL REFERENCES users(id),
+          year integer NOT NULL,
+          month integer NOT NULL,
+          shift varchar(10) NOT NULL,
+          notes text,
+          created_by integer REFERENCES users(id),
+          created_at timestamp DEFAULT now(),
+          updated_at timestamp DEFAULT now()
+        )
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_shift_assignments_user
+        ON shift_assignments (user_id)
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_shift_assignments_period
+        ON shift_assignments (year, month)
+      `);
+      await db.execute(sql`
+        CREATE UNIQUE INDEX IF NOT EXISTS uniq_shift_assignment_user_month
+        ON shift_assignments (user_id, year, month)
+      `);
       // Extend violations with disciplinary penalty + status fields.
       await db.execute(sql`
         ALTER TABLE violations
