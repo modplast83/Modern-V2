@@ -7,7 +7,7 @@ import React, {
   ReactNode,
 } from "react";
 
-import type { AuthUser } from "@/types";
+import type { AuthUser } from "../types";
 
 interface AuthContextType {
   user: AuthUser | null;

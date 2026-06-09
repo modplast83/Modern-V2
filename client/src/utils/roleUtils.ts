@@ -6,7 +6,7 @@ import {
   type PermissionKey,
 } from "../../../shared/permissions";
 
-import type { AuthUser } from "@/types";
+import type { AuthUser } from "../types";
 
 export function isUserAdmin(user: AuthUser | null): boolean {
   if (!user) return false;

@@ -7,7 +7,7 @@ import EmployeeDirectory from "../components/hr/EmployeeDirectory";
 import EmployeeFile from "../components/hr/EmployeeFile";
 import ShiftRoster from "../components/hr/ShiftRoster";
 import AttendanceReport from "../components/hr/AttendanceReport";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { useLanguage } from "../contexts/LanguageContext";
 
 export default function HR() {

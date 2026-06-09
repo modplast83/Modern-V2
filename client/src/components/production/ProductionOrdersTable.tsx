@@ -9,7 +9,7 @@ import { canAddInArea } from "../../utils/roleUtils";
 import { Button } from "../ui/button";
 import { Progress } from "../ui/progress";
 
-import type { ProductionOrderWithDetails } from "@/types";
+import type { ProductionOrderWithDetails } from "../../types";
 
 const formatPercentage = (value: number): string => {
   return `${value}%`;

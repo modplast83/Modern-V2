@@ -20,7 +20,7 @@ import HierarchicalOrdersView from "./HierarchicalOrdersView";
 import ProductionOrdersTable from "./ProductionOrdersTable";
 import ProductionStageStats from "./ProductionStageStats";
 
-import type { Section } from "@/types";
+import type { Section } from "../../types";
 
 interface ProductionTabsProps {
   onCreateRoll: (productionOrderId?: number) => void;
