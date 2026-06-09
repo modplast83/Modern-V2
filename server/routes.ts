@@ -12397,6 +12397,23 @@ Input: ${text}`;
 
   // ============ User Violations Management API ============
 
+  // Self-scoped endpoint: any authenticated employee can view only their own
+  // violations. This must be registered before the parameterized routes so it
+  // is not shadowed by "/api/violations/:id".
+  app.get("/api/violations/my", requireAuth, async (req, res) => {
+    try {
+      const userId = getAuthUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "غير مصرح" });
+      }
+      const violations = await storage.getViolationsByEmployee(userId);
+      res.json(violations);
+    } catch (error) {
+      console.error("Error fetching own violations:", error);
+      res.status(500).json({ message: "خطأ في جلب بيانات المخالفات" });
+    }
+  });
+
   app.get(
     "/api/violations",
     requireAuth,

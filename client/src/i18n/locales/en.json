@@ -4553,7 +4553,10 @@
       "title": "Title",
       "penalty": "Penalty",
       "date": "Date",
-      "noViolations": "No Violations"
+      "noViolations": "No Violations",
+      "statusOpen": "Open",
+      "statusResolved": "Resolved",
+      "statusCancelled": "Cancelled"
     },
     "security": {
       "title": "Title",

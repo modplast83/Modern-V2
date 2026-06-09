@@ -5071,7 +5071,10 @@
       "title": "العنوان",
       "penalty": "العقوبة",
       "date": "التاريخ",
-      "noViolations": "لا توجد مخالفات"
+      "noViolations": "لا توجد مخالفات",
+      "statusOpen": "معلقة",
+      "statusResolved": "مطبقة",
+      "statusCancelled": "ملغاة"
     },
     "security": {
       "title": "العنوان",

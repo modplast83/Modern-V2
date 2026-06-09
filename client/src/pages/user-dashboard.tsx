@@ -116,13 +116,14 @@ interface AttendanceRecord {
 
 interface Violation {
   id: number;
-  user_id: number;
-  type: string;
+  employee_id: number;
+  violation_type: string;
   description: string;
-  penalty: string;
-  status: "معلق" | "مطبق" | "ملغي";
+  penalty_amount: string;
+  status: "open" | "resolved" | "cancelled";
   date: string;
-  created_by: number;
+  action_taken?: string;
+  reported_by?: number;
 }
 
 interface UserRequest {
@@ -447,11 +448,10 @@ export default function UserDashboard() {
     select: (data) => data.filter((record) => record.user_id === user?.id),
   });
 
-  // Fetch violations
+  // Fetch violations (self-scoped: only the signed-in employee's own records)
   const { data: violations } = useQuery<Violation[]>({
-    queryKey: ["/api/violations"],
-    select: (data) =>
-      data.filter((violation) => violation.user_id === user?.id),
+    queryKey: ["/api/violations/my"],
+    enabled: !!user?.id,
   });
 
   // Fetch user requests
@@ -862,6 +862,9 @@ export default function UserDashboard() {
       مرفوض: "destructive",
       مطبق: "destructive",
       ملغي: "outline",
+      open: "secondary",
+      resolved: "destructive",
+      cancelled: "outline",
     };
     return variants[status] || "secondary";
   };
@@ -1060,7 +1063,7 @@ export default function UserDashboard() {
                 <CardContent>
                   <div className="text-2xl font-bold">
                     {formatNumber(
-                      violations?.filter((v) => v.status === "معلق").length ||
+                      violations?.filter((v) => v.status === "open").length ||
                         0,
                     )}
                   </div>
@@ -1411,11 +1414,18 @@ export default function UserDashboard() {
                   {violations?.map((violation) => (
                     <div key={violation.id} className="p-4 border rounded-lg">
                       <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-medium">{violation.type}</h3>
+                        <h3 className="font-medium">
+                          {violation.violation_type}
+                        </h3>
                         <Badge
                           variant={getStatusBadgeVariant(violation.status)}
                         >
-                          {violation.status}
+                          {t(
+                            `userDashboard.violations.status${
+                              violation.status.charAt(0).toUpperCase() +
+                              violation.status.slice(1)
+                            }`,
+                          )}
                         </Badge>
                       </div>
                       <p className="text-gray-600 mb-2">
@@ -1425,7 +1435,7 @@ export default function UserDashboard() {
                         <strong>
                           {t("userDashboard.violations.penalty")}:
                         </strong>{" "}
-                        {violation.penalty}
+                        {formatNumber(Number(violation.penalty_amount))}
                       </p>
                       <p className="text-xs text-gray-500">
                         {t("userDashboard.violations.date")}:{" "}

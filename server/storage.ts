@@ -74,6 +74,7 @@ import {
   type MachineQueue,
   type InsertMachineQueue,
   violations,
+  type Violation,
   rewards,
   employee_custody,
   employee_traits,
