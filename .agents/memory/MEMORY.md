@@ -7,6 +7,7 @@
 - [Universal thickness film eligibility](universal-thickness-eligibility.md) — film machine min/max_thickness matches order universal_thickness (computed col), never raw thickness.
 - [Production queue estimates](production-queue-estimates.md) — finish estimate uses configured shift hours, per-order size-appropriate capacity (width buckets), and gates finish date on machine status.
 - [Machine type value inconsistency](machine-type-values.md) — machines.type holds mixed values ('Printer'/'Cutter' vs 'printing'/'cutting' vs 'extruder'); any type-keyed logic must normalize/lowercase and accept both variants.
+- [Zod empty-string coercion](zod-empty-string-coercion.md) — optional z.coerce.date()/number() 400 on blank "" form input; preprocess blanks to null/undefined; ".optional().nullable()" doesn't save you.
 - [Smart distribution concurrency](smart-distribution-concurrency.md) — per-stage distribution apply must hold a pg_advisory_xact_lock and compute backlog+positions inside that txn; no global unique on production_order_id (orders span multiple stage queues).
 - [Vite @/ alias fragility](vite-at-alias-resolution.md) — `@/` imports can break dev server during Vite dep re-optimization after lockfile churn; use relative imports in client code.
 - [Wage computation](wage-computation.md) — monthly net = basic+OT-deductions-penalties+rewards; no-checkout (incomplete) days must be deducted as non-payable or they get full pay (overpayment).

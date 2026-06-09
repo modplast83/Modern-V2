@@ -2514,6 +2514,15 @@ export const insertSparePartSchema = createInsertSchema(spare_parts)
 export const updateSparePartSchema = insertSparePartSchema.partial();
 export type InsertSparePart = z.infer<typeof insertSparePartSchema>;
 
+// Forms submit empty strings ("") for cleared optional fields. Coercion would
+// otherwise turn them into invalid values (e.g. new Date("") -> Invalid Date,
+// Number("") -> 0 failing a positive()/min() check), causing a 400. Treat blanks
+// as absent so optional coerced date/number fields validate correctly.
+const blankToNull = (v: unknown) =>
+  v === "" || v === null || v === undefined ? null : v;
+const blankToUndefined = (v: unknown) =>
+  v === "" || v === null || v === undefined ? undefined : v;
+
 export const insertViolationSchema = createInsertSchema(violations)
   .omit({
     id: true,
@@ -2524,7 +2533,10 @@ export const insertViolationSchema = createInsertSchema(violations)
     description: z.string().optional().nullable(),
     date: z.coerce.date(),
     action_taken: z.string().optional().nullable(),
-    penalty_amount: z.coerce.number().min(0).optional(),
+    penalty_amount: z.preprocess(
+      blankToUndefined,
+      z.coerce.number().min(0).optional(),
+    ),
     status: z.enum(["open", "resolved", "cancelled"]).optional(),
     reported_by: z.coerce.number().int().positive().optional().nullable(),
   });
@@ -2554,9 +2566,15 @@ export const insertEmployeeCustodySchema = createInsertSchema(employee_custody)
     employee_id: z.coerce.number().int().positive(),
     item_name: z.string().min(1).max(200),
     description: z.string().optional().nullable(),
-    quantity: z.coerce.number().int().positive().optional(),
+    quantity: z.preprocess(
+      blankToUndefined,
+      z.coerce.number().int().positive().optional(),
+    ),
     handover_date: z.coerce.date(),
-    return_date: z.coerce.date().optional().nullable(),
+    return_date: z.preprocess(
+      blankToNull,
+      z.coerce.date().nullable(),
+    ).optional(),
     status: z.enum(["handed", "returned", "lost", "damaged"]).optional(),
     notes: z.string().optional().nullable(),
     recorded_by: z.coerce.number().int().positive().optional().nullable(),
@@ -2576,7 +2594,10 @@ export const insertEmployeeTraitSchema = createInsertSchema(employee_traits)
       .enum(["skill", "behavior", "strength", "development"])
       .optional()
       .nullable(),
-    rating: z.coerce.number().int().min(1).max(5).optional().nullable(),
+    rating: z.preprocess(
+      blankToNull,
+      z.coerce.number().int().min(1).max(5).nullable(),
+    ).optional(),
     notes: z.string().optional().nullable(),
     recorded_by: z.coerce.number().int().positive().optional().nullable(),
   });
