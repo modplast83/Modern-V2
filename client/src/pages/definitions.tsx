@@ -959,18 +959,15 @@ export default function Definitions() {
     let density = num(customerProductForm.density);
     if (!(density > 0)) density = 0.95;
 
-    let universalMicrons: number;
-    if (lf === 0 && rf === 0) universalMicrons = (thickness / 2) * 10;
-    else if (lf > 0 && rf > 0) universalMicrons = (thickness / 4) * 10;
-    else universalMicrons = (thickness / 2) * 10;
-
-    const grams =
-      (width + lf + rf) * length * universalMicrons * 1e-4 * density;
+    // وزن الكيس = العرض المسطّح × الطول × عدد الطبقات(2) × السماكة(سم) × الكثافة
+    // يطابق حاسبة وزن الكيس في صفحة الأدوات و getBagWeightGrams (المصدر الموثوق
+    // النهائي هو الخادم). السماكة بالميكرون تُستخدم كما هي (× 1e-4 إلى سم).
+    const grams = (width + lf + rf) * length * 2 * (thickness * 1e-4) * density;
     if (!(grams > 0)) {
       return { bagWeightGrams: "", bagsPerKilo: "" };
     }
     return {
-      bagWeightGrams: grams.toFixed(4),
+      bagWeightGrams: grams.toFixed(2),
       bagsPerKilo: (1000 / grams).toFixed(2),
     };
   }, [

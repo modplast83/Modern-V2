@@ -7201,15 +7201,16 @@ export class DatabaseStorage implements IStorage {
     let density = num(data.density);
     if (!(density > 0)) density = 0.95;
 
-    // السماكة العالمية (ميكرون) — تطابق منطق العمود المحسوب universal_thickness
-    let universalMicrons: number;
-    if (lf === 0 && rf === 0) universalMicrons = (thickness / 2) * 10;
-    else if (lf > 0 && rf > 0) universalMicrons = (thickness / 4) * 10;
-    else universalMicrons = (thickness / 2) * 10;
-
-    const universalCm = universalMicrons * 1e-4; // ميكرون → سم
+    // وزن الكيس = مساحة الفيلم (طبقتان: أمامية + خلفية) × السماكة × الكثافة.
+    // يطابق حاسبة وزن الكيس المعتمدة في صفحة الأدوات و getBagWeightGrams:
+    //   الجرامات = العرض المسطّح × الطول × عدد الطبقات(2) × السماكة(سم) × الكثافة
+    // العرض المسطّح = العرض + الدخلة اليسرى + الدخلة اليمنى (يشمل الجانبين).
+    // ملاحظة: السماكة المُدخلة بالميكرون تُستخدم كما هي (× 1e-4 للتحويل إلى سم)؛
+    // لا يُستخدم العمود universal_thickness هنا لأنه مخصص لمطابقة المكائن فقط.
+    const LAYERS = 2;
+    const thicknessCm = thickness * 1e-4; // ميكرون → سم
     const flatWidthCm = width + lf + rf;
-    const grams = flatWidthCm * length * universalCm * density;
+    const grams = flatWidthCm * length * LAYERS * thicknessCm * density;
 
     if (!(grams > 0)) {
       return { bag_weight_grams: null, bags_per_kilo: null };
