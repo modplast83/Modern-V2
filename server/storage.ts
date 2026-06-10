@@ -7183,15 +7183,62 @@ export class DatabaseStorage implements IStorage {
     return { data, total, page: pageNum, limit: pageLimit };
   }
 
+  // وزن الكيس (جم) ومعدّل الأكياس/كيلو — يُحسبان على الخادم دائماً ولا يُوثق بأي
+  // قيمة محسوبة قادمة من العميل. المصدر الموثوق الوحيد لهذه الحقول.
+  private computeBagMetrics(data: any): {
+    bag_weight_grams: string | null;
+    bags_per_kilo: string | null;
+  } {
+    const num = (v: any) => {
+      const x = typeof v === "string" ? parseFloat(v) : Number(v);
+      return Number.isFinite(x) ? x : 0;
+    };
+    const width = num(data.width);
+    const lf = num(data.left_facing);
+    const rf = num(data.right_facing);
+    const length = num(data.cutting_length_cm);
+    const thickness = num(data.thickness);
+    let density = num(data.density);
+    if (!(density > 0)) density = 0.95;
+
+    // السماكة العالمية (ميكرون) — تطابق منطق العمود المحسوب universal_thickness
+    let universalMicrons: number;
+    if (lf === 0 && rf === 0) universalMicrons = (thickness / 2) * 10;
+    else if (lf > 0 && rf > 0) universalMicrons = (thickness / 4) * 10;
+    else universalMicrons = (thickness / 2) * 10;
+
+    const universalCm = universalMicrons * 1e-4; // ميكرون → سم
+    const flatWidthCm = width + lf + rf;
+    const grams = flatWidthCm * length * universalCm * density;
+
+    if (!(grams > 0)) {
+      return { bag_weight_grams: null, bags_per_kilo: null };
+    }
+    return {
+      bag_weight_grams: grams.toFixed(4),
+      bags_per_kilo: (1000 / grams).toFixed(2),
+    };
+  }
+
   async createCustomerProduct(data: any): Promise<CustomerProduct> {
-    const [p] = await db.insert(customer_products).values(data).returning();
+    const metrics = this.computeBagMetrics(data);
+    const [p] = await db
+      .insert(customer_products)
+      .values({ ...data, ...metrics })
+      .returning();
     return p;
   }
 
   async updateCustomerProduct(id: number, data: any): Promise<CustomerProduct> {
+    const [existing] = await db
+      .select()
+      .from(customer_products)
+      .where(eq(customer_products.id, id));
+    // Recompute from the merged record so partial updates stay authoritative.
+    const metrics = this.computeBagMetrics({ ...(existing || {}), ...data });
     const [u] = await db
       .update(customer_products)
-      .set(data)
+      .set({ ...data, ...metrics })
       .where(eq(customer_products.id, id))
       .returning();
     return u;

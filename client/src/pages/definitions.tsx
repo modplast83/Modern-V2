@@ -393,6 +393,7 @@ export default function Definitions() {
     left_facing: "",
     right_facing: "",
     thickness: "",
+    density: "0.95",
     printing_cylinder: "بدون طباعة",
     cutting_length_cm: "",
     raw_material: "",
@@ -511,6 +512,7 @@ export default function Definitions() {
       left_facing: product.left_facing || "",
       right_facing: product.right_facing || "",
       thickness: product.thickness || "",
+      density: product.density || "0.95",
       printing_cylinder: product.printing_cylinder || "بدون طباعة",
       cutting_length_cm: product.cutting_length_cm || "",
       raw_material: product.raw_material || "",
@@ -942,6 +944,43 @@ export default function Definitions() {
       }
     };
   }, [customerProductForm.unit_weight_kg, customerProductForm.unit_quantity]);
+
+  // وزن الكيس ومعدّل الأكياس/كيلو — حساب فوري للعرض فقط (الخادم هو المصدر الموثوق)
+  const computedBagMetrics = React.useMemo(() => {
+    const num = (v: string) => {
+      const x = parseFloat(v);
+      return Number.isFinite(x) ? x : 0;
+    };
+    const width = num(customerProductForm.width);
+    const lf = num(customerProductForm.left_facing);
+    const rf = num(customerProductForm.right_facing);
+    const length = num(customerProductForm.cutting_length_cm);
+    const thickness = num(customerProductForm.thickness);
+    let density = num(customerProductForm.density);
+    if (!(density > 0)) density = 0.95;
+
+    let universalMicrons: number;
+    if (lf === 0 && rf === 0) universalMicrons = (thickness / 2) * 10;
+    else if (lf > 0 && rf > 0) universalMicrons = (thickness / 4) * 10;
+    else universalMicrons = (thickness / 2) * 10;
+
+    const grams =
+      (width + lf + rf) * length * universalMicrons * 1e-4 * density;
+    if (!(grams > 0)) {
+      return { bagWeightGrams: "", bagsPerKilo: "" };
+    }
+    return {
+      bagWeightGrams: grams.toFixed(4),
+      bagsPerKilo: (1000 / grams).toFixed(2),
+    };
+  }, [
+    customerProductForm.width,
+    customerProductForm.left_facing,
+    customerProductForm.right_facing,
+    customerProductForm.cutting_length_cm,
+    customerProductForm.thickness,
+    customerProductForm.density,
+  ]);
 
   // Data queries
   const { data: customers = [], isLoading: customersLoading } = useQuery({
@@ -2186,6 +2225,7 @@ export default function Definitions() {
       left_facing: "",
       right_facing: "",
       thickness: "",
+      density: "0.95",
       printing_cylinder: "بدون طباعة",
       cutting_length_cm: "",
       raw_material: "",
@@ -3427,6 +3467,8 @@ export default function Definitions() {
                                                 product.right_facing || "",
                                               thickness:
                                                 product.thickness || "",
+                                              density:
+                                                product.density || "0.95",
                                               printing_cylinder:
                                                 product.printing_cylinder ||
                                                 "بدون طباعة",
@@ -5384,6 +5426,53 @@ export default function Definitions() {
                         className="mt-1"
                       />
                     </div>
+                    <div>
+                      <Label htmlFor="density">
+                        {t("definitions.form.density")}
+                      </Label>
+                      <Input
+                        id="density"
+                        type="number"
+                        step="0.001"
+                        value={customerProductForm.density}
+                        onChange={(e) =>
+                          setCustomerProductForm({
+                            ...customerProductForm,
+                            density: e.target.value,
+                          })
+                        }
+                        placeholder="0.95"
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                    <div>
+                      <Label htmlFor="bag_weight_grams">
+                        {t("definitions.form.bagWeightGrams")}
+                      </Label>
+                      <Input
+                        id="bag_weight_grams"
+                        readOnly
+                        tabIndex={-1}
+                        value={computedBagMetrics.bagWeightGrams || "—"}
+                        className="mt-1 bg-gray-50"
+                        dir="ltr"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="bags_per_kilo">
+                        {t("definitions.form.bagsPerKilo")}
+                      </Label>
+                      <Input
+                        id="bags_per_kilo"
+                        readOnly
+                        tabIndex={-1}
+                        value={computedBagMetrics.bagsPerKilo || "—"}
+                        className="mt-1 bg-gray-50"
+                        dir="ltr"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -5895,6 +5984,9 @@ export default function Definitions() {
                       thickness: customerProductForm.thickness
                         ? parseFloat(customerProductForm.thickness)
                         : undefined,
+                      density: customerProductForm.density
+                        ? parseFloat(customerProductForm.density)
+                        : 0.95,
                       unit_weight_kg: customerProductForm.unit_weight_kg
                         ? parseFloat(customerProductForm.unit_weight_kg)
                         : undefined,

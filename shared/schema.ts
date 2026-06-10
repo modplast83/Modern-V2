@@ -283,6 +283,11 @@ export const customer_products = pgTable(
         ELSE thickness / 2 * 10
       END`,
     ),
+    // الكثافة (جم/سم³) — قابلة للتعديل، الافتراضي 0.95 (LDPE/HDPE نموذجي).
+    density: decimal("density", { precision: 6, scale: 3 }).default("0.95"),
+    // وزن الكيس (جم) ومعدّل الأكياس/كيلو — محسوبان على الخادم، للقراءة فقط في الواجهة.
+    bag_weight_grams: decimal("bag_weight_grams", { precision: 12, scale: 4 }),
+    bags_per_kilo: decimal("bags_per_kilo", { precision: 12, scale: 2 }),
     printing_cylinder: varchar("printing_cylinder", { length: 10 }), // 8" to 38" + 39"
     cutting_length_cm: integer("cutting_length_cm"),
     raw_material: varchar("raw_material", { length: 20 }), // HDPE-LDPE-Regrind
@@ -2806,6 +2811,8 @@ export const insertCustomerProductSchema = createInsertSchema(customer_products)
     thickness: true,
     unit_weight_kg: true,
     package_weight_kg: true,
+    bag_weight_grams: true,
+    bags_per_kilo: true,
   })
   .extend({
     // Coerce empty strings and the UI's "none" sentinel on FK varchar fields
@@ -2854,6 +2861,11 @@ export const insertCustomerProductSchema = createInsertSchema(customer_products)
       if (val === null || val === undefined || val === "") return undefined;
       const num = typeof val === "string" ? parseFloat(val) : (val as number);
       return isNaN(num) ? undefined : num.toString();
+    }, z.string().optional()),
+    density: z.preprocess((val): string | undefined => {
+      if (val === null || val === undefined || val === "") return "0.95";
+      const num = typeof val === "string" ? parseFloat(val) : (val as number);
+      return isNaN(num) || num <= 0 ? "0.95" : num.toString();
     }, z.string().optional()),
     unit_weight_kg: z.preprocess((val): string | undefined => {
       if (val === null || val === undefined || val === "") return undefined;

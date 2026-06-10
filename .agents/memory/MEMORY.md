@@ -10,6 +10,7 @@
 - [Zod empty-string coercion](zod-empty-string-coercion.md) — optional z.coerce.date()/number() 400 on blank "" form input; preprocess blanks to null/undefined; ".optional().nullable()" doesn't save you.
 - [Smart distribution concurrency](smart-distribution-concurrency.md) — per-stage distribution apply must hold a pg_advisory_xact_lock and compute backlog+positions inside that txn; no global unique on production_order_id (orders span multiple stage queues).
 - [HR permission parity](hr-permission-parity.md) — HR tab UI gating must mirror each backend route's exact permission set; training routes also accept view_training/manage_training, so don't reuse generic HR flags there.
+- [Server-authoritative derived fields](derived-field-server-authority.md) — computed columns must be omitted from insert/update schemas and recomputed in storage (never trust client); frontend keeps a display-only copy of the same formula.
 - [HR/schema tables need ensure-block](hr-ensure-block-tables.md) — drizzle-kit push doesn't run on existing DBs; tables only in schema.ts (not in server/index.ts ensure-block) are absent and 500 every query touching them.
 - [Vite @/ alias fragility](vite-at-alias-resolution.md) — `@/` imports can break dev server during Vite dep re-optimization after lockfile churn; use relative imports in client code.
 - [Wage computation](wage-computation.md) — monthly net = basic+OT-deductions-penalties+rewards; no-checkout (incomplete) days must be deducted as non-payable or they get full pay (overpayment).

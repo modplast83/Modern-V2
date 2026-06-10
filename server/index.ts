@@ -1001,6 +1001,50 @@ function sanitizeResponseForLogging(response: any): any {
       );
     }
 
+    // Ensure customer_products bag-weight columns exist (density + computed metrics).
+    // Safe & idempotent: columns added IF NOT EXISTS; density defaults to 0.95.
+    try {
+      await db.execute(sql`
+        ALTER TABLE customer_products
+          ADD COLUMN IF NOT EXISTS density numeric(6,3) DEFAULT 0.95,
+          ADD COLUMN IF NOT EXISTS bag_weight_grams numeric(12,4),
+          ADD COLUMN IF NOT EXISTS bags_per_kilo numeric(12,2)
+      `);
+      // One-time backfill for products created before this feature. Only fills
+      // rows where the metric is still NULL and the required inputs exist, so it
+      // is effectively idempotent (a no-op after the first run). Mirrors the
+      // server formula: flat width(cm) * length(cm) * universal_thickness(µm→cm)
+      // * density.
+      await db.execute(sql`
+        UPDATE customer_products
+        SET
+          bag_weight_grams = ROUND(
+            (COALESCE(width, 0) + COALESCE(left_facing, 0) + COALESCE(right_facing, 0))
+            * COALESCE(cutting_length_cm, 0)
+            * (universal_thickness * 0.0001)
+            * COALESCE(density, 0.95), 4),
+          bags_per_kilo = ROUND(
+            1000.0 / NULLIF(
+              (COALESCE(width, 0) + COALESCE(left_facing, 0) + COALESCE(right_facing, 0))
+              * COALESCE(cutting_length_cm, 0)
+              * (universal_thickness * 0.0001)
+              * COALESCE(density, 0.95), 0), 2)
+        WHERE bag_weight_grams IS NULL
+          AND universal_thickness IS NOT NULL
+          AND width IS NOT NULL
+          AND cutting_length_cm IS NOT NULL
+          AND (COALESCE(width, 0) + COALESCE(left_facing, 0) + COALESCE(right_facing, 0))
+              * COALESCE(cutting_length_cm, 0)
+              * (universal_thickness * 0.0001)
+              * COALESCE(density, 0.95) > 0
+      `);
+    } catch (cpErr: any) {
+      console.warn(
+        "⚠️ فشل تهيئة أعمدة وزن الكيس في منتجات العملاء (سيتم المحاولة لاحقاً):",
+        cpErr?.message,
+      );
+    }
+
     // Ensure machines.inline_printer_id column exists, then auto-link the three
     // physically-combined extruder+printer pairs by name. Safe & idempotent:
     // the column is added IF NOT EXISTS and the link is only set when currently
