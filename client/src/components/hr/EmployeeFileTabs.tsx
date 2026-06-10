@@ -65,6 +65,17 @@ function useHrPerms() {
     canEdit: userHasPermission(user, ["manage_hr", "edit_hr"]),
     canDelete: userHasPermission(user, ["manage_hr", "delete_hr"]),
     canManage: userHasPermission(user, ["manage_hr"]),
+    // أذونات التدريب تطابق وسطاء المسارات في الخادم (تشمل أذونات التدريب المخصصة)
+    canAddTraining: userHasPermission(user, [
+      "manage_hr",
+      "add_hr",
+      "manage_training",
+    ]),
+    canDeleteTraining: userHasPermission(user, [
+      "manage_hr",
+      "delete_hr",
+      "manage_training",
+    ]),
   };
 }
 
@@ -768,7 +779,7 @@ export function TrainingTab({ userId }: { userId: number }) {
     }
   };
   const { toast } = useToast();
-  const { canAdd, canDelete } = useHrPerms();
+  const { canAddTraining, canDeleteTraining } = useHrPerms();
   const invalidate = useInvalidate(userId, "training");
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
@@ -886,7 +897,7 @@ export function TrainingTab({ userId }: { userId: number }) {
           <h4 className="text-sm font-semibold">
             {L("سجلات التدريب", "Training records")}
           </h4>
-          {canAdd && (
+          {canAddTraining && (
             <Button
               size="sm"
               variant={showForm ? "outline" : "default"}
@@ -899,7 +910,7 @@ export function TrainingTab({ userId }: { userId: number }) {
           )}
         </div>
 
-        {canAdd && showForm && (
+        {canAddTraining && showForm && (
           <div className="mb-4 grid grid-cols-1 gap-3 rounded-md border p-4 sm:grid-cols-2 lg:grid-cols-3">
             <Field label={L("اسم التدريب", "Training name")}>
               <Input
@@ -993,7 +1004,7 @@ export function TrainingTab({ userId }: { userId: number }) {
                   <TableHead>{L("النوع", "Type")}</TableHead>
                   <TableHead>{L("المدرّب", "Instructor")}</TableHead>
                   <TableHead>{L("الحالة", "Status")}</TableHead>
-                  {canDelete && <TableHead></TableHead>}
+                  {canDeleteTraining && <TableHead></TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1006,7 +1017,7 @@ export function TrainingTab({ userId }: { userId: number }) {
                     <TableCell>{r.training_type || "—"}</TableCell>
                     <TableCell>{r.instructor || "—"}</TableCell>
                     <TableCell>{r.status || "—"}</TableCell>
-                    {canDelete && (
+                    {canDeleteTraining && (
                       <TableCell>
                         <DeleteButton
                           testId={`button-delete-training-${r.id}`}
