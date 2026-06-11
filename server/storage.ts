@@ -7207,8 +7207,10 @@ export class DatabaseStorage implements IStorage {
     //   كيس بدخلتين (جانبان): thickness / 4 * 10، غير ذلك: thickness / 2 * 10 (ميكرون).
     // العرض المسطّح = العرض + الدخلة اليسرى + الدخلة اليمنى (يشمل الجانبين).
     const LAYERS = 2;
-    const universalMicrons =
-      lf > 0 && rf > 0 ? (thickness / 4) * 10 : (thickness / 2) * 10;
+    // السماكة العالمية مقرّبة لأعلى لعدد صحيح (تطابق العمود المحسوب universal_thickness).
+    const universalMicrons = Math.ceil(
+      lf > 0 && rf > 0 ? (thickness / 4) * 10 : (thickness / 2) * 10,
+    );
     const universalCm = universalMicrons * 1e-4; // ميكرون → سم
     const flatWidthCm = width + lf + rf;
     const grams = flatWidthCm * length * LAYERS * universalCm * density;
@@ -7216,9 +7218,10 @@ export class DatabaseStorage implements IStorage {
     if (!(grams > 0)) {
       return { bag_weight_grams: null, bags_per_kilo: null };
     }
+    // أرقام صحيحة فقط: التقريب لأعلى لأقرب عدد صحيح (CEIL) بدون كسور عشرية.
     return {
-      bag_weight_grams: grams.toFixed(4),
-      bags_per_kilo: (1000 / grams).toFixed(2),
+      bag_weight_grams: String(Math.ceil(grams)),
+      bags_per_kilo: String(Math.ceil(1000 / grams)),
     };
   }
 

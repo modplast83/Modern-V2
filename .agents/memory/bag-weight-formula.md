@@ -18,16 +18,19 @@ bags_per_kilo      = 1000 / grams        (null when grams <= 0)
   is a generated DB column (computed, hidden from the UI) — the same CASE as above.
   The raw `thickness` field is a factory press value, not real microns.
 - **Always include the ×2 layers factor** (front + back wall of the bag).
-- `density` defaults to 0.95; grams display rounds to 2 decimals (project weight convention).
+- **All three columns are whole numbers, rounded UP (CEIL), no decimals.** `universal_thickness`
+  generated column = `CEIL(CASE …)`; `bag_weight_grams` and `bags_per_kilo` = `Math.ceil(...)`
+  (storage + frontend) / `CEIL(...)` (SQL backfill). To stay consistent, the JS weight calc
+  ceils `universalMicrons` first, so weight derives from the integer universal thickness.
+- `density` defaults to 0.95. (Columns are still decimal type but hold integer values.)
 - The SQL backfill in server/index.ts can reference the generated `universal_thickness`
   column directly; the JS (storage + frontend useMemo) recomputes it from
   thickness+facings to mirror the column.
 
-**Why:** Got this wrong twice. (1) universal thickness WITHOUT ×2 layers → half the
-correct weight (rejected by user). (2) raw thickness WITH ×2 → wrong thickness basis
-(rejected). The factory-correct answer is **universal thickness × 2 layers**. The user
-explicitly confirmed: "السماكة يجب ان تاخذها من السماكة العالمية ... وليس السماكة"
-(use the computed universal thickness, not the raw thickness).
+**Why:** The factory-correct weight uses **universal thickness × 2 layers**. Two wrong
+variants to avoid: universal thickness WITHOUT the ×2 layers factor (gives half the
+weight), and raw `thickness` WITH ×2 (wrong thickness basis). The business basis is the
+computed universal thickness, never the raw thickness.
 
 **How to apply:** Note `universal_thickness` is dual-purpose — it also drives film-machine
 eligibility matching (see universal-thickness-eligibility.md). Don't confuse "use raw

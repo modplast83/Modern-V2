@@ -962,16 +962,19 @@ export default function Definitions() {
     // وزن الكيس = العرض المسطّح × الطول × عدد الطبقات(2) × السماكة العالمية(سم) × الكثافة
     // تُستخدم السماكة العالمية المحسوبة (غير الظاهرة) وليست السماكة الخام؛ المصدر
     // الموثوق النهائي هو الخادم. (دخلتان: thickness/4*10، غير ذلك: thickness/2*10).
-    const universalMicrons =
-      lf > 0 && rf > 0 ? (thickness / 4) * 10 : (thickness / 2) * 10;
+    // السماكة العالمية مقرّبة لأعلى لعدد صحيح (تطابق العمود المحسوب universal_thickness).
+    const universalMicrons = Math.ceil(
+      lf > 0 && rf > 0 ? (thickness / 4) * 10 : (thickness / 2) * 10,
+    );
     const grams =
       (width + lf + rf) * length * 2 * (universalMicrons * 1e-4) * density;
     if (!(grams > 0)) {
       return { bagWeightGrams: "", bagsPerKilo: "" };
     }
+    // أرقام صحيحة فقط: التقريب لأعلى لأقرب عدد صحيح (CEIL) بدون كسور عشرية.
     return {
-      bagWeightGrams: grams.toFixed(2),
-      bagsPerKilo: (1000 / grams).toFixed(2),
+      bagWeightGrams: String(Math.ceil(grams)),
+      bagsPerKilo: String(Math.ceil(1000 / grams)),
     };
   }, [
     customerProductForm.width,

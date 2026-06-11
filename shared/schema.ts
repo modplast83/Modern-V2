@@ -277,11 +277,11 @@ export const customer_products = pgTable(
       precision: 12,
       scale: 4,
     }).generatedAlwaysAs(
-      sql`CASE
+      sql`CEIL(CASE
         WHEN (COALESCE(left_facing, 0) = 0 AND COALESCE(right_facing, 0) = 0) THEN thickness / 2 * 10
         WHEN (left_facing > 0 AND right_facing > 0) THEN thickness / 4 * 10
         ELSE thickness / 2 * 10
-      END`,
+      END)`,
     ),
     // الكثافة (جم/سم³) — قابلة للتعديل، الافتراضي 0.95 (LDPE/HDPE نموذجي).
     density: decimal("density", { precision: 6, scale: 3 }).default("0.95"),

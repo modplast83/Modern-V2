@@ -1019,19 +1019,19 @@ function sanitizeResponseForLogging(response: any): any {
       await db.execute(sql`
         UPDATE customer_products
         SET
-          bag_weight_grams = ROUND(
+          bag_weight_grams = CEIL(
             (COALESCE(width, 0) + COALESCE(left_facing, 0) + COALESCE(right_facing, 0))
             * COALESCE(cutting_length_cm, 0)
             * 2
             * (universal_thickness * 0.0001)
-            * COALESCE(density, 0.95), 4),
-          bags_per_kilo = ROUND(
+            * COALESCE(density, 0.95)),
+          bags_per_kilo = CEIL(
             1000.0 / NULLIF(
               (COALESCE(width, 0) + COALESCE(left_facing, 0) + COALESCE(right_facing, 0))
               * COALESCE(cutting_length_cm, 0)
               * 2
               * (universal_thickness * 0.0001)
-              * COALESCE(density, 0.95), 0), 2)
+              * COALESCE(density, 0.95), 0))
         WHERE bag_weight_grams IS NULL
           AND universal_thickness IS NOT NULL
           AND width IS NOT NULL
