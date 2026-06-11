@@ -3540,20 +3540,21 @@ function BlendsTool(): JSX.Element {
 <title>${title}</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Segoe UI',Tahoma,sans-serif;padding:15mm;background:#fff;color:#333;direction:${dir}}
-h1{text-align:center;font-size:20px;color:#1a365d;margin-bottom:4px}
-.subtitle{text-align:center;font-size:12px;color:#666;margin-bottom:16px}
-.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
-.info-item{display:flex;gap:8px;font-size:13px}
-.info-label{font-weight:600;color:#1a365d;min-width:100px}
-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px}
-th{background:#1a365d;color:#fff;padding:6px;border:1px solid #ccc}
-td{padding:6px;border:1px solid #ddd;text-align:center}
+html,body{width:210mm;height:297mm}
+body{font-family:'Segoe UI',Tahoma,sans-serif;padding:10mm;background:#fff;color:#333;direction:${dir};overflow:hidden}
+h1{text-align:center;font-size:17px;color:#1a365d;margin-bottom:2px}
+.subtitle{text-align:center;font-size:11px;color:#666;margin-bottom:8px}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:8px}
+.info-item{display:flex;gap:6px;font-size:12px}
+.info-label{font-weight:600;color:#1a365d;min-width:90px}
+table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:8px;page-break-inside:avoid}
+th{background:#1a365d;color:#fff;padding:4px;border:1px solid #ccc}
+td{padding:3px 4px;border:1px solid #ddd;text-align:center}
 tbody tr:nth-child(even){background:#f5f7fa}
-.section-title{font-size:14px;font-weight:700;color:#1a365d;margin:12px 0 6px;border-bottom:2px solid #1a365d;padding-bottom:4px}
-.eval-table td{text-align:${isAr ? "right" : "left"};height:32px}
-.footer{margin-top:20px;text-align:center;font-size:10px;color:#aaa}
-@media print{@page{size:A4;margin:10mm}}
+.section-title{font-size:12px;font-weight:700;color:#1a365d;margin:6px 0 3px;border-bottom:2px solid #1a365d;padding-bottom:2px;page-break-after:avoid}
+.eval-table td{text-align:${isAr ? "right" : "left"};height:22px}
+.footer{margin-top:8px;text-align:center;font-size:9px;color:#aaa}
+@media print{@page{size:A4 portrait;margin:0}body{margin:0}}
 </style>
 </head>
 <body>
@@ -3601,7 +3602,7 @@ ${evalRowFilled(t("tools.blends.thickness"), filled && blend?.thickness_u)}
 </table>
 
 <div class="section-title">${t("tools.blends.notes")}</div>
-<div style="border:1px solid #ddd;min-height:60px;padding:8px;font-size:12px">${filled && blend?.notes ? blend.notes : ""}</div>
+<div style="border:1px solid #ddd;min-height:36px;padding:6px;font-size:11px">${filled && blend?.notes ? blend.notes : ""}</div>
 
 <div class="footer">${t("tools.blends.evaluationForm")} — ${new Date().toLocaleDateString()}</div>
 </body></html>`;
