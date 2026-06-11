@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Database, Search, ChevronLeft, ChevronRight, Eye, Download } from "lucide-react";
+import { Database, Search, ChevronLeft, ChevronRight, Eye, Download, ArrowLeftRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -156,7 +156,13 @@ function formatCell(v: LegacyCellValue): string {
   return s;
 }
 
-export default function LegacyCustomerProductsTab() {
+interface LegacyCustomerProductsTabProps {
+  onMapProduct?: (row: LegacyRow) => void;
+}
+
+export default function LegacyCustomerProductsTab({
+  onMapProduct,
+}: LegacyCustomerProductsTabProps) {
   const { i18n } = useTranslation();
   const isAr = i18n.language?.startsWith("ar");
   const [search, setSearch] = useState("");
@@ -384,17 +390,36 @@ export default function LegacyCustomerProductsTab() {
                         data-testid={`legacy-row-${row.id}`}
                       >
                         <TableCell className="text-center whitespace-nowrap px-2 text-xs">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2"
-                            onClick={() => setClicheRow(row)}
-                            data-testid={`legacy-view-cliche-${row.id}`}
-                            title={isAr ? "عرض الكليشة" : "View clichés"}
-                          >
-                            <Eye className="w-4 h-4 mr-1" />
-                            {isAr ? "عرض" : "View"}
-                          </Button>
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2"
+                              onClick={() => setClicheRow(row)}
+                              data-testid={`legacy-view-cliche-${row.id}`}
+                              title={isAr ? "عرض الكليشة" : "View clichés"}
+                            >
+                              <Eye className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
+                              {isAr ? "عرض" : "View"}
+                            </Button>
+                            {onMapProduct && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 px-2"
+                                onClick={() => onMapProduct(row)}
+                                data-testid={`legacy-map-product-${row.id}`}
+                                title={
+                                  isAr
+                                    ? "ربط بمنتج عميل جديد"
+                                    : "Map to new customer product"
+                                }
+                              >
+                                <ArrowLeftRight className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
+                                {isAr ? "ربط" : "Map"}
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                         {COLUMNS.map((c) => (
                           <TableCell

@@ -488,6 +488,11 @@ export default function Definitions() {
     { value: '39"', label: '39"' },
   ];
 
+  // عند تعبئة النموذج من القاعدة القديمة (زر الربط) نمنع تأثيرات الحساب التلقائي
+  // من مسح/إعادة حساب طول القطع المعبأ مسبقاً، حتى يختار المستخدم الفئة أو
+  // أسطوانة الطباعة بنفسه — عندها تعود قواعد القاعدة الجديدة للعمل.
+  const legacyMapRef = React.useRef(false);
+
   // Automatic calculations - cutting length from printing cylinder (gated by category, see effect after categories query)
 
   // Helper Functions
@@ -540,6 +545,81 @@ export default function Definitions() {
     setSelectedTab("customer-products");
     setIsDialogOpen(true);
     toast({ title: t("definitions.messages.customerProductCopied") });
+  };
+
+  // ربط منتج من القاعدة القديمة: يفتح نموذج إضافة منتج عميل جديد معبأً بالبيانات
+  // المتوفرة من السجل القديم، ويترك العميل/الفئة/الصنف وبقية الحقول الناقصة
+  // ليكملها المستخدم. لا يُنشئ أي سجل تلقائياً — المستخدم هو من يحفظ.
+  const handleMapFromLegacy = (legacy: any) => {
+    const cleanStr = (v: unknown): string => {
+      if (v === null || v === undefined) return "";
+      const s = String(v).trim();
+      if (s === "" || s.toLowerCase() === "null") return "";
+      return s;
+    };
+
+    // مطابقة أسطوانة الطباعة مع الخيارات المتاحة (مثل 12 أو "12 → 12")
+    const rawCyl = cleanStr(legacy.printing_cylinder);
+    let printing_cylinder = "بدون طباعة";
+    if (rawCyl) {
+      const digits = rawCyl.replace(/[^\d]/g, "");
+      const candidate = digits ? `${parseInt(digits, 10)}"` : "";
+      if (
+        candidate &&
+        printingCylinderOptions.some((o) => o.value === candidate)
+      ) {
+        printing_cylinder = candidate;
+      } else if (printingCylinderOptions.some((o) => o.value === rawCyl)) {
+        printing_cylinder = rawCyl;
+      }
+    }
+
+    // مطابقة المادة الخام مع خيارات النموذج الجديد
+    const rawMatUpper = cleanStr(legacy.raw_material).toUpperCase();
+    const rawMaterialMap: Record<string, string> = {
+      HDPE: "HDPE",
+      LDPE: "LDPE",
+      REGRIND: "Regrind",
+    };
+    const raw_material = rawMaterialMap[rawMatUpper] || "";
+
+    // الطول: نستخدم length_cm، وإن لم يتوفر نستخدم cutting_length_cm
+    const cutting_length_cm =
+      cleanStr(legacy.length_cm) || cleanStr(legacy.cutting_length_cm);
+
+    legacyMapRef.current = true;
+    setCustomerProductForm({
+      customer_id: "none",
+      category_id: "none",
+      item_id: "none",
+      size_caption: "",
+      width: cleanStr(legacy.width),
+      left_facing: cleanStr(legacy.left_f),
+      right_facing: cleanStr(legacy.right_f),
+      thickness: cleanStr(legacy.thickness),
+      density: "0.95",
+      printing_cylinder,
+      cutting_length_cm,
+      raw_material,
+      master_batch_id: "",
+      is_printed: printing_cylinder !== "بدون طباعة",
+      cutting_unit: "كيلو",
+      punching: "",
+      unit_weight_kg: cleanStr(legacy.unit_weight_kg),
+      unit_quantity: cleanStr(legacy.unit_qty),
+      package_weight_kg: "",
+      cliche_front_design: "",
+      cliche_back_design: "",
+      front_print_colors: ["", "", "", ""],
+      back_print_colors: ["", "", "", ""],
+      front_design_filename: "",
+      back_design_filename: "",
+      notes: cleanStr(legacy.notes),
+      status: "active",
+    });
+    setEditingItem(null); // سجل جديد وليس تعديلاً
+    setSelectedTab("customer-products");
+    setIsDialogOpen(true);
   };
 
   const handlePrintCustomerProduct = (product: any) => {
@@ -1159,7 +1239,8 @@ export default function Definitions() {
         ...prev,
         punching: "بدون",
         cutting_unit: "كيلو",
-        cutting_length_cm: "",
+        // أثناء الربط نُبقي طول القطع المعبأ مسبقاً من القاعدة القديمة
+        ...(legacyMapRef.current ? {} : { cutting_length_cm: "" }),
       }));
       return;
     }
@@ -1185,7 +1266,9 @@ export default function Definitions() {
           ...prev,
           punching,
           cutting_unit: "كيلو",
-          cutting_length_cm: isSufra ? prev.cutting_length_cm : "",
+          // أثناء الربط نُبقي الطول المعبأ مسبقاً حتى يغيّر المستخدم الأسطوانة
+          cutting_length_cm:
+            isSufra || legacyMapRef.current ? prev.cutting_length_cm : "",
         }));
       }
     }
@@ -1195,6 +1278,8 @@ export default function Definitions() {
   // Skip when editing an existing product to preserve saved values
   React.useEffect(() => {
     if (editingItem) return;
+    // أثناء الربط من القاعدة القديمة نُبقي طول القطع المعبأ مسبقاً كما هو
+    if (legacyMapRef.current) return;
     const selectedCat = Array.isArray(categories)
       ? (categories as any[]).find(
           (c: any) => c.id === customerProductForm.category_id,
@@ -1232,6 +1317,13 @@ export default function Definitions() {
     categories,
     editingItem,
   ]);
+
+  // إنهاء وضع الربط من القاعدة القديمة عند إغلاق نافذة المنتج بأي طريقة
+  React.useEffect(() => {
+    if (!isDialogOpen) {
+      legacyMapRef.current = false;
+    }
+  }, [isDialogOpen]);
 
   // Filter helper function
   const filterData = (data: any[], searchFields: string[]) => {
@@ -4273,7 +4365,7 @@ export default function Definitions() {
             </TabsContent>
 
             <TabsContent value="legacy" className="space-y-6">
-              <LegacyCustomerProductsTab />
+              <LegacyCustomerProductsTab onMapProduct={handleMapFromLegacy} />
             </TabsContent>
           </Tabs>
         </div>
@@ -5491,12 +5583,14 @@ export default function Definitions() {
                       </Label>
                       <Select
                         value={customerProductForm.printing_cylinder}
-                        onValueChange={(value) =>
+                        onValueChange={(value) => {
+                          // اختيار المستخدم للأسطوانة يُنهي وضع الربط
+                          legacyMapRef.current = false;
                           setCustomerProductForm({
                             ...customerProductForm,
                             printing_cylinder: value,
-                          })
-                        }
+                          });
+                        }}
                       >
                         <SelectTrigger className="mt-1">
                           <SelectValue
@@ -5547,12 +5641,14 @@ export default function Definitions() {
                             id="cutting_length_cm"
                             type="number"
                             value={customerProductForm.cutting_length_cm}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              // تعديل المستخدم اليدوي للطول يُنهي وضع الربط
+                              legacyMapRef.current = false;
                               setCustomerProductForm({
                                 ...customerProductForm,
                                 cutting_length_cm: e.target.value,
-                              })
-                            }
+                              });
+                            }}
                             placeholder={
                               isManualInput
                                 ? t("definitions.form.enterCuttingLength")
