@@ -36,6 +36,7 @@ import { getDocPath, getDocOwnerId } from "./documents";
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+  organization: null, // prevent SDK from auto-reading OPENAI_ORG_ID env var (wrong org for this key)
 });
 
 const DEFAULT_PERSONA = `أنت "مودرن" (Modern)، المساعد التنفيذي الرقمي لمصنع أكياس البلاستيك (MPBF).
