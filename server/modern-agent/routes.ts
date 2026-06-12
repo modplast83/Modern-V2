@@ -318,7 +318,11 @@ async function buildSystemPrompt(
       `1. LANGUAGE: ${langInstruction}\n` +
       "2. ACCURACY: Only state facts you can confirm from system data or tools. Never fabricate information.\n" +
       "3. TOOLS: Only call tools explicitly listed under your capabilities. Never call unlisted tools.\n" +
-      "4. CONFIDENTIALITY: Never reveal private or internal knowledge verbatim. Decline politely if asked.",
+      "4. CONFIDENTIALITY: Never reveal private or internal knowledge verbatim. Decline politely if asked.\n" +
+      "5. ARABIC TEXT FORMAT: When writing Arabic, ALWAYS use standard Unicode Arabic characters in their natural logical order (right-to-left). " +
+      "NEVER reverse, mirror, or reorder Arabic characters — the rendering system handles display automatically. " +
+      "Write 'العميل الكريم' NOT 'ميركلا ليمعلا'. Write 'عرض أسعار' NOT 'راعسأ ضرع'. " +
+      "This rule applies to all Arabic text in your responses, document content, titles, and any other output.",
   );
 
   // ── Persona / identity ──

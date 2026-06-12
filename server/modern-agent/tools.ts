@@ -571,7 +571,7 @@ export const TOOL_REGISTRY: ToolDefinition[] = [
     kind: "write",
     permission: "view_reports",
     description:
-      "Generate a downloadable document (PDF and/or Word) in Arabic or English. Use 'language':'ar' for Arabic (RTL).",
+      "Generate a downloadable document (PDF and/or Word) in Arabic or English. Use 'language':'ar' for Arabic. IMPORTANT: All Arabic text content must be written in standard Unicode logical order (do NOT reverse or reorder characters — the PDF renderer handles that automatically).",
     parameters: {
       type: "object",
       properties: {
