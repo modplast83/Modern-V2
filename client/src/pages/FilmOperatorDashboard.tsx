@@ -553,7 +553,7 @@ export default function FilmOperatorDashboard({
                               className="font-bold text-orange-600 dark:text-orange-400"
                               data-testid={`text-thickness-${order.id}`}
                             >
-                              {parseFloat(String(order.thickness))} ميكرون / µm
+                              {parseFloat(String(order.thickness))} µm
                             </p>
                           </div>
                         )}
