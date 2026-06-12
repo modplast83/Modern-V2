@@ -7894,10 +7894,14 @@ export class DatabaseStorage implements IStorage {
         po.created_at,
         o.order_number,
         o.status AS order_status,
+        o.created_at AS order_date,
         c.id AS customer_id,
         COALESCE(c.name_ar, c.name) AS customer_name,
         c.name_ar AS customer_name_ar,
         c.name AS customer_name_en,
+        COALESCE(sr.display_name_ar, sr.display_name, sr.full_name) AS sales_rep_name,
+        sr.display_name_ar AS sales_rep_name_ar,
+        COALESCE(sr.display_name, sr.full_name) AS sales_rep_name_en,
         COALESCE(i.name_ar, i.name) AS product_name,
         i.name_ar AS product_name_ar,
         i.name AS product_name_en,
@@ -7917,6 +7921,7 @@ export class DatabaseStorage implements IStorage {
       FROM production_orders po
       JOIN orders o ON o.id = po.order_id
       JOIN customers c ON c.id = o.customer_id
+      LEFT JOIN users sr ON sr.id = c.sales_rep_id
       LEFT JOIN customer_products cp ON cp.id = po.customer_product_id
       LEFT JOIN items i ON i.id = cp.item_id
       LEFT JOIN master_batch_colors mb ON mb.id = cp.master_batch_id
@@ -7928,7 +7933,7 @@ export class DatabaseStorage implements IStorage {
           po.status = 'active'
           OR (po.status = 'pending' AND o.status = 'in_production')
         )
-      GROUP BY po.id, o.id, c.id, cp.id, i.id, mb.id
+      GROUP BY po.id, o.id, c.id, sr.id, cp.id, i.id, mb.id
       ORDER BY po.id DESC
     `);
     return result.rows as any[];
@@ -7950,10 +7955,14 @@ export class DatabaseStorage implements IStorage {
         po.quantity_kg,
         po.final_quantity_kg,
         o.order_number,
+        o.created_at AS order_date,
         COALESCE(c.name_ar, c.name) AS customer_name,
         c.name_ar AS customer_name_ar,
         c.name AS customer_name_en,
         c.plate_drawer_code,
+        COALESCE(sr.display_name_ar, sr.display_name, sr.full_name) AS sales_rep_name,
+        sr.display_name_ar AS sales_rep_name_ar,
+        COALESCE(sr.display_name, sr.full_name) AS sales_rep_name_en,
         COALESCE(i.name_ar, i.name, cp.id::text) AS product_name,
         i.name_ar AS product_name_ar,
         i.name AS product_name_en,
@@ -7965,6 +7974,7 @@ export class DatabaseStorage implements IStorage {
       JOIN production_orders po ON r.production_order_id = po.id
       JOIN orders o ON po.order_id = o.id
       JOIN customers c ON o.customer_id = c.id
+      LEFT JOIN users sr ON sr.id = c.sales_rep_id
       JOIN customer_products cp ON po.customer_product_id = cp.id
       LEFT JOIN items i ON cp.item_id = i.id
       WHERE r.stage = 'film'
@@ -7981,9 +7991,13 @@ export class DatabaseStorage implements IStorage {
           production_order_id: poId,
           production_order_number: row.production_order_number,
           order_number: row.order_number,
+          order_date: row.order_date,
           customer_name: row.customer_name,
           customer_name_ar: row.customer_name_ar,
           customer_name_en: row.customer_name_en,
+          sales_rep_name: row.sales_rep_name,
+          sales_rep_name_ar: row.sales_rep_name_ar,
+          sales_rep_name_en: row.sales_rep_name_en,
           plate_drawer_code: row.plate_drawer_code,
           product_name: row.product_name,
           product_name_ar: row.product_name_ar,
@@ -8039,9 +8053,13 @@ export class DatabaseStorage implements IStorage {
         po.quantity_kg,
         po.final_quantity_kg,
         o.order_number,
+        o.created_at AS order_date,
         COALESCE(c.name_ar, c.name) AS customer_name,
         c.name_ar AS customer_name_ar,
         c.name AS customer_name_en,
+        COALESCE(sr.display_name_ar, sr.display_name, sr.full_name) AS sales_rep_name,
+        sr.display_name_ar AS sales_rep_name_ar,
+        COALESCE(sr.display_name, sr.full_name) AS sales_rep_name_en,
         COALESCE(i.name_ar, i.name, cp.id::text) AS product_name,
         i.name_ar AS product_name_ar,
         i.name AS product_name_en,
@@ -8052,6 +8070,7 @@ export class DatabaseStorage implements IStorage {
       JOIN production_orders po ON r.production_order_id = po.id
       JOIN orders o ON po.order_id = o.id
       JOIN customers c ON o.customer_id = c.id
+      LEFT JOIN users sr ON sr.id = c.sales_rep_id
       JOIN customer_products cp ON po.customer_product_id = cp.id
       LEFT JOIN items i ON cp.item_id = i.id
       WHERE (
@@ -8070,9 +8089,13 @@ export class DatabaseStorage implements IStorage {
           production_order_id: poId,
           production_order_number: row.production_order_number,
           order_number: row.order_number,
+          order_date: row.order_date,
           customer_name: row.customer_name,
           customer_name_ar: row.customer_name_ar,
           customer_name_en: row.customer_name_en,
+          sales_rep_name: row.sales_rep_name,
+          sales_rep_name_ar: row.sales_rep_name_ar,
+          sales_rep_name_en: row.sales_rep_name_en,
           product_name: row.product_name,
           product_name_ar: row.product_name_ar,
           product_name_en: row.product_name_en,

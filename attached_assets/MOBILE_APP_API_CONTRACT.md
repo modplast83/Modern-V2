@@ -329,6 +329,9 @@ GET /api/production/printing-queue
 يرجع قائمة الرولات الجاهزة للطباعة.
 
 GET /api/rolls/active-for-printing
+// حقول إضافية (additive, اختيارية) لكل أمر إنتاج مُجمّع:
+//   order_date (ISO timestamp لتاريخ الطلب)
+//   sales_rep_name, sales_rep_name_ar, sales_rep_name_en (اسم مندوب المبيعات)
 GET /api/rolls/printing-queue-by-section
 4.6 التقطيع (Cutting)
 POST /api/rolls/:id/complete-cutting
@@ -342,6 +345,9 @@ POST /api/rolls/:id/complete-cutting
 GET /api/production/cutting-queue
 GET /api/production/grouped-cutting-queue
 GET /api/rolls/active-for-cutting
+// حقول إضافية (additive, اختيارية) لكل أمر إنتاج مُجمّع:
+//   order_date (ISO timestamp لتاريخ الطلب)
+//   sales_rep_name, sales_rep_name_ar, sales_rep_name_en (اسم مندوب المبيعات)
 GET /api/rolls/cutting-queue-by-section
 4.7 قوائم الإنتاج (Production Queues)
 GET /api/production/film-queue

@@ -1,8 +1,10 @@
 import {
   ArrowLeft,
   ArrowRight,
+  Calendar,
   ChevronLeft,
   ChevronRight,
+  UserRound,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -50,6 +52,8 @@ const accentClasses: Record<string, string> = {
 interface OrderGroupCardProps {
   orderNumber: string;
   customerName: string;
+  salesRepName?: string;
+  orderDate?: string;
   productionOrderCount: number;
   progressPercent: number;
   metrics: { label: string; value: string }[];
@@ -62,6 +66,8 @@ interface OrderGroupCardProps {
 export function OrderGroupCard({
   orderNumber,
   customerName,
+  salesRepName,
+  orderDate,
   productionOrderCount,
   progressPercent,
   metrics,
@@ -73,6 +79,22 @@ export function OrderGroupCard({
   const { t, i18n } = useTranslation();
   const isArabic = i18n.language === "ar";
   const ForwardIcon = isArabic ? ChevronLeft : ChevronRight;
+
+  const parsedDate = orderDate ? new Date(orderDate) : null;
+  const hasValidDate = parsedDate && !isNaN(parsedDate.getTime());
+  const formattedDate = hasValidDate
+    ? parsedDate!.toLocaleDateString(isArabic ? "ar-EG" : "en-GB", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      })
+    : null;
+  const daysElapsed = hasValidDate
+    ? Math.max(
+        0,
+        Math.floor((Date.now() - parsedDate!.getTime()) / 86400000),
+      )
+    : null;
 
   return (
     <Card
@@ -98,10 +120,22 @@ export function OrderGroupCard({
               {t("operators.common.order")}: {orderNumber}
             </CardTitle>
             <CardDescription
+              className="text-red-600 dark:text-red-400 font-bold"
               data-testid={`text-order-group-customer-${testId}`}
             >
               {customerName}
             </CardDescription>
+            {salesRepName && (
+              <div
+                className="mt-1 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400"
+                data-testid={`text-order-group-sales-rep-${testId}`}
+              >
+                <UserRound className="h-3 w-3" />
+                <span>
+                  {t("operators.common.salesRep")}: {salesRepName}
+                </span>
+              </div>
+            )}
           </div>
           <Badge variant="secondary" className={accentClasses[accent]}>
             {icon}
@@ -112,6 +146,27 @@ export function OrderGroupCard({
       </CardHeader>
 
       <CardContent className="space-y-4">
+        {formattedDate && (
+          <div className="flex items-center justify-between gap-2 text-sm flex-wrap">
+            <span
+              className="flex items-center gap-1 text-gray-600 dark:text-gray-400"
+              data-testid={`text-order-group-date-${testId}`}
+            >
+              <Calendar className="h-3.5 w-3.5" />
+              {t("operators.common.orderDate")}: {formattedDate}
+            </span>
+            {daysElapsed !== null && (
+              <span
+                className="font-medium text-gray-700 dark:text-gray-300"
+                data-testid={`text-order-group-days-${testId}`}
+              >
+                {t("operators.common.daysElapsed")}:{" "}
+                {formatNumberAr(daysElapsed)} {t("operators.common.day")}
+              </span>
+            )}
+          </div>
+        )}
+
         {metrics.length > 0 && (
           <div className="grid grid-cols-2 gap-4 text-sm">
             {metrics.map((m, i) => (

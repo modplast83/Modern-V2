@@ -55,9 +55,13 @@ interface ActiveProductionOrderDetails {
   status: string;
   created_at: string;
   order_number: string;
+  order_date?: string;
   customer_name: string;
   customer_name_ar?: string;
   customer_name_en?: string;
+  sales_rep_name?: string;
+  sales_rep_name_ar?: string;
+  sales_rep_name_en?: string;
   product_name: string;
   product_name_ar?: string;
   product_name_en?: string;
@@ -380,6 +384,13 @@ export default function FilmOperatorDashboard({
                         ln(first.customer_name_ar, first.customer_name_en) ||
                         first.customer_name
                       }
+                      salesRepName={
+                        ln(
+                          first.sales_rep_name_ar,
+                          first.sales_rep_name_en,
+                        ) || first.sales_rep_name
+                      }
+                      orderDate={first.order_date}
                       productionOrderCount={group.items.length}
                       progressPercent={groupProgress}
                       metrics={[
