@@ -3275,7 +3275,8 @@ export async function registerRoutes(
         const { customer_product_id, quantity_kg } = req.body;
 
         // Validate inputs
-        if (!customer_product_id || !quantity_kg || quantity_kg <= 0) {
+        const parsedCpId = parseInt(customer_product_id);
+        if (!customer_product_id || isNaN(parsedCpId) || parsedCpId <= 0 || !quantity_kg || quantity_kg <= 0) {
           return res.status(400).json({
             message: "معرف المنتج والكمية الأساسية مطلوبان",
             success: false,
@@ -3284,7 +3285,7 @@ export async function registerRoutes(
 
         // Get specific customer product info for intelligent calculation
         const customerProduct = await storage.getCustomerProductById(
-          parseInt(customer_product_id),
+          parsedCpId,
         );
 
         if (!customerProduct) {
@@ -16079,10 +16080,11 @@ Input: ${text}`;
         typeof req.query.startDate === "string" ? req.query.startDate : null;
       const endDate =
         typeof req.query.endDate === "string" ? req.query.endDate : null;
-      const itemId =
+      const itemIdRaw =
         typeof req.query.itemId === "string"
           ? parseInt(req.query.itemId)
-          : null;
+          : NaN;
+      const itemId = !isNaN(itemIdRaw) && itemIdRaw > 0 ? itemIdRaw : null;
       const movementType =
         typeof req.query.type === "string" &&
         ["in", "out"].includes(req.query.type)
