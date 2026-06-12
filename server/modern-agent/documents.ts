@@ -13,11 +13,11 @@ import {
   TableRow,
   TableCell,
   WidthType,
+  convertMillimetersToTwip,
 } from "docx";
 import {
   isArabicText,
   processArabicText,
-  bidiReorderArabic,
 } from "../services/arabic-text-service";
 
 export const MODERN_DOCS_DIR = path.join(os.tmpdir(), "modern-agent-docs");
@@ -87,10 +87,11 @@ export async function generateAgentPdf(spec: AgentDocSpec): Promise<{
   const hasArabicFont = !!ARABIC_FONT_PATH;
   const align: "right" | "left" = isAr ? "right" : "left";
 
+  // Always apply full Arabic processing (reshape contextual forms + bidi reorder)
+  // regardless of font availability — pdfkit does not do Arabic shaping natively.
   const safe = (text: string): string => {
     if (!text) return "";
     if (!isArabicText(text)) return text;
-    if (hasArabicFont) return bidiReorderArabic(text);
     return processArabicText(text);
   };
 
@@ -279,7 +280,25 @@ export async function generateAgentWord(spec: AgentDocSpec): Promise<{
   }
 
   const docx = new Document({
-    sections: [{ properties: {}, children }],
+    sections: [
+      {
+        properties: {
+          page: {
+            size: {
+              width: convertMillimetersToTwip(210),  // A4 width
+              height: convertMillimetersToTwip(297), // A4 height
+            },
+            margin: {
+              top: convertMillimetersToTwip(20),
+              bottom: convertMillimetersToTwip(20),
+              left: convertMillimetersToTwip(20),
+              right: convertMillimetersToTwip(20),
+            },
+          },
+        },
+        children,
+      },
+    ],
   });
   const buffer = await Packer.toBuffer(docx);
   fs.writeFileSync(filePath, buffer);
