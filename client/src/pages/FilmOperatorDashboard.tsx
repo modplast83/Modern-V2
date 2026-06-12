@@ -12,13 +12,19 @@ import {
   User,
   Beaker,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { formatNumberAr } from "../../../shared/number-utils";
 import PageLayout from "../components/layout/PageLayout";
 import RollCreationModalEnhanced from "../components/modals/RollCreationModalEnhanced";
 import FilmMaterialMixingTab from "../components/production/FilmMaterialMixingTab";
+import {
+  OrderGroupCard,
+  BackToOrdersBar,
+  OrdersListHeader,
+  groupByOrderNumber,
+} from "../components/production/OrderGroupCard";
 import { printRollLabel } from "../components/production/RollLabelPrint";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -108,6 +114,9 @@ export default function FilmOperatorDashboard({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isFinalRoll, setIsFinalRoll] = useState(false);
   const [expandedOrders, setExpandedOrders] = useState<Set<number>>(new Set());
+  const [selectedOrderNumber, setSelectedOrderNumber] = useState<string | null>(
+    null,
+  );
 
   const { data: productionOrders = [], isLoading } = useQuery<
     ActiveProductionOrderDetails[]
@@ -197,6 +206,14 @@ export default function FilmOperatorDashboard({
       },
     ).length,
   };
+
+  const orderGroups = useMemo(
+    () => groupByOrderNumber(productionOrders, (o) => o.order_number),
+    [productionOrders],
+  );
+  const selectedGroup = selectedOrderNumber
+    ? orderGroups.find((g) => g.orderNumber === selectedOrderNumber) ?? null
+    : null;
 
   if (isLoading) {
     const loadingContent = (
@@ -338,9 +355,61 @@ export default function FilmOperatorDashboard({
                 </p>
               </div>
             </Card>
+          ) : !selectedGroup ? (
+            <div className="space-y-4">
+              <OrdersListHeader testId="film" />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {orderGroups.map((group) => {
+                  const first = group.items[0];
+                  const totalRequired = group.items.reduce(
+                    (sum, o) =>
+                      sum + Number(o.final_quantity_kg || o.quantity_kg || 0),
+                    0,
+                  );
+                  const totalProduced = group.items.reduce(
+                    (sum, o) => sum + Number(o.total_weight_produced || 0),
+                    0,
+                  );
+                  const groupProgress =
+                    totalRequired > 0 ? (totalProduced / totalRequired) * 100 : 0;
+                  return (
+                    <OrderGroupCard
+                      key={group.orderNumber}
+                      orderNumber={group.orderNumber}
+                      customerName={
+                        ln(first.customer_name_ar, first.customer_name_en) ||
+                        first.customer_name
+                      }
+                      productionOrderCount={group.items.length}
+                      progressPercent={groupProgress}
+                      metrics={[
+                        {
+                          label: t("operators.common.requiredQuantity"),
+                          value: `${formatNumberAr(totalRequired)} ${t("operators.common.kg")}`,
+                        },
+                        {
+                          label: t("operators.common.producedQuantity"),
+                          value: `${formatNumberAr(totalProduced)} ${t("operators.common.kg")}`,
+                        },
+                      ]}
+                      accent="blue"
+                      icon={<Package className="h-3 w-3 ml-1" />}
+                      onSelect={() => setSelectedOrderNumber(group.orderNumber)}
+                      testId={`film-${group.orderNumber}`}
+                    />
+                  );
+                })}
+              </div>
+            </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {productionOrders.map((order: ActiveProductionOrderDetails) => {
+            <div className="space-y-4">
+              <BackToOrdersBar
+                orderNumber={selectedGroup.orderNumber}
+                onBack={() => setSelectedOrderNumber(null)}
+                testId="film"
+              />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {selectedGroup.items.map((order: ActiveProductionOrderDetails) => {
                 const progress =
                   (Number(order.total_weight_produced || 0) /
                     Number(order.final_quantity_kg || 1)) *
@@ -765,6 +834,7 @@ export default function FilmOperatorDashboard({
                   </Card>
                 );
               })}
+              </div>
             </div>
           )}
         </TabsContent>

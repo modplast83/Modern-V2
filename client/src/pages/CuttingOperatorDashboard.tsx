@@ -8,11 +8,17 @@ import {
   Weight,
   AlertCircle,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { formatNumberAr } from "../../../shared/number-utils";
 import PageLayout from "../components/layout/PageLayout";
+import {
+  OrderGroupCard,
+  BackToOrdersBar,
+  OrdersListHeader,
+  groupByOrderNumber,
+} from "../components/production/OrderGroupCard";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import {
@@ -98,6 +104,9 @@ export default function CuttingOperatorDashboard({
   const [selectedRoll, setSelectedRoll] = useState<RollDetails | null>(null);
   const [netWeight, setNetWeight] = useState<string>("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedOrderNumber, setSelectedOrderNumber] = useState<string | null>(
+    null,
+  );
   const CUTTING_MACHINE_STORAGE_KEY = "mpbf:cutting-operator:selected-machine";
   const [selectedMachineId, setSelectedMachineIdState] = useState<string>(() => {
     try {
@@ -225,6 +234,14 @@ export default function CuttingOperatorDashboard({
       0,
     ),
   };
+
+  const orderGroups = useMemo(
+    () => groupByOrderNumber(productionOrders, (o) => o.order_number),
+    [productionOrders],
+  );
+  const selectedGroup = selectedOrderNumber
+    ? orderGroups.find((g) => g.orderNumber === selectedOrderNumber) ?? null
+    : null;
 
   if (isLoading) {
     const loadingContent = (
@@ -374,9 +391,65 @@ export default function CuttingOperatorDashboard({
             </p>
           </div>
         </Card>
+      ) : !selectedGroup ? (
+        <div className="space-y-4">
+          <OrdersListHeader testId="cutting" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {orderGroups.map((group) => {
+              const first = group.items[0];
+              const totalRolls = group.items.reduce(
+                (sum, o) => sum + o.total_rolls,
+                0,
+              );
+              const totalWeight = group.items.reduce(
+                (sum, o) => sum + o.total_weight,
+                0,
+              );
+              const completedRolls = group.items.reduce(
+                (sum, o) =>
+                  sum + o.rolls.filter((r) => r.cut_completed_at).length,
+                0,
+              );
+              const groupProgress =
+                totalRolls > 0 ? (completedRolls / totalRolls) * 100 : 0;
+              return (
+                <OrderGroupCard
+                  key={group.orderNumber}
+                  orderNumber={group.orderNumber}
+                  customerName={
+                    ln(first.customer_name_ar, first.customer_name_en) ||
+                    first.customer_name
+                  }
+                  productionOrderCount={group.items.length}
+                  progressPercent={groupProgress}
+                  metrics={[
+                    {
+                      label: t("operators.common.totalRolls"),
+                      value: `${formatNumberAr(totalRolls)} ${t("operators.common.roll")}`,
+                    },
+                    {
+                      label: t("operators.common.totalWeight"),
+                      value: `${formatNumberAr(totalWeight)} ${t("operators.common.kg")}`,
+                    },
+                  ]}
+                  accent="green"
+                  icon={<Scissors className="h-3 w-3 ml-1" />}
+                  onSelect={() => setSelectedOrderNumber(group.orderNumber)}
+                  testId={`cutting-${group.orderNumber}`}
+                />
+              );
+            })}
+          </div>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {productionOrders.map((order) => {
+        <div className="space-y-4">
+          <BackToOrdersBar
+            orderNumber={selectedGroup.orderNumber}
+            onBack={() => setSelectedOrderNumber(null)}
+            testId="cutting"
+          />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {selectedGroup.items.map((order) => {
             const completedRolls = order.rolls.filter(
               (r) => r.cut_completed_at,
             ).length;
@@ -571,6 +644,7 @@ export default function CuttingOperatorDashboard({
               </Card>
             );
           })}
+          </div>
         </div>
       )}
     </div>
