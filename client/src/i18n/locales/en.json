@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "Factory Management System",
+    "appName": "ProdSystem",
     "dashboard": "Dashboard",
     "search": "Search...",
     "save": "Save",
@@ -5076,7 +5076,7 @@
     "theSlide": "Slide",
     "cancel": "Cancel",
     "paused": "Paused",
-    "factorySystem": "Factory Management System",
+    "factorySystem": "Production Management System",
     "noDisplaySlides": "No display slides",
     "addFromControl": "Add slides from control panel",
     "progress": "Progress",
