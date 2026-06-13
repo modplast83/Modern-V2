@@ -1,5 +1,5 @@
-const CACHE_NAME = "mpbf-next-v1";
-const STATIC_CACHE = "mpbf-static-v1";
+const CACHE_NAME = "mpbf-next-v2";
+const STATIC_CACHE = "mpbf-static-v2";
 
 const STATIC_ASSETS = ["/", "/manifest.json"];
 
@@ -25,25 +25,47 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
+function isViteDevRequest(url) {
+  return (
+    url.pathname.startsWith("/@") ||
+    url.pathname.startsWith("/client/") ||
+    url.pathname.startsWith("/src/") ||
+    url.pathname.startsWith("/node_modules/") ||
+    url.pathname.startsWith("/__") ||
+    url.search.includes("import") ||
+    url.search.includes("t=") ||
+    url.search.includes("v=")
+  );
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
   if (request.method !== "GET") return;
 
+  if (url.protocol !== "http:" && url.protocol !== "https:") return;
+
   if (url.pathname.startsWith("/api/")) {
     return;
   }
 
+  // Never intercept Vite dev/HMR module requests — caching them serves stale
+  // JavaScript on the dev server and produces a blank page.
+  if (isViteDevRequest(url)) {
+    return;
+  }
+
+  // Only cache-first genuinely static media that is safe to serve stale.
   if (
-    url.pathname.match(
-      /\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/,
-    )
+    url.pathname.match(/\.(png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/)
   ) {
     event.respondWith(cacheFirst(request));
     return;
   }
 
+  // HTML, JS and CSS go network-first so the latest code always loads when
+  // online; the cache is only used as an offline fallback.
   event.respondWith(networkFirst(request));
 });
 
