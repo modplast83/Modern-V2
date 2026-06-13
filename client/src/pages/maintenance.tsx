@@ -26,6 +26,7 @@ import {
   generateOperatorReportNumber,
 } from "../../../shared/id-generator";
 import PageLayout from "../components/layout/PageLayout";
+import ComponentCatalogTab from "../components/maintenance/ComponentCatalogTab";
 import ConsumablePartsTab from "../components/maintenance/ConsumablePartsTab";
 import PreventiveActionsTab from "../components/maintenance/PreventiveActionsTab";
 import { Badge } from "../components/ui/badge";
@@ -193,6 +194,10 @@ const maintenanceTabPermissions: {
   {
     tab: "preventive-actions",
     permissions: ["view_maintenance", "manage_maintenance"],
+  },
+  {
+    tab: "component-catalog",
+    permissions: ["manage_maintenance"],
   },
 ];
 
@@ -548,6 +553,15 @@ export default function Maintenance() {
               {t("maintenance.preventiveActions.tab")}
             </TabsTrigger>
           )}
+          {userHasPermission(user, ["manage_maintenance"]) && (
+            <TabsTrigger
+              value="component-catalog"
+              className="flex items-center gap-2"
+            >
+              <Wrench className="h-4 w-4" />
+              {t("maintenance.componentCatalog.tab")}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="requests">
@@ -761,6 +775,10 @@ export default function Maintenance() {
 
         <TabsContent value="preventive-actions">
           <PreventiveActionsTab />
+        </TabsContent>
+
+        <TabsContent value="component-catalog">
+          <ComponentCatalogTab />
         </TabsContent>
       </Tabs>
 

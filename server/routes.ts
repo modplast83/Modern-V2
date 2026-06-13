@@ -115,6 +115,8 @@ import {
   insertMaintenanceRequestSchema,
   insertMaintenanceActionSchema,
   insertMaintenanceReportSchema,
+  insertMaintenanceComponentSchema,
+  updateMaintenanceComponentSchema,
   createPreventiveMaintenanceSchema,
   insertOperatorNegligenceReportSchema,
   insertConsumablePartSchema,
@@ -7082,6 +7084,97 @@ Input: ${text}`;
       } catch (error) {
         console.error("Error fetching maintenance components:", error);
         res.status(500).json({ message: "خطأ في جلب قائمة المكونات" });
+      }
+    },
+  );
+
+  // Full catalog (including disabled) for admin management
+  app.get(
+    "/api/maintenance-components/all",
+    requireAuth,
+    requirePermission("manage_maintenance"),
+    async (_req, res) => {
+      try {
+        const components = await storage.getAllMaintenanceComponents();
+        res.json(components);
+      } catch (error) {
+        console.error("Error fetching all maintenance components:", error);
+        res.status(500).json({ message: "خطأ في جلب قائمة المكونات" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/maintenance-components",
+    requireAuth,
+    requirePermission("manage_maintenance"),
+    async (req, res) => {
+      try {
+        const data = insertMaintenanceComponentSchema.parse(req.body);
+        const component = await storage.createMaintenanceComponent(data);
+        res.json(component);
+      } catch (error: any) {
+        if (error?.name === "ZodError") {
+          return res
+            .status(400)
+            .json({ message: "بيانات غير صالحة", errors: error.errors });
+        }
+        if (error?.code === "23505") {
+          return res
+            .status(409)
+            .json({ message: "هذا المكوّن موجود بالفعل لهذا النوع من الماكينات" });
+        }
+        console.error("Error creating maintenance component:", error);
+        res.status(500).json({ message: "خطأ في إنشاء المكوّن" });
+      }
+    },
+  );
+
+  app.patch(
+    "/api/maintenance-components/:id",
+    requireAuth,
+    requirePermission("manage_maintenance"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "ID");
+        const data = updateMaintenanceComponentSchema.parse(req.body);
+        const component = await storage.updateMaintenanceComponent(id, data);
+        res.json(component);
+      } catch (error: any) {
+        if (error?.name === "ZodError") {
+          return res
+            .status(400)
+            .json({ message: "بيانات غير صالحة", errors: error.errors });
+        }
+        if (error?.code === "23505") {
+          return res
+            .status(409)
+            .json({ message: "هذا المكوّن موجود بالفعل لهذا النوع من الماكينات" });
+        }
+        console.error("Error updating maintenance component:", error);
+        res.status(500).json({ message: "خطأ في تحديث المكوّن" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/maintenance-components/:id",
+    requireAuth,
+    requirePermission("manage_maintenance"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "ID");
+        await storage.deleteMaintenanceComponent(id);
+        res.json({ message: "تم حذف المكوّن بنجاح" });
+      } catch (error: any) {
+        if (error?.code === "23503") {
+          return res.status(409).json({
+            message:
+              "لا يمكن حذف هذا المكوّن لأنه مستخدم في إجراءات وقائية سابقة. يمكنك تعطيله بدلاً من ذلك.",
+          });
+        }
+        console.error("Error deleting maintenance component:", error);
+        res.status(500).json({ message: "خطأ في حذف المكوّن" });
       }
     },
   );

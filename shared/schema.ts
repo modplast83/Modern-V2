@@ -3171,6 +3171,9 @@ export const insertMaintenanceComponentSchema = createInsertSchema(
   created_at: true,
 });
 
+export const updateMaintenanceComponentSchema =
+  insertMaintenanceComponentSchema.partial();
+
 export const insertPreventiveMaintenanceActionSchema = createInsertSchema(
   preventive_maintenance_actions,
 ).omit({
@@ -3274,6 +3277,9 @@ export type MaintenanceComponent =
   typeof maintenance_component_catalog.$inferSelect;
 export type InsertMaintenanceComponent = z.infer<
   typeof insertMaintenanceComponentSchema
+>;
+export type UpdateMaintenanceComponent = z.infer<
+  typeof updateMaintenanceComponentSchema
 >;
 export type PreventiveMaintenanceAction =
   typeof preventive_maintenance_actions.$inferSelect;

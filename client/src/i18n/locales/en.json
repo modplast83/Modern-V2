@@ -2083,6 +2083,42 @@
         "deleteFailed": "Failed to delete preventive action"
       }
     },
+    "componentCatalog": {
+      "tab": "Component Catalog",
+      "title": "Maintenance Component Catalog",
+      "description": "Add, edit, enable/disable, and reorder the components available in the Preventive Actions form, grouped by machine type.",
+      "addComponent": "Add Component",
+      "editComponent": "Edit Component",
+      "machineType": "Machine Type",
+      "nameAr": "Name (Arabic)",
+      "nameEn": "Name (English)",
+      "sortOrder": "Sort Order",
+      "enabled": "Enabled",
+      "status": "Status",
+      "active": "Active",
+      "disabled": "Disabled",
+      "empty": "No components in this catalog yet",
+      "emptyGroup": "No components for this machine type",
+      "confirmDelete": "Are you sure you want to delete this component?",
+      "machineTypes": {
+        "extruder": "Extruder (Film)",
+        "printer": "Printer (Printing)",
+        "cutter": "Cutter (Cutting)"
+      },
+      "validation": {
+        "machineTypeRequired": "Please select a machine type",
+        "nameArRequired": "Arabic name is required",
+        "nameEnRequired": "English name is required"
+      },
+      "toast": {
+        "created": "Component added successfully",
+        "createFailed": "Failed to add component",
+        "updated": "Component updated successfully",
+        "updateFailed": "Failed to update component",
+        "deleted": "Component deleted successfully",
+        "deleteFailed": "Failed to delete component"
+      }
+    },
     "description": "Description",
     "schedule": "Schedule",
     "requests": "Requests",

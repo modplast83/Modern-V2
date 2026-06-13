@@ -188,6 +188,8 @@ import {
   type MaintenanceReport,
   type InsertMaintenanceReport,
   type MaintenanceComponent,
+  type InsertMaintenanceComponent,
+  type UpdateMaintenanceComponent,
   type PreventiveMaintenanceAction,
   type PreventiveMaintenanceItem,
   type CreatePreventiveMaintenance,
@@ -954,6 +956,15 @@ export interface IStorage {
   getMaintenanceComponents(
     machineType?: string,
   ): Promise<MaintenanceComponent[]>;
+  getAllMaintenanceComponents(): Promise<MaintenanceComponent[]>;
+  createMaintenanceComponent(
+    data: InsertMaintenanceComponent,
+  ): Promise<MaintenanceComponent>;
+  updateMaintenanceComponent(
+    id: number,
+    data: UpdateMaintenanceComponent,
+  ): Promise<MaintenanceComponent>;
+  deleteMaintenanceComponent(id: number): Promise<void>;
   getPreventiveMaintenanceActions(machineId?: string): Promise<any[]>;
   createPreventiveMaintenanceAction(
     payload: CreatePreventiveMaintenance,
@@ -7574,6 +7585,54 @@ export class DatabaseStorage implements IStorage {
         maintenance_component_catalog.machine_type,
         maintenance_component_catalog.sort_order,
       );
+  }
+
+  async getAllMaintenanceComponents(): Promise<MaintenanceComponent[]> {
+    return await db
+      .select()
+      .from(maintenance_component_catalog)
+      .orderBy(
+        maintenance_component_catalog.machine_type,
+        maintenance_component_catalog.sort_order,
+      );
+  }
+
+  async createMaintenanceComponent(
+    data: InsertMaintenanceComponent,
+  ): Promise<MaintenanceComponent> {
+    const [created] = await db
+      .insert(maintenance_component_catalog)
+      .values({
+        ...data,
+        machine_type: data.machine_type.toLowerCase(),
+      })
+      .returning();
+    return created;
+  }
+
+  async updateMaintenanceComponent(
+    id: number,
+    data: UpdateMaintenanceComponent,
+  ): Promise<MaintenanceComponent> {
+    const updateData: Record<string, unknown> = { ...data };
+    if (typeof updateData.machine_type === "string") {
+      updateData.machine_type = updateData.machine_type.toLowerCase();
+    }
+    const [updated] = await db
+      .update(maintenance_component_catalog)
+      .set(updateData)
+      .where(eq(maintenance_component_catalog.id, id))
+      .returning();
+    if (!updated) {
+      throw new Error("Maintenance component not found");
+    }
+    return updated;
+  }
+
+  async deleteMaintenanceComponent(id: number): Promise<void> {
+    await db
+      .delete(maintenance_component_catalog)
+      .where(eq(maintenance_component_catalog.id, id));
   }
 
   async getPreventiveMaintenanceActions(machineId?: string): Promise<any[]> {
