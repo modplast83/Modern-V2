@@ -14,6 +14,8 @@ import {
   Calendar as CalendarIcon,
   Filter,
   X,
+  ChevronDown,
+  ChevronLeft,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -108,6 +110,21 @@ export default function TodaysProduction() {
   const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
   const [toDate, setToDate] = useState<Date | undefined>(undefined);
   const [stageFilter, setStageFilter] = useState<StageFilter>("all");
+  const [expandedEmployees, setExpandedEmployees] = useState<Set<string>>(
+    new Set(),
+  );
+
+  const toggleEmployee = (empId: string) => {
+    setExpandedEmployees((prev) => {
+      const next = new Set(prev);
+      if (next.has(empId)) {
+        next.delete(empId);
+      } else {
+        next.add(empId);
+      }
+      return next;
+    });
+  };
 
   const queryParams: Record<string, string> = {};
   if (fromDate) queryParams.from = startOfDay(fromDate).toISOString();
@@ -436,11 +453,23 @@ export default function TodaysProduction() {
 
         {Array.from(groups.entries()).map(([empId, { label, list }]) => {
           const emp = aggregate(list);
+          const isOpen = expandedEmployees.has(empId);
           return (
             <Card key={empId} data-testid={`employee-group-${empId}`}>
               <CardHeader className="pb-3">
-                <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-base">
-                  <span className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => toggleEmployee(empId)}
+                  aria-expanded={isOpen}
+                  className="flex w-full items-center justify-between gap-2 text-right"
+                  data-testid={`button-toggle-employee-${empId}`}
+                >
+                  <span className="flex items-center gap-2 text-base font-semibold">
+                    {isOpen ? (
+                      <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    ) : (
+                      <ChevronLeft className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    )}
                     <User className="h-4 w-4" />
                     {label}
                   </span>
@@ -454,13 +483,15 @@ export default function TodaysProduction() {
                       {emp.weight.toFixed(2)} {t("common.kg")}
                     </span>
                   </span>
-                </CardTitle>
+                </button>
               </CardHeader>
-              <CardContent className="space-y-2">
-                {list.map((r) => (
-                  <RollCard key={`${r.id}-${r.stage}`} record={r} />
-                ))}
-              </CardContent>
+              {isOpen && (
+                <CardContent className="space-y-2">
+                  {list.map((r) => (
+                    <RollCard key={`${r.id}-${r.stage}`} record={r} />
+                  ))}
+                </CardContent>
+              )}
             </Card>
           );
         })}
