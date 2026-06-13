@@ -63,7 +63,7 @@ export const navigationItems: NavigationItem[] = [
   {
     name: "لوحة الإنتاج",
     name_ar: "لوحة الإنتاج",
-    name_en: "Production Dashboard",
+    name_en: "Pro. Board",
     icon: Activity,
     path: "/production-dashboard",
     priority: 3,
