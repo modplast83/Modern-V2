@@ -2502,6 +2502,8 @@
       "lastAction": "آخر إجراء",
       "lastDate": "آخر تاريخ",
       "elapsed": "المدة المنقضية",
+      "print": "طباعة / PDF",
+      "exportExcel": "تصدير Excel",
       "today": "اليوم",
       "daysAgo": "منذ {{count}} يوم",
       "actionTypes": {
@@ -2525,7 +2527,8 @@
         "created": "تم تسجيل الإجراء الوقائي بنجاح",
         "createFailed": "فشل في تسجيل الإجراء الوقائي",
         "deleted": "تم حذف الإجراء الوقائي بنجاح",
-        "deleteFailed": "فشل في حذف الإجراء الوقائي"
+        "deleteFailed": "فشل في حذف الإجراء الوقائي",
+        "exportFailed": "فشل في تصدير التقرير"
       }
     },
     "componentCatalog": {

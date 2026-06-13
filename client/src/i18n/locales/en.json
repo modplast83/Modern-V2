@@ -2057,6 +2057,8 @@
       "lastAction": "Last Action",
       "lastDate": "Last Date",
       "elapsed": "Elapsed",
+      "print": "Print / PDF",
+      "exportExcel": "Export Excel",
       "today": "Today",
       "daysAgo": "{{count}} days ago",
       "actionTypes": {
@@ -2080,7 +2082,8 @@
         "created": "Preventive action recorded successfully",
         "createFailed": "Failed to record preventive action",
         "deleted": "Preventive action deleted successfully",
-        "deleteFailed": "Failed to delete preventive action"
+        "deleteFailed": "Failed to delete preventive action",
+        "exportFailed": "Failed to export report"
       }
     },
     "componentCatalog": {

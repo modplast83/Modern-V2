@@ -1,5 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, Save, History } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Save,
+  History,
+  Printer,
+  FileSpreadsheet,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -16,6 +23,10 @@ import {
   canAddInArea,
   canDeleteInArea,
 } from "../../utils/roleUtils";
+import {
+  printPreventiveAction,
+  printPreventiveReference,
+} from "./PreventiveMaintenancePrint";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -143,6 +154,54 @@ export default function PreventiveActionsTab() {
     const m = machines.find((x) => x.id === id);
     if (!m) return id;
     return (isAr ? m.name_ar : m.name) || m.name || id;
+  };
+
+  const sectionName = (id: string | null | undefined) => {
+    if (!id) return "";
+    const s = sections.find((x) => x.id === id);
+    if (!s) return "";
+    return (isAr ? s.name_ar : s.name) || s.name || "";
+  };
+
+  const handlePrintAction = (a: any) => {
+    printPreventiveAction(
+      a,
+      machineName(a.machine_id),
+      sectionName(a.section_id),
+      isAr,
+    );
+  };
+
+  const handlePrintReference = () => {
+    if (!refMachineId) return;
+    printPreventiveReference(machineName(refMachineId), lastActions, isAr);
+  };
+
+  const handleExportReferenceExcel = async () => {
+    if (!refMachineId) return;
+    try {
+      const response = await fetch(
+        `/api/preventive-actions/last/${encodeURIComponent(refMachineId)}/export`,
+        { credentials: "include" },
+      );
+      if (!response.ok) {
+        throw new Error("export failed");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `preventive-maintenance-${refMachineId}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast({
+        title: t("maintenance.preventiveActions.toast.exportFailed"),
+        variant: "destructive",
+      });
+    }
   };
 
   const totalCost = useMemo(
@@ -615,15 +674,25 @@ export default function PreventiveActionsTab() {
                         {formatNumber(Number(a.total_cost || 0))}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        {canDelete && (
+                        <div className="flex items-center justify-center gap-1">
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => deleteMutation.mutate(a.id)}
+                            title={t("maintenance.preventiveActions.print")}
+                            onClick={() => handlePrintAction(a)}
                           >
-                            <Trash2 className="h-4 w-4 text-red-500" />
+                            <Printer className="h-4 w-4 text-blue-600" />
                           </Button>
-                        )}
+                          {canDelete && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => deleteMutation.mutate(a.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -637,10 +706,32 @@ export default function PreventiveActionsTab() {
       {/* Per-machine reference: last action per component */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <History className="h-5 w-5" />
-            {t("maintenance.preventiveActions.referenceTitle")}
-          </CardTitle>
+          <div className="flex justify-between items-center gap-2 flex-wrap">
+            <CardTitle className="flex items-center gap-2">
+              <History className="h-5 w-5" />
+              {t("maintenance.preventiveActions.referenceTitle")}
+            </CardTitle>
+            {refMachineId && lastActions.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrintReference}
+                >
+                  <Printer className="h-4 w-4 mr-2" />
+                  {t("maintenance.preventiveActions.print")}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportReferenceExcel}
+                >
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  {t("maintenance.preventiveActions.exportExcel")}
+                </Button>
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="max-w-xs">

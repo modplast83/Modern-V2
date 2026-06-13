@@ -7221,6 +7221,126 @@ Input: ${text}`;
     },
   );
 
+  // Export the per-machine "last action per component" reference as an Excel
+  // workbook (Arabic-first RTL) for record-keeping / audits.
+  app.get(
+    "/api/preventive-actions/last/:machineId/export",
+    requireAuth,
+    requirePermission("view_maintenance", "manage_maintenance"),
+    async (req, res) => {
+      try {
+        const machineId = String(req.params.machineId || "").trim();
+        if (!machineId) {
+          return res.status(400).json({ message: "معرّف الماكينة غير صالح" });
+        }
+
+        const [rows, machine] = await Promise.all([
+          storage.getLastActionPerComponent(machineId),
+          storage.getMachineById(machineId).catch(() => null),
+        ]);
+
+        const machineName =
+          (machine as any)?.name_ar ||
+          (machine as any)?.name ||
+          machineId;
+
+        const actionTypeAr: Record<string, string> = {
+          inspection: "فحص",
+          cleaning: "تنظيف",
+          lubrication: "تشحيم",
+          adjustment: "ضبط",
+          repair: "إصلاح",
+          replacement: "استبدال",
+        };
+
+        const elapsedLabel = (dateStr: string | null) => {
+          if (!dateStr) return "-";
+          const then = new Date(dateStr).getTime();
+          if (isNaN(then)) return "-";
+          const days = Math.floor(
+            (Date.now() - then) / (1000 * 60 * 60 * 24),
+          );
+          if (days <= 0) return "اليوم";
+          return `منذ ${days} يوم`;
+        };
+
+        const ExcelJS = (await import("exceljs")).default;
+        const workbook = new ExcelJS.Workbook();
+        workbook.creator = "MPBF Manufacturing System";
+        workbook.created = new Date();
+
+        const sheet = workbook.addWorksheet("الصيانة الوقائية", {
+          views: [{ rightToLeft: true }],
+        });
+
+        sheet.mergeCells("A1:D1");
+        const titleCell = sheet.getCell("A1");
+        titleCell.value = `آخر إجراء صيانة وقائية لكل مكوّن - ${machineName}`;
+        titleCell.font = { bold: true, size: 14 };
+        titleCell.alignment = { horizontal: "center" };
+
+        sheet.mergeCells("A2:D2");
+        const dateCell = sheet.getCell("A2");
+        dateCell.value = `تاريخ الإصدار: ${new Date().toLocaleDateString("ar")}`;
+        dateCell.font = { size: 10, color: { argb: "FF666666" } };
+        dateCell.alignment = { horizontal: "center" };
+
+        const headers = ["المكوّن", "آخر إجراء", "آخر تاريخ", "المدة المنقضية"];
+        const headerRow = sheet.getRow(4);
+        headers.forEach((h, i) => {
+          const cell = headerRow.getCell(i + 1);
+          cell.value = h;
+          cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 11 };
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FF2563EB" },
+          };
+          cell.alignment = { horizontal: "center", vertical: "middle" };
+          sheet.getColumn(i + 1).width = 24;
+        });
+
+        rows.forEach((r: any, idx: number) => {
+          const row = sheet.getRow(idx + 5);
+          row.getCell(1).value = r.component_name_ar || r.component_name_en || "-";
+          row.getCell(2).value =
+            actionTypeAr[r.action_type] || r.action_type || "-";
+          row.getCell(3).value = r.action_date
+            ? new Date(r.action_date).toLocaleDateString("ar")
+            : "-";
+          row.getCell(4).value = elapsedLabel(r.action_date);
+          row.eachCell((cell) => {
+            cell.alignment = { horizontal: "center", vertical: "middle" };
+            cell.fill =
+              idx % 2 === 0
+                ? {
+                    type: "pattern",
+                    pattern: "solid",
+                    fgColor: { argb: "FFF9FAFB" },
+                  }
+                : (undefined as any);
+          });
+        });
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        res.setHeader(
+          "Content-Type",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        );
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="preventive-maintenance-${machineId}.xlsx"`,
+        );
+        res.send(Buffer.from(buffer));
+      } catch (error) {
+        console.error("Error exporting preventive reference:", error);
+        res
+          .status(500)
+          .json({ message: "خطأ في تصدير مرجع الصيانة الوقائية" });
+      }
+    },
+  );
+
   app.post(
     "/api/preventive-actions",
     requireAuth,
