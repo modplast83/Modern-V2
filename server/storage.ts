@@ -642,6 +642,9 @@ export interface IStorage {
     canFilm: boolean;
     canPrinting: boolean;
     canCutting: boolean;
+    from?: Date;
+    to?: Date;
+    stage?: "film" | "printing" | "cutting";
   }): Promise<any[]>;
   getRollById(id: number): Promise<Roll | undefined>;
   getRollsByProductionOrder(productionOrderId: number): Promise<Roll[]>;
@@ -6420,11 +6423,18 @@ export class DatabaseStorage implements IStorage {
     canFilm: boolean;
     canPrinting: boolean;
     canCutting: boolean;
+    from?: Date;
+    to?: Date;
+    stage?: "film" | "printing" | "cutting";
   }): Promise<any[]> {
     return withDatabaseErrorHandling(
       async () => {
         const { userId, isManagement, canFilm, canPrinting, canCutting } = opts;
-        const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        // Default rolling window: last 24 hours. Callers (management) may pass an
+        // explicit from/to range to review a specific day or span.
+        const from = opts.from ?? new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const to = opts.to ?? null;
+        const stageFilter = opts.stage ?? null;
 
         // For operators, restrict each branch to rolls THEY produced. For
         // management this is empty so all employees' rolls are returned.
@@ -6459,21 +6469,24 @@ export class DatabaseStorage implements IStorage {
           JOIN customer_products cp ON po.customer_product_id = cp.id
           LEFT JOIN items i ON cp.item_id = i.id
           LEFT JOIN users u ON ${employeeCol} = u.id
-          WHERE ${timestampCol} >= ${cutoff} AND ${employeeCol} IS NOT NULL${selfFilter(employeeCol)}
+          WHERE ${timestampCol} >= ${from}${to ? sql` AND ${timestampCol} <= ${to}` : sql``} AND ${employeeCol} IS NOT NULL${selfFilter(employeeCol)}
         `;
 
+        const wantStage = (s: "film" | "printing" | "cutting") =>
+          stageFilter === null || stageFilter === s;
+
         const branches: any[] = [];
-        if (isManagement || canFilm) {
+        if ((isManagement || canFilm) && wantStage("film")) {
           branches.push(
             buildBranch("film", sql`r.created_by`, sql`r.created_at`),
           );
         }
-        if (isManagement || canPrinting) {
+        if ((isManagement || canPrinting) && wantStage("printing")) {
           branches.push(
             buildBranch("printing", sql`r.printed_by`, sql`r.printed_at`),
           );
         }
-        if (isManagement || canCutting) {
+        if ((isManagement || canCutting) && wantStage("cutting")) {
           branches.push(
             buildBranch("cutting", sql`r.cut_by`, sql`r.cut_completed_at`),
           );

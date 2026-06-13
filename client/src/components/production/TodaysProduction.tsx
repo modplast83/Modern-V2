@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { format } from "date-fns";
+import { format, startOfDay, endOfDay } from "date-fns";
+import { ar } from "date-fns/locale";
+import { useState } from "react";
 import {
   Package,
   Printer,
@@ -9,17 +11,30 @@ import {
   Tag,
   Clock,
   Layers,
+  Calendar as CalendarIcon,
+  Filter,
+  X,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { useToast } from "../../hooks/use-toast";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import { Calendar } from "../ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 
 import { printRollLabel } from "./RollLabelPrint";
 
 type ProductionStage = "film" | "printing" | "cutting";
+type StageFilter = "all" | ProductionStage;
 
 interface ProductionRecord {
   id: number;
@@ -90,14 +105,148 @@ export default function TodaysProduction() {
   const { toast } = useToast();
   const isAr = i18n.language !== "en";
 
-  const { data, isLoading } = useQuery<TodaysProductionResponse>({
-    queryKey: ["/api/production/today"],
+  const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
+  const [toDate, setToDate] = useState<Date | undefined>(undefined);
+  const [stageFilter, setStageFilter] = useState<StageFilter>("all");
+
+  const queryParams: Record<string, string> = {};
+  if (fromDate) queryParams.from = startOfDay(fromDate).toISOString();
+  if (toDate) queryParams.to = endOfDay(toDate).toISOString();
+  if (stageFilter !== "all") queryParams.stage = stageFilter;
+
+  const hasActiveFilters =
+    fromDate != null || toDate != null || stageFilter !== "all";
+
+  const { data, isLoading, isFetching } = useQuery<TodaysProductionResponse>({
+    queryKey: ["/api/production/today", queryParams],
     refetchInterval: 30000,
     refetchOnWindowFocus: true,
   });
 
   const isManagement = data?.isManagement ?? false;
   const records = data?.records ?? [];
+
+  const calendarLocale = isAr ? ar : undefined;
+
+  const resetFilters = () => {
+    setFromDate(undefined);
+    setToDate(undefined);
+    setStageFilter("all");
+  };
+
+  const FilterBar = isManagement ? (
+    <Card data-testid="todays-production-filters">
+      <CardContent className="flex flex-wrap items-end gap-3 p-4">
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-muted-foreground">
+            {t("production.todayProduction.fromDate")}
+          </label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-44 justify-start text-left font-normal"
+                data-testid="button-filter-from"
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {fromDate
+                  ? format(fromDate, "PPP", { locale: calendarLocale })
+                  : t("production.todayProduction.selectDate")}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={fromDate}
+                onSelect={setFromDate}
+                locale={calendarLocale}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-muted-foreground">
+            {t("production.todayProduction.toDate")}
+          </label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-44 justify-start text-left font-normal"
+                data-testid="button-filter-to"
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {toDate
+                  ? format(toDate, "PPP", { locale: calendarLocale })
+                  : t("production.todayProduction.selectDate")}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={toDate}
+                onSelect={setToDate}
+                locale={calendarLocale}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-muted-foreground">
+            {t("production.todayProduction.stage")}
+          </label>
+          <Select
+            value={stageFilter}
+            onValueChange={(v) => setStageFilter(v as StageFilter)}
+          >
+            <SelectTrigger
+              className="w-40"
+              data-testid="select-filter-stage"
+            >
+              <Filter className="mr-2 h-4 w-4" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">
+                {t("production.todayProduction.allStages")}
+              </SelectItem>
+              <SelectItem value="film">
+                {t("production.stageNames.film")}
+              </SelectItem>
+              <SelectItem value="printing">
+                {t("production.stageNames.printing")}
+              </SelectItem>
+              <SelectItem value="cutting">
+                {t("production.stageNames.cutting")}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            onClick={resetFilters}
+            className="gap-1"
+            data-testid="button-reset-filters"
+          >
+            <X className="h-4 w-4" />
+            {t("production.todayProduction.reset")}
+          </Button>
+        )}
+
+        {isFetching && (
+          <span className="text-xs text-muted-foreground">
+            {t("common.loading")}
+          </span>
+        )}
+      </CardContent>
+    </Card>
+  ) : null;
 
   const stageLabel = (stage: ProductionStage) =>
     t(`production.stageNames.${stage}`);
@@ -226,22 +375,25 @@ export default function TodaysProduction() {
 
   if (records.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Layers className="h-5 w-5" />
-            {t("production.todayProduction.title")}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="py-10 text-center">
-            <Package className="mx-auto mb-4 h-14 w-14 text-gray-400" />
-            <p className="text-gray-500">
-              {t("production.todayProduction.empty")}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="space-y-4">
+        {FilterBar}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Layers className="h-5 w-5" />
+              {t("production.todayProduction.title")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="py-10 text-center">
+              <Package className="mx-auto mb-4 h-14 w-14 text-gray-400" />
+              <p className="text-gray-500">
+                {t("production.todayProduction.empty")}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
@@ -264,6 +416,7 @@ export default function TodaysProduction() {
 
     return (
       <div className="space-y-4">
+        {FilterBar}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex flex-wrap items-center justify-between gap-2">

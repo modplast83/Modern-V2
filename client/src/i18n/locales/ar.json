@@ -431,7 +431,13 @@
       "title": "إنتاج اليوم (آخر 24 ساعة)",
       "empty": "لا يوجد إنتاج خلال آخر 24 ساعة",
       "summary": "{{count}} رول • {{weight}} كجم",
-      "rollCount": "{{count}} رول"
+      "rollCount": "{{count}} رول",
+      "fromDate": "من",
+      "toDate": "إلى",
+      "stage": "المرحلة",
+      "allStages": "كل المراحل",
+      "selectDate": "اختر التاريخ",
+      "reset": "إعادة تعيين"
     },
     "ordersManagement": {
       "title": "إدارة أوامر الإنتاج",

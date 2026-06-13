@@ -421,7 +421,13 @@
       "title": "Today's Production (Last 24 Hours)",
       "empty": "No production in the last 24 hours",
       "summary": "{{count}} rolls • {{weight}} kg",
-      "rollCount": "{{count}} rolls"
+      "rollCount": "{{count}} rolls",
+      "fromDate": "From",
+      "toDate": "To",
+      "stage": "Stage",
+      "allStages": "All stages",
+      "selectDate": "Select date",
+      "reset": "Reset"
     },
     "ordersManagement": {
       "title": "Production Orders Management",

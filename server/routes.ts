@@ -3773,12 +3773,45 @@ export async function registerRoutes(
         const canPrinting = isManagement || has("view_printing_dashboard");
         const canCutting = isManagement || has("view_cutting_dashboard");
 
+        // Optional management filters: from/to date range and a single stage.
+        // Operators always get the default rolling 24h window for all their
+        // permitted stages; only management may narrow by range or stage.
+        let from: Date | undefined;
+        let to: Date | undefined;
+        let stage: "film" | "printing" | "cutting" | undefined;
+
+        if (isManagement) {
+          const parseDate = (raw: unknown): Date | undefined => {
+            if (typeof raw !== "string" || raw.trim() === "") return undefined;
+            const d = new Date(raw);
+            return Number.isNaN(d.getTime()) ? undefined : d;
+          };
+          from = parseDate(req.query.from);
+          to = parseDate(req.query.to);
+          if (from && to && from > to) {
+            const tmp = from;
+            from = to;
+            to = tmp;
+          }
+          const rawStage = req.query.stage;
+          if (
+            rawStage === "film" ||
+            rawStage === "printing" ||
+            rawStage === "cutting"
+          ) {
+            stage = rawStage;
+          }
+        }
+
         const records = await storage.getTodaysProduction({
           userId: req.user.id,
           isManagement,
           canFilm,
           canPrinting,
           canCutting,
+          from,
+          to,
+          stage,
         });
 
         res.json({ isManagement, records });
