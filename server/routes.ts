@@ -3745,6 +3745,50 @@ export async function registerRoutes(
     }
   });
 
+  // Today's Production: rolls produced in the last 24 hours. Operators see only
+  // their own rolls (scoped to the stages they may view); management/admin see
+  // every roll with the producing employee's name for per-employee grouping.
+  app.get(
+    "/api/production/today",
+    requireAuth,
+    requirePermission(
+      "view_today_production",
+      "view_film_dashboard",
+      "view_printing_dashboard",
+      "view_cutting_dashboard",
+      "view_production",
+      "manage_production",
+      "manage_production_hall",
+      "admin",
+    ),
+    async (req: any, res) => {
+      try {
+        const perms: string[] = req.user?.permissions || [];
+        const has = (p: string) => perms.includes(p);
+        const isManagement =
+          has("admin") ||
+          has("manage_production") ||
+          has("manage_production_hall");
+        const canFilm = isManagement || has("view_film_dashboard");
+        const canPrinting = isManagement || has("view_printing_dashboard");
+        const canCutting = isManagement || has("view_cutting_dashboard");
+
+        const records = await storage.getTodaysProduction({
+          userId: req.user.id,
+          isManagement,
+          canFilm,
+          canPrinting,
+          canCutting,
+        });
+
+        res.json({ isManagement, records });
+      } catch (error) {
+        console.error("[GET /api/production/today] Error:", error);
+        res.status(500).json({ message: "خطأ في جلب إنتاج اليوم" });
+      }
+    },
+  );
+
   app.get("/api/rolls/:id", requireAuth, async (req, res, next) => {
     if (!/^\d+$/.test(req.params.id)) {
       return next();

@@ -1,4 +1,11 @@
-import { Film, Printer, Scissors, AlertCircle, Focus } from "lucide-react";
+import {
+  Film,
+  Printer,
+  Scissors,
+  AlertCircle,
+  Focus,
+  CalendarClock,
+} from "lucide-react";
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -20,6 +27,7 @@ import {
 import { useAuth } from "../hooks/use-auth";
 import { userHasPermission } from "../utils/roleUtils";
 import OperatorFocusView from "../components/production/OperatorFocusView";
+import TodaysProduction from "../components/production/TodaysProduction";
 
 import CuttingOperatorDashboard from "./CuttingOperatorDashboard";
 import FilmOperatorDashboard from "./FilmOperatorDashboard";
@@ -44,6 +52,23 @@ export default function ProductionDashboard() {
     [user],
   );
 
+  // Anyone who can reach a production dashboard (or has the dedicated
+  // permission) can see Today's Production. The server still enforces the
+  // management-vs-self scoping, so this only controls tab visibility.
+  const canViewToday = useMemo(
+    () =>
+      canViewFilm ||
+      canViewPrinting ||
+      canViewCutting ||
+      userHasPermission(user, [
+        "view_today_production",
+        "view_production",
+        "manage_production",
+        "manage_production_hall",
+      ]),
+    [user, canViewFilm, canViewPrinting, canViewCutting],
+  );
+
   // A film "line operator" can view the film dashboard but cannot manage
   // production overall. They get the simplified Operator Focus Mode (a film
   // roll-entry UI) instead of the full tabbed view. Printing/cutting-only
@@ -64,12 +89,21 @@ export default function ProductionDashboard() {
     if (canViewFilm) tabs.push("film");
     if (canViewPrinting) tabs.push("printing");
     if (canViewCutting) tabs.push("cutting");
+    if (canViewToday) tabs.push("today");
     return tabs;
-  }, [canViewFilm, canViewPrinting, canViewCutting]);
+  }, [canViewFilm, canViewPrinting, canViewCutting, canViewToday]);
 
   const [activeTab, setActiveTab] = useState(availableTabs[0] || "film");
 
-  // Line operators see a focused, distraction-free roll-entry interface
+  const gridColsClass: Record<number, string> = {
+    1: "md:grid-cols-1",
+    2: "md:grid-cols-2",
+    3: "md:grid-cols-3",
+    4: "md:grid-cols-4",
+  };
+
+  // Line operators see a focused, distraction-free roll-entry interface, plus a
+  // Today's Production tab scoped (server-side) to their own rolls.
   if (isLineOperator) {
     return (
       <PageLayout
@@ -80,7 +114,46 @@ export default function ProductionDashboard() {
           <Focus className="h-4 w-4" />
           <span>وضع المشغل المبسط</span>
         </div>
-        <OperatorFocusView />
+        <Tabs defaultValue="focus" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-1 md:grid-cols-2 gap-2 h-auto bg-transparent">
+            <TabsTrigger
+              value="focus"
+              className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-md p-4 h-auto"
+              data-testid="tab-operator-focus"
+            >
+              <Focus className="h-5 w-5" />
+              <div className="text-right">
+                <div className="font-semibold">
+                  {t("production.dashboard.filmOperator")}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {t("production.dashboard.createRolls")}
+                </div>
+              </div>
+            </TabsTrigger>
+            <TabsTrigger
+              value="today"
+              className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-md p-4 h-auto"
+              data-testid="tab-today-production"
+            >
+              <CalendarClock className="h-5 w-5" />
+              <div className="text-right">
+                <div className="font-semibold">
+                  {t("production.dashboard.todayProduction")}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {t("production.dashboard.todayProductionDesc")}
+                </div>
+              </div>
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="focus" className="mt-0">
+            <OperatorFocusView />
+          </TabsContent>
+          <TabsContent value="today" className="mt-0">
+            <TodaysProduction />
+          </TabsContent>
+        </Tabs>
       </PageLayout>
     );
   }
@@ -120,7 +193,9 @@ export default function ProductionDashboard() {
         onValueChange={setActiveTab}
         className="space-y-6"
       >
-        <TabsList className="grid w-full grid-cols-1 md:grid-cols-3 gap-2 h-auto bg-transparent">
+        <TabsList
+          className={`grid w-full grid-cols-1 ${gridColsClass[availableTabs.length] || "md:grid-cols-4"} gap-2 h-auto bg-transparent`}
+        >
           {canViewFilm && (
             <TabsTrigger
               value="film"
@@ -189,6 +264,29 @@ export default function ProductionDashboard() {
               )}
             </TabsTrigger>
           )}
+
+          {canViewToday && (
+            <TabsTrigger
+              value="today"
+              className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-md p-4 h-auto"
+              data-testid="tab-today-production"
+            >
+              <CalendarClock className="h-5 w-5" />
+              <div className="text-right">
+                <div className="font-semibold">
+                  {t("production.dashboard.todayProduction")}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {t("production.dashboard.todayProductionDesc")}
+                </div>
+              </div>
+              {activeTab === "today" && (
+                <Badge variant="default" className="mr-auto">
+                  {t("production.dashboard.active")}
+                </Badge>
+              )}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {canViewFilm && (
@@ -206,6 +304,12 @@ export default function ProductionDashboard() {
         {canViewCutting && (
           <TabsContent value="cutting" className="mt-0">
             <CuttingOperatorDashboard hideLayout={true} />
+          </TabsContent>
+        )}
+
+        {canViewToday && (
+          <TabsContent value="today" className="mt-0">
+            <TodaysProduction />
           </TabsContent>
         )}
       </Tabs>

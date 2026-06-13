@@ -636,6 +636,13 @@ export interface IStorage {
 
   // Rolls
   getAllRolls(): Promise<Roll[]>;
+  getTodaysProduction(opts: {
+    userId: number;
+    isManagement: boolean;
+    canFilm: boolean;
+    canPrinting: boolean;
+    canCutting: boolean;
+  }): Promise<any[]>;
   getRollById(id: number): Promise<Roll | undefined>;
   getRollsByProductionOrder(productionOrderId: number): Promise<Roll[]>;
   createRoll(roll: InsertRoll): Promise<Roll>;
@@ -6399,6 +6406,107 @@ export class DatabaseStorage implements IStorage {
       .from(rolls)
       .where(eq(rolls.stage, stage))
       .orderBy(desc(rolls.created_at));
+  }
+
+  // Returns "production events" from the last 24 hours, one row per
+  // roll-stage action (film create / printing / cutting). Operators only ever
+  // see their own events, scoped to the stages they are allowed to view.
+  // Management/admin see every event with the producing employee's name so
+  // the client can group by employee. The management-vs-self distinction is
+  // enforced here on the server, never trusted from the client.
+  async getTodaysProduction(opts: {
+    userId: number;
+    isManagement: boolean;
+    canFilm: boolean;
+    canPrinting: boolean;
+    canCutting: boolean;
+  }): Promise<any[]> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const { userId, isManagement, canFilm, canPrinting, canCutting } = opts;
+        const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+        // For operators, restrict each branch to rolls THEY produced. For
+        // management this is empty so all employees' rolls are returned.
+        const selfFilter = (col: any) =>
+          isManagement ? sql`` : sql` AND ${col} = ${userId}`;
+
+        const buildBranch = (
+          stageLiteral: "film" | "printing" | "cutting",
+          employeeCol: any,
+          timestampCol: any,
+        ) => sql`
+          SELECT
+            r.id AS roll_id,
+            ${stageLiteral} AS stage,
+            r.roll_number,
+            r.roll_seq,
+            r.weight_kg,
+            r.cut_weight_total_kg,
+            ${timestampCol} AS event_at,
+            ${employeeCol} AS employee_id,
+            COALESCE(u.display_name_ar, u.display_name, u.full_name, u.username) AS employee_name,
+            po.production_order_number,
+            i.name AS item_name,
+            i.name_ar AS item_name_ar,
+            cp.size_caption,
+            c.name AS customer_name,
+            c.name_ar AS customer_name_ar
+          FROM rolls r
+          JOIN production_orders po ON r.production_order_id = po.id
+          JOIN orders o ON po.order_id = o.id
+          JOIN customers c ON o.customer_id = c.id
+          JOIN customer_products cp ON po.customer_product_id = cp.id
+          LEFT JOIN items i ON cp.item_id = i.id
+          LEFT JOIN users u ON ${employeeCol} = u.id
+          WHERE ${timestampCol} >= ${cutoff} AND ${employeeCol} IS NOT NULL${selfFilter(employeeCol)}
+        `;
+
+        const branches: any[] = [];
+        if (isManagement || canFilm) {
+          branches.push(
+            buildBranch("film", sql`r.created_by`, sql`r.created_at`),
+          );
+        }
+        if (isManagement || canPrinting) {
+          branches.push(
+            buildBranch("printing", sql`r.printed_by`, sql`r.printed_at`),
+          );
+        }
+        if (isManagement || canCutting) {
+          branches.push(
+            buildBranch("cutting", sql`r.cut_by`, sql`r.cut_completed_at`),
+          );
+        }
+
+        if (branches.length === 0) return [];
+
+        const unioned = sql.join(branches, sql` UNION ALL `);
+        const result = await db.execute(
+          sql`${unioned} ORDER BY event_at DESC`,
+        );
+
+        return (result.rows as any[]).map((row) => ({
+          id: Number(row.roll_id),
+          stage: row.stage,
+          roll_number: row.roll_number,
+          roll_seq: row.roll_seq,
+          weight_kg: row.weight_kg,
+          cut_weight_total_kg: row.cut_weight_total_kg,
+          event_at: row.event_at,
+          employee_id: row.employee_id != null ? Number(row.employee_id) : null,
+          employee_name: row.employee_name,
+          production_order_number: row.production_order_number,
+          item_name: row.item_name,
+          item_name_ar: row.item_name_ar,
+          size_caption: row.size_caption,
+          customer_name: row.customer_name,
+          customer_name_ar: row.customer_name_ar,
+        }));
+      },
+      "getTodaysProduction",
+      "جلب إنتاج اليوم",
+    );
   }
 
   async searchRolls(query: string, filters?: any): Promise<any[]> {

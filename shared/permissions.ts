@@ -39,6 +39,7 @@ export type PermissionKey =
   | "view_film_dashboard"
   | "view_printing_dashboard"
   | "view_cutting_dashboard"
+  | "view_today_production"
   | "view_mixing"
   | "manage_mixing"
   | "view_system_monitoring"
@@ -223,6 +224,14 @@ export const PERMISSIONS: Permission[] = [
     name_ar: "عرض لوحة عامل التقطيع",
     category: "الإنتاج",
     description: "Access to cutting operator dashboard",
+  },
+  {
+    id: "view_today_production",
+    name: "View Today's Production",
+    name_ar: "عرض إنتاج اليوم",
+    category: "الإنتاج",
+    description:
+      "Access to the Today's Production tab (own rolls for operators, all rolls grouped by employee for management)",
   },
 
   // Maintenance
@@ -1075,6 +1084,7 @@ export const ROUTE_PERMISSIONS: Record<string, PermissionKey[]> = {
     "view_film_dashboard",
     "view_printing_dashboard",
     "view_cutting_dashboard",
+    "view_today_production",
   ],
   "/maintenance": ["view_maintenance", "manage_maintenance"],
   "/quality": ["view_quality", "manage_quality"],

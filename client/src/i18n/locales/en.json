@@ -413,7 +413,15 @@
       "printRolls": "Print Rolls",
       "cuttingOperator": "Cutting Operator",
       "cutRolls": "Cut Rolls",
+      "todayProduction": "Today's Production",
+      "todayProductionDesc": "Last 24 hours output",
       "active": "Active"
+    },
+    "todayProduction": {
+      "title": "Today's Production (Last 24 Hours)",
+      "empty": "No production in the last 24 hours",
+      "summary": "{{count}} rolls • {{weight}} kg",
+      "rollCount": "{{count}} rolls"
     },
     "ordersManagement": {
       "title": "Production Orders Management",

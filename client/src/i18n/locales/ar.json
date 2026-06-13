@@ -423,7 +423,15 @@
       "printRolls": "طباعة البكرات",
       "cuttingOperator": "عامل التقطيع",
       "cutRolls": "تقطيع البكرات",
+      "todayProduction": "إنتاج اليوم",
+      "todayProductionDesc": "إنتاج آخر 24 ساعة",
       "active": "نشط"
+    },
+    "todayProduction": {
+      "title": "إنتاج اليوم (آخر 24 ساعة)",
+      "empty": "لا يوجد إنتاج خلال آخر 24 ساعة",
+      "summary": "{{count}} رول • {{weight}} كجم",
+      "rollCount": "{{count}} رول"
     },
     "ordersManagement": {
       "title": "إدارة أوامر الإنتاج",
