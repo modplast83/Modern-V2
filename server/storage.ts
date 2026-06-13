@@ -13,6 +13,9 @@ import {
   maintenance_requests,
   maintenance_actions,
   maintenance_reports,
+  maintenance_component_catalog,
+  preventive_maintenance_actions,
+  preventive_maintenance_items,
   operator_negligence_reports,
   spare_parts,
   consumable_parts,
@@ -184,6 +187,10 @@ import {
   type InsertMaintenanceAction,
   type MaintenanceReport,
   type InsertMaintenanceReport,
+  type MaintenanceComponent,
+  type PreventiveMaintenanceAction,
+  type PreventiveMaintenanceItem,
+  type CreatePreventiveMaintenance,
   type OperatorNegligenceReport,
   type InsertOperatorNegligenceReport,
 
@@ -943,6 +950,16 @@ export interface IStorage {
   createMaintenanceAction(
     action: InsertMaintenanceAction,
   ): Promise<MaintenanceAction>;
+  // Preventive maintenance
+  getMaintenanceComponents(
+    machineType?: string,
+  ): Promise<MaintenanceComponent[]>;
+  getPreventiveMaintenanceActions(machineId?: string): Promise<any[]>;
+  createPreventiveMaintenanceAction(
+    payload: CreatePreventiveMaintenance,
+  ): Promise<PreventiveMaintenanceAction>;
+  deletePreventiveMaintenanceAction(id: number): Promise<void>;
+  getLastActionPerComponent(machineId: string): Promise<any[]>;
   getMaintenanceReports(): Promise<MaintenanceReport[]>;
   createMaintenanceReport(
     report: InsertMaintenanceReport,
@@ -7533,6 +7550,142 @@ export class DatabaseStorage implements IStorage {
 
   async deleteMaintenanceAction(id: number): Promise<void> {
     await db.delete(maintenance_actions).where(eq(maintenance_actions.id, id));
+  }
+
+  // ===== Preventive Maintenance =====
+
+  async getMaintenanceComponents(
+    machineType?: string,
+  ): Promise<MaintenanceComponent[]> {
+    const where = machineType
+      ? and(
+          eq(maintenance_component_catalog.enabled, true),
+          eq(
+            maintenance_component_catalog.machine_type,
+            machineType.toLowerCase(),
+          ),
+        )
+      : eq(maintenance_component_catalog.enabled, true);
+    return await db
+      .select()
+      .from(maintenance_component_catalog)
+      .where(where)
+      .orderBy(
+        maintenance_component_catalog.machine_type,
+        maintenance_component_catalog.sort_order,
+      );
+  }
+
+  async getPreventiveMaintenanceActions(machineId?: string): Promise<any[]> {
+    const actions = await db
+      .select()
+      .from(preventive_maintenance_actions)
+      .where(
+        machineId
+          ? eq(preventive_maintenance_actions.machine_id, machineId)
+          : (undefined as any),
+      )
+      .orderBy(desc(preventive_maintenance_actions.action_date));
+
+    if (actions.length === 0) return [];
+
+    const actionIds = actions.map((a) => a.id);
+    const items = await db
+      .select()
+      .from(preventive_maintenance_items)
+      .where(inArray(preventive_maintenance_items.preventive_action_id, actionIds));
+
+    const itemsByAction = new Map<number, PreventiveMaintenanceItem[]>();
+    for (const it of items) {
+      const arr = itemsByAction.get(it.preventive_action_id) || [];
+      arr.push(it);
+      itemsByAction.set(it.preventive_action_id, arr);
+    }
+
+    return actions.map((a) => ({
+      ...a,
+      items: itemsByAction.get(a.id) || [],
+    }));
+  }
+
+  async createPreventiveMaintenanceAction(
+    payload: CreatePreventiveMaintenance,
+  ): Promise<PreventiveMaintenanceAction> {
+    return await db.transaction(async (tx) => {
+      // Serialize action-number generation to avoid duplicates under concurrency.
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(2089)`);
+      const maxResult = await tx.execute(
+        sql`SELECT COALESCE(MAX(id), 0) + 1 as next_id FROM preventive_maintenance_actions`,
+      );
+      const nextNum = (maxResult.rows?.[0] as any)?.next_id || 1;
+      const action_number = `PM${String(nextNum).padStart(3, "0")}`;
+
+      const totalCost = payload.items.reduce(
+        (sum, it) => sum + Number(it.cost || 0) * Number(it.quantity || 1),
+        0,
+      );
+
+      const [action] = await tx
+        .insert(preventive_maintenance_actions)
+        .values({
+          action_number,
+          section_id: payload.section_id ?? null,
+          machine_id: payload.machine_id,
+          performed_by: payload.performed_by,
+          action_date: payload.action_date ?? new Date(),
+          total_cost: totalCost.toFixed(2),
+          notes: payload.notes ?? null,
+          status: payload.status ?? "completed",
+        } as any)
+        .returning();
+
+      const itemRows = payload.items.map((it) => ({
+        preventive_action_id: action.id,
+        component_id: it.component_id ?? null,
+        component_name_ar: it.component_name_ar,
+        component_name_en: it.component_name_en,
+        action_type: it.action_type,
+        quantity: it.quantity ?? 1,
+        cost: Number(it.cost ?? 0).toFixed(2),
+        condition: it.condition ?? null,
+        notes: it.notes ?? null,
+      }));
+      await tx.insert(preventive_maintenance_items).values(itemRows as any);
+
+      return action;
+    });
+  }
+
+  async deletePreventiveMaintenanceAction(id: number): Promise<void> {
+    await db
+      .delete(preventive_maintenance_actions)
+      .where(eq(preventive_maintenance_actions.id, id));
+  }
+
+  async getLastActionPerComponent(machineId: string): Promise<any[]> {
+    // For each component touched on this machine, return the most recent
+    // action's date, action type and cost so the UI can show "last done /
+    // elapsed since" as a preventive-maintenance reference.
+    const result = await db.execute(sql`
+      SELECT DISTINCT ON (
+          COALESCE(i.component_id::text, i.component_name_en)
+        )
+        i.component_id,
+        i.component_name_ar,
+        i.component_name_en,
+        i.action_type,
+        i.cost,
+        a.action_date,
+        a.action_number
+      FROM preventive_maintenance_items i
+      JOIN preventive_maintenance_actions a
+        ON a.id = i.preventive_action_id
+      WHERE a.machine_id = ${machineId}
+      ORDER BY
+        COALESCE(i.component_id::text, i.component_name_en),
+        a.action_date DESC
+    `);
+    return (result.rows as any[]) || [];
   }
 
   async getAllMaintenanceReports(): Promise<MaintenanceReport[]> {

@@ -2029,6 +2029,60 @@
   },
   "maintenance": {
     "title": "Maintenance Management",
+    "preventiveActions": {
+      "tab": "Preventive Actions",
+      "title": "Preventive Actions",
+      "newAction": "New Preventive Action",
+      "formHint": "Record preventive maintenance work not tied to a maintenance request",
+      "section": "Section",
+      "machine": "Machine",
+      "actionDate": "Action Date",
+      "selectSection": "Select section",
+      "selectMachine": "Select machine",
+      "selectComponent": "Select component",
+      "component": "Component",
+      "actionType": "Action Type",
+      "quantity": "Quantity",
+      "condition": "Condition",
+      "cost": "Cost",
+      "notes": "Notes",
+      "addRow": "Add Row",
+      "totalCost": "Total Cost",
+      "actionNumber": "Action No.",
+      "itemsCount": "Items",
+      "empty": "No preventive actions recorded",
+      "referenceTitle": "Last Action per Component (Reference)",
+      "selectMachineHint": "Select a machine to view the last action per component",
+      "noHistory": "No action history for this machine",
+      "lastAction": "Last Action",
+      "lastDate": "Last Date",
+      "elapsed": "Elapsed",
+      "today": "Today",
+      "daysAgo": "{{count}} days ago",
+      "actionTypes": {
+        "inspection": "Inspection",
+        "cleaning": "Cleaning",
+        "lubrication": "Lubrication",
+        "adjustment": "Adjustment",
+        "repair": "Repair",
+        "replacement": "Replacement"
+      },
+      "conditions": {
+        "good": "Good",
+        "fair": "Fair",
+        "poor": "Poor"
+      },
+      "validation": {
+        "machineRequired": "Please select a machine",
+        "itemsRequired": "Add at least one line item with a selected component"
+      },
+      "toast": {
+        "created": "Preventive action recorded successfully",
+        "createFailed": "Failed to record preventive action",
+        "deleted": "Preventive action deleted successfully",
+        "deleteFailed": "Failed to delete preventive action"
+      }
+    },
     "description": "Description",
     "schedule": "Schedule",
     "requests": "Requests",

@@ -1088,6 +1088,129 @@ function sanitizeResponseForLogging(response: any): any {
         inlineErr?.message,
       );
     }
+
+    // Ensure Preventive Maintenance tables exist on existing databases.
+    // drizzle-kit push only runs for fresh databases, so create them here
+    // idempotently (CREATE TABLE IF NOT EXISTS never drops data). Then seed the
+    // bilingual component catalog (idempotent: ON CONFLICT DO NOTHING).
+    try {
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS maintenance_component_catalog (
+          id serial PRIMARY KEY,
+          machine_type varchar(30) NOT NULL,
+          name_ar varchar(200) NOT NULL,
+          name_en varchar(200) NOT NULL,
+          sort_order integer NOT NULL DEFAULT 0,
+          enabled boolean NOT NULL DEFAULT true,
+          created_at timestamp DEFAULT now()
+        )
+      `);
+      await db.execute(sql`
+        CREATE UNIQUE INDEX IF NOT EXISTS uniq_component_catalog_type_name
+        ON maintenance_component_catalog (machine_type, name_en)
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_component_catalog_type
+        ON maintenance_component_catalog (machine_type)
+      `);
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS preventive_maintenance_actions (
+          id serial PRIMARY KEY,
+          action_number varchar(50) NOT NULL UNIQUE,
+          section_id varchar(20) REFERENCES sections(id),
+          machine_id varchar(20) NOT NULL REFERENCES machines(id),
+          performed_by integer NOT NULL REFERENCES users(id),
+          action_date timestamp DEFAULT now(),
+          total_cost numeric(12,2) NOT NULL DEFAULT '0',
+          notes text,
+          status varchar(20) NOT NULL DEFAULT 'completed',
+          created_at timestamp DEFAULT now(),
+          updated_at timestamp DEFAULT now()
+        )
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_preventive_actions_machine
+        ON preventive_maintenance_actions (machine_id)
+      `);
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS preventive_maintenance_items (
+          id serial PRIMARY KEY,
+          preventive_action_id integer NOT NULL REFERENCES preventive_maintenance_actions(id) ON DELETE CASCADE,
+          component_id integer REFERENCES maintenance_component_catalog(id),
+          component_name_ar varchar(200) NOT NULL,
+          component_name_en varchar(200) NOT NULL,
+          action_type varchar(40) NOT NULL,
+          quantity integer NOT NULL DEFAULT 1,
+          cost numeric(12,2) NOT NULL DEFAULT '0',
+          condition varchar(20),
+          notes text,
+          created_at timestamp DEFAULT now()
+        )
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_preventive_items_action
+        ON preventive_maintenance_items (preventive_action_id)
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_preventive_items_component
+        ON preventive_maintenance_items (component_id)
+      `);
+
+      // Idempotent seed of the bilingual component catalog.
+      const componentCatalog: Array<[string, string, string]> = [
+        // Film / الفيلم (extruder)
+        ["extruder", "اللولب A (السكرو A)", "Screw A"],
+        ["extruder", "اللولب B (السكرو B)", "Screw B"],
+        ["extruder", "رول السحب المطاطي", "Rubber Pull (Nip) Roll"],
+        ["extruder", "سير المحرك", "Motor Belt"],
+        ["extruder", "مروحة التبريد", "Cooling Fan"],
+        ["extruder", "السخانات (الهيترات)", "Heaters"],
+        ["extruder", "الموصّلات (الكونتاكتورات)", "Contactors"],
+        ["extruder", "المرحّلات (الريليهات)", "Relays"],
+        ["extruder", "المفتاح (سويتش)", "Switch"],
+        ["extruder", "القاطع (البريكر)", "Breaker"],
+        ["extruder", "نظام معالجة السطح (كورونا)", "Corona Treatment System"],
+        ["extruder", "الملفاف (الروايندر)", "Rewinder"],
+        ["extruder", "الأسطوانة/البرميل (البارل)", "Barrel"],
+        ["extruder", "العمود (الشفت)", "Shaft"],
+        // Printing / الطباعة (printer)
+        ["printer", "الأسطوانة المطاطية", "Rubber Roller"],
+        ["printer", "أسطوانة الأنيلوكس", "Anilox Roller"],
+        ["printer", "الرولمان (البيرنجات)", "Bearings"],
+        ["printer", "التروس (الجير)", "Gear"],
+        ["printer", "مضخة الزيت", "Oil Pump"],
+        ["printer", "حساس الضبط/التوازن", "Registration/Balance Sensor"],
+        ["printer", "المفتاح (سويتش)", "Switch"],
+        ["printer", "بطانات السلندر النحاسية", "Cylinder Copper Sleeves"],
+        // Cutting / التقطيع (cutter)
+        ["cutter", "السكين (شفرة القطع)", "Blade/Knife"],
+        ["cutter", "عنصر اللحام", "Sealing/Welding Element"],
+        ["cutter", "المؤقّت (التايمر)", "Timer"],
+        ["cutter", "العمود (الشفت)", "Shaft"],
+        ["cutter", "الحساسات", "Sensors"],
+        ["cutter", "الكاميرا", "Camera"],
+        ["cutter", "الرولمان (البيرنجات)", "Bearings"],
+        ["cutter", "الصمّام (البلف)", "Valve"],
+        ["cutter", "الأسطوانة الهوائية (سلندر نيوماتيك)", "Pneumatic Cylinder"],
+        ["cutter", "خرطوم الهواء", "Air Hose"],
+        ["cutter", "وصلة الهواء (فِتنج)", "Air Fitting"],
+      ];
+      let seedOrder = 0;
+      for (const [machineType, nameAr, nameEn] of componentCatalog) {
+        seedOrder += 1;
+        await db.execute(sql`
+          INSERT INTO maintenance_component_catalog
+            (machine_type, name_ar, name_en, sort_order)
+          VALUES (${machineType}, ${nameAr}, ${nameEn}, ${seedOrder})
+          ON CONFLICT (machine_type, name_en) DO NOTHING
+        `);
+      }
+    } catch (pmErr: any) {
+      console.warn(
+        "⚠️ فشل تهيئة جداول الصيانة الوقائية (سيتم المحاولة لاحقاً):",
+        pmErr?.message,
+      );
+    }
   } catch (error: any) {
     console.error("❌ فشل تهيئة قاعدة البيانات:", error?.message || error);
     if (isProduction) {

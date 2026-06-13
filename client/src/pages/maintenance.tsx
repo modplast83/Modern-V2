@@ -27,6 +27,7 @@ import {
 } from "../../../shared/id-generator";
 import PageLayout from "../components/layout/PageLayout";
 import ConsumablePartsTab from "../components/maintenance/ConsumablePartsTab";
+import PreventiveActionsTab from "../components/maintenance/PreventiveActionsTab";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import {
@@ -188,6 +189,10 @@ const maintenanceTabPermissions: {
   {
     tab: "consumable-parts",
     permissions: ["manage_consumable_parts", "manage_maintenance"],
+  },
+  {
+    tab: "preventive-actions",
+    permissions: ["view_maintenance", "manage_maintenance"],
   },
 ];
 
@@ -531,6 +536,18 @@ export default function Maintenance() {
               {t("maintenance.tabs.consumableParts")}
             </TabsTrigger>
           )}
+          {userHasPermission(user, [
+            "view_maintenance",
+            "manage_maintenance",
+          ]) && (
+            <TabsTrigger
+              value="preventive-actions"
+              className="flex items-center gap-2"
+            >
+              <Calendar className="h-4 w-4" />
+              {t("maintenance.preventiveActions.tab")}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="requests">
@@ -740,6 +757,10 @@ export default function Maintenance() {
 
         <TabsContent value="consumable-parts">
           <ConsumablePartsTab />
+        </TabsContent>
+
+        <TabsContent value="preventive-actions">
+          <PreventiveActionsTab />
         </TabsContent>
       </Tabs>
 

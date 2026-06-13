@@ -115,6 +115,7 @@ import {
   insertMaintenanceRequestSchema,
   insertMaintenanceActionSchema,
   insertMaintenanceReportSchema,
+  createPreventiveMaintenanceSchema,
   insertOperatorNegligenceReportSchema,
   insertConsumablePartSchema,
   insertConsumablePartTransactionSchema,
@@ -7060,6 +7061,113 @@ Input: ${text}`;
       } catch (error) {
         console.error("Error deleting maintenance action:", error);
         res.status(500).json({ message: "خطأ في حذف إجراء الصيانة" });
+      }
+    },
+  );
+
+  // ===== Preventive Maintenance routes =====
+
+  // Component catalog (optionally filtered by normalized machine type)
+  app.get(
+    "/api/maintenance-components",
+    requireAuth,
+    requirePermission("view_maintenance", "manage_maintenance"),
+    async (req, res) => {
+      try {
+        const { machineType } = req.query;
+        const components = await storage.getMaintenanceComponents(
+          machineType ? String(machineType) : undefined,
+        );
+        res.json(components);
+      } catch (error) {
+        console.error("Error fetching maintenance components:", error);
+        res.status(500).json({ message: "خطأ في جلب قائمة المكونات" });
+      }
+    },
+  );
+
+  // List preventive actions (optionally filtered by machine)
+  app.get(
+    "/api/preventive-actions",
+    requireAuth,
+    requirePermission("view_maintenance", "manage_maintenance"),
+    async (req, res) => {
+      try {
+        const { machineId } = req.query;
+        const actions = await storage.getPreventiveMaintenanceActions(
+          machineId ? String(machineId) : undefined,
+        );
+        res.json(actions);
+      } catch (error) {
+        console.error("Error fetching preventive actions:", error);
+        res.status(500).json({ message: "خطأ في جلب الإجراءات الوقائية" });
+      }
+    },
+  );
+
+  // Last action performed per component on a machine (reference view)
+  app.get(
+    "/api/preventive-actions/last/:machineId",
+    requireAuth,
+    requirePermission("view_maintenance", "manage_maintenance"),
+    async (req, res) => {
+      try {
+        // machines.id is varchar (e.g. M001), so do NOT use the numeric parser.
+        const machineId = String(req.params.machineId || "").trim();
+        if (!machineId) {
+          return res
+            .status(400)
+            .json({ message: "معرّف الماكينة غير صالح" });
+        }
+        const rows = await storage.getLastActionPerComponent(machineId);
+        res.json(rows);
+      } catch (error) {
+        console.error("Error fetching last component actions:", error);
+        res.status(500).json({ message: "خطأ في جلب آخر الإجراءات للمكونات" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/preventive-actions",
+    requireAuth,
+    requirePermission("add_maintenance", "manage_maintenance"),
+    async (req, res) => {
+      try {
+        const data = createPreventiveMaintenanceSchema.parse(req.body);
+        const performed_by = (req.user as any)?.id;
+        if (!performed_by) {
+          return res.status(401).json({ message: "غير مصرح" });
+        }
+        const action = await storage.createPreventiveMaintenanceAction({
+          ...data,
+          performed_by,
+        });
+        res.json(action);
+      } catch (error: any) {
+        if (error?.name === "ZodError") {
+          return res
+            .status(400)
+            .json({ message: "بيانات غير صالحة", errors: error.errors });
+        }
+        console.error("Error creating preventive action:", error);
+        res.status(500).json({ message: "خطأ في إنشاء الإجراء الوقائي" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/preventive-actions/:id",
+    requireAuth,
+    requirePermission("delete_maintenance", "manage_maintenance"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "ID");
+        await storage.deletePreventiveMaintenanceAction(id);
+        res.json({ message: "تم حذف الإجراء الوقائي بنجاح" });
+      } catch (error) {
+        console.error("Error deleting preventive action:", error);
+        res.status(500).json({ message: "خطأ في حذف الإجراء الوقائي" });
       }
     },
   );

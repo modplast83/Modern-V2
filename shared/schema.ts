@@ -1045,6 +1045,83 @@ export const operator_negligence_reports = pgTable(
   },
 );
 
+// 🛠️ كتالوج مكوّنات الماكينات (للصيانة الوقائية) - Maintenance Component Catalog
+// Bilingual list of machine components keyed by machine type (extruder/printer/cutter)
+export const maintenance_component_catalog = pgTable(
+  "maintenance_component_catalog",
+  {
+    id: serial("id").primaryKey(),
+    machine_type: varchar("machine_type", { length: 30 }).notNull(), // extruder / printer / cutter
+    name_ar: varchar("name_ar", { length: 200 }).notNull(),
+    name_en: varchar("name_en", { length: 200 }).notNull(),
+    sort_order: integer("sort_order").notNull().default(0),
+    enabled: boolean("enabled").notNull().default(true),
+    created_at: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("uniq_component_catalog_type_name").on(
+      table.machine_type,
+      table.name_en,
+    ),
+    index("idx_component_catalog_type").on(table.machine_type),
+  ],
+);
+
+// 🧰 جدول الإجراءات الوقائية (رأس الإجراء، غير مرتبط بطلب صيانة) - Preventive Maintenance Actions
+export const preventive_maintenance_actions = pgTable(
+  "preventive_maintenance_actions",
+  {
+    id: serial("id").primaryKey(),
+    action_number: varchar("action_number", { length: 50 }).notNull().unique(), // PM001, PM002, ...
+    section_id: varchar("section_id", { length: 20 }).references(
+      () => sections.id,
+    ),
+    machine_id: varchar("machine_id", { length: 20 })
+      .notNull()
+      .references(() => machines.id),
+    performed_by: integer("performed_by")
+      .notNull()
+      .references(() => users.id),
+    action_date: timestamp("action_date").defaultNow(),
+    total_cost: decimal("total_cost", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
+    notes: text("notes"),
+    status: varchar("status", { length: 20 }).notNull().default("completed"), // completed / pending
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [index("idx_preventive_actions_machine").on(table.machine_id)],
+);
+
+// 🧩 بنود الإجراء الوقائي (سطر لكل مكوّن) - Preventive Maintenance Line Items
+export const preventive_maintenance_items = pgTable(
+  "preventive_maintenance_items",
+  {
+    id: serial("id").primaryKey(),
+    preventive_action_id: integer("preventive_action_id")
+      .notNull()
+      .references(() => preventive_maintenance_actions.id, {
+        onDelete: "cascade",
+      }),
+    component_id: integer("component_id").references(
+      () => maintenance_component_catalog.id,
+    ), // nullable: free-text components allowed
+    component_name_ar: varchar("component_name_ar", { length: 200 }).notNull(), // denormalized snapshot for history
+    component_name_en: varchar("component_name_en", { length: 200 }).notNull(),
+    action_type: varchar("action_type", { length: 40 }).notNull(), // inspection / cleaning / lubrication / adjustment / repair / replacement
+    quantity: integer("quantity").notNull().default(1),
+    cost: decimal("cost", { precision: 12, scale: 2 }).notNull().default("0"),
+    condition: varchar("condition", { length: 20 }), // good / worn / replaced
+    notes: text("notes"),
+    created_at: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_preventive_items_action").on(table.preventive_action_id),
+    index("idx_preventive_items_component").on(table.component_id),
+  ],
+);
+
 // 📋 جدول فترات الانسحاب من صفحة الحضور (Anti-fraud)
 export const attendance_withdrawals = pgTable(
   "attendance_withdrawals",
@@ -3086,6 +3163,57 @@ export const insertConsumablePartTransactionSchema = createInsertSchema(
   created_at: true,
 });
 
+// Preventive Maintenance Schemas
+export const insertMaintenanceComponentSchema = createInsertSchema(
+  maintenance_component_catalog,
+).omit({
+  id: true,
+  created_at: true,
+});
+
+export const insertPreventiveMaintenanceActionSchema = createInsertSchema(
+  preventive_maintenance_actions,
+).omit({
+  id: true,
+  action_number: true,
+  action_date: true,
+  total_cost: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const insertPreventiveMaintenanceItemSchema = createInsertSchema(
+  preventive_maintenance_items,
+).omit({
+  id: true,
+  preventive_action_id: true,
+  created_at: true,
+});
+
+// Combined payload for creating an action with its line items in one request
+export const createPreventiveMaintenanceSchema = z.object({
+  section_id: z.string().nullish(),
+  machine_id: z.string().min(1),
+  performed_by: z.coerce.number().int().positive().optional(),
+  action_date: z.coerce.date().optional(),
+  notes: z.string().nullish(),
+  status: z.string().optional(),
+  items: z
+    .array(
+      z.object({
+        component_id: z.coerce.number().int().positive().nullish(),
+        component_name_ar: z.string().min(1),
+        component_name_en: z.string().min(1),
+        action_type: z.string().min(1),
+        quantity: z.coerce.number().int().positive().default(1),
+        cost: z.coerce.number().min(0).default(0),
+        condition: z.string().nullish(),
+        notes: z.string().nullish(),
+      }),
+    )
+    .min(1),
+});
+
 // HR System Types
 export type Attendance = typeof attendance.$inferSelect;
 export type InsertAttendance = z.infer<typeof insertAttendanceSchema>;
@@ -3139,6 +3267,26 @@ export type OperatorNegligenceReport =
   typeof operator_negligence_reports.$inferSelect;
 export type InsertOperatorNegligenceReport = z.infer<
   typeof insertOperatorNegligenceReportSchema
+>;
+
+// Preventive Maintenance Types
+export type MaintenanceComponent =
+  typeof maintenance_component_catalog.$inferSelect;
+export type InsertMaintenanceComponent = z.infer<
+  typeof insertMaintenanceComponentSchema
+>;
+export type PreventiveMaintenanceAction =
+  typeof preventive_maintenance_actions.$inferSelect;
+export type InsertPreventiveMaintenanceAction = z.infer<
+  typeof insertPreventiveMaintenanceActionSchema
+>;
+export type PreventiveMaintenanceItem =
+  typeof preventive_maintenance_items.$inferSelect;
+export type InsertPreventiveMaintenanceItem = z.infer<
+  typeof insertPreventiveMaintenanceItemSchema
+>;
+export type CreatePreventiveMaintenance = z.infer<
+  typeof createPreventiveMaintenanceSchema
 >;
 
 // Consumable Parts Types

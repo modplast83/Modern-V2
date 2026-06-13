@@ -2474,6 +2474,60 @@
   },
   "maintenance": {
     "title": "إدارة الصيانة",
+    "preventiveActions": {
+      "tab": "الإجراءات الوقائية",
+      "title": "الإجراءات الوقائية",
+      "newAction": "إجراء وقائي جديد",
+      "formHint": "سجّل إجراءات الصيانة الوقائية غير المرتبطة ببلاغ صيانة",
+      "section": "القسم",
+      "machine": "الماكينة",
+      "actionDate": "تاريخ الإجراء",
+      "selectSection": "اختر القسم",
+      "selectMachine": "اختر الماكينة",
+      "selectComponent": "اختر المكوّن",
+      "component": "المكوّن",
+      "actionType": "نوع الإجراء",
+      "quantity": "الكمية",
+      "condition": "الحالة",
+      "cost": "التكلفة",
+      "notes": "ملاحظات",
+      "addRow": "إضافة صف",
+      "totalCost": "إجمالي التكلفة",
+      "actionNumber": "رقم الإجراء",
+      "itemsCount": "عدد البنود",
+      "empty": "لا توجد إجراءات وقائية مسجّلة",
+      "referenceTitle": "آخر إجراء لكل مكوّن (مرجع)",
+      "selectMachineHint": "اختر ماكينة لعرض آخر الإجراءات لكل مكوّن",
+      "noHistory": "لا يوجد سجل إجراءات لهذه الماكينة",
+      "lastAction": "آخر إجراء",
+      "lastDate": "آخر تاريخ",
+      "elapsed": "المدة المنقضية",
+      "today": "اليوم",
+      "daysAgo": "منذ {{count}} يوم",
+      "actionTypes": {
+        "inspection": "فحص",
+        "cleaning": "تنظيف",
+        "lubrication": "تشحيم",
+        "adjustment": "ضبط",
+        "repair": "إصلاح",
+        "replacement": "استبدال"
+      },
+      "conditions": {
+        "good": "جيدة",
+        "fair": "مقبولة",
+        "poor": "ضعيفة"
+      },
+      "validation": {
+        "machineRequired": "يجب اختيار الماكينة",
+        "itemsRequired": "يجب إضافة بند واحد على الأقل مع تحديد المكوّن"
+      },
+      "toast": {
+        "created": "تم تسجيل الإجراء الوقائي بنجاح",
+        "createFailed": "فشل في تسجيل الإجراء الوقائي",
+        "deleted": "تم حذف الإجراء الوقائي بنجاح",
+        "deleteFailed": "فشل في حذف الإجراء الوقائي"
+      }
+    },
     "description": "الوصف",
     "schedule": "الجدول",
     "requests": "الطلبات",
