@@ -98,6 +98,24 @@ export class MetaWhatsAppService {
       .digest("hex");
   }
 
+  // تنسيق رقم الهاتف إلى الصيغة الدولية التي يقبلها Meta (بدون +).
+  // أرقام السعودية المحلية (05XXXXXXXX أو 5XXXXXXXX) تُحوّل إلى 9665XXXXXXXX،
+  // وإلا يُرفض الرقم من Meta بخطأ (#100) Invalid parameter.
+  private formatRecipientPhone(to: string): string {
+    let cleaned = (to || "")
+      .replace(/[\+\s\-\(\)]/g, "")
+      .replace("whatsapp:", "");
+    if (cleaned.startsWith("00")) {
+      cleaned = cleaned.substring(2);
+    }
+    if (cleaned.startsWith("05") && cleaned.length === 10) {
+      cleaned = "966" + cleaned.substring(1);
+    } else if (cleaned.startsWith("5") && cleaned.length === 9) {
+      cleaned = "966" + cleaned;
+    }
+    return cleaned;
+  }
+
   private getAuthHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.config.accessToken}`,
@@ -132,9 +150,12 @@ export class MetaWhatsAppService {
       }
 
       // تنسيق رقم الهاتف (إزالة + وwhatsapp: إن وجدت)
-      const formattedPhone = to
-        .replace(/[\+\s\-\(\)]/g, "")
-        .replace("whatsapp:", "");
+      const formattedPhone = this.formatRecipientPhone(to);
+
+      // رفض الأرقام غير الصالحة قبل استدعاء Meta لتجنب خطأ (#100) ولإعطاء سبب واضح
+      if (!/^\d{11,15}$/.test(formattedPhone)) {
+        throw new Error(`رقم هاتف غير صالح للإرسال عبر واتس اب: ${to}`);
+      }
 
       const messageData = {
         messaging_product: "whatsapp",
@@ -293,9 +314,7 @@ export class MetaWhatsAppService {
         throw new Error("Meta WhatsApp API غير مُعد بشكل صحيح");
       }
 
-      const formattedPhone = to
-        .replace(/[\+\s\-\(\)]/g, "")
-        .replace("whatsapp:", "");
+      const formattedPhone = this.formatRecipientPhone(to);
 
       let documentPayload: any;
 
@@ -417,9 +436,7 @@ export class MetaWhatsAppService {
       }
 
       // تنسيق رقم الهاتف
-      const formattedPhone = to
-        .replace(/[\+\s\-\(\)]/g, "")
-        .replace("whatsapp:", "");
+      const formattedPhone = this.formatRecipientPhone(to);
 
       const messageData: any = {
         messaging_product: "whatsapp",

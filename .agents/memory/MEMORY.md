@@ -18,3 +18,4 @@
 - [Number display formatting](number-formatting.md) — displayed numbers group thousands via central helpers (formatNumber / formatNumberAr); never group GPS coords/CSS/payloads/percentages, and never re-parse grouped output.
 - [Attendance engine aggregation](attendance-engine-aggregation.md) — self check-in writes many rows per shift-day; coalesce stamps to one record, MAX cumulative withdrawn, compute break once (never per-row sum).
 - [Legacy→new product prefill guard](legacy-map-prefill.md) — prefilling the reactive customer-product form needs a ref that preserves cutting_length through category select, releases on cylinder/length edit, resets on dialog close.
+- [WhatsApp phone normalization](whatsapp-phone-normalization.md) — Meta sends must convert Saudi local (05.../5...) to intl 966 format or Meta rejects with (#100); keep in lockstep with SMS gateway.
