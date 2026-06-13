@@ -1,6 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
-  Package,
   Scissors,
   CheckCircle2,
   Loader2,
@@ -76,6 +75,9 @@ interface ProductionOrderWithRolls {
   product_name: string;
   product_name_ar?: string;
   product_name_en?: string;
+  category_name?: string;
+  category_name_ar?: string;
+  category_name_en?: string;
   size_caption?: string;
   rolls: RollDetails[];
   total_rolls: number;
@@ -285,9 +287,6 @@ export default function CuttingOperatorDashboard({
             <Scissors className="h-5 w-5 text-green-600" />
             {t("operators.cutting.selectMachine")}
           </CardTitle>
-          <CardDescription>
-            {t("operators.cutting.selectMachineDesc")}
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-3">
@@ -445,6 +444,7 @@ export default function CuttingOperatorDashboard({
                   icon={<Scissors className="h-3 w-3 ml-1" />}
                   onSelect={() => setSelectedOrderNumber(group.orderNumber)}
                   testId={`cutting-${group.orderNumber}`}
+                  compact
                 />
               );
             })}
@@ -473,101 +473,72 @@ export default function CuttingOperatorDashboard({
                 className="transition-all hover:shadow-lg"
                 data-testid={`card-production-order-${order.production_order_id}`}
               >
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle
-                        className="text-lg"
-                        data-testid={`text-order-number-${order.production_order_id}`}
-                      >
-                        {order.production_order_number}
-                      </CardTitle>
-                      <CardDescription
-                        data-testid={`text-order-ref-${order.production_order_id}`}
-                      >
-                        {t("operators.common.order")}: {order.order_number}
-                      </CardDescription>
-                    </div>
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start gap-2">
+                    <CardTitle
+                      className="text-lg"
+                      data-testid={`text-order-number-${order.production_order_id}`}
+                    >
+                      #{order.order_number}-{order.production_order_number}
+                    </CardTitle>
                     <Badge
                       variant="secondary"
-                      className="bg-green-100 text-green-800"
+                      className="bg-green-100 text-green-800 whitespace-nowrap"
                     >
                       <Scissors className="h-3 w-3 ml-1" />
                       {order.total_rolls} {t("operators.common.roll")}
                     </Badge>
                   </div>
+                  <CardDescription
+                    className="text-red-600 dark:text-red-400 font-bold"
+                    data-testid={`text-customer-${order.production_order_id}`}
+                  >
+                    {ln(order.customer_name_ar, order.customer_name_en) ||
+                      order.customer_name}
+                  </CardDescription>
                 </CardHeader>
 
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-gray-500 dark:text-gray-400">
-                        {t("operators.common.customer")}
-                      </p>
-                      <p
-                        className="font-bold text-gray-900 dark:text-white"
-                        data-testid={`text-customer-${order.production_order_id}`}
-                      >
-                        {ln(order.customer_name_ar, order.customer_name_en) ||
-                          order.customer_name}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500 dark:text-gray-400">
-                        {t("operators.common.product")}
-                      </p>
-                      <p
-                        className="font-medium"
-                        data-testid={`text-product-${order.production_order_id}`}
-                      >
-                        {ln(order.product_name_ar, order.product_name_en) ||
-                          order.product_name}
-                      </p>
-                    </div>
-                    {order.size_caption && (
-                      <div>
-                        <p className="text-gray-500 dark:text-gray-400">
-                          {t("production.size")}
-                        </p>
-                        <p
-                          className="font-medium"
-                          data-testid={`text-size-${order.production_order_id}`}
-                        >
-                          {order.size_caption}
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                <CardContent className="space-y-3">
+                  <p
+                    className="font-medium text-sm"
+                    data-testid={`text-product-${order.production_order_id}`}
+                  >
+                    {ln(order.product_name_ar, order.product_name_en) ||
+                      order.product_name}
+                    {(order.category_name ||
+                      order.category_name_ar ||
+                      order.category_name_en) &&
+                      ` - ${ln(order.category_name_ar, order.category_name_en) || order.category_name}`}
+                  </p>
 
-                  {(order.cutting_length_cm || order.punching) && (
-                    <div className="grid grid-cols-2 gap-4 text-sm bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
+                  {(order.size_caption ||
+                    order.cutting_length_cm ||
+                    order.punching) && (
+                    <p
+                      className="text-sm text-gray-700 dark:text-gray-300"
+                      data-testid={`text-size-${order.production_order_id}`}
+                    >
+                      {order.size_caption && (
+                        <span>
+                          {t("operators.common.size")}: {order.size_caption}
+                        </span>
+                      )}
+                      {order.size_caption && order.cutting_length_cm && " - "}
                       {order.cutting_length_cm && (
-                        <div>
-                          <p className="text-gray-500 dark:text-gray-400">
-                            {t("operators.cutting.length")}
-                          </p>
-                          <p
-                            className="font-medium"
-                            data-testid={`text-cutting-length-${order.production_order_id}`}
-                          >
-                            {order.cutting_length_cm} cm
-                          </p>
-                        </div>
+                        <span data-testid={`text-cutting-length-${order.production_order_id}`}>
+                          {t("operators.common.lengthShort")}:{" "}
+                          {order.cutting_length_cm}cm
+                        </span>
                       )}
+                      {order.punching &&
+                        (order.size_caption || order.cutting_length_cm) &&
+                        " - "}
                       {order.punching && (
-                        <div>
-                          <p className="text-gray-500 dark:text-gray-400">
-                            {t("operators.cutting.punchingType")}
-                          </p>
-                          <p
-                            className="font-medium"
-                            data-testid={`text-punching-${order.production_order_id}`}
-                          >
-                            {order.punching}
-                          </p>
-                        </div>
+                        <span data-testid={`text-punching-${order.production_order_id}`}>
+                          {order.punching}
+                        </span>
                       )}
-                    </div>
+                    </p>
                   )}
 
                   <div className="space-y-2">
@@ -579,8 +550,10 @@ export default function CuttingOperatorDashboard({
                         className="font-medium"
                         data-testid={`text-progress-${order.production_order_id}`}
                       >
-                        {completedRolls} / {order.total_rolls}{" "}
-                        {t("operators.common.roll")}
+                        {t("operators.common.total")} : {order.total_rolls}{" "}
+                        {t("operators.common.roll")} -{" "}
+                        {formatNumberAr(order.total_weight)}{" "}
+                        {t("operators.common.kg")}
                       </span>
                     </div>
                     <Progress
@@ -590,43 +563,25 @@ export default function CuttingOperatorDashboard({
                     />
                   </div>
 
-                  <div className="flex items-center gap-2 text-sm">
-                    <Package className="h-4 w-4 text-gray-400" />
-                    <span className="text-gray-600 dark:text-gray-400">
-                      {t("operators.common.totalWeight")}:
-                    </span>
-                    <span className="font-medium">
-                      {formatNumberAr(order.total_weight)}{" "}
-                      {t("operators.common.kg")}
-                    </span>
-                  </div>
-
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      {t("operators.common.availableRolls")}:
+                      {t("operators.common.rollsLabel")}:
                     </p>
                     <div className="space-y-2 max-h-48 overflow-y-auto">
                       {order.rolls.map((roll) => (
                         <div
                           key={roll.roll_id}
-                          className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
+                          className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
                           data-testid={`roll-item-${roll.roll_id}`}
                         >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <span
-                                className="font-medium text-sm"
-                                data-testid={`text-roll-number-${roll.roll_id}`}
-                              >
-                                {roll.roll_number}
-                              </span>
-                            </div>
-                            <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                              {t("operators.common.weight")}:{" "}
-                              {formatNumberAr(Number(roll.weight_kg))}{" "}
-                              {t("operators.common.kg")}
-                            </div>
-                          </div>
+                          <span
+                            className="font-medium text-sm"
+                            data-testid={`text-roll-number-${roll.roll_id}`}
+                          >
+                            {roll.roll_number} :{" "}
+                            {formatNumberAr(Number(roll.weight_kg))}{" "}
+                            {t("operators.common.kg")}
+                          </span>
 
                           <Button
                             onClick={() => handleOpenCuttingDialog(roll)}

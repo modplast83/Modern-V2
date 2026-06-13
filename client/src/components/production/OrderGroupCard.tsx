@@ -61,6 +61,7 @@ interface OrderGroupCardProps {
   icon: ReactNode;
   onSelect: () => void;
   testId: string;
+  compact?: boolean;
 }
 
 export function OrderGroupCard({
@@ -75,6 +76,7 @@ export function OrderGroupCard({
   icon,
   onSelect,
   testId,
+  compact = false,
 }: OrderGroupCardProps) {
   const { t, i18n } = useTranslation();
   const isArabic = i18n.language === "ar";
@@ -117,6 +119,7 @@ export function OrderGroupCard({
               className="text-lg"
               data-testid={`text-order-group-number-${testId}`}
             >
+              {compact ? "#" : ""}
               {t("operators.common.order")}: {orderNumber}
             </CardTitle>
             <CardDescription
@@ -125,7 +128,7 @@ export function OrderGroupCard({
             >
               {customerName}
             </CardDescription>
-            {salesRepName && (
+            {!compact && salesRepName && (
               <div
                 className="mt-1 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400"
                 data-testid={`text-order-group-sales-rep-${testId}`}
@@ -140,7 +143,9 @@ export function OrderGroupCard({
           <Badge variant="secondary" className={accentClasses[accent]}>
             {icon}
             {formatNumberAr(productionOrderCount)}{" "}
-            {t("operators.common.productionOrdersCount")}
+            {compact
+              ? t("operators.common.productionOrdersCountShort")
+              : t("operators.common.productionOrdersCount")}
           </Badge>
         </div>
       </CardHeader>
@@ -153,15 +158,21 @@ export function OrderGroupCard({
               data-testid={`text-order-group-date-${testId}`}
             >
               <Calendar className="h-3.5 w-3.5" />
-              {t("operators.common.orderDate")}: {formattedDate}
+              {compact ? "" : `${t("operators.common.orderDate")}: `}
+              {formattedDate}
             </span>
             {daysElapsed !== null && (
               <span
                 className="font-medium text-gray-700 dark:text-gray-300"
                 data-testid={`text-order-group-days-${testId}`}
               >
-                {t("operators.common.daysElapsed")}:{" "}
-                {formatNumberAr(daysElapsed)} {t("operators.common.day")}
+                {compact
+                  ? t("operators.common.elapsed")
+                  : t("operators.common.daysElapsed")}
+                : {formatNumberAr(daysElapsed)}{" "}
+                {compact
+                  ? t("operators.common.days")
+                  : t("operators.common.day")}
               </span>
             )}
           </div>

@@ -8184,6 +8184,9 @@ export class DatabaseStorage implements IStorage {
         COALESCE(i.name_ar, i.name, cp.id::text) AS product_name,
         i.name_ar AS product_name_ar,
         i.name AS product_name_en,
+        COALESCE(cat.name_ar, cat.name) AS category_name,
+        cat.name_ar AS category_name_ar,
+        cat.name AS category_name_en,
         cp.size_caption,
         cp.cutting_length_cm,
         cp.punching
@@ -8194,6 +8197,7 @@ export class DatabaseStorage implements IStorage {
       LEFT JOIN users sr ON sr.id = c.sales_rep_id
       JOIN customer_products cp ON po.customer_product_id = cp.id
       LEFT JOIN items i ON cp.item_id = i.id
+      LEFT JOIN categories cat ON cp.category_id = cat.id
       WHERE (
               r.stage = 'printing'
               OR (r.stage = 'film' AND COALESCE(cp.is_printed, false) = false)
@@ -8220,6 +8224,9 @@ export class DatabaseStorage implements IStorage {
           product_name: row.product_name,
           product_name_ar: row.product_name_ar,
           product_name_en: row.product_name_en,
+          category_name: row.category_name,
+          category_name_ar: row.category_name_ar,
+          category_name_en: row.category_name_en,
           size_caption: row.size_caption,
           cutting_length_cm: row.cutting_length_cm,
           punching: row.punching,
