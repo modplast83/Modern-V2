@@ -1191,6 +1191,9 @@ export const ROUTE_PERMISSIONS: Record<string, PermissionKey[]> = {
 
   // Modern AI Agent
   "/modern-agent": ["use_modern_agent", "manage_modern_agent", "admin"],
+
+  // Smart Maintenance Engineer (read-only AI agent)
+  "/maintenance-engineer": ["view_maintenance", "manage_maintenance", "admin"],
 };
 
 // Settings tabs permissions

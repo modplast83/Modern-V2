@@ -5810,5 +5810,51 @@
     "greetingHint": "Ask me about orders, production, customers, or request a document.",
     "inputPlaceholder": "Type your message here...",
     "error": "An error occurred while processing your request"
+  },
+  "maintenanceEngineer": {
+    "title": "Smart Maintenance Engineer",
+    "subtitle": "An engineering assistant specialized in diagnosing extruder, printer, and cutter faults",
+    "newChat": "New chat",
+    "untitled": "Untitled conversation",
+    "greeting": "Hello! I'm the Smart Maintenance Engineer.",
+    "greetingHint": "Describe a fault or ask about a specific machine, and I'll diagnose the likely cause using maintenance history and the knowledge base. (Diagnosis only — I don't log maintenance actions.)",
+    "inputPlaceholder": "Describe a fault or ask about a machine...",
+    "error": "An error occurred while processing your request",
+    "tabs": {
+      "chat": "Diagnosis",
+      "knowledge": "Knowledge Base",
+      "changeLog": "Change Log"
+    },
+    "categories": {
+      "general": "General",
+      "extruder": "Extruder",
+      "printer": "Printer",
+      "cutter": "Cutter"
+    },
+    "kb": {
+      "uploadTitle": "Add knowledge file",
+      "uploadHint": "Upload maintenance catalogs or manuals (PDF, Word, or text). The content is extracted and fed to the Smart Engineer.",
+      "titleField": "Title",
+      "titlePlaceholder": "Descriptive title (optional)",
+      "category": "Machine category",
+      "chooseFile": "Choose & upload file",
+      "uploadSuccess": "File uploaded and content extracted successfully",
+      "listTitle": "Knowledge files",
+      "empty": "No knowledge files yet",
+      "sourceUpload": "Uploaded file",
+      "sourceManual": "Manual entry",
+      "chars": "chars"
+    },
+    "changeLog": {
+      "addTitle": "Add change note",
+      "machine": "Machine",
+      "selectMachine": "Select machine",
+      "note": "Note",
+      "notePlaceholder": "Describe the change or modification made to the machine...",
+      "save": "Save",
+      "saved": "Note saved",
+      "listTitle": "Change log",
+      "empty": "No change notes"
+    }
   }
 }

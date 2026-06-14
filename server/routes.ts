@@ -380,6 +380,11 @@ export async function registerRoutes(
   const { registerModernAgentRoutes } = await import("./modern-agent/routes");
   registerModernAgentRoutes(app);
 
+  const { registerMaintenanceEngineerRoutes } = await import(
+    "./maintenance-engineer"
+  );
+  registerMaintenanceEngineerRoutes(app);
+
   // Register Object Storage routes (serves /objects/* for uploaded files)
   const { registerObjectStorageRoutes } =
     await import("./replit_integrations/object_storage");

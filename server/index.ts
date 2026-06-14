@@ -889,6 +889,75 @@ function sanitizeResponseForLogging(response: any): any {
       );
     }
 
+    // Ensure the Smart Maintenance Engineer tables exist on existing databases.
+    // drizzle-kit push only runs for fresh databases, so create them here
+    // idempotently (CREATE TABLE IF NOT EXISTS never drops or alters data).
+    try {
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS maintenance_engineer_knowledge (
+          id serial PRIMARY KEY,
+          title varchar(300) NOT NULL,
+          content text NOT NULL,
+          machine_category varchar(20) NOT NULL DEFAULT 'general',
+          source_type varchar(20) NOT NULL DEFAULT 'manual',
+          file_name varchar(300),
+          enabled boolean NOT NULL DEFAULT true,
+          created_by integer REFERENCES users(id),
+          created_at timestamp DEFAULT now(),
+          updated_at timestamp DEFAULT now()
+        )
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_maint_eng_knowledge_category
+        ON maintenance_engineer_knowledge (machine_category)
+      `);
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS maintenance_engineer_conversations (
+          id serial PRIMARY KEY,
+          user_id integer NOT NULL REFERENCES users(id),
+          title varchar(300),
+          created_at timestamp DEFAULT now(),
+          updated_at timestamp DEFAULT now()
+        )
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_maint_eng_conv_user
+        ON maintenance_engineer_conversations (user_id)
+      `);
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS maintenance_engineer_messages (
+          id serial PRIMARY KEY,
+          conversation_id integer NOT NULL REFERENCES maintenance_engineer_conversations(id) ON DELETE CASCADE,
+          role varchar(20) NOT NULL,
+          content text NOT NULL DEFAULT '',
+          metadata jsonb,
+          created_at timestamp DEFAULT now()
+        )
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_maint_eng_msg_conv
+        ON maintenance_engineer_messages (conversation_id)
+      `);
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS machine_change_log (
+          id serial PRIMARY KEY,
+          machine_id varchar(20) NOT NULL REFERENCES machines(id),
+          note text NOT NULL,
+          changed_by integer REFERENCES users(id),
+          created_at timestamp DEFAULT now()
+        )
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_machine_change_log_machine
+        ON machine_change_log (machine_id)
+      `);
+    } catch (maintEngErr: any) {
+      console.warn(
+        "⚠️ فشل تهيئة جداول مهندس الصيانة الذكي (سيتم المحاولة لاحقاً):",
+        maintEngErr?.message,
+      );
+    }
+
     // Ensure HR Phase 2 tables/columns exist on existing databases.
     // drizzle-kit push only runs for fresh databases, so create them here
     // idempotently (CREATE TABLE / ADD COLUMN IF NOT EXISTS never drops data).

@@ -5098,3 +5098,119 @@ export type InsertModernAgentUsage = z.infer<
   typeof insertModernAgentUsageSchema
 >;
 export type ModernAgentUsage = typeof modern_agent_usage.$inferSelect;
+
+// ════════════════════════════════════════════════════════════════════════
+// 🛠️ مهندس الصيانة الذكي - Smart Maintenance Engineer (read-only AI agent)
+// A dedicated AI agent specialized in plastic-bag extruders, flexographic
+// printers, and bag cutters. Distinct from the general "Modern" agent.
+// ════════════════════════════════════════════════════════════════════════
+
+// 📚 قاعدة معرفة مهندس الصيانة (كتالوجات/أدلة يتم تغذيتها بالملفات)
+// Knowledge base fed via file upload (PDF/Word/text) with extracted content.
+export const maintenance_engineer_knowledge = pgTable(
+  "maintenance_engineer_knowledge",
+  {
+    id: serial("id").primaryKey(),
+    title: varchar("title", { length: 300 }).notNull(),
+    content: text("content").notNull(), // extracted text content
+    machine_category: varchar("machine_category", { length: 20 })
+      .notNull()
+      .default("general"), // extruder / printer / cutter / general
+    source_type: varchar("source_type", { length: 20 })
+      .notNull()
+      .default("manual"), // upload / manual
+    file_name: varchar("file_name", { length: 300 }),
+    enabled: boolean("enabled").notNull().default(true),
+    created_by: integer("created_by").references(() => users.id),
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_maint_eng_knowledge_category").on(table.machine_category),
+  ],
+);
+
+export const insertMaintenanceEngineerKnowledgeSchema = createInsertSchema(
+  maintenance_engineer_knowledge,
+).omit({ id: true, created_at: true, updated_at: true });
+export type InsertMaintenanceEngineerKnowledge = z.infer<
+  typeof insertMaintenanceEngineerKnowledgeSchema
+>;
+export type MaintenanceEngineerKnowledge =
+  typeof maintenance_engineer_knowledge.$inferSelect;
+
+// 💬 محادثات مهندس الصيانة الذكي - Maintenance engineer conversations
+export const maintenance_engineer_conversations = pgTable(
+  "maintenance_engineer_conversations",
+  {
+    id: serial("id").primaryKey(),
+    user_id: integer("user_id")
+      .notNull()
+      .references(() => users.id),
+    title: varchar("title", { length: 300 }),
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [index("idx_maint_eng_conv_user").on(table.user_id)],
+);
+
+export const insertMaintenanceEngineerConversationSchema = createInsertSchema(
+  maintenance_engineer_conversations,
+).omit({ id: true, created_at: true, updated_at: true });
+export type InsertMaintenanceEngineerConversation = z.infer<
+  typeof insertMaintenanceEngineerConversationSchema
+>;
+export type MaintenanceEngineerConversation =
+  typeof maintenance_engineer_conversations.$inferSelect;
+
+// 🗨️ رسائل مهندس الصيانة الذكي - Maintenance engineer messages
+export const maintenance_engineer_messages = pgTable(
+  "maintenance_engineer_messages",
+  {
+    id: serial("id").primaryKey(),
+    conversation_id: integer("conversation_id")
+      .notNull()
+      .references(() => maintenance_engineer_conversations.id, {
+        onDelete: "cascade",
+      }),
+    role: varchar("role", { length: 20 }).notNull(), // user / assistant
+    content: text("content").notNull().default(""),
+    metadata: jsonb("metadata"),
+    created_at: timestamp("created_at").defaultNow(),
+  },
+  (table) => [index("idx_maint_eng_msg_conv").on(table.conversation_id)],
+);
+
+export const insertMaintenanceEngineerMessageSchema = createInsertSchema(
+  maintenance_engineer_messages,
+).omit({ id: true, created_at: true });
+export type InsertMaintenanceEngineerMessage = z.infer<
+  typeof insertMaintenanceEngineerMessageSchema
+>;
+export type MaintenanceEngineerMessage =
+  typeof maintenance_engineer_messages.$inferSelect;
+
+// 📝 سجل تغييرات الماكينة (ملاحظات حرة) - Free-form machine change log
+// Records ad-hoc changes/modifications made to a machine so the engineer can
+// factor them into diagnosis. Auxiliary notes, NOT production maintenance records.
+export const machine_change_log = pgTable(
+  "machine_change_log",
+  {
+    id: serial("id").primaryKey(),
+    machine_id: varchar("machine_id", { length: 20 })
+      .notNull()
+      .references(() => machines.id),
+    note: text("note").notNull(),
+    changed_by: integer("changed_by").references(() => users.id),
+    created_at: timestamp("created_at").defaultNow(),
+  },
+  (table) => [index("idx_machine_change_log_machine").on(table.machine_id)],
+);
+
+export const insertMachineChangeLogSchema = createInsertSchema(
+  machine_change_log,
+).omit({ id: true, created_at: true });
+export type InsertMachineChangeLog = z.infer<
+  typeof insertMachineChangeLogSchema
+>;
+export type MachineChangeLog = typeof machine_change_log.$inferSelect;

@@ -1,0 +1,841 @@
+import type { Express, Response } from "express";
+import OpenAI from "openai";
+import multer from "multer";
+import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { db } from "./db";
+import { storage } from "./storage";
+import {
+  maintenance_engineer_knowledge,
+  maintenance_engineer_conversations,
+  maintenance_engineer_messages,
+  machine_change_log,
+  maintenance_requests,
+  maintenance_actions,
+  preventive_maintenance_actions,
+  preventive_maintenance_items,
+  users,
+  insertMaintenanceEngineerKnowledgeSchema,
+  insertMachineChangeLogSchema,
+} from "@shared/schema";
+import {
+  requireAuth,
+  requirePermission,
+  type AuthRequest,
+} from "./middleware/auth";
+
+const openai = new OpenAI({
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+  organization: null, // prevent SDK from auto-reading OPENAI_ORG_ID env var
+});
+
+const MODEL = "gpt-4.1";
+const MAX_TOOL_ITERATIONS = 6;
+const MAX_KNOWLEDGE_CHARS = 200000; // hard cap on extracted text stored per file
+
+const PERSONA = `أنت "مهندس الصيانة الذكي" (Smart Maintenance Engineer)، مساعد هندسي متخصص في صيانة مكائن مصنع أكياس البلاستيك (MPBF).
+You are the "Smart Maintenance Engineer", an engineering assistant specialized in maintaining a plastic-bag factory's machines.
+- تخصصك العميق: مكائن النفخ/البثق (extruders / film blowing)، مكائن الطباعة الفلكسوغرافية (flexographic printers)، ومكائن تقطيع الأكياس (bag cutters).
+- You have deep expertise in extruders (film blowing), flexographic printers, and bag-cutting machines: their mechanics, drives, heaters, screws, dies, anilox rollers, doctor blades, sealing/cutting knives, sensors, and common faults.
+- مهمتك: تشخيص الأعطال واقتراح أسباب محتملة وخطوات فحص وإصلاح، بالاعتماد على سجل صيانة الماكينة وسجل التغييرات وقاعدة المعرفة.
+- Your job: diagnose faults, propose likely root causes, inspection steps, and repair guidance — grounded in the machine's maintenance history, its change log, and the fed knowledge base.
+- أنت للتشخيص فقط (قراءة فقط). لا تنشئ أو تعدّل أي سجلات صيانة إنتاجية. إذا طلب المستخدم تسجيل إجراء، وضّح أنك للتشخيص فقط وأن التسجيل يتم من صفحة الصيانة.
+- You are READ-ONLY (diagnosis only). You never create or modify production maintenance records. If asked to log an action, explain you only diagnose and that recording is done from the Maintenance page.
+- استخدم الأدوات المتاحة لقراءة بيانات الماكينة وسجلها وقاعدة المعرفة قبل التشخيص. لا تختلق معلومات.
+- Use the available read tools to look up machine data, history, and knowledge before diagnosing. Never fabricate information.`;
+
+// ── Machine type normalization (machines.type holds mixed legacy values) ──
+function normalizeMachineCategory(type?: string | null): string {
+  const t = (type || "").toLowerCase().trim();
+  if (/extrud|film|blow|نفخ|بثق|فيلم/.test(t)) return "extruder";
+  if (/print|flexo|طباع/.test(t)) return "printer";
+  if (/cut|cutter|تقطيع|قطع/.test(t)) return "cutter";
+  return "general";
+}
+
+function clampLimit(n: any, def = 50, max = 200): number {
+  const v = parseInt(String(n ?? def), 10);
+  if (isNaN(v) || v <= 0) return def;
+  return Math.min(v, max);
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// Read-only diagnostic tools
+// ════════════════════════════════════════════════════════════════════════
+interface ToolDef {
+  name: string;
+  description: string;
+  parameters: Record<string, any>;
+  handler: (args: any) => Promise<any>;
+}
+
+const TOOLS: ToolDef[] = [
+  {
+    name: "list_machines",
+    description:
+      "List factory machines with id, name, normalized category (extruder/printer/cutter), raw type, and status. Use to find the machine the user is asking about.",
+    parameters: { type: "object", properties: {} },
+    handler: async () => {
+      const list = await storage.getMachines();
+      return (list as any[]).map((m) => ({
+        id: m.id,
+        name: m.name,
+        name_ar: m.name_ar,
+        category: normalizeMachineCategory(m.type),
+        type: m.type,
+        status: m.status,
+        section_id: m.section_id,
+      }));
+    },
+  },
+  {
+    name: "get_machine",
+    description:
+      "Get a single machine by id with its full specifications (capacities, screw type, raw material type, thickness range, inline printer, status).",
+    parameters: {
+      type: "object",
+      properties: { id: { type: "string" } },
+      required: ["id"],
+    },
+    handler: async (args) => {
+      const m = await storage.getMachineById(String(args.id));
+      if (!m) return { error: "not_found" };
+      return { ...m, category: normalizeMachineCategory((m as any).type) };
+    },
+  },
+  {
+    name: "get_machine_maintenance_history",
+    description:
+      "Get the maintenance request + action history for a machine (faults reported, issue type, urgency, status, and the actions taken). Use this to follow what has previously gone wrong and what was done.",
+    parameters: {
+      type: "object",
+      properties: {
+        machine_id: { type: "string" },
+        limit: { type: "number" },
+      },
+      required: ["machine_id"],
+    },
+    handler: async (args) => {
+      const machineId = String(args.machine_id);
+      const reqs = await db
+        .select()
+        .from(maintenance_requests)
+        .where(eq(maintenance_requests.machine_id, machineId))
+        .orderBy(desc(maintenance_requests.date_reported))
+        .limit(clampLimit(args?.limit, 30));
+      if (reqs.length === 0) return { requests: [] };
+      const reqIds = reqs.map((r) => r.id);
+      const acts = await db
+        .select()
+        .from(maintenance_actions)
+        .where(inArray(maintenance_actions.maintenance_request_id, reqIds))
+        .orderBy(desc(maintenance_actions.action_date));
+      return {
+        requests: reqs.map((r) => ({
+          id: r.id,
+          request_number: r.request_number,
+          issue_type: r.issue_type,
+          description: r.description,
+          urgency_level: r.urgency_level,
+          status: r.status,
+          action_taken: r.action_taken,
+          date_reported: r.date_reported,
+          date_resolved: r.date_resolved,
+          actions: acts
+            .filter((a) => a.maintenance_request_id === r.id)
+            .map((a) => ({
+              action_number: a.action_number,
+              action_type: a.action_type,
+              description: a.description,
+              text_report: a.text_report,
+              spare_parts_request: a.spare_parts_request,
+              machining_request: a.machining_request,
+              action_date: a.action_date,
+            })),
+        })),
+      };
+    },
+  },
+  {
+    name: "get_machine_change_log",
+    description:
+      "Get the free-form change/modification notes recorded for a machine (e.g. a part swapped, a setting changed, an upgrade). Factor these into diagnosis.",
+    parameters: {
+      type: "object",
+      properties: {
+        machine_id: { type: "string" },
+        limit: { type: "number" },
+      },
+      required: ["machine_id"],
+    },
+    handler: async (args) => {
+      const rows = await db
+        .select({
+          id: machine_change_log.id,
+          note: machine_change_log.note,
+          created_at: machine_change_log.created_at,
+        })
+        .from(machine_change_log)
+        .where(eq(machine_change_log.machine_id, String(args.machine_id)))
+        .orderBy(desc(machine_change_log.created_at))
+        .limit(clampLimit(args?.limit, 30));
+      return { changes: rows };
+    },
+  },
+  {
+    name: "list_preventive_actions",
+    description:
+      "List preventive maintenance actions performed on a machine, including the per-component line items (component, action type, condition). Use to see what has recently been serviced.",
+    parameters: {
+      type: "object",
+      properties: {
+        machine_id: { type: "string" },
+        limit: { type: "number" },
+      },
+      required: ["machine_id"],
+    },
+    handler: async (args) => {
+      const actions = await db
+        .select()
+        .from(preventive_maintenance_actions)
+        .where(
+          eq(preventive_maintenance_actions.machine_id, String(args.machine_id)),
+        )
+        .orderBy(desc(preventive_maintenance_actions.action_date))
+        .limit(clampLimit(args?.limit, 30));
+      if (actions.length === 0) return { actions: [] };
+      const ids = actions.map((a) => a.id);
+      const items = await db
+        .select()
+        .from(preventive_maintenance_items)
+        .where(inArray(preventive_maintenance_items.preventive_action_id, ids));
+      return {
+        actions: actions.map((a) => ({
+          id: a.id,
+          action_number: a.action_number,
+          action_date: a.action_date,
+          status: a.status,
+          notes: a.notes,
+          items: items
+            .filter((it) => it.preventive_action_id === a.id)
+            .map((it) => ({
+              component_name_ar: it.component_name_ar,
+              component_name_en: it.component_name_en,
+              action_type: it.action_type,
+              condition: it.condition,
+              notes: it.notes,
+            })),
+        })),
+      };
+    },
+  },
+  {
+    name: "search_maintenance_knowledge",
+    description:
+      "Search the fed knowledge base (uploaded catalogs/manuals and notes) for relevant content. Optionally filter by machine_category (extruder/printer/cutter/general). Returns matching titles and content excerpts.",
+    parameters: {
+      type: "object",
+      properties: {
+        query: { type: "string" },
+        machine_category: {
+          type: "string",
+          enum: ["extruder", "printer", "cutter", "general"],
+        },
+        limit: { type: "number" },
+      },
+      required: ["query"],
+    },
+    handler: async (args) => {
+      const q = (args?.query || "").toString().trim();
+      const conds: any[] = [eq(maintenance_engineer_knowledge.enabled, true)];
+      if (q) {
+        conds.push(
+          or(
+            ilike(maintenance_engineer_knowledge.title, `%${q}%`),
+            ilike(maintenance_engineer_knowledge.content, `%${q}%`),
+          ),
+        );
+      }
+      if (
+        args?.machine_category &&
+        args.machine_category !== "general" &&
+        ["extruder", "printer", "cutter"].includes(args.machine_category)
+      ) {
+        conds.push(
+          or(
+            eq(
+              maintenance_engineer_knowledge.machine_category,
+              args.machine_category,
+            ),
+            eq(maintenance_engineer_knowledge.machine_category, "general"),
+          ),
+        );
+      }
+      const rows = await db
+        .select()
+        .from(maintenance_engineer_knowledge)
+        .where(and(...conds))
+        .orderBy(desc(maintenance_engineer_knowledge.id))
+        .limit(clampLimit(args?.limit, 8, 20));
+      return {
+        results: rows.map((r) => ({
+          title: r.title,
+          machine_category: r.machine_category,
+          // Cap excerpt so a single huge document can't blow the context window.
+          excerpt: (r.content || "").slice(0, 6000),
+        })),
+      };
+    },
+  },
+];
+
+const TOOL_MAP: Record<string, ToolDef> = Object.fromEntries(
+  TOOLS.map((t) => [t.name, t]),
+);
+
+function buildOpenAiTools() {
+  return TOOLS.map((t) => ({
+    type: "function" as const,
+    function: {
+      name: t.name,
+      description: t.description,
+      parameters: t.parameters,
+    },
+  }));
+}
+
+async function buildSystemPrompt(): Promise<string> {
+  const parts: string[] = [];
+  parts.push(
+    "# CRITICAL INSTRUCTIONS — MUST FOLLOW STRICTLY\n" +
+      "1. LANGUAGE: Detect the user's language and ALWAYS reply in that exact same language — Arabic (العربية, right-to-left) if they wrote Arabic, English if they wrote English. Never mix languages.\n" +
+      "2. SCOPE: You are READ-ONLY. You diagnose machine faults; you NEVER create or modify production maintenance records.\n" +
+      "3. ACCURACY: Use the read tools to ground your answers in real machine data, history, change log, and the knowledge base. Never fabricate model numbers, specs, or history.\n" +
+      "4. ARABIC TEXT FORMAT: Write Arabic in standard Unicode logical order (right-to-left). Never reverse or reorder characters.",
+  );
+  parts.push("\n# Identity & Persona\n" + PERSONA);
+  parts.push(
+    "\n# Diagnostic Method\n" +
+      "When diagnosing: (1) identify the machine and its category, (2) review its maintenance history and change log, (3) consult the knowledge base for the relevant machine category, (4) present likely root causes ranked by probability with concrete inspection/repair steps, and (5) note any safety precautions. If information is missing, say what additional checks the technician should perform.",
+  );
+  return parts.join("\n");
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// Text extraction from uploaded files
+// ════════════════════════════════════════════════════════════════════════
+async function extractText(
+  buffer: Buffer,
+  fileName: string,
+  mimeType: string,
+): Promise<string> {
+  const lower = (fileName || "").toLowerCase();
+  const isPdf = mimeType === "application/pdf" || lower.endsWith(".pdf");
+  const isDocx =
+    mimeType ===
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    lower.endsWith(".docx");
+  const isText =
+    mimeType.startsWith("text/") ||
+    lower.endsWith(".txt") ||
+    lower.endsWith(".md") ||
+    lower.endsWith(".csv");
+
+  if (isPdf) {
+    // Import the inner module directly to avoid pdf-parse's debug-mode file read.
+    // @ts-ignore - pdf-parse ships no types for the inner module path
+    const pdfParse = (await import("pdf-parse/lib/pdf-parse.js")).default;
+    const data = await pdfParse(buffer);
+    return (data.text || "").trim();
+  }
+  if (isDocx) {
+    const mammoth = await import("mammoth");
+    const result = await mammoth.extractRawText({ buffer });
+    return (result.value || "").trim();
+  }
+  if (isText) {
+    return buffer.toString("utf-8").trim();
+  }
+  throw new Error("unsupported_file_type");
+}
+
+const ALLOWED_UPLOAD_MIMES = new Set([
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/msword",
+  "text/plain",
+  "text/markdown",
+  "text/csv",
+]);
+const ALLOWED_UPLOAD_EXTS = [
+  ".pdf",
+  ".doc",
+  ".docx",
+  ".txt",
+  ".md",
+  ".csv",
+];
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024, files: 1 }, // 15MB, single file
+  fileFilter: (_req, file, cb) => {
+    const lower = (file.originalname || "").toLowerCase();
+    const okExt = ALLOWED_UPLOAD_EXTS.some((e) => lower.endsWith(e));
+    const okMime =
+      ALLOWED_UPLOAD_MIMES.has(file.mimetype) ||
+      file.mimetype.startsWith("text/");
+    if (okExt && okMime) return cb(null, true);
+    cb(new Error("unsupported_file_type"));
+  },
+});
+
+export function registerMaintenanceEngineerRoutes(app: Express): void {
+  // ───────────────────────── chat (diagnosis) ─────────────────────────
+  app.post(
+    "/api/maintenance-engineer/chat",
+    requireAuth,
+    requirePermission("view_maintenance", "manage_maintenance"),
+    async (req: AuthRequest, res: Response) => {
+      try {
+        const message = (req.body?.message || "").toString().trim();
+        if (!message) return res.status(400).json({ error: "message required" });
+        if (message.length > 8000)
+          return res.status(400).json({ error: "الرسالة طويلة جداً" });
+
+        const userId = req.user!.id;
+
+        // conversation
+        let conversationId = req.body?.conversationId
+          ? Number(req.body.conversationId)
+          : null;
+        if (conversationId) {
+          const conv = await db
+            .select()
+            .from(maintenance_engineer_conversations)
+            .where(eq(maintenance_engineer_conversations.id, conversationId));
+          if (!conv[0] || conv[0].user_id !== userId) {
+            return res.status(404).json({ error: "conversation not found" });
+          }
+        } else {
+          const created = await db
+            .insert(maintenance_engineer_conversations)
+            .values({ user_id: userId, title: message.slice(0, 60) })
+            .returning();
+          conversationId = created[0].id;
+        }
+
+        // history
+        const history = await db
+          .select()
+          .from(maintenance_engineer_messages)
+          .where(eq(maintenance_engineer_messages.conversation_id, conversationId))
+          .orderBy(desc(maintenance_engineer_messages.id))
+          .limit(20);
+        history.reverse();
+
+        const systemPrompt = await buildSystemPrompt();
+        const messages: any[] = [{ role: "system", content: systemPrompt }];
+        for (const m of history) {
+          messages.push({ role: m.role, content: m.content });
+        }
+        messages.push({ role: "user", content: message });
+
+        // persist user message
+        await db.insert(maintenance_engineer_messages).values({
+          conversation_id: conversationId,
+          role: "user",
+          content: message,
+        });
+
+        const tools = buildOpenAiTools();
+        const toolsUsed: string[] = [];
+        let finalText = "";
+
+        for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
+          const completion = await openai.chat.completions.create({
+            model: MODEL,
+            temperature: 0.3,
+            messages,
+            tools,
+          });
+          const choice = completion.choices[0];
+          const msg = choice.message;
+          messages.push(msg as any);
+
+          if (msg.tool_calls && msg.tool_calls.length) {
+            for (const call of msg.tool_calls) {
+              if (call.type !== "function") {
+                messages.push({
+                  role: "tool",
+                  tool_call_id: call.id,
+                  content: JSON.stringify({ error: "unsupported_tool_call" }),
+                });
+                continue;
+              }
+              const tool = TOOL_MAP[call.function.name];
+              let result: any;
+              if (!tool) {
+                result = { error: "tool_not_available" };
+              } else {
+                try {
+                  const args = call.function.arguments
+                    ? JSON.parse(call.function.arguments)
+                    : {};
+                  result = await tool.handler(args);
+                  toolsUsed.push(tool.name);
+                } catch (err: any) {
+                  result = { error: "tool_failed", detail: err?.message };
+                }
+              }
+              messages.push({
+                role: "tool",
+                tool_call_id: call.id,
+                content: JSON.stringify(result),
+              });
+            }
+            continue;
+          }
+
+          finalText = msg.content || "";
+          break;
+        }
+
+        if (!finalText) {
+          finalText = "عذراً، لم أتمكن من إكمال الطلب. يرجى المحاولة مرة أخرى.";
+        }
+
+        const metadata = { toolsUsed: Array.from(new Set(toolsUsed)) };
+        await db.insert(maintenance_engineer_messages).values({
+          conversation_id: conversationId,
+          role: "assistant",
+          content: finalText,
+          metadata,
+        });
+        await db
+          .update(maintenance_engineer_conversations)
+          .set({ updated_at: new Date() })
+          .where(eq(maintenance_engineer_conversations.id, conversationId));
+
+        res.json({
+          conversationId,
+          reply: finalText,
+          toolsUsed: metadata.toolsUsed,
+        });
+      } catch (err: any) {
+        console.error("[maintenance-engineer] chat error:", err?.message);
+        res.status(500).json({ error: "حدث خطأ أثناء معالجة الطلب" });
+      }
+    },
+  );
+
+  // ───────────────────────── conversations ─────────────────────────
+  app.get(
+    "/api/maintenance-engineer/conversations",
+    requireAuth,
+    requirePermission("view_maintenance", "manage_maintenance"),
+    async (req: AuthRequest, res: Response) => {
+      const rows = await db
+        .select()
+        .from(maintenance_engineer_conversations)
+        .where(eq(maintenance_engineer_conversations.user_id, req.user!.id))
+        .orderBy(desc(maintenance_engineer_conversations.updated_at))
+        .limit(100);
+      res.json(rows);
+    },
+  );
+
+  app.get(
+    "/api/maintenance-engineer/conversations/:id/messages",
+    requireAuth,
+    requirePermission("view_maintenance", "manage_maintenance"),
+    async (req: AuthRequest, res: Response) => {
+      const id = Number(req.params.id);
+      const conv = await db
+        .select()
+        .from(maintenance_engineer_conversations)
+        .where(eq(maintenance_engineer_conversations.id, id));
+      if (!conv[0] || conv[0].user_id !== req.user!.id) {
+        return res.status(404).json({ error: "not found" });
+      }
+      const rows = await db
+        .select()
+        .from(maintenance_engineer_messages)
+        .where(eq(maintenance_engineer_messages.conversation_id, id))
+        .orderBy(maintenance_engineer_messages.id);
+      res.json(rows);
+    },
+  );
+
+  app.delete(
+    "/api/maintenance-engineer/conversations/:id",
+    requireAuth,
+    requirePermission("view_maintenance", "manage_maintenance"),
+    async (req: AuthRequest, res: Response) => {
+      const id = Number(req.params.id);
+      const conv = await db
+        .select()
+        .from(maintenance_engineer_conversations)
+        .where(eq(maintenance_engineer_conversations.id, id));
+      if (!conv[0] || conv[0].user_id !== req.user!.id) {
+        return res.status(404).json({ error: "not found" });
+      }
+      await db
+        .delete(maintenance_engineer_messages)
+        .where(eq(maintenance_engineer_messages.conversation_id, id));
+      await db
+        .delete(maintenance_engineer_conversations)
+        .where(eq(maintenance_engineer_conversations.id, id));
+      res.json({ ok: true });
+    },
+  );
+
+  // ───────────────────────── knowledge base ─────────────────────────
+  app.get(
+    "/api/maintenance-engineer/knowledge",
+    requireAuth,
+    requirePermission("view_maintenance", "manage_maintenance"),
+    async (_req: AuthRequest, res: Response) => {
+      const rows = await db
+        .select({
+          id: maintenance_engineer_knowledge.id,
+          title: maintenance_engineer_knowledge.title,
+          machine_category: maintenance_engineer_knowledge.machine_category,
+          source_type: maintenance_engineer_knowledge.source_type,
+          file_name: maintenance_engineer_knowledge.file_name,
+          enabled: maintenance_engineer_knowledge.enabled,
+          content_length: sql<number>`length(${maintenance_engineer_knowledge.content})`,
+          created_at: maintenance_engineer_knowledge.created_at,
+        })
+        .from(maintenance_engineer_knowledge)
+        .orderBy(desc(maintenance_engineer_knowledge.id));
+      res.json(rows);
+    },
+  );
+
+  // Manual text knowledge entry
+  app.post(
+    "/api/maintenance-engineer/knowledge",
+    requireAuth,
+    requirePermission("manage_maintenance"),
+    async (req: AuthRequest, res: Response) => {
+      const parsed = insertMaintenanceEngineerKnowledgeSchema.safeParse({
+        ...req.body,
+        source_type: "manual",
+        created_by: req.user!.id,
+      });
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.flatten() });
+      }
+      const created = await db
+        .insert(maintenance_engineer_knowledge)
+        .values(parsed.data)
+        .returning();
+      res.json(created[0]);
+    },
+  );
+
+  // File upload (PDF / Word / text) with extraction
+  app.post(
+    "/api/maintenance-engineer/knowledge/upload",
+    requireAuth,
+    requirePermission("manage_maintenance"),
+    (req: AuthRequest, res: Response, next) => {
+      upload.single("file")(req as any, res as any, (err: any) => {
+        if (err) {
+          const msg =
+            err?.message === "unsupported_file_type"
+              ? "نوع الملف غير مدعوم. يُسمح بملفات PDF و Word و النصوص فقط."
+              : err?.code === "LIMIT_FILE_SIZE"
+                ? "حجم الملف كبير جداً (الحد الأقصى 15 ميجابايت)"
+                : "تعذّر رفع الملف";
+          return res.status(400).json({ error: msg });
+        }
+        next();
+      });
+    },
+    async (req: AuthRequest, res: Response) => {
+      try {
+        const file = (req as any).file;
+        if (!file) return res.status(400).json({ error: "file required" });
+        const category = (req.body?.machine_category || "general").toString();
+        const validCat = ["extruder", "printer", "cutter", "general"].includes(
+          category,
+        )
+          ? category
+          : "general";
+        const title =
+          (req.body?.title || "").toString().trim() ||
+          file.originalname ||
+          "ملف";
+
+        let text: string;
+        try {
+          text = await extractText(
+            file.buffer,
+            file.originalname,
+            file.mimetype,
+          );
+        } catch (e: any) {
+          if (e?.message === "unsupported_file_type") {
+            return res.status(400).json({
+              error:
+                "نوع الملف غير مدعوم. يُسمح بملفات PDF و Word و النصوص فقط.",
+            });
+          }
+          return res
+            .status(400)
+            .json({ error: "تعذّر استخراج النص من الملف" });
+        }
+
+        if (!text || text.length < 2) {
+          return res.status(400).json({
+            error: "لم يتم العثور على نص قابل للاستخراج في الملف",
+          });
+        }
+
+        const created = await db
+          .insert(maintenance_engineer_knowledge)
+          .values({
+            title,
+            content: text.slice(0, MAX_KNOWLEDGE_CHARS),
+            machine_category: validCat,
+            source_type: "upload",
+            file_name: file.originalname,
+            created_by: req.user!.id,
+          })
+          .returning();
+        res.json({
+          id: created[0].id,
+          title: created[0].title,
+          machine_category: created[0].machine_category,
+          file_name: created[0].file_name,
+          content_length: text.length,
+        });
+      } catch (err: any) {
+        console.error("[maintenance-engineer] upload error:", err?.message);
+        res.status(500).json({ error: "حدث خطأ أثناء رفع الملف" });
+      }
+    },
+  );
+
+  app.put(
+    "/api/maintenance-engineer/knowledge/:id",
+    requireAuth,
+    requirePermission("manage_maintenance"),
+    async (req: AuthRequest, res: Response) => {
+      const id = Number(req.params.id);
+      const parsed = insertMaintenanceEngineerKnowledgeSchema
+        .partial()
+        .safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.flatten() });
+      }
+      const updated = await db
+        .update(maintenance_engineer_knowledge)
+        .set({ ...parsed.data, updated_at: new Date() })
+        .where(eq(maintenance_engineer_knowledge.id, id))
+        .returning();
+      if (!updated[0]) return res.status(404).json({ error: "not found" });
+      res.json(updated[0]);
+    },
+  );
+
+  app.delete(
+    "/api/maintenance-engineer/knowledge/:id",
+    requireAuth,
+    requirePermission("manage_maintenance"),
+    async (req: AuthRequest, res: Response) => {
+      const id = Number(req.params.id);
+      await db
+        .delete(maintenance_engineer_knowledge)
+        .where(eq(maintenance_engineer_knowledge.id, id));
+      res.json({ ok: true });
+    },
+  );
+
+  // ───────────────────────── machine change log ─────────────────────────
+  app.get(
+    "/api/maintenance-engineer/change-log",
+    requireAuth,
+    requirePermission("view_maintenance", "manage_maintenance"),
+    async (req: AuthRequest, res: Response) => {
+      const machineId = req.query.machine_id
+        ? String(req.query.machine_id)
+        : null;
+      const rows = await db
+        .select({
+          id: machine_change_log.id,
+          machine_id: machine_change_log.machine_id,
+          note: machine_change_log.note,
+          changed_by: machine_change_log.changed_by,
+          changed_by_name: users.display_name_ar,
+          created_at: machine_change_log.created_at,
+        })
+        .from(machine_change_log)
+        .leftJoin(users, eq(users.id, machine_change_log.changed_by))
+        .where(
+          machineId
+            ? eq(machine_change_log.machine_id, machineId)
+            : sql`true`,
+        )
+        .orderBy(desc(machine_change_log.created_at))
+        .limit(200);
+      res.json(rows);
+    },
+  );
+
+  app.post(
+    "/api/maintenance-engineer/change-log",
+    requireAuth,
+    requirePermission("manage_maintenance"),
+    async (req: AuthRequest, res: Response) => {
+      const parsed = insertMachineChangeLogSchema.safeParse({
+        machine_id: req.body?.machine_id,
+        note: req.body?.note,
+        changed_by: req.user!.id,
+      });
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.flatten() });
+      }
+      if (!parsed.data.note || !parsed.data.note.trim()) {
+        return res.status(400).json({ error: "note required" });
+      }
+      const created = await db
+        .insert(machine_change_log)
+        .values(parsed.data)
+        .returning();
+      res.json(created[0]);
+    },
+  );
+
+  app.delete(
+    "/api/maintenance-engineer/change-log/:id",
+    requireAuth,
+    requirePermission("manage_maintenance"),
+    async (req: AuthRequest, res: Response) => {
+      const id = Number(req.params.id);
+      await db.delete(machine_change_log).where(eq(machine_change_log.id, id));
+      res.json({ ok: true });
+    },
+  );
+
+  // ───────────────────────── machines (selector helper) ─────────────────────────
+  app.get(
+    "/api/maintenance-engineer/machines",
+    requireAuth,
+    requirePermission("view_maintenance", "manage_maintenance"),
+    async (_req: AuthRequest, res: Response) => {
+      const list = await storage.getMachines();
+      res.json(
+        (list as any[]).map((m) => ({
+          id: m.id,
+          name: m.name,
+          name_ar: m.name_ar,
+          category: normalizeMachineCategory(m.type),
+          status: m.status,
+        })),
+      );
+    },
+  );
+}

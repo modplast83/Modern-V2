@@ -20,6 +20,7 @@ import {
   ClipboardList,
   ListOrdered,
   Bot,
+  Cog,
 } from "lucide-react";
 
 export interface NavigationItem {
@@ -148,6 +149,15 @@ export const navigationItems: NavigationItem[] = [
     icon: Bot,
     path: "/modern-agent",
     priority: 9,
+    group: "support",
+  },
+  {
+    name: "مهندس الصيانة الذكي",
+    name_ar: "مهندس الصيانة الذكي",
+    name_en: "Smart Maintenance Engineer",
+    icon: Cog,
+    path: "/maintenance-engineer",
+    priority: 8.5,
     group: "support",
   },
   {
