@@ -364,6 +364,48 @@ async function buildSystemPrompt(): Promise<string> {
 // ════════════════════════════════════════════════════════════════════════
 // Text extraction from uploaded files
 // ════════════════════════════════════════════════════════════════════════
+// Hard cap on how long a single file is allowed to occupy parsing. CPU-heavy
+// parsers (pdf-parse, mammoth) run on the main event loop, so a malformed or
+// adversarial file must not be able to block the server indefinitely.
+const EXTRACT_TIMEOUT_MS = 30_000;
+
+class ExtractTimeoutError extends Error {
+  constructor() {
+    super("extract_timeout");
+    this.name = "ExtractTimeoutError";
+  }
+}
+
+// Race a parse promise against a timeout. On timeout, reject so the caller can
+// return a clean error and stop awaiting; `onTimeout` performs best-effort
+// cleanup (e.g. destroying the PDF parser) to free native resources.
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  onTimeout?: () => void,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      try {
+        onTimeout?.();
+      } catch {
+        /* best-effort cleanup */
+      }
+      reject(new ExtractTimeoutError());
+    }, ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
+
 async function extractText(
   buffer: Buffer,
   fileName: string,
@@ -386,15 +428,24 @@ async function extractText(
     const { PDFParse } = await import("pdf-parse");
     const parser = new PDFParse({ data: buffer });
     try {
-      const result = await parser.getText();
+      const result = await withTimeout(
+        parser.getText(),
+        EXTRACT_TIMEOUT_MS,
+        () => {
+          parser.destroy().catch(() => {});
+        },
+      );
       return (result.text || "").trim();
     } finally {
-      await parser.destroy();
+      await parser.destroy().catch(() => {});
     }
   }
   if (isDocx) {
     const mammoth = await import("mammoth");
-    const result = await mammoth.extractRawText({ buffer });
+    const result = await withTimeout(
+      mammoth.extractRawText({ buffer }),
+      EXTRACT_TIMEOUT_MS,
+    );
     return (result.value || "").trim();
   }
   if (isText) {
@@ -431,6 +482,39 @@ const upload = multer({
     cb(new Error("unsupported_file_type"));
   },
 });
+
+// ── Per-user upload rate limiting ──
+// Parsing manuals is CPU-heavy and runs on the main event loop. Even though the
+// route is gated to manage_maintenance users, a privileged (or compromised)
+// session must not be able to hammer the parser. Cap uploads per user per window.
+const UPLOAD_RATE_WINDOW_MS = 60_000;
+const MAX_UPLOADS_PER_WINDOW = 5;
+const uploadAttempts = new Map<string, { count: number; windowStart: number }>();
+
+// Returns true if the upload is allowed; mutates the per-user counter as a side
+// effect. Counts every accepted attempt within the rolling window.
+function allowUpload(userIdRaw: string | number): boolean {
+  const userId = String(userIdRaw);
+  const now = Date.now();
+  const entry = uploadAttempts.get(userId);
+  if (!entry || now - entry.windowStart > UPLOAD_RATE_WINDOW_MS) {
+    uploadAttempts.set(userId, { count: 1, windowStart: now });
+    return true;
+  }
+  if (entry.count >= MAX_UPLOADS_PER_WINDOW) return false;
+  entry.count++;
+  return true;
+}
+
+// Periodically evict stale entries so the map can't grow unbounded.
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of uploadAttempts) {
+    if (now - entry.windowStart > UPLOAD_RATE_WINDOW_MS) {
+      uploadAttempts.delete(key);
+    }
+  }
+}, UPLOAD_RATE_WINDOW_MS).unref?.();
 
 export function registerMaintenanceEngineerRoutes(app: Express): void {
   // ───────────────────────── chat (diagnosis) ─────────────────────────
@@ -683,6 +767,17 @@ export function registerMaintenanceEngineerRoutes(app: Express): void {
     requireAuth,
     requirePermission("manage_maintenance"),
     (req: AuthRequest, res: Response, next) => {
+      // Rate-limit per user BEFORE buffering/parsing the file, so a flood of
+      // large uploads can't even reach the CPU-heavy parser.
+      if (!allowUpload(req.user!.id)) {
+        return res.status(429).json({
+          error:
+            "لقد تجاوزت الحد المسموح من عمليات الرفع. يرجى الانتظار قليلاً ثم المحاولة مرة أخرى.",
+        });
+      }
+      next();
+    },
+    (req: AuthRequest, res: Response, next) => {
       upload.single("file")(req as any, res as any, (err: any) => {
         if (err) {
           const msg =
@@ -723,6 +818,12 @@ export function registerMaintenanceEngineerRoutes(app: Express): void {
             return res.status(400).json({
               error:
                 "نوع الملف غير مدعوم. يُسمح بملفات PDF و Word و النصوص فقط.",
+            });
+          }
+          if (e instanceof ExtractTimeoutError) {
+            return res.status(422).json({
+              error:
+                "استغرق تحليل الملف وقتاً طويلاً جداً. قد يكون الملف كبيراً أو تالفاً. يرجى تجربة ملف أصغر أو أبسط.",
             });
           }
           return res
