@@ -6989,6 +6989,75 @@ Input: ${text}`;
     },
   );
 
+  app.patch(
+    "/api/maintenance-requests/:id",
+    requireAuth,
+    requirePermission("edit_maintenance", "manage_maintenance"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const processedData = { ...req.body };
+
+        // Don't allow client to overwrite identity/audit fields
+        delete processedData.id;
+        delete processedData.request_number;
+        delete processedData.reported_by;
+
+        if (
+          processedData.assigned_to === "" ||
+          processedData.assigned_to === "none" ||
+          processedData.assigned_to === null
+        ) {
+          processedData.assigned_to = null;
+        } else if (
+          processedData.assigned_to !== undefined &&
+          typeof processedData.assigned_to === "string"
+        ) {
+          processedData.assigned_to = parseInt(processedData.assigned_to, 10);
+        }
+
+        const validatedData = insertMaintenanceRequestSchema
+          .partial()
+          .parse(processedData);
+        const updated = await storage.updateMaintenanceRequest(
+          id,
+          validatedData as any,
+        );
+        if (!updated) {
+          return res.status(404).json({ message: "طلب الصيانة غير موجود" });
+        }
+        res.json(updated);
+      } catch (error: any) {
+        if (error?.name === "ZodError") {
+          return res
+            .status(400)
+            .json({ message: "بيانات غير صالحة", errors: error.errors });
+        }
+        console.error("Error updating maintenance request:", error);
+        res.status(500).json({ message: "خطأ في تحديث طلب الصيانة" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/maintenance-requests/:id",
+    requireAuth,
+    requirePermission("delete_maintenance", "manage_maintenance"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const deleted = await storage.deleteMaintenanceRequest(id);
+        if (!deleted) {
+          return res.status(404).json({ message: "طلب الصيانة غير موجود" });
+        }
+        res.json({ success: true });
+      } catch (error) {
+        console.error("Error deleting maintenance request:", error);
+        res.status(500).json({ message: "خطأ في حذف طلب الصيانة" });
+      }
+    },
+  );
+
   // Maintenance Actions routes
   app.get("/api/maintenance-actions", requireAuth, async (req, res) => {
     try {

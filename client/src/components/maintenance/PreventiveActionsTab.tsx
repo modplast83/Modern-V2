@@ -142,6 +142,16 @@ export default function PreventiveActionsTab() {
     enabled: !!refMachineId,
   });
 
+  // Only the three production sections (Film / Printing / Cutting) are
+  // relevant for preventive actions. Section names follow "Production-*".
+  const productionSections = useMemo(
+    () =>
+      sections.filter((s) =>
+        (s.name || "").toLowerCase().startsWith("production"),
+      ),
+    [sections],
+  );
+
   const sectionMachines = useMemo(
     () =>
       sectionId
@@ -374,7 +384,7 @@ export default function PreventiveActionsTab() {
                           />
                         </SelectTrigger>
                         <SelectContent>
-                          {sections.map((s) => (
+                          {productionSections.map((s) => (
                             <SelectItem key={s.id} value={s.id}>
                               {(isAr ? s.name_ar : s.name) || s.name}
                             </SelectItem>

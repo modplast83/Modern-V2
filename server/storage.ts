@@ -679,6 +679,7 @@ export interface IStorage {
     id: number,
     request: Partial<MaintenanceRequest>,
   ): Promise<MaintenanceRequest>;
+  deleteMaintenanceRequest(id: number): Promise<boolean>;
 
   // Quality Control
   getQualityChecksByRoll(rollId: number): Promise<QualityCheck[]>;
@@ -2464,6 +2465,63 @@ export class DatabaseStorage implements IStorage {
       },
       "updateMaintenanceRequest",
       `تحديث طلب الصيانة ${id}`,
+    );
+  }
+
+  async deleteMaintenanceRequest(id: number): Promise<boolean> {
+    return withDatabaseErrorHandling(
+      async () => {
+        return await db.transaction(async (tx) => {
+          // Lock the request row first so concurrent inserts of new
+          // actions/reports for this request serialize behind us. No
+          // DB-level cascade exists (tables created via ensure-block).
+          const [locked] = await tx
+            .select({ id: maintenance_requests.id })
+            .from(maintenance_requests)
+            .where(eq(maintenance_requests.id, id))
+            .for("update");
+
+          if (!locked) {
+            return false;
+          }
+
+          // Delete dependent reports via subqueries scoped to the current
+          // request at delete time (avoids the select-then-delete race).
+          const actionIdsSubquery = tx
+            .select({ id: maintenance_actions.id })
+            .from(maintenance_actions)
+            .where(eq(maintenance_actions.maintenance_request_id, id));
+
+          await tx
+            .delete(maintenance_reports)
+            .where(
+              inArray(
+                maintenance_reports.maintenance_action_id,
+                actionIdsSubquery,
+              ),
+            );
+          await tx
+            .delete(operator_negligence_reports)
+            .where(
+              inArray(
+                operator_negligence_reports.maintenance_action_id,
+                actionIdsSubquery,
+              ),
+            );
+
+          await tx
+            .delete(maintenance_actions)
+            .where(eq(maintenance_actions.maintenance_request_id, id));
+
+          await tx
+            .delete(maintenance_requests)
+            .where(eq(maintenance_requests.id, id));
+
+          return true;
+        });
+      },
+      "deleteMaintenanceRequest",
+      `حذف طلب الصيانة ${id}`,
     );
   }
 

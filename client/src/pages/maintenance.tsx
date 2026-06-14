@@ -205,6 +205,8 @@ export default function Maintenance() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const canAddMaint = canAddInArea(user, "maintenance");
+  const canEditMaint = canEditInArea(user, "maintenance");
+  const canDeleteMaint = canDeleteInArea(user, "maintenance");
   const [currentTab, setCurrentTab] = useState(
     maintenanceTabPermissions.find((tp) =>
       userHasPermission(user, tp.permissions),
@@ -214,6 +216,8 @@ export default function Maintenance() {
     null,
   );
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
+  const [requestToEdit, setRequestToEdit] = useState<any>(null);
+  const [requestToDelete, setRequestToDelete] = useState<any>(null);
   const [selectedAction, setSelectedAction] = useState<any>(null);
   const [isActionViewDialogOpen, setIsActionViewDialogOpen] = useState(false);
   const { toast } = useToast();
@@ -331,6 +335,58 @@ export default function Maintenance() {
       console.error("Error creating maintenance request:", error);
       toast({
         title: t("maintenance.toast.requestCreateFailed"),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateRequestMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) =>
+      apiRequest(`/api/maintenance-requests/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/maintenance-requests"],
+      });
+      setRequestToEdit(null);
+      toast({ title: t("maintenance.toast.requestUpdated") });
+    },
+    onError: (error) => {
+      console.error("Error updating maintenance request:", error);
+      toast({
+        title: t("maintenance.toast.requestUpdateFailed"),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteRequestMutation = useMutation({
+    mutationFn: (id: number) =>
+      apiRequest(`/api/maintenance-requests/${id}`, {
+        method: "DELETE",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/maintenance-requests"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/maintenance-actions"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/maintenance-reports"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/operator-negligence-reports"],
+      });
+      setRequestToDelete(null);
+      toast({ title: t("maintenance.toast.requestDeleted") });
+    },
+    onError: (error) => {
+      console.error("Error deleting maintenance request:", error);
+      toast({
+        title: t("maintenance.toast.requestDeleteFailed"),
         variant: "destructive",
       });
     },
@@ -627,6 +683,11 @@ export default function Maintenance() {
                         <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
                           {t("common.date")}
                         </th>
+                        {(canEditMaint || canDeleteMaint) && (
+                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                            {t("common.actions")}
+                          </th>
+                        )}
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -708,13 +769,43 @@ export default function Maintenance() {
                                   day: "2-digit",
                                 })}
                               </td>
+                              {(canEditMaint || canDeleteMaint) && (
+                                <td className="px-6 py-4 whitespace-nowrap text-center">
+                                  <div className="flex items-center justify-center gap-2">
+                                    {canEditMaint && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-blue-600 hover:text-blue-700"
+                                        onClick={() => setRequestToEdit(request)}
+                                        title={t("common.edit")}
+                                      >
+                                        <Edit className="h-4 w-4" />
+                                      </Button>
+                                    )}
+                                    {canDeleteMaint && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-red-600 hover:text-red-700"
+                                        onClick={() =>
+                                          setRequestToDelete(request)
+                                        }
+                                        title={t("common.delete")}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                </td>
+                              )}
                             </tr>
                           );
                         })
                       ) : (
                         <tr>
                           <td
-                            colSpan={8}
+                            colSpan={canEditMaint || canDeleteMaint ? 9 : 8}
                             className="px-6 py-4 text-center text-gray-500"
                           >
                             {t("maintenance.noRequests")}
@@ -727,6 +818,66 @@ export default function Maintenance() {
               )}
             </CardContent>
           </Card>
+
+          {/* Edit maintenance request */}
+          <Dialog
+            open={!!requestToEdit}
+            onOpenChange={(open) => !open && setRequestToEdit(null)}
+          >
+            {requestToEdit && (
+              <MaintenanceRequestDialog
+                machines={machines}
+                users={users}
+                initialValues={requestToEdit}
+                onSubmit={(data: any) =>
+                  updateRequestMutation.mutate({
+                    id: requestToEdit.id,
+                    data,
+                  })
+                }
+                isLoading={updateRequestMutation.isPending}
+              />
+            )}
+          </Dialog>
+
+          {/* Delete maintenance request confirmation */}
+          <Dialog
+            open={!!requestToDelete}
+            onOpenChange={(open) => !open && setRequestToDelete(null)}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>
+                  {t("maintenance.deleteRequestTitle")}
+                </DialogTitle>
+                <DialogDescription>
+                  {t("maintenance.deleteRequestConfirm", {
+                    number: requestToDelete?.request_number ?? "",
+                  })}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setRequestToDelete(null)}
+                >
+                  {t("common.cancel")}
+                </Button>
+                <Button
+                  variant="destructive"
+                  disabled={deleteRequestMutation.isPending}
+                  onClick={() =>
+                    requestToDelete &&
+                    deleteRequestMutation.mutate(requestToDelete.id)
+                  }
+                >
+                  {deleteRequestMutation.isPending
+                    ? t("common.deleting")
+                    : t("common.delete")}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         <TabsContent value="actions">
@@ -2342,18 +2493,23 @@ function MaintenanceRequestDialog({
   users,
   onSubmit,
   isLoading,
+  initialValues,
 }: any) {
   const { t } = useTranslation();
   const maintenanceRequestSchema = createMaintenanceRequestSchema(t);
+  const isEdit = !!initialValues;
 
   const form = useForm({
     resolver: zodResolver(maintenanceRequestSchema),
     defaultValues: {
-      machine_id: "",
-      issue_type: "mechanical",
-      urgency_level: "normal",
-      description: "",
-      assigned_to: "none",
+      machine_id: initialValues?.machine_id ?? "",
+      issue_type: initialValues?.issue_type ?? "mechanical",
+      urgency_level: initialValues?.urgency_level ?? "normal",
+      description: initialValues?.description ?? "",
+      assigned_to:
+        initialValues?.assigned_to != null
+          ? String(initialValues.assigned_to)
+          : "none",
     },
   });
 
@@ -2363,15 +2519,21 @@ function MaintenanceRequestDialog({
       assigned_to: data.assigned_to === "none" ? "" : data.assigned_to,
     };
     onSubmit(submitData);
-    form.reset();
+    if (!isEdit) form.reset();
   };
 
   return (
     <DialogContent className="sm:max-w-[600px]">
       <DialogHeader>
-        <DialogTitle>{t("maintenance.newRequest")}</DialogTitle>
+        <DialogTitle>
+          {isEdit
+            ? t("maintenance.editRequest")
+            : t("maintenance.newRequest")}
+        </DialogTitle>
         <DialogDescription className="text-sm text-gray-600">
-          {t("maintenance.newRequestDescription")}
+          {isEdit
+            ? t("maintenance.editRequestDescription")
+            : t("maintenance.newRequestDescription")}
         </DialogDescription>
       </DialogHeader>
 
@@ -2554,8 +2716,12 @@ function MaintenanceRequestDialog({
               className="bg-blue-600 hover:bg-blue-700 text-white"
             >
               {isLoading
-                ? t("maintenance.creating")
-                : t("maintenance.createRequest")}
+                ? isEdit
+                  ? t("common.saving")
+                  : t("maintenance.creating")
+                : isEdit
+                  ? t("common.save")
+                  : t("maintenance.createRequest")}
             </Button>
           </div>
         </form>
