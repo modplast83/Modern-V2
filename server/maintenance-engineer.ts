@@ -1,3 +1,5 @@
+import { Worker } from "node:worker_threads";
+
 import type { Express, Response } from "express";
 import OpenAI from "openai";
 import multer from "multer";
@@ -376,33 +378,92 @@ class ExtractTimeoutError extends Error {
   }
 }
 
-// Race a parse promise against a timeout. On timeout, reject so the caller can
-// return a clean error and stop awaiting; `onTimeout` performs best-effort
-// cleanup (e.g. destroying the PDF parser) to free native resources.
-function withTimeout<T>(
-  promise: Promise<T>,
-  ms: number,
-  onTimeout?: () => void,
-): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => {
+// CPU-heavy parsing (pdf-parse, mammoth) runs on a dedicated worker thread so a
+// large or adversarial file can't block the main event loop and stall every
+// other request while it's being parsed. The worker is self-contained inline
+// source (eval) so it ships correctly in both dev (tsx) and the bundled prod
+// build without needing a separate worker file copied next to the entrypoint.
+const EXTRACT_WORKER_SOURCE = `
+(async () => {
+  const { parentPort, workerData } = await import("node:worker_threads");
+  try {
+    const buffer = Buffer.from(workerData.buffer);
+    const kind = workerData.kind;
+    let text = "";
+    if (kind === "pdf") {
+      const { PDFParse } = await import("pdf-parse");
+      const parser = new PDFParse({ data: buffer });
       try {
-        onTimeout?.();
-      } catch {
-        /* best-effort cleanup */
+        const result = await parser.getText();
+        text = (result.text || "").trim();
+      } finally {
+        await parser.destroy().catch(() => {});
       }
-      reject(new ExtractTimeoutError());
-    }, ms);
-    promise.then(
-      (value) => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      (err) => {
-        clearTimeout(timer);
-        reject(err);
-      },
+    } else if (kind === "docx") {
+      const mammoth = await import("mammoth");
+      const result = await mammoth.extractRawText({ buffer });
+      text = (result.value || "").trim();
+    } else {
+      throw new Error("unsupported_file_type");
+    }
+    parentPort.postMessage({ ok: true, text });
+  } catch (err) {
+    parentPort.postMessage({
+      ok: false,
+      error: (err && err.message) || "extract_failed",
+    });
+  }
+})();
+`;
+
+// Run a parse on a worker thread, bounded by EXTRACT_TIMEOUT_MS. On timeout the
+// worker is terminated (freeing the parser and any native resources) and an
+// ExtractTimeoutError is thrown so the caller returns the Arabic timeout error.
+function extractInWorker(
+  buffer: Buffer,
+  kind: "pdf" | "docx",
+): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    // Copy into a standalone ArrayBuffer and transfer it to avoid a structured
+    // clone copy of up to 15MB on the main thread.
+    const ab = buffer.buffer.slice(
+      buffer.byteOffset,
+      buffer.byteOffset + buffer.byteLength,
     );
+    const worker = new Worker(EXTRACT_WORKER_SOURCE, {
+      eval: true,
+      workerData: { buffer: ab, kind },
+      transferList: [ab],
+    });
+
+    let settled = false;
+    const finish = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      worker.terminate().catch(() => {});
+      fn();
+    };
+
+    const timer = setTimeout(() => {
+      finish(() => reject(new ExtractTimeoutError()));
+    }, EXTRACT_TIMEOUT_MS);
+
+    worker.on("message", (msg: { ok: boolean; text?: string; error?: string }) => {
+      if (msg?.ok) {
+        finish(() => resolve(msg.text || ""));
+      } else {
+        finish(() => reject(new Error(msg?.error || "extract_failed")));
+      }
+    });
+    worker.on("error", (err) => {
+      finish(() => reject(err));
+    });
+    worker.on("exit", (code) => {
+      if (code !== 0) {
+        finish(() => reject(new Error("extract_worker_exited")));
+      }
+    });
   });
 }
 
@@ -423,31 +484,14 @@ async function extractText(
     lower.endsWith(".md") ||
     lower.endsWith(".csv");
 
+  // Heavy parsers run off the main event loop on a worker thread.
   if (isPdf) {
-    // pdf-parse v2 exposes a PDFParse class; pass the buffer as `data`.
-    const { PDFParse } = await import("pdf-parse");
-    const parser = new PDFParse({ data: buffer });
-    try {
-      const result = await withTimeout(
-        parser.getText(),
-        EXTRACT_TIMEOUT_MS,
-        () => {
-          parser.destroy().catch(() => {});
-        },
-      );
-      return (result.text || "").trim();
-    } finally {
-      await parser.destroy().catch(() => {});
-    }
+    return extractInWorker(buffer, "pdf");
   }
   if (isDocx) {
-    const mammoth = await import("mammoth");
-    const result = await withTimeout(
-      mammoth.extractRawText({ buffer }),
-      EXTRACT_TIMEOUT_MS,
-    );
-    return (result.value || "").trim();
+    return extractInWorker(buffer, "docx");
   }
+  // Plain text is a cheap synchronous decode; no worker needed.
   if (isText) {
     return buffer.toString("utf-8").trim();
   }

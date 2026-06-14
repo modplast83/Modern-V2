@@ -20,3 +20,4 @@
 - [Legacy→new product prefill guard](legacy-map-prefill.md) — prefilling the reactive customer-product form needs a ref that preserves cutting_length through category select, releases on cylinder/length edit, resets on dialog close.
 - [WhatsApp phone normalization](whatsapp-phone-normalization.md) — Meta sends must convert Saudi local (05.../5...) to intl 966 format or Meta rejects with (#100); keep in lockstep with SMS gateway.
 - [Multer fileFilter error handling](multer-filefilter-errors.md) — multer fileFilter/limit errors fire in middleware before the route try/catch; wrap upload.single in a callback to return a clean 400 instead of crashing.
+- [Worker-thread offload](worker-thread-offload.md) — offload CPU parsing via inline eval Worker (not a separate file); esbuild won't copy a worker file into dist; transfer ArrayBuffer, terminate on timeout.
