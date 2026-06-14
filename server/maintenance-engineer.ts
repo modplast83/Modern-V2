@@ -230,6 +230,46 @@ const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: "list_recent_faults",
+    description:
+      "List the most recent maintenance faults/requests across ALL machines (not a single machine). Use this to spot recurring or fleet-wide issues, or when the user asks about recent breakdowns in general without naming a machine. Each item includes the machine and its category.",
+    parameters: {
+      type: "object",
+      properties: { limit: { type: "number" } },
+    },
+    handler: async (args) => {
+      const rows = await db
+        .select({
+          id: maintenance_requests.id,
+          request_number: maintenance_requests.request_number,
+          machine_id: maintenance_requests.machine_id,
+          issue_type: maintenance_requests.issue_type,
+          description: maintenance_requests.description,
+          urgency_level: maintenance_requests.urgency_level,
+          status: maintenance_requests.status,
+          action_taken: maintenance_requests.action_taken,
+          date_reported: maintenance_requests.date_reported,
+          date_resolved: maintenance_requests.date_resolved,
+        })
+        .from(maintenance_requests)
+        .orderBy(desc(maintenance_requests.date_reported))
+        .limit(clampLimit(args?.limit, 25, 60));
+      const machines = (await storage.getMachines()) as any[];
+      const byId = new Map(machines.map((m) => [String(m.id), m]));
+      return {
+        faults: rows.map((r) => {
+          const m = r.machine_id ? byId.get(String(r.machine_id)) : undefined;
+          return {
+            ...r,
+            machine_name: m?.name ?? null,
+            machine_name_ar: m?.name_ar ?? null,
+            machine_category: m ? normalizeMachineCategory(m.type) : null,
+          };
+        }),
+      };
+    },
+  },
+  {
     name: "search_maintenance_knowledge",
     description:
       "Search the fed knowledge base (uploaded catalogs/manuals and notes) for relevant content. Optionally filter by machine_category (extruder/printer/cutter/general). Returns matching titles and content excerpts.",
@@ -316,7 +356,7 @@ async function buildSystemPrompt(): Promise<string> {
   parts.push("\n# Identity & Persona\n" + PERSONA);
   parts.push(
     "\n# Diagnostic Method\n" +
-      "When diagnosing: (1) identify the machine and its category, (2) review its maintenance history and change log, (3) consult the knowledge base for the relevant machine category, (4) present likely root causes ranked by probability with concrete inspection/repair steps, and (5) note any safety precautions. If information is missing, say what additional checks the technician should perform.",
+      "When diagnosing: (1) identify the machine and its category, (2) review its maintenance history and change log, (3) consult the knowledge base for the relevant machine category, (4) present likely root causes ranked by probability with concrete inspection/repair steps, and (5) note any safety precautions. If information is missing, say what additional checks the technician should perform. When the user asks about recent breakdowns in general (without naming a machine) or you suspect a recurring/fleet-wide problem, use list_recent_faults to review faults across all machines.",
   );
   return parts.join("\n");
 }

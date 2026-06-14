@@ -951,6 +951,55 @@ function sanitizeResponseForLogging(response: any): any {
         CREATE INDEX IF NOT EXISTS idx_machine_change_log_machine
         ON machine_change_log (machine_id)
       `);
+
+      // Idempotent baseline knowledge for each machine family (extruder / printer / cutter).
+      // Inserted only when an entry with the same title does not already exist, so it is
+      // safe to run on every startup and never duplicates or overwrites user edits.
+      const maintEngSeeds: Array<{
+        title: string;
+        category: string;
+        content: string;
+      }> = [
+        {
+          title: "أساسيات صيانة طاردة الأفلام (Extruder) | Film Extruder Maintenance Basics",
+          category: "extruder",
+          content:
+            "طاردة أفلام البولي إيثيلين (Blown Film Extruder):\n" +
+            "- الأعطال الشائعة: تذبذب سماكة الفيلم (عيوب في حلقة الهواء أو درجات حرارة المناطق)، ثقوب/جل (Gels) بسبب تلوث المادة أو ارتفاع حرارة، رائحة احتراق (تحلل المادة من بقاء طويل أو حرارة زائدة)، أزيز/اهتزاز المحرك أو القلاووظ.\n" +
+            "- نقاط الفحص: درجات حرارة المناطق (Zones) والـ Die، ضغط ذوبان البوليمر (Melt Pressure)، حالة المنخل (Screen Pack)، تبريد حلقة الهواء (Air Ring)، سرعة وشد السحب (Nip/Haul-off).\n" +
+            "- صيانة وقائية: تنظيف الـ Die بانتظام، فحص السخانات والثرموكبلات، تشحيم محامل القلاووظ، فحص محاذاة بكرات السحب.\n\n" +
+            "Blown film PE extruder — common faults: film thickness variation (air ring or zone temperature issues), gels/holes (contamination or overheating), burnt smell (polymer degradation), motor/screw vibration. Check: zone & die temperatures, melt pressure, screen pack, air ring cooling, nip/haul-off tension. Preventive: clean die, inspect heaters/thermocouples, lubricate screw bearings, check roller alignment.",
+        },
+        {
+          title: "أساسيات صيانة طابعة الفلكسو (Flexographic Printer) | Flexo Printer Maintenance Basics",
+          category: "printer",
+          content:
+            "طابعة فلكسوغرافية لأكياس البلاستيك:\n" +
+            "- الأعطال الشائعة: تطبيق حبر غير منتظم/شحوب الطباعة (مشاكل أنيلوكس Anilox أو شفرة الدكتور Doctor Blade)، انحراف تطابق الألوان (Registration)، تلطخ/Ghosting، جفاف الحبر غير الكافي (مراوح/سخانات التجفيف).\n" +
+            "- نقاط الفحص: نظافة وخلايا أسطوانة الأنيلوكس، ضغط وزاوية شفرة الدكتور، لزوجة الحبر (Viscosity)، ضغط الأسطوانات، محاذاة وتطابق المحطات اللونية، نظام التجفيف.\n" +
+            "- صيانة وقائية: تنظيف الأنيلوكس بعد كل تشغيلة، فحص شفرات الدكتور للتآكل، معايرة التطابق، فحص محامل وأختام الأسطوانات.\n\n" +
+            "Flexographic printer — common faults: uneven ink/light print (anilox or doctor blade), color registration drift, smearing/ghosting, insufficient ink drying. Check: anilox cleanliness & cell condition, doctor blade pressure/angle, ink viscosity, roller pressure, station registration, dryer system. Preventive: clean anilox after each run, inspect doctor blades for wear, calibrate registration, check roller bearings/seals.",
+        },
+        {
+          title: "أساسيات صيانة قاطعة الأكياس (Bag Cutting Machine) | Bag Cutter Maintenance Basics",
+          category: "cutter",
+          content:
+            "ماكينة قص ولحام الأكياس:\n" +
+            "- الأعطال الشائعة: لحام ضعيف/مفتوح (حرارة أو ضغط أو زمن اللحام غير صحيح، تلف شريط التفلون/عنصر التسخين)، قص غير مستقيم أو متعرج (تآكل السكين أو خلل التغذية)، اختلاف أطوال الأكياس (مشاكل المستشعر الضوئي/Photocell أو الـ Encoder)، انحشار الفيلم.\n" +
+            "- نقاط الفحص: درجة حرارة وعنصر اللحام (Sealing Element)، شريط التفلون والسيليكون، حدة السكين، شد ومحاذاة بكرات التغذية، حساس العلامة (Eye Mark/Photocell)، توقيت السيرفو/المحرك.\n" +
+            "- صيانة وقائية: استبدال شريط التفلون دورياً، شحذ/تغيير السكين، تنظيف وضبط المستشعرات، فحص السيور والقوابض.\n\n" +
+            "Bag cutting/sealing machine — common faults: weak/open seals (wrong heat/pressure/dwell time, worn PTFE tape or heating element), crooked cuts (blunt blade or feed misalignment), inconsistent bag length (photocell/encoder issues), film jams. Check: sealing element temperature, PTFE/silicone tape, blade sharpness, feed roller tension/alignment, eye-mark photocell, servo/motor timing. Preventive: replace PTFE tape regularly, sharpen/replace blade, clean & calibrate sensors, inspect belts/clutches.",
+        },
+      ];
+      for (const seed of maintEngSeeds) {
+        await db.execute(sql`
+          INSERT INTO maintenance_engineer_knowledge (title, content, machine_category, source_type, enabled)
+          SELECT ${seed.title}, ${seed.content}, ${seed.category}, 'manual', true
+          WHERE NOT EXISTS (
+            SELECT 1 FROM maintenance_engineer_knowledge WHERE title = ${seed.title}
+          )
+        `);
+      }
     } catch (maintEngErr: any) {
       console.warn(
         "⚠️ فشل تهيئة جداول مهندس الصيانة الذكي (سيتم المحاولة لاحقاً):",

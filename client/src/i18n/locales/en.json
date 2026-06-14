@@ -5843,7 +5843,18 @@
       "empty": "No knowledge files yet",
       "sourceUpload": "Uploaded file",
       "sourceManual": "Manual entry",
-      "chars": "chars"
+      "chars": "chars",
+      "noteTitle": "Add text note",
+      "editNoteTitle": "Edit note",
+      "noteHint": "Add knowledge as free text (e.g. technician know-how or a maintenance note) without uploading a file.",
+      "contentField": "Content",
+      "contentPlaceholder": "Write the knowledge or technical guidance here...",
+      "contentEditPlaceholder": "Leave empty to keep the current content, or type new content to replace it.",
+      "saveNote": "Save",
+      "noteSaved": "Knowledge note saved",
+      "edit": "Edit",
+      "enabled": "Enabled",
+      "disabled": "Disabled"
     },
     "changeLog": {
       "addTitle": "Add change note",

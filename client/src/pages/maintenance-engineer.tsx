@@ -12,6 +12,9 @@ import {
   BookOpen,
   ClipboardList,
   FileText,
+  Pencil,
+  X,
+  Save,
 } from "lucide-react";
 import PageLayout from "../components/layout/PageLayout";
 import { Card } from "../components/ui/card";
@@ -19,6 +22,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
+import { Switch } from "../components/ui/switch";
 import { ScrollArea } from "../components/ui/scroll-area";
 import {
   Tabs,
@@ -200,6 +204,84 @@ export default function MaintenanceEngineer() {
   const [uploadCategory, setUploadCategory] = useState<string>("general");
   const [uploadTitle, setUploadTitle] = useState("");
   const [uploading, setUploading] = useState(false);
+
+  // Manual text note create / edit
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [noteTitle, setNoteTitle] = useState("");
+  const [noteCategory, setNoteCategory] = useState<string>("general");
+  const [noteContent, setNoteContent] = useState("");
+
+  const resetNoteForm = () => {
+    setEditingId(null);
+    setNoteTitle("");
+    setNoteCategory("general");
+    setNoteContent("");
+  };
+
+  const startEdit = (k: KnowledgeItem & { content?: string }) => {
+    setEditingId(k.id);
+    setNoteTitle(k.title);
+    setNoteCategory(k.machine_category);
+    setNoteContent("");
+  };
+
+  const saveNoteMutation = useMutation({
+    mutationFn: async () => {
+      const body: Record<string, any> = {
+        title: noteTitle.trim(),
+        machine_category: noteCategory,
+      };
+      if (noteContent.trim()) body.content = noteContent.trim();
+      if (editingId) {
+        const res = await apiRequest(
+          `/api/maintenance-engineer/knowledge/${editingId}`,
+          { method: "PUT", body: JSON.stringify(body) },
+        );
+        return res.json();
+      }
+      const res = await apiRequest("/api/maintenance-engineer/knowledge", {
+        method: "POST",
+        body: JSON.stringify({ ...body, content: noteContent.trim() }),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      resetNoteForm();
+      queryClient.invalidateQueries({
+        queryKey: ["/api/maintenance-engineer/knowledge"],
+      });
+      toast({ title: t("maintenanceEngineer.kb.noteSaved") });
+    },
+    onError: (err: any) => {
+      toast({
+        title: t("maintenanceEngineer.error"),
+        description: err?.message || "",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const toggleEnabledMutation = useMutation({
+    mutationFn: async ({ id, enabled }: { id: number; enabled: boolean }) => {
+      const res = await apiRequest(
+        `/api/maintenance-engineer/knowledge/${id}`,
+        { method: "PUT", body: JSON.stringify({ enabled }) },
+      );
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/maintenance-engineer/knowledge"],
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: t("maintenanceEngineer.error"),
+        description: err?.message || "",
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleUpload = async (file: File) => {
     setUploading(true);
@@ -515,6 +597,86 @@ export default function MaintenanceEngineer() {
                   )}
                   {t("maintenanceEngineer.kb.chooseFile")}
                 </Button>
+
+                <div className="border-t pt-3 mt-3 space-y-3">
+                  <h3 className="font-medium flex items-center gap-2">
+                    <Pencil className="h-4 w-4" />
+                    {editingId
+                      ? t("maintenanceEngineer.kb.editNoteTitle")
+                      : t("maintenanceEngineer.kb.noteTitle")}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    {t("maintenanceEngineer.kb.noteHint")}
+                  </p>
+                  <div className="space-y-1.5">
+                    <Label>{t("maintenanceEngineer.kb.titleField")}</Label>
+                    <Input
+                      value={noteTitle}
+                      onChange={(e) => setNoteTitle(e.target.value)}
+                      placeholder={t("maintenanceEngineer.kb.titlePlaceholder")}
+                      data-testid="input-note-title"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>{t("maintenanceEngineer.kb.category")}</Label>
+                    <Select value={noteCategory} onValueChange={setNoteCategory}>
+                      <SelectTrigger data-testid="select-note-category">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CATEGORIES.map((c) => (
+                          <SelectItem key={c} value={c}>
+                            {categoryLabel(c)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>{t("maintenanceEngineer.kb.contentField")}</Label>
+                    <Textarea
+                      value={noteContent}
+                      onChange={(e) => setNoteContent(e.target.value)}
+                      placeholder={
+                        editingId
+                          ? t("maintenanceEngineer.kb.contentEditPlaceholder")
+                          : t("maintenanceEngineer.kb.contentPlaceholder")
+                      }
+                      className="min-h-[120px]"
+                      dir={isAr ? "rtl" : "ltr"}
+                      data-testid="input-note-content"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      className="flex-1 gap-2"
+                      disabled={
+                        !noteTitle.trim() ||
+                        (!editingId && !noteContent.trim()) ||
+                        saveNoteMutation.isPending
+                      }
+                      onClick={() => saveNoteMutation.mutate()}
+                      data-testid="button-save-note"
+                    >
+                      {saveNoteMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4" />
+                      )}
+                      {t("maintenanceEngineer.kb.saveNote")}
+                    </Button>
+                    {editingId && (
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={resetNoteForm}
+                        data-testid="button-cancel-note"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </Card>
 
               <Card className="p-4 md:col-span-2">
@@ -530,7 +692,9 @@ export default function MaintenanceEngineer() {
                     {knowledge.map((k) => (
                       <div
                         key={k.id}
-                        className="flex items-center gap-3 p-3 rounded-md border"
+                        className={`flex items-center gap-3 p-3 rounded-md border ${
+                          k.enabled ? "" : "opacity-60"
+                        }`}
                         data-testid={`knowledge-${k.id}`}
                       >
                         <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
@@ -545,13 +709,38 @@ export default function MaintenanceEngineer() {
                             {t("maintenanceEngineer.kb.chars")}
                           </p>
                         </div>
-                        <button
-                          onClick={() => deleteKnowledgeMutation.mutate(k.id)}
-                          className="text-destructive hover:opacity-70"
-                          data-testid={`delete-knowledge-${k.id}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Switch
+                            checked={k.enabled}
+                            onCheckedChange={(v) =>
+                              toggleEnabledMutation.mutate({
+                                id: k.id,
+                                enabled: v,
+                              })
+                            }
+                            title={
+                              k.enabled
+                                ? t("maintenanceEngineer.kb.enabled")
+                                : t("maintenanceEngineer.kb.disabled")
+                            }
+                            data-testid={`toggle-knowledge-${k.id}`}
+                          />
+                          <button
+                            onClick={() => startEdit(k)}
+                            className="text-muted-foreground hover:text-foreground"
+                            title={t("maintenanceEngineer.kb.edit")}
+                            data-testid={`edit-knowledge-${k.id}`}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => deleteKnowledgeMutation.mutate(k.id)}
+                            className="text-destructive hover:opacity-70"
+                            data-testid={`delete-knowledge-${k.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
