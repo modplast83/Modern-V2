@@ -382,11 +382,15 @@ async function extractText(
     lower.endsWith(".csv");
 
   if (isPdf) {
-    // Import the inner module directly to avoid pdf-parse's debug-mode file read.
-    // @ts-ignore - pdf-parse ships no types for the inner module path
-    const pdfParse = (await import("pdf-parse/lib/pdf-parse.js")).default;
-    const data = await pdfParse(buffer);
-    return (data.text || "").trim();
+    // pdf-parse v2 exposes a PDFParse class; pass the buffer as `data`.
+    const { PDFParse } = await import("pdf-parse");
+    const parser = new PDFParse({ data: buffer });
+    try {
+      const result = await parser.getText();
+      return (result.text || "").trim();
+    } finally {
+      await parser.destroy();
+    }
   }
   if (isDocx) {
     const mammoth = await import("mammoth");
@@ -402,14 +406,12 @@ async function extractText(
 const ALLOWED_UPLOAD_MIMES = new Set([
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/msword",
   "text/plain",
   "text/markdown",
   "text/csv",
 ]);
 const ALLOWED_UPLOAD_EXTS = [
   ".pdf",
-  ".doc",
   ".docx",
   ".txt",
   ".md",
