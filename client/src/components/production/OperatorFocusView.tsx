@@ -31,6 +31,7 @@ import { formatNumberAr } from "../../../../shared/number-utils";
 
 const MACHINE_STORAGE_KEY = "operator_focus_machine_id";
 const ORDER_STORAGE_KEY = "operator_focus_order_id";
+const CUSTOMER_STORAGE_KEY = "operator_focus_customer";
 
 interface Machine {
   id: string;
@@ -72,6 +73,9 @@ export default function OperatorFocusView() {
   const [selectedOrderId, setSelectedOrderId] = useState<string>(
     () => localStorage.getItem(ORDER_STORAGE_KEY) || "",
   );
+  const [selectedCustomerKey, setSelectedCustomerKey] = useState<string>(
+    () => localStorage.getItem(CUSTOMER_STORAGE_KEY) || "",
+  );
   const [weightInput, setWeightInput] = useState("");
   const [isLastRoll, setIsLastRoll] = useState(false);
 
@@ -83,6 +87,14 @@ export default function OperatorFocusView() {
   const handleOrderChange = (id: string) => {
     setSelectedOrderId(id);
     localStorage.setItem(ORDER_STORAGE_KEY, id);
+  };
+
+  const handleCustomerChange = (key: string) => {
+    setSelectedCustomerKey(key);
+    localStorage.setItem(CUSTOMER_STORAGE_KEY, key);
+    // Reset order selection when customer changes
+    setSelectedOrderId("");
+    localStorage.removeItem(ORDER_STORAGE_KEY);
   };
 
   // Fetch available film (extruder) machines for the picker
@@ -104,12 +116,35 @@ export default function OperatorFocusView() {
     refetchInterval: 30_000,
   });
 
-  // Resolve the currently selected order (fallback to the first one)
+  // Derive unique customers from active orders
+  const uniqueCustomers = useMemo(() => {
+    const seen = new Set<string>();
+    const list: { key: string; label: string }[] = [];
+    for (const o of orders) {
+      const label = (isArabic ? o.customer_name_ar : o.customer_name_en) || o.customer_name_ar || "";
+      if (label && !seen.has(label)) {
+        seen.add(label);
+        list.push({ key: label, label });
+      }
+    }
+    return list;
+  }, [orders, isArabic]);
+
+  // Filter orders by selected customer
+  const filteredOrders = useMemo(() => {
+    if (!selectedCustomerKey) return orders;
+    return orders.filter((o) => {
+      const label = (isArabic ? o.customer_name_ar : o.customer_name_en) || o.customer_name_ar || "";
+      return label === selectedCustomerKey;
+    });
+  }, [orders, selectedCustomerKey, isArabic]);
+
+  // Resolve the currently selected order from the filtered list (fallback to first)
   const activeOrder = useMemo<ActiveOrder | null>(() => {
-    if (orders.length === 0) return null;
-    const found = orders.find((o) => String(o.id) === selectedOrderId);
-    return found ?? orders[0];
-  }, [orders, selectedOrderId]);
+    if (filteredOrders.length === 0) return null;
+    const found = filteredOrders.find((o) => String(o.id) === selectedOrderId);
+    return found ?? filteredOrders[0];
+  }, [filteredOrders, selectedOrderId]);
 
   // Keep persisted selection in sync when it falls back to the first order
   useEffect(() => {
@@ -118,6 +153,17 @@ export default function OperatorFocusView() {
       localStorage.setItem(ORDER_STORAGE_KEY, String(activeOrder.id));
     }
   }, [activeOrder, selectedOrderId]);
+
+  // Clear stale customer key if it no longer matches any order
+  useEffect(() => {
+    if (selectedCustomerKey && orders.length > 0 && uniqueCustomers.length > 0) {
+      const stillExists = uniqueCustomers.some((c) => c.key === selectedCustomerKey);
+      if (!stillExists) {
+        setSelectedCustomerKey("");
+        localStorage.removeItem(CUSTOMER_STORAGE_KEY);
+      }
+    }
+  }, [uniqueCustomers, selectedCustomerKey, orders.length]);
 
   // Clear a stale persisted machine ID if it no longer exists (e.g. retired)
   useEffect(() => {
@@ -205,13 +251,14 @@ export default function OperatorFocusView() {
     createRollMutation.mutate({ weight_kg: weight, is_last_roll: isLastRoll });
   };
 
-  // ── Selectors (machine + order) ───────────────────────────────────────────
+  // ── Selectors (machine + customer + order) ───────────────────────────────
   const selectors = (
     <Card className="border border-slate-200 dark:border-slate-700">
-      <CardContent className="flex flex-col sm:flex-row sm:items-center gap-3 py-3">
-        <div className="flex items-center gap-2 flex-1">
+      <CardContent className="flex flex-col gap-3 py-3">
+        {/* Row 1: Machine */}
+        <div className="flex items-center gap-2">
           <Settings2 className="h-5 w-5 text-muted-foreground shrink-0" />
-          <span className="text-sm font-medium shrink-0">
+          <span className="text-sm font-medium shrink-0 min-w-[80px]">
             {isArabic ? "الماكينة:" : "Machine:"}
           </span>
           <Select value={selectedMachineId} onValueChange={handleMachineChange}>
@@ -229,29 +276,83 @@ export default function OperatorFocusView() {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-center gap-2 flex-1">
-          <Package className="h-5 w-5 text-muted-foreground shrink-0" />
-          <span className="text-sm font-medium shrink-0">
-            {isArabic ? "أمر الإنتاج:" : "Production order:"}
+
+        {/* Row 2: Customer filter */}
+        <div className="flex items-center gap-2">
+          <Package className="h-5 w-5 text-red-500 shrink-0" />
+          <span className="text-sm font-medium shrink-0 min-w-[80px]">
+            {isArabic ? "العميل:" : "Customer:"}
           </span>
           <Select
-            value={activeOrder ? String(activeOrder.id) : ""}
-            onValueChange={handleOrderChange}
-            disabled={orders.length === 0}
+            value={selectedCustomerKey}
+            onValueChange={handleCustomerChange}
+            disabled={uniqueCustomers.length === 0}
           >
-            <SelectTrigger className="h-9 flex-1">
+            <SelectTrigger className="h-9 flex-1 border-red-200 focus:ring-red-400">
               <SelectValue
                 placeholder={
-                  isArabic ? "اختر أمر الإنتاج…" : "Select production order…"
+                  isArabic ? "اختر العميل أولاً…" : "Select customer first…"
                 }
               />
             </SelectTrigger>
             <SelectContent>
-              {orders.map((o) => (
-                <SelectItem key={o.id} value={String(o.id)}>
-                  {o.production_order_number} — {o.size_caption || "—"}
+              {uniqueCustomers.map((c) => (
+                <SelectItem key={c.key} value={c.key}>
+                  {c.label}
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Row 3: Production order (filtered by customer) */}
+        <div className="flex items-center gap-2">
+          <Package className="h-5 w-5 text-muted-foreground shrink-0" />
+          <span className="text-sm font-medium shrink-0 min-w-[80px]">
+            {isArabic ? "أمر الإنتاج:" : "Prod. order:"}
+          </span>
+          <Select
+            value={activeOrder ? String(activeOrder.id) : ""}
+            onValueChange={handleOrderChange}
+            disabled={filteredOrders.length === 0}
+          >
+            <SelectTrigger className="h-9 flex-1">
+              <SelectValue
+                placeholder={
+                  filteredOrders.length === 0
+                    ? isArabic
+                      ? selectedCustomerKey
+                        ? "لا توجد أوامر لهذا العميل"
+                        : "اختر العميل أولاً…"
+                      : selectedCustomerKey
+                        ? "No orders for this customer"
+                        : "Select customer first…"
+                    : isArabic
+                      ? "اختر أمر الإنتاج…"
+                      : "Select production order…"
+                }
+              />
+            </SelectTrigger>
+            <SelectContent>
+              {filteredOrders.map((o) => {
+                const customerLabel =
+                  (isArabic ? o.customer_name_ar : o.customer_name_en) ||
+                  o.customer_name_ar ||
+                  "";
+                const productLabel =
+                  (isArabic ? o.product_name_ar : o.product_name_en) ||
+                  o.product_name_ar ||
+                  "";
+                return (
+                  <SelectItem key={o.id} value={String(o.id)}>
+                    <div className="flex flex-col leading-tight py-0.5">
+                      <span className="font-bold text-red-600">{customerLabel}</span>
+                      <span className="text-xs text-gray-600">{productLabel} {o.size_caption ? `· ${o.size_caption}` : ""}</span>
+                      <span className="text-xs text-gray-400">{o.production_order_number}</span>
+                    </div>
+                  </SelectItem>
+                );
+              })}
             </SelectContent>
           </Select>
         </div>
