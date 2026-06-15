@@ -249,7 +249,7 @@ export default function OrdersTable({
           <TableHeader>
             <TableRow>
               {onOrderSelect && onSelectAll && (
-                <TableHead className="w-12">
+                <TableHead className="w-12 text-center">
                   <Checkbox
                     checked={
                       allOrdersSelected
@@ -264,23 +264,16 @@ export default function OrdersTable({
                 </TableHead>
               )}
               <TableHead className="w-10" />
-              <TableHead className="text-right">
-                {t("orders.orderNumber")}
+              <TableHead className="text-center">
+                {t("orders.orderNumber")} / {t("orders.customer")}
               </TableHead>
-              <TableHead className="text-right">
-                {t("orders.customer")}
+              <TableHead className="text-center">
+                {t("orders.createdDate")} / {t("orders.creator")}
               </TableHead>
-              <TableHead className="text-right">المندوب</TableHead>
-              <TableHead className="text-right">
-                {t("orders.createdDate")}
-              </TableHead>
-              <TableHead className="text-right">
-                {t("orders.creator")}
-              </TableHead>
-              <TableHead className="text-right">
+              <TableHead className="text-center">
                 {t("orders.daysSinceCreation")}
               </TableHead>
-              <TableHead className="text-right">
+              <TableHead className="text-center">
                 {t("orders.completionRate")}
               </TableHead>
               <TableHead className="text-center">
@@ -397,73 +390,54 @@ export default function OrdersTable({
                       </Button>
                     </TableCell>
                     <TableCell
-                      className="font-medium"
+                      className="text-center"
                       data-testid={`order-number-${order.id}`}
                     >
-                      {order.order_number}
-                    </TableCell>
-                    <TableCell data-testid={`customer-${order.id}`}>
-                      <div className="text-right">
-                        <div className="font-medium">
-                          {customer?.name_ar || customer?.name}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {customer?.id}
-                        </div>
+                      <div className="flex flex-col items-center gap-0.5">
+                        <span className="font-semibold text-sm">
+                          {order.order_number}
+                        </span>
+                        <span className="font-bold text-red-600 text-sm">
+                          {customer?.name_ar || customer?.name || "-"}
+                        </span>
                       </div>
                     </TableCell>
-                    <TableCell data-testid={`sales-rep-${order.id}`}>
-                      {(() => {
-                        const salesRep = customer?.sales_rep_id
-                          ? safeUsers.find(
-                              (u: any) => u.id === customer.sales_rep_id,
-                            )
-                          : null;
-                        return salesRep ? (
-                          <div className="text-right text-sm">
-                            {salesRep.display_name_ar ||
-                              salesRep.display_name ||
-                              salesRep.username}
-                          </div>
-                        ) : (
-                          <div className="text-gray-400 text-center text-sm">
-                            -
-                          </div>
-                        );
-                      })()}
-                    </TableCell>
-                    <TableCell data-testid={`created-date-${order.id}`}>
-                      {order.created_at
-                        ? format(new Date(order.created_at), "dd/MM/yyyy")
-                        : "-"}
-                    </TableCell>
-                    <TableCell data-testid={`created-by-${order.id}`}>
-                      <div className="text-right">
-                        <div className="font-medium">
+                    <TableCell
+                      className="text-center"
+                      data-testid={`created-date-${order.id}`}
+                    >
+                      <div className="flex flex-col items-center gap-0.5">
+                        <span className="text-sm">
+                          {order.created_at
+                            ? format(new Date(order.created_at), "dd/MM/yyyy")
+                            : "-"}
+                        </span>
+                        <span className="text-sm text-muted-foreground">
                           {user?.display_name_ar ||
                             user?.display_name ||
                             user?.username ||
                             "-"}
-                        </div>
-                        <div className="text-sm text-gray-500">#{user?.id}</div>
+                        </span>
                       </div>
                     </TableCell>
-                    <TableCell data-testid={`delivery-${order.id}`}>
-                      <div className="text-right">
-                        {daysSinceCreation !== null ? (
-                          <div className="font-medium">
-                            <span className="text-blue-600 dark:text-blue-400">
-                              {t("orders.daysSinceCreatedCount", {
-                                count: daysSinceCreation,
-                              })}
-                            </span>
-                          </div>
-                        ) : (
-                          "-"
-                        )}
-                      </div>
+                    <TableCell
+                      className="text-center"
+                      data-testid={`delivery-${order.id}`}
+                    >
+                      {daysSinceCreation !== null ? (
+                        <span className="font-medium text-blue-600 dark:text-blue-400">
+                          {t("orders.daysSinceCreatedCount", {
+                            count: daysSinceCreation,
+                          })}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
                     </TableCell>
-                    <TableCell data-testid={`production-progress-${order.id}`}>
+                    <TableCell
+                      className="text-center"
+                      data-testid={`production-progress-${order.id}`}
+                    >
                       {orderProductionOrders.length > 0 ? (
                         <ProductionProgress
                           filmPercentage={avgFilmPercentage}
@@ -649,7 +623,7 @@ export default function OrdersTable({
                       className={`border-b ${selectedOrders.includes(order.id) ? "bg-blue-50" : "bg-gray-50/50"}`}
                     >
                       <TableCell
-                        colSpan={onOrderSelect && onSelectAll ? 10 : 9}
+                        colSpan={onOrderSelect && onSelectAll ? 8 : 7}
                         className="py-1.5 px-4 text-right"
                         data-testid={`notes-${order.id}`}
                       >
@@ -669,7 +643,7 @@ export default function OrdersTable({
                         data-testid={`production-orders-row-${order.id}`}
                       >
                         <TableCell
-                          colSpan={onOrderSelect && onSelectAll ? 10 : 9}
+                          colSpan={onOrderSelect && onSelectAll ? 8 : 7}
                           className="p-3 text-right"
                         >
                           <div className="text-xs font-semibold text-muted-foreground mb-2">
