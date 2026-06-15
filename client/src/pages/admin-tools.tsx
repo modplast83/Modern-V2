@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
   Banknote,
+  Bot,
   CalendarDays,
   ChevronsUpDown,
   ClipboardList,
@@ -75,6 +76,8 @@ import { useAuth } from "../hooks/use-auth";
 import { useCompanyLogo } from "../hooks/use-company-logo";
 import { useToast } from "../hooks/use-toast";
 import { apiRequest, queryClient } from "../lib/queryClient";
+import { userHasPermission } from "../utils/roleUtils";
+import ModernAgent from "./modern-agent";
 
 type Customer = {
   id: string;
@@ -4790,7 +4793,12 @@ function CashVoucherTab({ logoUrl }: { logoUrl: string }) {
 export default function AdminToolsPage() {
   const { t } = useTranslation();
   const { logoUrl } = useCompanyLogo();
+  const { user } = useAuth();
   const [tab, setTab] = useState<string>("delivery");
+  const canUseModernAgent = userHasPermission(user, [
+    "use_modern_agent",
+    "manage_modern_agent",
+  ]);
 
   return (
     <PageLayout
@@ -4801,7 +4809,9 @@ export default function AdminToolsPage() {
       )}
     >
       <Tabs value={tab} onValueChange={setTab} dir="rtl">
-        <TabsList className="grid grid-cols-2 md:grid-cols-9 h-auto w-full bg-muted p-1 gap-1">
+        <TabsList
+          className={`grid grid-cols-2 ${canUseModernAgent ? "md:grid-cols-10" : "md:grid-cols-9"} h-auto w-full bg-muted p-1 gap-1`}
+        >
           <TabsTrigger value="delivery" className="flex items-center gap-2">
             <FileSignature className="h-4 w-4" />
             <span className="hidden sm:inline">تسليم وإخلاء مسؤولية</span>
@@ -4847,6 +4857,13 @@ export default function AdminToolsPage() {
             <span className="hidden sm:inline">سند صرف نقدي</span>
             <span className="sm:hidden">سند صرف</span>
           </TabsTrigger>
+          {canUseModernAgent && (
+            <TabsTrigger value="modern-agent" className="flex items-center gap-2">
+              <Bot className="h-4 w-4" />
+              <span className="hidden sm:inline">{t("modernAgent.title")}</span>
+              <span className="sm:hidden">{t("modernAgent.title")}</span>
+            </TabsTrigger>
+          )}
         </TabsList>
         <TabsContent value="delivery" className="border-0 mt-4">
           <DeliveryDisclaimerTab logoUrl={logoUrl} />
@@ -4875,6 +4892,11 @@ export default function AdminToolsPage() {
         <TabsContent value="voucher" className="border-0 mt-4">
           <CashVoucherTab logoUrl={logoUrl} />
         </TabsContent>
+        {canUseModernAgent && (
+          <TabsContent value="modern-agent" className="border-0 mt-4">
+            <ModernAgent embedded />
+          </TabsContent>
+        )}
       </Tabs>
     </PageLayout>
   );

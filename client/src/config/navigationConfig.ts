@@ -19,8 +19,6 @@ import {
   Wand2,
   ClipboardList,
   ListOrdered,
-  Bot,
-  Cog,
 } from "lucide-react";
 
 export interface NavigationItem {
@@ -141,24 +139,6 @@ export const navigationItems: NavigationItem[] = [
     path: "/reports",
     priority: 11,
     group: "admin",
-  },
-  {
-    name: "الوكيل الذكي مودرن",
-    name_ar: "الوكيل الذكي مودرن",
-    name_en: "Modern AI Agent",
-    icon: Bot,
-    path: "/modern-agent",
-    priority: 9,
-    group: "support",
-  },
-  {
-    name: "مهندس الصيانة الذكي",
-    name_ar: "مهندس الصيانة الذكي",
-    name_en: "Smart Maintenance Engineer",
-    icon: Cog,
-    path: "/maintenance-engineer",
-    priority: 8.5,
-    group: "support",
   },
   {
     name: "الأدوات",

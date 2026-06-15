@@ -14,6 +14,7 @@ import {
   Printer,
   Edit,
   Trash2,
+  Cog,
 } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
@@ -26,6 +27,7 @@ import {
   generateOperatorReportNumber,
 } from "../../../shared/id-generator";
 import PageLayout from "../components/layout/PageLayout";
+import MaintenanceEngineer from "./maintenance-engineer";
 import ComponentCatalogTab from "../components/maintenance/ComponentCatalogTab";
 import ConsumablePartsTab from "../components/maintenance/ConsumablePartsTab";
 import PreventiveActionsTab from "../components/maintenance/PreventiveActionsTab";
@@ -618,6 +620,18 @@ export default function Maintenance() {
               {t("maintenance.componentCatalog.tab")}
             </TabsTrigger>
           )}
+          {userHasPermission(user, [
+            "view_maintenance",
+            "manage_maintenance",
+          ]) && (
+            <TabsTrigger
+              value="smart-engineer"
+              className="flex items-center gap-2"
+            >
+              <Cog className="h-4 w-4" />
+              {t("maintenanceEngineer.title")}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="requests">
@@ -931,6 +945,15 @@ export default function Maintenance() {
         <TabsContent value="component-catalog">
           <ComponentCatalogTab />
         </TabsContent>
+
+        {userHasPermission(user, [
+          "view_maintenance",
+          "manage_maintenance",
+        ]) && (
+          <TabsContent value="smart-engineer">
+            <MaintenanceEngineer embedded />
+          </TabsContent>
+        )}
       </Tabs>
 
       <Dialog

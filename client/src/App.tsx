@@ -80,10 +80,6 @@ const WhatsAppTemplateTest = lazyWithRetry(
 const WhatsAppWebhooks = lazyWithRetry(
   () => import("./pages/whatsapp-webhooks"),
 );
-const ModernAgent = lazyWithRetry(() => import("./pages/modern-agent"));
-const MaintenanceEngineer = lazyWithRetry(
-  () => import("./pages/maintenance-engineer"),
-);
 const ToolsPage = lazyWithRetry(() => import("./pages/tools_page"));
 const AdminTools = lazyWithRetry(() => import("./pages/admin-tools"));
 const FilmOperatorDashboard = lazyWithRetry(
@@ -210,16 +206,6 @@ function AppRoutes() {
 
         <Route path="/setup">
           <CompanySetup />
-        </Route>
-        <Route path="/modern-agent">
-          <ProtectedRoute path="/modern-agent">
-            <ModernAgent />
-          </ProtectedRoute>
-        </Route>
-        <Route path="/maintenance-engineer">
-          <ProtectedRoute path="/maintenance-engineer">
-            <MaintenanceEngineer />
-          </ProtectedRoute>
         </Route>
         <Route path="/tools">
           <ProtectedRoute path="/tools">

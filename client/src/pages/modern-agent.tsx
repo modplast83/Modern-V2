@@ -40,7 +40,11 @@ interface ChatMessage {
   pending?: boolean;
 }
 
-export default function ModernAgent() {
+export default function ModernAgent({
+  embedded = false,
+}: {
+  embedded?: boolean;
+} = {}) {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language?.startsWith("ar");
   const { toast } = useToast();
@@ -142,11 +146,7 @@ export default function ModernAgent() {
     setMessages([]);
   };
 
-  return (
-    <PageLayout
-      title={t("modernAgent.title")}
-      description={t("modernAgent.subtitle")}
-    >
+  const body = (
       <div className="flex gap-4 h-[calc(100vh-200px)]">
         {/* Conversations sidebar */}
         <aside className="w-64 shrink-0 hidden md:flex flex-col">
@@ -283,6 +283,16 @@ export default function ModernAgent() {
           </div>
         </Card>
       </div>
+  );
+
+  if (embedded) return body;
+
+  return (
+    <PageLayout
+      title={t("modernAgent.title")}
+      description={t("modernAgent.subtitle")}
+    >
+      {body}
     </PageLayout>
   );
 }

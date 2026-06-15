@@ -84,7 +84,11 @@ interface ChangeLogItem {
 
 const CATEGORIES = ["general", "extruder", "printer", "cutter"] as const;
 
-export default function MaintenanceEngineer() {
+export default function MaintenanceEngineer({
+  embedded = false,
+}: {
+  embedded?: boolean;
+} = {}) {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language?.startsWith("ar");
   const { toast } = useToast();
@@ -386,11 +390,7 @@ export default function MaintenanceEngineer() {
   const machineName = (m: MachineOption) =>
     isAr && m.name_ar ? m.name_ar : m.name;
 
-  return (
-    <PageLayout
-      title={t("maintenanceEngineer.title")}
-      description={t("maintenanceEngineer.subtitle")}
-    >
+  const body = (
       <Tabs defaultValue="chat" className="w-full">
         <TabsList>
           <TabsTrigger value="chat" data-testid="tab-chat">
@@ -854,6 +854,16 @@ export default function MaintenanceEngineer() {
           </TabsContent>
         )}
       </Tabs>
+  );
+
+  if (embedded) return body;
+
+  return (
+    <PageLayout
+      title={t("maintenanceEngineer.title")}
+      description={t("maintenanceEngineer.subtitle")}
+    >
+      {body}
     </PageLayout>
   );
 }
