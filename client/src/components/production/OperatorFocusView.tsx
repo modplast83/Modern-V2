@@ -316,7 +316,7 @@ export default function OperatorFocusView() {
             onValueChange={handleOrderChange}
             disabled={filteredOrders.length === 0}
           >
-            <SelectTrigger className="h-9 flex-1">
+            <SelectTrigger className="h-9 flex-1 pl-[4px] pr-[4px]">
               <SelectValue
                 placeholder={
                   filteredOrders.length === 0
