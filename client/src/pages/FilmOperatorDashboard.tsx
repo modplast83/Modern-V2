@@ -435,21 +435,33 @@ export default function FilmOperatorDashboard({
                     data-testid={`card-production-order-${order.id}`}
                   >
                     <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <div>
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="min-w-0 flex-1">
                           <CardTitle
-                            className="text-lg"
-                            data-testid={`text-order-number-${order.id}`}
+                            className="text-lg font-bold text-red-600 dark:text-red-400 leading-snug"
+                            data-testid={`text-customer-${order.id}`}
                           >
-                            {order.production_order_number}
+                            {ln(
+                              order.customer_name_ar,
+                              order.customer_name_en,
+                            ) || order.customer_name}
                           </CardTitle>
                           <CardDescription
-                            data-testid={`text-order-ref-${order.id}`}
+                            className="font-semibold text-gray-800 dark:text-gray-200 text-sm mt-0.5"
+                            data-testid={`text-product-${order.id}`}
                           >
-                            {t("operators.common.order")}: {order.order_number}
+                            {ln(order.product_name_ar, order.product_name_en) ||
+                              order.product_name}
                           </CardDescription>
+                          <p
+                            className="text-xs text-gray-400 dark:text-gray-500 mt-1"
+                            data-testid={`text-order-number-${order.id}`}
+                          >
+                            {order.production_order_number} ·{" "}
+                            {t("operators.common.order")}: {order.order_number}
+                          </p>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-col gap-1 items-end flex-shrink-0">
                           {isComplete && (
                             <Badge
                               variant="secondary"
@@ -475,35 +487,6 @@ export default function FilmOperatorDashboard({
                     </CardHeader>
 
                     <CardContent className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <p className="text-gray-500 dark:text-gray-400">
-                            {t("operators.common.customer")}
-                          </p>
-                          <p
-                            className="font-bold text-gray-900 dark:text-white"
-                            data-testid={`text-customer-${order.id}`}
-                          >
-                            {ln(
-                              order.customer_name_ar,
-                              order.customer_name_en,
-                            ) || order.customer_name}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-gray-500 dark:text-gray-400">
-                            {t("operators.common.product")}
-                          </p>
-                          <p
-                            className="font-bold text-red-600 dark:text-red-400"
-                            data-testid={`text-product-${order.id}`}
-                          >
-                            {ln(order.product_name_ar, order.product_name_en) ||
-                              order.product_name}
-                          </p>
-                        </div>
-                      </div>
-
                       <div className="grid grid-cols-2 gap-4 text-sm bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
                         {order.category_name && (
                           <div>
