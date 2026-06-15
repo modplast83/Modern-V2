@@ -335,10 +335,6 @@ export default function OperatorFocusView() {
             </SelectTrigger>
             <SelectContent>
               {filteredOrders.map((o) => {
-                const customerLabel =
-                  (isArabic ? o.customer_name_ar : o.customer_name_en) ||
-                  o.customer_name_ar ||
-                  "";
                 const productLabel =
                   (isArabic ? o.product_name_ar : o.product_name_en) ||
                   o.product_name_ar ||
@@ -346,8 +342,7 @@ export default function OperatorFocusView() {
                 return (
                   <SelectItem key={o.id} value={String(o.id)}>
                     <div className="flex flex-col leading-tight py-0.5">
-                      <span className="font-bold text-red-600">{customerLabel}</span>
-                      <span className="text-xs text-gray-600">{productLabel} {o.size_caption ? `· ${o.size_caption}` : ""}</span>
+                      <span className="font-semibold text-sm">{productLabel}{o.size_caption ? ` · ${o.size_caption}` : ""}</span>
                       <span className="text-xs text-gray-400">{o.production_order_number}</span>
                     </div>
                   </SelectItem>
