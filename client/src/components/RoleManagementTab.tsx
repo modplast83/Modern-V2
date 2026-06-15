@@ -1,23 +1,51 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Edit, Trash2, Shield, Check, X } from "lucide-react";
-import { useState } from "react";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Shield,
+  Check,
+  X,
+  Search,
+  ChevronDown,
+  ChevronLeft,
+  Sparkles,
+  Home,
+  FileText,
+  Activity,
+  ClipboardCheck,
+  Wrench,
+  Warehouse,
+  Users,
+  BarChart3,
+  Monitor,
+  Database,
+  Box,
+  Tv,
+  Plug,
+  Bot,
+  Settings,
+  type LucideIcon,
+} from "lucide-react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
   PERMISSIONS,
-  PERMISSION_CATEGORIES,
+  PERMISSION_TREE,
+  ROLE_PRESETS,
+  collectTreeKeys,
+  getNodeSelectionState,
+  getPermission,
+  isGuardedPermission,
+  type PermissionTreeNode,
+  type RolePreset,
 } from "../../../shared/permissions";
 import { useAuth } from "../hooks/use-auth";
 import { useToast } from "../hooks/use-toast";
 import { apiRequest } from "../lib/queryClient";
 import { userHasPermission } from "../utils/roleUtils";
 
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "./ui/accordion";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import {
@@ -47,28 +75,39 @@ import {
   TableRow,
 } from "./ui/table";
 
-const CATEGORY_TRANSLATION_MAP: Record<string, string> = {
-  عام: "general",
-  الطلبات: "orders",
-  الإنتاج: "production",
-  الصيانة: "maintenance",
-  الجودة: "quality",
-  المخزون: "inventory",
-  المستخدمين: "users",
-  "الموارد البشرية": "hr",
-  التقارير: "reports",
-  المراقبة: "monitoring",
-  التكامل: "integration",
-  "محاكاة المصنع": "factorySimulation",
-  "شاشة العرض": "displayScreen",
-  التعريفات: "definitions",
-  النظام: "system",
+const MODULE_ICONS: Record<string, LucideIcon> = {
+  Home,
+  FileText,
+  Activity,
+  ClipboardCheck,
+  Wrench,
+  Warehouse,
+  Users,
+  BarChart3,
+  Monitor,
+  Database,
+  Box,
+  Tv,
+  Plug,
+  Bot,
+  Settings,
+  Shield,
 };
 
+interface RoleData {
+  id: number;
+  name: string;
+  name_ar: string;
+  permissions: string[];
+}
+
 export default function RoleManagementTab() {
-  const { t, i18n } = useTranslation();
-  const getPermissionLabel = (perm: { name: string; name_ar: string }) =>
-    i18n.language === "en" ? perm.name : perm.name_ar;
+  const { i18n } = useTranslation();
+  const isAr = i18n.language !== "en";
+  // Local bilingual helper (Arabic-first), avoids touching locale files for
+  // the newly added tree-editor strings.
+  const L = (ar: string, en: string) => (isAr ? ar : en);
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -82,20 +121,18 @@ export default function RoleManagementTab() {
     permissions: [] as string[],
   });
 
-  const [editingRole, setEditingRole] = useState<any | null>(null);
-  const [viewingRole, setViewingRole] = useState<any | null>(null);
+  const [editingRole, setEditingRole] = useState<RoleData | null>(null);
+  const [viewingRole, setViewingRole] = useState<RoleData | null>(null);
 
-  // Use permissions from centralized registry
-  const availablePermissions = PERMISSIONS;
+  const allPermissionKeys = useMemo(() => PERMISSIONS.map((p) => p.id), []);
 
   // Fetch roles
-  const { data: roles = [], isLoading } = useQuery<any[]>({
+  const { data: roles = [], isLoading } = useQuery<RoleData[]>({
     queryKey: ["/api/roles"],
   });
 
-  // Create role mutation
   const createRoleMutation = useMutation({
-    mutationFn: async (roleData: any) => {
+    mutationFn: async (roleData: typeof newRole) => {
       return await apiRequest("/api/roles", {
         method: "POST",
         body: JSON.stringify(roleData),
@@ -105,22 +142,27 @@ export default function RoleManagementTab() {
       queryClient.invalidateQueries({ queryKey: ["/api/roles"] });
       setNewRole({ name: "", name_ar: "", permissions: [] });
       toast({
-        title: t("roles.createSuccess"),
-        description: t("roles.createSuccessDescription"),
+        title: L("تم إنشاء الدور", "Role created"),
+        description: L(
+          "تم إنشاء الدور الجديد بنجاح",
+          "The new role was created successfully",
+        ),
       });
     },
     onError: () => {
       toast({
-        title: t("roles.createError"),
-        description: t("roles.createErrorDescription"),
+        title: L("خطأ في الإنشاء", "Creation error"),
+        description: L(
+          "تعذّر إنشاء الدور، حاول مرة أخرى",
+          "Could not create the role, please try again",
+        ),
         variant: "destructive",
       });
     },
   });
 
-  // Update role mutation
   const updateRoleMutation = useMutation({
-    mutationFn: async ({ id, roleData }: { id: number; roleData: any }) => {
+    mutationFn: async ({ id, roleData }: { id: number; roleData: RoleData }) => {
       return await apiRequest(`/api/roles/${id}`, {
         method: "PUT",
         body: JSON.stringify(roleData),
@@ -130,37 +172,40 @@ export default function RoleManagementTab() {
       queryClient.invalidateQueries({ queryKey: ["/api/roles"] });
       setEditingRole(null);
       toast({
-        title: t("roles.updateSuccess"),
-        description: t("roles.updateSuccessDescription"),
+        title: L("تم الحفظ", "Saved"),
+        description: L(
+          "تم تحديث صلاحيات الدور بنجاح",
+          "Role permissions updated successfully",
+        ),
       });
     },
     onError: () => {
       toast({
-        title: t("roles.updateError"),
-        description: t("roles.updateErrorDescription"),
+        title: L("خطأ في الحفظ", "Save error"),
+        description: L(
+          "تعذّر تحديث الدور، حاول مرة أخرى",
+          "Could not update the role, please try again",
+        ),
         variant: "destructive",
       });
     },
   });
 
-  // Delete role mutation
   const deleteRoleMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiRequest(`/api/roles/${id}`, {
-        method: "DELETE",
-      });
+      return await apiRequest(`/api/roles/${id}`, { method: "DELETE" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/roles"] });
       toast({
-        title: t("roles.deleteSuccess"),
-        description: t("roles.deleteSuccessDescription"),
+        title: L("تم الحذف", "Deleted"),
+        description: L("تم حذف الدور بنجاح", "Role deleted successfully"),
       });
     },
     onError: () => {
       toast({
-        title: t("roles.deleteError"),
-        description: t("roles.deleteErrorDescription"),
+        title: L("خطأ في الحذف", "Delete error"),
+        description: L("تعذّر حذف الدور", "Could not delete the role"),
         variant: "destructive",
       });
     },
@@ -169,357 +214,128 @@ export default function RoleManagementTab() {
   const handleCreateRole = () => {
     if (!newRole.name || !newRole.name_ar) {
       toast({
-        title: t("roles.missingData"),
-        description: t("roles.missingDataDescription"),
+        title: L("بيانات ناقصة", "Missing data"),
+        description: L(
+          "يرجى إدخال اسم الدور بالعربية والإنجليزية",
+          "Please enter the role name in both Arabic and English",
+        ),
         variant: "destructive",
       });
       return;
     }
-
     createRoleMutation.mutate(newRole);
-  };
-
-  const getCategoryTranslation = (category: string) => {
-    const key = CATEGORY_TRANSLATION_MAP[category];
-    return key ? t(`roles.categories.${key}`) : category;
   };
 
   const handleUpdateRole = () => {
     if (editingRole) {
-      updateRoleMutation.mutate({
-        id: editingRole.id,
-        roleData: editingRole,
-      });
+      updateRoleMutation.mutate({ id: editingRole.id, roleData: editingRole });
     }
   };
-
-  const handlePermissionChange = (
-    permissionId: string,
-    checked: boolean,
-    isEditing = false,
-  ) => {
-    if (isEditing && editingRole) {
-      setEditingRole({
-        ...editingRole,
-        permissions: checked
-          ? [...editingRole.permissions, permissionId]
-          : editingRole.permissions.filter((p: string) => p !== permissionId),
-      });
-    } else {
-      setNewRole({
-        ...newRole,
-        permissions: checked
-          ? [...newRole.permissions, permissionId]
-          : newRole.permissions.filter((p) => p !== permissionId),
-      });
-    }
-  };
-
-  const handleCategoryToggle = (category: string, isEditing = false) => {
-    const categoryPermissions = availablePermissions
-      .filter((p) => p.category === category)
-      .map((p) => p.id);
-
-    const currentPermissions = isEditing
-      ? editingRole?.permissions || []
-      : newRole.permissions;
-    const allSelected = categoryPermissions.every((p) =>
-      currentPermissions.includes(p),
-    );
-
-    if (isEditing && editingRole) {
-      if (allSelected) {
-        // Remove all category permissions
-        setEditingRole({
-          ...editingRole,
-          permissions: editingRole.permissions.filter(
-            (p: string) => !categoryPermissions.includes(p as any),
-          ),
-        });
-      } else {
-        // Add all category permissions
-        const newPermissions = Array.from(
-          new Set([...editingRole.permissions, ...categoryPermissions]),
-        );
-        setEditingRole({
-          ...editingRole,
-          permissions: newPermissions,
-        });
-      }
-    } else {
-      if (allSelected) {
-        // Remove all category permissions
-        setNewRole({
-          ...newRole,
-          permissions: newRole.permissions.filter(
-            (p) => !categoryPermissions.includes(p as any),
-          ),
-        });
-      } else {
-        // Add all category permissions
-        const newPermissions = Array.from(
-          new Set([...newRole.permissions, ...categoryPermissions]),
-        );
-        setNewRole({
-          ...newRole,
-          permissions: newPermissions,
-        });
-      }
-    }
-  };
-
-  const getCategoryPermissionCount = (
-    category: string,
-    permissions: string[],
-  ) => {
-    const categoryPermissions = availablePermissions
-      .filter((p) => p.category === category)
-      .map((p) => p.id);
-    const selectedCount = categoryPermissions.filter((p) =>
-      permissions.includes(p),
-    ).length;
-    return { selected: selectedCount, total: categoryPermissions.length };
-  };
-
-  const PermissionsEditor = ({
-    permissions,
-    isEditing,
-  }: {
-    permissions: string[];
-    isEditing: boolean;
-  }) => (
-    <Accordion type="multiple" className="w-full">
-      {PERMISSION_CATEGORIES.map((category) => {
-        const categoryPermissions = availablePermissions.filter(
-          (p) => p.category === category,
-        );
-        if (categoryPermissions.length === 0) return null;
-
-        const counts = getCategoryPermissionCount(category, permissions);
-        const allSelected = counts.selected === counts.total;
-        const someSelected =
-          counts.selected > 0 && counts.selected < counts.total;
-
-        return (
-          <AccordionItem key={category} value={category}>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                checked={allSelected}
-                ref={(el) => {
-                  if (el) {
-                    const checkbox = el.querySelector("input");
-                    if (checkbox) {
-                      (checkbox as HTMLInputElement).indeterminate =
-                        someSelected;
-                    }
-                  }
-                }}
-                onCheckedChange={(checked) => {
-                  handleCategoryToggle(category, isEditing);
-                }}
-                data-testid={`checkbox-category-${category}`}
-              />
-              <AccordionTrigger className="hover:no-underline flex-1">
-                <div className="flex items-center gap-3 w-full">
-                  <span className="font-medium">
-                    {getCategoryTranslation(category)}
-                  </span>
-                  <Badge
-                    variant={counts.selected > 0 ? "default" : "outline"}
-                    className="mr-auto"
-                  >
-                    {counts.selected} / {counts.total}
-                  </Badge>
-                </div>
-              </AccordionTrigger>
-            </div>
-            <AccordionContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-2 pr-6">
-                {categoryPermissions.map((permission) => (
-                  <div
-                    key={permission.id}
-                    className="flex items-start space-x-2 space-x-reverse p-2 rounded-md hover:bg-muted/50 transition-colors"
-                  >
-                    <Checkbox
-                      id={`${isEditing ? "edit" : "new"}-${permission.id}`}
-                      checked={permissions.includes(permission.id)}
-                      onCheckedChange={(checked) =>
-                        handlePermissionChange(
-                          permission.id,
-                          checked as boolean,
-                          isEditing,
-                        )
-                      }
-                      data-testid={`checkbox-permission-${permission.id}`}
-                    />
-                    <div className="flex-1 space-y-1">
-                      <label
-                        htmlFor={`${isEditing ? "edit" : "new"}-${permission.id}`}
-                        className="text-sm font-medium leading-none cursor-pointer peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        {getPermissionLabel(permission)}
-                      </label>
-                      {permission.description && (
-                        <p className="text-xs text-muted-foreground">
-                          {permission.description}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        );
-      })}
-    </Accordion>
-  );
 
   if (isLoading) {
-    return <div className="text-center py-8">{t("roles.loadingRoles")}</div>;
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        {L("جاري تحميل الأدوار...", "Loading roles...")}
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">
-              {t("roles.totalRoles")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{roles.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">
-              {t("roles.totalPermissions")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{PERMISSIONS.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">
-              {t("roles.permissionCategories")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {PERMISSION_CATEGORIES.length}
-            </div>
-          </CardContent>
-        </Card>
+        <StatCard
+          label={L("إجمالي الأدوار", "Total Roles")}
+          value={roles.length}
+        />
+        <StatCard
+          label={L("إجمالي الصلاحيات", "Total Permissions")}
+          value={PERMISSIONS.length}
+        />
+        <StatCard
+          label={L("وحدات النظام", "System Modules")}
+          value={PERMISSION_TREE.length}
+        />
       </div>
 
       {/* Add New Role Section */}
       {canAddRoles && (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Plus className="w-5 h-5" />
-            {t("roles.addRole")}
-          </CardTitle>
-          <CardDescription>{t("roles.addRoleDescription")}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="roleName">{t("roles.roleNameEn")}</Label>
-              <Input
-                id="roleName"
-                value={newRole.name}
-                onChange={(e) =>
-                  setNewRole({ ...newRole, name: e.target.value })
-                }
-                placeholder={t("roles.roleNameEnPlaceholder")}
-                data-testid="input-role-name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="roleNameAr">{t("roles.roleNameAr")}</Label>
-              <Input
-                id="roleNameAr"
-                value={newRole.name_ar}
-                onChange={(e) =>
-                  setNewRole({ ...newRole, name_ar: e.target.value })
-                }
-                placeholder={t("roles.roleNameArPlaceholder")}
-                data-testid="input-role-name-ar"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label>
-                {t("roles.permissions")} ({newRole.permissions.length}{" "}
-                {t("roles.selectedPermissions")})
-              </Label>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    setNewRole({
-                      ...newRole,
-                      permissions: availablePermissions.map((p) => p.id),
-                    })
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Plus className="w-5 h-5" />
+              {L("إضافة دور جديد", "Add New Role")}
+            </CardTitle>
+            <CardDescription>
+              {L(
+                "أنشئ دورًا وحدد صلاحياته من الشجرة أدناه",
+                "Create a role and choose its permissions from the tree below",
+              )}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="roleName">
+                  {L("اسم الدور (إنجليزي)", "Role Name (English)")}
+                </Label>
+                <Input
+                  id="roleName"
+                  value={newRole.name}
+                  onChange={(e) =>
+                    setNewRole({ ...newRole, name: e.target.value })
                   }
-                  data-testid="button-select-all-new"
-                >
-                  {t("roles.selectAll")}
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    setNewRole({
-                      ...newRole,
-                      permissions: [],
-                    })
+                  placeholder={L("مثال: Sales", "e.g. Sales")}
+                  data-testid="input-role-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="roleNameAr">
+                  {L("اسم الدور (عربي)", "Role Name (Arabic)")}
+                </Label>
+                <Input
+                  id="roleNameAr"
+                  value={newRole.name_ar}
+                  onChange={(e) =>
+                    setNewRole({ ...newRole, name_ar: e.target.value })
                   }
-                  data-testid="button-clear-all-new"
-                >
-                  {t("roles.clearAll")}
-                </Button>
+                  placeholder={L("مثال: مبيعات", "e.g. Sales")}
+                  data-testid="input-role-name-ar"
+                />
               </div>
             </div>
-            <PermissionsEditor
-              permissions={newRole.permissions}
-              isEditing={false}
-            />
-          </div>
 
-          <div className="flex justify-end">
-            <Button
-              onClick={handleCreateRole}
-              disabled={createRoleMutation.isPending}
-              className="flex items-center gap-2"
-              data-testid="button-create-role"
-            >
-              {createRoleMutation.isPending ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  {t("roles.adding")}
-                </>
-              ) : (
-                <>
-                  <Plus className="w-4 h-4" />
-                  {t("roles.addRoleButton")}
-                </>
-              )}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+            <PermissionTreeEditor
+              selected={newRole.permissions}
+              onChange={(permissions) => setNewRole({ ...newRole, permissions })}
+              allPermissionKeys={allPermissionKeys}
+              isAr={isAr}
+              L={L}
+              idPrefix="new"
+            />
+
+            <div className="flex justify-end">
+              <Button
+                onClick={handleCreateRole}
+                disabled={createRoleMutation.isPending}
+                className="flex items-center gap-2"
+                data-testid="button-create-role"
+              >
+                {createRoleMutation.isPending ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    {L("جاري الإضافة...", "Adding...")}
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4" />
+                    {L("إضافة الدور", "Add Role")}
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Existing Roles Table */}
@@ -527,25 +343,28 @@ export default function RoleManagementTab() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="w-5 h-5" />
-            {t("roles.existingRoles")}
+            {L("الأدوار الحالية", "Existing Roles")}
           </CardTitle>
           <CardDescription>
-            {t("roles.existingRolesDescription")}
+            {L(
+              "إدارة الأدوار الموجودة وصلاحياتها",
+              "Manage existing roles and their permissions",
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t("roles.roleNumber")}</TableHead>
-                <TableHead>{t("roles.roleName")}</TableHead>
-                <TableHead>{t("roles.arabicName")}</TableHead>
-                <TableHead>{t("roles.permissions")}</TableHead>
-                <TableHead>{t("common.actions")}</TableHead>
+                <TableHead>{L("الرقم", "ID")}</TableHead>
+                <TableHead>{L("الاسم (إنجليزي)", "Name (EN)")}</TableHead>
+                <TableHead>{L("الاسم (عربي)", "Name (AR)")}</TableHead>
+                <TableHead>{L("الصلاحيات", "Permissions")}</TableHead>
+                <TableHead>{L("الإجراءات", "Actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(roles as any[]).map((role: any) => (
+              {roles.map((role) => (
                 <TableRow key={role.id} data-testid={`row-role-${role.id}`}>
                   <TableCell>{role.id}</TableCell>
                   <TableCell>
@@ -557,8 +376,10 @@ export default function RoleManagementTab() {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary">
-                        {role.permissions?.length || 0}{" "}
-                        {t("roles.permissionCount")}
+                        {role.permissions?.includes("admin")
+                          ? L("الكل", "All")
+                          : role.permissions?.length || 0}{" "}
+                        {L("صلاحية", "perms")}
                       </Badge>
                       <Dialog>
                         <DialogTrigger asChild>
@@ -569,54 +390,34 @@ export default function RoleManagementTab() {
                             className="h-8 px-2 text-xs"
                             data-testid={`button-view-permissions-${role.id}`}
                           >
-                            {t("roles.viewDetails")}
+                            {L("عرض التفاصيل", "View details")}
                           </Button>
                         </DialogTrigger>
                         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
                           <DialogHeader>
                             <DialogTitle>
-                              {t("roles.rolePermissions")}: {role.name_ar}
+                              {L("صلاحيات الدور", "Role permissions")}:{" "}
+                              {viewingRole?.name_ar}
                             </DialogTitle>
                             <DialogDescription>
-                              {t("roles.rolePermissionsDescription")} (
-                              {role.permissions?.length || 0}{" "}
-                              {t("roles.permissionCount")})
+                              {viewingRole?.permissions?.includes("admin")
+                                ? L(
+                                    "هذا الدور يملك صلاحية المدير الكاملة",
+                                    "This role has full administrator access",
+                                  )
+                                : `${viewingRole?.permissions?.length || 0} ${L(
+                                    "صلاحية مفعّلة",
+                                    "permissions enabled",
+                                  )}`}
                             </DialogDescription>
                           </DialogHeader>
-                          <div className="space-y-4 mt-4">
-                            {PERMISSION_CATEGORIES.map((category) => {
-                              const categoryPerms = availablePermissions.filter(
-                                (p) =>
-                                  p.category === category &&
-                                  role.permissions?.includes(p.id),
-                              );
-                              if (categoryPerms.length === 0) return null;
-
-                              return (
-                                <div key={category} className="space-y-2">
-                                  <div className="flex items-center gap-2">
-                                    <h4 className="font-medium">
-                                      {getCategoryTranslation(category)}
-                                    </h4>
-                                    <Badge variant="outline">
-                                      {categoryPerms.length}
-                                    </Badge>
-                                  </div>
-                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 pr-4">
-                                    {categoryPerms.map((perm) => (
-                                      <div
-                                        key={perm.id}
-                                        className="flex items-center gap-2 text-sm p-2 bg-muted/50 rounded"
-                                      >
-                                        <Check className="w-4 h-4 text-green-600" />
-                                        <span>{getPermissionLabel(perm)}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
+                          {viewingRole && (
+                            <RolePermissionSummary
+                              permissions={viewingRole.permissions || []}
+                              isAr={isAr}
+                              L={L}
+                            />
+                          )}
                         </DialogContent>
                       </Dialog>
                     </div>
@@ -624,37 +425,42 @@ export default function RoleManagementTab() {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       {canEditRoles && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setEditingRole({ ...role })}
-                        className="flex items-center gap-1"
-                        data-testid={`button-edit-role-${role.id}`}
-                      >
-                        <Edit className="w-3 h-3" />
-                        {t("common.edit")}
-                      </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            setEditingRole({
+                              ...role,
+                              permissions: [...(role.permissions || [])],
+                            })
+                          }
+                          className="flex items-center gap-1"
+                          data-testid={`button-edit-role-${role.id}`}
+                        >
+                          <Edit className="w-3 h-3" />
+                          {L("تعديل", "Edit")}
+                        </Button>
                       )}
                       {canDeleteRoles && (
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => {
-                          if (
-                            confirm(
-                              `${t("roles.confirmDelete")} "${role.name_ar}"?`,
-                            )
-                          ) {
-                            deleteRoleMutation.mutate(role.id);
-                          }
-                        }}
-                        disabled={deleteRoleMutation.isPending}
-                        className="flex items-center gap-1"
-                        data-testid={`button-delete-role-${role.id}`}
-                      >
-                        <Trash2 className="w-3 h-3" />
-                        {t("common.delete")}
-                      </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => {
+                            if (
+                              confirm(
+                                `${L("هل تريد حذف الدور", "Delete role")} "${role.name_ar}"؟`,
+                              )
+                            ) {
+                              deleteRoleMutation.mutate(role.id);
+                            }
+                          }}
+                          disabled={deleteRoleMutation.isPending}
+                          className="flex items-center gap-1"
+                          data-testid={`button-delete-role-${role.id}`}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          {L("حذف", "Delete")}
+                        </Button>
                       )}
                     </div>
                   </TableCell>
@@ -663,9 +469,9 @@ export default function RoleManagementTab() {
             </TableBody>
           </Table>
 
-          {(roles as any[]).length === 0 && (
+          {roles.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
-              {t("roles.noRoles")}
+              {L("لا توجد أدوار بعد", "No roles yet")}
             </div>
           )}
         </CardContent>
@@ -678,7 +484,7 @@ export default function RoleManagementTab() {
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Shield className="w-5 h-5" />
-                {t("roles.editRole")}: {editingRole.name_ar}
+                {L("تعديل الدور", "Edit Role")}: {editingRole.name_ar}
               </div>
               <Button
                 size="sm"
@@ -689,83 +495,53 @@ export default function RoleManagementTab() {
                 <X className="w-4 h-4" />
               </Button>
             </CardTitle>
-            <CardDescription>{t("roles.editRoleDescription")}</CardDescription>
+            <CardDescription>
+              {L(
+                "عدّل بيانات الدور وصلاحياته",
+                "Edit the role details and permissions",
+              )}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="editRoleName">{t("roles.roleNameEn")}</Label>
+                <Label htmlFor="editRoleName">
+                  {L("اسم الدور (إنجليزي)", "Role Name (English)")}
+                </Label>
                 <Input
                   id="editRoleName"
                   value={editingRole.name}
                   onChange={(e) =>
-                    setEditingRole({
-                      ...editingRole,
-                      name: e.target.value,
-                    })
+                    setEditingRole({ ...editingRole, name: e.target.value })
                   }
                   data-testid="input-edit-role-name"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="editRoleNameAr">{t("roles.roleNameAr")}</Label>
+                <Label htmlFor="editRoleNameAr">
+                  {L("اسم الدور (عربي)", "Role Name (Arabic)")}
+                </Label>
                 <Input
                   id="editRoleNameAr"
                   value={editingRole.name_ar}
                   onChange={(e) =>
-                    setEditingRole({
-                      ...editingRole,
-                      name_ar: e.target.value,
-                    })
+                    setEditingRole({ ...editingRole, name_ar: e.target.value })
                   }
                   data-testid="input-edit-role-name-ar"
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>
-                  {t("roles.permissions")} (
-                  {editingRole.permissions?.length || 0}{" "}
-                  {t("roles.selectedPermissions")})
-                </Label>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      setEditingRole({
-                        ...editingRole,
-                        permissions: availablePermissions.map((p) => p.id),
-                      })
-                    }
-                    data-testid="button-select-all-edit"
-                  >
-                    {t("roles.selectAll")}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      setEditingRole({
-                        ...editingRole,
-                        permissions: [],
-                      })
-                    }
-                    data-testid="button-clear-all-edit"
-                  >
-                    {t("roles.clearAll")}
-                  </Button>
-                </div>
-              </div>
-              <PermissionsEditor
-                permissions={editingRole.permissions || []}
-                isEditing={true}
-              />
-            </div>
+            <PermissionTreeEditor
+              selected={editingRole.permissions || []}
+              onChange={(permissions) =>
+                setEditingRole({ ...editingRole, permissions })
+              }
+              allPermissionKeys={allPermissionKeys}
+              isAr={isAr}
+              L={L}
+              idPrefix="edit"
+            />
 
             <div className="flex justify-end gap-2">
               <Button
@@ -773,7 +549,7 @@ export default function RoleManagementTab() {
                 onClick={() => setEditingRole(null)}
                 data-testid="button-cancel-edit-bottom"
               >
-                {t("common.cancel")}
+                {L("إلغاء", "Cancel")}
               </Button>
               <Button
                 onClick={handleUpdateRole}
@@ -784,12 +560,12 @@ export default function RoleManagementTab() {
                 {updateRoleMutation.isPending ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    {t("roles.saving")}
+                    {L("جاري الحفظ...", "Saving...")}
                   </>
                 ) : (
                   <>
                     <Check className="w-4 h-4" />
-                    {t("roles.saveChanges")}
+                    {L("حفظ التغييرات", "Save Changes")}
                   </>
                 )}
               </Button>
@@ -797,6 +573,439 @@ export default function RoleManagementTab() {
           </CardContent>
         </Card>
       )}
+    </div>
+  );
+}
+
+function StatCard({ label, value }: { label: string; value: number }) {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-medium">{label}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{value}</div>
+      </CardContent>
+    </Card>
+  );
+}
+
+type Localizer = (ar: string, en: string) => string;
+
+interface PermissionTreeEditorProps {
+  selected: string[];
+  onChange: (next: string[]) => void;
+  allPermissionKeys: string[];
+  isAr: boolean;
+  L: Localizer;
+  idPrefix: string;
+}
+
+function PermissionTreeEditor({
+  selected,
+  onChange,
+  allPermissionKeys,
+  isAr,
+  L,
+  idPrefix,
+}: PermissionTreeEditorProps) {
+  const [search, setSearch] = useState("");
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+
+  const query = search.trim().toLowerCase();
+
+  const matches = (text: string) => text.toLowerCase().includes(query);
+  const keyMatches = (key: string) => {
+    if (matches(key)) return true;
+    const p = getPermission(key as never);
+    return !!p && (matches(p.name) || matches(p.name_ar));
+  };
+
+  const toggleKeys = (keys: string[], checked: boolean) => {
+    const set = new Set(selected);
+    if (checked) {
+      keys.forEach((k) => set.add(k));
+    } else {
+      keys.forEach((k) => set.delete(k));
+    }
+    onChange(Array.from(set));
+  };
+
+  const toggleCollapse = (id: string) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectedCount = selected.includes("admin")
+    ? allPermissionKeys.length
+    : selected.filter((p) => allPermissionKeys.includes(p)).length;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Label className="flex items-center gap-2">
+          {L("الصلاحيات", "Permissions")}
+          <Badge variant="secondary">
+            {selectedCount} / {allPermissionKeys.length}
+          </Badge>
+        </Label>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              onChange(allPermissionKeys.filter((k) => !isGuardedPermission(k)))
+            }
+            data-testid={`button-select-all-${idPrefix}`}
+          >
+            {L("تحديد الكل", "Select all")}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => onChange([])}
+            data-testid={`button-clear-all-${idPrefix}`}
+          >
+            {L("مسح الكل", "Clear all")}
+          </Button>
+        </div>
+      </div>
+
+      {/* Role presets */}
+      <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <Sparkles className="w-4 h-4 text-amber-500" />
+          {L("قوالب جاهزة", "Quick presets")}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {ROLE_PRESETS.map((preset: RolePreset) => (
+            <Button
+              key={preset.id}
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-auto py-1.5"
+              title={preset.description_ar}
+              onClick={() => onChange([...preset.permissions])}
+              data-testid={`button-preset-${idPrefix}-${preset.id}`}
+            >
+              {isAr ? preset.name_ar : preset.name}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute top-1/2 -translate-y-1/2 start-3 w-4 h-4 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={L("ابحث عن صلاحية...", "Search permissions...")}
+          className="ps-9"
+          data-testid={`input-search-permissions-${idPrefix}`}
+        />
+      </div>
+
+      {/* Tree */}
+      <div className="rounded-lg border divide-y max-h-[480px] overflow-y-auto">
+        {PERMISSION_TREE.map((node) => (
+          <TreeNodeRow
+            key={node.id}
+            node={node}
+            depth={0}
+            selected={selected}
+            toggleKeys={toggleKeys}
+            collapsed={collapsed}
+            toggleCollapse={toggleCollapse}
+            query={query}
+            keyMatches={keyMatches}
+            matches={matches}
+            ancestorMatched={false}
+            isAr={isAr}
+            idPrefix={idPrefix}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+interface TreeNodeRowProps {
+  node: PermissionTreeNode;
+  depth: number;
+  selected: string[];
+  toggleKeys: (keys: string[], checked: boolean) => void;
+  collapsed: Set<string>;
+  toggleCollapse: (id: string) => void;
+  query: string;
+  keyMatches: (key: string) => boolean;
+  matches: (text: string) => boolean;
+  ancestorMatched: boolean;
+  isAr: boolean;
+  idPrefix: string;
+}
+
+function TreeNodeRow({
+  node,
+  depth,
+  selected,
+  toggleKeys,
+  collapsed,
+  toggleCollapse,
+  query,
+  keyMatches,
+  matches,
+  ancestorMatched,
+  isAr,
+  idPrefix,
+}: TreeNodeRowProps) {
+  const nodeLabelMatched = matches(node.name) || matches(node.name_ar);
+  const effectiveMatched = ancestorMatched || nodeLabelMatched;
+
+  const ownKeys = node.keys || [];
+  const visibleOwnKeys =
+    query.length === 0 || effectiveMatched
+      ? ownKeys
+      : ownKeys.filter(keyMatches);
+
+  const children = node.children || [];
+  const visibleChildren =
+    query.length === 0
+      ? children
+      : children.filter((c) =>
+          isNodeVisible(c, query, effectiveMatched, keyMatches, matches),
+        );
+
+  // Hide node entirely if nothing inside it matches the search.
+  if (
+    query.length > 0 &&
+    !effectiveMatched &&
+    visibleOwnKeys.length === 0 &&
+    visibleChildren.length === 0
+  ) {
+    return null;
+  }
+
+  const state = getNodeSelectionState(node, selected);
+  const allKeys = collectTreeKeys(node);
+  const selectedHere = allKeys.filter((k) => selected.includes(k)).length;
+  const isTopLevel = depth === 0;
+  const hasChildren = children.length > 0;
+  const isCollapsed = query.length === 0 && collapsed.has(node.id);
+  const Icon = node.icon ? MODULE_ICONS[node.icon] : undefined;
+
+  return (
+    <div className={isTopLevel ? "" : ""}>
+      <div
+        className={`flex items-center gap-2 px-3 py-2.5 ${
+          isTopLevel ? "bg-muted/40" : "hover:bg-muted/30"
+        }`}
+        style={{ paddingInlineStart: `${12 + depth * 20}px` }}
+      >
+        <Checkbox
+          checked={
+            state === "all" ? true : state === "some" ? "indeterminate" : false
+          }
+          onCheckedChange={(checked) => toggleKeys(allKeys, checked === true)}
+          data-testid={`checkbox-node-${idPrefix}-${node.id}`}
+        />
+        <button
+          type="button"
+          onClick={() => hasChildren && toggleCollapse(node.id)}
+          className="flex items-center gap-2 flex-1 text-start"
+        >
+          {hasChildren ? (
+            isCollapsed ? (
+              <ChevronLeft className="w-4 h-4 text-muted-foreground shrink-0 rtl:rotate-180" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+            )
+          ) : (
+            <span className="w-4 h-4 shrink-0" />
+          )}
+          {Icon && <Icon className="w-4 h-4 text-primary shrink-0" />}
+          <span className={isTopLevel ? "font-semibold" : "font-medium"}>
+            {isAr ? node.name_ar : node.name}
+          </span>
+          <Badge
+            variant={selectedHere > 0 ? "default" : "outline"}
+            className="ms-auto text-[10px]"
+          >
+            {selectedHere} / {allKeys.length}
+          </Badge>
+        </button>
+      </div>
+
+      {!isCollapsed && (
+        <div>
+          {/* Direct leaf permissions of this node */}
+          {visibleOwnKeys.length > 0 && (
+            <div
+              className="grid grid-cols-1 md:grid-cols-2 gap-1.5 py-2"
+              style={{ paddingInlineStart: `${12 + (depth + 1) * 20}px` }}
+            >
+              {visibleOwnKeys.map((key) => {
+                const perm = getPermission(key as never);
+                if (!perm) return null;
+                const checked = selected.includes(key);
+                const guarded = isGuardedPermission(key);
+                const inputId = `${idPrefix}-${key}`;
+                return (
+                  <div
+                    key={key}
+                    className={`flex items-start gap-2 pe-3 py-1.5 rounded-md hover:bg-muted/40 ${
+                      guarded
+                        ? "border border-amber-400/60 bg-amber-50 dark:bg-amber-950/30"
+                        : ""
+                    }`}
+                  >
+                    <Checkbox
+                      id={inputId}
+                      checked={checked}
+                      onCheckedChange={(c) => {
+                        if (c === true && guarded) {
+                          const ok = window.confirm(
+                            isAr
+                              ? "سيمنح هذا الخيار صلاحية المدير الكاملة (وصول غير مقيّد لكل النظام). هل أنت متأكد؟"
+                              : "This grants FULL administrator access (unrestricted, system-wide). Are you sure?",
+                          );
+                          if (!ok) return;
+                        }
+                        toggleKeys([key], c === true);
+                      }}
+                      data-testid={`checkbox-permission-${idPrefix}-${key}`}
+                    />
+                    <label
+                      htmlFor={inputId}
+                      className="text-sm leading-tight cursor-pointer flex-1"
+                    >
+                      <span className="font-medium">
+                        {isAr ? perm.name_ar : perm.name}
+                      </span>
+                      {perm.description && (
+                        <span className="block text-xs text-muted-foreground">
+                          {perm.description}
+                        </span>
+                      )}
+                    </label>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Sub-groups */}
+          {visibleChildren.map((child) => (
+            <TreeNodeRow
+              key={child.id}
+              node={child}
+              depth={depth + 1}
+              selected={selected}
+              toggleKeys={toggleKeys}
+              collapsed={collapsed}
+              toggleCollapse={toggleCollapse}
+              query={query}
+              keyMatches={keyMatches}
+              matches={matches}
+              ancestorMatched={effectiveMatched}
+              isAr={isAr}
+              idPrefix={idPrefix}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function isNodeVisible(
+  node: PermissionTreeNode,
+  query: string,
+  ancestorMatched: boolean,
+  keyMatches: (key: string) => boolean,
+  matches: (text: string) => boolean,
+): boolean {
+  if (query.length === 0) return true;
+  const nodeLabelMatched = matches(node.name) || matches(node.name_ar);
+  const effectiveMatched = ancestorMatched || nodeLabelMatched;
+  if (effectiveMatched) return true;
+  if ((node.keys || []).some(keyMatches)) return true;
+  return (node.children || []).some((c) =>
+    isNodeVisible(c, query, effectiveMatched, keyMatches, matches),
+  );
+}
+
+function RolePermissionSummary({
+  permissions,
+  isAr,
+  L,
+}: {
+  permissions: string[];
+  isAr: boolean;
+  L: Localizer;
+}) {
+  if (permissions.includes("admin")) {
+    return (
+      <div className="mt-4 flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/5 p-4">
+        <Shield className="w-5 h-5 text-primary" />
+        <span className="font-medium">
+          {L(
+            "وصول كامل لجميع الصلاحيات (مدير النظام)",
+            "Full access to all permissions (Administrator)",
+          )}
+        </span>
+      </div>
+    );
+  }
+
+  const groups = PERMISSION_TREE.map((module) => {
+    const keys = collectTreeKeys(module);
+    const owned = keys.filter((k) => permissions.includes(k));
+    return { module, owned };
+  }).filter((g) => g.owned.length > 0);
+
+  if (groups.length === 0) {
+    return (
+      <div className="mt-4 text-center text-muted-foreground py-6">
+        {L("لا توجد صلاحيات مفعّلة", "No permissions enabled")}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4 mt-4">
+      {groups.map(({ module, owned }) => (
+        <div key={module.id} className="space-y-2">
+          <div className="flex items-center gap-2">
+            <h4 className="font-semibold">
+              {isAr ? module.name_ar : module.name}
+            </h4>
+            <Badge variant="outline">{owned.length}</Badge>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+            {owned.map((key) => {
+              const perm = getPermission(key as never);
+              if (!perm) return null;
+              return (
+                <div
+                  key={key}
+                  className="flex items-center gap-2 text-sm p-2 bg-muted/50 rounded"
+                >
+                  <Check className="w-4 h-4 text-green-600 shrink-0" />
+                  <span>{isAr ? perm.name_ar : perm.name}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

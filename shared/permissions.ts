@@ -1297,3 +1297,739 @@ export const PERMISSION_CATEGORIES = [
   "الذكاء الاصطناعي",
   "النظام",
 ];
+
+/**
+ * ============================================================================
+ * Hierarchical Permission Catalog (additive metadata only)
+ * كتالوج الصلاحيات الهرمي (بيانات وصفية إضافية فقط)
+ * ----------------------------------------------------------------------------
+ * This tree organizes the EXISTING flat PermissionKey set into a navigable
+ * hierarchy (Module → Page → Sub-page/Tab → Feature) for a friendlier roles
+ * editor. It changes NOTHING about enforcement: backend `requirePermission`,
+ * `ROUTE_PERMISSIONS`, `*_TAB_PERMISSIONS`, and `hasPermission` continue to
+ * operate on the same flat keys. Every leaf references a real PermissionKey,
+ * and each key appears exactly once (validated by `validatePermissionTree`).
+ * ============================================================================
+ */
+export interface PermissionTreeNode {
+  /** Stable identifier for tree UI state (expansion, search) */
+  id: string;
+  name: string;
+  name_ar: string;
+  /** Lucide icon name (resolved in the UI), only on top-level modules */
+  icon?: string;
+  /** Permission keys attached directly to this node */
+  keys?: PermissionKey[];
+  /** Nested sub-groups */
+  children?: PermissionTreeNode[];
+}
+
+export const PERMISSION_TREE: PermissionTreeNode[] = [
+  {
+    id: "general",
+    name: "General",
+    name_ar: "عام",
+    icon: "Home",
+    children: [
+      {
+        id: "general.home",
+        name: "Home & Dashboards",
+        name_ar: "الرئيسية ولوحات التحكم",
+        keys: ["view_home", "view_dashboard", "view_user_dashboard"],
+      },
+      {
+        id: "general.notifications",
+        name: "Notifications",
+        name_ar: "الإشعارات",
+        keys: ["view_notifications"],
+      },
+      {
+        id: "general.tools",
+        name: "Tools & Utilities",
+        name_ar: "الأدوات والمرافق",
+        keys: ["view_tools"],
+      },
+    ],
+  },
+  {
+    id: "orders",
+    name: "Orders",
+    name_ar: "الطلبات",
+    icon: "FileText",
+    children: [
+      {
+        id: "orders.list",
+        name: "Orders List",
+        name_ar: "قائمة الطلبات",
+        keys: ["view_orders", "manage_orders", "update_order_status"],
+      },
+      {
+        id: "orders.my",
+        name: "My Orders (Sales)",
+        name_ar: "طلباتي (المبيعات)",
+        keys: ["view_my_orders"],
+      },
+      {
+        id: "orders.configurator",
+        name: "Bag Configurator",
+        name_ar: "معالج تصميم الأكياس",
+        keys: ["view_bag_configurator"],
+      },
+    ],
+  },
+  {
+    id: "production",
+    name: "Production",
+    name_ar: "الإنتاج",
+    icon: "Activity",
+    children: [
+      {
+        id: "production.general",
+        name: "Production Board",
+        name_ar: "لوحة الإنتاج",
+        keys: ["view_production", "manage_production"],
+      },
+      {
+        id: "production.actions",
+        name: "Production Records",
+        name_ar: "سجلات الإنتاج",
+        keys: ["add_production", "edit_production", "delete_production"],
+      },
+      {
+        id: "production.operators",
+        name: "Operator Dashboards",
+        name_ar: "لوحات المشغّلين",
+        keys: [
+          "view_film_dashboard",
+          "view_printing_dashboard",
+          "view_cutting_dashboard",
+          "view_today_production",
+        ],
+      },
+      {
+        id: "production.mixing",
+        name: "Material Mixing",
+        name_ar: "خلط المواد",
+        keys: ["view_mixing", "manage_mixing"],
+      },
+      {
+        id: "production.monitoring",
+        name: "Production Monitoring",
+        name_ar: "مراقبة الإنتاج",
+        keys: ["view_production_monitoring"],
+      },
+    ],
+  },
+  {
+    id: "quality",
+    name: "Quality",
+    name_ar: "الجودة",
+    icon: "ClipboardCheck",
+    children: [
+      {
+        id: "quality.general",
+        name: "Quality Control",
+        name_ar: "مراقبة الجودة",
+        keys: ["view_quality", "manage_quality", "create_quality_inspections"],
+      },
+      {
+        id: "quality.actions",
+        name: "Quality Records",
+        name_ar: "سجلات الجودة",
+        keys: ["add_quality", "edit_quality", "delete_quality"],
+      },
+      {
+        id: "quality.reports",
+        name: "Quality Reports",
+        name_ar: "تقارير الجودة",
+        keys: ["view_quality_reports"],
+      },
+      {
+        id: "quality.settings",
+        name: "Quality Settings",
+        name_ar: "إعدادات الجودة",
+        keys: ["manage_quality_settings"],
+      },
+    ],
+  },
+  {
+    id: "maintenance",
+    name: "Maintenance",
+    name_ar: "الصيانة",
+    icon: "Wrench",
+    children: [
+      {
+        id: "maintenance.general",
+        name: "Maintenance",
+        name_ar: "الصيانة",
+        keys: ["view_maintenance", "manage_maintenance"],
+      },
+      {
+        id: "maintenance.requests",
+        name: "Maintenance Requests",
+        name_ar: "طلبات الصيانة",
+        keys: [
+          "view_maintenance_requests",
+          "create_maintenance_requests",
+          "manage_maintenance_actions",
+        ],
+      },
+      {
+        id: "maintenance.parts",
+        name: "Spare & Consumable Parts",
+        name_ar: "قطع الغيار والمستهلكات",
+        keys: ["manage_spare_parts", "manage_consumable_parts"],
+      },
+      {
+        id: "maintenance.negligence",
+        name: "Negligence Records",
+        name_ar: "سجلات الإهمال",
+        keys: ["manage_negligence"],
+      },
+      {
+        id: "maintenance.reports",
+        name: "Maintenance Reports",
+        name_ar: "تقارير الصيانة",
+        keys: ["view_maintenance_reports"],
+      },
+      {
+        id: "maintenance.actions",
+        name: "Maintenance Records",
+        name_ar: "سجلات الصيانة",
+        keys: ["add_maintenance", "edit_maintenance", "delete_maintenance"],
+      },
+    ],
+  },
+  {
+    id: "warehouse",
+    name: "Inventory & Warehouse",
+    name_ar: "المخزون والمستودع",
+    icon: "Warehouse",
+    children: [
+      {
+        id: "warehouse.inventory",
+        name: "Inventory",
+        name_ar: "المخزون",
+        keys: ["view_inventory", "manage_inventory"],
+      },
+      {
+        id: "warehouse.general",
+        name: "Warehouse",
+        name_ar: "المستودع",
+        keys: ["view_warehouse", "manage_warehouse"],
+      },
+      {
+        id: "warehouse.vouchers",
+        name: "Warehouse Vouchers",
+        name_ar: "سندات المستودع",
+        keys: ["view_warehouse_vouchers", "manage_warehouse_vouchers"],
+      },
+      {
+        id: "warehouse.hall",
+        name: "Production Hall",
+        name_ar: "صالة الإنتاج",
+        keys: ["manage_production_hall"],
+      },
+      {
+        id: "warehouse.reports",
+        name: "Warehouse Reports",
+        name_ar: "تقارير المستودع",
+        keys: ["view_warehouse_reports"],
+      },
+      {
+        id: "warehouse.actions",
+        name: "Warehouse Records",
+        name_ar: "سجلات المستودع",
+        keys: ["add_warehouse", "edit_warehouse", "delete_warehouse"],
+      },
+    ],
+  },
+  {
+    id: "hr",
+    name: "Human Resources",
+    name_ar: "الموارد البشرية",
+    icon: "Users",
+    children: [
+      {
+        id: "hr.general",
+        name: "HR Overview",
+        name_ar: "نظرة عامة على الموارد البشرية",
+        keys: ["view_hr", "manage_hr"],
+      },
+      {
+        id: "hr.attendance",
+        name: "Attendance",
+        name_ar: "الحضور والانصراف",
+        keys: [
+          "view_attendance",
+          "manage_attendance",
+          "view_attendance_reports",
+        ],
+      },
+      {
+        id: "hr.leaves",
+        name: "Leaves",
+        name_ar: "الإجازات",
+        keys: ["manage_leaves"],
+      },
+      {
+        id: "hr.training",
+        name: "Training",
+        name_ar: "التدريب",
+        keys: ["view_training", "manage_training"],
+      },
+      {
+        id: "hr.actions",
+        name: "HR Records",
+        name_ar: "سجلات الموارد البشرية",
+        keys: ["add_hr", "edit_hr", "delete_hr"],
+      },
+    ],
+  },
+  {
+    id: "reports",
+    name: "Reports & Analytics",
+    name_ar: "التقارير والتحليلات",
+    icon: "BarChart3",
+    children: [
+      {
+        id: "reports.general",
+        name: "Reports",
+        name_ar: "التقارير",
+        keys: ["view_reports", "view_production_reports", "manage_analytics"],
+      },
+      {
+        id: "reports.specialized",
+        name: "Specialized Reports",
+        name_ar: "تقارير متخصصة",
+        keys: [
+          "view_financial_reports",
+          "view_hr_reports",
+          "view_quality_control_reports",
+          "view_maintenance_stats_reports",
+        ],
+      },
+    ],
+  },
+  {
+    id: "monitoring",
+    name: "Monitoring & Alerts",
+    name_ar: "المراقبة والتنبيهات",
+    icon: "Monitor",
+    children: [
+      {
+        id: "monitoring.alerts",
+        name: "Alerts",
+        name_ar: "التنبيهات",
+        keys: ["view_alerts", "manage_alerts"],
+      },
+      {
+        id: "monitoring.health",
+        name: "System Health",
+        name_ar: "صحة النظام",
+        keys: ["view_system_health", "view_system_monitoring"],
+      },
+    ],
+  },
+  {
+    id: "definitions",
+    name: "Definitions",
+    name_ar: "التعريفات",
+    icon: "Database",
+    children: [
+      {
+        id: "definitions.customers",
+        name: "Customers",
+        name_ar: "العملاء",
+        keys: [
+          "manage_customers",
+          "add_customers",
+          "edit_customers",
+          "delete_customers",
+        ],
+      },
+      {
+        id: "definitions.customer_products",
+        name: "Customer Products",
+        name_ar: "منتجات العملاء",
+        keys: [
+          "add_customer_products",
+          "edit_customer_products",
+          "delete_customer_products",
+        ],
+      },
+      {
+        id: "definitions.sections",
+        name: "Sections",
+        name_ar: "الأقسام",
+        keys: [
+          "manage_sections",
+          "add_sections",
+          "edit_sections",
+          "delete_sections",
+        ],
+      },
+      {
+        id: "definitions.categories",
+        name: "Categories",
+        name_ar: "الفئات",
+        keys: [
+          "manage_categories",
+          "add_categories",
+          "edit_categories",
+          "delete_categories",
+        ],
+      },
+      {
+        id: "definitions.items",
+        name: "Items",
+        name_ar: "الأصناف",
+        keys: ["manage_items", "add_items", "edit_items", "delete_items"],
+      },
+      {
+        id: "definitions.machines",
+        name: "Machines",
+        name_ar: "الماكينات",
+        keys: [
+          "manage_machines",
+          "add_machines",
+          "edit_machines",
+          "delete_machines",
+        ],
+      },
+      {
+        id: "definitions.users",
+        name: "Users",
+        name_ar: "المستخدمين",
+        keys: ["manage_users", "add_users", "edit_users", "delete_users"],
+      },
+      {
+        id: "definitions.master_batch",
+        name: "Master Batch Colors",
+        name_ar: "ألوان الماستر باتش",
+        keys: [
+          "manage_master_batch",
+          "add_master_batch",
+          "edit_master_batch",
+          "delete_master_batch",
+        ],
+      },
+      {
+        id: "definitions.legacy",
+        name: "Legacy Database",
+        name_ar: "القاعدة القديمة",
+        keys: ["view_legacy_database", "manage_legacy_database"],
+      },
+    ],
+  },
+  {
+    id: "factory_simulation",
+    name: "Factory Simulation",
+    name_ar: "محاكاة المصنع",
+    icon: "Box",
+    keys: ["view_factory_simulation", "manage_factory_simulation"],
+  },
+  {
+    id: "display_screen",
+    name: "Display Screen",
+    name_ar: "شاشة العرض",
+    icon: "Tv",
+    keys: ["view_display_screen", "manage_display_screen"],
+  },
+  {
+    id: "integration",
+    name: "Integration & Messaging",
+    name_ar: "التكامل والمراسلة",
+    icon: "Plug",
+    keys: ["manage_whatsapp"],
+  },
+  {
+    id: "ai",
+    name: "AI Assistant",
+    name_ar: "الذكاء الاصطناعي",
+    icon: "Bot",
+    keys: ["use_modern_agent", "manage_modern_agent"],
+  },
+  {
+    id: "system",
+    name: "System & Settings",
+    name_ar: "النظام والإعدادات",
+    icon: "Settings",
+    // `admin` lives directly on the module as a GUARDED key: it is excluded
+    // from cascade toggles (see collectTreeKeys) so selecting the whole module
+    // can never silently grant superuser access; it must be toggled explicitly.
+    keys: ["admin"],
+    children: [
+      {
+        id: "system.settings",
+        name: "Settings",
+        name_ar: "الإعدادات",
+        keys: [
+          "manage_settings",
+          "add_settings",
+          "edit_settings",
+          "delete_settings",
+        ],
+      },
+      {
+        id: "system.definitions",
+        name: "Definitions Management",
+        name_ar: "إدارة التعريفات",
+        keys: ["manage_definitions"],
+      },
+      {
+        id: "system.roles",
+        name: "Roles & Permissions",
+        name_ar: "الأدوار والصلاحيات",
+        keys: ["manage_roles"],
+      },
+      {
+        id: "system.monitoring",
+        name: "System Monitoring",
+        name_ar: "مراقبة النظام",
+        keys: ["view_system_monitoring_tab"],
+      },
+      {
+        id: "system.mcp",
+        name: "MCP Settings",
+        name_ar: "إعدادات MCP",
+        keys: ["view_mcp_settings"],
+      },
+    ],
+  },
+];
+
+/**
+ * Guarded permission keys are never included in parent-node cascade selection
+ * or "select all". They grant elevated/superuser access and must be toggled
+ * individually and deliberately to avoid accidental privilege escalation.
+ */
+export const GUARDED_PERMISSION_KEYS: PermissionKey[] = ["admin"];
+
+export function isGuardedPermission(key: string): boolean {
+  return GUARDED_PERMISSION_KEYS.includes(key as PermissionKey);
+}
+
+// Collect every PermissionKey under a tree node (its own keys + descendants').
+// Guarded keys (e.g. `admin`) are excluded by default so cascade toggles can
+// never silently grant superuser access; pass includeGuarded=true to get the
+// raw set (used only for validation/auditing, not for UI cascades).
+export function collectTreeKeys(
+  node: PermissionTreeNode,
+  includeGuarded: boolean = false,
+): PermissionKey[] {
+  const result: PermissionKey[] = [...(node.keys || [])];
+  for (const child of node.children || []) {
+    result.push(...collectTreeKeys(child, includeGuarded));
+  }
+  // De-duplicate while preserving order
+  const deduped = Array.from(new Set(result));
+  return includeGuarded
+    ? deduped
+    : deduped.filter((k) => !GUARDED_PERMISSION_KEYS.includes(k));
+}
+
+export type TreeSelectionState = "none" | "some" | "all";
+
+// Tri-state for a node given the currently-selected permission keys.
+export function getNodeSelectionState(
+  node: PermissionTreeNode,
+  selected: string[],
+): TreeSelectionState {
+  const keys = collectTreeKeys(node);
+  if (keys.length === 0) return "none";
+  const selectedCount = keys.filter((k) => selected.includes(k)).length;
+  if (selectedCount === 0) return "none";
+  if (selectedCount === keys.length) return "all";
+  return "some";
+}
+
+/**
+ * Development-time sanity check: ensures every PermissionKey appears exactly
+ * once across the tree (no orphans, no duplicates). Returns the list of
+ * problems; an empty array means the tree is consistent.
+ */
+export function validatePermissionTree(): string[] {
+  const problems: string[] = [];
+  const seen = new Map<string, number>();
+  const walk = (node: PermissionTreeNode) => {
+    for (const key of node.keys || []) {
+      seen.set(key, (seen.get(key) || 0) + 1);
+    }
+    for (const child of node.children || []) walk(child);
+  };
+  PERMISSION_TREE.forEach(walk);
+
+  const allKeys = PERMISSIONS.map((p) => p.id);
+  for (const key of allKeys) {
+    const count = seen.get(key) || 0;
+    if (count === 0) problems.push(`Missing from tree: ${key}`);
+    if (count > 1) problems.push(`Duplicated in tree (${count}x): ${key}`);
+  }
+  for (const key of Array.from(seen.keys())) {
+    if (!allKeys.includes(key as PermissionKey)) {
+      problems.push(`Unknown key in tree: ${key}`);
+    }
+  }
+  return problems;
+}
+
+/**
+ * Ready-made role templates (presets). Selecting a preset replaces the role's
+ * permission set with the listed flat keys. These are convenience starting
+ * points only — admins can fine-tune afterwards.
+ */
+export interface RolePreset {
+  id: string;
+  name: string;
+  name_ar: string;
+  description_ar: string;
+  permissions: PermissionKey[];
+}
+
+export const ROLE_PRESETS: RolePreset[] = [
+  {
+    id: "administrator",
+    name: "Administrator",
+    name_ar: "مدير النظام",
+    description_ar: "وصول كامل لجميع أجزاء النظام",
+    permissions: ["admin"],
+  },
+  {
+    id: "sales",
+    name: "Sales Representative",
+    name_ar: "مندوب مبيعات",
+    description_ar: "إدارة الطلبات والعملاء ومتابعة المبيعات",
+    permissions: [
+      "view_home",
+      "view_dashboard",
+      "view_user_dashboard",
+      "view_notifications",
+      "view_orders",
+      "manage_orders",
+      "update_order_status",
+      "view_my_orders",
+      "view_bag_configurator",
+      "manage_customers",
+      "add_customers",
+      "edit_customers",
+      "view_reports",
+    ],
+  },
+  {
+    id: "production_operator",
+    name: "Production Operator",
+    name_ar: "عامل إنتاج",
+    description_ar: "لوحات المشغّلين ومتابعة الإنتاج اليومي",
+    permissions: [
+      "view_home",
+      "view_notifications",
+      "view_production",
+      "view_film_dashboard",
+      "view_printing_dashboard",
+      "view_cutting_dashboard",
+      "view_today_production",
+    ],
+  },
+  {
+    id: "quality",
+    name: "Quality Inspector",
+    name_ar: "مراقب جودة",
+    description_ar: "مراقبة الجودة وإنشاء الفحوصات والتقارير",
+    permissions: [
+      "view_home",
+      "view_notifications",
+      "view_quality",
+      "manage_quality",
+      "create_quality_inspections",
+      "view_quality_reports",
+      "manage_quality_settings",
+      "add_quality",
+      "edit_quality",
+      "delete_quality",
+    ],
+  },
+  {
+    id: "maintenance",
+    name: "Maintenance Technician",
+    name_ar: "فني صيانة",
+    description_ar: "إدارة طلبات وإجراءات الصيانة وقطع الغيار",
+    permissions: [
+      "view_home",
+      "view_notifications",
+      "view_maintenance",
+      "manage_maintenance",
+      "view_maintenance_requests",
+      "create_maintenance_requests",
+      "manage_maintenance_actions",
+      "view_maintenance_reports",
+      "manage_spare_parts",
+      "manage_consumable_parts",
+      "add_maintenance",
+      "edit_maintenance",
+      "delete_maintenance",
+    ],
+  },
+  {
+    id: "hr",
+    name: "HR Officer",
+    name_ar: "موظف موارد بشرية",
+    description_ar: "إدارة الحضور والإجازات والتدريب وسجلات الموظفين",
+    permissions: [
+      "view_home",
+      "view_notifications",
+      "view_hr",
+      "manage_hr",
+      "view_attendance",
+      "manage_attendance",
+      "view_attendance_reports",
+      "manage_leaves",
+      "view_training",
+      "manage_training",
+      "view_hr_reports",
+      "add_hr",
+      "edit_hr",
+      "delete_hr",
+    ],
+  },
+  {
+    id: "warehouse",
+    name: "Warehouse Keeper",
+    name_ar: "أمين مستودع",
+    description_ar: "إدارة المخزون والمستودع والسندات",
+    permissions: [
+      "view_home",
+      "view_notifications",
+      "view_warehouse",
+      "manage_warehouse",
+      "view_inventory",
+      "manage_inventory",
+      "view_warehouse_vouchers",
+      "manage_warehouse_vouchers",
+      "view_warehouse_reports",
+      "manage_production_hall",
+      "add_warehouse",
+      "edit_warehouse",
+      "delete_warehouse",
+    ],
+  },
+  {
+    id: "viewer",
+    name: "Viewer",
+    name_ar: "مشاهد",
+    description_ar: "عرض فقط دون أي صلاحيات تعديل",
+    permissions: [
+      "view_home",
+      "view_dashboard",
+      "view_user_dashboard",
+      "view_notifications",
+      "view_orders",
+      "view_production",
+      "view_quality",
+      "view_maintenance",
+      "view_warehouse",
+      "view_inventory",
+      "view_reports",
+    ],
+  },
+];
