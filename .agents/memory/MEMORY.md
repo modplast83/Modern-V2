@@ -21,3 +21,4 @@
 - [WhatsApp phone normalization](whatsapp-phone-normalization.md) — Meta sends must convert Saudi local (05.../5...) to intl 966 format or Meta rejects with (#100); keep in lockstep with SMS gateway.
 - [Multer fileFilter error handling](multer-filefilter-errors.md) — multer fileFilter/limit errors fire in middleware before the route try/catch; wrap upload.single in a callback to return a clean 400 instead of crashing.
 - [Worker-thread offload](worker-thread-offload.md) — offload CPU parsing via inline eval Worker (not a separate file); esbuild won't copy a worker file into dist; transfer ArrayBuffer, terminate on timeout.
+- [gpt-5 temperature constraint](gpt5-temperature.md) — gpt-5 family 400s on any custom temperature (only default 1); gate the param on model, and the agent model lives in a DB row not just code defaults.

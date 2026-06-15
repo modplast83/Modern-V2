@@ -4915,7 +4915,7 @@ export type AdminToolDocument = typeof admin_tool_documents.$inferSelect;
 // Singleton settings row (id = 1)
 export const modern_agent_settings = pgTable("modern_agent_settings", {
   id: serial("id").primaryKey(),
-  model: varchar("model", { length: 100 }).notNull().default("gpt-4.1"),
+  model: varchar("model", { length: 100 }).notNull().default("gpt-5"),
   default_language: varchar("default_language", { length: 10 })
     .notNull()
     .default("auto"), // ar | en | auto

@@ -3,7 +3,7 @@
 
 CREATE TABLE IF NOT EXISTS modern_agent_settings (
   id serial PRIMARY KEY,
-  model varchar(100) NOT NULL DEFAULT 'gpt-4.1',
+  model varchar(100) NOT NULL DEFAULT 'gpt-5',
   default_language varchar(10) NOT NULL DEFAULT 'auto',
   base_persona text,
   temperature numeric(3,2) NOT NULL DEFAULT '0.30',

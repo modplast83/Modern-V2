@@ -31,7 +31,7 @@ const openai = new OpenAI({
   organization: null, // prevent SDK from auto-reading OPENAI_ORG_ID env var
 });
 
-const MODEL = "gpt-4.1";
+const MODEL = "gpt-5";
 const MAX_TOOL_ITERATIONS = 6;
 const MAX_KNOWLEDGE_CHARS = 200000; // hard cap on extracted text stored per file
 
@@ -625,7 +625,6 @@ export function registerMaintenanceEngineerRoutes(app: Express): void {
         for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
           const completion = await openai.chat.completions.create({
             model: MODEL,
-            temperature: 0.3,
             messages,
             tools,
           });

@@ -52,7 +52,7 @@ async function ensureSeeded(): Promise<void> {
   const existing = await db.select().from(modern_agent_settings).limit(1);
   if (existing.length === 0) {
     await db.insert(modern_agent_settings).values({
-      model: "gpt-4.1",
+      model: "gpt-5",
       default_language: "auto",
       base_persona: DEFAULT_PERSONA,
       temperature: "0.30",
@@ -479,9 +479,13 @@ export function registerModernAgentRoutes(app: Express): void {
 
         let finalText = "";
         for (let i = 0; i < maxIters; i++) {
+          const activeModel = settings.model || "gpt-5";
+          const supportsCustomTemperature = !activeModel.startsWith("gpt-5");
           const completion = await openai.chat.completions.create({
-            model: settings.model || "gpt-4.1",
-            temperature: Number(settings.temperature) || 0.3,
+            model: activeModel,
+            ...(supportsCustomTemperature
+              ? { temperature: Number(settings.temperature) || 0.3 }
+              : {}),
             messages,
             ...(tools.length ? { tools } : {}),
           });
