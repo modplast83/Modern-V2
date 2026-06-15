@@ -288,7 +288,7 @@ export default function OperatorFocusView() {
             onValueChange={handleCustomerChange}
             disabled={uniqueCustomers.length === 0}
           >
-            <SelectTrigger className="h-9 flex-1 border-red-200 focus:ring-red-400">
+            <SelectTrigger className="h-9 flex-1 border-red-200 focus:ring-red-400 pl-[13px] pr-[13px] pt-[8px] pb-[8px] mt-[0px] mb-[0px] ml-[-7px] mr-[-7px]">
               <SelectValue
                 placeholder={
                   isArabic ? "اختر العميل أولاً…" : "Select customer first…"
