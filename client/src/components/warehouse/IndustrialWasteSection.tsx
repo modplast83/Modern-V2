@@ -113,12 +113,23 @@ function escapeHtml(value: unknown): string {
 
 function printWasteVoucher(opts: {
   voucherNumber: string;
+  voucherType: string;
   voucherDate: string;
+  warehouse: string;
   title: string;
   factoryName: string;
   logoUrl: string;
   logoAlt: string;
-  rows: { label: string; value: string }[];
+  infoLabels: {
+    number: string;
+    type: string;
+    date: string;
+    warehouse: string;
+  };
+  itemsTableLabel: string;
+  itemColumns: { name: string; quantity: string; unit: string };
+  items: { name: string; quantity: string; unit: string }[];
+  detailRows: { label: string; value: string }[];
   notes: string | null;
   notesLabel: string;
   signatures: string[];
@@ -126,7 +137,28 @@ function printWasteVoucher(opts: {
   lang: string;
 }) {
   const dir = opts.rtl ? "rtl" : "ltr";
-  const rowsHtml = opts.rows
+  const infoHtml = [
+    { label: opts.infoLabels.number, value: opts.voucherNumber },
+    { label: opts.infoLabels.type, value: opts.voucherType },
+    { label: opts.infoLabels.date, value: opts.voucherDate },
+    { label: opts.infoLabels.warehouse, value: opts.warehouse },
+  ]
+    .map(
+      (r) =>
+        `<tr><td class="lbl">${escapeHtml(r.label)}</td><td>${escapeHtml(
+          r.value,
+        )}</td></tr>`,
+    )
+    .join("");
+  const itemsRowsHtml = opts.items
+    .map(
+      (it, i) =>
+        `<tr><td>${i + 1}</td><td>${escapeHtml(it.name)}</td><td>${escapeHtml(
+          it.quantity,
+        )}</td><td>${escapeHtml(it.unit)}</td></tr>`,
+    )
+    .join("");
+  const detailRowsHtml = opts.detailRows
     .filter((r) => r.value && r.value.trim().length > 0)
     .map(
       (r) =>
@@ -135,6 +167,9 @@ function printWasteVoucher(opts: {
         )}</td></tr>`,
     )
     .join("");
+  const detailHtml = detailRowsHtml
+    ? `<table class="details-table"><tbody>${detailRowsHtml}</tbody></table>`
+    : "";
   const notesHtml = opts.notes
     ? `<div class="notes-section"><div class="notes-label">${escapeHtml(
         opts.notesLabel,
@@ -153,25 +188,30 @@ function printWasteVoucher(opts: {
     <head>
       <title>${escapeHtml(opts.title)} - ${escapeHtml(opts.voucherNumber)}</title>
       <style>
+        @page { size: A4 portrait; margin: 12mm; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; padding: 20px; direction: ${dir}; color: #1a1a1a; }
-        .voucher-print { max-width: 800px; margin: 0 auto; }
+        body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; padding: 0; direction: ${dir}; color: #1a1a1a; }
+        .voucher-print { width: 100%; max-width: 186mm; margin: 0 auto; }
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #1a56db; padding-bottom: 16px; margin-bottom: 20px; }
         .header img { width: 80px; height: 80px; object-fit: contain; }
         .header-center { text-align: center; flex: 1; }
         .header-center h1 { font-size: 20px; color: #1a56db; margin-bottom: 4px; }
         .header-center h2 { font-size: 16px; color: #555; }
-        .header-side { text-align: ${opts.rtl ? "left" : "right"}; font-size: 13px; color: #666; }
-        .details-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .section-title { font-size: 14px; font-weight: 700; color: #1a56db; margin: 16px 0 8px; }
+        .details-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
         .details-table td { padding: 10px 12px; border: 1px solid #e2e8f0; font-size: 14px; }
         .details-table tr:nth-child(even) { background: #f8fafc; }
         .details-table .lbl { font-weight: 600; width: 35%; background-color: #f8fafc; }
+        .items-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+        .items-table th, .items-table td { padding: 10px 12px; border: 1px solid #e2e8f0; font-size: 14px; text-align: center; }
+        .items-table th { background-color: #1a56db; color: #fff; font-weight: 700; }
+        .items-table tr:nth-child(even) { background: #f8fafc; }
         .notes-section { background: #fffbeb; border: 1px solid #fbbf24; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; }
         .notes-label { font-weight: 700; color: #92400e; margin-bottom: 4px; }
         .signatures { display: flex; justify-content: space-between; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
         .sig-box { text-align: center; min-width: 150px; }
         .sig-line { border-top: 1px solid #999; margin-top: 50px; padding-top: 4px; font-size: 13px; color: #666; }
-        @media print { body { padding: 10px; } .voucher-print { max-width: 100%; } }
+        @media print { body { padding: 0; } .voucher-print { max-width: 100%; } }
       </style>
     </head>
     <body>
@@ -182,12 +222,21 @@ function printWasteVoucher(opts: {
             <h1>${escapeHtml(opts.factoryName)}</h1>
             <h2>${escapeHtml(opts.title)}</h2>
           </div>
-          <div class="header-side">
-            <div>${escapeHtml(opts.voucherNumber)}</div>
-            <div>${escapeHtml(opts.voucherDate)}</div>
-          </div>
         </div>
-        <table class="details-table"><tbody>${rowsHtml}</tbody></table>
+        <table class="details-table"><tbody>${infoHtml}</tbody></table>
+        <div class="section-title">${escapeHtml(opts.itemsTableLabel)}</div>
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th style="width:40px">#</th>
+              <th>${escapeHtml(opts.itemColumns.name)}</th>
+              <th>${escapeHtml(opts.itemColumns.quantity)}</th>
+              <th>${escapeHtml(opts.itemColumns.unit)}</th>
+            </tr>
+          </thead>
+          <tbody>${itemsRowsHtml}</tbody>
+        </table>
+        ${detailHtml}
         ${notesHtml}
         <div class="signatures">${sigHtml}</div>
       </div>
@@ -273,24 +322,36 @@ function WasteInList() {
   const handlePrint = (v: WasteVoucherIn) => {
     printWasteVoucher({
       voucherNumber: v.voucher_number,
+      voucherType: t("warehouse.industrialWaste.recFormTitle"),
       voucherDate: v.voucher_date,
+      warehouse: t("warehouse.tabs.industrialWaste"),
       title: t("warehouse.industrialWaste.recFormTitle"),
       factoryName: t("warehouse.print.factoryName"),
       logoUrl,
       logoAlt: t("warehouse.print.factoryLogo"),
-      rows: [
-        { label: t("warehouse.industrialWaste.wasteType"), value: v.waste_type },
+      infoLabels: {
+        number: t("warehouse.print.voucherNumberLabel"),
+        type: t("warehouse.print.voucherTypeLabel"),
+        date: t("warehouse.industrialWaste.date"),
+        warehouse: t("warehouse.print.warehouseLabel"),
+      },
+      itemsTableLabel: t("warehouse.print.itemsTable"),
+      itemColumns: {
+        name: t("warehouse.industrialWaste.wasteType"),
+        quantity: t("warehouse.industrialWaste.quantity"),
+        unit: t("warehouse.industrialWaste.unit"),
+      },
+      items: [
         {
-          label: t("warehouse.industrialWaste.quantity"),
-          value: `${formatNumberAr(parseFloat(v.quantity), 2)} ${v.unit}`,
+          name: v.waste_type,
+          quantity: formatNumberAr(parseFloat(v.quantity), 2),
+          unit: v.unit,
         },
+      ],
+      detailRows: [
         {
           label: t("warehouse.industrialWaste.source"),
           value: v.source || "",
-        },
-        {
-          label: t("warehouse.industrialWaste.date"),
-          value: v.voucher_date,
         },
         {
           label: t("warehouse.industrialWaste.receivedBy", {
@@ -302,8 +363,8 @@ function WasteInList() {
       notes: v.notes,
       notesLabel: t("warehouse.industrialWaste.notes"),
       signatures: [
-        t("warehouse.print.warehouseKeeper"),
-        t("warehouse.print.manager"),
+        t("warehouse.print.signatureKeeper"),
+        t("warehouse.print.signatureReceiver"),
       ],
       rtl: i18n.language === "ar",
       lang: i18n.language,
@@ -495,17 +556,33 @@ function WasteOutList() {
   const handlePrint = (v: WasteVoucherOut) => {
     printWasteVoucher({
       voucherNumber: v.voucher_number,
+      voucherType: t("warehouse.industrialWaste.delFormTitle"),
       voucherDate: v.voucher_date,
+      warehouse: t("warehouse.tabs.industrialWaste"),
       title: t("warehouse.industrialWaste.delFormTitle"),
       factoryName: t("warehouse.print.factoryName"),
       logoUrl,
       logoAlt: t("warehouse.print.factoryLogo"),
-      rows: [
-        { label: t("warehouse.industrialWaste.wasteType"), value: v.waste_type },
+      infoLabels: {
+        number: t("warehouse.print.voucherNumberLabel"),
+        type: t("warehouse.print.voucherTypeLabel"),
+        date: t("warehouse.industrialWaste.date"),
+        warehouse: t("warehouse.print.warehouseLabel"),
+      },
+      itemsTableLabel: t("warehouse.print.itemsTable"),
+      itemColumns: {
+        name: t("warehouse.industrialWaste.wasteType"),
+        quantity: t("warehouse.industrialWaste.quantity"),
+        unit: t("warehouse.industrialWaste.unit"),
+      },
+      items: [
         {
-          label: t("warehouse.industrialWaste.quantity"),
-          value: `${formatNumberAr(parseFloat(v.quantity), 2)} ${v.unit}`,
+          name: v.waste_type,
+          quantity: formatNumberAr(parseFloat(v.quantity), 2),
+          unit: v.unit,
         },
+      ],
+      detailRows: [
         {
           label: t("warehouse.industrialWaste.company"),
           value: v.company_name,
@@ -518,17 +595,12 @@ function WasteOutList() {
           label: t("warehouse.industrialWaste.vehicle"),
           value: v.vehicle_number || "",
         },
-        {
-          label: t("warehouse.industrialWaste.date"),
-          value: v.voucher_date,
-        },
       ],
       notes: v.notes,
       notesLabel: t("warehouse.industrialWaste.notes"),
       signatures: [
-        t("warehouse.print.warehouseKeeper"),
-        t("warehouse.print.receiver"),
-        t("warehouse.print.manager"),
+        t("warehouse.print.signatureKeeper"),
+        t("warehouse.print.signatureReceiver"),
       ],
       rtl: i18n.language === "ar",
       lang: i18n.language,

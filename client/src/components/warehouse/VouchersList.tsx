@@ -132,6 +132,19 @@ export function VouchersList({ type, title, onView }: VouchersListProps) {
     }
   };
 
+  const getWarehouseLabel = () => {
+    switch (type) {
+      case "raw-material-in":
+      case "raw-material-out":
+        return t("warehouse.tabs.rawMaterials");
+      case "finished-goods-in":
+      case "finished-goods-out":
+        return t("warehouse.tabs.finishedGoods");
+      default:
+        return "";
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "completed":
@@ -203,9 +216,10 @@ export function VouchersList({ type, title, onView }: VouchersListProps) {
         <head>
           <title>${t("warehouse.print.printVoucher")} - ${voucher.voucher_number}</title>
           <style>
+            @page { size: A4 portrait; margin: 12mm; }
             * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; padding: 20px; direction: ${i18n.language === "ar" ? "rtl" : "ltr"}; color: #1a1a1a; }
-            .voucher-print { max-width: 800px; margin: 0 auto; }
+            body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; padding: 0; direction: ${i18n.language === "ar" ? "rtl" : "ltr"}; color: #1a1a1a; }
+            .voucher-print { width: 100%; max-width: 186mm; margin: 0 auto; }
             .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #1a56db; padding-bottom: 16px; margin-bottom: 20px; }
             .header img { width: 80px; height: 80px; object-fit: contain; }
             .header-center { text-align: center; flex: 1; }
@@ -227,7 +241,7 @@ export function VouchersList({ type, title, onView }: VouchersListProps) {
             .signatures { display: flex; justify-content: space-between; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
             .sig-box { text-align: center; min-width: 150px; }
             .sig-line { border-top: 1px solid #999; margin-top: 50px; padding-top: 4px; font-size: 13px; color: #666; }
-            @media print { body { padding: 10px; } .voucher-print { max-width: 100%; } }
+            @media print { body { padding: 0; } .voucher-print { max-width: 100%; } }
           </style>
         </head>
         <body>
@@ -262,6 +276,13 @@ export function VouchersList({ type, title, onView }: VouchersListProps) {
       label: t("warehouse.voucherDetails.date"),
       value: new Date(v.voucher_date).toLocaleDateString(),
     });
+    const warehouseLabel = getWarehouseLabel();
+    if (warehouseLabel) {
+      voucherInfo.push({
+        label: t("warehouse.print.warehouseLabel"),
+        value: warehouseLabel,
+      });
+    }
     if (v.receipt_time) {
       const rt = new Date(v.receipt_time);
       voucherInfo.push({
@@ -519,7 +540,7 @@ export function VouchersList({ type, title, onView }: VouchersListProps) {
           </div>
         ))}
 
-        {printItems.length > 0 && (
+        {printItems.length > 0 ? (
           <div className="print-section">
             <div className="section-title">
               {t("warehouse.voucherDetails.receivedOrdersTitle")} (
@@ -599,6 +620,48 @@ export function VouchersList({ type, title, onView }: VouchersListProps) {
               </tbody>
             </table>
           </div>
+        ) : (
+          <div className="print-section">
+            <div className="section-title">
+              {t("warehouse.print.itemsTable")}
+            </div>
+            <table className="details-table">
+              <thead>
+                <tr>
+                  <th style={{ textAlign: "center", width: "40px" }}>#</th>
+                  <th style={{ textAlign: "center" }}>
+                    {t("warehouse.voucherDetails.item")}
+                  </th>
+                  <th style={{ textAlign: "center" }}>
+                    {t("warehouse.voucherDetails.quantity")}
+                  </th>
+                  <th style={{ textAlign: "center" }}>
+                    {t("warehouse.voucherDetails.weightKg")}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={{ textAlign: "center" }}>1</td>
+                  <td style={{ textAlign: "center" }}>
+                    {v.item_name_ar || v.item_name || v.item_id || "-"}
+                  </td>
+                  <td style={{ textAlign: "center" }}>
+                    {v.quantity != null && v.quantity !== ""
+                      ? `${parseFloat(v.quantity).toLocaleString("en-US")} ${
+                          v.unit || t("warehouse.units.kilo")
+                        }`
+                      : "-"}
+                  </td>
+                  <td style={{ textAlign: "center" }}>
+                    {v.weight_kg != null && v.weight_kg !== ""
+                      ? parseFloat(String(v.weight_kg)).toLocaleString("en-US")
+                      : "-"}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         )}
 
         {v.notes && (
@@ -613,14 +676,13 @@ export function VouchersList({ type, title, onView }: VouchersListProps) {
         <div className="signatures">
           <div className="sig-box">
             <div className="sig-line">
-              {t("warehouse.print.warehouseKeeper")}
+              {t("warehouse.print.signatureKeeper")}
             </div>
           </div>
           <div className="sig-box">
-            <div className="sig-line">{t("warehouse.print.receiver")}</div>
-          </div>
-          <div className="sig-box">
-            <div className="sig-line">{t("warehouse.print.manager")}</div>
+            <div className="sig-line">
+              {t("warehouse.print.signatureReceiver")}
+            </div>
           </div>
         </div>
       </div>

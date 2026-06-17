@@ -1586,6 +1586,12 @@
       "printVoucher": "Print Voucher",
       "detail": "Detail",
       "value": "Value",
+      "voucherNumberLabel": "Voucher No.",
+      "voucherTypeLabel": "Voucher Type",
+      "warehouseLabel": "Warehouse",
+      "itemsTable": "Items",
+      "signatureKeeper": "Warehouse Keeper Signature",
+      "signatureReceiver": "Receiver Signature",
       "warehouseKeeper": "Warehouse Keeper",
       "receiver": "Receiver",
       "manager": "Manager"

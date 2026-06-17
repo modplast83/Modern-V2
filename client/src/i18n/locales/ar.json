@@ -1897,6 +1897,12 @@
       "printVoucher": "طباعة سند",
       "detail": "البيان",
       "value": "القيمة",
+      "voucherNumberLabel": "رقم السند",
+      "voucherTypeLabel": "نوع السند",
+      "warehouseLabel": "المستودع",
+      "itemsTable": "جدول الأصناف",
+      "signatureKeeper": "توقيع أمين المستودع",
+      "signatureReceiver": "توقيع المستلم",
       "warehouseKeeper": "أمين المستودع",
       "receiver": "المستلم",
       "manager": "المدير"
