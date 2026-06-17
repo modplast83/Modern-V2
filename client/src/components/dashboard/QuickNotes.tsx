@@ -149,6 +149,13 @@ export default function QuickNotes() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/quick-notes"] });
     },
+    onError: (error: any) => {
+      toast({
+        title: t("dashboard.notes.error"),
+        description: error.message || t("dashboard.notes.errorDesc"),
+        variant: "destructive",
+      });
+    },
   });
 
   const deleteNoteMutation = useMutation({
@@ -162,6 +169,13 @@ export default function QuickNotes() {
       toast({
         title: t("dashboard.notes.deleted"),
         description: t("dashboard.notes.deletedDesc"),
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: t("dashboard.notes.deleteError"),
+        description: error.message || t("dashboard.notes.deleteErrorDesc"),
+        variant: "destructive",
       });
     },
   });

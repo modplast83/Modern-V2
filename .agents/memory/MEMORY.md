@@ -1,5 +1,6 @@
 - [Security & authz patterns](security-fixes.md) — durable route/webhook/AI-tool authz patterns, private-knowledge leak control, doc owner-binding, order-number concurrency, type-safety gotchas.
 - [Permission tree guarded keys](permission-tree-guarded-keys.md) — roles-tree parent cascades & "select all" must exclude superuser keys (`admin`); grant only via explicit confirmed toggle.
+- [Admin = "admin" permission not role_id](admin-identity-permission-not-roleid.md) — backend admin authz must check permissions.includes("admin"); role_id 1=Management(not admin), 10=Administrator; keep FE/BE rule identical + onError on 403-able mutations.
 - [AI agent vs MCP](ai-agent-vs-mcp.md) — the in-app AI agent and the MCP system are independent; remove/replace one without touching the other.
 - [Roll creation deadlock](roll-creation-deadlock.md) — roll-create paths must share one transaction + a single lock order (advisory then row); nested cross-connection txns hang undetectably.
 - [Production stage computation](production-stage-computation.md) — never advance a PO past 'film' on filmRolls===0 alone; inline-printed rolls skip film stage, so gate on film actually being done.

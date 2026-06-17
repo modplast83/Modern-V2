@@ -14778,7 +14778,10 @@ Input: ${text}`;
             .status(400)
             .json({ message: "معرف المستخدم غير صحيح" });
         }
-        if (requestedUserId !== req.user!.id && req.user!.role_id !== 1) {
+        if (
+          requestedUserId !== req.user!.id &&
+          !req.user!.permissions?.includes("admin")
+        ) {
           return res
             .status(403)
             .json({ message: "غير مصرح لك بعرض ملاحظات مستخدمين آخرين" });
@@ -14808,7 +14811,7 @@ Input: ${text}`;
       if (
         note.created_by !== req.user!.id &&
         note.assigned_to !== req.user!.id &&
-        req.user!.role_id !== 1
+        !req.user!.permissions?.includes("admin")
       ) {
         return res
           .status(403)
@@ -14901,8 +14904,11 @@ Input: ${text}`;
         return res.status(404).json({ message: "الملاحظة غير موجودة" });
       }
 
-      // Only creator or manager can update
-      if (existingNote.created_by !== req.user!.id && req.user!.role_id !== 1) {
+      // Only creator or admin can update
+      if (
+        existingNote.created_by !== req.user!.id &&
+        !req.user!.permissions?.includes("admin")
+      ) {
         return res
           .status(403)
           .json({ message: "غير مصرح لك بتعديل هذه الملاحظة" });
@@ -14988,8 +14994,11 @@ Input: ${text}`;
         return res.status(404).json({ message: "الملاحظة غير موجودة" });
       }
 
-      // Only creator or manager can delete
-      if (existingNote.created_by !== req.user!.id && req.user!.role_id !== 1) {
+      // Only creator or admin can delete
+      if (
+        existingNote.created_by !== req.user!.id &&
+        !req.user!.permissions?.includes("admin")
+      ) {
         return res
           .status(403)
           .json({ message: "غير مصرح لك بحذف هذه الملاحظة" });
@@ -15018,7 +15027,7 @@ Input: ${text}`;
       if (
         note.created_by !== req.user!.id &&
         note.assigned_to !== req.user!.id &&
-        req.user!.role_id !== 1
+        !req.user!.permissions?.includes("admin")
       ) {
         return res
           .status(403)
@@ -15105,7 +15114,10 @@ Input: ${text}`;
         return res.status(404).json({ message: "الملاحظة غير موجودة" });
       }
 
-      if (note.created_by !== req.user!.id && req.user!.role_id !== 1) {
+      if (
+        note.created_by !== req.user!.id &&
+        !req.user!.permissions?.includes("admin")
+      ) {
         return res.status(403).json({ message: "غير مصرح لك بحذف هذا المرفق" });
       }
 
