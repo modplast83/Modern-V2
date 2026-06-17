@@ -5109,7 +5109,12 @@ export class DatabaseStorage implements IStorage {
       return await db
         .select()
         .from(quick_notes)
-        .where(eq(quick_notes.created_by, userId));
+        .where(
+          or(
+            eq(quick_notes.created_by, userId),
+            eq(quick_notes.assigned_to, userId),
+          ),
+        );
     return await db.select().from(quick_notes);
   }
 
