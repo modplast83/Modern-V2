@@ -190,6 +190,8 @@ import {
   updateEmployeeTraitSchema,
   insertIndustrialWasteVoucherInSchema,
   insertIndustrialWasteVoucherOutSchema,
+  updateIndustrialWasteVoucherInSchema,
+  updateIndustrialWasteVoucherOutSchema,
 } from "@shared/schema";
 import { isShiftType, factoryNowParts } from "@shared/shifts";
 import { hasPermission } from "@shared/permissions";
@@ -15777,6 +15779,34 @@ Input: ${text}`;
     },
   );
 
+  app.patch(
+    "/api/warehouse/vouchers/industrial-waste-in/:id",
+    requireAuth,
+    requirePermission("manage_warehouse"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const existing = await storage.getIndustrialWasteVoucherInById(id);
+        if (!existing) {
+          return res.status(404).json({ message: "السند غير موجود" });
+        }
+        const parsed = updateIndustrialWasteVoucherInSchema.parse(req.body);
+        const voucher = await storage.updateIndustrialWasteVoucherIn(id, parsed);
+        res.json(voucher);
+      } catch (error: any) {
+        if (error?.name === "ZodError") {
+          return res
+            .status(400)
+            .json({ message: "بيانات غير صحيحة", errors: error.errors });
+        }
+        console.error("Error updating industrial waste in voucher:", error);
+        res
+          .status(500)
+          .json({ message: "خطأ في تعديل سند إدخال المخلفات الصناعية" });
+      }
+    },
+  );
+
   app.delete(
     "/api/warehouse/vouchers/industrial-waste-in/:id",
     requireAuth,
@@ -15866,6 +15896,37 @@ Input: ${text}`;
         res
           .status(500)
           .json({ message: "خطأ في جلب سند إخراج المخلفات الصناعية" });
+      }
+    },
+  );
+
+  app.patch(
+    "/api/warehouse/vouchers/industrial-waste-out/:id",
+    requireAuth,
+    requirePermission("manage_warehouse"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const existing = await storage.getIndustrialWasteVoucherOutById(id);
+        if (!existing) {
+          return res.status(404).json({ message: "السند غير موجود" });
+        }
+        const parsed = updateIndustrialWasteVoucherOutSchema.parse(req.body);
+        const voucher = await storage.updateIndustrialWasteVoucherOut(
+          id,
+          parsed,
+        );
+        res.json(voucher);
+      } catch (error: any) {
+        if (error?.name === "ZodError") {
+          return res
+            .status(400)
+            .json({ message: "بيانات غير صحيحة", errors: error.errors });
+        }
+        console.error("Error updating industrial waste out voucher:", error);
+        res
+          .status(500)
+          .json({ message: "خطأ في تعديل سند إخراج المخلفات الصناعية" });
       }
     },
   );

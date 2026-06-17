@@ -1122,12 +1122,20 @@ export interface IStorage {
   createIndustrialWasteVoucherIn(
     voucher: any,
   ): Promise<IndustrialWasteVoucherIn>;
+  updateIndustrialWasteVoucherIn(
+    id: number,
+    voucher: any,
+  ): Promise<IndustrialWasteVoucherIn>;
   deleteIndustrialWasteVoucherIn(id: number): Promise<void>;
   getIndustrialWasteVouchersOut(): Promise<IndustrialWasteVoucherOut[]>;
   getIndustrialWasteVoucherOutById(
     id: number,
   ): Promise<IndustrialWasteVoucherOut | undefined>;
   createIndustrialWasteVoucherOut(
+    voucher: any,
+  ): Promise<IndustrialWasteVoucherOut>;
+  updateIndustrialWasteVoucherOut(
+    id: number,
     voucher: any,
   ): Promise<IndustrialWasteVoucherOut>;
   deleteIndustrialWasteVoucherOut(id: number): Promise<void>;
@@ -5462,6 +5470,19 @@ export class DatabaseStorage implements IStorage {
     return v;
   }
 
+  async updateIndustrialWasteVoucherIn(
+    id: number,
+    data: any,
+  ): Promise<IndustrialWasteVoucherIn> {
+    const [v] = await db
+      .update(industrial_waste_vouchers_in)
+      .set({ ...data, updated_at: new Date() })
+      .where(eq(industrial_waste_vouchers_in.id, id))
+      .returning();
+    if (!v) throw new Error("السند غير موجود");
+    return v;
+  }
+
   async deleteIndustrialWasteVoucherIn(id: number): Promise<void> {
     const [v] = await db
       .select()
@@ -5502,6 +5523,19 @@ export class DatabaseStorage implements IStorage {
       .insert(industrial_waste_vouchers_out)
       .values(data)
       .returning();
+    return v;
+  }
+
+  async updateIndustrialWasteVoucherOut(
+    id: number,
+    data: any,
+  ): Promise<IndustrialWasteVoucherOut> {
+    const [v] = await db
+      .update(industrial_waste_vouchers_out)
+      .set({ ...data, updated_at: new Date() })
+      .where(eq(industrial_waste_vouchers_out.id, id))
+      .returning();
+    if (!v) throw new Error("السند غير موجود");
     return v;
   }
 

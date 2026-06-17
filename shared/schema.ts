@@ -4426,6 +4426,16 @@ export const insertIndustrialWasteVoucherOutSchema = createInsertSchema(
       ),
   });
 
+export const updateIndustrialWasteVoucherInSchema =
+  insertIndustrialWasteVoucherInSchema
+    .omit({ voucher_number: true, received_by: true })
+    .partial();
+
+export const updateIndustrialWasteVoucherOutSchema =
+  insertIndustrialWasteVoucherOutSchema
+    .omit({ voucher_number: true, issued_by: true })
+    .partial();
+
 export const insertInventoryCountSchema = createInsertSchema(
   inventory_counts,
 ).omit({
