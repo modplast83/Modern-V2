@@ -1372,6 +1372,8 @@
       "delFormTitle": "Industrial Waste Outbound Voucher",
       "delFormDesc": "Release industrial waste and hand it over to the specialized disposal company",
       "wasteType": "Waste Type",
+      "selectWasteType": "Select waste type",
+      "selectSource": "Select source",
       "quantity": "Quantity",
       "unit": "Unit",
       "source": "Source",

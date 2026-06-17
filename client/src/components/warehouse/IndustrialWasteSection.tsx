@@ -31,6 +31,13 @@ import {
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 import { Badge } from "../ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import {
@@ -77,6 +84,14 @@ type WasteVoucherOut = {
 
 const IN_KEY = ["/api/warehouse/vouchers/industrial-waste-in"];
 const OUT_KEY = ["/api/warehouse/vouchers/industrial-waste-out"];
+
+const WASTE_TYPE_OPTIONS = [
+  "براميل حبر فارغة",
+  "كتل بلاستيكة",
+  "مخلفات عامة",
+];
+
+const WASTE_SOURCE_OPTIONS = ["صالة الإنتاج", "المستودع"];
 
 function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
@@ -501,11 +516,20 @@ function WasteInDialog({
         <div className="space-y-3">
           <div>
             <Label>{t("warehouse.industrialWaste.wasteType")} *</Label>
-            <Input
-              value={wasteType}
-              onChange={(e) => setWasteType(e.target.value)}
-              data-testid="input-waste-in-type"
-            />
+            <Select value={wasteType} onValueChange={setWasteType}>
+              <SelectTrigger data-testid="select-waste-in-type">
+                <SelectValue
+                  placeholder={t("warehouse.industrialWaste.selectWasteType")}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {WASTE_TYPE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt} value={opt}>
+                    {opt}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
@@ -530,11 +554,20 @@ function WasteInDialog({
           </div>
           <div>
             <Label>{t("warehouse.industrialWaste.source")}</Label>
-            <Input
-              value={source}
-              onChange={(e) => setSource(e.target.value)}
-              data-testid="input-waste-in-source"
-            />
+            <Select value={source} onValueChange={setSource}>
+              <SelectTrigger data-testid="select-waste-in-source">
+                <SelectValue
+                  placeholder={t("warehouse.industrialWaste.selectSource")}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {WASTE_SOURCE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt} value={opt}>
+                    {opt}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label>{t("warehouse.industrialWaste.date")}</Label>
