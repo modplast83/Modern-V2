@@ -15,6 +15,7 @@ import {
   Edit,
   Loader2,
   Sliders,
+  Recycle,
 } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -54,6 +55,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "../components/ui/tabs";
+import { IndustrialWasteSection } from "../components/warehouse/IndustrialWasteSection";
 import { InventoryCountForm } from "../components/warehouse/InventoryCountForm";
 import { VoucherForm } from "../components/warehouse/VoucherForm";
 import { VouchersList } from "../components/warehouse/VouchersList";
@@ -197,6 +199,13 @@ export default function Warehouse() {
             {t("warehouse.tabs.rawMaterials")}
           </TabsTrigger>
           <TabsTrigger
+            value="industrial-waste"
+            className="bg-orange-50 dark:bg-orange-950 text-xs px-2 py-1.5 sm:text-sm sm:px-3"
+          >
+            <Recycle className="h-4 w-4 ml-1 shrink-0" />
+            {t("warehouse.tabs.industrialWaste")}
+          </TabsTrigger>
+          <TabsTrigger
             value="definitions"
             className="bg-purple-50 dark:bg-purple-950 text-xs px-2 py-1.5 sm:text-sm sm:px-3"
           >
@@ -230,6 +239,10 @@ export default function Warehouse() {
             onCreateVoucherIn={() => openVoucherForm("raw-material-in")}
             onCreateVoucherOut={() => openVoucherForm("raw-material-out")}
           />
+        </TabsContent>
+
+        <TabsContent value="industrial-waste" className="space-y-4">
+          <IndustrialWasteSection />
         </TabsContent>
 
         <TabsContent value="definitions" className="space-y-4">

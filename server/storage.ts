@@ -220,6 +220,8 @@ import {
   raw_material_vouchers_out,
   finished_goods_vouchers_in,
   finished_goods_vouchers_out,
+  industrial_waste_vouchers_in,
+  industrial_waste_vouchers_out,
   inventory_counts,
   inventory_count_items,
   type RawMaterialVoucherIn,
@@ -230,6 +232,8 @@ import {
   type InsertFinishedGoodsVoucherIn,
   type FinishedGoodsVoucherOut,
   type InsertFinishedGoodsVoucherOut,
+  type IndustrialWasteVoucherIn,
+  type IndustrialWasteVoucherOut,
   type InventoryCount,
   type InsertInventoryCount,
   type InventoryCountItem,
@@ -1109,6 +1113,24 @@ export interface IStorage {
   ): Promise<RawMaterialVoucherOut | undefined>;
   createRawMaterialVoucherOut(voucher: any): Promise<RawMaterialVoucherOut>;
   deleteRawMaterialVoucherOut(id: number): Promise<void>;
+
+  // Industrial Waste Vouchers (مستودع المخلفات الصناعية)
+  getIndustrialWasteVouchersIn(): Promise<IndustrialWasteVoucherIn[]>;
+  getIndustrialWasteVoucherInById(
+    id: number,
+  ): Promise<IndustrialWasteVoucherIn | undefined>;
+  createIndustrialWasteVoucherIn(
+    voucher: any,
+  ): Promise<IndustrialWasteVoucherIn>;
+  deleteIndustrialWasteVoucherIn(id: number): Promise<void>;
+  getIndustrialWasteVouchersOut(): Promise<IndustrialWasteVoucherOut[]>;
+  getIndustrialWasteVoucherOutById(
+    id: number,
+  ): Promise<IndustrialWasteVoucherOut | undefined>;
+  createIndustrialWasteVoucherOut(
+    voucher: any,
+  ): Promise<IndustrialWasteVoucherOut>;
+  deleteIndustrialWasteVoucherOut(id: number): Promise<void>;
 
   // Finished Goods Vouchers
   getFinishedGoodsVouchersIn(): Promise<FinishedGoodsVoucherIn[]>;
@@ -5404,6 +5426,94 @@ export class DatabaseStorage implements IStorage {
         .delete(raw_material_vouchers_out)
         .where(eq(raw_material_vouchers_out.id, id));
     });
+  }
+
+  // ===== Industrial Waste Vouchers (مستودع المخلفات الصناعية) =====
+
+  async getIndustrialWasteVouchersIn(): Promise<any[]> {
+    const result = await db.execute(sql`
+      SELECT v.*, u.display_name AS received_by_name, u.username AS received_by_username
+      FROM industrial_waste_vouchers_in v
+      LEFT JOIN users u ON v.received_by = u.id
+      ORDER BY v.id DESC
+    `);
+    return result.rows as any[];
+  }
+
+  async getIndustrialWasteVoucherInById(
+    id: number,
+  ): Promise<any | undefined> {
+    const result = await db.execute(sql`
+      SELECT v.*, u.display_name AS received_by_name, u.username AS received_by_username
+      FROM industrial_waste_vouchers_in v
+      LEFT JOIN users u ON v.received_by = u.id
+      WHERE v.id = ${id}
+    `);
+    return (result.rows as any[])[0];
+  }
+
+  async createIndustrialWasteVoucherIn(
+    data: any,
+  ): Promise<IndustrialWasteVoucherIn> {
+    const [v] = await db
+      .insert(industrial_waste_vouchers_in)
+      .values(data)
+      .returning();
+    return v;
+  }
+
+  async deleteIndustrialWasteVoucherIn(id: number): Promise<void> {
+    const [v] = await db
+      .select()
+      .from(industrial_waste_vouchers_in)
+      .where(eq(industrial_waste_vouchers_in.id, id));
+    if (!v) throw new Error("السند غير موجود");
+    await db
+      .delete(industrial_waste_vouchers_in)
+      .where(eq(industrial_waste_vouchers_in.id, id));
+  }
+
+  async getIndustrialWasteVouchersOut(): Promise<any[]> {
+    const result = await db.execute(sql`
+      SELECT v.*, u.display_name AS issued_by_name, u.username AS issued_by_username
+      FROM industrial_waste_vouchers_out v
+      LEFT JOIN users u ON v.issued_by = u.id
+      ORDER BY v.id DESC
+    `);
+    return result.rows as any[];
+  }
+
+  async getIndustrialWasteVoucherOutById(
+    id: number,
+  ): Promise<any | undefined> {
+    const result = await db.execute(sql`
+      SELECT v.*, u.display_name AS issued_by_name, u.username AS issued_by_username
+      FROM industrial_waste_vouchers_out v
+      LEFT JOIN users u ON v.issued_by = u.id
+      WHERE v.id = ${id}
+    `);
+    return (result.rows as any[])[0];
+  }
+
+  async createIndustrialWasteVoucherOut(
+    data: any,
+  ): Promise<IndustrialWasteVoucherOut> {
+    const [v] = await db
+      .insert(industrial_waste_vouchers_out)
+      .values(data)
+      .returning();
+    return v;
+  }
+
+  async deleteIndustrialWasteVoucherOut(id: number): Promise<void> {
+    const [v] = await db
+      .select()
+      .from(industrial_waste_vouchers_out)
+      .where(eq(industrial_waste_vouchers_out.id, id));
+    if (!v) throw new Error("السند غير موجود");
+    await db
+      .delete(industrial_waste_vouchers_out)
+      .where(eq(industrial_waste_vouchers_out.id, id));
   }
 
   async getFinishedGoodsVouchersIn(): Promise<FinishedGoodsVoucherIn[]> {
@@ -9999,6 +10109,8 @@ export class DatabaseStorage implements IStorage {
       "RM-Del": { table: "raw_material_vouchers_out", prefix: "RM-Del." },
       "FP-Rec": { table: "finished_goods_vouchers_in", prefix: "FP-Rec." },
       "FP-Del": { table: "finished_goods_vouchers_out", prefix: "FP-Del." },
+      "TM-Rec": { table: "industrial_waste_vouchers_in", prefix: "TM-Rec." },
+      "TM-Del": { table: "industrial_waste_vouchers_out", prefix: "TM-Del." },
       RMI: { table: "raw_material_vouchers_in", prefix: "RM-Rec." },
       RMO: { table: "raw_material_vouchers_out", prefix: "RM-Del." },
       FGI: { table: "finished_goods_vouchers_in", prefix: "FP-Rec." },

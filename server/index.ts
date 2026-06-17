@@ -1007,6 +1007,51 @@ function sanitizeResponseForLogging(response: any): any {
       );
     }
 
+    // Ensure the Industrial Waste warehouse tables exist on existing databases.
+    // drizzle-kit push only runs for fresh databases, so create them here
+    // idempotently (CREATE TABLE IF NOT EXISTS never drops or alters data).
+    try {
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS industrial_waste_vouchers_in (
+          id serial PRIMARY KEY,
+          voucher_number varchar(50) NOT NULL UNIQUE,
+          waste_type varchar(200) NOT NULL,
+          quantity decimal(12,3) NOT NULL,
+          unit varchar(20) NOT NULL DEFAULT 'كيلو',
+          source varchar(200),
+          notes text,
+          received_by integer NOT NULL REFERENCES users(id),
+          voucher_date date NOT NULL DEFAULT CURRENT_DATE,
+          status varchar(20) NOT NULL DEFAULT 'completed',
+          created_at timestamp DEFAULT now(),
+          updated_at timestamp DEFAULT now()
+        )
+      `);
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS industrial_waste_vouchers_out (
+          id serial PRIMARY KEY,
+          voucher_number varchar(50) NOT NULL UNIQUE,
+          waste_type varchar(200) NOT NULL,
+          quantity decimal(12,3) NOT NULL,
+          unit varchar(20) NOT NULL DEFAULT 'كيلو',
+          company_name varchar(200) NOT NULL,
+          driver_name varchar(200),
+          vehicle_number varchar(100),
+          notes text,
+          issued_by integer NOT NULL REFERENCES users(id),
+          voucher_date date NOT NULL DEFAULT CURRENT_DATE,
+          status varchar(20) NOT NULL DEFAULT 'completed',
+          created_at timestamp DEFAULT now(),
+          updated_at timestamp DEFAULT now()
+        )
+      `);
+    } catch (wasteErr: any) {
+      console.warn(
+        "⚠️ فشل تهيئة جداول مستودع المخلفات الصناعية (سيتم المحاولة لاحقاً):",
+        wasteErr?.message,
+      );
+    }
+
     // Ensure HR Phase 2 tables/columns exist on existing databases.
     // drizzle-kit push only runs for fresh databases, so create them here
     // idempotently (CREATE TABLE / ADD COLUMN IF NOT EXISTS never drops data).

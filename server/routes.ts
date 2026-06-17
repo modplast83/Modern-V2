@@ -188,6 +188,8 @@ import {
   updateEmployeeCustodySchema,
   insertEmployeeTraitSchema,
   updateEmployeeTraitSchema,
+  insertIndustrialWasteVoucherInSchema,
+  insertIndustrialWasteVoucherOutSchema,
 } from "@shared/schema";
 import { isShiftType, factoryNowParts } from "@shared/shifts";
 import { hasPermission } from "@shared/permissions";
@@ -15699,6 +15701,193 @@ Input: ${text}`;
     },
   );
 
+  // ===== مستودع المخلفات الصناعية =====
+  // سندات إدخال المخلفات الصناعية
+  app.get(
+    "/api/warehouse/vouchers/industrial-waste-in",
+    requireAuth,
+    requirePermission("view_warehouse", "manage_warehouse"),
+    async (req, res) => {
+      try {
+        const vouchers = await storage.getIndustrialWasteVouchersIn();
+        res.json(vouchers);
+      } catch (error) {
+        console.error("Error fetching industrial waste in vouchers:", error);
+        res
+          .status(500)
+          .json({ message: "خطأ في جلب سندات إدخال المخلفات الصناعية" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/warehouse/vouchers/industrial-waste-in",
+    requireAuth,
+    requirePermission("manage_warehouse"),
+    async (req: AuthRequest, res) => {
+      try {
+        const userId = getAuthUserId(req);
+        if (!userId) {
+          return res.status(401).json({ message: "غير مصرح" });
+        }
+
+        // Voucher number is always server-generated; ignore any client value.
+        const voucher_number = await storage.getNextVoucherNumber("TM-Rec");
+
+        const parsed = insertIndustrialWasteVoucherInSchema.parse({
+          ...req.body,
+          voucher_number,
+          received_by: userId,
+        });
+
+        const voucher = await storage.createIndustrialWasteVoucherIn(parsed);
+        res.status(201).json(voucher);
+      } catch (error: any) {
+        if (error?.name === "ZodError") {
+          return res
+            .status(400)
+            .json({ message: "بيانات غير صحيحة", errors: error.errors });
+        }
+        console.error("Error creating industrial waste in voucher:", error);
+        res
+          .status(500)
+          .json({ message: "خطأ في إنشاء سند إدخال المخلفات الصناعية" });
+      }
+    },
+  );
+
+  app.get(
+    "/api/warehouse/vouchers/industrial-waste-in/:id",
+    requireAuth,
+    requirePermission("view_warehouse", "manage_warehouse"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const voucher = await storage.getIndustrialWasteVoucherInById(id);
+        if (!voucher) {
+          return res.status(404).json({ message: "السند غير موجود" });
+        }
+        res.json(voucher);
+      } catch (error) {
+        console.error("Error fetching industrial waste in voucher:", error);
+        res
+          .status(500)
+          .json({ message: "خطأ في جلب سند إدخال المخلفات الصناعية" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/warehouse/vouchers/industrial-waste-in/:id",
+    requireAuth,
+    requirePermission("delete_warehouse", "manage_warehouse"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        await storage.deleteIndustrialWasteVoucherIn(id);
+        res.json({ message: "تم حذف السند بنجاح" });
+      } catch (error: any) {
+        console.error("Error deleting industrial waste in voucher:", error);
+        res
+          .status(400)
+          .json({ message: "خطأ في حذف سند إدخال المخلفات الصناعية" });
+      }
+    },
+  );
+
+  // سندات إخراج المخلفات الصناعية
+  app.get(
+    "/api/warehouse/vouchers/industrial-waste-out",
+    requireAuth,
+    requirePermission("view_warehouse", "manage_warehouse"),
+    async (req, res) => {
+      try {
+        const vouchers = await storage.getIndustrialWasteVouchersOut();
+        res.json(vouchers);
+      } catch (error) {
+        console.error("Error fetching industrial waste out vouchers:", error);
+        res
+          .status(500)
+          .json({ message: "خطأ في جلب سندات إخراج المخلفات الصناعية" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/warehouse/vouchers/industrial-waste-out",
+    requireAuth,
+    requirePermission("manage_warehouse"),
+    async (req: AuthRequest, res) => {
+      try {
+        const userId = getAuthUserId(req);
+        if (!userId) {
+          return res.status(401).json({ message: "غير مصرح" });
+        }
+
+        // Voucher number is always server-generated; ignore any client value.
+        const voucher_number = await storage.getNextVoucherNumber("TM-Del");
+
+        const parsed = insertIndustrialWasteVoucherOutSchema.parse({
+          ...req.body,
+          voucher_number,
+          issued_by: userId,
+        });
+
+        const voucher = await storage.createIndustrialWasteVoucherOut(parsed);
+        res.status(201).json(voucher);
+      } catch (error: any) {
+        if (error?.name === "ZodError") {
+          return res
+            .status(400)
+            .json({ message: "بيانات غير صحيحة", errors: error.errors });
+        }
+        console.error("Error creating industrial waste out voucher:", error);
+        res
+          .status(500)
+          .json({ message: "خطأ في إنشاء سند إخراج المخلفات الصناعية" });
+      }
+    },
+  );
+
+  app.get(
+    "/api/warehouse/vouchers/industrial-waste-out/:id",
+    requireAuth,
+    requirePermission("view_warehouse", "manage_warehouse"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const voucher = await storage.getIndustrialWasteVoucherOutById(id);
+        if (!voucher) {
+          return res.status(404).json({ message: "السند غير موجود" });
+        }
+        res.json(voucher);
+      } catch (error) {
+        console.error("Error fetching industrial waste out voucher:", error);
+        res
+          .status(500)
+          .json({ message: "خطأ في جلب سند إخراج المخلفات الصناعية" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/warehouse/vouchers/industrial-waste-out/:id",
+    requireAuth,
+    requirePermission("delete_warehouse", "manage_warehouse"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        await storage.deleteIndustrialWasteVoucherOut(id);
+        res.json({ message: "تم حذف السند بنجاح" });
+      } catch (error: any) {
+        console.error("Error deleting industrial waste out voucher:", error);
+        res
+          .status(400)
+          .json({ message: "خطأ في حذف سند إخراج المخلفات الصناعية" });
+      }
+    },
+  );
+
   // أوامر الإنتاج المتاحة للاستلام في المستودع
   app.get(
     "/api/warehouse/production-orders-for-receipt",
@@ -16032,6 +16221,8 @@ Input: ${text}`;
           | "RM-Del"
           | "FP-Rec"
           | "FP-Del"
+          | "TM-Rec"
+          | "TM-Del"
           | "RMI"
           | "RMO"
           | "FGI"

@@ -4216,6 +4216,60 @@ export const finished_goods_vouchers_out = pgTable(
   },
 );
 
+// 📋 جدول سندات إدخال المخلفات الصناعية (TM-Rec)
+// المخلفات المهيئة للاتلاف تُدخل لحين إخراجها لإحدى الشركات المختصة
+export const industrial_waste_vouchers_in = pgTable(
+  "industrial_waste_vouchers_in",
+  {
+    id: serial("id").primaryKey(),
+    voucher_number: varchar("voucher_number", { length: 50 })
+      .notNull()
+      .unique(), // رقم السند التسلسلي TM-Rec.0001
+    waste_type: varchar("waste_type", { length: 200 }).notNull(), // نوع المخلفات
+    quantity: decimal("quantity", { precision: 12, scale: 3 }).notNull(), // الكمية
+    unit: varchar("unit", { length: 20 }).notNull().default("كيلو"), // الوحدة
+    source: varchar("source", { length: 200 }), // مصدر المخلفات (القسم / خط الإنتاج)
+    notes: text("notes"), // ملاحظات
+    received_by: integer("received_by")
+      .notNull()
+      .references(() => users.id), // أمين المستودع المستلم
+    voucher_date: date("voucher_date")
+      .notNull()
+      .default(sql`CURRENT_DATE`), // تاريخ السند
+    status: varchar("status", { length: 20 }).notNull().default("completed"), // draft / completed / cancelled
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+);
+
+// 📋 جدول سندات إخراج المخلفات الصناعية (TM-Del)
+// إخراج المخلفات المهيئة للاتلاف لإحدى الشركات المختصة
+export const industrial_waste_vouchers_out = pgTable(
+  "industrial_waste_vouchers_out",
+  {
+    id: serial("id").primaryKey(),
+    voucher_number: varchar("voucher_number", { length: 50 })
+      .notNull()
+      .unique(), // رقم السند التسلسلي TM-Del.0001
+    waste_type: varchar("waste_type", { length: 200 }).notNull(), // نوع المخلفات
+    quantity: decimal("quantity", { precision: 12, scale: 3 }).notNull(), // الكمية
+    unit: varchar("unit", { length: 20 }).notNull().default("كيلو"), // الوحدة
+    company_name: varchar("company_name", { length: 200 }).notNull(), // الشركة المختصة المستلمة
+    driver_name: varchar("driver_name", { length: 200 }), // اسم السائق
+    vehicle_number: varchar("vehicle_number", { length: 100 }), // رقم المركبة
+    notes: text("notes"), // ملاحظات
+    issued_by: integer("issued_by")
+      .notNull()
+      .references(() => users.id), // أمين المستودع المصدر
+    voucher_date: date("voucher_date")
+      .notNull()
+      .default(sql`CURRENT_DATE`), // تاريخ السند
+    status: varchar("status", { length: 20 }).notNull().default("completed"), // draft / completed / cancelled
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+);
+
 // 📋 جدول الجرد
 export const inventory_counts = pgTable("inventory_counts", {
   id: serial("id").primaryKey(),
@@ -4338,6 +4392,40 @@ export const insertFinishedGoodsVoucherOutSchema = createInsertSchema(
       ),
   });
 
+export const insertIndustrialWasteVoucherInSchema = createInsertSchema(
+  industrial_waste_vouchers_in,
+)
+  .omit({
+    id: true,
+    created_at: true,
+    updated_at: true,
+  })
+  .extend({
+    quantity: z
+      .string()
+      .refine(
+        (val) => parseFloatSafe(val) > 0,
+        "الكمية يجب أن تكون أكبر من صفر",
+      ),
+  });
+
+export const insertIndustrialWasteVoucherOutSchema = createInsertSchema(
+  industrial_waste_vouchers_out,
+)
+  .omit({
+    id: true,
+    created_at: true,
+    updated_at: true,
+  })
+  .extend({
+    quantity: z
+      .string()
+      .refine(
+        (val) => parseFloatSafe(val) > 0,
+        "الكمية يجب أن تكون أكبر من صفر",
+      ),
+  });
+
 export const insertInventoryCountSchema = createInsertSchema(
   inventory_counts,
 ).omit({
@@ -4373,6 +4461,16 @@ export type FinishedGoodsVoucherOut =
   typeof finished_goods_vouchers_out.$inferSelect;
 export type InsertFinishedGoodsVoucherOut = z.infer<
   typeof insertFinishedGoodsVoucherOutSchema
+>;
+export type IndustrialWasteVoucherIn =
+  typeof industrial_waste_vouchers_in.$inferSelect;
+export type InsertIndustrialWasteVoucherIn = z.infer<
+  typeof insertIndustrialWasteVoucherInSchema
+>;
+export type IndustrialWasteVoucherOut =
+  typeof industrial_waste_vouchers_out.$inferSelect;
+export type InsertIndustrialWasteVoucherOut = z.infer<
+  typeof insertIndustrialWasteVoucherOutSchema
 >;
 export type InventoryCount = typeof inventory_counts.$inferSelect;
 export type InsertInventoryCount = z.infer<typeof insertInventoryCountSchema>;
