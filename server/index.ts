@@ -10,7 +10,7 @@ import { sql } from "drizzle-orm";
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 
-import { db, pool, sessionPool } from "./db";
+import { db, pool, sessionPool, isTransientDbError } from "./db";
 import { MemoryMonitor } from "./middleware/memory-monitor";
 import { performanceMonitor } from "./middleware/performance-monitor";
 import { populateUserFromSession } from "./middleware/session-auth";
@@ -1411,21 +1411,41 @@ function sanitizeResponseForLogging(response: any): any {
   app.use(
     "/api/*",
     (err: any, req: Request, res: Response, next: NextFunction) => {
-      const status = err.status || err.statusCode || 500;
-      const message = err.message || "Internal Server Error";
+      const transient = isTransientDbError(err);
+      const status = transient ? 503 : err.status || err.statusCode || 500;
+      const message = transient
+        ? "حدث خطأ مؤقت في الاتصال، يرجى المحاولة مرة أخرى"
+        : err.message || "Internal Server Error";
 
       // Ensure we always return JSON for API routes
       if (!res.headersSent) {
+        if (transient) res.setHeader("Retry-After", "1");
         res.status(status).json({ message });
       }
-      console.error("API Error:", sanitizeErrorForLog(err));
+      if (transient) {
+        console.warn(
+          "⚠️ Transient connection error (non-fatal):",
+          String(err?.message ?? "").split("\n")[0],
+        );
+      } else {
+        console.error("API Error:", sanitizeErrorForLog(err));
+      }
     },
   );
 
   // General error handling middleware
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    console.error("Unhandled error:", sanitizeErrorForLog(err));
+    const transient = isTransientDbError(err);
+    const status = transient ? 503 : err.status || err.statusCode || 500;
+    if (transient) {
+      console.warn(
+        "⚠️ Transient connection error (non-fatal):",
+        String(err?.message ?? "").split("\n")[0],
+      );
+      if (!res.headersSent) res.setHeader("Retry-After", "1");
+    } else {
+      console.error("Unhandled error:", sanitizeErrorForLog(err));
+    }
     res.status(status).json({ message: "حدث خطأ في الخادم" });
   });
 

@@ -21,18 +21,23 @@ export const pool = new Pool({
   connectionTimeoutMillis: 10_000,
 });
 
+const TRANSIENT_CODES = new Set(["57P01", "ECONNRESET", "ETIMEDOUT", "08006", "08003"]);
+const TRANSIENT_MESSAGE_RE =
+  /socket hang up|terminating connection|Connection terminated|ECONNRESET|ECONNREFUSED/i;
+
+export function isTransientDbError(err: unknown): boolean {
+  const code = (err as any)?.code;
+  const msg = String((err as any)?.message ?? "");
+  return (typeof code === "string" && TRANSIENT_CODES.has(code)) || TRANSIENT_MESSAGE_RE.test(msg);
+}
+
 pool.on("error", (err: Error) => {
-  const code = (err as any).code;
-  const transient =
-    code === "57P01" ||
-    code === "ECONNRESET" ||
-    /terminating connection|Connection terminated/i.test(err.message);
-  if (transient) {
+  if (isTransientDbError(err)) {
     console.warn("⚠️ Transient DB pool error (will reconnect):", err.message);
     return;
   }
   console.error("🔴 Database pool error (non-fatal):", err.message);
-  console.error("📍 Error code:", code || "Unknown");
+  console.error("📍 Error code:", (err as any).code || "Unknown");
 });
 
 export const sessionPool = new Pool({
@@ -43,20 +48,13 @@ export const sessionPool = new Pool({
 });
 
 sessionPool.on("error", (err: Error) => {
-  const code = (err as any).code;
-  if (
-    code === "57P01" ||
-    code === "ECONNRESET" ||
-    /terminating connection|Connection terminated/i.test(err.message)
-  ) {
+  if (isTransientDbError(err)) {
     return;
   }
   console.error("🔴 Session pool error (non-fatal):", err.message);
 });
 
 export const db = drizzle({ client: pool, schema });
-
-const TRANSIENT_CODES = new Set(["57P01", "ECONNRESET", "ETIMEDOUT", "08006", "08003"]);
 
 export async function withDbRetry<T>(
   fn: () => Promise<T>,
@@ -69,11 +67,8 @@ export async function withDbRetry<T>(
       return await fn();
     } catch (err: any) {
       lastErr = err;
-      const code = err?.code;
       const msg = String(err?.message ?? "");
-      const transient =
-        TRANSIENT_CODES.has(code) ||
-        /terminating connection|Connection terminated|connect ECONNREFUSED/i.test(msg);
+      const transient = isTransientDbError(err);
       if (!transient || attempt === retries) throw err;
       const delay = 50 * Math.pow(2, attempt);
       console.warn(
