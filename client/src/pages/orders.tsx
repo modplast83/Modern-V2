@@ -85,7 +85,7 @@ export default function Orders() {
         setProductionStatusFilter("all");
       } else if (tab === "orders") {
         setSearchTerm(search);
-        setStatusFilter("all");
+        setStatusFilter([]);
       }
     } catch {
       // ignore
@@ -103,7 +103,10 @@ export default function Orders() {
 
   const [searchTerm, setSearchTerm] = useState("");
 
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<string[]>([
+    "waiting",
+    "in_production",
+  ]);
   const [salesRepFilter, setSalesRepFilter] = useState("all");
   const [productionSearchTerm, setProductionSearchTerm] = useState("");
   const [productionStatusFilter, setProductionStatusFilter] = useState("all");
@@ -250,11 +253,9 @@ export default function Orders() {
         .includes(searchTerm.toLowerCase());
 
     const matchesStatus =
-      statusFilter === "all"
+      statusFilter.length === 0
         ? order.status !== "archived"
-        : statusFilter === "archived"
-          ? order.status === "archived"
-          : order.status === statusFilter;
+        : statusFilter.includes(order.status);
 
     const orderCustomer = customersArray.find(
       (c: any) => c.id === order.customer_id,

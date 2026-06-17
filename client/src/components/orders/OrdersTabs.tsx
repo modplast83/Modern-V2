@@ -36,8 +36,8 @@ interface OrdersTabsProps {
   categories: any[];
   searchTerm: string;
   setSearchTerm: (term: string) => void;
-  statusFilter: string;
-  setStatusFilter: (status: string) => void;
+  statusFilter: string | string[];
+  setStatusFilter: (status: any) => void;
   salesRepFilter?: string;
   setSalesRepFilter?: (repId: string) => void;
   productionSearchTerm: string;

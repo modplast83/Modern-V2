@@ -115,6 +115,9 @@
   },
   "orders": {
     "title": "إدارة الطلبات",
+    "filters": {
+      "statusesSelected": "{{count}} حالات محددة"
+    },
     "orderNumber": "رقم الطلب",
     "customer": "العميل",
     "orderDate": "تاريخ الطلب",

@@ -123,6 +123,9 @@
   },
   "orders": {
     "title": "Orders Management",
+    "filters": {
+      "statusesSelected": "{{count}} selected"
+    },
     "orderNumber": "Order Number",
     "customer": "Customer",
     "orderDate": "Order Date",

@@ -1,7 +1,10 @@
-import { Search } from "lucide-react";
+import { Search, ListFilter } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { Button } from "../ui/button";
+import { Checkbox } from "../ui/checkbox";
 import { Input } from "../ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import {
   Select,
   SelectContent,
@@ -13,8 +16,8 @@ import {
 interface OrdersSearchProps {
   searchTerm: string;
   setSearchTerm: (term: string) => void;
-  statusFilter: string;
-  setStatusFilter: (status: string) => void;
+  statusFilter: string | string[];
+  setStatusFilter: (status: any) => void;
   type?: "orders" | "production";
   salesReps?: any[];
   salesRepFilter?: string;
@@ -33,6 +36,40 @@ export default function OrdersSearch({
 }: OrdersSearchProps) {
   const { t } = useTranslation();
   const isProduction = type === "production";
+
+  // Order statuses available for the multi-select filter (orders tab only).
+  const orderStatusOptions: { value: string; label: string }[] = [
+    { value: "waiting", label: t("orders.statuses.waiting") },
+    { value: "in_production", label: t("orders.statuses.in_production") },
+    { value: "on_hold", label: t("orders.statuses.on_hold") },
+    { value: "paused", label: t("orders.statuses.paused") },
+    { value: "completed", label: t("orders.statuses.completed") },
+    { value: "received", label: t("orders.statuses.received") },
+    { value: "delivered", label: t("orders.statuses.delivered") },
+    { value: "archived", label: t("orders.statuses.archived") },
+  ];
+
+  const selectedStatuses: string[] = Array.isArray(statusFilter)
+    ? statusFilter
+    : [];
+
+  const toggleStatus = (value: string) => {
+    if (selectedStatuses.includes(value)) {
+      setStatusFilter(selectedStatuses.filter((s) => s !== value));
+    } else {
+      setStatusFilter([...selectedStatuses, value]);
+    }
+  };
+
+  const triggerLabel =
+    selectedStatuses.length === 0
+      ? t("common.all")
+      : selectedStatuses.length === 1
+        ? orderStatusOptions.find((o) => o.value === selectedStatuses[0])
+            ?.label || t("common.status")
+        : t("orders.filters.statusesSelected", {
+            count: selectedStatuses.length,
+          });
 
   return (
     <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
@@ -67,58 +104,76 @@ export default function OrdersSearch({
           </SelectContent>
         </Select>
       )}
-      <Select value={statusFilter || ""} onValueChange={setStatusFilter}>
-        <SelectTrigger
-          className="w-full sm:w-48 text-xs sm:text-sm"
-          data-testid="select-status-filter"
+      {isProduction ? (
+        <Select
+          value={(statusFilter as string) || ""}
+          onValueChange={setStatusFilter}
         >
-          <SelectValue placeholder={t("common.status")} />
-        </SelectTrigger>
-        <SelectContent>
-          {isProduction ? (
-            <>
-              <SelectItem value="all">{t("common.all")}</SelectItem>
-              <SelectItem value="pending">
-                {t("orders.statuses.pending")}
-              </SelectItem>
-              <SelectItem value="in_progress">
-                {t("production.statuses.in_progress")}
-              </SelectItem>
-              <SelectItem value="completed">
-                {t("orders.statuses.completed")}
-              </SelectItem>
-            </>
-          ) : (
-            <>
-              <SelectItem value="all">{t("common.all")}</SelectItem>
-              <SelectItem value="waiting">
-                {t("orders.statuses.waiting")}
-              </SelectItem>
-              <SelectItem value="on_hold">
-                {t("orders.statuses.on_hold")}
-              </SelectItem>
-              <SelectItem value="in_production">
-                {t("orders.statuses.in_production")}
-              </SelectItem>
-              <SelectItem value="paused">
-                {t("orders.statuses.paused")}
-              </SelectItem>
-              <SelectItem value="completed">
-                {t("orders.statuses.completed")}
-              </SelectItem>
-              <SelectItem value="received">
-                {t("orders.statuses.received")}
-              </SelectItem>
-              <SelectItem value="delivered">
-                {t("orders.statuses.delivered")}
-              </SelectItem>
-              <SelectItem value="archived">
-                {t("orders.statuses.archived")}
-              </SelectItem>
-            </>
-          )}
-        </SelectContent>
-      </Select>
+          <SelectTrigger
+            className="w-full sm:w-48 text-xs sm:text-sm"
+            data-testid="select-status-filter"
+          >
+            <SelectValue placeholder={t("common.status")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("common.all")}</SelectItem>
+            <SelectItem value="pending">
+              {t("orders.statuses.pending")}
+            </SelectItem>
+            <SelectItem value="in_progress">
+              {t("production.statuses.in_progress")}
+            </SelectItem>
+            <SelectItem value="completed">
+              {t("orders.statuses.completed")}
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      ) : (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className="w-full sm:w-48 justify-between text-xs sm:text-sm font-normal"
+              data-testid="select-status-filter"
+            >
+              <span className="truncate">{triggerLabel}</span>
+              <ListFilter className="h-4 w-4 opacity-50 shrink-0" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-2" align="end">
+            <div className="flex items-center justify-between px-1 pb-2">
+              <span className="text-xs font-medium text-muted-foreground">
+                {t("common.status")}
+              </span>
+              {selectedStatuses.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter([])}
+                  className="text-xs text-primary hover:underline"
+                  data-testid="clear-status-filter"
+                >
+                  {t("common.all")}
+                </button>
+              )}
+            </div>
+            <div className="space-y-1 max-h-72 overflow-y-auto">
+              {orderStatusOptions.map((opt) => (
+                <label
+                  key={opt.value}
+                  className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-accent cursor-pointer"
+                  data-testid={`status-option-${opt.value}`}
+                >
+                  <Checkbox
+                    checked={selectedStatuses.includes(opt.value)}
+                    onCheckedChange={() => toggleStatus(opt.value)}
+                  />
+                  <span className="text-sm">{opt.label}</span>
+                </label>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
+      )}
     </div>
   );
 }
