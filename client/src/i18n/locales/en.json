@@ -521,7 +521,15 @@
       "suggestionTitle": "Suggested Order",
       "suggestionDescription": "Suggested order to minimize color and setup changes. Review the preview then apply.",
       "applySuggestion": "Apply Order",
-      "suggestionApplied": "Suggested order applied"
+      "suggestionApplied": "Suggested order applied",
+      "cancel": "Cancel",
+      "clearAll": "Clear Distribution",
+      "clearAllConfirm": "Yes, clear distribution",
+      "clearAllConfirmTitle": "Clear distribution for all machines",
+      "clearAllConfirmDescription": "All orders will be unassigned from every machine in this section and returned to the available backlog. Are you sure?",
+      "clearAllSuccess": "Distribution cleared for all machines",
+      "clearAllRemoved": "Removed {{count}} orders from the queues",
+      "clearAllError": "Failed to clear distribution"
     },
     "roll": "Roll",
     "stageNames": {

@@ -531,7 +531,15 @@
       "suggestionTitle": "ترتيب مقترح",
       "suggestionDescription": "ترتيب مقترح لتقليل تغييرات الألوان والإعداد. راجع المعاينة ثم طبّقها.",
       "applySuggestion": "تطبيق الترتيب",
-      "suggestionApplied": "تم تطبيق الترتيب المقترح"
+      "suggestionApplied": "تم تطبيق الترتيب المقترح",
+      "cancel": "إلغاء",
+      "clearAll": "إلغاء الفرز",
+      "clearAllConfirm": "نعم، إلغاء الفرز",
+      "clearAllConfirmTitle": "إلغاء الفرز لجميع المكائن",
+      "clearAllConfirmDescription": "سيتم إلغاء تخصيص جميع الأوامر من كل مكائن هذا القسم وإعادتها إلى الأوامر المتاحة. هل أنت متأكد؟",
+      "clearAllSuccess": "تم إلغاء الفرز لجميع المكائن بنجاح",
+      "clearAllRemoved": "تمت إزالة {{count}} أمر من الطوابير",
+      "clearAllError": "فشل إلغاء الفرز"
     },
     "roll": "رول",
     "stageNames": {

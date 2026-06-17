@@ -37,6 +37,16 @@ import { useTranslation } from "react-i18next";
 import PageLayout from "../components/layout/PageLayout";
 import SmartDistributionModal from "../components/modals/SmartDistributionModal";
 import QueueSlideshow from "../components/production/QueueSlideshow";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../components/ui/alert-dialog";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import {
@@ -619,6 +629,7 @@ function StageBoard({ stage }: { stage: Stage }) {
   const [suggestion, setSuggestion] = useState<QueueOrder[] | null>(null);
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [distributeOpen, setDistributeOpen] = useState(false);
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -679,6 +690,30 @@ function StageBoard({ stage }: { stage: Stage }) {
       toast({
         title: t("production.queues.error"),
         description: e?.message,
+        variant: "destructive",
+      }),
+  });
+
+  const clearMutation = useMutation({
+    mutationFn: async () =>
+      apiRequest("/api/production-queues/clear-all", {
+        method: "POST",
+        body: JSON.stringify({ stage }),
+      }),
+    onSuccess: (res: any) => {
+      invalidate();
+      setClearConfirmOpen(false);
+      toast({
+        title: t("production.queues.clearAllSuccess"),
+        description: t("production.queues.clearAllRemoved", {
+          count: res?.removed ?? 0,
+        }),
+      });
+    },
+    onError: (e: any) =>
+      toast({
+        title: t("production.queues.error"),
+        description: e?.message || t("production.queues.clearAllError"),
         variant: "destructive",
       }),
   });
@@ -853,6 +888,15 @@ function StageBoard({ stage }: { stage: Stage }) {
           {t("production.queues.smartDistribute")}
         </Button>
         <Button
+          variant="destructive"
+          size="sm"
+          onClick={() => setClearConfirmOpen(true)}
+          data-testid={`clear-all-${stage}`}
+        >
+          <X className="h-4 w-4" />
+          {t("production.queues.clearAll")}
+        </Button>
+        <Button
           variant="outline"
           size="sm"
           onClick={() => invalidate()}
@@ -977,6 +1021,38 @@ function StageBoard({ stage }: { stage: Stage }) {
         onClose={() => setDistributeOpen(false)}
         onDistribute={() => invalidate()}
       />
+
+      <AlertDialog open={clearConfirmOpen} onOpenChange={setClearConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("production.queues.clearAllConfirmTitle")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("production.queues.clearAllConfirmDescription")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={clearMutation.isPending}>
+              {t("production.queues.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                clearMutation.mutate();
+              }}
+              disabled={clearMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid={`confirm-clear-all-${stage}`}
+            >
+              {clearMutation.isPending && (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              )}
+              {t("production.queues.clearAllConfirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

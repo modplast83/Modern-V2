@@ -9045,6 +9045,33 @@ export class DatabaseStorage implements IStorage {
     await db.delete(machine_queues).where(eq(machine_queues.id, queueId));
   }
 
+  // Cancel the distribution ("إلغاء الفرز") for an entire stage at once:
+  // remove every machine_queues entry for all machines belonging to the stage,
+  // returning the orders to the backlog. Runs inside a transaction holding the
+  // same per-stage advisory lock as smartDistributeOrders so a clear cannot
+  // interleave with an in-flight distribution apply for the same stage.
+  async clearStageQueues(stage: string): Promise<{ removed: number }> {
+    const info = this.getStageInfo(stage);
+    if (!info) {
+      throw new Error("مرحلة غير صالحة");
+    }
+    let removed = 0;
+    await db.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext(${"smart_distribute_" + stage}))`,
+      );
+      const result = await tx.execute(sql`
+        DELETE FROM machine_queues
+        WHERE machine_id IN (
+          SELECT m.id FROM machines m WHERE ${this.machineTypeMatchSql(info.machineTypes)}
+        )
+        RETURNING id
+      `);
+      removed = (result.rows as any[]).length;
+    });
+    return { removed };
+  }
+
   async optimizeQueueOrder(
     machineId: string | number,
   ): Promise<MachineQueue[]> {

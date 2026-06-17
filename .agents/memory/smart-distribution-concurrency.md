@@ -21,3 +21,10 @@ the pooled `db` connection inside the lock are fine because appliers are seriali
 Do NOT add a global unique index on `machine_queues.production_order_id`: an order legitimately
 appears in queues for multiple stages at once (queues are filtered by machine type per stage), so a
 global uniqueness constraint would break multi-stage queueing.
+
+The bulk "clear distribution" (إلغاء الفرز) path that unassigns ALL machines of a stage at once must
+reuse the EXACT same per-stage advisory lock key (`hashtext('smart_distribute_' || stage)`) inside its
+own transaction. **Why:** a clear and a distribute-apply for the same stage must serialize, or a clear
+could delete rows an in-flight apply is mid-insert against (or vice versa). Reusing the identical key
+makes them mutually exclusive per stage. Stages target machines by type set (`getStageInfo().machineTypes`
+via `machineTypeMatchSql`), not a stage column, so the delete filters on machine type, not on stage.

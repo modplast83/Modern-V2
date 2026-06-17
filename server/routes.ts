@@ -10022,6 +10022,32 @@ Input: ${text}`;
     },
   );
 
+  // Cancel distribution ("إلغاء الفرز") for all machines of a stage at once.
+  app.post(
+    "/api/production-queues/clear-all",
+    requireAuth,
+    requirePermission("edit_production", "manage_production", "manage_orders"),
+    async (req, res) => {
+      try {
+        const stage = String(req.body?.stage || "");
+        if (!VALID_QUEUE_STAGES.includes(stage)) {
+          return res.status(400).json({ message: "مرحلة غير صالحة" });
+        }
+        const { removed } = await storage.clearStageQueues(stage);
+        res.json({
+          success: true,
+          removed,
+          message: "تم إلغاء الفرز لجميع المكائن بنجاح",
+        });
+      } catch (error: any) {
+        console.error("Error clearing stage queues:", error);
+        res
+          .status(400)
+          .json({ message: error?.message || "خطأ في إلغاء الفرز" });
+      }
+    },
+  );
+
   app.get(
     "/api/production-queues/suggest",
     requireAuth,
