@@ -8,6 +8,8 @@ import {
   Info,
   Clock,
   AlertCircle,
+  Layers,
+  Weight,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -20,6 +22,7 @@ import {
   OrdersListHeader,
   groupByOrderNumber,
 } from "../components/production/OrderGroupCard";
+import { OperatorStatCard } from "../components/production/OperatorStatCard";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import {
@@ -321,56 +324,35 @@ export default function PrintingOperatorDashboard({
       </Card>
 
       <div className="hidden md:grid md:grid-cols-3 gap-4 mb-6">
-        <Card data-testid="card-active-orders">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">
-              {t("operators.common.activeOrders")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div
-              className="text-2xl font-bold"
-              data-testid="stat-active-orders"
-            >
-              {stats.totalOrders}
-            </div>
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              {t("operators.common.productionOrder")}
-            </p>
-          </CardContent>
-        </Card>
+        <OperatorStatCard
+          icon={Package}
+          color="blue"
+          value={stats.totalOrders}
+          label={t("operators.common.activeOrders")}
+          sublabel={t("operators.common.productionOrder")}
+          testId="card-active-orders"
+          valueTestId="stat-active-orders"
+        />
 
-        <Card data-testid="card-total-rolls">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">
-              {t("operators.common.totalRolls")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="stat-total-rolls">
-              {stats.totalRolls}
-            </div>
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              {t("operators.common.roll")}
-            </p>
-          </CardContent>
-        </Card>
+        <OperatorStatCard
+          icon={Layers}
+          color="purple"
+          value={stats.totalRolls}
+          label={t("operators.common.totalRolls")}
+          sublabel={t("operators.common.roll")}
+          testId="card-total-rolls"
+          valueTestId="stat-total-rolls"
+        />
 
-        <Card data-testid="card-total-weight">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">
-              {t("operators.common.totalWeight")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="stat-total-weight">
-              {formatNumberAr(stats.totalWeight)}
-            </div>
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              {t("operators.common.kilogram")}
-            </p>
-          </CardContent>
-        </Card>
+        <OperatorStatCard
+          icon={Weight}
+          color="teal"
+          value={formatNumberAr(stats.totalWeight)}
+          label={t("operators.common.totalWeight")}
+          sublabel={t("operators.common.kilogram")}
+          testId="card-total-weight"
+          valueTestId="stat-total-weight"
+        />
       </div>
 
       {productionOrders.length === 0 ? (

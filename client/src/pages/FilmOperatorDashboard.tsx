@@ -11,6 +11,7 @@ import {
   Printer,
   User,
   Beaker,
+  Target,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -25,6 +26,7 @@ import {
   OrdersListHeader,
   groupByOrderNumber,
 } from "../components/production/OrderGroupCard";
+import { OperatorStatCard } from "../components/production/OperatorStatCard";
 import { printRollLabel } from "../components/production/RollLabelPrint";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -267,81 +269,45 @@ export default function FilmOperatorDashboard({
 
         <TabsContent value="production" className="space-y-6">
           <div className="hidden md:grid md:grid-cols-4 gap-4 mb-6">
-            <Card data-testid="card-active-orders">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium">
-                  {t("operators.common.activeOrders")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div
-                  className="text-2xl font-bold"
-                  data-testid="stat-active-orders"
-                >
-                  {stats.totalOrders}
-                </div>
-                <p className="text-xs text-gray-600 dark:text-gray-400">
-                  {t("operators.common.productionOrder")}
-                </p>
-              </CardContent>
-            </Card>
+            <OperatorStatCard
+              icon={Package}
+              color="blue"
+              value={stats.totalOrders}
+              label={t("operators.common.activeOrders")}
+              sublabel={t("operators.common.productionOrder")}
+              testId="card-active-orders"
+              valueTestId="stat-active-orders"
+            />
 
-            <Card data-testid="card-total-required">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium">
-                  {t("operators.common.requiredQuantity")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div
-                  className="text-2xl font-bold"
-                  data-testid="stat-total-required"
-                >
-                  {formatNumberAr(stats.totalRequired)}
-                </div>
-                <p className="text-xs text-gray-600 dark:text-gray-400">
-                  {t("operators.common.kilogram")}
-                </p>
-              </CardContent>
-            </Card>
+            <OperatorStatCard
+              icon={Target}
+              color="amber"
+              value={formatNumberAr(stats.totalRequired)}
+              label={t("operators.common.requiredQuantity")}
+              sublabel={t("operators.common.kilogram")}
+              testId="card-total-required"
+              valueTestId="stat-total-required"
+            />
 
-            <Card data-testid="card-total-produced">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium">
-                  {t("operators.common.producedQuantity")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div
-                  className="text-2xl font-bold"
-                  data-testid="stat-total-produced"
-                >
-                  {formatNumberAr(stats.totalProduced)}
-                </div>
-                <p className="text-xs text-gray-600 dark:text-gray-400">
-                  {t("operators.common.kilogram")}
-                </p>
-              </CardContent>
-            </Card>
+            <OperatorStatCard
+              icon={CheckCircle2}
+              color="green"
+              value={formatNumberAr(stats.totalProduced)}
+              label={t("operators.common.producedQuantity")}
+              sublabel={t("operators.common.kilogram")}
+              testId="card-total-produced"
+              valueTestId="stat-total-produced"
+            />
 
-            <Card data-testid="card-near-completion">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium">
-                  {t("operators.common.nearCompletion")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div
-                  className="text-2xl font-bold text-orange-600 dark:text-orange-400"
-                  data-testid="stat-near-completion"
-                >
-                  {stats.ordersNearCompletion}
-                </div>
-                <p className="text-xs text-gray-600 dark:text-gray-400">
-                  {t("operators.common.productionOrder")}
-                </p>
-              </CardContent>
-            </Card>
+            <OperatorStatCard
+              icon={Flag}
+              color="orange"
+              value={stats.ordersNearCompletion}
+              label={t("operators.common.nearCompletion")}
+              sublabel={t("operators.common.productionOrder")}
+              testId="card-near-completion"
+              valueTestId="stat-near-completion"
+            />
           </div>
 
           {productionOrders.length === 0 ? (
