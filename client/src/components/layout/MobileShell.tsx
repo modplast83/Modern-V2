@@ -1,5 +1,5 @@
 import { Menu, X, ChevronDown } from "lucide-react";
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon, Palette } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "wouter";
@@ -37,7 +37,7 @@ export default function MobileShell() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const { language } = useLanguage();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
     {},
@@ -223,20 +223,30 @@ export default function MobileShell() {
 
                 {/* Theme & Language */}
                 <div className="mt-4 pt-4 border-t">
-                  <div className="px-4 py-2 flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                      {theme === "light" ? (
-                        <Moon className="h-4 w-4" />
-                      ) : (
-                        <Sun className="h-4 w-4" />
-                      )}
-                      {t("dashboard.profile.darkMode", "الوضع المظلم")}
+                  <div className="px-4 py-2 flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {t("dashboard.profile.theme", "المظهر")}
                     </span>
-                    <Button variant="outline" size="sm" onClick={toggleTheme}>
-                      {theme === "light"
-                        ? t("dashboard.profile.darkMode", "مظلم")
-                        : t("dashboard.profile.lightMode", "فاتح")}
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      {(
+                        [
+                          { value: "light", icon: Sun },
+                          { value: "dark", icon: Moon },
+                          { value: "blue", icon: Palette },
+                        ] as const
+                      ).map(({ value, icon: Icon }) => (
+                        <Button
+                          key={value}
+                          variant={theme === value ? "default" : "outline"}
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => setTheme(value)}
+                          data-testid={`mobile-theme-${value}`}
+                        >
+                          <Icon className="h-4 w-4" />
+                        </Button>
+                      ))}
+                    </div>
                   </div>
                   <div className="px-4 py-2 flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">

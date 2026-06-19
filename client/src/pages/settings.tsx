@@ -25,6 +25,10 @@ import {
   ImageIcon,
   FileText,
   X,
+  Sun,
+  Moon,
+  Palette,
+  Check,
 } from "lucide-react";
 import { Plug, Gauge, Bot } from "lucide-react";
 import { ModernAgentSettingsContent } from "./modern-agent-settings";
@@ -54,6 +58,7 @@ import {
   CardDescription,
 } from "../components/ui/card";
 import { useAuth } from "../hooks/use-auth";
+import { useTheme, type Theme } from "../contexts/ThemeContext";
 
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -1143,9 +1148,88 @@ function SystemSection() {
         </CardContent>
       </Card>
 
+      <ThemeSettingsCard />
       <NewCompanySetupCard />
       <PwaInstallCard />
     </div>
+  );
+}
+
+function ThemeSettingsCard() {
+  const { t } = useTranslation();
+  const { theme, setTheme } = useTheme();
+
+  const options: {
+    value: Theme;
+    label: string;
+    desc: string;
+    icon: typeof Sun;
+  }[] = [
+    {
+      value: "light",
+      label: t("dashboard.profile.lightMode", "الوضع الفاتح"),
+      desc: t("settings.theme.lightDesc", "المظهر الافتراضي الفاتح"),
+      icon: Sun,
+    },
+    {
+      value: "dark",
+      label: t("dashboard.profile.darkMode", "الوضع المظلم"),
+      desc: t("settings.theme.darkDesc", "مظهر داكن مريح للعين"),
+      icon: Moon,
+    },
+    {
+      value: "blue",
+      label: t("dashboard.profile.blueMode", "الأزرق الاحترافي"),
+      desc: t(
+        "settings.theme.blueDesc",
+        "تباين عالٍ وخطوط أوضح وحدود أقوى للقراءة الأفضل",
+      ),
+      icon: Palette,
+    },
+  ];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Palette className="h-5 w-5" />{" "}
+          {t("dashboard.profile.theme", "المظهر")}
+        </CardTitle>
+        <CardDescription>
+          {t("settings.theme.description", "اختر مظهر الواجهة المفضل لديك")}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {options.map((option) => {
+            const OptionIcon = option.icon;
+            const active = theme === option.value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setTheme(option.value)}
+                data-testid={`settings-theme-${option.value}`}
+                className={`flex flex-col items-start gap-2 rounded-lg border-2 p-4 text-right transition-all ${
+                  active
+                    ? "border-primary bg-primary/5 ring-2 ring-primary/20"
+                    : "border-border hover:border-primary/50"
+                }`}
+              >
+                <div className="flex w-full items-center justify-between">
+                  <OptionIcon className="h-5 w-5 text-primary" />
+                  {active && <Check className="h-4 w-4 text-primary" />}
+                </div>
+                <span className="font-semibold">{option.label}</span>
+                <span className="text-xs text-muted-foreground">
+                  {option.desc}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

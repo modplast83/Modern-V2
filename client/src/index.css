@@ -72,6 +72,142 @@
   --ring: hsl(217, 91%, 60%);
 }
 
+/* ==========================================================================
+   Professional Blue — high-contrast, opt-in theme (Task #105)
+   Reuses every existing CSS variable name so it flows through Tailwind.
+   Light and Dark themes are untouched.
+   ========================================================================== */
+.theme-blue {
+  --background: hsl(210, 45%, 97%);
+  --foreground: hsl(222, 65%, 11%);
+  --muted: hsl(210, 40%, 91%);
+  --muted-foreground: hsl(218, 30%, 30%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(222, 65%, 11%);
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(222, 65%, 11%);
+  --border: hsl(214, 45%, 48%);
+  --input: hsl(214, 45%, 44%);
+  --primary: hsl(221, 90%, 44%);
+  --primary-foreground: hsl(0, 0%, 100%);
+  --secondary: hsl(210, 50%, 89%);
+  --secondary-foreground: hsl(222, 60%, 16%);
+  --accent: hsl(210, 65%, 86%);
+  --accent-foreground: hsl(222, 65%, 14%);
+  --destructive: hsl(0, 78%, 44%);
+  --destructive-foreground: hsl(0, 0%, 100%);
+  --ring: hsl(221, 90%, 44%);
+  --radius: 0.5rem;
+
+  --primary-50: hsl(214, 100%, 96%);
+  --primary-500: hsl(217, 91%, 50%);
+  --primary-600: hsl(221, 90%, 44%);
+  --primary-700: hsl(224, 82%, 36%);
+  --primary-900: hsl(224, 72%, 24%);
+
+  --success: hsl(151, 80%, 27%);
+  --success-foreground: hsl(0, 0%, 100%);
+  --success-50: hsl(150, 65%, 94%);
+  --success-500: hsl(151, 72%, 33%);
+  --success-600: hsl(151, 80%, 27%);
+
+  --warning: hsl(32, 95%, 38%);
+  --warning-foreground: hsl(0, 0%, 100%);
+  --warning-50: hsl(45, 100%, 93%);
+  --warning-500: hsl(35, 95%, 44%);
+  --warning-600: hsl(32, 95%, 38%);
+
+  --danger: hsl(0, 78%, 44%);
+  --danger-foreground: hsl(0, 0%, 100%);
+  --danger-50: hsl(0, 86%, 95%);
+  --danger-500: hsl(0, 80%, 50%);
+  --danger-600: hsl(0, 78%, 44%);
+}
+
+/* --------------------------------------------------------------------------
+   Professional Blue — global readability rules (scoped to .theme-blue only)
+   Stronger borders, bolder text, centered cells/headers/buttons, consistent
+   dropdowns, and colored headings. None of this affects Light/Dark.
+   -------------------------------------------------------------------------- */
+
+/* Bolder, more prominent body text */
+.theme-blue body {
+  font-weight: 500;
+}
+
+/* Colored, prominent headings */
+.theme-blue h1,
+.theme-blue h2,
+.theme-blue h3 {
+  color: hsl(224, 82%, 36%);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+/* Stronger, clearer borders on cards & bordered sections */
+.theme-blue .rounded-lg.border,
+.theme-blue .rounded-xl.border,
+.theme-blue .rounded-md.border,
+.theme-blue [class*="rounded"].border,
+.theme-blue [class*="rounded"].border-2 {
+  border-width: 2px !important;
+  border-color: hsl(214, 45%, 55%) !important;
+}
+
+/* Tables: bold bordered grid with centered cells & headers */
+.theme-blue table {
+  border: 2px solid hsl(214, 45%, 50%);
+  border-collapse: collapse;
+}
+.theme-blue th,
+.theme-blue td {
+  border: 1px solid hsl(214, 40%, 70%);
+  text-align: center !important;
+  vertical-align: middle;
+}
+.theme-blue thead th,
+.theme-blue [class*="table-header"] {
+  background-color: hsl(214, 80%, 92%) !important;
+  color: hsl(224, 82%, 28%) !important;
+  font-weight: 800 !important;
+  text-align: center !important;
+}
+
+/* Buttons: bolder labels (shadcn buttons already center content) */
+.theme-blue button {
+  font-weight: 700;
+}
+
+/* Dropdown / select / menu surfaces: consistent sizing & bolder borders.
+   Bounded width prevents long Arabic labels from overflowing on mobile. */
+.theme-blue [role="listbox"],
+.theme-blue [role="menu"] {
+  border-width: 2px !important;
+  border-color: hsl(214, 45%, 50%) !important;
+  max-width: min(92vw, 26rem);
+}
+.theme-blue [role="option"],
+.theme-blue [role="menuitem"] {
+  font-weight: 600;
+  text-align: center;
+  justify-content: center;
+}
+
+/* Select / combobox triggers: clearer border, centered value */
+.theme-blue [role="combobox"] {
+  border-width: 2px !important;
+  border-color: hsl(214, 45%, 50%) !important;
+  font-weight: 700;
+  justify-content: center;
+  text-align: center;
+}
+
+/* Inputs & textareas: clearer borders */
+.theme-blue input,
+.theme-blue textarea {
+  border-width: 2px !important;
+}
+
 @layer base {
   * {
     border-color: var(--border);

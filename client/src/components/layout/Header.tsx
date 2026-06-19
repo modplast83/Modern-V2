@@ -1,19 +1,45 @@
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon, Palette, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { useLanguage } from "../../contexts/LanguageContext";
-import { useTheme } from "../../contexts/ThemeContext";
+import { useTheme, type Theme } from "../../contexts/ThemeContext";
 import { useAuth } from "../../hooks/use-auth";
 import { useCompanyLogo } from "../../hooks/use-company-logo";
 import { NotificationBell } from "../notifications/NotificationBell";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 import { LanguageSwitcher } from "../ui/LanguageSwitcher";
 
 export default function Header() {
   const { user, logout } = useAuth();
   const { t } = useTranslation();
   const { isRTL } = useLanguage();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const { logoUrl } = useCompanyLogo();
+
+  const themeOptions: { value: Theme; label: string; icon: typeof Sun }[] = [
+    {
+      value: "light",
+      label: t("dashboard.profile.lightMode", "الوضع الفاتح"),
+      icon: Sun,
+    },
+    {
+      value: "dark",
+      label: t("dashboard.profile.darkMode", "الوضع المظلم"),
+      icon: Moon,
+    },
+    {
+      value: "blue",
+      label: t("dashboard.profile.blueMode", "الأزرق الاحترافي"),
+      icon: Palette,
+    },
+  ];
+  const ActiveThemeIcon =
+    themeOptions.find((o) => o.value === theme)?.icon ?? Sun;
 
   return (
     <header className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
@@ -37,21 +63,36 @@ export default function Header() {
         </div>
 
         <div className="flex items-center gap-3">
-          <button
-            onClick={toggleTheme}
-            className="h-9 w-9 rounded-lg flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            title={
-              theme === "light"
-                ? t("dashboard.profile.darkMode", "الوضع المظلم")
-                : t("dashboard.profile.lightMode", "الوضع الفاتح")
-            }
-          >
-            {theme === "light" ? (
-              <Moon className="h-5 w-5" />
-            ) : (
-              <Sun className="h-5 w-5" />
-            )}
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="h-9 w-9 rounded-lg flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                title={t("dashboard.profile.theme", "المظهر")}
+                data-testid="button-theme-menu"
+              >
+                <ActiveThemeIcon className="h-5 w-5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align={isRTL ? "start" : "end"}>
+              {themeOptions.map((option) => {
+                const OptionIcon = option.icon;
+                return (
+                  <DropdownMenuItem
+                    key={option.value}
+                    onClick={() => setTheme(option.value)}
+                    className="gap-2 cursor-pointer"
+                    data-testid={`theme-option-${option.value}`}
+                  >
+                    <OptionIcon className="h-4 w-4" />
+                    <span className="flex-1">{option.label}</span>
+                    {theme === option.value && (
+                      <Check className="h-4 w-4 text-primary" />
+                    )}
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <LanguageSwitcher variant="dropdown" size="sm" />
           <NotificationBell />

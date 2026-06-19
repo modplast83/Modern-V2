@@ -6,7 +6,7 @@ import {
   ReactNode,
 } from "react";
 
-type Theme = "light" | "dark";
+export type Theme = "light" | "dark" | "blue";
 
 interface ThemeContextType {
   theme: Theme;
@@ -19,11 +19,20 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 const HIGH_CONTRAST_LINK_ID = "high-contrast-css";
+const THEME_CLASSES: Record<Theme, string | null> = {
+  light: null,
+  dark: "dark",
+  blue: "theme-blue",
+};
+
+function isValidTheme(value: string | null): value is Theme {
+  return value === "light" || value === "dark" || value === "blue";
+}
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     const stored = localStorage.getItem("mpbf_theme");
-    return (stored === "dark" ? "dark" : "light") as Theme;
+    return isValidTheme(stored) ? stored : "light";
   });
 
   const [highContrast, setHighContrast] = useState<boolean>(() => {
@@ -32,10 +41,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === "dark") {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
+    // Remove all theme classes first, then apply the active one.
+    Object.values(THEME_CLASSES).forEach((cls) => {
+      if (cls) root.classList.remove(cls);
+    });
+    const activeClass = THEME_CLASSES[theme];
+    if (activeClass) {
+      root.classList.add(activeClass);
     }
     localStorage.setItem("mpbf_theme", theme);
   }, [theme]);
@@ -61,8 +73,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, [highContrast]);
 
+  // Cycle through the available themes: light -> dark -> blue -> light.
   const toggleTheme = () => {
-    setThemeState((prev) => (prev === "light" ? "dark" : "light"));
+    setThemeState((prev) =>
+      prev === "light" ? "dark" : prev === "dark" ? "blue" : "light",
+    );
   };
 
   const setTheme = (newTheme: Theme) => {
