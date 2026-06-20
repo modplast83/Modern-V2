@@ -27,6 +27,7 @@ import {
   Layers,
   Ruler,
   Palette,
+  Droplet,
   ChevronUp,
   ChevronDown,
   X,
@@ -208,13 +209,26 @@ function OrderDetails({
       )}
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
         {order.raw_material && (
-          <span className="font-bold text-orange-600 dark:text-orange-400">
+          <span
+            className="flex items-center gap-1 font-bold text-orange-600 dark:text-orange-400"
+            title={t("production.queues.material")}
+            aria-label={t("production.queues.material")}
+          >
+            <Package className="h-3 w-3" />
             {order.raw_material}
           </span>
         )}
         {(colorName || order.master_batch_color_hex) && (
-          <span className="inline-flex items-center gap-1">
-            <ColorSwatch order={order} />
+          <span
+            className="inline-flex items-center gap-1"
+            title={t("production.masterBatchColor")}
+            aria-label={t("production.masterBatchColor")}
+          >
+            {order.master_batch_color_hex ? (
+              <ColorSwatch order={order} />
+            ) : (
+              <Droplet className="h-3 w-3" />
+            )}
             {colorName || order.master_batch_id}
           </span>
         )}
