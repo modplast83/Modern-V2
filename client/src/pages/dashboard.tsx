@@ -145,9 +145,12 @@ export default function Dashboard() {
           size="sm"
           onClick={() => setCustomizerOpen(true)}
           className="gap-2"
+          title={isArabic ? "تخصيص" : "Customize"}
         >
           <Settings2 className="w-4 h-4" />
-          {isArabic ? "تخصيص" : "Customize"}
+          <span className="hidden sm:inline">
+            {isArabic ? "تخصيص" : "Customize"}
+          </span>
         </Button>
       }
     >

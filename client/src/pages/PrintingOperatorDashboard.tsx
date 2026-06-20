@@ -409,10 +409,12 @@ export default function PrintingOperatorDashboard({
                     {
                       label: t("operators.common.totalRolls"),
                       value: `${formatNumberAr(totalRolls)} ${t("operators.common.roll")}`,
+                      icon: <Layers className="h-4 w-4 text-purple-600 dark:text-purple-400" />,
                     },
                     {
                       label: t("operators.common.totalWeight"),
                       value: `${formatNumberAr(totalWeight)} ${t("operators.common.kg")}`,
+                      icon: <Weight className="h-4 w-4 text-teal-600 dark:text-teal-400" />,
                     },
                   ]}
                   accent="purple"

@@ -363,10 +363,12 @@ export default function FilmOperatorDashboard({
                         {
                           label: t("operators.common.requiredQuantity"),
                           value: `${formatNumberAr(totalRequired)} ${t("operators.common.kg")}`,
+                          icon: <Target className="h-4 w-4 text-amber-600 dark:text-amber-400" />,
                         },
                         {
                           label: t("operators.common.producedQuantity"),
                           value: `${formatNumberAr(totalProduced)} ${t("operators.common.kg")}`,
+                          icon: <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />,
                         },
                       ]}
                       accent="blue"
@@ -552,7 +554,8 @@ export default function FilmOperatorDashboard({
 
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-600 dark:text-gray-400">
+                          <span className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
+                            <Target className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                             {t("operators.common.requiredQuantity")}
                           </span>
                           <span
@@ -574,7 +577,8 @@ export default function FilmOperatorDashboard({
                           </span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-600 dark:text-gray-400">
+                          <span className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
+                            <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
                             {t("operators.common.producedQuantity")}
                           </span>
                           <span
@@ -588,7 +592,8 @@ export default function FilmOperatorDashboard({
                           </span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-600 dark:text-gray-400">
+                          <span className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
+                            <Clock className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                             {t("operators.common.remainingQuantity")}
                           </span>
                           <span

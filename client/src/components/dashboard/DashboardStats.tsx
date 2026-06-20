@@ -115,7 +115,13 @@ function TopWorkersCard({
                           : "bg-orange-100 text-orange-700"
                     }`}
                   >
-                    {index + 1}
+                    {index === 0
+                      ? "🥇"
+                      : index === 1
+                        ? "🥈"
+                        : index === 2
+                          ? "🥉"
+                          : index + 1}
                   </span>
                   <span className="truncate max-w-[100px]">{worker.name}</span>
                 </div>

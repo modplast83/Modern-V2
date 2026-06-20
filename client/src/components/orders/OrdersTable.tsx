@@ -1,6 +1,8 @@
 import { format } from "date-fns";
 import {
   FileText,
+  Clock,
+  Percent,
   Eye,
   Trash2,
   Edit,
@@ -271,10 +273,26 @@ export default function OrdersTable({
                 {t("orders.createdDate")} / {t("orders.creator")}
               </TableHead>
               <TableHead className="text-center">
-                {t("orders.daysSinceCreation")}
+                <span
+                  className="flex items-center justify-center gap-1"
+                  title={t("orders.daysSinceCreation")}
+                >
+                  <Clock className="h-4 w-4" />
+                  <span className="hidden lg:inline">
+                    {t("orders.daysSinceCreation")}
+                  </span>
+                </span>
               </TableHead>
               <TableHead className="text-center">
-                {t("orders.completionRate")}
+                <span
+                  className="flex items-center justify-center gap-1"
+                  title={t("orders.completionRate")}
+                >
+                  <Percent className="h-4 w-4" />
+                  <span className="hidden lg:inline">
+                    {t("orders.completionRate")}
+                  </span>
+                </span>
               </TableHead>
               <TableHead className="text-center">
                 {t("common.actions")}

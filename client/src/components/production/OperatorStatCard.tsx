@@ -86,6 +86,8 @@ export function OperatorStatCard({
             "flex h-12 w-12 items-center justify-center rounded-full",
             styles.iconWrap,
           )}
+          title={label}
+          aria-label={label}
         >
           <Icon className={cn("h-6 w-6", styles.icon)} />
         </div>

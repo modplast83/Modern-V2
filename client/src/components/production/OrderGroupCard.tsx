@@ -56,7 +56,7 @@ interface OrderGroupCardProps {
   orderDate?: string;
   productionOrderCount: number;
   progressPercent: number;
-  metrics: { label: string; value: string }[];
+  metrics: { label: string; value: string; icon?: ReactNode }[];
   accent: "blue" | "purple" | "green";
   icon: ReactNode;
   onSelect: () => void;
@@ -182,7 +182,17 @@ export function OrderGroupCard({
           <div className="grid grid-cols-2 gap-4 text-sm">
             {metrics.map((m, i) => (
               <div key={i}>
-                <p className="text-gray-500 dark:text-gray-400">{m.label}</p>
+                {m.icon ? (
+                  <span
+                    className="flex items-center gap-1 text-gray-500 dark:text-gray-400"
+                    title={m.label}
+                    aria-label={m.label}
+                  >
+                    {m.icon}
+                  </span>
+                ) : (
+                  <p className="text-gray-500 dark:text-gray-400">{m.label}</p>
+                )}
                 <p
                   className="font-medium"
                   data-testid={`text-order-group-metric-${testId}-${i}`}

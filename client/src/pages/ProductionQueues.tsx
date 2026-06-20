@@ -25,6 +25,8 @@ import {
   CalendarDays,
   Scale,
   Layers,
+  Ruler,
+  Palette,
   ChevronUp,
   ChevronDown,
   X,
@@ -193,8 +195,12 @@ function OrderDetails({
             <span className="text-muted-foreground/50">•</span>
           )}
           {order.thickness && (
-            <span className="font-semibold text-muted-foreground">
-              {t("production.queues.thickness")}:{" "}
+            <span
+              className="flex items-center gap-1 font-semibold text-muted-foreground"
+              title={t("production.queues.thickness")}
+              aria-label={t("production.queues.thickness")}
+            >
+              <Ruler className="h-3 w-3" />
               {formatNumber(parseFloat(order.thickness) || 0)}
             </span>
           )}
@@ -215,8 +221,14 @@ function OrderDetails({
         {stage === "printing" &&
           typeof order.print_colors_count === "number" &&
           order.print_colors_count > 0 && (
-            <Badge variant="outline" className="px-1 py-0 text-[10px]">
-              {order.print_colors_count} {t("production.queues.printColors")}
+            <Badge
+              variant="outline"
+              className="flex items-center gap-1 px-1 py-0 text-[10px]"
+              title={t("production.queues.printColors")}
+              aria-label={t("production.queues.printColors")}
+            >
+              <Palette className="h-3 w-3" />
+              {order.print_colors_count}
             </Badge>
           )}
       </div>

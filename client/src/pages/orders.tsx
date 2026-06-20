@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ClipboardCheck, Package } from "lucide-react";
+import { ClipboardCheck, FileText, Package } from "lucide-react";
 import { useState, lazy, Suspense } from "react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -983,7 +983,8 @@ export default function Orders() {
       >
         <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
           <TabsTrigger value="orders" data-testid="tab-orders">
-            {t("navigation.orders")}
+            <FileText className="h-4 w-4 ml-2" />
+            <span>{t("navigation.orders")}</span>
           </TabsTrigger>
           <TabsTrigger
             value="production-orders"
