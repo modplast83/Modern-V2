@@ -6667,11 +6667,11 @@ export class DatabaseStorage implements IStorage {
             r.cut_completed_at,
             r.roll_created_at,
             GREATEST(
-              COALESCE(r.created_at, to_timestamp(0)),
-              COALESCE(r.roll_created_at, to_timestamp(0)),
-              COALESCE(r.printed_at, to_timestamp(0)),
-              COALESCE(r.cut_completed_at, to_timestamp(0))
-            ) AS last_updated_at,
+              r.created_at,
+              r.roll_created_at,
+              r.printed_at,
+              r.cut_completed_at
+            )::timestamptz AS last_updated_at,
             po.production_order_number,
             c.name AS customer_name,
             c.name_ar AS customer_name_ar,

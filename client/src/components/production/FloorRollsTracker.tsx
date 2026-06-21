@@ -75,20 +75,25 @@ const STAGE_ORDER = ["film", "printing", "cutting"] as const;
 
 const ALL = "__all__";
 
-function formatRelativeAr(value: string | null): string {
-  if (!value) return "غير محدد";
-  const then = new Date(value).getTime();
-  if (Number.isNaN(then)) return "غير محدد";
-  const diffSec = Math.max(0, Math.round((Date.now() - then) / 1000));
-
-  if (diffSec < 60) return "الآن";
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60)
-    return diffMin === 1 ? "منذ دقيقة" : `منذ ${diffMin} دقيقة`;
-  const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return diffHr === 1 ? "منذ ساعة" : `منذ ${diffHr} ساعة`;
-  const diffDay = Math.floor(diffHr / 24);
-  return diffDay === 1 ? "منذ يوم" : `منذ ${diffDay} يوم`;
+function formatDateTime(
+  value: string | null,
+): { date: string; time: string } | null {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  const date = d.toLocaleDateString("en-GB", {
+    timeZone: "Asia/Riyadh",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+  const time = d.toLocaleTimeString("en-GB", {
+    timeZone: "Asia/Riyadh",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  return { date, time };
 }
 
 function formatKg(value: string | number | null): string {
@@ -337,7 +342,7 @@ export default function FloorRollsTracker() {
                   الوزن
                 </TableHead>
                 <TableHead className="font-semibold">المكينة</TableHead>
-                <TableHead className="font-semibold">المسؤول</TableHead>
+                <TableHead className="font-semibold">بواسطة</TableHead>
                 <TableHead className="font-semibold text-center">
                   آخر تحديث
                 </TableHead>
@@ -375,10 +380,21 @@ export default function FloorRollsTracker() {
                     </TableCell>
                     <TableCell>{roll.employee_name || "—"}</TableCell>
                     <TableCell className="text-center text-sm text-muted-foreground">
-                      <span className="inline-flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5" />
-                        {formatRelativeAr(roll.last_updated_at)}
-                      </span>
+                      {(() => {
+                        const dt = formatDateTime(roll.last_updated_at);
+                        if (!dt) return "غير محدد";
+                        return (
+                          <span className="inline-flex items-center justify-center gap-1.5">
+                            <Clock className="h-3.5 w-3.5 shrink-0" />
+                            <span className="inline-flex flex-col leading-tight">
+                              <span className="font-medium text-foreground">
+                                {dt.date}
+                              </span>
+                              <span className="text-xs">{dt.time}</span>
+                            </span>
+                          </span>
+                        );
+                      })()}
                     </TableCell>
                   </TableRow>
                 );
