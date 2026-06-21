@@ -1,9 +1,28 @@
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Boxes, Film, Printer, Scissors, Clock, RefreshCw } from "lucide-react";
+import {
+  Boxes,
+  Film,
+  Printer,
+  Scissors,
+  Clock,
+  RefreshCw,
+  Search,
+  X,
+} from "lucide-react";
 
 import { useLocalizedName } from "../../hooks/use-localized-name";
 import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Input } from "../ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 import {
   Table,
   TableBody,
@@ -52,6 +71,10 @@ const stageMeta: Record<
   },
 };
 
+const STAGE_ORDER = ["film", "printing", "cutting"] as const;
+
+const ALL = "__all__";
+
 function formatRelativeAr(value: string | null): string {
   if (!value) return "غير محدد";
   const then = new Date(value).getTime();
@@ -87,13 +110,90 @@ export default function FloorRollsTracker() {
     refetchOnWindowFocus: true,
   });
 
+  const [search, setSearch] = useState("");
+  const [stageFilter, setStageFilter] = useState<string>(ALL);
+  const [machineFilter, setMachineFilter] = useState<string>(ALL);
+  const [customerFilter, setCustomerFilter] = useState<string>(ALL);
+
+  // Build dropdown options from the currently-loaded rolls. Keyed by the
+  // resolved localized name so duplicates collapse and the value is stable.
+  const machineOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const roll of rolls) {
+      const name = ln(roll.machine_name_ar, roll.machine_name);
+      if (name) map.set(name, name);
+    }
+    return Array.from(map.keys()).sort((a, b) => a.localeCompare(b, "ar"));
+  }, [rolls, ln]);
+
+  const customerOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const roll of rolls) {
+      const name = ln(roll.customer_name_ar, roll.customer_name);
+      if (name) map.set(name, name);
+    }
+    return Array.from(map.keys()).sort((a, b) => a.localeCompare(b, "ar"));
+  }, [rolls, ln]);
+
+  // Per-stage counts always reflect the full (unfiltered) dataset so the
+  // stage chips act as a quick overview as well as a filter.
+  const stageCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const roll of rolls) {
+      counts[roll.stage] = (counts[roll.stage] ?? 0) + 1;
+    }
+    return counts;
+  }, [rolls]);
+
+  const filteredRolls = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return rolls.filter((roll) => {
+      if (stageFilter !== ALL && roll.stage !== stageFilter) return false;
+
+      if (machineFilter !== ALL) {
+        const name = ln(roll.machine_name_ar, roll.machine_name);
+        if (name !== machineFilter) return false;
+      }
+
+      if (customerFilter !== ALL) {
+        const name = ln(roll.customer_name_ar, roll.customer_name);
+        if (name !== customerFilter) return false;
+      }
+
+      if (query) {
+        const rollNum = (roll.roll_number ?? "").toLowerCase();
+        const poNum = (roll.production_order_number ?? "").toLowerCase();
+        if (!rollNum.includes(query) && !poNum.includes(query)) return false;
+      }
+
+      return true;
+    });
+  }, [rolls, search, stageFilter, machineFilter, customerFilter, ln]);
+
+  const hasActiveFilters =
+    search.trim() !== "" ||
+    stageFilter !== ALL ||
+    machineFilter !== ALL ||
+    customerFilter !== ALL;
+
+  const clearFilters = () => {
+    setSearch("");
+    setStageFilter(ALL);
+    setMachineFilter(ALL);
+    setCustomerFilter(ALL);
+  };
+
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
+        <CardTitle className="text-base flex items-center gap-2 flex-wrap">
           <Boxes className="h-5 w-5" />
           تتبع حي للرولات على أرض المصنع
-          <Badge variant="secondary">{rolls.length}</Badge>
+          <Badge variant="secondary">
+            {hasActiveFilters
+              ? `${filteredRolls.length} / ${rolls.length}`
+              : rolls.length}
+          </Badge>
           {isFetching && (
             <RefreshCw className="h-3.5 w-3.5 text-muted-foreground animate-spin" />
           )}
@@ -101,6 +201,106 @@ export default function FloorRollsTracker() {
             يتم التحديث تلقائياً
           </span>
         </CardTitle>
+
+        {/* Filters & search */}
+        <div className="flex flex-col gap-3 pt-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant={stageFilter === ALL ? "default" : "outline"}
+              className="gap-1.5 h-8"
+              onClick={() => setStageFilter(ALL)}
+            >
+              الكل
+              <Badge variant="secondary" className="ms-1">
+                {rolls.length}
+              </Badge>
+            </Button>
+            {STAGE_ORDER.map((stage) => {
+              const meta = stageMeta[stage];
+              const StageIcon = meta.Icon;
+              const active = stageFilter === stage;
+              return (
+                <Button
+                  key={stage}
+                  type="button"
+                  size="sm"
+                  variant={active ? "default" : "outline"}
+                  className="gap-1.5 h-8"
+                  onClick={() => setStageFilter(active ? ALL : stage)}
+                >
+                  <StageIcon className="h-3.5 w-3.5" />
+                  {meta.label}
+                  <Badge variant="secondary" className="ms-1">
+                    {stageCounts[stage] ?? 0}
+                  </Badge>
+                </Button>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute start-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="ابحث برقم الرول أو أمر الإنتاج"
+                className="ps-9 h-9"
+                data-testid="input-floor-rolls-search"
+              />
+            </div>
+
+            <Select value={machineFilter} onValueChange={setMachineFilter}>
+              <SelectTrigger
+                className="h-9 w-[170px]"
+                data-testid="select-floor-rolls-machine"
+              >
+                <SelectValue placeholder="المكينة" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>كل المكائن</SelectItem>
+                {machineOptions.map((name) => (
+                  <SelectItem key={name} value={name}>
+                    {name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={customerFilter} onValueChange={setCustomerFilter}>
+              <SelectTrigger
+                className="h-9 w-[170px]"
+                data-testid="select-floor-rolls-customer"
+              >
+                <SelectValue placeholder="العميل" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>كل العملاء</SelectItem>
+                {customerOptions.map((name) => (
+                  <SelectItem key={name} value={name}>
+                    {name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {hasActiveFilters && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="gap-1 h-9"
+                onClick={clearFilters}
+                data-testid="button-floor-rolls-clear"
+              >
+                <X className="h-3.5 w-3.5" />
+                مسح
+              </Button>
+            )}
+          </div>
+        </div>
       </CardHeader>
       <CardContent className="p-0">
         {isLoading ? (
@@ -117,6 +317,11 @@ export default function FloorRollsTracker() {
           <div className="text-center py-12 text-muted-foreground">
             <Boxes className="h-10 w-10 mx-auto mb-2 opacity-30" />
             لا توجد رولات على أرض المصنع حالياً
+          </div>
+        ) : filteredRolls.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <Search className="h-10 w-10 mx-auto mb-2 opacity-30" />
+            لا توجد رولات مطابقة للبحث
           </div>
         ) : (
           <Table>
@@ -139,7 +344,7 @@ export default function FloorRollsTracker() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rolls.map((roll) => {
+              {filteredRolls.map((roll) => {
                 const meta = stageMeta[roll.stage];
                 const StageIcon = meta?.Icon ?? Boxes;
                 return (
