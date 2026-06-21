@@ -6646,6 +6646,85 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(rolls.created_at));
   }
 
+  // Live "floor" view: every roll still physically present on the factory floor
+  // (stage in film/printing/cutting, i.e. not yet fully cut/done). Each roll
+  // carries a computed `last_updated_at` (the most recent of its creation /
+  // printing / cutting timestamps) and the machine/employee bound to its CURRENT
+  // stage, sorted newest-activity-first. Rolls drop off once they reach 'done'.
+  async getFloorRolls(): Promise<any[]> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const result = await db.execute(sql`
+          SELECT
+            r.id,
+            r.roll_number,
+            r.roll_seq,
+            r.stage,
+            r.weight_kg,
+            r.cut_weight_total_kg,
+            r.created_at,
+            r.printed_at,
+            r.cut_completed_at,
+            r.roll_created_at,
+            GREATEST(
+              COALESCE(r.created_at, to_timestamp(0)),
+              COALESCE(r.roll_created_at, to_timestamp(0)),
+              COALESCE(r.printed_at, to_timestamp(0)),
+              COALESCE(r.cut_completed_at, to_timestamp(0))
+            ) AS last_updated_at,
+            po.production_order_number,
+            c.name AS customer_name,
+            c.name_ar AS customer_name_ar,
+            m.name AS machine_name,
+            m.name_ar AS machine_name_ar,
+            COALESCE(u.display_name_ar, u.display_name, u.full_name, u.username) AS employee_name
+          FROM rolls r
+          JOIN production_orders po ON r.production_order_id = po.id
+          JOIN orders o ON po.order_id = o.id
+          JOIN customers c ON o.customer_id = c.id
+          LEFT JOIN machines m ON m.id = (
+            CASE r.stage
+              WHEN 'film' THEN r.film_machine_id
+              WHEN 'printing' THEN r.printing_machine_id
+              WHEN 'cutting' THEN r.cutting_machine_id
+            END
+          )
+          LEFT JOIN users u ON u.id = (
+            CASE r.stage
+              WHEN 'film' THEN r.created_by
+              WHEN 'printing' THEN r.printed_by
+              WHEN 'cutting' THEN r.cut_by
+            END
+          )
+          WHERE r.stage <> 'done'
+          ORDER BY last_updated_at DESC
+        `);
+
+        return (result.rows as any[]).map((row) => ({
+          id: Number(row.id),
+          roll_number: row.roll_number,
+          roll_seq: row.roll_seq != null ? Number(row.roll_seq) : null,
+          stage: row.stage,
+          weight_kg: row.weight_kg,
+          cut_weight_total_kg: row.cut_weight_total_kg,
+          created_at: row.created_at,
+          printed_at: row.printed_at,
+          cut_completed_at: row.cut_completed_at,
+          roll_created_at: row.roll_created_at,
+          last_updated_at: row.last_updated_at,
+          production_order_number: row.production_order_number,
+          customer_name: row.customer_name,
+          customer_name_ar: row.customer_name_ar,
+          machine_name: row.machine_name,
+          machine_name_ar: row.machine_name_ar,
+          employee_name: row.employee_name,
+        }));
+      },
+      "getFloorRolls",
+      "جلب رولات أرض المصنع",
+    );
+  }
+
   // Returns "production events" from the last 24 hours, one row per
   // roll-stage action (film create / printing / cutting). Operators only ever
   // see their own events, scoped to the stages they are allowed to view.

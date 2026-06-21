@@ -14444,6 +14444,31 @@ Input: ${text}`;
     },
   );
 
+  // Live floor-rolls feed: all rolls still on the factory floor (not 'done'),
+  // sorted by most-recent activity. Used by the Production Monitoring "live
+  // tracking" tab. Behind the same permission set as the rolls/monitoring views.
+  app.get(
+    "/api/production/floor-rolls",
+    requireAuth,
+    requirePermission(
+      "view_production",
+      "manage_production",
+      "manage_production_hall",
+      "view_production_monitoring",
+      "view_production_reports",
+      "admin",
+    ),
+    async (req, res) => {
+      try {
+        const floorRolls = await storage.getFloorRolls();
+        res.json(floorRolls);
+      } catch (error) {
+        console.error("[GET /api/production/floor-rolls] Error:", error);
+        res.status(500).json({ message: "خطأ في جلب رولات أرض المصنع" });
+      }
+    },
+  );
+
   // Get real-time production statistics
   app.get("/api/production/real-time-stats", requireAuth, async (req, res) => {
     try {

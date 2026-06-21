@@ -18,6 +18,7 @@ import {
   AlertTriangle,
   Layers,
   Palette,
+  Boxes,
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -36,6 +37,7 @@ import {
 } from "recharts";
 
 import PageLayout from "../components/layout/PageLayout";
+import FloorRollsTracker from "../components/production/FloorRollsTracker";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import {
@@ -394,10 +396,14 @@ export default function ProductionMonitoring() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5 h-auto">
+          <TabsList className="grid w-full grid-cols-6 h-auto">
             <TabsTrigger value="overview" className="py-2.5 gap-2">
               <Activity className="w-4 h-4" />
               <span>نظرة عامة</span>
+            </TabsTrigger>
+            <TabsTrigger value="live-tracking" className="py-2.5 gap-2">
+              <Boxes className="w-4 h-4" />
+              <span>تتبع حي</span>
             </TabsTrigger>
             <TabsTrigger value="machines" className="py-2.5 gap-2">
               <Factory className="w-4 h-4" />
@@ -605,6 +611,10 @@ export default function ProductionMonitoring() {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          <TabsContent value="live-tracking" className="space-y-6 mt-6">
+            <FloorRollsTracker />
           </TabsContent>
 
           <TabsContent value="machines" className="space-y-6 mt-6">
