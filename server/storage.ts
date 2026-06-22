@@ -569,6 +569,50 @@ async function withDatabaseErrorHandling<T>(
   }
 }
 
+// One roll on the live factory-floor feed (see getFloorRolls). Timestamps come
+// straight from PostgreSQL via db.execute, so they may surface as Date objects
+// server-side and as ISO strings once JSON-serialized to clients.
+export interface FloorRoll {
+  id: number;
+  roll_number: string | null;
+  roll_seq: number | null;
+  stage: string;
+  weight_kg: string | number | null;
+  cut_weight_total_kg: string | number | null;
+  created_at: Date | string | null;
+  printed_at: Date | string | null;
+  cut_completed_at: Date | string | null;
+  roll_created_at: Date | string | null;
+  last_updated_at: Date | string | null;
+  production_order_number: string | null;
+  customer_name: string | null;
+  customer_name_ar: string | null;
+  machine_name: string | null;
+  machine_name_ar: string | null;
+  employee_name: string | null;
+}
+
+// A single bounded page of the floor-rolls feed plus the total still on the
+// floor, so callers can show progress and page through every roll.
+export interface FloorRollsResult {
+  rolls: FloorRoll[];
+  total: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
+}
+
+export const FLOOR_ROLLS_DEFAULT_LIMIT = 100;
+export const FLOOR_ROLLS_MAX_LIMIT = 500;
+
+// Clamp a requested page size into a safe range so a single request can never
+// pull the entire (unbounded) floor-rolls table.
+export function clampFloorRollsLimit(value: unknown): number {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n) || n <= 0) return FLOOR_ROLLS_DEFAULT_LIMIT;
+  return Math.min(FLOOR_ROLLS_MAX_LIMIT, Math.floor(n));
+}
+
 export interface IStorage {
   // Check existence for validation
   exists(table: string, field: string, value: any): Promise<boolean>;
@@ -649,6 +693,10 @@ export interface IStorage {
 
   // Rolls
   getAllRolls(): Promise<Roll[]>;
+  getFloorRolls(opts?: {
+    limit?: number;
+    offset?: number;
+  }): Promise<FloorRollsResult>;
   getTodaysProduction(opts: {
     userId: number;
     isManagement: boolean;
@@ -6651,9 +6699,34 @@ export class DatabaseStorage implements IStorage {
   // carries a computed `last_updated_at` (the most recent of its creation /
   // printing / cutting timestamps) and the machine/employee bound to its CURRENT
   // stage, sorted newest-activity-first. Rolls drop off once they reach 'done'.
-  async getFloorRolls(): Promise<any[]> {
+  //
+  // The feed is bounded by a server-clamped page size so it stays fast even as
+  // roll volume grows. The total count is returned alongside the page so callers
+  // can show progress and page through every roll without any being hidden.
+  async getFloorRolls(
+    opts: { limit?: number; offset?: number } = {},
+  ): Promise<FloorRollsResult> {
     return withDatabaseErrorHandling(
       async () => {
+        const limit = clampFloorRollsLimit(opts.limit);
+        const offset = Number.isFinite(opts.offset)
+          ? Math.max(0, Math.floor(opts.offset as number))
+          : 0;
+
+        // Total still on the floor, computed independently of the page so it
+        // stays accurate even when `offset` lands past the last row (an empty
+        // page must still report the real total). Uses the same INNER JOINs as
+        // the data query so the count matches exactly what is paginated.
+        const countResult = await db.execute(sql`
+          SELECT COUNT(*) AS total
+          FROM rolls r
+          JOIN production_orders po ON r.production_order_id = po.id
+          JOIN orders o ON po.order_id = o.id
+          JOIN customers c ON o.customer_id = c.id
+          WHERE r.stage <> 'done'
+        `);
+        const total = Number((countResult.rows as any[])[0]?.total ?? 0);
+
         const result = await db.execute(sql`
           SELECT
             r.id,
@@ -6698,9 +6771,12 @@ export class DatabaseStorage implements IStorage {
           )
           WHERE r.stage <> 'done'
           ORDER BY last_updated_at DESC
+          LIMIT ${limit} OFFSET ${offset}
         `);
 
-        return (result.rows as any[]).map((row) => ({
+        const rows = result.rows as any[];
+
+        const floorRolls: FloorRoll[] = rows.map((row) => ({
           id: Number(row.id),
           roll_number: row.roll_number,
           roll_seq: row.roll_seq != null ? Number(row.roll_seq) : null,
@@ -6719,6 +6795,14 @@ export class DatabaseStorage implements IStorage {
           machine_name_ar: row.machine_name_ar,
           employee_name: row.employee_name,
         }));
+
+        return {
+          rolls: floorRolls,
+          total,
+          limit,
+          offset,
+          hasMore: offset + floorRolls.length < total,
+        };
       },
       "getFloorRolls",
       "جلب رولات أرض المصنع",

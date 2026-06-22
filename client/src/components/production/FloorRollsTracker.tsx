@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import {
   Boxes,
   Film,
@@ -9,6 +9,8 @@ import {
   RefreshCw,
   Search,
   X,
+  ChevronRight,
+  ChevronLeft,
 } from "lucide-react";
 
 import { useLocalizedName } from "../../hooks/use-localized-name";
@@ -48,7 +50,16 @@ interface FloorRoll {
   employee_name: string | null;
 }
 
+interface FloorRollsResponse {
+  rolls: FloorRoll[];
+  total: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
+}
+
 const REFRESH_MS = 15000;
+const PAGE_SIZE = 100;
 
 const stageMeta: Record<
   string,
@@ -105,15 +116,27 @@ function formatKg(value: string | number | null): string {
 
 export default function FloorRollsTracker() {
   const ln = useLocalizedName();
-  const {
-    data: rolls = [],
-    isLoading,
-    isFetching,
-  } = useQuery<FloorRoll[]>({
-    queryKey: ["/api/production/floor-rolls"],
+  const [page, setPage] = useState(0);
+  const offset = page * PAGE_SIZE;
+  const { data, isLoading, isFetching } = useQuery<FloorRollsResponse>({
+    queryKey: ["/api/production/floor-rolls", { limit: PAGE_SIZE, offset }],
     refetchInterval: REFRESH_MS,
     refetchOnWindowFocus: true,
+    placeholderData: keepPreviousData,
   });
+
+  const rolls = data?.rolls ?? [];
+  const total = data?.total ?? 0;
+  const hasMore = data?.hasMore ?? false;
+  const rangeStart = total === 0 ? 0 : offset + 1;
+  const rangeEnd = offset + rolls.length;
+
+  // Total can shrink as rolls finish; snap back to the last page with data so
+  // an out-of-range page never strands the viewer on an empty screen.
+  if (page > 0 && rolls.length === 0 && total > 0 && !isFetching) {
+    const lastPage = Math.max(0, Math.ceil(total / PAGE_SIZE) - 1);
+    if (lastPage !== page) setPage(lastPage);
+  }
 
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<string>(ALL);
@@ -197,7 +220,7 @@ export default function FloorRollsTracker() {
           <Badge variant="secondary">
             {hasActiveFilters
               ? `${filteredRolls.length} / ${rolls.length}`
-              : rolls.length}
+              : total}
           </Badge>
           {isFetching && (
             <RefreshCw className="h-3.5 w-3.5 text-muted-foreground animate-spin" />
@@ -401,6 +424,35 @@ export default function FloorRollsTracker() {
               })}
             </TableBody>
           </Table>
+        )}
+        {!isLoading && total > PAGE_SIZE && (
+          <div className="flex items-center justify-between gap-3 p-4 border-t">
+            <span className="text-xs text-muted-foreground">
+              عرض {rangeStart}–{rangeEnd} من {total}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1"
+                onClick={() => setPage((prev) => Math.max(0, prev - 1))}
+                disabled={page === 0 || isFetching}
+              >
+                <ChevronRight className="h-4 w-4" />
+                السابق
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1"
+                onClick={() => setPage((prev) => prev + 1)}
+                disabled={!hasMore || isFetching}
+              >
+                التالي
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         )}
       </CardContent>
     </Card>

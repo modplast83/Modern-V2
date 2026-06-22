@@ -14460,7 +14460,12 @@ Input: ${text}`;
     ),
     async (req, res) => {
       try {
-        const floorRolls = await storage.getFloorRolls();
+        const parsedLimit = parseInt(String(req.query.limit ?? ""), 10);
+        const parsedOffset = parseInt(String(req.query.offset ?? ""), 10);
+        const floorRolls = await storage.getFloorRolls({
+          limit: Number.isFinite(parsedLimit) ? parsedLimit : undefined,
+          offset: Number.isFinite(parsedOffset) ? parsedOffset : undefined,
+        });
         res.json(floorRolls);
       } catch (error) {
         console.error("[GET /api/production/floor-rolls] Error:", error);
