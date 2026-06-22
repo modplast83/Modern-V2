@@ -118,6 +118,7 @@ import {
   insertMaintenanceComponentSchema,
   updateMaintenanceComponentSchema,
   createPreventiveMaintenanceSchema,
+  updatePreventiveMaintenanceSchema,
   insertOperatorNegligenceReportSchema,
   insertConsumablePartSchema,
   insertConsumablePartTransactionSchema,
@@ -7443,6 +7444,28 @@ Input: ${text}`;
         }
         console.error("Error creating preventive action:", error);
         res.status(500).json({ message: "خطأ في إنشاء الإجراء الوقائي" });
+      }
+    },
+  );
+
+  app.put(
+    "/api/preventive-actions/:id",
+    requireAuth,
+    requirePermission("edit_maintenance", "manage_maintenance"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "ID");
+        const data = updatePreventiveMaintenanceSchema.parse(req.body);
+        const action = await storage.updatePreventiveMaintenanceAction(id, data);
+        res.json(action);
+      } catch (error: any) {
+        if (error?.name === "ZodError") {
+          return res
+            .status(400)
+            .json({ message: "بيانات غير صالحة", errors: error.errors });
+        }
+        console.error("Error updating preventive action:", error);
+        res.status(500).json({ message: "خطأ في تعديل الإجراء الوقائي" });
       }
     },
   );

@@ -1318,6 +1318,36 @@ function sanitizeResponseForLogging(response: any): any {
         CREATE INDEX IF NOT EXISTS idx_preventive_items_component
         ON preventive_maintenance_items (component_id)
       `);
+      // Junction: a preventive action can target multiple machines.
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS preventive_maintenance_action_machines (
+          id serial PRIMARY KEY,
+          preventive_action_id integer NOT NULL REFERENCES preventive_maintenance_actions(id) ON DELETE CASCADE,
+          machine_id varchar(20) NOT NULL REFERENCES machines(id)
+        )
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_pm_action_machines_action
+        ON preventive_maintenance_action_machines (preventive_action_id)
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_pm_action_machines_machine
+        ON preventive_maintenance_action_machines (machine_id)
+      `);
+      await db.execute(sql`
+        CREATE UNIQUE INDEX IF NOT EXISTS uniq_pm_action_machine
+        ON preventive_maintenance_action_machines (preventive_action_id, machine_id)
+      `);
+      // Backfill existing single-machine actions into the junction table.
+      await db.execute(sql`
+        INSERT INTO preventive_maintenance_action_machines (preventive_action_id, machine_id)
+        SELECT a.id, a.machine_id
+        FROM preventive_maintenance_actions a
+        WHERE NOT EXISTS (
+          SELECT 1 FROM preventive_maintenance_action_machines am
+          WHERE am.preventive_action_id = a.id
+        )
+      `);
 
       // Idempotent seed of the bilingual component catalog.
       const componentCatalog: Array<[string, string, string]> = [

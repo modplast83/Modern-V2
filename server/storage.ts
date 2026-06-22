@@ -16,6 +16,7 @@ import {
   maintenance_component_catalog,
   preventive_maintenance_actions,
   preventive_maintenance_items,
+  preventive_maintenance_action_machines,
   operator_negligence_reports,
   spare_parts,
   consumable_parts,
@@ -193,6 +194,7 @@ import {
   type PreventiveMaintenanceAction,
   type PreventiveMaintenanceItem,
   type CreatePreventiveMaintenance,
+  type UpdatePreventiveMaintenance,
   type OperatorNegligenceReport,
   type InsertOperatorNegligenceReport,
 
@@ -1021,6 +1023,10 @@ export interface IStorage {
   getPreventiveMaintenanceActions(machineId?: string): Promise<any[]>;
   createPreventiveMaintenanceAction(
     payload: CreatePreventiveMaintenance,
+  ): Promise<PreventiveMaintenanceAction>;
+  updatePreventiveMaintenanceAction(
+    id: number,
+    payload: UpdatePreventiveMaintenance,
   ): Promise<PreventiveMaintenanceAction>;
   deletePreventiveMaintenanceAction(id: number): Promise<void>;
   getLastActionPerComponent(machineId: string): Promise<any[]>;
@@ -8006,12 +8012,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPreventiveMaintenanceActions(machineId?: string): Promise<any[]> {
+    // When filtering by machine, include actions where the machine appears in
+    // the junction table (not only as the primary machine_id).
+    const filteredIds = machineId
+      ? (
+          await db
+            .select({
+              id: preventive_maintenance_action_machines.preventive_action_id,
+            })
+            .from(preventive_maintenance_action_machines)
+            .where(
+              eq(preventive_maintenance_action_machines.machine_id, machineId),
+            )
+        ).map((r) => r.id)
+      : null;
+
+    if (filteredIds && filteredIds.length === 0) return [];
+
     const actions = await db
       .select()
       .from(preventive_maintenance_actions)
       .where(
-        machineId
-          ? eq(preventive_maintenance_actions.machine_id, machineId)
+        filteredIds
+          ? inArray(preventive_maintenance_actions.id, filteredIds)
           : (undefined as any),
       )
       .orderBy(desc(preventive_maintenance_actions.action_date));
@@ -8031,9 +8054,28 @@ export class DatabaseStorage implements IStorage {
       itemsByAction.set(it.preventive_action_id, arr);
     }
 
+    const machineLinks = await db
+      .select()
+      .from(preventive_maintenance_action_machines)
+      .where(
+        inArray(
+          preventive_maintenance_action_machines.preventive_action_id,
+          actionIds,
+        ),
+      );
+
+    const machinesByAction = new Map<number, string[]>();
+    for (const link of machineLinks) {
+      const arr = machinesByAction.get(link.preventive_action_id) || [];
+      arr.push(link.machine_id);
+      machinesByAction.set(link.preventive_action_id, arr);
+    }
+
     return actions.map((a) => ({
       ...a,
       items: itemsByAction.get(a.id) || [],
+      // Fall back to the primary machine_id for any legacy rows not yet linked.
+      machine_ids: machinesByAction.get(a.id) || [a.machine_id],
     }));
   }
 
@@ -8054,12 +8096,22 @@ export class DatabaseStorage implements IStorage {
         0,
       );
 
+      // Normalize the machine list; the first machine is the "primary" stored
+      // on the action row, all of them are linked via the junction table.
+      const machineIds =
+        payload.machine_ids && payload.machine_ids.length > 0
+          ? Array.from(new Set(payload.machine_ids))
+          : payload.machine_id
+            ? [payload.machine_id]
+            : [];
+      const primaryMachineId = machineIds[0];
+
       const [action] = await tx
         .insert(preventive_maintenance_actions)
         .values({
           action_number,
           section_id: payload.section_id ?? null,
-          machine_id: payload.machine_id,
+          machine_id: primaryMachineId,
           performed_by: payload.performed_by,
           action_date: payload.action_date ?? new Date(),
           total_cost: totalCost.toFixed(2),
@@ -8080,6 +8132,83 @@ export class DatabaseStorage implements IStorage {
         notes: it.notes ?? null,
       }));
       await tx.insert(preventive_maintenance_items).values(itemRows as any);
+
+      await tx.insert(preventive_maintenance_action_machines).values(
+        machineIds.map((machine_id) => ({
+          preventive_action_id: action.id,
+          machine_id,
+        })),
+      );
+
+      return action;
+    });
+  }
+
+  async updatePreventiveMaintenanceAction(
+    id: number,
+    payload: UpdatePreventiveMaintenance,
+  ): Promise<PreventiveMaintenanceAction> {
+    return await db.transaction(async (tx) => {
+      const totalCost = payload.items.reduce(
+        (sum, it) => sum + Number(it.cost || 0) * Number(it.quantity || 1),
+        0,
+      );
+
+      const machineIds =
+        payload.machine_ids && payload.machine_ids.length > 0
+          ? Array.from(new Set(payload.machine_ids))
+          : payload.machine_id
+            ? [payload.machine_id]
+            : [];
+      const primaryMachineId = machineIds[0];
+
+      const [action] = await tx
+        .update(preventive_maintenance_actions)
+        .set({
+          section_id: payload.section_id ?? null,
+          machine_id: primaryMachineId,
+          action_date: payload.action_date ?? new Date(),
+          total_cost: totalCost.toFixed(2),
+          notes: payload.notes ?? null,
+          status: payload.status ?? "completed",
+          updated_at: new Date(),
+        } as any)
+        .where(eq(preventive_maintenance_actions.id, id))
+        .returning();
+
+      if (!action) {
+        throw new Error("Preventive action not found");
+      }
+
+      // Replace line items.
+      await tx
+        .delete(preventive_maintenance_items)
+        .where(eq(preventive_maintenance_items.preventive_action_id, id));
+      const itemRows = payload.items.map((it) => ({
+        preventive_action_id: id,
+        component_id: it.component_id ?? null,
+        component_name_ar: it.component_name_ar,
+        component_name_en: it.component_name_en,
+        action_type: it.action_type,
+        quantity: it.quantity ?? 1,
+        cost: Number(it.cost ?? 0).toFixed(2),
+        condition: it.condition ?? null,
+        notes: it.notes ?? null,
+      }));
+      await tx.insert(preventive_maintenance_items).values(itemRows as any);
+
+      // Replace machine links.
+      await tx
+        .delete(preventive_maintenance_action_machines)
+        .where(
+          eq(preventive_maintenance_action_machines.preventive_action_id, id),
+        );
+      await tx.insert(preventive_maintenance_action_machines).values(
+        machineIds.map((machine_id) => ({
+          preventive_action_id: id,
+          machine_id,
+        })),
+      );
 
       return action;
     });
@@ -8109,7 +8238,9 @@ export class DatabaseStorage implements IStorage {
       FROM preventive_maintenance_items i
       JOIN preventive_maintenance_actions a
         ON a.id = i.preventive_action_id
-      WHERE a.machine_id = ${machineId}
+      JOIN preventive_maintenance_action_machines am
+        ON am.preventive_action_id = a.id
+      WHERE am.machine_id = ${machineId}
       ORDER BY
         COALESCE(i.component_id::text, i.component_name_en),
         a.action_date DESC

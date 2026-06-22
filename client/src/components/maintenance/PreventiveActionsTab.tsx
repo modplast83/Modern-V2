@@ -6,6 +6,8 @@ import {
   History,
   Printer,
   FileSpreadsheet,
+  Pencil,
+  ChevronsUpDown,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -22,6 +24,7 @@ import { apiRequest } from "../../lib/queryClient";
 import {
   canAddInArea,
   canDeleteInArea,
+  canEditInArea,
 } from "../../utils/roleUtils";
 import {
   printPreventiveAction,
@@ -39,7 +42,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../ui/dialog";
+import { Checkbox } from "../ui/checkbox";
 import { Input } from "../ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import {
   Select,
   SelectContent,
@@ -104,9 +109,13 @@ export default function PreventiveActionsTab() {
   const canAdd = canAddInArea(user, "maintenance");
   const canDelete = canDeleteInArea(user, "maintenance");
 
+  const canEdit = canEditInArea(user, "maintenance");
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [sectionId, setSectionId] = useState<string>("");
-  const [machineId, setMachineId] = useState<string>("");
+  const [machineIds, setMachineIds] = useState<string[]>([]);
+  const [machinePopoverOpen, setMachinePopoverOpen] = useState(false);
   const [actionDate, setActionDate] = useState<string>(
     new Date().toISOString().slice(0, 10),
   );
@@ -126,9 +135,11 @@ export default function PreventiveActionsTab() {
     queryKey: ["/api/preventive-actions"],
   });
 
+  // Components are keyed by machine type; all machines in one action share the
+  // same section/type, so derive the type from the first selected machine.
   const selectedMachine = useMemo(
-    () => machines.find((m) => m.id === machineId),
-    [machines, machineId],
+    () => machines.find((m) => m.id === machineIds[0]),
+    [machines, machineIds],
   );
   const machineType = normalizeMachineType(selectedMachine?.type);
 
@@ -166,6 +177,20 @@ export default function PreventiveActionsTab() {
     return (isAr ? m.name_ar : m.name) || m.name || id;
   };
 
+  // Full machine list for an action: prefer the junction-backed machine_ids,
+  // fall back to the primary machine_id for legacy rows.
+  const actionMachineIds = (a: any): string[] => {
+    if (Array.isArray(a.machine_ids) && a.machine_ids.length > 0) {
+      return a.machine_ids;
+    }
+    return a.machine_id ? [a.machine_id] : [];
+  };
+
+  const actionMachineNames = (a: any) =>
+    actionMachineIds(a)
+      .map((id: string) => machineName(id))
+      .join("، ");
+
   const sectionName = (id: string | null | undefined) => {
     if (!id) return "";
     const s = sections.find((x) => x.id === id);
@@ -176,7 +201,7 @@ export default function PreventiveActionsTab() {
   const handlePrintAction = (a: any) => {
     printPreventiveAction(
       a,
-      machineName(a.machine_id),
+      actionMachineNames(a),
       sectionName(a.section_id),
       isAr,
     );
@@ -224,11 +249,50 @@ export default function PreventiveActionsTab() {
   );
 
   const resetForm = () => {
+    setEditingId(null);
     setSectionId("");
-    setMachineId("");
+    setMachineIds([]);
     setActionDate(new Date().toISOString().slice(0, 10));
     setNotes("");
     setItems([emptyItem()]);
+  };
+
+  const openCreateDialog = () => {
+    resetForm();
+    setIsDialogOpen(true);
+  };
+
+  const openEditDialog = (a: any) => {
+    setEditingId(a.id);
+    setSectionId(a.section_id || "");
+    setMachineIds(actionMachineIds(a));
+    setActionDate(
+      a.action_date
+        ? new Date(a.action_date).toISOString().slice(0, 10)
+        : new Date().toISOString().slice(0, 10),
+    );
+    setNotes(a.notes || "");
+    setItems(
+      (a.items || []).length > 0
+        ? a.items.map((it: any) => ({
+            component_id: it.component_id ?? null,
+            component_name_ar: it.component_name_ar || "",
+            component_name_en: it.component_name_en || "",
+            action_type: it.action_type || "inspection",
+            quantity: Number(it.quantity) || 1,
+            cost: Number(it.cost) || 0,
+            condition: it.condition || "good",
+            notes: it.notes || "",
+          }))
+        : [emptyItem()],
+    );
+    setIsDialogOpen(true);
+  };
+
+  const toggleMachine = (id: string) => {
+    setMachineIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
   };
 
   const updateItem = (index: number, patch: Partial<LineItem>) => {
@@ -273,6 +337,31 @@ export default function PreventiveActionsTab() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: any }) =>
+      apiRequest(`/api/preventive-actions/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/preventive-actions"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/preventive-actions/last"],
+      });
+      toast({ title: t("maintenance.preventiveActions.toast.updated") });
+      setIsDialogOpen(false);
+      resetForm();
+    },
+    onError: () => {
+      toast({
+        title: t("maintenance.preventiveActions.toast.updateFailed"),
+        variant: "destructive",
+      });
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (id: number) =>
       apiRequest(`/api/preventive-actions/${id}`, { method: "DELETE" }),
@@ -294,7 +383,7 @@ export default function PreventiveActionsTab() {
   });
 
   const handleSubmit = () => {
-    if (!machineId) {
+    if (machineIds.length === 0) {
       toast({
         title: t("maintenance.preventiveActions.validation.machineRequired"),
         variant: "destructive",
@@ -311,9 +400,10 @@ export default function PreventiveActionsTab() {
       });
       return;
     }
-    createMutation.mutate({
+    const payload = {
       section_id: sectionId || null,
-      machine_id: machineId,
+      machine_id: machineIds[0],
+      machine_ids: machineIds,
       action_date: actionDate ? new Date(actionDate).toISOString() : undefined,
       notes: notes || null,
       items: validItems.map((it) => ({
@@ -326,7 +416,12 @@ export default function PreventiveActionsTab() {
         condition: it.condition || null,
         notes: it.notes || null,
       })),
-    });
+    };
+    if (editingId != null) {
+      updateMutation.mutate({ id: editingId, payload });
+    } else {
+      createMutation.mutate(payload);
+    }
   };
 
   const elapsedLabel = (dateStr: string) => {
@@ -344,19 +439,28 @@ export default function PreventiveActionsTab() {
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle>{t("maintenance.preventiveActions.title")}</CardTitle>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog
+              open={isDialogOpen}
+              onOpenChange={(open) => {
+                setIsDialogOpen(open);
+                if (!open) resetForm();
+              }}
+            >
               {canAdd && (
-                <DialogTrigger asChild>
-                  <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                    <Plus className="h-4 w-4 mr-2" />
-                    {t("maintenance.preventiveActions.newAction")}
-                  </Button>
-                </DialogTrigger>
+                <Button
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={openCreateDialog}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  {t("maintenance.preventiveActions.newAction")}
+                </Button>
               )}
               <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>
-                    {t("maintenance.preventiveActions.newAction")}
+                    {editingId != null
+                      ? t("maintenance.preventiveActions.editAction")
+                      : t("maintenance.preventiveActions.newAction")}
                   </DialogTitle>
                   <DialogDescription>
                     {t("maintenance.preventiveActions.formHint")}
@@ -373,7 +477,7 @@ export default function PreventiveActionsTab() {
                         value={sectionId}
                         onValueChange={(v) => {
                           setSectionId(v);
-                          setMachineId("");
+                          setMachineIds([]);
                         }}
                       >
                         <SelectTrigger>
@@ -395,30 +499,55 @@ export default function PreventiveActionsTab() {
 
                     <div>
                       <label className="text-sm font-medium mb-1 block">
-                        {t("maintenance.preventiveActions.machine")}
+                        {t("maintenance.preventiveActions.machines")}
                       </label>
-                      <Select
-                        value={machineId}
-                        onValueChange={(v) => {
-                          setMachineId(v);
-                          setItems([emptyItem()]);
-                        }}
+                      <Popover
+                        open={machinePopoverOpen}
+                        onOpenChange={setMachinePopoverOpen}
                       >
-                        <SelectTrigger>
-                          <SelectValue
-                            placeholder={t(
-                              "maintenance.preventiveActions.selectMachine",
-                            )}
-                          />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {sectionMachines.map((m) => (
-                            <SelectItem key={m.id} value={m.id}>
-                              {(isAr ? m.name_ar : m.name) || m.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full justify-between font-normal"
+                          >
+                            <span className="truncate text-start">
+                              {machineIds.length === 0
+                                ? t(
+                                    "maintenance.preventiveActions.selectMachines",
+                                  )
+                                : machineIds
+                                    .map((id) => machineName(id))
+                                    .join("، ")}
+                            </span>
+                            <ChevronsUpDown className="h-4 w-4 opacity-50 shrink-0" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-2 max-h-64 overflow-y-auto">
+                          {sectionMachines.length === 0 ? (
+                            <p className="text-sm text-muted-foreground py-2 text-center">
+                              {t(
+                                "maintenance.preventiveActions.selectSectionFirst",
+                              )}
+                            </p>
+                          ) : (
+                            sectionMachines.map((m) => (
+                              <label
+                                key={m.id}
+                                className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer"
+                              >
+                                <Checkbox
+                                  checked={machineIds.includes(m.id)}
+                                  onCheckedChange={() => toggleMachine(m.id)}
+                                />
+                                <span className="text-sm">
+                                  {(isAr ? m.name_ar : m.name) || m.name}
+                                </span>
+                              </label>
+                            ))
+                          )}
+                        </PopoverContent>
+                      </Popover>
                     </div>
 
                     <div>
@@ -472,7 +601,7 @@ export default function PreventiveActionsTab() {
                                 onValueChange={(v) =>
                                   onSelectComponent(idx, v)
                                 }
-                                disabled={!machineId}
+                                disabled={machineIds.length === 0}
                               >
                                 <SelectTrigger>
                                   <SelectValue
@@ -616,7 +745,9 @@ export default function PreventiveActionsTab() {
                 <DialogFooter>
                   <Button
                     onClick={handleSubmit}
-                    disabled={createMutation.isPending}
+                    disabled={
+                      createMutation.isPending || updateMutation.isPending
+                    }
                     className="bg-blue-600 hover:bg-blue-700 text-white"
                   >
                     <Save className="h-4 w-4 mr-2" />
@@ -668,7 +799,7 @@ export default function PreventiveActionsTab() {
                         {a.action_number}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        {machineName(a.machine_id)}
+                        {actionMachineNames(a)}
                       </td>
                       <td className="px-4 py-3 text-center">
                         {a.action_date
@@ -693,6 +824,16 @@ export default function PreventiveActionsTab() {
                           >
                             <Printer className="h-4 w-4 text-blue-600" />
                           </Button>
+                          {canEdit && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title={t("maintenance.preventiveActions.edit")}
+                              onClick={() => openEditDialog(a)}
+                            >
+                              <Pencil className="h-4 w-4 text-amber-600" />
+                            </Button>
+                          )}
                           {canDelete && (
                             <Button
                               variant="ghost"

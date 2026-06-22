@@ -1122,6 +1122,30 @@ export const preventive_maintenance_items = pgTable(
   ],
 );
 
+// 🔗 ربط الإجراء الوقائي بأكثر من ماكينة (إجراء واحد لعدة مكائن)
+export const preventive_maintenance_action_machines = pgTable(
+  "preventive_maintenance_action_machines",
+  {
+    id: serial("id").primaryKey(),
+    preventive_action_id: integer("preventive_action_id")
+      .notNull()
+      .references(() => preventive_maintenance_actions.id, {
+        onDelete: "cascade",
+      }),
+    machine_id: varchar("machine_id", { length: 20 })
+      .notNull()
+      .references(() => machines.id),
+  },
+  (table) => [
+    index("idx_pm_action_machines_action").on(table.preventive_action_id),
+    index("idx_pm_action_machines_machine").on(table.machine_id),
+    uniqueIndex("uniq_pm_action_machine").on(
+      table.preventive_action_id,
+      table.machine_id,
+    ),
+  ],
+);
+
 // 📋 جدول فترات الانسحاب من صفحة الحضور (Anti-fraud)
 export const attendance_withdrawals = pgTable(
   "attendance_withdrawals",
@@ -3193,29 +3217,41 @@ export const insertPreventiveMaintenanceItemSchema = createInsertSchema(
   created_at: true,
 });
 
-// Combined payload for creating an action with its line items in one request
-export const createPreventiveMaintenanceSchema = z.object({
-  section_id: z.string().nullish(),
-  machine_id: z.string().min(1),
-  performed_by: z.coerce.number().int().positive().optional(),
-  action_date: z.coerce.date().optional(),
-  notes: z.string().nullish(),
-  status: z.string().optional(),
-  items: z
-    .array(
-      z.object({
-        component_id: z.coerce.number().int().positive().nullish(),
-        component_name_ar: z.string().min(1),
-        component_name_en: z.string().min(1),
-        action_type: z.string().min(1),
-        quantity: z.coerce.number().int().positive().default(1),
-        cost: z.coerce.number().min(0).default(0),
-        condition: z.string().nullish(),
-        notes: z.string().nullish(),
-      }),
-    )
-    .min(1),
-});
+// Combined payload for creating an action with its line items in one request.
+// An action can target one OR several machines (machine_ids); machine_id is
+// kept for backward compatibility and treated as the primary machine.
+export const createPreventiveMaintenanceSchema = z
+  .object({
+    section_id: z.string().nullish(),
+    machine_id: z.string().min(1).optional(),
+    machine_ids: z.array(z.string().min(1)).min(1).optional(),
+    performed_by: z.coerce.number().int().positive().optional(),
+    action_date: z.coerce.date().optional(),
+    notes: z.string().nullish(),
+    status: z.string().optional(),
+    items: z
+      .array(
+        z.object({
+          component_id: z.coerce.number().int().positive().nullish(),
+          component_name_ar: z.string().min(1),
+          component_name_en: z.string().min(1),
+          action_type: z.string().min(1),
+          quantity: z.coerce.number().int().positive().default(1),
+          cost: z.coerce.number().min(0).default(0),
+          condition: z.string().nullish(),
+          notes: z.string().nullish(),
+        }),
+      )
+      .min(1),
+  })
+  .refine((d) => (d.machine_ids?.length ?? 0) > 0 || !!d.machine_id, {
+    message: "At least one machine is required",
+    path: ["machine_ids"],
+  });
+
+// Editing an existing action reuses the same shape (machines + items replaced).
+export const updatePreventiveMaintenanceSchema =
+  createPreventiveMaintenanceSchema;
 
 // HR System Types
 export type Attendance = typeof attendance.$inferSelect;
@@ -3294,6 +3330,11 @@ export type InsertPreventiveMaintenanceItem = z.infer<
 export type CreatePreventiveMaintenance = z.infer<
   typeof createPreventiveMaintenanceSchema
 >;
+export type UpdatePreventiveMaintenance = z.infer<
+  typeof updatePreventiveMaintenanceSchema
+>;
+export type PreventiveMaintenanceActionMachine =
+  typeof preventive_maintenance_action_machines.$inferSelect;
 
 // Consumable Parts Types
 export type ConsumablePart = typeof consumable_parts.$inferSelect;
