@@ -2979,21 +2979,53 @@ function BarcodeGenerator(): JSX.Element {
   const handlePrint = () => {
     if (!svgRef.current || error) return;
 
-    const svgData = new XMLSerializer().serializeToString(svgRef.current);
-    const base64Svg = btoa(unescape(encodeURIComponent(svgData)));
-    const dataUrl = `data:image/svg+xml;base64,${base64Svg}`;
-
     const sizeConfig = barcodeSizeData[size];
     const labelWidthMm = sizeConfig.printWidthMm;
     const labelHeightMm = sizeConfig.printHeightMm;
+    const trimmedText = customText.trim();
+
+    // Generate a print-optimized barcode. When there is no custom text below the
+    // barcode, enlarge the value number so it fills as much of the label as
+    // possible. When custom text is present, keep the number at its normal size
+    // to leave room for the text.
+    const printFontSize = showText
+      ? trimmedText
+        ? sizeConfig.fontSize
+        : Math.round(sizeConfig.fontSize * 2.2)
+      : 0;
+
+    const printSvg = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "svg",
+    );
+    try {
+      JsBarcode(printSvg, barcodeValue, {
+        format,
+        width: sizeConfig.width,
+        height: sizeConfig.height,
+        displayValue: showText,
+        fontSize: printFontSize,
+        fontOptions: "bold",
+        textMargin: 2,
+        margin: 10,
+        background: "#ffffff",
+        lineColor: "#000000",
+      });
+    } catch (err) {
+      return;
+    }
+
+    const svgData = new XMLSerializer().serializeToString(printSvg);
+    const base64Svg = btoa(unescape(encodeURIComponent(svgData)));
+    const dataUrl = `data:image/svg+xml;base64,${base64Svg}`;
 
     const barcodeItems = Array(quantity)
       .fill(null)
       .map(
         () =>
           `<div class="barcode-item">
-        <img src="${dataUrl}" style="max-width:100%;max-height:${customText ? "75%" : "90%"};object-fit:contain;" />
-        ${customText ? `<div class="custom-text">${customText}</div>` : ""}
+        <img src="${dataUrl}" style="max-width:100%;max-height:${trimmedText ? "72%" : "100%"};object-fit:contain;" />
+        ${trimmedText ? `<div class="custom-text">${trimmedText}</div>` : ""}
       </div>`,
       )
       .join("");
