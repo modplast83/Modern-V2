@@ -451,7 +451,7 @@ export default function OrdersForm({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl">
             {editingOrder ? t("orders.editOrder") : t("orders.addNewOrder")}
@@ -502,11 +502,12 @@ export default function OrdersForm({
                           />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
+                      <SelectContent className="max-w-[95vw]">
                         {filteredCustomers.map((customer: any) => (
                           <SelectItem
                             key={customer.id}
                             value={String(customer.id)}
+                            className="whitespace-normal break-words"
                           >
                             {customer.name_ar || customer.name}
                             {customer.name && customer.name_ar
@@ -629,14 +630,14 @@ export default function OrdersForm({
                                 })()}
                             </SelectValue>
                           </SelectTrigger>
-                          <SelectContent className="max-w-[750px] w-[750px]">
+                          <SelectContent className="w-[750px] max-w-[95vw]">
                             {filteredCustomerProducts.map((product: any) => (
                               <SelectItem
                                 key={product.id}
                                 value={String(product.id)}
                                 className="h-auto min-h-[70px] py-2"
                               >
-                                <div className="w-full text-right py-1 min-w-[650px]">
+                                <div className="w-full text-right py-1">
                                   <div className="font-semibold text-gray-900 mb-1 text-sm leading-relaxed">
                                     {(() => {
                                       const item = items.find(
@@ -663,7 +664,7 @@ export default function OrdersForm({
                                       );
                                     })()}
                                   </div>
-                                  <div className="grid grid-cols-2 gap-6 text-sm text-gray-600">
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm text-gray-600">
                                     <div className="space-y-2">
                                       {product.thickness && (
                                         <div className="flex items-center gap-2">
