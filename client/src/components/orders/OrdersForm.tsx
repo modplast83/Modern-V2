@@ -502,7 +502,7 @@ export default function OrdersForm({
                           />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent className="max-w-[95vw]">
+                      <SelectContent className="!max-w-[min(95vw,32rem)] min-w-[var(--radix-select-trigger-width)]">
                         {filteredCustomers.map((customer: any) => (
                           <SelectItem
                             key={customer.id}
@@ -630,7 +630,7 @@ export default function OrdersForm({
                                 })()}
                             </SelectValue>
                           </SelectTrigger>
-                          <SelectContent className="w-[750px] max-w-[95vw]">
+                          <SelectContent className="w-[750px] !max-w-[95vw]">
                             {filteredCustomerProducts.map((product: any) => (
                               <SelectItem
                                 key={product.id}
