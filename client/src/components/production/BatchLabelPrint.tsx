@@ -69,6 +69,20 @@ export function printBatchLabels({
   const product = resolvedName(data.item_name_ar, data.item_name);
   const unitWeight = parseFloat(String(packagingUnit.unit_weight_kg ?? "0"));
   const total = Math.max(1, unitCount);
+  const netQuantity = parseFloat(
+    String(data.net_quantity_kg ?? data.final_quantity_kg ?? "0"),
+  );
+
+  // Each unit carries the full packaging weight, except the final unit which
+  // carries the remainder (net quantity − full units). e.g. 190kg / 20kg →
+  // nine units of 20kg and a last unit of 10kg.
+  const weightForIndex = (index: number): number => {
+    if (!Number.isFinite(unitWeight) || unitWeight <= 0) return 0;
+    if (!Number.isFinite(netQuantity) || netQuantity <= 0) return unitWeight;
+    if (index < total) return unitWeight;
+    const remainder = netQuantity - (total - 1) * unitWeight;
+    return remainder > 0 && remainder <= unitWeight ? remainder : unitWeight;
+  };
 
   const productionDate = data.production_date
     ? format(new Date(data.production_date), "dd/MM/yyyy")
@@ -149,9 +163,9 @@ export function printBatchLabels({
         </div>
         <div class="info-box highlight">
           <div class="info-label"><span class="lbl-ar">الوزن الصافي</span><span class="lbl-en">Net Weight</span></div>
-          <div class="info-value">${
-            Number.isFinite(unitWeight) ? unitWeight.toFixed(2) : "0.00"
-          } كجم / kg</div>
+          <div class="info-value">${weightForIndex(index).toFixed(
+            2,
+          )} كجم / kg</div>
         </div>
         ${operatorsBlock}
         ${row("تاريخ الإنتاج", "Production Date", productionDate, { full: true })}
