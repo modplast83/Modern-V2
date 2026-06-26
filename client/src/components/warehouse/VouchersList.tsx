@@ -215,31 +215,31 @@ export function VouchersList({ type, title, onView }: VouchersListProps) {
         <head>
           <title>${t("warehouse.print.printVoucher")} - ${voucher.voucher_number}</title>
           <style>
-            @page { size: A4 portrait; margin: 12mm; }
+            @page { size: A4 portrait; margin: 10mm; }
             * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; padding: 0; direction: ${i18n.language === "ar" ? "rtl" : "ltr"}; color: #1a1a1a; }
-            .voucher-print { width: 100%; max-width: 186mm; margin: 0 auto; }
-            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #1a56db; padding-bottom: 16px; margin-bottom: 20px; }
-            .header img { width: 80px; height: 80px; object-fit: contain; }
+            body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; padding: 0; direction: ${i18n.language === "ar" ? "rtl" : "ltr"}; color: #1a1a1a; font-size: 12px; }
+            .voucher-print { width: 100%; max-width: 190mm; margin: 0 auto; }
+            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #1a56db; padding-bottom: 8px; margin-bottom: 10px; }
+            .header img { width: 54px; height: 54px; object-fit: contain; }
             .header-center { text-align: center; flex: 1; }
-            .header-center h1 { font-size: 20px; color: #1a56db; margin-bottom: 4px; }
-            .header-center h2 { font-size: 16px; color: #555; }
-            .header-left { text-align: left; font-size: 13px; color: #666; }
-            .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; background: #f8fafc; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0; }
-            .info-item { display: flex; gap: 8px; }
-            .info-label { font-weight: 700; color: #374151; min-width: 100px; }
+            .header-center h1 { font-size: 16px; color: #1a56db; margin-bottom: 2px; }
+            .header-center h2 { font-size: 13px; color: #555; }
+            .header-left { text-align: left; font-size: 12px; color: #666; }
+            .info-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; row-gap: 2px; padding: 6px 10px; border: 1px solid #e2e8f0; border-top: 0; border-radius: 0 0 4px 4px; }
+            .info-item { display: flex; gap: 6px; font-size: 11.5px; padding: 1px 0; }
+            .info-label { font-weight: 700; color: #374151; white-space: nowrap; }
             .info-value { color: #1a1a1a; }
-            .details-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-            .details-table th { background: #1a56db; color: white; padding: 10px 12px; text-align: center; font-size: 14px; }
-            .details-table td { padding: 10px 12px; border: 1px solid #e2e8f0; text-align: center; font-size: 14px; }
+            .details-table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
+            .details-table th { background: #1a56db; color: white; padding: 4px 6px; text-align: center; font-size: 11.5px; }
+            .details-table td { padding: 3px 6px; border: 1px solid #e2e8f0; text-align: center; font-size: 11.5px; }
             .details-table tr:nth-child(even) { background: #f8fafc; }
-            .print-section { margin-bottom: 16px; }
-            .section-title { font-weight: 700; font-size: 14px; color: #1a56db; padding: 8px 12px; background: #eff6ff; border-right: 4px solid #1a56db; border-left: 4px solid #1a56db; margin-bottom: 0; border-radius: 4px 4px 0 0; }
-            .notes-section { background: #fffbeb; border: 1px solid #fbbf24; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; }
-            .notes-label { font-weight: 700; color: #92400e; margin-bottom: 4px; }
-            .signatures { display: flex; justify-content: space-between; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
+            .print-section { margin-bottom: 8px; }
+            .section-title { font-weight: 700; font-size: 12.5px; color: #1a56db; padding: 4px 10px; background: #eff6ff; border: 1px solid #bfdbfe; border-bottom: 0; margin-bottom: 0; border-radius: 4px 4px 0 0; }
+            .notes-section { background: #fffbeb; border: 1px solid #fbbf24; border-radius: 6px; padding: 6px 12px; margin-bottom: 8px; }
+            .notes-label { font-weight: 700; color: #92400e; margin-bottom: 2px; font-size: 12px; }
+            .signatures { display: flex; justify-content: space-around; margin-top: 22px; padding-top: 10px; border-top: 1px solid #e2e8f0; }
             .sig-box { text-align: center; min-width: 150px; }
-            .sig-line { border-top: 1px solid #999; margin-top: 50px; padding-top: 4px; font-size: 13px; color: #666; }
+            .sig-line { border-top: 1px solid #999; margin-top: 28px; padding-top: 4px; font-size: 12px; color: #666; }
             @media print { body { padding: 0; } .voucher-print { max-width: 100%; } }
           </style>
         </head>
@@ -559,24 +559,14 @@ export function VouchersList({ type, title, onView }: VouchersListProps) {
             <div className="section-title">
               {section.icon} {section.title}
             </div>
-            <table className="details-table">
-              <tbody>
-                {section.rows.map((row, ri) => (
-                  <tr key={ri}>
-                    <td
-                      style={{
-                        fontWeight: 600,
-                        width: "35%",
-                        backgroundColor: "#f8fafc",
-                      }}
-                    >
-                      {row.label}
-                    </td>
-                    <td style={{ width: "65%" }}>{row.value}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="info-grid">
+              {section.rows.map((row, ri) => (
+                <div className="info-item" key={ri}>
+                  <span className="info-label">{row.label}:</span>
+                  <span className="info-value">{row.value}</span>
+                </div>
+              ))}
+            </div>
           </div>
         ))}
 
