@@ -209,9 +209,8 @@ export function VouchersList({ type, title, onView }: VouchersListProps) {
     setTimeout(() => {
       const content = printRef.current;
       if (!content) return;
-      const printWindow = window.open("", "_blank");
-      if (!printWindow) return;
-      printWindow.document.write(`
+
+      const html = `
         <html dir="${i18n.language === "ar" ? "rtl" : "ltr"}" lang="${i18n.language}">
         <head>
           <title>${t("warehouse.print.printVoucher")} - ${voucher.voucher_number}</title>
@@ -248,13 +247,54 @@ export function VouchersList({ type, title, onView }: VouchersListProps) {
           ${content.innerHTML}
         </body>
         </html>
-      `);
-      printWindow.document.close();
-      printWindow.focus();
-      setTimeout(() => {
-        printWindow.print();
-        printWindow.close();
-      }, 300);
+      `;
+
+      // Use a hidden iframe instead of window.open: popups are blocked inside
+      // the Replit preview/canvas iframe and behind popup blockers, which made
+      // the print button appear unresponsive. An in-document iframe always works.
+      const printFrame = document.createElement("iframe");
+      printFrame.setAttribute("aria-hidden", "true");
+      printFrame.style.position = "fixed";
+      printFrame.style.right = "0";
+      printFrame.style.bottom = "0";
+      printFrame.style.width = "0";
+      printFrame.style.height = "0";
+      printFrame.style.border = "0";
+      document.body.appendChild(printFrame);
+
+      const frameWin = printFrame.contentWindow;
+      const frameDoc = frameWin?.document;
+      if (!frameWin || !frameDoc) {
+        document.body.removeChild(printFrame);
+        return;
+      }
+
+      let printed = false;
+      const cleanup = () => {
+        if (printFrame.parentNode) {
+          printFrame.parentNode.removeChild(printFrame);
+        }
+      };
+      const doPrint = () => {
+        if (printed) return;
+        printed = true;
+        try {
+          frameWin.focus();
+          frameWin.print();
+        } catch (e) {
+          // ignore: nothing else we can do if the browser blocks printing
+        }
+        setTimeout(cleanup, 1000);
+      };
+
+      frameDoc.open();
+      frameDoc.write(html);
+      frameDoc.close();
+
+      // Print once content (including the logo image) has loaded; fall back to a
+      // timer in case the load event has already fired or is suppressed.
+      frameWin.onload = doPrint;
+      setTimeout(doPrint, 500);
     }, 200);
   };
 
