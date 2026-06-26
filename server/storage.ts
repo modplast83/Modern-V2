@@ -10857,9 +10857,32 @@ export class DatabaseStorage implements IStorage {
         COALESCE(i.name, cp.id::text) AS product_name,
         i.name_ar AS product_name_ar,
         COALESCE(SUM(r.weight_kg), 0) AS total_film_weight,
-        COALESCE(SUM(CASE WHEN r.stage IN ('printing','done') THEN r.weight_kg ELSE 0 END), 0) AS total_print_weight,
-        COALESCE(SUM(CASE WHEN r.stage = 'done' THEN r.cut_weight_total_kg ELSE 0 END), 0) AS total_cut_weight,
+        COALESCE(SUM(
+          CASE
+            WHEN (i.name ILIKE '%plastic roll%' OR i.name_ar LIKE '%رولات بلاستيك%')
+              THEN CASE WHEN r.printed_at IS NOT NULL THEN r.weight_kg ELSE 0 END
+            ELSE CASE WHEN r.stage IN ('printing','done') THEN r.weight_kg ELSE 0 END
+          END
+        ), 0) AS total_print_weight,
+        COALESCE(SUM(
+          CASE
+            WHEN (i.name ILIKE '%plastic roll%' OR i.name_ar LIKE '%رولات بلاستيك%') THEN 0
+            WHEN r.stage = 'done' THEN r.cut_weight_total_kg
+            ELSE 0
+          END
+        ), 0) AS total_cut_weight,
+        COALESCE(SUM(
+          CASE
+            WHEN r.stage = 'done' THEN
+              CASE
+                WHEN (i.name ILIKE '%plastic roll%' OR i.name_ar LIKE '%رولات بلاستيك%') THEN r.weight_kg
+                ELSE r.cut_weight_total_kg
+              END
+            ELSE 0
+          END
+        ), 0) AS total_ready_weight,
         COALESCE(SUM(CASE WHEN r.stage = 'done' THEN r.waste_kg ELSE 0 END), 0) AS waste_weight,
+        (i.name ILIKE '%plastic roll%' OR i.name_ar LIKE '%رولات بلاستيك%') AS is_roll_product,
         COALESCE(po.warehouse_received_kg, 0) AS total_received_weight
       FROM production_orders po
       JOIN orders o ON po.order_id = o.id

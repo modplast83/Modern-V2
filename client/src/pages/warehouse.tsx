@@ -1031,10 +1031,15 @@ function ProductionHallContent({
       total_film_weight: parseFloat(order.total_film_weight) || 0,
       total_print_weight: parseFloat(order.total_print_weight) || 0,
       total_cut_weight: parseFloat(order.total_cut_weight) || 0,
+      total_ready_weight: parseFloat(order.total_ready_weight) || 0,
+      is_roll_product:
+        order.is_roll_product === true ||
+        order.is_roll_product === "t" ||
+        order.is_roll_product === "true",
       total_received_weight: parseFloat(order.total_received_weight) || 0,
       waste_weight: parseFloat(order.waste_weight) || 0,
       remaining_to_receive:
-        (parseFloat(order.total_cut_weight) || 0) -
+        (parseFloat(order.total_ready_weight) || 0) -
         (parseFloat(order.total_received_weight) || 0),
     }));
   }, [productionOrders]);
@@ -1482,6 +1487,9 @@ function ProductionHallContent({
                             {t("warehouse.production.cutQuantity")}
                           </th>
                           <th className="text-right py-2 px-3 font-medium whitespace-nowrap">
+                            {t("warehouse.production.readyForReceiptQty")}
+                          </th>
+                          <th className="text-right py-2 px-3 font-medium whitespace-nowrap">
                             {t("warehouse.production.received")}
                           </th>
                           <th className="text-right py-2 px-3 font-medium whitespace-nowrap">
@@ -1551,8 +1559,17 @@ function ProductionHallContent({
                                 )}
                               </td>
                               <td className="py-2 px-3 whitespace-nowrap">
-                                <span className="text-green-600 font-medium">
-                                  {formatNumberAr(order.total_cut_weight, 2)}
+                                {order.total_cut_weight > 0 ? (
+                                  <span className="text-green-600 font-medium">
+                                    {formatNumberAr(order.total_cut_weight, 2)}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                              </td>
+                              <td className="py-2 px-3 whitespace-nowrap">
+                                <span className="text-teal-600 font-bold">
+                                  {formatNumberAr(order.total_ready_weight, 2)}
                                 </span>
                               </td>
                               <td className="py-2 px-3 whitespace-nowrap">
@@ -1671,12 +1688,22 @@ function ProductionHallContent({
                                 {formatNumberAr(order.quantity_required, 2)}
                               </span>
                             </div>
+                            {order.total_cut_weight > 0 && (
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">
+                                  {t("warehouse.production.cutQuantity")}:
+                                </span>
+                                <span className="text-green-600 font-medium">
+                                  {formatNumberAr(order.total_cut_weight, 2)}
+                                </span>
+                              </div>
+                            )}
                             <div className="flex justify-between">
                               <span className="text-gray-500">
-                                {t("warehouse.production.cutQuantity")}:
+                                {t("warehouse.production.readyForReceiptQty")}:
                               </span>
-                              <span className="text-green-600 font-medium">
-                                {formatNumberAr(order.total_cut_weight, 2)}
+                              <span className="text-teal-600 font-bold">
+                                {formatNumberAr(order.total_ready_weight, 2)}
                               </span>
                             </div>
                             <div className="flex justify-between">

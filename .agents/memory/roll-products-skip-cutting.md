@@ -42,3 +42,6 @@ LATER than the JS timestamp → constraint violation, insert rejected.
 also pin `created_at` (and roll_created_at) to the SAME JS Date so the chain
 `created_at ≤ printed_at ≤ cut_completed_at` holds with equality. Updates
 (markRollAsPrinted) are safe because created_at already lies in the past.
+## Production hall "ready for receipt" rule
+- Roll products finish at stage='done' WITH cut_weight_total_kg populated (needed for receiving math), so any "ready for receipt" view must special-case them or they falsely report printing+cut quantities.
+- Rule: for roll products, print quantity must come from `printed_at IS NOT NULL` (not stage), cut quantity is always 0, and "ready to receive" = the produced roll weight (not cut weight). Bags keep cut-weight-based readiness. Receivable amount must derive from this ready quantity, never cut weight, or rolls become impossible to receive.

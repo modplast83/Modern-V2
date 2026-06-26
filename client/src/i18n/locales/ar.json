@@ -1740,6 +1740,7 @@
       "producedFilm": "الفيلم المنتج",
       "printing": "طباعة",
       "cutQuantity": "الكمية المقطعة",
+      "readyForReceiptQty": "الكمية الجاهزة للاستلام",
       "received": "تم الاستلام",
       "waste": "الهدر",
       "status": "الحالة",

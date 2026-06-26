@@ -1467,6 +1467,7 @@
       "producedFilm": "Produced Film",
       "printing": "Printing",
       "cutQuantity": "Cut Qty",
+      "readyForReceiptQty": "Ready Qty",
       "received": "Received",
       "waste": "Waste",
       "status": "Status",
