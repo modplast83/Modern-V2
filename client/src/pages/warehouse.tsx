@@ -1486,7 +1486,7 @@ function ProductionHallContent({
                           <th className="text-right py-2 px-3 font-medium whitespace-nowrap">
                             {t("warehouse.production.cutQuantity")}
                           </th>
-                          <th className="text-right py-2 px-3 font-medium whitespace-nowrap">
+                          <th className="text-right py-2 px-3 font-medium whitespace-nowrap pl-[5px] pr-[5px] pt-[0px] pb-[0px]">
                             {t("warehouse.production.readyForReceiptQty")}
                           </th>
                           <th className="text-right py-2 px-3 font-medium whitespace-nowrap">
