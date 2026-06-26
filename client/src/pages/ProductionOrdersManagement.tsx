@@ -16,11 +16,13 @@ import {
   Eye,
   Calendar,
   Play,
+  Tag,
 } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
 
+import BatchLabelDialog from "../components/production/BatchLabelDialog";
 import ProductionOrderStatsCard from "../components/production/ProductionOrderStatsCard";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -85,6 +87,9 @@ export default function ProductionOrdersManagement() {
   const [showStats, setShowStats] = useState<number | null>(null);
   const [printingProductionOrder, setPrintingProductionOrder] =
     useState<any>(null);
+  const [batchLabelOrderId, setBatchLabelOrderId] = useState<number | null>(
+    null,
+  );
   const [location] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -564,6 +569,18 @@ export default function ProductionOrdersManagement() {
                             >
                               <Printer className="h-4 w-4" />
                             </Button>
+                            {(order.production_stage === "done" ||
+                              order.status === "completed") && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setBatchLabelOrderId(order.id)}
+                                title={t("batch.printLabelTitle")}
+                                data-testid={`button-batch-label-${order.id}`}
+                              >
+                                <Tag className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -596,6 +613,12 @@ export default function ProductionOrdersManagement() {
           onClose={() => setPrintingProductionOrder(null)}
         />
       )}
+
+      {/* Batch Label Print Dialog */}
+      <BatchLabelDialog
+        productionOrderId={batchLabelOrderId}
+        onClose={() => setBatchLabelOrderId(null)}
+      />
     </div>
   );
 }

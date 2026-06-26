@@ -742,6 +742,17 @@ function sanitizeResponseForLogging(response: any): any {
         CREATE INDEX IF NOT EXISTS idx_production_orders_production_stage
         ON production_orders (production_stage)
       `);
+      // Ensure production_orders.batch_number column + unique index exist
+      // (generated when an order reaches the 'done' stage). Safe & idempotent.
+      await db.execute(sql`
+        ALTER TABLE production_orders
+        ADD COLUMN IF NOT EXISTS batch_number varchar(50)
+      `);
+      await db.execute(sql`
+        CREATE UNIQUE INDEX IF NOT EXISTS uniq_production_orders_batch_number
+        ON production_orders (batch_number)
+        WHERE batch_number IS NOT NULL
+      `);
       // One-time migration: fix invalid roll stage 'printed' -> 'printing'
       try {
         const fixed = await db.execute(sql`

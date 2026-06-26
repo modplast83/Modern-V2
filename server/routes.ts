@@ -2974,6 +2974,76 @@ export async function registerRoutes(
     }
   });
 
+  // Batch label data for a completed production order. Generates the batch
+  // number on demand if the order is done but somehow lacks one.
+  app.get(
+    "/api/production-orders/:id/batch-label-data",
+    requireAuth,
+    requirePermission("view_production", "manage_production"),
+    async (req, res) => {
+      try {
+        const id = parseRouteParam(req.params.id, "id");
+        const data = await storage.getBatchLabelData(id);
+        if (!data) {
+          return res.status(404).json({ message: "أمر الإنتاج غير موجود" });
+        }
+        if (!data.ready) {
+          return res.status(400).json({
+            message: "لم يكتمل أمر الإنتاج بعد - لا يمكن إصدار ملصق الباتش",
+          });
+        }
+        // QR encodes the authenticated in-app lookup URL for this batch.
+        if (data.batch_number) {
+          const origin = `${req.protocol}://${req.get("host")}`;
+          const lookupUrl = `${origin}/batch/${encodeURIComponent(
+            data.batch_number,
+          )}`;
+          try {
+            const qrDataUrl = await QRCode.toDataURL(lookupUrl, {
+              margin: 1,
+              width: 256,
+            });
+            data.qr_png_base64 = qrDataUrl.replace(
+              /^data:image\/png;base64,/,
+              "",
+            );
+          } catch (qrErr) {
+            console.error("Error generating batch QR:", qrErr);
+          }
+          data.lookup_url = lookupUrl;
+        }
+        res.json(data);
+      } catch (error) {
+        console.error("Error building batch label data:", error);
+        res.status(500).json({ message: "خطأ في جلب بيانات ملصق الباتش" });
+      }
+    },
+  );
+
+  // Authenticated batch traceability lookup (opened by scanning the label QR).
+  // Must NOT be public — guards commercial/operator data behind a permission.
+  app.get(
+    "/api/batches/:batchNumber",
+    requireAuth,
+    requirePermission("view_production", "manage_production"),
+    async (req, res) => {
+      try {
+        const batchNumber = String(req.params.batchNumber || "").trim();
+        if (!/^[A-Za-z0-9-]{1,50}$/.test(batchNumber)) {
+          return res.status(400).json({ message: "رقم باتش غير صالح" });
+        }
+        const data = await storage.getBatchTraceability(batchNumber);
+        if (!data) {
+          return res.status(404).json({ message: "رقم الباتش غير موجود" });
+        }
+        res.json(data);
+      } catch (error) {
+        console.error("Error fetching batch traceability:", error);
+        res.status(500).json({ message: "خطأ في جلب بيانات الباتش" });
+      }
+    },
+  );
+
   app.post(
     "/api/production-orders",
     requireAuth,

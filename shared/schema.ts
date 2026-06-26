@@ -563,6 +563,9 @@ export const production_orders = pgTable(
     production_stage: varchar("production_stage", { length: 20 })
       .notNull()
       .default("film"),
+    // رقم الباتش (الدفعة) — يُولّد تلقائياً عند وصول أمر الإنتاج لمرحلة 'done'.
+    // فريد لكل أمر إنتاج/منتج، يُستخدم في ملصق الكمية النهائية وصفحة التتبع.
+    batch_number: varchar("batch_number", { length: 50 }).unique(),
     created_at: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => ({
@@ -2547,6 +2550,8 @@ export const insertProductionOrderSchema = createInsertSchema(production_orders)
     film_completion_percentage: true,
     printing_completion_percentage: true,
     cutting_completion_percentage: true,
+    // SECURITY: batch_number generated server-side at the 'done' transition only.
+    batch_number: true,
   })
   .extend({
     // INVARIANT A & F: Order must exist and be valid

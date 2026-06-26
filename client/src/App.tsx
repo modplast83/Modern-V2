@@ -115,6 +115,7 @@ const MyOrders = lazyWithRetry(() => import("./pages/my-orders"));
 const McpSettings = lazyWithRetry(() => import("./pages/mcp-settings"));
 const MpbfBagQuote = lazyWithRetry(() => import("./pages/mpbf-bag-quote"));
 const ViewOrder = lazyWithRetry(() => import("./pages/view-order"));
+const BatchLookup = lazyWithRetry(() => import("./pages/BatchLookup"));
 
 function PageLoadingFallback() {
   return (
@@ -201,6 +202,13 @@ function AppRoutes() {
         <Route path="/bag-configurator">
           <ProtectedRoute path="/bag-configurator">
             <BagConfigurator />
+          </ProtectedRoute>
+        </Route>
+
+        {/* Authenticated batch traceability lookup (opened by scanning a label QR) */}
+        <Route path="/batch/:batchNumber">
+          <ProtectedRoute path="/batch/:batchNumber">
+            <BatchLookup />
           </ProtectedRoute>
         </Route>
 

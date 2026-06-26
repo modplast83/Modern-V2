@@ -8714,6 +8714,7 @@ export class DatabaseStorage implements IStorage {
             .set({ status: "completed" } as any)
             .where(eq(production_orders.id, roll.production_order_id));
           invalidateProductionCache();
+          await this.ensureBatchNumber(roll.production_order_id);
           await this.maybeCompleteParentOrder(roll.production_order_id);
         }
 
@@ -8775,6 +8776,266 @@ export class DatabaseStorage implements IStorage {
     } catch (e) {
       console.error("خطأ في الإكمال التلقائي للطلب:", e);
     }
+  }
+
+  // Generate (idempotently) the per-order batch number when a production order
+  // reaches its final stage. Format: B-<production_order_number>-<YYYYMMDD>.
+  // Concurrency-safe: the conditional UPDATE + unique index guarantee a single
+  // value even if two completion paths race.
+  async ensureBatchNumber(
+    productionOrderId: number,
+  ): Promise<string | null> {
+    try {
+      const [po] = await db
+        .select({
+          batch_number: production_orders.batch_number,
+          production_order_number:
+            production_orders.production_order_number,
+        })
+        .from(production_orders)
+        .where(eq(production_orders.id, productionOrderId));
+      if (!po) return null;
+      if (po.batch_number) return po.batch_number;
+
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, "0");
+      const d = String(now.getDate()).padStart(2, "0");
+      // Column is varchar(50). Keep the date suffix intact (uniqueness-relevant)
+      // and trim only the PO-number segment if the candidate would overflow.
+      const datePart = `${y}${m}${d}`;
+      const maxLen = 50;
+      const fixedLen = 3 + datePart.length; // "B-" + "-" + date
+      const pon = String(po.production_order_number ?? "").slice(
+        0,
+        Math.max(1, maxLen - fixedLen),
+      );
+      const candidate = `B-${pon}-${datePart}`;
+
+      const [updated] = await db
+        .update(production_orders)
+        .set({ batch_number: candidate } as any)
+        .where(
+          and(
+            eq(production_orders.id, productionOrderId),
+            isNull(production_orders.batch_number),
+          ),
+        )
+        .returning({ batch_number: production_orders.batch_number });
+      if (updated?.batch_number) {
+        console.log(
+          `🏷️ تم توليد رقم الباتش ${updated.batch_number} لأمر الإنتاج ${productionOrderId}`,
+        );
+        return updated.batch_number;
+      }
+
+      // Another path set it concurrently — re-read the persisted value.
+      const [again] = await db
+        .select({ batch_number: production_orders.batch_number })
+        .from(production_orders)
+        .where(eq(production_orders.id, productionOrderId));
+      return again?.batch_number ?? null;
+    } catch (e) {
+      console.error("خطأ في توليد رقم الباتش:", e);
+      return null;
+    }
+  }
+
+  // Aggregate the distinct operator names + per-stage dates for a production
+  // order. Shared by the batch-label payload and the batch-lookup page.
+  private async getBatchOperators(productionOrderId: number): Promise<{
+    film: string[];
+    printing: string[];
+    cutting: string[];
+    film_date: Date | null;
+    printing_date: Date | null;
+    cutting_date: Date | null;
+  }> {
+    const createdByUser = alias(users, "batch_created_by");
+    const printedByUser = alias(users, "batch_printed_by");
+
+    const rollRows = await db
+      .select({
+        created_at: rolls.created_at,
+        printed_at: rolls.printed_at,
+        cut_completed_at: rolls.cut_completed_at,
+        created_by_name: createdByUser.display_name,
+        created_by_name_ar: createdByUser.display_name_ar,
+        printed_by_name: printedByUser.display_name,
+        printed_by_name_ar: printedByUser.display_name_ar,
+      })
+      .from(rolls)
+      .leftJoin(createdByUser, eq(rolls.created_by, createdByUser.id))
+      .leftJoin(printedByUser, eq(rolls.printed_by, printedByUser.id))
+      .where(eq(rolls.production_order_id, productionOrderId));
+
+    const cutRows = await db
+      .select({
+        performed_at: cuts.created_at,
+        performed_by_name: users.display_name,
+        performed_by_name_ar: users.display_name_ar,
+      })
+      .from(cuts)
+      .innerJoin(rolls, eq(cuts.roll_id, rolls.id))
+      .leftJoin(users, eq(cuts.performed_by, users.id))
+      .where(eq(rolls.production_order_id, productionOrderId));
+
+    const currentLang = "ar";
+    const pick = (nameAr?: string | null, nameEn?: string | null) =>
+      (currentLang === "ar" ? nameAr || nameEn : nameEn || nameAr) || null;
+
+    const filmSet = new Set<string>();
+    const printSet = new Set<string>();
+    const cutSet = new Set<string>();
+    let filmDate: Date | null = null;
+    let printDate: Date | null = null;
+    let cutDate: Date | null = null;
+
+    for (const r of rollRows) {
+      const filmName = pick(r.created_by_name_ar, r.created_by_name);
+      if (filmName) filmSet.add(filmName);
+      const printName = pick(r.printed_by_name_ar, r.printed_by_name);
+      if (printName) printSet.add(printName);
+      if (r.created_at && (!filmDate || r.created_at < filmDate))
+        filmDate = r.created_at;
+      if (r.printed_at && (!printDate || r.printed_at < printDate))
+        printDate = r.printed_at;
+      if (
+        r.cut_completed_at &&
+        (!cutDate || r.cut_completed_at > cutDate)
+      )
+        cutDate = r.cut_completed_at;
+    }
+    for (const c of cutRows) {
+      const cutName = pick(c.performed_by_name_ar, c.performed_by_name);
+      if (cutName) cutSet.add(cutName);
+      if (c.performed_at && (!cutDate || c.performed_at > cutDate))
+        cutDate = c.performed_at;
+    }
+
+    return {
+      film: Array.from(filmSet),
+      printing: Array.from(printSet),
+      cutting: Array.from(cutSet),
+      film_date: filmDate,
+      printing_date: printDate,
+      cutting_date: cutDate,
+    };
+  }
+
+  // Build the full payload the batch label needs: batch number (generated if
+  // missing for a completed order), product/customer info, net quantity,
+  // packaging units for the item, operator names + production date.
+  async getBatchLabelData(productionOrderId: number): Promise<any> {
+    const [po] = await this.getAllProductionOrders({}).then((rows) =>
+      rows.filter((r: any) => r.id === productionOrderId),
+    );
+    if (!po) return null;
+
+    const isDone =
+      po.production_stage === "done" || po.status === "completed";
+    if (!isDone) {
+      return { ready: false, production_stage: po.production_stage };
+    }
+
+    const batchNumber = await this.ensureBatchNumber(productionOrderId);
+    const operators = await this.getBatchOperators(productionOrderId);
+    const packagingUnits = po.item_id
+      ? await this.getPackagingUnitsByItem(po.item_id)
+      : [];
+
+    return {
+      ready: true,
+      batch_number: batchNumber,
+      production_order_id: po.id,
+      production_order_number: po.production_order_number,
+      order_number: po.order_number,
+      customer_name: po.customer_name,
+      customer_name_ar: po.customer_name_ar,
+      item_id: po.item_id,
+      item_name: po.item_name,
+      item_name_ar: po.item_name_ar,
+      size_caption: po.size_caption,
+      net_quantity_kg: po.net_quantity_kg,
+      final_quantity_kg: po.final_quantity_kg,
+      production_date:
+        operators.cutting_date ||
+        operators.printing_date ||
+        operators.film_date,
+      packaging_units: packagingUnits,
+      operators,
+    };
+  }
+
+  // Traceability lookup for the authenticated batch-scan page: resolve a batch
+  // number to its production order and return per-stage dates + operator names.
+  async getBatchTraceability(batchNumber: string): Promise<any> {
+    const [po] = await db
+      .select({
+        id: production_orders.id,
+        production_order_number:
+          production_orders.production_order_number,
+        batch_number: production_orders.batch_number,
+        net_quantity_kg: production_orders.net_quantity_kg,
+        order_number: orders.order_number,
+        customer_name: customers.name,
+        customer_name_ar: customers.name_ar,
+        size_caption: customer_products.size_caption,
+      })
+      .from(production_orders)
+      .leftJoin(orders, eq(production_orders.order_id, orders.id))
+      .leftJoin(customers, eq(orders.customer_id, customers.id))
+      .leftJoin(
+        customer_products,
+        eq(production_orders.customer_product_id, customer_products.id),
+      )
+      .where(eq(production_orders.batch_number, batchNumber));
+    if (!po) return null;
+
+    const productItem = alias(items, "trace_item");
+    const [itemRow] = await db
+      .select({
+        item_name: productItem.name,
+        item_name_ar: productItem.name_ar,
+      })
+      .from(customer_products)
+      .leftJoin(productItem, eq(customer_products.item_id, productItem.id))
+      .innerJoin(
+        production_orders,
+        eq(production_orders.customer_product_id, customer_products.id),
+      )
+      .where(eq(production_orders.id, po.id));
+
+    const operators = await this.getBatchOperators(po.id);
+
+    return {
+      batch_number: po.batch_number,
+      production_order_number: po.production_order_number,
+      order_number: po.order_number,
+      customer_name: po.customer_name,
+      customer_name_ar: po.customer_name_ar,
+      item_name: itemRow?.item_name,
+      item_name_ar: itemRow?.item_name_ar,
+      size_caption: po.size_caption,
+      net_quantity_kg: po.net_quantity_kg,
+      stages: [
+        {
+          stage: "film",
+          date: operators.film_date,
+          operators: operators.film,
+        },
+        {
+          stage: "printing",
+          date: operators.printing_date,
+          operators: operators.printing,
+        },
+        {
+          stage: "cutting",
+          date: operators.cutting_date,
+          operators: operators.cutting,
+        },
+      ],
+    };
   }
 
   async getCuttingQueue(): Promise<any[]> {
@@ -9387,6 +9648,11 @@ export class DatabaseStorage implements IStorage {
           .where(eq(production_orders.id, id))
           .returning();
         invalidateProductionCache();
+        // Generate the batch number once the order reaches its final stage,
+        // for every workflow (roll products and standard cut orders alike).
+        if (computedStage === "done") {
+          await this.ensureBatchNumber(id);
+        }
         if (setValues.status === "completed") {
           await this.maybeCompleteParentOrder(id);
         }
