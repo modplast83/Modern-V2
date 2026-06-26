@@ -5675,18 +5675,28 @@ export class DatabaseStorage implements IStorage {
           throw new Error(`أمر الإنتاج رقم ${poId} غير موجود`);
         }
 
-        const cutWeightResult = await db.execute(sql`
-          SELECT COALESCE(SUM(cut_weight_total_kg), 0) AS total_cut_weight
-          FROM rolls
-          WHERE production_order_id = ${poId} AND stage = 'done'
+        // "Ready to receive" basis: plastic-roll products are never cut, so their
+        // ready weight is the produced (done) roll weight; everything else uses
+        // the cut weight. Mirrors getProductionHallOrders so the receipt math
+        // matches what the warehouse user sees in the production hall.
+        const readyWeightResult = await db.execute(sql`
+          SELECT COALESCE(SUM(
+            CASE WHEN (i.name ILIKE '%plastic roll%' OR i.name_ar LIKE '%رولات بلاستيك%')
+              THEN r.weight_kg ELSE r.cut_weight_total_kg END
+          ), 0) AS total_ready_weight
+          FROM rolls r
+          JOIN production_orders po2 ON po2.id = r.production_order_id
+          JOIN customer_products cp ON cp.id = po2.customer_product_id
+          LEFT JOIN items i ON i.id = cp.item_id
+          WHERE r.production_order_id = ${poId} AND r.stage = 'done'
         `);
-        const totalCutWeight = parseFloat(
-          String((cutWeightResult.rows[0] as any)?.total_cut_weight || "0"),
+        const totalReadyWeight = parseFloat(
+          String((readyWeightResult.rows[0] as any)?.total_ready_weight || "0"),
         );
         const alreadyReceived = parseFloat(
           String(po.warehouse_received_kg || "0"),
         );
-        const remaining = totalCutWeight - alreadyReceived;
+        const remaining = totalReadyWeight - alreadyReceived;
 
         if (remaining <= 0) {
           throw new Error(
@@ -5859,18 +5869,27 @@ export class DatabaseStorage implements IStorage {
         throw new Error("أمر الإنتاج غير موجود");
       }
 
-      const cutWeightResult = await db.execute(sql`
-        SELECT COALESCE(SUM(cut_weight_total_kg), 0) AS total_cut_weight
-        FROM rolls
-        WHERE production_order_id = ${poId} AND stage = 'done'
+      // Plastic-roll products are never cut: their ready weight is the produced
+      // (done) roll weight; everything else uses cut weight. Mirrors
+      // getProductionHallOrders so receipt math matches the production hall view.
+      const readyWeightResult = await db.execute(sql`
+        SELECT COALESCE(SUM(
+          CASE WHEN (i.name ILIKE '%plastic roll%' OR i.name_ar LIKE '%رولات بلاستيك%')
+            THEN r.weight_kg ELSE r.cut_weight_total_kg END
+        ), 0) AS total_ready_weight
+        FROM rolls r
+        JOIN production_orders po2 ON po2.id = r.production_order_id
+        JOIN customer_products cp ON cp.id = po2.customer_product_id
+        LEFT JOIN items i ON i.id = cp.item_id
+        WHERE r.production_order_id = ${poId} AND r.stage = 'done'
       `);
-      const totalCutWeight = parseFloat(
-        String((cutWeightResult.rows[0] as any)?.total_cut_weight || "0"),
+      const totalReadyWeight = parseFloat(
+        String((readyWeightResult.rows[0] as any)?.total_ready_weight || "0"),
       );
       const alreadyReceived = parseFloat(
         String(po.warehouse_received_kg || "0"),
       );
-      const remaining = totalCutWeight - alreadyReceived;
+      const remaining = totalReadyWeight - alreadyReceived;
       const receiveQty = parseFloat(
         String(data.weight_kg || data.quantity || "0"),
       );

@@ -42,6 +42,6 @@ LATER than the JS timestamp → constraint violation, insert rejected.
 also pin `created_at` (and roll_created_at) to the SAME JS Date so the chain
 `created_at ≤ printed_at ≤ cut_completed_at` holds with equality. Updates
 (markRollAsPrinted) are safe because created_at already lies in the past.
-## Production hall "ready for receipt" rule
-- Roll products finish at stage='done' WITH cut_weight_total_kg populated (needed for receiving math), so any "ready for receipt" view must special-case them or they falsely report printing+cut quantities.
-- Rule: for roll products, print quantity must come from `printed_at IS NOT NULL` (not stage), cut quantity is always 0, and "ready to receive" = the produced roll weight (not cut weight). Bags keep cut-weight-based readiness. Receivable amount must derive from this ready quantity, never cut weight, or rolls become impossible to receive.
+## Ready-for-receipt weight is the single source of truth (not cut weight)
+- Roll products are never cut, so any "ready / remaining to receive" math must use a roll-aware ready weight: roll product => produced (done) roll weight; everything else => done cut weight. Apply this identically in the production-hall view AND in finished-goods receipt voucher validation.
+- **Why:** roll rolls migrated to 'done' by startup reconciliation carry cut_weight_total_kg=0 (only freshly created rolls get it = weight_kg). Cut-weight-based remaining then reports "already fully received" and blocks receiving, while the UI still shows a receivable quantity. Keeping both surfaces on the ready-weight formula prevents that mismatch.

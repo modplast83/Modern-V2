@@ -1114,6 +1114,26 @@ function ProductionHallContent({
       .filter(Boolean);
   }, [selectedReceiptOrderId, selectedOrders, processedOrders]);
 
+  // Auto-fill each receipt line with the order's ready-for-receipt quantity when
+  // the dialog opens. Only seeds lines the user hasn't touched yet (key absent),
+  // so manual edits/clears are preserved across background refetches.
+  useEffect(() => {
+    if (!receiptDialogOpen) return;
+    setReceiptWeights((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      receiptTargetOrders.forEach((order: any) => {
+        const id = order.production_order_id.toString();
+        if (!(id in next)) {
+          const rem = order.remaining_to_receive;
+          next[id] = rem > 0 ? rem.toFixed(3) : "";
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [receiptDialogOpen, receiptTargetOrders]);
+
   // Set of packaging-unit ids currently selected on any receipt line in this
   // dialog. Used by ManagePackagingUnitsDialog to warn before deactivating a
   // unit that a receipt line still references.
