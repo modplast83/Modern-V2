@@ -45,7 +45,6 @@ export default function OrdersSearch({
     { value: "paused", label: t("orders.statuses.paused") },
     { value: "completed", label: t("orders.statuses.completed") },
     { value: "received", label: t("orders.statuses.received") },
-    { value: "delivered", label: t("orders.statuses.delivered") },
     { value: "archived", label: t("orders.statuses.archived") },
   ];
 
