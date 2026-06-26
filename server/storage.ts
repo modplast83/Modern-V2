@@ -8714,6 +8714,7 @@ export class DatabaseStorage implements IStorage {
             .set({ status: "completed" } as any)
             .where(eq(production_orders.id, roll.production_order_id));
           invalidateProductionCache();
+          await this.maybeCompleteParentOrder(roll.production_order_id);
         }
 
         await this.updateProductionOrderCompletionPercentages(
@@ -8725,6 +8726,55 @@ export class DatabaseStorage implements IStorage {
       "completeCutting",
       `إكمال تقطيع الرول ${rollId}`,
     );
+  }
+
+  // Auto-complete the parent order once all of its production orders are
+  // completed. Centralizes the rule so every path that completes a production
+  // order (cutting completion, roll products that skip cutting, etc.) keeps the
+  // order status in sync — not just the production-order PATCH route.
+  private async maybeCompleteParentOrder(
+    productionOrderId: number,
+  ): Promise<void> {
+    try {
+      const [po] = await db
+        .select({ order_id: production_orders.order_id })
+        .from(production_orders)
+        .where(eq(production_orders.id, productionOrderId));
+      if (!po?.order_id) return;
+
+      const siblings = await db
+        .select({ status: production_orders.status })
+        .from(production_orders)
+        .where(eq(production_orders.order_id, po.order_id));
+      const allCompleted =
+        siblings.length > 0 &&
+        siblings.every((s: any) => s.status === "completed");
+      if (!allCompleted) return;
+
+      const [parent] = await db
+        .select({
+          status: orders.status,
+          order_number: orders.order_number,
+        })
+        .from(orders)
+        .where(eq(orders.id, po.order_id));
+      if (parent && parent.status === "in_production") {
+        await db
+          .update(orders)
+          .set({ status: "completed", previous_status: parent.status })
+          .where(
+            and(
+              eq(orders.id, po.order_id),
+              eq(orders.status, "in_production"),
+            ),
+          );
+        console.log(
+          `✅ تم إكمال الطلب ${parent.order_number} تلقائياً - جميع أوامر الإنتاج مكتملة`,
+        );
+      }
+    } catch (e) {
+      console.error("خطأ في الإكمال التلقائي للطلب:", e);
+    }
   }
 
   async getCuttingQueue(): Promise<any[]> {
@@ -9337,6 +9387,9 @@ export class DatabaseStorage implements IStorage {
           .where(eq(production_orders.id, id))
           .returning();
         invalidateProductionCache();
+        if (setValues.status === "completed") {
+          await this.maybeCompleteParentOrder(id);
+        }
         return updated;
       },
       "updateProductionOrderCompletionPercentages",
