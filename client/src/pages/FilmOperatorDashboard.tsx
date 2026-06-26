@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   Package,
+  PackageCheck,
   Clock,
   AlertTriangle,
   CheckCircle2,
@@ -19,6 +20,7 @@ import { useTranslation } from "react-i18next";
 import { formatNumberAr } from "../../../shared/number-utils";
 import PageLayout from "../components/layout/PageLayout";
 import RollCreationModalEnhanced from "../components/modals/RollCreationModalEnhanced";
+import BatchLabelDialog from "../components/production/BatchLabelDialog";
 import FilmMaterialMixingTab from "../components/production/FilmMaterialMixingTab";
 import {
   OrderGroupCard,
@@ -119,6 +121,7 @@ export default function FilmOperatorDashboard({
     useState<ActiveProductionOrderDetails | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isFinalRoll, setIsFinalRoll] = useState(false);
+  const [batchOrderId, setBatchOrderId] = useState<number | null>(null);
   const [expandedOrders, setExpandedOrders] = useState<Set<number>>(new Set());
   const [selectedOrderNumber, setSelectedOrderNumber] = useState<string | null>(
     null,
@@ -794,6 +797,18 @@ export default function FilmOperatorDashboard({
                             </div>
                           </div>
                         )}
+
+                        {order.rolls_count > 0 && (
+                          <Button
+                            variant="outline"
+                            onClick={() => setBatchOrderId(order.id)}
+                            className="whitespace-nowrap"
+                            data-testid={`button-batch-label-${order.id}`}
+                          >
+                            <PackageCheck className="h-4 w-4 ml-2" />
+                            {t("batch.printLabelTitle")}
+                          </Button>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -821,8 +836,20 @@ export default function FilmOperatorDashboard({
     </div>
   );
 
+  const batchDialog = (
+    <BatchLabelDialog
+      productionOrderId={batchOrderId}
+      onClose={() => setBatchOrderId(null)}
+    />
+  );
+
   if (hideLayout) {
-    return mainContent;
+    return (
+      <>
+        {mainContent}
+        {batchDialog}
+      </>
+    );
   }
 
   return (
@@ -831,6 +858,7 @@ export default function FilmOperatorDashboard({
       description={t("operators.film.description")}
     >
       {mainContent}
+      {batchDialog}
     </PageLayout>
   );
 }

@@ -2974,8 +2974,9 @@ export async function registerRoutes(
     }
   });
 
-  // Batch label data for a completed production order. Generates the batch
-  // number on demand if the order is done but somehow lacks one.
+  // Batch/packaging label data for a production order. Works for in-progress
+  // orders too (operators print labels while packing), generating the batch
+  // number on demand if it is missing.
   app.get(
     "/api/production-orders/:id/batch-label-data",
     requireAuth,
@@ -2986,11 +2987,6 @@ export async function registerRoutes(
         const data = await storage.getBatchLabelData(id);
         if (!data) {
           return res.status(404).json({ message: "أمر الإنتاج غير موجود" });
-        }
-        if (!data.ready) {
-          return res.status(400).json({
-            message: "لم يكتمل أمر الإنتاج بعد - لا يمكن إصدار ملصق الباتش",
-          });
         }
         // QR encodes the authenticated in-app lookup URL for this batch.
         if (data.batch_number) {

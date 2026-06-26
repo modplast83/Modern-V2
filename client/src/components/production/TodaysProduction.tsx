@@ -4,6 +4,7 @@ import { ar } from "date-fns/locale";
 import { useState } from "react";
 import {
   Package,
+  PackageCheck,
   Printer,
   User,
   Film,
@@ -33,6 +34,7 @@ import {
   SelectValue,
 } from "../ui/select";
 
+import BatchLabelDialog from "./BatchLabelDialog";
 import { printRollLabel } from "./RollLabelPrint";
 
 type ProductionStage = "film" | "printing" | "cutting";
@@ -48,7 +50,10 @@ interface ProductionRecord {
   event_at: string;
   employee_id: number | null;
   employee_name: string | null;
+  production_order_id: number | null;
   production_order_number: string;
+  production_stage?: string;
+  status?: string;
   item_name?: string;
   item_name_ar?: string;
   size_caption?: string;
@@ -110,6 +115,7 @@ export default function TodaysProduction() {
   const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
   const [toDate, setToDate] = useState<Date | undefined>(undefined);
   const [stageFilter, setStageFilter] = useState<StageFilter>("all");
+  const [batchOrderId, setBatchOrderId] = useState<number | null>(null);
   const [expandedEmployees, setExpandedEmployees] = useState<Set<string>>(
     new Set(),
   );
@@ -361,6 +367,20 @@ export default function TodaysProduction() {
           <Tag className="h-4 w-4" />
           {t("production.printLabel")}
         </Button>
+        {(record.production_stage === "done" ||
+          record.status === "completed") &&
+          record.production_order_id != null && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setBatchOrderId(record.production_order_id)}
+              className="gap-1"
+              data-testid={`button-batch-label-${record.id}`}
+            >
+              <PackageCheck className="h-4 w-4" />
+              {t("batch.printLabelTitle")}
+            </Button>
+          )}
       </div>
     </div>
   );
@@ -554,6 +574,11 @@ export default function TodaysProduction() {
           </Card>
         );
       })}
+
+      <BatchLabelDialog
+        productionOrderId={batchOrderId}
+        onClose={() => setBatchOrderId(null)}
+      />
     </div>
   );
 }

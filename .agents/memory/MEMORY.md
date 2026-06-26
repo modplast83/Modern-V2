@@ -28,3 +28,5 @@
 - [i18n duplicate translation blocks](i18n-duplicate-keys.md) — ar.json/en.json have duplicate sibling keys (e.g. two warehouse.print blocks); only the LAST wins, edit that one or new keys silently don't resolve.
 - [gpt-5 temperature constraint](gpt5-temperature.md) — gpt-5 family 400s on any custom temperature (only default 1); gate the param on model, and the agent model lives in a DB row not just code defaults.
 - [Preventive action ↔ machines](preventive-action-machines.md) — preventive actions can target many machines via junction table; per-machine queries must use the junction, not the primary machine_id.
+- [Operator board feeds active-only](operator-board-feeds-active-only.md) — film/cutting operator dashboards only show in-progress orders; never gate UI on a completed state there (unreachable). Completed review lives on Today's Production.
+- [Batch packageable quantity](batch-packageable-qty.md) — net_quantity_kg is never persisted (always 0); for batch labels resolve first positive of net→produced→final→quantity, never trust net alone.

@@ -6893,7 +6893,10 @@ export class DatabaseStorage implements IStorage {
             ${timestampCol} AS event_at,
             ${employeeCol} AS employee_id,
             COALESCE(u.display_name_ar, u.display_name, u.full_name, u.username) AS employee_name,
+            po.id AS production_order_id,
             po.production_order_number,
+            po.production_stage,
+            po.status AS po_status,
             i.name AS item_name,
             i.name_ar AS item_name_ar,
             cp.size_caption,
@@ -6946,7 +6949,13 @@ export class DatabaseStorage implements IStorage {
           event_at: row.event_at,
           employee_id: row.employee_id != null ? Number(row.employee_id) : null,
           employee_name: row.employee_name,
+          production_order_id:
+            row.production_order_id != null
+              ? Number(row.production_order_id)
+              : null,
           production_order_number: row.production_order_number,
+          production_stage: row.production_stage,
+          status: row.po_status,
           item_name: row.item_name,
           item_name_ar: row.item_name_ar,
           size_caption: row.size_caption,
@@ -8923,6 +8932,23 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
+  // Resolve the packageable weight for a production order. net_quantity_kg is
+  // not reliably persisted, so prefer it only when positive and otherwise fall
+  // back to the actual produced weight, then the final/required quantity.
+  private resolvePackageableKg(po: any): number {
+    const candidates = [
+      po?.net_quantity_kg,
+      po?.produced_quantity_kg,
+      po?.final_quantity_kg,
+      po?.quantity_kg,
+    ];
+    for (const c of candidates) {
+      const n = parseFloat(String(c ?? "0"));
+      if (Number.isFinite(n) && n > 0) return n;
+    }
+    return 0;
+  }
+
   // Build the full payload the batch label needs: batch number (generated if
   // missing for a completed order), product/customer info, net quantity,
   // packaging units for the item, operator names + production date.
@@ -8932,17 +8958,21 @@ export class DatabaseStorage implements IStorage {
     );
     if (!po) return null;
 
-    const isDone =
-      po.production_stage === "done" || po.status === "completed";
-    if (!isDone) {
-      return { ready: false, production_stage: po.production_stage };
-    }
-
+    // Batch/packaging labels can be printed while an order is still in
+    // progress (operators stick labels on packages as they pack), so we no
+    // longer gate on completion. The packageable quantity falls back to the
+    // produced-so-far weight via resolvePackageableKg, and the batch number is
+    // generated on first print (idempotent). Completed-only surfaces still gate
+    // the *button* on completion; only operator boards print mid-production.
     const batchNumber = await this.ensureBatchNumber(productionOrderId);
     const operators = await this.getBatchOperators(productionOrderId);
     const packagingUnits = po.item_id
       ? await this.getPackagingUnitsByItem(po.item_id)
       : [];
+
+    // net_quantity_kg is not always persisted, so fall back to the actual
+    // produced weight (then final/required) to derive the packageable amount.
+    const packageableKg = this.resolvePackageableKg(po);
 
     return {
       ready: true,
@@ -8956,7 +8986,7 @@ export class DatabaseStorage implements IStorage {
       item_name: po.item_name,
       item_name_ar: po.item_name_ar,
       size_caption: po.size_caption,
-      net_quantity_kg: po.net_quantity_kg,
+      net_quantity_kg: packageableKg,
       final_quantity_kg: po.final_quantity_kg,
       production_date:
         operators.cutting_date ||
@@ -8977,6 +9007,9 @@ export class DatabaseStorage implements IStorage {
           production_orders.production_order_number,
         batch_number: production_orders.batch_number,
         net_quantity_kg: production_orders.net_quantity_kg,
+        produced_quantity_kg: production_orders.produced_quantity_kg,
+        final_quantity_kg: production_orders.final_quantity_kg,
+        quantity_kg: production_orders.quantity_kg,
         order_number: orders.order_number,
         customer_name: customers.name,
         customer_name_ar: customers.name_ar,
@@ -9017,7 +9050,7 @@ export class DatabaseStorage implements IStorage {
       item_name: itemRow?.item_name,
       item_name_ar: itemRow?.item_name_ar,
       size_caption: po.size_caption,
-      net_quantity_kg: po.net_quantity_kg,
+      net_quantity_kg: this.resolvePackageableKg(po),
       stages: [
         {
           stage: "film",

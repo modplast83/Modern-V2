@@ -7,6 +7,7 @@ import {
   Weight,
   AlertCircle,
   Package,
+  PackageCheck,
   Layers,
 } from "lucide-react";
 import { useState, useMemo } from "react";
@@ -20,6 +21,7 @@ import {
   OrdersListHeader,
   groupByOrderNumber,
 } from "../components/production/OrderGroupCard";
+import BatchLabelDialog from "../components/production/BatchLabelDialog";
 import { OperatorStatCard } from "../components/production/OperatorStatCard";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -113,6 +115,7 @@ export default function CuttingOperatorDashboard({
   const [selectedRoll, setSelectedRoll] = useState<RollDetails | null>(null);
   const [netWeight, setNetWeight] = useState<string>("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [batchOrderId, setBatchOrderId] = useState<number | null>(null);
   const [selectedOrderNumber, setSelectedOrderNumber] = useState<string | null>(
     null,
   );
@@ -465,13 +468,29 @@ export default function CuttingOperatorDashboard({
                     >
                       #{order.order_number}-{order.production_order_number}
                     </CardTitle>
-                    <Badge
-                      variant="secondary"
-                      className="bg-green-100 text-green-800 whitespace-nowrap"
-                    >
-                      <Scissors className="h-3 w-3 ml-1" />
-                      {order.total_rolls} {t("operators.common.roll")}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      {order.total_rolls > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setBatchOrderId(order.production_order_id)
+                          }
+                          className="gap-1 whitespace-nowrap"
+                          data-testid={`button-batch-label-${order.production_order_id}`}
+                        >
+                          <PackageCheck className="h-4 w-4 ml-1" />
+                          {t("batch.printLabelTitle")}
+                        </Button>
+                      )}
+                      <Badge
+                        variant="secondary"
+                        className="bg-green-100 text-green-800 whitespace-nowrap"
+                      >
+                        <Scissors className="h-3 w-3 ml-1" />
+                        {order.total_rolls} {t("operators.common.roll")}
+                      </Badge>
+                    </div>
                   </div>
                   <CardDescription
                     className="text-red-600 dark:text-red-400 font-bold"
@@ -720,11 +739,19 @@ export default function CuttingOperatorDashboard({
     </Dialog>
   );
 
+  const batchDialog = (
+    <BatchLabelDialog
+      productionOrderId={batchOrderId}
+      onClose={() => setBatchOrderId(null)}
+    />
+  );
+
   if (hideLayout) {
     return (
       <>
         {mainContent}
         {dialogContent}
+        {batchDialog}
       </>
     );
   }
@@ -736,6 +763,7 @@ export default function CuttingOperatorDashboard({
     >
       {mainContent}
       {dialogContent}
+      {batchDialog}
     </PageLayout>
   );
 }
