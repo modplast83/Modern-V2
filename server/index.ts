@@ -760,12 +760,69 @@ function sanitizeResponseForLogging(response: any): any {
         );
       }
 
+      // Reconcile existing plastic-roll products onto the cutting-skip workflow.
+      // These products never pass through cutting: a non-printed film roll is a
+      // finished product as soon as it is produced, and a printed roll is
+      // finished once printed. Move any such rolls still sitting in 'film'
+      // (non-printed) or 'printing' straight to 'done' so they appear in the
+      // production hall. Idempotent: once a roll is 'done' it no longer matches.
+      try {
+        const rollSkip = await db.execute(sql`
+          UPDATE rolls r
+          SET stage = 'done',
+              cut_completed_at = COALESCE(r.cut_completed_at, now()),
+              cut_weight_total_kg = COALESCE(r.cut_weight_total_kg, r.weight_kg)
+          FROM production_orders po
+          LEFT JOIN customer_products cp ON cp.id = po.customer_product_id
+          LEFT JOIN items i ON i.id = cp.item_id
+          WHERE r.production_order_id = po.id
+            AND (i.name ILIKE '%plastic roll%' OR i.name_ar LIKE '%رولات بلاستيك%')
+            AND (
+                  r.stage = 'printing'
+                  OR (r.stage = 'film' AND COALESCE(cp.is_printed, false) = false)
+                )
+        `);
+        const rollSkipCount = (rollSkip as any).rowCount ?? 0;
+        if (rollSkipCount > 0) {
+          console.log(
+            `🧻 تم تحويل ${rollSkipCount} رول لمنتجات الرولات البلاستيكية مباشرة إلى 'done' (تخطّي القص)`,
+          );
+        }
+      } catch (rollSkipErr: any) {
+        console.warn(
+          "⚠️ فشل ترحيل رولات المنتجات البلاستيكية لتخطّي القص:",
+          rollSkipErr?.message,
+        );
+      }
+
       // One-time backfill of production_stage from current rolls state
       const { storage: storageImpl } = await import("./storage");
       const updatedCount = await storageImpl.backfillProductionOrderStages();
       if (updatedCount > 0) {
         console.log(
           `🔁 تم ترحيل مرحلة ${updatedCount} أمر إنتاج بناءً على رولاتها الحالية`,
+        );
+      }
+
+      // Roll products are completed by the percentage-recompute path (which sets
+      // status='completed' on reaching 'done'); the one-time backfill only sets
+      // production_stage. Reconcile historical roll orders that are now fully
+      // 'done' so their status matches. Idempotent: re-runs match nothing once
+      // status is already 'completed'.
+      const rollStatus = await db.execute(sql`
+        UPDATE production_orders po
+        SET status = 'completed'
+        FROM customer_products cp
+        LEFT JOIN items i ON i.id = cp.item_id
+        WHERE po.customer_product_id = cp.id
+          AND (i.name ILIKE '%plastic roll%' OR i.name_ar LIKE '%رولات بلاستيك%')
+          AND po.production_stage = 'done'
+          AND po.status IS DISTINCT FROM 'completed'
+      `);
+      const rollStatusCount = (rollStatus as any).rowCount ?? 0;
+      if (rollStatusCount > 0) {
+        console.log(
+          `✅ تم إكمال حالة ${rollStatusCount} أمر إنتاج لمنتجات الرولات البلاستيكية`,
         );
       }
     } catch (stageErr: any) {

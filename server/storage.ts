@@ -1336,6 +1336,20 @@ export interface IStorage {
   clearBagWeightRecords(userId: number): Promise<void>;
 }
 
+// Plastic-roll products (e.g. items "رولات بلاستيك HD"/"رولات بلاستيك LD")
+// are produced as finished rolls and do NOT pass through the cutting stage.
+// Detected by item name so future "رولات بلاستيك *" items are covered too.
+// SQL equivalent used in queries:
+//   (i.name ILIKE '%plastic roll%' OR i.name_ar LIKE '%رولات بلاستيك%')
+export function isRollProductName(
+  nameEn?: string | null,
+  nameAr?: string | null,
+): boolean {
+  const en = (nameEn || "").toLowerCase();
+  const ar = nameAr || "";
+  return en.includes("plastic roll") || ar.includes("رولات بلاستيك");
+}
+
 export class DatabaseStorage implements IStorage {
   private dataValidator = getDataValidator(this);
   // In-memory storage for alert rate limiting - persistent during server session
@@ -7261,11 +7275,16 @@ export class DatabaseStorage implements IStorage {
           const lookup = await tx.execute(sql`
             SELECT
               po.production_order_number,
+              COALESCE(cp.is_printed, false) AS is_printed,
+              i.name AS item_name,
+              i.name_ar AS item_name_ar,
               COALESCE((
                 SELECT MAX(r.roll_seq) FROM rolls r
                 WHERE r.production_order_id = ${data.production_order_id}
               ), 0) AS max_seq
             FROM production_orders po
+            LEFT JOIN customer_products cp ON cp.id = po.customer_product_id
+            LEFT JOIN items i ON i.id = cp.item_id
             WHERE po.id = ${data.production_order_id}
           `);
           const po = (lookup.rows as any[])[0];
@@ -7283,12 +7302,44 @@ export class DatabaseStorage implements IStorage {
             created_at: new Date().toISOString(),
           });
 
-          const rollData = {
+          const rollData: any = {
             ...data,
             roll_seq: nextSeq,
             roll_number: rollNumber,
             qr_code_text: qrCodeText,
           };
+
+          // Plastic-roll products skip cutting entirely. A non-printed roll is a
+          // finished product the moment the film is produced; a printed roll that
+          // was inline-printed at creation (stage already 'printing') is finished
+          // once printed. In both cases mark the roll 'done' so it flows straight
+          // to the production hall. A printed roll on a normal (non-inline) film
+          // machine stays at 'film' here and is closed later by markRollAsPrinted.
+          if (isRollProductName(po.item_name, po.item_name_ar)) {
+            const isPrintedProduct =
+              po.is_printed === true || po.is_printed === "t";
+            const inlinePrinted = rollData.stage === "printing";
+            if (inlinePrinted || !isPrintedProduct) {
+              rollData.stage = "done";
+              // Stamp cut_completed_at while keeping the temporal CHECK chain
+              // (created_at <= printed_at <= cut_completed_at) valid.
+              // - Inline-printed rolls already have created_at == printed_at
+              //   pinned to one server timestamp by the route; reuse it so
+              //   cut_completed_at == printed_at and nothing is out of order.
+              // - Non-printed rolls have no pre-set timestamp; created_at would
+              //   default to DB now() a hair AFTER this JS instant, breaking
+              //   cut_completed_at >= created_at, so pin created_at here too.
+              const baseTs: Date =
+                rollData.printed_at ?? rollData.created_at ?? new Date();
+              if (!rollData.created_at) {
+                rollData.created_at = baseTs;
+                rollData.roll_created_at = baseTs;
+              }
+              rollData.cut_completed_at = baseTs;
+              rollData.cut_weight_total_kg = rollData.weight_kg;
+              rollData.waste_kg = rollData.waste_kg ?? "0";
+            }
+          }
 
           const [created] = await tx.insert(rolls).values(rollData).returning();
           return created;
@@ -7317,7 +7368,35 @@ export class DatabaseStorage implements IStorage {
   }
 
   async markRollAsPrinted(id: number, data?: any): Promise<Roll> {
-    const updated = await this.updateRoll(id, { stage: "printing", ...data });
+    // Determine whether this roll belongs to a plastic-roll product. Those
+    // products skip cutting, so once printed the roll is a finished product and
+    // must go straight to 'done' (production hall) instead of 'printing'.
+    const info = await db.execute(sql`
+      SELECT i.name AS item_name, i.name_ar AS item_name_ar, r.weight_kg
+      FROM rolls r
+      LEFT JOIN production_orders po ON po.id = r.production_order_id
+      LEFT JOIN customer_products cp ON cp.id = po.customer_product_id
+      LEFT JOIN items i ON i.id = cp.item_id
+      WHERE r.id = ${id}
+    `);
+    const row = (info.rows as any[])[0];
+    const isRollProduct = row
+      ? isRollProductName(row.item_name, row.item_name_ar)
+      : false;
+
+    let updateData: any = { stage: "printing", ...data };
+    if (isRollProduct) {
+      const finishedAt = new Date();
+      updateData = {
+        ...updateData,
+        stage: "done",
+        printed_at: finishedAt,
+        cut_completed_at: finishedAt,
+        cut_weight_total_kg: row?.weight_kg,
+      };
+    }
+
+    const updated = await this.updateRoll(id, updateData);
     if (updated?.production_order_id) {
       await this.updateProductionOrderCompletionPercentages(
         updated.production_order_id,
@@ -8916,6 +8995,11 @@ export class DatabaseStorage implements IStorage {
               OR (r.stage = 'film' AND COALESCE(cp.is_printed, false) = false)
             )
         AND po.status IN ('pending', 'active')
+        -- Plastic-roll products never enter the cutting board (null-safe LEFT JOIN)
+        AND COALESCE(
+              i.name ILIKE '%plastic roll%' OR i.name_ar LIKE '%رولات بلاستيك%',
+              false
+            ) = false
       ORDER BY po.id DESC, r.roll_seq
     `);
 
@@ -9113,6 +9197,7 @@ export class DatabaseStorage implements IStorage {
             po.final_quantity_kg,
             po.quantity_kg,
             po.film_completed,
+            (i.name ILIKE '%plastic roll%' OR i.name_ar LIKE '%رولات بلاستيك%') AS is_roll_order,
             agg.total_rolls,
             agg.total_weight,
             agg.printing_weight,
@@ -9122,6 +9207,8 @@ export class DatabaseStorage implements IStorage {
             agg.cutting_rolls,
             agg.done_rolls
           FROM production_orders po
+          LEFT JOIN customer_products cp ON cp.id = po.customer_product_id
+          LEFT JOIN items i ON i.id = cp.item_id
           LEFT JOIN LATERAL (
             SELECT
               COUNT(*) AS total_rolls,
@@ -9183,9 +9270,25 @@ export class DatabaseStorage implements IStorage {
           stats?.film_completed === true || stats?.film_completed === "t";
         const filmDone =
           filmCompleted || (targetKg > 0 && totalWeight >= targetKg - 0.001);
+        const isRollOrder =
+          stats?.is_roll_order === true || stats?.is_roll_order === "t";
         let computedStage: "film" | "printing" | "cutting" | "done" = "film";
         if (totalRolls > 0) {
-          if (doneRolls === totalRolls) {
+          if (isRollOrder) {
+            // Plastic-roll products never enter cutting. Production of the
+            // film roll (non-printed) or the printed roll ends straight at
+            // 'done'. The order finishes once film production is closed AND all
+            // its rolls have reached 'done'. While film is still being produced
+            // it stays on the film board; once the target is reached but some
+            // printed rolls are still awaiting printing it shows on printing.
+            if (filmDone && doneRolls === totalRolls) {
+              computedStage = "done";
+            } else if (filmDone) {
+              computedStage = "printing";
+            } else {
+              computedStage = "film";
+            }
+          } else if (doneRolls === totalRolls) {
             computedStage = "done";
           } else if (filmRolls === 0 && filmDone) {
             computedStage = "cutting";
@@ -9196,15 +9299,22 @@ export class DatabaseStorage implements IStorage {
           }
         }
 
+        const setValues: any = {
+          produced_quantity_kg: totalWeight.toFixed(3),
+          film_completion_percentage: filmPct.toFixed(2),
+          printing_completion_percentage: printPct.toFixed(2),
+          cutting_completion_percentage: cutPct.toFixed(2),
+          production_stage: computedStage,
+        };
+        // Roll products skip cutting, so completion is decided here rather than
+        // by completeCutting. Mark the order completed when it reaches 'done'.
+        if (isRollOrder && computedStage === "done") {
+          setValues.status = "completed";
+        }
+
         const [updated] = await db
           .update(production_orders)
-          .set({
-            produced_quantity_kg: totalWeight.toFixed(3),
-            film_completion_percentage: filmPct.toFixed(2),
-            printing_completion_percentage: printPct.toFixed(2),
-            cutting_completion_percentage: cutPct.toFixed(2),
-            production_stage: computedStage,
-          } as any)
+          .set(setValues)
           .where(eq(production_orders.id, id))
           .returning();
         invalidateProductionCache();
@@ -9274,18 +9384,38 @@ export class DatabaseStorage implements IStorage {
                 ELSE COALESCE(po.quantity_kg::numeric, 0)
               END AS target_kg,
               COALESCE(po.film_completed, false) AS film_completed,
+              COALESCE(
+                (i.name ILIKE '%plastic roll%' OR i.name_ar LIKE '%رولات بلاستيك%'),
+                false
+              ) AS is_roll_order,
               COALESCE(SUM(r.weight_kg::numeric), 0) AS total_weight,
               COUNT(r.id)::int AS total_rolls,
               COALESCE(SUM(CASE WHEN r.stage = 'film' THEN 1 ELSE 0 END), 0)::int AS film_rolls,
               COALESCE(SUM(CASE WHEN r.stage = 'printing' THEN 1 ELSE 0 END), 0)::int AS printing_rolls,
               COALESCE(SUM(CASE WHEN r.stage = 'done' THEN 1 ELSE 0 END), 0)::int AS done_rolls
             FROM production_orders po
+            LEFT JOIN customer_products cp ON cp.id = po.customer_product_id
+            LEFT JOIN items i ON i.id = cp.item_id
             LEFT JOIN rolls r ON r.production_order_id = po.id
-            GROUP BY po.id
+            GROUP BY po.id, i.name, i.name_ar
           )
           UPDATE production_orders po
           SET production_stage = CASE
             WHEN s.total_rolls = 0 THEN 'film'
+            -- Plastic-roll products skip cutting: done only when film is closed
+            -- AND every roll reached 'done'; otherwise printing (target reached,
+            -- printed rolls still pending) or film (still producing).
+            WHEN s.is_roll_order THEN (
+              CASE
+                WHEN (s.film_completed
+                      OR (s.target_kg > 0 AND s.total_weight >= s.target_kg - 0.001))
+                     AND s.done_rolls = s.total_rolls THEN 'done'
+                WHEN (s.film_completed
+                      OR (s.target_kg > 0 AND s.total_weight >= s.target_kg - 0.001))
+                     THEN 'printing'
+                ELSE 'film'
+              END
+            )
             WHEN s.done_rolls = s.total_rolls THEN 'done'
             WHEN s.film_rolls = 0
               AND (s.film_completed
@@ -9300,6 +9430,17 @@ export class DatabaseStorage implements IStorage {
             AND po.production_stage IS DISTINCT FROM (
               CASE
                 WHEN s.total_rolls = 0 THEN 'film'
+                WHEN s.is_roll_order THEN (
+                  CASE
+                    WHEN (s.film_completed
+                          OR (s.target_kg > 0 AND s.total_weight >= s.target_kg - 0.001))
+                         AND s.done_rolls = s.total_rolls THEN 'done'
+                    WHEN (s.film_completed
+                          OR (s.target_kg > 0 AND s.total_weight >= s.target_kg - 0.001))
+                         THEN 'printing'
+                    ELSE 'film'
+                  END
+                )
                 WHEN s.done_rolls = s.total_rolls THEN 'done'
                 WHEN s.film_rolls = 0
                   AND (s.film_completed

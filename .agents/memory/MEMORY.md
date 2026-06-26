@@ -5,6 +5,7 @@
 - [Theme system](theme-system.md) — 3 opt-in themes (light/dark/blue); blue is its own `.theme-blue` root class redefining the same CSS vars, not a dark variant; high-contrast is a separate overlay; pickers in Header/Settings/MobileShell.
 - [Roll creation deadlock](roll-creation-deadlock.md) — roll-create paths must share one transaction + a single lock order (advisory then row); nested cross-connection txns hang undetectably.
 - [Production stage computation](production-stage-computation.md) — never advance a PO past 'film' on filmRolls===0 alone; inline-printed rolls skip film stage, so gate on film actually being done.
+- [Plastic-roll products skip cutting](roll-products-skip-cutting.md) — name-detected roll items bypass cutting (film→[printing]→done→hall); gate order 'done' on filmDone; pinning created_at avoids cut_completed_at CHECK violation.
 - [Film dashboard visibility](film-dashboard-visibility.md) — film-operator order list must filter `production_stage='film'`; film_completed only set by Final Roll button, so quantity-complete orders otherwise linger.
 - [Roll-create stage trust](roll-create-stage-trust.md) — roll-create routes must force stage='film' & strip client transition fields; only server logic advances to printing (inline-printing bypass risk).
 - [Universal thickness film eligibility](universal-thickness-eligibility.md) — film machine min/max_thickness matches order universal_thickness (computed col), never raw thickness.
