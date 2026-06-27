@@ -1,8 +1,10 @@
 import {
   external_db_connections,
+  external_db_saved_queries,
   insertExternalDbConnectionSchema,
+  type SavedQueryParam,
 } from "@shared/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, asc } from "drizzle-orm";
 import type { Express } from "express";
 import { z } from "zod";
 
@@ -20,8 +22,10 @@ import {
   listTables,
   listColumns,
   runQuery,
+  validateSelectOnly,
   invalidatePool,
   type ExternalDbConfig,
+  type QueryParamBinding,
 } from "./service";
 
 // Shape returned to the client — NEVER includes the password.
@@ -65,6 +69,55 @@ const testSchema = z.object({
   encrypt: z.boolean().optional(),
   trust_server_certificate: z.boolean().optional(),
 });
+
+// ---- Saved query validation ----
+const paramDefSchema = z.object({
+  name: z
+    .string()
+    .regex(/^[A-Za-z_][A-Za-z0-9_]*$/, "اسم المعامل غير صالح"),
+  label: z.string().min(1, "وصف المعامل مطلوب").max(150),
+  type: z.enum(["text", "number", "date"]),
+});
+
+const savedQueryCreateSchema = z.object({
+  connection_id: z.number().int().positive(),
+  name: z.string().min(1, "اسم الاستعلام مطلوب").max(200),
+  sql_text: z.string().min(1, "نص الاستعلام مطلوب"),
+  parameters: z.array(paramDefSchema).max(20).default([]),
+});
+
+const savedQueryUpdateSchema = savedQueryCreateSchema
+  .omit({ connection_id: true })
+  .partial();
+
+const runSavedSchema = z.object({
+  values: z
+    .record(z.string(), z.union([z.string(), z.number(), z.null()]))
+    .default({}),
+});
+
+// Reject duplicate parameter names within a single saved query.
+function assertUniqueParamNames(params: SavedQueryParam[]): void {
+  const seen = new Set<string>();
+  for (const p of params) {
+    const key = p.name.toLowerCase();
+    if (seen.has(key)) {
+      throw new Error(`اسم معامل مكرر: ${p.name}`);
+    }
+    seen.add(key);
+  }
+}
+
+async function getSavedQueryOr404(
+  id: number,
+): Promise<typeof external_db_saved_queries.$inferSelect | null> {
+  const [row] = await db
+    .select()
+    .from(external_db_saved_queries)
+    .where(eq(external_db_saved_queries.id, id))
+    .limit(1);
+  return row || null;
+}
 
 async function getConnectionOr404(
   id: number,
@@ -367,6 +420,184 @@ export function registerExternalDbRoutes(app: Express): void {
           return res.status(404).json({ message: "الاتصال غير موجود" });
         }
         const result = await runQuery(toConfig(row), sqlText);
+        res.json(result);
+      } catch (error: any) {
+        res
+          .status(400)
+          .json({ message: error?.message || "خطأ في تنفيذ الاستعلام" });
+      }
+    },
+  );
+
+  // ---- Saved queries ----
+
+  // List saved queries (optionally filtered by connection)
+  app.get(
+    "/api/external-db/saved-queries",
+    requireAuth,
+    requirePermission("manage_settings"),
+    async (req: AuthRequest, res) => {
+      try {
+        const connectionId = Number(req.query.connectionId);
+        const base = db.select().from(external_db_saved_queries);
+        const rows =
+          Number.isInteger(connectionId) && connectionId > 0
+            ? await base
+                .where(
+                  eq(external_db_saved_queries.connection_id, connectionId),
+                )
+                .orderBy(asc(external_db_saved_queries.name))
+            : await base.orderBy(asc(external_db_saved_queries.name));
+        res.json(rows);
+      } catch (error) {
+        console.error("[external-db] saved-queries list error:", error);
+        res.status(500).json({ message: "خطأ في جلب الاستعلامات المحفوظة" });
+      }
+    },
+  );
+
+  // Create a saved query
+  app.post(
+    "/api/external-db/saved-queries",
+    requireAuth,
+    requirePermission("manage_settings"),
+    async (req: AuthRequest, res) => {
+      try {
+        const parsed = savedQueryCreateSchema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({
+            message: "بيانات غير صالحة",
+            errors: parsed.error.flatten().fieldErrors,
+          });
+        }
+        const data = parsed.data;
+        // Reject anything that isn't a read-only SELECT before storing it.
+        validateSelectOnly(data.sql_text);
+        assertUniqueParamNames(data.parameters);
+        const conn = await getConnectionOr404(data.connection_id);
+        if (!conn) {
+          return res.status(404).json({ message: "الاتصال غير موجود" });
+        }
+        const [row] = await db
+          .insert(external_db_saved_queries)
+          .values({
+            connection_id: data.connection_id,
+            name: data.name,
+            sql_text: data.sql_text,
+            parameters: data.parameters,
+            created_by: req.user?.id ?? null,
+            updated_at: new Date(),
+          })
+          .returning();
+        res.status(201).json(row);
+      } catch (error: any) {
+        res
+          .status(400)
+          .json({ message: error?.message || "خطأ في حفظ الاستعلام" });
+      }
+    },
+  );
+
+  // Update a saved query
+  app.patch(
+    "/api/external-db/saved-queries/:id",
+    requireAuth,
+    requirePermission("manage_settings"),
+    async (req: AuthRequest, res) => {
+      try {
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id) || id <= 0) {
+          return res.status(400).json({ message: "معرّف غير صالح" });
+        }
+        const existing = await getSavedQueryOr404(id);
+        if (!existing) {
+          return res.status(404).json({ message: "الاستعلام غير موجود" });
+        }
+        const parsed = savedQueryUpdateSchema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({
+            message: "بيانات غير صالحة",
+            errors: parsed.error.flatten().fieldErrors,
+          });
+        }
+        const data = parsed.data;
+        if (data.sql_text !== undefined) {
+          validateSelectOnly(data.sql_text);
+        }
+        if (data.parameters !== undefined) {
+          assertUniqueParamNames(data.parameters);
+        }
+        const [row] = await db
+          .update(external_db_saved_queries)
+          .set({ ...data, updated_at: new Date() })
+          .where(eq(external_db_saved_queries.id, id))
+          .returning();
+        res.json(row);
+      } catch (error: any) {
+        res
+          .status(400)
+          .json({ message: error?.message || "خطأ في تحديث الاستعلام" });
+      }
+    },
+  );
+
+  // Delete a saved query
+  app.delete(
+    "/api/external-db/saved-queries/:id",
+    requireAuth,
+    requirePermission("manage_settings"),
+    async (req: AuthRequest, res) => {
+      try {
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id) || id <= 0) {
+          return res.status(400).json({ message: "معرّف غير صالح" });
+        }
+        await db
+          .delete(external_db_saved_queries)
+          .where(eq(external_db_saved_queries.id, id));
+        res.json({ success: true });
+      } catch (error) {
+        console.error("[external-db] saved-query delete error:", error);
+        res.status(500).json({ message: "خطأ في حذف الاستعلام" });
+      }
+    },
+  );
+
+  // Run a saved query, binding any declared parameters to user-supplied values
+  app.post(
+    "/api/external-db/saved-queries/:id/run",
+    requireAuth,
+    requirePermission("manage_settings"),
+    async (req: AuthRequest, res) => {
+      try {
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id) || id <= 0) {
+          return res.status(400).json({ message: "معرّف غير صالح" });
+        }
+        const parsed = runSavedSchema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({ message: "بيانات غير صالحة" });
+        }
+        const saved = await getSavedQueryOr404(id);
+        if (!saved) {
+          return res.status(404).json({ message: "الاستعلام غير موجود" });
+        }
+        const conn = await getConnectionOr404(saved.connection_id);
+        if (!conn) {
+          return res.status(404).json({ message: "الاتصال غير موجود" });
+        }
+        const declared = (saved.parameters || []) as SavedQueryParam[];
+        const bindings: QueryParamBinding[] = [];
+        for (const p of declared) {
+          const raw = parsed.data.values[p.name];
+          if (raw === undefined || raw === null || raw === "") {
+            return res
+              .status(400)
+              .json({ message: `قيمة المعامل مطلوبة: ${p.label || p.name}` });
+          }
+          bindings.push({ name: p.name, type: p.type, value: raw });
+        }
+        const result = await runQuery(toConfig(conn), saved.sql_text, bindings);
         res.json(result);
       } catch (error: any) {
         res

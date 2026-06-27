@@ -984,6 +984,18 @@ function sanitizeResponseForLogging(response: any): any {
         ALTER TABLE external_db_connections
         ADD COLUMN IF NOT EXISTS key_version integer NOT NULL DEFAULT 1
       `);
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS external_db_saved_queries (
+          id serial PRIMARY KEY,
+          connection_id integer NOT NULL REFERENCES external_db_connections(id) ON DELETE CASCADE,
+          name varchar(200) NOT NULL,
+          sql_text text NOT NULL,
+          parameters jsonb NOT NULL DEFAULT '[]'::jsonb,
+          created_by integer REFERENCES users(id),
+          created_at timestamp DEFAULT now(),
+          updated_at timestamp DEFAULT now()
+        )
+      `);
     } catch (externalDbErr: any) {
       console.warn(
         "⚠️ فشل تهيئة جدول اتصالات قاعدة البيانات الخارجية (سيتم المحاولة لاحقاً):",

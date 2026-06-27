@@ -5412,3 +5412,43 @@ export type InsertExternalDbConnection = z.infer<
 >;
 export type ExternalDbConnection =
   typeof external_db_connections.$inferSelect;
+
+// A reusable, named SELECT query tied to an external connection. May declare
+// optional parameters (e.g. date range / account id) the user fills before run.
+export interface SavedQueryParam {
+  name: string;
+  label: string;
+  type: "text" | "number" | "date";
+}
+
+export const external_db_saved_queries = pgTable("external_db_saved_queries", {
+  id: serial("id").primaryKey(),
+  connection_id: integer("connection_id")
+    .notNull()
+    .references(() => external_db_connections.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 200 }).notNull(),
+  sql_text: text("sql_text").notNull(),
+  parameters: jsonb("parameters")
+    .$type<SavedQueryParam[]>()
+    .notNull()
+    .default([]),
+  created_by: integer("created_by").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+export const insertExternalDbSavedQuerySchema = createInsertSchema(
+  external_db_saved_queries,
+).omit({
+  id: true,
+  created_by: true,
+  created_at: true,
+  updated_at: true,
+});
+export type InsertExternalDbSavedQuery = z.infer<
+  typeof insertExternalDbSavedQuerySchema
+>;
+export type ExternalDbSavedQuery =
+  typeof external_db_saved_queries.$inferSelect;

@@ -12,6 +12,9 @@ import {
   Pencil,
   CheckCircle2,
   Columns3,
+  Save,
+  Bookmark,
+  X,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -94,6 +97,29 @@ interface QueryResult {
   truncated: boolean;
 }
 
+type ParamType = "text" | "number" | "date";
+
+interface SavedQueryParam {
+  name: string;
+  label: string;
+  type: ParamType;
+}
+
+interface SavedQuery {
+  id: number;
+  connection_id: number;
+  name: string;
+  sql_text: string;
+  parameters: SavedQueryParam[];
+  created_at: string | null;
+}
+
+const PARAM_TYPE_LABELS: Record<ParamType, string> = {
+  text: "نص",
+  number: "رقم",
+  date: "تاريخ",
+};
+
 const emptyForm = {
   name: "",
   host: "",
@@ -125,6 +151,16 @@ export function ExternalDbSettingsContent() {
   const [queryResult, setQueryResult] = useState<QueryResult | null>(null);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(50);
+
+  // Saved-query state
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [savedEditId, setSavedEditId] = useState<number | null>(null);
+  const [savedName, setSavedName] = useState("");
+  const [savedParams, setSavedParams] = useState<SavedQueryParam[]>([]);
+  const [deleteSavedId, setDeleteSavedId] = useState<number | null>(null);
+  // Run-with-parameters prompt
+  const [runQueryTarget, setRunQueryTarget] = useState<SavedQuery | null>(null);
+  const [paramValues, setParamValues] = useState<Record<string, string>>({});
 
   const { data: connections = [], isLoading } = useQuery<ExternalConnection[]>({
     queryKey: ["/api/external-db/connections"],
@@ -309,6 +345,156 @@ export function ExternalDbSettingsContent() {
       });
     },
   });
+
+  // ---- Saved queries ----
+  const { data: savedQueries = [], isFetching: savedLoading } = useQuery<
+    SavedQuery[]
+  >({
+    queryKey: ["/api/external-db/saved-queries", activeConnId],
+    enabled: !!activeConnId,
+    queryFn: async () => {
+      const res = await apiRequest(
+        `/api/external-db/saved-queries?connectionId=${activeConnId}`,
+      );
+      return res.json();
+    },
+  });
+
+  const invalidateSaved = () =>
+    queryClient.invalidateQueries({
+      queryKey: ["/api/external-db/saved-queries"],
+    });
+
+  const openSaveDialog = () => {
+    setSavedEditId(null);
+    setSavedName("");
+    setSavedParams([]);
+    setSaveDialogOpen(true);
+  };
+
+  const openEditSaved = (q: SavedQuery) => {
+    setSavedEditId(q.id);
+    setSavedName(q.name);
+    setSavedParams(q.parameters || []);
+    setSqlText(q.sql_text);
+    setSaveDialogOpen(true);
+  };
+
+  const saveQueryMutation = useMutation({
+    mutationFn: async () => {
+      const payload = {
+        connection_id: activeConnId,
+        name: savedName.trim(),
+        sql_text: sqlText,
+        parameters: savedParams,
+      };
+      const url = savedEditId
+        ? `/api/external-db/saved-queries/${savedEditId}`
+        : "/api/external-db/saved-queries";
+      const res = await apiRequest(url, {
+        method: savedEditId ? "PATCH" : "POST",
+        body: JSON.stringify(payload),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      invalidateSaved();
+      toast({ title: savedEditId ? "تم تحديث الاستعلام" : "تم حفظ الاستعلام" });
+      setSaveDialogOpen(false);
+    },
+    onError: (err: any) => {
+      toast({
+        title: "خطأ",
+        description: err?.message || "تعذر حفظ الاستعلام",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteSavedMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest(`/api/external-db/saved-queries/${id}`, {
+        method: "DELETE",
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      invalidateSaved();
+      toast({ title: "تم حذف الاستعلام" });
+      setDeleteSavedId(null);
+    },
+    onError: (err: any) => {
+      toast({
+        title: "خطأ",
+        description: err?.message || "تعذر حذف الاستعلام",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const runSavedMutation = useMutation({
+    mutationFn: async ({
+      id,
+      values,
+    }: {
+      id: number;
+      values: Record<string, string>;
+    }) => {
+      const res = await apiRequest(
+        `/api/external-db/saved-queries/${id}/run`,
+        { method: "POST", body: JSON.stringify({ values }), timeout: 60000 },
+      );
+      return res.json() as Promise<QueryResult>;
+    },
+    onSuccess: (data, vars) => {
+      setQueryResult(data);
+      setPage(0);
+      setRunQueryTarget(null);
+      const target = savedQueries.find((q) => q.id === vars.id);
+      if (target) setSqlText(target.sql_text);
+      if (data.truncated) {
+        toast({
+          title: "تم تقييد النتائج",
+          description: "تم عرض أول 1000 صف فقط",
+        });
+      }
+    },
+    onError: (err: any) => {
+      toast({
+        title: "خطأ في الاستعلام",
+        description: err?.message || "تعذر تنفيذ الاستعلام",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Run a saved query: prompt for params first, else run immediately.
+  const runSaved = (q: SavedQuery) => {
+    if (q.parameters && q.parameters.length > 0) {
+      const init: Record<string, string> = {};
+      q.parameters.forEach((p) => {
+        init[p.name] = "";
+      });
+      setParamValues(init);
+      setRunQueryTarget(q);
+    } else {
+      runSavedMutation.mutate({ id: q.id, values: {} });
+    }
+  };
+
+  const addParam = () =>
+    setSavedParams((prev) => [
+      ...prev,
+      { name: "", label: "", type: "text" },
+    ]);
+
+  const updateParam = (i: number, patch: Partial<SavedQueryParam>) =>
+    setSavedParams((prev) =>
+      prev.map((p, idx) => (idx === i ? { ...p, ...patch } : p)),
+    );
+
+  const removeParam = (i: number) =>
+    setSavedParams((prev) => prev.filter((_, idx) => idx !== i));
 
   const useTableInQuery = (tbl: TableInfo) => {
     setSqlText(
@@ -621,12 +807,99 @@ export function ExternalDbSettingsContent() {
               >
                 <Download className="h-4 w-4 ml-2" /> تصدير CSV
               </Button>
+              <Button
+                variant="outline"
+                onClick={openSaveDialog}
+                disabled={!activeConnId || !sqlText.trim()}
+              >
+                <Save className="h-4 w-4 ml-2" /> حفظ كاستعلام
+              </Button>
             </div>
             <p className="text-xs text-muted-foreground">
               الطباعة والتصدير تشملان كامل نتائج الاستعلام (وليس الصفحة الحالية
-              فقط).
+              فقط). استخدم <span className="font-mono" dir="ltr">@اسم_المعامل</span>{" "}
+              في الاستعلام لإضافة معاملات (مثل التاريخ أو رقم الحساب) تُطلب من
+              المستخدم قبل التشغيل.
             </p>
           </div>
+
+          {/* Saved queries list */}
+          {activeConnId && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Bookmark className="h-4 w-4 text-indigo-600" />
+                  الاستعلامات المحفوظة
+                  {savedLoading && (
+                    <Loader2 className="inline h-3 w-3 animate-spin" />
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-2">
+                {savedQueries.length === 0 ? (
+                  <p className="text-xs text-muted-foreground p-2">
+                    لا توجد استعلامات محفوظة لهذا الاتصال. اكتب استعلاماً ثم اضغط
+                    "حفظ كاستعلام".
+                  </p>
+                ) : (
+                  <div className="grid gap-2 md:grid-cols-2">
+                    {savedQueries.map((q) => (
+                      <div
+                        key={q.id}
+                        className="flex items-center justify-between gap-2 rounded border p-2"
+                      >
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium truncate">
+                            {q.name}
+                          </div>
+                          {q.parameters.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {q.parameters.map((p) => (
+                                <Badge
+                                  key={p.name}
+                                  variant="outline"
+                                  className="text-[10px]"
+                                >
+                                  {p.label || p.name}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <Button
+                            size="sm"
+                            variant="default"
+                            className="h-7"
+                            onClick={() => runSaved(q)}
+                            disabled={runSavedMutation.isPending}
+                          >
+                            <Play className="h-3.5 w-3.5 ml-1" /> تشغيل
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            onClick={() => openEditSaved(q)}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            onClick={() => setDeleteSavedId(q.id)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {queryResult && (
             <Card>
@@ -741,6 +1014,219 @@ export function ExternalDbSettingsContent() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Save / edit saved-query dialog */}
+      <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+        <DialogContent className="max-w-2xl" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>
+              {savedEditId ? "تعديل الاستعلام المحفوظ" : "حفظ استعلام جديد"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div className="grid gap-1.5">
+              <Label>اسم الاستعلام</Label>
+              <Input
+                value={savedName}
+                onChange={(e) => setSavedName(e.target.value)}
+                placeholder="كشف حساب عميل خلال فترة"
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>نص الاستعلام (SELECT فقط)</Label>
+              <Textarea
+                dir="ltr"
+                className="font-mono text-sm min-h-[120px]"
+                value={sqlText}
+                onChange={(e) => setSqlText(e.target.value)}
+                placeholder="SELECT * FROM [dbo].[Ledger] WHERE [Date] BETWEEN @startDate AND @endDate"
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>المعاملات (اختيارية)</Label>
+                <Button size="sm" variant="outline" onClick={addParam}>
+                  <Plus className="h-3.5 w-3.5 ml-1" /> إضافة معامل
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                لكل معامل: الاسم المستخدم في الاستعلام بصيغة{" "}
+                <span className="font-mono" dir="ltr">
+                  @الاسم
+                </span>
+                ، ووصف يظهر للمستخدم، ونوع القيمة.
+              </p>
+              {savedParams.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  لا توجد معاملات — سيتم تشغيل الاستعلام مباشرة.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {savedParams.map((p, i) => (
+                    <div key={i} className="flex items-end gap-2">
+                      <div className="grid gap-1 flex-1">
+                        <Label className="text-xs">الاسم (بدون @)</Label>
+                        <Input
+                          dir="ltr"
+                          className="h-8 font-mono text-xs"
+                          value={p.name}
+                          onChange={(e) =>
+                            updateParam(i, { name: e.target.value })
+                          }
+                          placeholder="startDate"
+                        />
+                      </div>
+                      <div className="grid gap-1 flex-1">
+                        <Label className="text-xs">الوصف</Label>
+                        <Input
+                          className="h-8 text-xs"
+                          value={p.label}
+                          onChange={(e) =>
+                            updateParam(i, { label: e.target.value })
+                          }
+                          placeholder="من تاريخ"
+                        />
+                      </div>
+                      <div className="grid gap-1 w-28">
+                        <Label className="text-xs">النوع</Label>
+                        <Select
+                          value={p.type}
+                          onValueChange={(v) =>
+                            updateParam(i, { type: v as ParamType })
+                          }
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(
+                              Object.keys(PARAM_TYPE_LABELS) as ParamType[]
+                            ).map((t) => (
+                              <SelectItem key={t} value={t}>
+                                {PARAM_TYPE_LABELS[t]}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8"
+                        onClick={() => removeParam(i)}
+                      >
+                        <X className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => saveQueryMutation.mutate()}
+              disabled={
+                saveQueryMutation.isPending ||
+                !savedName.trim() ||
+                !sqlText.trim()
+              }
+            >
+              {saveQueryMutation.isPending && (
+                <Loader2 className="h-4 w-4 ml-2 animate-spin" />
+              )}
+              حفظ
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Run-with-parameters prompt */}
+      <Dialog
+        open={runQueryTarget !== null}
+        onOpenChange={(o) => !o && setRunQueryTarget(null)}
+      >
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>
+              {runQueryTarget?.name || "تشغيل الاستعلام"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3">
+            {runQueryTarget?.parameters.map((p) => (
+              <div key={p.name} className="grid gap-1.5">
+                <Label>{p.label || p.name}</Label>
+                <Input
+                  type={
+                    p.type === "date"
+                      ? "date"
+                      : p.type === "number"
+                        ? "number"
+                        : "text"
+                  }
+                  dir={p.type === "text" ? "rtl" : "ltr"}
+                  value={paramValues[p.name] ?? ""}
+                  onChange={(e) =>
+                    setParamValues((prev) => ({
+                      ...prev,
+                      [p.name]: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() =>
+                runQueryTarget &&
+                runSavedMutation.mutate({
+                  id: runQueryTarget.id,
+                  values: paramValues,
+                })
+              }
+              disabled={
+                runSavedMutation.isPending ||
+                (runQueryTarget?.parameters.some(
+                  (p) => !((paramValues[p.name] ?? "").trim()),
+                ) ??
+                  false)
+              }
+            >
+              {runSavedMutation.isPending && (
+                <Loader2 className="h-4 w-4 ml-2 animate-spin" />
+              )}
+              <Play className="h-4 w-4 ml-2" /> تشغيل
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete saved-query confirm */}
+      <AlertDialog
+        open={deleteSavedId !== null}
+        onOpenChange={(o) => !o && setDeleteSavedId(null)}
+      >
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>حذف الاستعلام المحفوظ؟</AlertDialogTitle>
+            <AlertDialogDescription>
+              سيتم حذف هذا الاستعلام نهائياً. لا يؤثر ذلك على قاعدة البيانات
+              الخارجية.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() =>
+                deleteSavedId && deleteSavedMutation.mutate(deleteSavedId)
+              }
+            >
+              حذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Connection form dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

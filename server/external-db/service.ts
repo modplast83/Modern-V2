@@ -254,14 +254,52 @@ export interface QueryResult {
   truncated: boolean;
 }
 
+// A bound parameter value supplied at run time for a saved query placeholder.
+export interface QueryParamBinding {
+  name: string;
+  type: "text" | "number" | "date";
+  value: string | number | null;
+}
+
+function bindParams(
+  request: mssql.Request,
+  params: QueryParamBinding[],
+): void {
+  for (const p of params) {
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(p.name)) {
+      throw new Error(`اسم المعامل غير صالح: ${p.name}`);
+    }
+    if (p.type === "number") {
+      const num =
+        p.value === null || p.value === "" ? null : Number(p.value);
+      if (num !== null && Number.isNaN(num)) {
+        throw new Error(`قيمة رقمية غير صالحة للمعامل: ${p.name}`);
+      }
+      request.input(p.name, mssql.Float, num);
+    } else if (p.type === "date") {
+      const d =
+        p.value === null || p.value === "" ? null : new Date(p.value);
+      if (d !== null && Number.isNaN(d.getTime())) {
+        throw new Error(`تاريخ غير صالح للمعامل: ${p.name}`);
+      }
+      request.input(p.name, mssql.DateTime, d);
+    } else {
+      const s = p.value === null ? null : String(p.value);
+      request.input(p.name, mssql.NVarChar, s);
+    }
+  }
+}
+
 export async function runQuery(
   config: ExternalDbConfig,
   rawSql: string,
+  params: QueryParamBinding[] = [],
 ): Promise<QueryResult> {
   const safeSql = validateSelectOnly(rawSql);
   try {
     const pool = await getPool(config);
     const request = pool.request();
+    bindParams(request, params);
     // Server-controlled row cap so a heavy query can't exhaust memory.
     const batch = `SET ROWCOUNT ${MAX_ROWS + 1};\n${safeSql};\nSET ROWCOUNT 0;`;
     const result = await request.query(batch);
