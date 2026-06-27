@@ -123,6 +123,8 @@ export function ExternalDbSettingsContent() {
   // Query tab state
   const [sqlText, setSqlText] = useState("");
   const [queryResult, setQueryResult] = useState<QueryResult | null>(null);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(50);
 
   const { data: connections = [], isLoading } = useQuery<ExternalConnection[]>({
     queryKey: ["/api/external-db/connections"],
@@ -290,6 +292,7 @@ export function ExternalDbSettingsContent() {
     },
     onSuccess: (data) => {
       setQueryResult(data);
+      setPage(0);
       if (data.truncated) {
         toast({
           title: "تم تقييد النتائج",
@@ -619,6 +622,10 @@ export function ExternalDbSettingsContent() {
                 <Download className="h-4 w-4 ml-2" /> تصدير CSV
               </Button>
             </div>
+            <p className="text-xs text-muted-foreground">
+              الطباعة والتصدير تشملان كامل نتائج الاستعلام (وليس الصفحة الحالية
+              فقط).
+            </p>
           </div>
 
           {queryResult && (
@@ -652,22 +659,84 @@ export function ExternalDbSettingsContent() {
                       </tr>
                     </thead>
                     <tbody>
-                      {queryResult.rows.map((row, i) => (
-                        <tr key={i} className="even:bg-muted/30">
-                          {queryResult.columns.map((c) => (
-                            <td
-                              key={c}
-                              className="p-2 border whitespace-nowrap max-w-[280px] truncate"
-                            >
-                              {formatCell(row[c])}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
+                      {queryResult.rows
+                        .slice(page * pageSize, page * pageSize + pageSize)
+                        .map((row, i) => (
+                          <tr key={i} className="even:bg-muted/30">
+                            {queryResult.columns.map((c) => (
+                              <td
+                                key={c}
+                                className="p-2 border whitespace-nowrap max-w-[280px] truncate"
+                              >
+                                {formatCell(row[c])}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
                     </tbody>
                   </table>
                 )}
               </CardContent>
+              {queryResult.rows.length > 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t p-3 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">عدد الصفوف بالصفحة:</span>
+                    <Select
+                      value={String(pageSize)}
+                      onValueChange={(v) => {
+                        setPageSize(Number(v));
+                        setPage(0);
+                      }}
+                    >
+                      <SelectTrigger className="h-7 w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[25, 50, 100, 250].map((n) => (
+                          <SelectItem key={n} value={String(n)}>
+                            {n}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">
+                      عرض{" "}
+                      {Math.min(
+                        page * pageSize + 1,
+                        queryResult.rows.length,
+                      )}
+                      –
+                      {Math.min(
+                        page * pageSize + pageSize,
+                        queryResult.rows.length,
+                      )}{" "}
+                      من {queryResult.rows.length}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7"
+                      disabled={page === 0}
+                      onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    >
+                      السابق
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7"
+                      disabled={
+                        (page + 1) * pageSize >= queryResult.rows.length
+                      }
+                      onClick={() => setPage((p) => p + 1)}
+                    >
+                      التالي
+                    </Button>
+                  </div>
+                </div>
+              )}
             </Card>
           )}
         </TabsContent>
