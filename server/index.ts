@@ -996,6 +996,22 @@ function sanitizeResponseForLogging(response: any): any {
           updated_at timestamp DEFAULT now()
         )
       `);
+      // Saved formatted report definitions (account statement / sales invoice).
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS external_db_reports (
+          id serial PRIMARY KEY,
+          connection_id integer NOT NULL REFERENCES external_db_connections(id) ON DELETE CASCADE,
+          name varchar(200) NOT NULL,
+          template_type varchar(30) NOT NULL DEFAULT 'table',
+          title_ar varchar(200),
+          sql_text text NOT NULL,
+          column_mapping jsonb,
+          header_info jsonb,
+          created_by integer REFERENCES users(id) ON DELETE SET NULL,
+          created_at timestamp DEFAULT now(),
+          updated_at timestamp DEFAULT now()
+        )
+      `);
     } catch (externalDbErr: any) {
       console.warn(
         "⚠️ فشل تهيئة جدول اتصالات قاعدة البيانات الخارجية (سيتم المحاولة لاحقاً):",

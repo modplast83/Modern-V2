@@ -15,6 +15,7 @@ import {
   Save,
   Bookmark,
   X,
+  FileText,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -63,6 +64,8 @@ import {
 import { Textarea } from "../components/ui/textarea";
 import { useToast } from "../hooks/use-toast";
 import { apiRequest, queryClient } from "../lib/queryClient";
+
+import { ExternalDbReportsTab } from "./external-db-reports";
 
 interface ExternalConnection {
   id: number;
@@ -582,7 +585,10 @@ export function ExternalDbSettingsContent() {
             <TableIcon className="h-4 w-4 ml-2" /> تصفح الجداول
           </TabsTrigger>
           <TabsTrigger value="query">
-            <Play className="h-4 w-4 ml-2" /> الاستعلامات والتقارير
+            <Play className="h-4 w-4 ml-2" /> الاستعلامات
+          </TabsTrigger>
+          <TabsTrigger value="reports">
+            <FileText className="h-4 w-4 ml-2" /> التقارير
           </TabsTrigger>
         </TabsList>
 
@@ -1012,6 +1018,11 @@ export function ExternalDbSettingsContent() {
               )}
             </Card>
           )}
+        </TabsContent>
+
+        {/* ---- Reports ---- */}
+        <TabsContent value="reports" className="space-y-4">
+          <ExternalDbReportsTab connections={connections} />
         </TabsContent>
       </Tabs>
 

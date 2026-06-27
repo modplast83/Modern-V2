@@ -30,3 +30,4 @@
 - [Preventive action ↔ machines](preventive-action-machines.md) — preventive actions can target many machines via junction table; per-machine queries must use the junction, not the primary machine_id.
 - [Operator board feeds active-only](operator-board-feeds-active-only.md) — film/cutting operator dashboards only show in-progress orders; never gate UI on a completed state there (unreachable). Completed review lives on Today's Production.
 - [Batch packageable quantity](batch-packageable-qty.md) — net_quantity_kg is never persisted (always 0); for batch labels resolve first positive of net→produced→final→quantity, never trust net alone.
+- [External-DB formatted reports](external-db-reports.md) — saved report defs map a read-only mssql query to Arabic print/PDF templates (statement/invoice); totals & PDF are client-side, new table needs the ensure-block.

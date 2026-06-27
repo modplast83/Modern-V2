@@ -5439,6 +5439,30 @@ export const external_db_saved_queries = pgTable("external_db_saved_queries", {
   updated_at: timestamp("updated_at").defaultNow(),
 });
 
+// Saved report definitions that map an external-DB query to a formatted Arabic
+// template (account statement / sales invoice). column_mapping links template
+// fields to result column names; header_info holds static header block values.
+export const external_db_reports = pgTable("external_db_reports", {
+  id: serial("id").primaryKey(),
+  connection_id: integer("connection_id")
+    .references(() => external_db_connections.id, { onDelete: "cascade" })
+    .notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  // table | account_statement | sales_invoice
+  template_type: varchar("template_type", { length: 30 })
+    .notNull()
+    .default("table"),
+  title_ar: varchar("title_ar", { length: 200 }),
+  sql_text: text("sql_text").notNull(),
+  column_mapping: jsonb("column_mapping"),
+  header_info: jsonb("header_info"),
+  created_by: integer("created_by").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
 export const insertExternalDbSavedQuerySchema = createInsertSchema(
   external_db_saved_queries,
 ).omit({
@@ -5452,3 +5476,16 @@ export type InsertExternalDbSavedQuery = z.infer<
 >;
 export type ExternalDbSavedQuery =
   typeof external_db_saved_queries.$inferSelect;
+
+export const insertExternalDbReportSchema = createInsertSchema(
+  external_db_reports,
+).omit({
+  id: true,
+  created_by: true,
+  created_at: true,
+  updated_at: true,
+});
+export type InsertExternalDbReport = z.infer<
+  typeof insertExternalDbReportSchema
+>;
+export type ExternalDbReport = typeof external_db_reports.$inferSelect;

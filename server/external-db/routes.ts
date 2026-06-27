@@ -1,6 +1,7 @@
 import {
   external_db_connections,
   external_db_saved_queries,
+  external_db_reports,
   insertExternalDbConnectionSchema,
   type SavedQueryParam,
 } from "@shared/schema";
@@ -129,6 +130,31 @@ async function getConnectionOr404(
     .limit(1);
   return row || null;
 }
+
+async function getReportOr404(
+  id: number,
+): Promise<typeof external_db_reports.$inferSelect | null> {
+  const [row] = await db
+    .select()
+    .from(external_db_reports)
+    .where(eq(external_db_reports.id, id))
+    .limit(1);
+  return row || null;
+}
+
+const reportBodySchema = z.object({
+  connection_id: z.coerce.number().int().positive(),
+  name: z.string().min(1, "اسم التقرير مطلوب"),
+  template_type: z
+    .enum(["table", "account_statement", "sales_invoice"])
+    .default("table"),
+  title_ar: z.string().optional().nullable(),
+  sql_text: z.string().min(1, "الاستعلام مطلوب"),
+  column_mapping: z.record(z.string(), z.string()).optional().nullable(),
+  header_info: z.record(z.string(), z.string()).optional().nullable(),
+});
+
+const reportUpdateSchema = reportBodySchema.partial();
 
 export function registerExternalDbRoutes(app: Express): void {
   // List connections (no passwords)
@@ -603,6 +629,153 @@ export function registerExternalDbRoutes(app: Express): void {
         res
           .status(400)
           .json({ message: error?.message || "خطأ في تنفيذ الاستعلام" });
+      }
+    },
+  );
+
+  // ---- Saved report definitions (formatted Arabic templates) ----
+
+  // List all saved reports
+  app.get(
+    "/api/external-db/reports",
+    requireAuth,
+    requirePermission("manage_settings"),
+    async (_req: AuthRequest, res) => {
+      try {
+        const rows = await db
+          .select()
+          .from(external_db_reports)
+          .orderBy(desc(external_db_reports.created_at));
+        res.json(rows);
+      } catch (error) {
+        console.error("[external-db] reports list error:", error);
+        res.status(500).json({ message: "خطأ في جلب التقارير" });
+      }
+    },
+  );
+
+  // Create a saved report
+  app.post(
+    "/api/external-db/reports",
+    requireAuth,
+    requirePermission("manage_settings"),
+    async (req: AuthRequest, res) => {
+      try {
+        const parsed = reportBodySchema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({
+            message: "بيانات غير صالحة",
+            errors: parsed.error.flatten().fieldErrors,
+          });
+        }
+        const conn = await getConnectionOr404(parsed.data.connection_id);
+        if (!conn) {
+          return res.status(404).json({ message: "الاتصال غير موجود" });
+        }
+        const [row] = await db
+          .insert(external_db_reports)
+          .values({
+            ...parsed.data,
+            created_by: req.user?.id ?? null,
+            updated_at: new Date(),
+          })
+          .returning();
+        res.status(201).json(row);
+      } catch (error) {
+        console.error("[external-db] report create error:", error);
+        res.status(500).json({ message: "خطأ في حفظ التقرير" });
+      }
+    },
+  );
+
+  // Update a saved report
+  app.patch(
+    "/api/external-db/reports/:id",
+    requireAuth,
+    requirePermission("manage_settings"),
+    async (req: AuthRequest, res) => {
+      try {
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id) || id <= 0) {
+          return res.status(400).json({ message: "معرّف غير صالح" });
+        }
+        const existing = await getReportOr404(id);
+        if (!existing) {
+          return res.status(404).json({ message: "التقرير غير موجود" });
+        }
+        const parsed = reportUpdateSchema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({
+            message: "بيانات غير صالحة",
+            errors: parsed.error.flatten().fieldErrors,
+          });
+        }
+        if (parsed.data.connection_id) {
+          const conn = await getConnectionOr404(parsed.data.connection_id);
+          if (!conn) {
+            return res.status(404).json({ message: "الاتصال غير موجود" });
+          }
+        }
+        const [row] = await db
+          .update(external_db_reports)
+          .set({ ...parsed.data, updated_at: new Date() })
+          .where(eq(external_db_reports.id, id))
+          .returning();
+        res.json(row);
+      } catch (error) {
+        console.error("[external-db] report update error:", error);
+        res.status(500).json({ message: "خطأ في تحديث التقرير" });
+      }
+    },
+  );
+
+  // Delete a saved report
+  app.delete(
+    "/api/external-db/reports/:id",
+    requireAuth,
+    requirePermission("manage_settings"),
+    async (req: AuthRequest, res) => {
+      try {
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id) || id <= 0) {
+          return res.status(400).json({ message: "معرّف غير صالح" });
+        }
+        await db
+          .delete(external_db_reports)
+          .where(eq(external_db_reports.id, id));
+        res.json({ success: true });
+      } catch (error) {
+        console.error("[external-db] report delete error:", error);
+        res.status(500).json({ message: "خطأ في حذف التقرير" });
+      }
+    },
+  );
+
+  // Run a saved report: execute its query and return the rows + definition.
+  app.post(
+    "/api/external-db/reports/:id/run",
+    requireAuth,
+    requirePermission("manage_settings"),
+    async (req: AuthRequest, res) => {
+      try {
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id) || id <= 0) {
+          return res.status(400).json({ message: "معرّف غير صالح" });
+        }
+        const report = await getReportOr404(id);
+        if (!report) {
+          return res.status(404).json({ message: "التقرير غير موجود" });
+        }
+        const conn = await getConnectionOr404(report.connection_id);
+        if (!conn) {
+          return res.status(404).json({ message: "الاتصال غير موجود" });
+        }
+        const result = await runQuery(toConfig(conn), report.sql_text);
+        res.json({ report, result });
+      } catch (error: any) {
+        res
+          .status(400)
+          .json({ message: error?.message || "خطأ في تنفيذ التقرير" });
       }
     },
   );
