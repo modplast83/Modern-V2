@@ -1233,6 +1233,7 @@ export const SETTINGS_TAB_PERMISSIONS: Record<string, PermissionKey[]> = {
   ],
   "letter-template": ["manage_settings", "admin"],
   "modern-agent": ["manage_modern_agent", "admin"],
+  "external-db": ["manage_settings", "admin"],
   user: [],
 };
 

@@ -5368,3 +5368,44 @@ export type InsertMachineChangeLog = z.infer<
   typeof insertMachineChangeLogSchema
 >;
 export type MachineChangeLog = typeof machine_change_log.$inferSelect;
+
+// 🔌 جدول اتصالات قاعدة البيانات الخارجية (Microsoft SQL Server) — للقراءة فقط
+// External Microsoft SQL Server connection profiles (READ-ONLY usage).
+// The password is stored encrypted at rest (AES-256-GCM) and is NEVER returned
+// to the client. Used to browse accounting/financial tables and run manual
+// SELECT-only queries to produce reports (account statements, sales invoices).
+export const external_db_connections = pgTable("external_db_connections", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 150 }).notNull(),
+  host: varchar("host", { length: 255 }).notNull(),
+  port: integer("port").notNull().default(1433),
+  database_name: varchar("database_name", { length: 200 }).notNull(),
+  username: varchar("username", { length: 200 }).notNull(),
+  // Encrypted password (AES-256-GCM, format: iv:authTag:ciphertext, base64).
+  password_encrypted: text("password_encrypted").notNull(),
+  encrypt: boolean("encrypt").notNull().default(true),
+  trust_server_certificate: boolean("trust_server_certificate")
+    .notNull()
+    .default(false),
+  is_active: boolean("is_active").notNull().default(true),
+  created_by: integer("created_by").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+export const insertExternalDbConnectionSchema = createInsertSchema(
+  external_db_connections,
+).omit({
+  id: true,
+  password_encrypted: true,
+  created_by: true,
+  created_at: true,
+  updated_at: true,
+});
+export type InsertExternalDbConnection = z.infer<
+  typeof insertExternalDbConnectionSchema
+>;
+export type ExternalDbConnection =
+  typeof external_db_connections.$inferSelect;

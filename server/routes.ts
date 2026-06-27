@@ -385,6 +385,10 @@ export async function registerRoutes(
   const { registerModernAgentRoutes } = await import("./modern-agent/routes");
   registerModernAgentRoutes(app);
 
+  // Register External SQL Server connection routes (READ-ONLY browsing)
+  const { registerExternalDbRoutes } = await import("./external-db/routes");
+  registerExternalDbRoutes(app);
+
   const { registerMaintenanceEngineerRoutes } = await import(
     "./maintenance-engineer"
   );

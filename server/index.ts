@@ -957,6 +957,34 @@ function sanitizeResponseForLogging(response: any): any {
       );
     }
 
+    // Ensure the External SQL Server connection table exists on existing
+    // databases. drizzle-kit push only runs for fresh databases, so create it
+    // here idempotently (CREATE TABLE IF NOT EXISTS never drops or alters data).
+    try {
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS external_db_connections (
+          id serial PRIMARY KEY,
+          name varchar(150) NOT NULL,
+          host varchar(255) NOT NULL,
+          port integer NOT NULL DEFAULT 1433,
+          database_name varchar(200) NOT NULL,
+          username varchar(200) NOT NULL,
+          password_encrypted text NOT NULL,
+          encrypt boolean NOT NULL DEFAULT true,
+          trust_server_certificate boolean NOT NULL DEFAULT false,
+          is_active boolean NOT NULL DEFAULT true,
+          created_by integer REFERENCES users(id),
+          created_at timestamp DEFAULT now(),
+          updated_at timestamp DEFAULT now()
+        )
+      `);
+    } catch (externalDbErr: any) {
+      console.warn(
+        "⚠️ فشل تهيئة جدول اتصالات قاعدة البيانات الخارجية (سيتم المحاولة لاحقاً):",
+        externalDbErr?.message,
+      );
+    }
+
     // Ensure the Smart Maintenance Engineer tables exist on existing databases.
     // drizzle-kit push only runs for fresh databases, so create them here
     // idempotently (CREATE TABLE IF NOT EXISTS never drops or alters data).
