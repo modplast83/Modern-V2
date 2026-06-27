@@ -9,7 +9,12 @@ import { z } from "zod";
 import { db } from "../db";
 import { requireAuth, requirePermission, type AuthRequest } from "../middleware/auth";
 
-import { encryptSecret } from "./crypto";
+import {
+  encryptSecret,
+  reencryptSecret,
+  CURRENT_KEY_VERSION,
+  CredentialDecryptionError,
+} from "./crypto";
 import {
   testConnection,
   listTables,
@@ -35,6 +40,7 @@ function toConfig(
     database_name: row.database_name,
     username: row.username,
     password_encrypted: row.password_encrypted,
+    key_version: row.key_version,
     encrypt: row.encrypt,
     trust_server_certificate: row.trust_server_certificate,
   };
@@ -111,6 +117,7 @@ export function registerExternalDbRoutes(app: Express): void {
           .values({
             ...rest,
             password_encrypted: encryptSecret(password),
+            key_version: CURRENT_KEY_VERSION,
             created_by: req.user?.id ?? null,
             updated_at: new Date(),
           })
@@ -152,6 +159,7 @@ export function registerExternalDbRoutes(app: Express): void {
         };
         if (password) {
           updateValues.password_encrypted = encryptSecret(password);
+          updateValues.key_version = CURRENT_KEY_VERSION;
         }
         const [row] = await db
           .update(external_db_connections)
@@ -186,6 +194,67 @@ export function registerExternalDbRoutes(app: Express): void {
       } catch (error) {
         console.error("[external-db] delete error:", error);
         res.status(500).json({ message: "خطأ في حذف الاتصال" });
+      }
+    },
+  );
+
+  // Re-encrypt all stored credentials with the current key version. Used after
+  // a SESSION_SECRET rotation (see replit.md "Secrets rotation"). Idempotent:
+  // credentials already on the current version are skipped.
+  app.post(
+    "/api/external-db/rotate-key",
+    requireAuth,
+    requirePermission("manage_settings"),
+    async (_req: AuthRequest, res) => {
+      try {
+        const rows = await db.select().from(external_db_connections);
+        let migrated = 0;
+        let alreadyCurrent = 0;
+        const failed: { id: number; name: string }[] = [];
+
+        for (const row of rows) {
+          try {
+            const reencrypted = reencryptSecret(
+              row.password_encrypted,
+              row.key_version,
+            );
+            if (reencrypted === null) {
+              alreadyCurrent += 1;
+              continue;
+            }
+            await db
+              .update(external_db_connections)
+              .set({
+                password_encrypted: reencrypted,
+                key_version: CURRENT_KEY_VERSION,
+                updated_at: new Date(),
+              })
+              .where(eq(external_db_connections.id, row.id));
+            invalidatePool(row.id);
+            migrated += 1;
+          } catch (err) {
+            if (err instanceof CredentialDecryptionError) {
+              failed.push({ id: row.id, name: row.name });
+            } else {
+              throw err;
+            }
+          }
+        }
+
+        res.json({
+          currentKeyVersion: CURRENT_KEY_VERSION,
+          total: rows.length,
+          migrated,
+          alreadyCurrent,
+          failed,
+          message:
+            failed.length === 0
+              ? `تم إعادة تشفير ${migrated} اتصال بنجاح`
+              : `تم إعادة تشفير ${migrated} اتصال، وتعذّر فك تشفير ${failed.length} (يجب إعادة إدخال كلمة المرور لها)`,
+        });
+      } catch (error) {
+        console.error("[external-db] rotate-key error:", error);
+        res.status(500).json({ message: "خطأ في إعادة تشفير بيانات الاتصال" });
       }
     },
   );

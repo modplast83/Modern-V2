@@ -1,6 +1,6 @@
 import mssql from "mssql";
 
-import { decryptSecret } from "./crypto";
+import { decryptSecret, CredentialDecryptionError } from "./crypto";
 
 export interface ExternalDbConfig {
   id?: number;
@@ -12,6 +12,7 @@ export interface ExternalDbConfig {
   // pass password_encrypted and decrypt internally.
   password?: string;
   password_encrypted?: string;
+  key_version?: number | null;
   encrypt: boolean;
   trust_server_certificate: boolean;
 }
@@ -28,7 +29,7 @@ function resolvePassword(config: ExternalDbConfig): string {
     return config.password;
   }
   if (config.password_encrypted) {
-    return decryptSecret(config.password_encrypted);
+    return decryptSecret(config.password_encrypted, config.key_version);
   }
   throw new Error("كلمة المرور غير متوفرة للاتصال");
 }
@@ -53,6 +54,11 @@ function buildPoolConfig(config: ExternalDbConfig): mssql.config {
 
 // Translate raw mssql errors into safe Arabic messages (no secret leakage).
 function toArabicError(err: any): Error {
+  // A credential that can't be decrypted is unrecoverable — surface the clear
+  // "please re-enter the password" message instead of a generic connection error.
+  if (err instanceof CredentialDecryptionError) {
+    return err;
+  }
   const code = String(err?.code || "");
   const msg = String(err?.message || "");
   if (code === "ELOGIN" || /Login failed/i.test(msg)) {

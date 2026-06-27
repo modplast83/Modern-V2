@@ -978,6 +978,12 @@ function sanitizeResponseForLogging(response: any): any {
           updated_at timestamp DEFAULT now()
         )
       `);
+      // Records which key version encrypted password_encrypted, so a
+      // SESSION_SECRET rotation can re-encrypt without losing credentials.
+      await db.execute(sql`
+        ALTER TABLE external_db_connections
+        ADD COLUMN IF NOT EXISTS key_version integer NOT NULL DEFAULT 1
+      `);
     } catch (externalDbErr: any) {
       console.warn(
         "⚠️ فشل تهيئة جدول اتصالات قاعدة البيانات الخارجية (سيتم المحاولة لاحقاً):",

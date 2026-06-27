@@ -5381,8 +5381,10 @@ export const external_db_connections = pgTable("external_db_connections", {
   port: integer("port").notNull().default(1433),
   database_name: varchar("database_name", { length: 200 }).notNull(),
   username: varchar("username", { length: 200 }).notNull(),
-  // Encrypted password (AES-256-GCM, format: iv:authTag:ciphertext, base64).
+  // Encrypted password (AES-256-GCM, format: v<N>:iv:authTag:ciphertext, base64).
   password_encrypted: text("password_encrypted").notNull(),
+  // Which key version encrypted password_encrypted (for safe SESSION_SECRET rotation).
+  key_version: integer("key_version").notNull().default(1),
   encrypt: boolean("encrypt").notNull().default(true),
   trust_server_certificate: boolean("trust_server_certificate")
     .notNull()
@@ -5400,6 +5402,7 @@ export const insertExternalDbConnectionSchema = createInsertSchema(
 ).omit({
   id: true,
   password_encrypted: true,
+  key_version: true,
   created_by: true,
   created_at: true,
   updated_at: true,

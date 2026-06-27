@@ -12,6 +12,20 @@ An MRP system for plastic bag manufacturing, managing the entire production life
     - `TAQNYAT_API_KEY`, `TAQNYAT_SENDER_NAME`: SMS gateway
     - `ADOBE_CLIENT_ID`, `ADOBE_CLIENT_SECRET`: Adobe PDF service
     - `OPENAI_API_KEY`: AI integration key
+    - `SESSION_SECRET_PREVIOUS` (optional): previous SESSION_SECRET, kept only during a rotation
+    - `EXTERNAL_DB_KEY_VERSION` (optional): current external-DB credential key version (default 1; bump on rotation)
+
+### Secrets rotation (external DB credentials)
+
+External SQL Server passwords are encrypted at rest with a key derived from `SESSION_SECRET` (`server/external-db/crypto.ts`). Every ciphertext is tagged with the key version that produced it (`v<N>:iv:tag:ct`) and each row records its `key_version`, so a `SESSION_SECRET` change does not silently break stored connections. To rotate `SESSION_SECRET` safely:
+
+1. Move the current `SESSION_SECRET` value into `SESSION_SECRET_PREVIOUS`.
+2. Set `SESSION_SECRET` to the new value.
+3. Increment `EXTERNAL_DB_KEY_VERSION` (e.g. `1` → `2`).
+4. Restart the app, then (as a `manage_settings` user) call `POST /api/external-db/rotate-key` to re-encrypt all stored credentials with the new key. The response reports `migrated`, `alreadyCurrent`, and any `failed` connections.
+5. Once migration reports no failures, remove `SESSION_SECRET_PREVIOUS`.
+
+If a credential still can't be decrypted (e.g. the previous secret was lost), connection/test/query routes return a clear "re-enter the password" message; fix it by editing that connection and saving a new password.
 
 ## Stack
 
