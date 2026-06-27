@@ -48,6 +48,9 @@ import {
 } from "../components/ui/tabs";
 import { useLocalizedName } from "../hooks/use-localized-name";
 
+// الحد الأدنى لنسبة الإنجاز قبل السماح بإنشاء "الرول الأخير" (آخر رول)
+const FINAL_ROLL_MIN_PROGRESS = 85;
+
 interface ActiveProductionOrderDetails {
   id: number;
   production_order_number: string;
@@ -397,6 +400,8 @@ export default function FilmOperatorDashboard({
                     Number(order.final_quantity_kg || 1)) *
                   100;
                 const isNearCompletion = progress >= 80;
+                const canCreateFinalRoll =
+                  progress >= FINAL_ROLL_MIN_PROGRESS;
                 const isComplete = order.is_final_roll_created;
 
                 return (
@@ -765,7 +770,7 @@ export default function FilmOperatorDashboard({
                               {t("operators.common.createNewRoll")}
                             </Button>
 
-                            {order.rolls_count > 0 && (
+                            {order.rolls_count > 0 && canCreateFinalRoll && (
                               <Button
                                 onClick={() => handleCreateRoll(order, true)}
                                 variant="destructive"
