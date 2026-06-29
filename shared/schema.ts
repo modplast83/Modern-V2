@@ -5369,6 +5369,37 @@ export type InsertMachineChangeLog = z.infer<
 >;
 export type MachineChangeLog = typeof machine_change_log.$inferSelect;
 
+// 📝 سجل تعديلات الرولات — يتتبع من قام بتعديل ماكينة الرول أو نقله لمنتج/أمر إنتاج آخر.
+// Roll edit audit log: records every manager correction to a roll (machine change
+// or product/production-order reassignment) so we always know who changed what.
+// `*_label` columns store the human-readable value (machine name / PO number) so the
+// history is readable without re-joining tables that may change later.
+export const roll_edit_logs = pgTable(
+  "roll_edit_logs",
+  {
+    id: serial("id").primaryKey(),
+    roll_id: integer("roll_id")
+      .notNull()
+      .references(() => rolls.id, { onDelete: "cascade" }),
+    field: varchar("field", { length: 40 }).notNull(), // film_machine_id | printing_machine_id | cutting_machine_id | production_order_id | roll_number
+    old_value: text("old_value"),
+    new_value: text("new_value"),
+    old_label: text("old_label"),
+    new_label: text("new_label"),
+    note: text("note"),
+    changed_by: integer("changed_by").references(() => users.id),
+    created_at: timestamp("created_at").defaultNow(),
+  },
+  (table) => [index("idx_roll_edit_logs_roll").on(table.roll_id)],
+);
+
+export const insertRollEditLogSchema = createInsertSchema(roll_edit_logs).omit({
+  id: true,
+  created_at: true,
+});
+export type InsertRollEditLog = z.infer<typeof insertRollEditLogSchema>;
+export type RollEditLog = typeof roll_edit_logs.$inferSelect;
+
 // 🔌 جدول اتصالات قاعدة البيانات الخارجية (Microsoft SQL Server) — للقراءة فقط
 // External Microsoft SQL Server connection profiles (READ-ONLY usage).
 // The password is stored encrypted at rest (AES-256-GCM) and is NEVER returned

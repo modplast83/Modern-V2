@@ -8,6 +8,7 @@ import {
   orders,
   production_orders,
   rolls,
+  roll_edit_logs,
   machines,
   customers,
   maintenance_requests,
@@ -714,6 +715,24 @@ export interface IStorage {
   createRoll(roll: InsertRoll): Promise<Roll>;
   updateRoll(id: number, roll: Partial<Roll>): Promise<Roll>;
   deleteRoll(id: number): Promise<void>;
+  getManagedRolls(filters?: {
+    stage?: string;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<any[]>;
+  updateRollByManager(
+    rollId: number,
+    changes: {
+      film_machine_id?: string | null;
+      printing_machine_id?: string | null;
+      cutting_machine_id?: string | null;
+      production_order_id?: number;
+      note?: string;
+    },
+    userId?: number,
+  ): Promise<Roll>;
+  getRollEditLogs(rollId: number): Promise<any[]>;
   getRecentRolls(limit: number): Promise<Roll[]>;
 
   // Machines
@@ -2439,6 +2458,344 @@ export class DatabaseStorage implements IStorage {
       },
       "deleteRoll",
       `حذف الرول ${id}`,
+    );
+  }
+
+  // ───────────────────────────────────────────────────────────────────────
+  // Manager roll-management panel (system admin / production manager only).
+  // Lists ALL rolls across every stage with the joins managers need to spot a
+  // wrongly-entered roll, and lets them correct the machine and/or the product
+  // (production order) with a full audit trail of who changed what.
+  // ───────────────────────────────────────────────────────────────────────
+  async getManagedRolls(filters?: {
+    stage?: string;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<any[]> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const createdByUser = alias(users, "rm_created_by");
+        const printedByUser = alias(users, "rm_printed_by");
+        const cutByUser = alias(users, "rm_cut_by");
+        const filmMachine = alias(machines, "rm_film_machine");
+        const printMachine = alias(machines, "rm_print_machine");
+        const cutMachine = alias(machines, "rm_cut_machine");
+
+        const conditions: any[] = [];
+        if (filters?.stage) {
+          conditions.push(eq(rolls.stage, filters.stage));
+        }
+        if (filters?.search && filters.search.trim()) {
+          const term = `%${filters.search.trim()}%`;
+          conditions.push(
+            or(
+              sql`${rolls.roll_number} ILIKE ${term}`,
+              sql`${production_orders.production_order_number} ILIKE ${term}`,
+              sql`${customers.name} ILIKE ${term}`,
+              sql`${customers.name_ar} ILIKE ${term}`,
+              sql`${items.name} ILIKE ${term}`,
+              sql`${items.name_ar} ILIKE ${term}`,
+            ),
+          );
+        }
+        const whereClause =
+          conditions.length > 0 ? and(...conditions) : undefined;
+
+        const limit = Math.min(filters?.limit ?? 200, 5000);
+        const offset = filters?.offset ?? 0;
+
+        const rows = await db
+          .select({
+            id: rolls.id,
+            roll_number: rolls.roll_number,
+            roll_seq: rolls.roll_seq,
+            stage: rolls.stage,
+            weight_kg: rolls.weight_kg,
+            cut_weight_total_kg: rolls.cut_weight_total_kg,
+            waste_kg: rolls.waste_kg,
+            created_at: rolls.created_at,
+            production_order_id: rolls.production_order_id,
+            production_order_number: production_orders.production_order_number,
+            customer_name: customers.name,
+            customer_name_ar: customers.name_ar,
+            item_name: items.name,
+            item_name_ar: items.name_ar,
+            size_caption: customer_products.size_caption,
+            film_machine_id: rolls.film_machine_id,
+            film_machine_name: filmMachine.name,
+            film_machine_name_ar: filmMachine.name_ar,
+            printing_machine_id: rolls.printing_machine_id,
+            printing_machine_name: printMachine.name,
+            printing_machine_name_ar: printMachine.name_ar,
+            cutting_machine_id: rolls.cutting_machine_id,
+            cutting_machine_name: cutMachine.name,
+            cutting_machine_name_ar: cutMachine.name_ar,
+            created_by_name: createdByUser.display_name_ar,
+            created_by_username: createdByUser.username,
+            printed_by_name: printedByUser.display_name_ar,
+            printed_by_username: printedByUser.username,
+            cut_by_name: cutByUser.display_name_ar,
+            cut_by_username: cutByUser.username,
+          })
+          .from(rolls)
+          .innerJoin(
+            production_orders,
+            eq(rolls.production_order_id, production_orders.id),
+          )
+          .innerJoin(orders, eq(production_orders.order_id, orders.id))
+          .leftJoin(customers, eq(orders.customer_id, customers.id))
+          .leftJoin(
+            customer_products,
+            eq(production_orders.customer_product_id, customer_products.id),
+          )
+          .leftJoin(items, eq(customer_products.item_id, items.id))
+          .leftJoin(createdByUser, eq(rolls.created_by, createdByUser.id))
+          .leftJoin(printedByUser, eq(rolls.printed_by, printedByUser.id))
+          .leftJoin(cutByUser, eq(rolls.cut_by, cutByUser.id))
+          .leftJoin(filmMachine, eq(rolls.film_machine_id, filmMachine.id))
+          .leftJoin(printMachine, eq(rolls.printing_machine_id, printMachine.id))
+          .leftJoin(cutMachine, eq(rolls.cutting_machine_id, cutMachine.id))
+          .where(whereClause)
+          .orderBy(desc(rolls.created_at))
+          .limit(limit)
+          .offset(offset);
+
+        return rows;
+      },
+      "getManagedRolls",
+      "جلب جميع الرولات للإدارة",
+    );
+  }
+
+  async updateRollByManager(
+    rollId: number,
+    changes: {
+      film_machine_id?: string | null;
+      printing_machine_id?: string | null;
+      cutting_machine_id?: string | null;
+      production_order_id?: number;
+      note?: string;
+    },
+    userId?: number,
+  ): Promise<Roll> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const affectedPOs = new Set<number>();
+        const note = changes.note?.trim() || null;
+
+        const updated = await db.transaction(async (tx) => {
+          // Lock the roll row for the duration of the txn so two concurrent
+          // manager edits of the same roll can't read a stale production_order_id
+          // and recompute the wrong source PO's completion metrics.
+          const [roll] = await tx
+            .select()
+            .from(rolls)
+            .where(eq(rolls.id, rollId))
+            .for("update");
+          if (!roll) {
+            throw Object.assign(new Error(`الرول ${rollId} غير موجود`), {
+              statusCode: 404,
+            });
+          }
+
+          const updates: any = {};
+          const logRows: any[] = [];
+
+          // Resolve a machine's display name (for a readable audit label).
+          const machineLabel = async (
+            id: string | null | undefined,
+          ): Promise<string | null> => {
+            if (!id) return null;
+            const [m] = await tx
+              .select({ name: machines.name, name_ar: machines.name_ar })
+              .from(machines)
+              .where(eq(machines.id, id));
+            return m ? m.name_ar || m.name || id : id;
+          };
+
+          // ── Machine corrections (film / printing / cutting) ──
+          const machineFields: Array<
+            "film_machine_id" | "printing_machine_id" | "cutting_machine_id"
+          > = ["film_machine_id", "printing_machine_id", "cutting_machine_id"];
+          for (const field of machineFields) {
+            const next = changes[field];
+            if (next === undefined) continue; // not part of this edit
+            const current = (roll as any)[field] ?? null;
+            const normalized = next === "" ? null : next;
+            if (normalized === current) continue;
+            // film machine is NOT NULL — never allow clearing it
+            if (field === "film_machine_id" && !normalized) {
+              throw Object.assign(
+                new Error("لا يمكن ترك ماكينة الفيلم فارغة"),
+                { statusCode: 400 },
+              );
+            }
+            if (normalized) {
+              const [exists] = await tx
+                .select({ id: machines.id })
+                .from(machines)
+                .where(eq(machines.id, normalized));
+              if (!exists) {
+                throw Object.assign(
+                  new Error(`الماكينة ${normalized} غير موجودة`),
+                  { statusCode: 400 },
+                );
+              }
+            }
+            updates[field] = normalized;
+            logRows.push({
+              roll_id: rollId,
+              field,
+              old_value: current,
+              new_value: normalized,
+              old_label: await machineLabel(current),
+              new_label: await machineLabel(normalized),
+              note,
+              changed_by: userId ?? null,
+            });
+          }
+
+          // ── Product / production-order reassignment ──
+          if (
+            typeof changes.production_order_id === "number" &&
+            changes.production_order_id !== roll.production_order_id
+          ) {
+            const newPoId = changes.production_order_id;
+            const oldPoId = roll.production_order_id;
+
+            // Serialize roll-seq allocation for the destination PO, matching
+            // the lock used by roll creation so we never duplicate roll numbers.
+            await tx.execute(
+              sql`SELECT pg_advisory_xact_lock(1003, ${newPoId})`,
+            );
+
+            const lookup = await tx.execute(sql`
+              SELECT
+                po.production_order_number,
+                COALESCE((
+                  SELECT MAX(r.roll_seq) FROM rolls r
+                  WHERE r.production_order_id = ${newPoId}
+                ), 0) AS max_seq
+              FROM production_orders po
+              WHERE po.id = ${newPoId}
+            `);
+            const newPo = (lookup.rows as any[])[0];
+            if (!newPo) {
+              throw Object.assign(
+                new Error(`أمر الإنتاج ${newPoId} غير موجود`),
+                { statusCode: 400 },
+              );
+            }
+
+            const oldLookup = await tx.execute(sql`
+              SELECT production_order_number FROM production_orders WHERE id = ${oldPoId}
+            `);
+            const oldPoNumber =
+              (oldLookup.rows as any[])[0]?.production_order_number ??
+              String(oldPoId);
+
+            const nextSeq = parseInt(newPo.max_seq ?? "0", 10) + 1;
+            const newRollNumber = `${newPo.production_order_number}-R${String(
+              nextSeq,
+            ).padStart(3, "0")}`;
+            const oldRollNumber = roll.roll_number;
+
+            const qrCodeText = JSON.stringify({
+              roll_number: newRollNumber,
+              production_order_number: newPo.production_order_number,
+              roll_seq: nextSeq,
+              weight_kg: roll.weight_kg,
+              created_at: new Date().toISOString(),
+            });
+
+            updates.production_order_id = newPoId;
+            updates.roll_seq = nextSeq;
+            updates.roll_number = newRollNumber;
+            updates.qr_code_text = qrCodeText;
+
+            affectedPOs.add(oldPoId);
+            affectedPOs.add(newPoId);
+
+            logRows.push({
+              roll_id: rollId,
+              field: "production_order_id",
+              old_value: String(oldPoId),
+              new_value: String(newPoId),
+              old_label: oldPoNumber,
+              new_label: newPo.production_order_number,
+              note,
+              changed_by: userId ?? null,
+            });
+            logRows.push({
+              roll_id: rollId,
+              field: "roll_number",
+              old_value: oldRollNumber,
+              new_value: newRollNumber,
+              old_label: oldRollNumber,
+              new_label: newRollNumber,
+              note,
+              changed_by: userId ?? null,
+            });
+          }
+
+          if (Object.keys(updates).length === 0) {
+            // Nothing actually changed — return the roll untouched.
+            return roll;
+          }
+
+          const [result] = await tx
+            .update(rolls)
+            .set(updates)
+            .where(eq(rolls.id, rollId))
+            .returning();
+
+          if (logRows.length > 0) {
+            await tx.insert(roll_edit_logs).values(logRows);
+          }
+
+          return result;
+        });
+
+        // Recompute aggregates/stage for both POs AFTER the transaction commits
+        // (the helper opens its own transaction, so it must run outside).
+        for (const poId of Array.from(affectedPOs)) {
+          await this.updateProductionOrderCompletionPercentages(poId);
+        }
+
+        return updated;
+      },
+      "updateRollByManager",
+      `تعديل الرول ${rollId}`,
+    );
+  }
+
+  async getRollEditLogs(rollId: number): Promise<any[]> {
+    return withDatabaseErrorHandling(
+      async () => {
+        const changer = alias(users, "rm_changer");
+        return await db
+          .select({
+            id: roll_edit_logs.id,
+            roll_id: roll_edit_logs.roll_id,
+            field: roll_edit_logs.field,
+            old_value: roll_edit_logs.old_value,
+            new_value: roll_edit_logs.new_value,
+            old_label: roll_edit_logs.old_label,
+            new_label: roll_edit_logs.new_label,
+            note: roll_edit_logs.note,
+            created_at: roll_edit_logs.created_at,
+            changed_by: roll_edit_logs.changed_by,
+            changed_by_name: changer.display_name_ar,
+            changed_by_username: changer.username,
+          })
+          .from(roll_edit_logs)
+          .leftJoin(changer, eq(roll_edit_logs.changed_by, changer.id))
+          .where(eq(roll_edit_logs.roll_id, rollId))
+          .orderBy(desc(roll_edit_logs.created_at));
+      },
+      "getRollEditLogs",
+      `جلب سجل تعديلات الرول ${rollId}`,
     );
   }
 

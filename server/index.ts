@@ -1081,6 +1081,24 @@ function sanitizeResponseForLogging(response: any): any {
         CREATE INDEX IF NOT EXISTS idx_machine_change_log_machine
         ON machine_change_log (machine_id)
       `);
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS roll_edit_logs (
+          id serial PRIMARY KEY,
+          roll_id integer NOT NULL REFERENCES rolls(id) ON DELETE CASCADE,
+          field varchar(40) NOT NULL,
+          old_value text,
+          new_value text,
+          old_label text,
+          new_label text,
+          note text,
+          changed_by integer REFERENCES users(id),
+          created_at timestamp DEFAULT now()
+        )
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_roll_edit_logs_roll
+        ON roll_edit_logs (roll_id)
+      `);
 
       // Idempotent baseline knowledge for each machine family (extruder / printer / cutter).
       // Inserted only when an entry with the same title does not already exist, so it is

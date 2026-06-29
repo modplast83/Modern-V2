@@ -31,3 +31,4 @@
 - [Operator board feeds active-only](operator-board-feeds-active-only.md) — film/cutting operator dashboards only show in-progress orders; never gate UI on a completed state there (unreachable). Completed review lives on Today's Production.
 - [Batch packageable quantity](batch-packageable-qty.md) — net_quantity_kg is never persisted (always 0); for batch labels resolve first positive of net→produced→final→quantity, never trust net alone.
 - [External-DB formatted reports](external-db-reports.md) — saved report defs map a read-only mssql query to Arabic print/PDF templates (statement/invoice); totals & PDF are client-side, new table needs the ensure-block.
+- [Manager roll reassignment concurrency](roll-manager-reassign-concurrency.md) — manager roll edits must SELECT...FOR UPDATE the roll, reuse advisory key 1003 for dest-PO seq, recompute BOTH old+new PO completion AFTER txn commits.

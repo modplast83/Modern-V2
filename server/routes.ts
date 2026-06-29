@@ -3828,6 +3828,120 @@ export async function registerRoutes(
     }
   });
 
+  // ───────────────────────────────────────────────────────────────────────
+  // Roll management (system admin / production manager only). Lists every roll
+  // across all stages and lets managers correct a wrongly-entered roll's
+  // machine and/or product (production order), keeping a full audit trail.
+  // `requirePermission("manage_production")` also auto-passes the "admin" key.
+  // ───────────────────────────────────────────────────────────────────────
+  app.get(
+    "/api/management/rolls",
+    requireAuth,
+    requirePermission("manage_production"),
+    async (req, res) => {
+      try {
+        const stage =
+          typeof req.query.stage === "string" && req.query.stage
+            ? req.query.stage
+            : undefined;
+        const search =
+          typeof req.query.search === "string" && req.query.search
+            ? req.query.search
+            : undefined;
+        const limit = Math.max(
+          1,
+          Math.min(parseInt(String(req.query.limit ?? "")) || 200, 5000),
+        );
+        const offset = Math.max(
+          0,
+          parseInt(String(req.query.offset ?? "")) || 0,
+        );
+        const rows = await storage.getManagedRolls({
+          stage,
+          search,
+          limit,
+          offset,
+        });
+        res.json(rows);
+      } catch (error) {
+        console.error("[GET /api/management/rolls] Error:", error);
+        res.status(500).json({ message: "خطأ في جلب الرولات" });
+      }
+    },
+  );
+
+  app.get(
+    "/api/management/rolls/:id/history",
+    requireAuth,
+    requirePermission("manage_production"),
+    async (req, res) => {
+      try {
+        const id = parseInt(req.params.id, 10);
+        if (!Number.isFinite(id)) {
+          return res.status(400).json({ message: "معرف الرول غير صالح" });
+        }
+        const logs = await storage.getRollEditLogs(id);
+        res.json(logs);
+      } catch (error) {
+        console.error("[GET /api/management/rolls/:id/history] Error:", error);
+        res.status(500).json({ message: "خطأ في جلب سجل التعديلات" });
+      }
+    },
+  );
+
+  app.patch(
+    "/api/management/rolls/:id",
+    requireAuth,
+    requirePermission("manage_production"),
+    async (req, res) => {
+      try {
+        const id = parseInt(req.params.id, 10);
+        if (!Number.isFinite(id)) {
+          return res.status(400).json({ message: "معرف الرول غير صالح" });
+        }
+        const body = req.body ?? {};
+        const changes: {
+          film_machine_id?: string | null;
+          printing_machine_id?: string | null;
+          cutting_machine_id?: string | null;
+          production_order_id?: number;
+          note?: string;
+        } = {};
+
+        if ("film_machine_id" in body)
+          changes.film_machine_id = body.film_machine_id ?? null;
+        if ("printing_machine_id" in body)
+          changes.printing_machine_id = body.printing_machine_id ?? null;
+        if ("cutting_machine_id" in body)
+          changes.cutting_machine_id = body.cutting_machine_id ?? null;
+        if (
+          body.production_order_id !== undefined &&
+          body.production_order_id !== null &&
+          body.production_order_id !== ""
+        ) {
+          const poId = parseInt(String(body.production_order_id), 10);
+          if (!Number.isFinite(poId)) {
+            return res
+              .status(400)
+              .json({ message: "معرف أمر الإنتاج غير صالح" });
+          }
+          changes.production_order_id = poId;
+        }
+        if (typeof body.note === "string") changes.note = body.note;
+
+        const userId = getAuthUserId(req);
+        const updated = await storage.updateRollByManager(id, changes, userId);
+        res.json(updated);
+      } catch (error: any) {
+        const status = error?.statusCode || 500;
+        console.error("[PATCH /api/management/rolls/:id] Error:", error);
+        res.status(status).json({
+          message: error?.message || "خطأ في تعديل الرول",
+        });
+      }
+    },
+  );
+
   // Today's Production: rolls produced in the last 24 hours. Operators see only
   // their own rolls (scoped to the stages they may view); management/admin see
   // every roll with the producing employee's name for per-employee grouping.

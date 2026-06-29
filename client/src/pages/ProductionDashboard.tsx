@@ -5,6 +5,7 @@ import {
   AlertCircle,
   Focus,
   CalendarClock,
+  ClipboardList,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -32,6 +33,7 @@ import TodaysProduction from "../components/production/TodaysProduction";
 import CuttingOperatorDashboard from "./CuttingOperatorDashboard";
 import FilmOperatorDashboard from "./FilmOperatorDashboard";
 import PrintingOperatorDashboard from "./PrintingOperatorDashboard";
+import RollManagementDashboard from "./RollManagementDashboard";
 
 export default function ProductionDashboard() {
   const { t } = useTranslation();
@@ -69,6 +71,16 @@ export default function ProductionDashboard() {
     [user, canViewFilm, canViewPrinting, canViewCutting],
   );
 
+  // Roll Management is restricted to system administrators and production
+  // managers. They can review every roll across all stages and correct a
+  // wrongly-entered roll's machine or product, with a full audit trail.
+  const canManageRolls = useMemo(
+    () =>
+      userHasPermission(user, "admin") ||
+      userHasPermission(user, "manage_production"),
+    [user],
+  );
+
   // A film "line operator" can view the film dashboard but cannot manage
   // production overall. They get the simplified Operator Focus Mode (a film
   // roll-entry UI) instead of the full tabbed view. Printing/cutting-only
@@ -90,8 +102,9 @@ export default function ProductionDashboard() {
     if (canViewPrinting) tabs.push("printing");
     if (canViewCutting) tabs.push("cutting");
     if (canViewToday) tabs.push("today");
+    if (canManageRolls) tabs.push("rolls");
     return tabs;
-  }, [canViewFilm, canViewPrinting, canViewCutting, canViewToday]);
+  }, [canViewFilm, canViewPrinting, canViewCutting, canViewToday, canManageRolls]);
 
   const [activeTab, setActiveTab] = useState(availableTabs[0] || "film");
 
@@ -100,6 +113,7 @@ export default function ProductionDashboard() {
     2: "md:grid-cols-2",
     3: "md:grid-cols-3",
     4: "md:grid-cols-4",
+    5: "md:grid-cols-5",
   };
 
   // Line operators see a focused, distraction-free roll-entry interface, plus a
@@ -287,6 +301,27 @@ export default function ProductionDashboard() {
               )}
             </TabsTrigger>
           )}
+
+          {canManageRolls && (
+            <TabsTrigger
+              value="rolls"
+              className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-md p-4 h-auto"
+              data-testid="tab-roll-management"
+            >
+              <ClipboardList className="h-5 w-5" />
+              <div className="text-right">
+                <div className="font-semibold">{t("rollMgmt.tabTitle")}</div>
+                <div className="text-xs text-muted-foreground">
+                  {t("rollMgmt.tabDesc")}
+                </div>
+              </div>
+              {activeTab === "rolls" && (
+                <Badge variant="default" className="mr-auto">
+                  {t("production.dashboard.active")}
+                </Badge>
+              )}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {canViewFilm && (
@@ -310,6 +345,12 @@ export default function ProductionDashboard() {
         {canViewToday && (
           <TabsContent value="today" className="mt-0">
             <TodaysProduction />
+          </TabsContent>
+        )}
+
+        {canManageRolls && (
+          <TabsContent value="rolls" className="mt-0">
+            <RollManagementDashboard hideLayout={true} />
           </TabsContent>
         )}
       </Tabs>
