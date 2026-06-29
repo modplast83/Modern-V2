@@ -48,8 +48,9 @@ import {
 } from "../components/ui/tabs";
 import { useLocalizedName } from "../hooks/use-localized-name";
 
-// الحد الأدنى لنسبة الإنجاز قبل السماح بإنشاء "الرول الأخير" (آخر رول)
-const FINAL_ROLL_MIN_PROGRESS = 85;
+// "الرول الأخير" (آخر رول) يظهر فقط عندما تكون الكمية المتبقية من مرحلة
+// الفيلم 15% أو أقل من الكمية المطلوبة لأمر الإنتاج.
+const FINAL_ROLL_MAX_REMAINING_PERCENT = 15;
 
 interface ActiveProductionOrderDetails {
   id: number;
@@ -210,10 +211,13 @@ export default function FilmOperatorDashboard({
     ),
     ordersNearCompletion: productionOrders.filter(
       (order: ActiveProductionOrderDetails) => {
+        const requiredQty =
+          Number(order.final_quantity_kg) > 0
+            ? Number(order.final_quantity_kg)
+            : Number(order.quantity_kg || 0);
+        if (requiredQty <= 0) return false;
         const progress =
-          (Number(order.total_weight_produced || 0) /
-            Number(order.final_quantity_kg || 1)) *
-          100;
+          (Number(order.total_weight_produced || 0) / requiredQty) * 100;
         return progress >= 80 && !order.is_final_roll_created;
       },
     ).length,
@@ -395,13 +399,22 @@ export default function FilmOperatorDashboard({
               />
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {selectedGroup.items.map((order: ActiveProductionOrderDetails) => {
+                // الكمية المطلوبة: نستخدم الكمية النهائية إن وُجدت وإلا الكمية
+                // الأساسية (نفس منطق الخادم) لتجنّب قسمة خاطئة على 1.
+                const requiredQty =
+                  Number(order.final_quantity_kg) > 0
+                    ? Number(order.final_quantity_kg)
+                    : Number(order.quantity_kg || 0);
+                const producedQty = Number(order.total_weight_produced || 0);
                 const progress =
-                  (Number(order.total_weight_produced || 0) /
-                    Number(order.final_quantity_kg || 1)) *
-                  100;
+                  requiredQty > 0 ? (producedQty / requiredQty) * 100 : 0;
+                const remainingPercent =
+                  requiredQty > 0 ? Math.max(0, 100 - progress) : 100;
                 const isNearCompletion = progress >= 80;
+                // يظهر زر "آخر رول" فقط إذا كانت الكمية المتبقية 15% أو أقل.
                 const canCreateFinalRoll =
-                  progress >= FINAL_ROLL_MIN_PROGRESS;
+                  requiredQty > 0 &&
+                  remainingPercent <= FINAL_ROLL_MAX_REMAINING_PERCENT;
                 const isComplete = order.is_final_roll_created;
 
                 return (
