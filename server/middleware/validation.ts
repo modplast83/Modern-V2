@@ -263,6 +263,7 @@ export const commonSchemas = {
     context_id: z.string().max(50).optional(),
     template_name: z.string().max(100).optional(),
     use_template: z.boolean().optional(),
+    variables: z.array(z.string()).optional(),
   }),
 
   smsMessage: z

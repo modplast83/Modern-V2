@@ -416,6 +416,19 @@ export class MetaWhatsAppService {
   }
 
   /**
+   * تنظيف متغيرات القالب: لا تسمح Meta بأسطر جديدة أو علامات جدولة أو
+   * أكثر من 4 مسافات متتالية داخل متغيرات القالب، لذا نحوّل النص إلى سطر واحد.
+   */
+  private sanitizeTemplateParam(value: string): string {
+    return String(value ?? "")
+      .replace(/[\r\n\t]+/g, " ")
+      .replace(/ {4,}/g, "   ")
+      .replace(/ {2,}/g, " ")
+      .trim()
+      .slice(0, 1024);
+  }
+
+  /**
    * إرسال رسالة باستخدام قالب Meta مُوافق عليه
    */
   async sendTemplateMessage(
@@ -458,7 +471,7 @@ export class MetaWhatsAppService {
             type: "body",
             parameters: variables.map((variable) => ({
               type: "text",
-              text: variable,
+              text: this.sanitizeTemplateParam(variable),
             })),
           },
         ];

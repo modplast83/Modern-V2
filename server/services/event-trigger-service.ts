@@ -102,8 +102,10 @@ export class EventTriggerService {
           });
 
           if (eventSetting.whatsapp_enabled) {
+            // إرسال عبر قالب معتمد (الافتراضي في sendWhatsAppMessage) حتى تصل
+            // الإشعارات خارج نافذة الـ24 ساعة لخدمة العملاء في واتس اب.
             const sendResult =
-              await this.notificationService.metaWhatsApp.sendTextMessage(
+              await this.notificationService.sendWhatsAppMessage(
                 recipient.phone,
                 message,
                 {

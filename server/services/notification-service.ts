@@ -210,21 +210,35 @@ export class NotificationService {
       context_id?: string;
       useTemplate?: boolean;
       templateName?: string;
+      templateVariables?: string[];
+      templateLanguage?: string;
     },
   ): Promise<{ success: boolean; messageId?: string; error?: string }> {
     if (this.useMetaAPI) {
-      // استخدام Meta API مباشرة
-      if (options?.useTemplate && options?.templateName) {
+      // الرسائل التي يبدأها النظام (إشعارات، تنبيهات) يجب أن تُرسَل عبر قالب
+      // معتمد حتى تصل خارج نافذة الـ24 ساعة لخدمة العملاء في واتس اب.
+      // الافتراضي = قالب عام. يمكن للمستدعي تمرير useTemplate:false لإرسال نص
+      // حر (يصل فقط داخل نافذة الـ24 ساعة، مثل الردود على رسائل واردة).
+      const useTpl = options?.useTemplate !== false;
+      if (useTpl) {
+        const templateName = options?.templateName || "system_notification";
+        const variables =
+          options?.templateVariables && options.templateVariables.length > 0
+            ? options.templateVariables
+            : [message];
+        // لا نعود إلى النص الحر عند فشل القالب: النص الحر خارج نافذة الـ24 ساعة
+        // يُقبَل كـ"مُرسَل" دون أن يصل (المشكلة الأصلية)، كما أن إخفاء الفشل يمنع
+        // التحويل التلقائي إلى الرسائل النصية SMS في deliverExternalAlert. نُعيد
+        // الفشل صراحةً ليتمكن المستدعي من اتخاذ إجراء بديل.
         return this.metaWhatsApp.sendTemplateMessage(
           phoneNumber,
-          options.templateName,
-          "ar",
-          [message],
+          templateName,
+          options?.templateLanguage || "ar",
+          variables,
           options,
         );
-      } else {
-        return this.metaWhatsApp.sendTextMessage(phoneNumber, message, options);
       }
+      return this.metaWhatsApp.sendTextMessage(phoneNumber, message, options);
     } else {
       // استخدام Twilio (القديم)
       if (options?.useTemplate) {

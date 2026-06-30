@@ -1734,7 +1734,7 @@ export async function registerRoutes(
           context_id,
           template_name,
           variables,
-          use_template = false,
+          use_template,
         } = req.body;
 
         let result;
@@ -1747,8 +1747,11 @@ export async function registerRoutes(
               priority,
               context_type,
               context_id,
+              // الرسائل التي يبدأها النظام تُرسَل عبر قالب افتراضياً (لتصل خارج
+              // نافذة الـ24 ساعة)؛ تمرير use_template:false صراحةً يُرسل نصاً حراً.
               useTemplate: use_template,
               templateName: template_name,
+              templateVariables: Array.isArray(variables) ? variables : undefined,
             },
           );
         } catch (serviceError: any) {
@@ -12129,37 +12132,48 @@ Input: ${text}`;
           try {
             const notifUser = await storage.getUserById(attendanceUserId);
             if (notifUser && notifUser.phone) {
-              let messageTemplate = "";
+              const displayName =
+                notifUser.display_name_ar || notifUser.username || "";
+              const timeStr = new Date().toLocaleTimeString("en-US");
+              let statusPhrase = "";
               let priority = "normal";
 
               switch (attendanceStatus) {
                 case "حاضر":
-                  messageTemplate = `مرحباً ${notifUser.display_name_ar || notifUser.username}، تم تسجيل حضورك اليوم بنجاح في ${new Date().toLocaleTimeString("en-US")}. نتمنى لك يوم عمل مثمر!`;
+                  statusPhrase =
+                    "تم تسجيل حضورك اليوم بنجاح. نتمنى لك يوم عمل مثمر!";
                   priority = "normal";
                   break;
                 case "في الاستراحة":
-                  messageTemplate = `${notifUser.display_name_ar || notifUser.username}، تم تسجيل بدء استراحة الغداء في ${new Date().toLocaleTimeString("en-US")}. استمتع بوقت راحتك!`;
+                  statusPhrase =
+                    "تم تسجيل بدء استراحة الغداء. استمتع بوقت راحتك!";
                   priority = "low";
                   break;
                 case "يعمل":
-                  messageTemplate = `${notifUser.display_name_ar || notifUser.username}، تم تسجيل انتهاء استراحة الغداء في ${new Date().toLocaleTimeString("en-US")}. مرحباً بعودتك للعمل!`;
+                  statusPhrase =
+                    "تم تسجيل انتهاء استراحة الغداء. مرحباً بعودتك للعمل!";
                   priority = "normal";
                   break;
                 case "مغادر":
-                  messageTemplate = `${notifUser.display_name_ar || notifUser.username}، تم تسجيل انصرافك في ${new Date().toLocaleTimeString("en-US")}. شكراً لجهودك اليوم، نراك غداً!`;
+                  statusPhrase =
+                    "تم تسجيل انصرافك. شكراً لجهودك اليوم، نراك غداً!";
                   priority = "normal";
                   break;
               }
 
-              if (messageTemplate) {
+              if (statusPhrase) {
+                const fullMessage = `مرحباً ${displayName}، ${statusPhrase} (${timeStr})`;
                 await notificationService.sendWhatsAppMessage(
                   notifUser.phone,
-                  messageTemplate,
+                  fullMessage,
                   {
                     title: "تنبيه الحضور",
                     priority,
                     context_type: "attendance",
                     context_id: attendanceId?.toString(),
+                    useTemplate: true,
+                    templateName: "attendance_update",
+                    templateVariables: [displayName, statusPhrase, timeStr],
                   },
                 );
               }
