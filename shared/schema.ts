@@ -1652,10 +1652,10 @@ export const training_certificates = pgTable("training_certificates", {
 // 📊 جدول تقييم الأداء
 export const performance_reviews = pgTable("performance_reviews", {
   id: serial("id").primaryKey(),
-  employee_id: varchar("employee_id", { length: 20 })
+  employee_id: integer("employee_id")
     .notNull()
     .references(() => users.id),
-  reviewer_id: varchar("reviewer_id", { length: 20 })
+  reviewer_id: integer("reviewer_id")
     .notNull()
     .references(() => users.id),
   review_period_start: date("review_period_start").notNull(),
@@ -1725,7 +1725,7 @@ export const leave_types = pgTable("leave_types", {
 // 📝 جدول طلبات الإجازات
 export const leave_requests = pgTable("leave_requests", {
   id: serial("id").primaryKey(),
-  employee_id: varchar("employee_id", { length: 20 })
+  employee_id: integer("employee_id")
     .notNull()
     .references(() => users.id),
   leave_type_id: integer("leave_type_id")
@@ -1738,14 +1738,12 @@ export const leave_requests = pgTable("leave_requests", {
   medical_certificate_url: varchar("medical_certificate_url", { length: 500 }),
   emergency_contact: varchar("emergency_contact", { length: 100 }),
   work_handover: text("work_handover"), // تسليم العمل
-  replacement_employee_id: varchar("replacement_employee_id", {
-    length: 20,
-  }).references(() => users.id),
-
-  // Approval workflow
-  direct_manager_id: varchar("direct_manager_id", { length: 20 }).references(
+  replacement_employee_id: integer("replacement_employee_id").references(
     () => users.id,
   ),
+
+  // Approval workflow
+  direct_manager_id: integer("direct_manager_id").references(() => users.id),
   direct_manager_status: varchar("direct_manager_status", {
     length: 20,
   }).default("pending"), // pending / approved / rejected
@@ -1755,9 +1753,7 @@ export const leave_requests = pgTable("leave_requests", {
   hr_status: varchar("hr_status", { length: 20 }).default("pending"), // pending / approved / rejected
   hr_comments: text("hr_comments"),
   hr_action_date: timestamp("hr_action_date"),
-  hr_reviewed_by: varchar("hr_reviewed_by", { length: 20 }).references(
-    () => users.id,
-  ),
+  hr_reviewed_by: integer("hr_reviewed_by").references(() => users.id),
 
   final_status: varchar("final_status", { length: 20 }).default("pending"), // pending / approved / rejected / cancelled
 
@@ -1768,7 +1764,7 @@ export const leave_requests = pgTable("leave_requests", {
 // 💰 جدول رصيد الإجازات
 export const leave_balances = pgTable("leave_balances", {
   id: serial("id").primaryKey(),
-  employee_id: varchar("employee_id", { length: 20 })
+  employee_id: integer("employee_id")
     .notNull()
     .references(() => users.id),
   leave_type_id: integer("leave_type_id")
@@ -1792,7 +1788,7 @@ export const admin_decisions = pgTable("admin_decisions", {
   target_type: varchar("target_type", { length: 20 }), // user / department / company
   target_id: integer("target_id"),
   date: date("date").notNull(),
-  issued_by: varchar("issued_by", { length: 20 }).references(() => users.id),
+  issued_by: integer("issued_by").references(() => users.id),
 });
 
 // 🏢 جدول بيانات المصنع
@@ -2816,7 +2812,7 @@ export const system_settings = pgTable("system_settings", {
   description: text("description"),
   is_editable: boolean("is_editable").default(true),
   updated_at: timestamp("updated_at").defaultNow(),
-  updated_by: varchar("updated_by", { length: 20 }).references(() => users.id),
+  updated_by: integer("updated_by").references(() => users.id),
 });
 
 // 📍 جدول مواقع المصانع
@@ -2837,7 +2833,7 @@ export const factory_locations = pgTable("factory_locations", {
 // 👤 جدول إعدادات المستخدمين
 export const user_settings = pgTable("user_settings", {
   id: serial("id").primaryKey(),
-  user_id: varchar("user_id", { length: 20 })
+  user_id: integer("user_id")
     .references(() => users.id)
     .notNull(),
   setting_key: varchar("setting_key", { length: 100 }).notNull(),

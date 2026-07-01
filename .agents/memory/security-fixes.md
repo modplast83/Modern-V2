@@ -46,3 +46,7 @@ description: Durable security/authorization patterns and gotchas for this codeba
 
 ## Silent catch blocks
 - Replace `catch {}` with `logger.warn` so fs/IO errors surface. When adding `logger.*` to a file, confirm `import { logger } from "./lib/logger"` exists or the call throws `ReferenceError` on the error path.
+
+## PDF template path traversal / arbitrary file read
+- `/api/pdf/generate` accepts `templateName` and `templatePath`; both must resolve within `server/services/adobe-pdf/templates` and reject anything escaping it (`path.resolve` then `startsWith(dir + sep)`), else any authed user can read arbitrary server files (fed to Adobe docx merge).
+- `templatePath` branch has no frontend caller — safe to keep constrained (or remove entirely).

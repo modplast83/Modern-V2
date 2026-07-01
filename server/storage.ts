@@ -3985,7 +3985,7 @@ export class DatabaseStorage implements IStorage {
           .from(leave_requests)
           .where(
             and(
-              eq(leave_requests.employee_id, String(userId)),
+              eq(leave_requests.employee_id, Number(userId)),
               eq(leave_requests.hr_status, "approved"),
               sql`${leave_requests.start_date} >= ${todayStr}`,
             ),
@@ -4775,7 +4775,7 @@ export class DatabaseStorage implements IStorage {
       return await db
         .select()
         .from(performance_reviews)
-        .where(eq(performance_reviews.employee_id, String(userId)))
+        .where(eq(performance_reviews.employee_id, Number(userId)))
         .orderBy(desc(performance_reviews.review_period_end));
     }
     return await db
@@ -4818,7 +4818,7 @@ export class DatabaseStorage implements IStorage {
       return await db
         .select()
         .from(leave_requests)
-        .where(eq(leave_requests.employee_id, String(userId)));
+        .where(eq(leave_requests.employee_id, Number(userId)));
     return await db
       .select()
       .from(leave_requests)
@@ -4846,7 +4846,7 @@ export class DatabaseStorage implements IStorage {
     userId: number | string,
     year?: number,
   ): Promise<LeaveBalance[]> {
-    const conditions = [eq(leave_balances.employee_id, String(userId))];
+    const conditions = [eq(leave_balances.employee_id, Number(userId))];
     if (year) {
       conditions.push(eq(leave_balances.year, year));
     }
@@ -4900,7 +4900,7 @@ export class DatabaseStorage implements IStorage {
   ): Promise<SystemSetting> {
     const updateData: any = { setting_value: value };
     if (updatedBy) {
-      updateData.updated_by = String(updatedBy);
+      updateData.updated_by = Number(updatedBy);
     }
     const [u] = await db
       .update(system_settings)
@@ -4925,7 +4925,7 @@ export class DatabaseStorage implements IStorage {
     const [s] = await db
       .select()
       .from(user_settings)
-      .where(eq(user_settings.user_id, String(userId)));
+      .where(eq(user_settings.user_id, Number(userId)));
     return s;
   }
 
@@ -4939,7 +4939,7 @@ export class DatabaseStorage implements IStorage {
       .from(user_settings)
       .where(
         and(
-          eq(user_settings.user_id, String(userId)),
+          eq(user_settings.user_id, Number(userId)),
           eq(user_settings.setting_key, key),
         ),
       );
@@ -4950,7 +4950,7 @@ export class DatabaseStorage implements IStorage {
         .set({ setting_value: value, updated_at: new Date() })
         .where(
           and(
-            eq(user_settings.user_id, String(userId)),
+            eq(user_settings.user_id, Number(userId)),
             eq(user_settings.setting_key, key),
           ),
         )
@@ -4960,7 +4960,7 @@ export class DatabaseStorage implements IStorage {
       const [u] = await db
         .insert(user_settings)
         .values({
-          user_id: String(userId),
+          user_id: Number(userId),
           setting_key: key,
           setting_value: value,
         })

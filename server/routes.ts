@@ -1519,7 +1519,7 @@ export async function registerRoutes(
         .from(user_settings)
         .where(
           and(
-            eq(user_settings.user_id, String(userId)),
+            eq(user_settings.user_id, Number(userId)),
             eq(user_settings.setting_key, "dashboard_config"),
           ),
         )
@@ -1683,7 +1683,7 @@ export async function registerRoutes(
           .from(user_settings)
           .where(
             and(
-              eq(user_settings.user_id, String(userId)),
+              eq(user_settings.user_id, Number(userId)),
               eq(user_settings.setting_key, "dashboard_config"),
             ),
           )
@@ -1700,7 +1700,7 @@ export async function registerRoutes(
             .where(eq(user_settings.id, existing[0].id));
         } else {
           await tx.insert(user_settings).values({
-            user_id: String(userId),
+            user_id: Number(userId),
             setting_key: "dashboard_config",
             setting_value: configJson,
             setting_type: "json",
@@ -11003,7 +11003,7 @@ Input: ${text}`;
               const created = await storage.createSystemSetting({
                 setting_key: key,
                 setting_value: String(value),
-                updated_by: String(userId),
+                updated_by: Number(userId),
               });
               results.push(created);
             }
