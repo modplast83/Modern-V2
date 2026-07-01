@@ -1,0 +1,5518 @@
+import { sql, relations } from "drizzle-orm";
+import {
+  pgTable,
+  serial,
+  varchar,
+  integer,
+  boolean,
+  date,
+  timestamp,
+  json,
+  jsonb,
+  text,
+  decimal,
+  doublePrecision,
+  check,
+  index,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
+
+import { parseIntSafe, parseFloatSafe } from "./validation-utils";
+
+/**
+ * =================================================================
+ * 🏭 MANUFACTURING WORKFLOW INVARIANTS & DATA INTEGRITY RULES
+ * =================================================================
+ *
+ * This schema defines the core business rules and data integrity constraints
+ * for our plastic bag manufacturing workflow system. These invariants MUST
+ * be maintained at all times to ensure system consistency.
+ *
+ * 📋 CRITICAL BUSINESS INVARIANTS:
+ *
+ * A) ORDER-PRODUCTION QUANTITY CONSTRAINT:
+ *    ∑(ProductionOrder.quantity_kg) ≤ Order.total_quantity + tolerance
+ *    - Sum of all production order quantities for an order cannot exceed
+ *      the original order quantity plus allowed overrun tolerance
+ *    - Prevents overproduction beyond customer requirements
+ *
+ * B) PRODUCTION-ROLL QUANTITY CONSTRAINT:
+ *    ∑(Roll.weight_kg) ≤ ProductionOrder.final_quantity_kg + tolerance
+ *    - Sum of roll weights cannot exceed production order final quantity
+ *    - Accounts for production overrun settings and tolerances
+ *    - Prevents creating rolls that exceed production requirements
+ *
+ * C) INVENTORY NON-NEGATIVE CONSTRAINT:
+ *    Inventory.current_stock ≥ 0 AT ALL TIMES
+ *    - Current stock levels must never go negative
+ *    - All inventory movements must be validated before execution
+ *    - Prevents overselling or over-allocation of materials
+ *
+ * D) VALID STATE TRANSITIONS:
+ *    - Orders: waiting → in_production → completed/cancelled
+ *    - Production Orders: pending → active → completed/cancelled
+ *    - Rolls: film → printing → cutting → done
+ *    - Machines: active ↔ maintenance ↔ down (bidirectional)
+ *    - Invalid transitions must be rejected with proper error messages
+ *
+ * E) MACHINE OPERATIONAL CONSTRAINT:
+ *    - Rolls can only be created on machines with status = 'active'
+ *    - Production operations require valid, active machines
+ *    - Machine must exist in database and be properly configured
+ *
+ * F) REFERENTIAL INTEGRITY CONSTRAINT:
+ *    - All foreign key relationships must be maintained
+ *    - Deletion of parent records must be restricted if children exist
+ *    - Orphaned records are not allowed in the system
+ *
+ * G) TEMPORAL CONSISTENCY CONSTRAINTS:
+ *    - Delivery dates must be in the future when orders are created
+ *    - Production timestamps must follow logical sequence
+ *    - Roll creation date ≤ printing date ≤ cutting completion date
+ *
+ * H) QUALITY & WASTE TRACKING CONSTRAINTS:
+ *    - Waste quantities must be positive when recorded
+ *    - Quality check scores must be within valid ranges (1-5)
+ *    - Total waste cannot exceed production quantities
+ *
+ * 🔒 VALIDATION ENFORCEMENT LEVELS:
+ *
+ * 1. DATABASE LEVEL: Foreign keys, NOT NULL, CHECK constraints, unique indexes
+ * 2. APPLICATION LEVEL: Zod schema validation, business rule enforcement
+ * 3. TRANSACTION LEVEL: Multi-table operations with rollback on failure
+ * 4. UI LEVEL: Client-side validation for immediate feedback
+ *
+ * 🚨 CONCURRENT OPERATION SAFETY:
+ * - All multi-table operations use database transactions
+ * - Optimistic concurrency control for high-traffic operations
+ * - Row-level locking for critical inventory updates
+ * - Proper error handling with user-friendly Arabic messages
+ *
+ * =================================================================
+ */
+
+// 🔐 جدول الصلاحيات
+export const roles = pgTable("roles", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 50 }).notNull(),
+  name_ar: varchar("name_ar", { length: 100 }),
+  permissions: json("permissions").$type<string[]>(),
+});
+
+// 📁 جدول الأقسام
+export const sections = pgTable("sections", {
+  id: varchar("id", { length: 20 }).primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  name_ar: varchar("name_ar", { length: 100 }),
+  description: text("description"),
+});
+
+// Session storage table for Replit Auth
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)],
+);
+
+// 🧑‍💼 جدول المستخدمين (supports both username/password and Replit Auth)
+export const users = pgTable(
+  "users",
+  {
+    id: serial("id").primaryKey(),
+    username: varchar("username", { length: 50 }).unique(),
+    password: varchar("password", { length: 100 }),
+    display_name: varchar("display_name", { length: 100 }),
+    display_name_ar: varchar("display_name_ar", { length: 100 }),
+    full_name: varchar("full_name", { length: 200 }),
+    phone: varchar("phone", { length: 20 }), // رقم الهاتف للواتس اب
+    email: varchar("email", { length: 100 }),
+    role_id: integer("role_id").references(() => roles.id),
+    section_id: integer("section_id"),
+    status: varchar("status", { length: 20 }).default("active"), // active / suspended / deleted
+    must_change_password: boolean("must_change_password").default(false),
+    created_at: timestamp("created_at").defaultNow(),
+
+    // Replit Auth fields (from integration blueprint)
+    replit_user_id: varchar("replit_user_id", { length: 255 }).unique(), // Replit user ID from OpenID Connect
+    first_name: varchar("first_name", { length: 100 }),
+    last_name: varchar("last_name", { length: 100 }),
+    profile_image_url: varchar("profile_image_url", { length: 500 }),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_users_role_id").on(table.role_id),
+    index("idx_users_status").on(table.status),
+  ],
+);
+
+// 📋 جدول طلبات المستخدمين
+export const user_requests = pgTable("user_requests", {
+  id: serial("id").primaryKey(),
+  user_id: integer("user_id")
+    .notNull()
+    .references(() => users.id),
+  type: varchar("type", { length: 50 }).notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description"),
+  status: varchar("status", { length: 20 }).notNull().default("معلق"),
+  priority: varchar("priority", { length: 20 }).default("عادي"),
+  response: text("response"),
+  reviewed_by: integer("reviewed_by").references(() => users.id),
+  date: timestamp("date").defaultNow(),
+  reviewed_date: timestamp("reviewed_date"),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+// 📋 جدول الحضور
+export const attendance = pgTable(
+  "attendance",
+  {
+    id: serial("id").primaryKey(),
+    user_id: integer("user_id")
+      .notNull()
+      .references(() => users.id),
+    status: varchar("status", { length: 20 }).notNull().default("غائب"), // حاضر / غائب / استراحة غداء / مغادر / إجازة
+    check_in_time: timestamp("check_in_time"),
+    check_out_time: timestamp("check_out_time"),
+    lunch_start_time: timestamp("lunch_start_time"),
+    lunch_end_time: timestamp("lunch_end_time"),
+    break_start_time: timestamp("break_start_time"), // وقت بداية الاستراحة
+    break_end_time: timestamp("break_end_time"), // وقت نهاية الاستراحة
+    work_hours: doublePrecision("work_hours"), // ساعات العمل الفعلية (محسوبة تلقائياً)
+    overtime_hours: doublePrecision("overtime_hours"), // ساعات العمل الإضافي
+    shift_type: varchar("shift_type", { length: 20 }).default("صباحي"), // نوع الوردية: صباحي / مسائي / ليلي
+    late_minutes: integer("late_minutes").default(0), // دقائق التأخير
+    early_leave_minutes: integer("early_leave_minutes").default(0), // دقائق المغادرة المبكرة
+    total_withdrawn_minutes: integer("total_withdrawn_minutes").default(0), // إجمالي الدقائق المخصومة بسبب الانسحاب من الصفحة
+    location_accuracy: doublePrecision("location_accuracy"), // دقة الموقع GPS
+    distance_from_factory: doublePrecision("distance_from_factory"), // المسافة من المصنع بالأمتار
+    device_info: text("device_info"), // معلومات الجهاز
+    notes: text("notes"),
+    created_by: integer("created_by").references(() => users.id),
+    updated_by: integer("updated_by").references(() => users.id),
+    date: date("date")
+      .notNull()
+      .default(sql`CURRENT_DATE`),
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_attendance_user_id").on(table.user_id),
+    index("idx_attendance_date").on(table.date),
+    index("idx_attendance_user_date").on(table.user_id, table.date),
+  ],
+);
+
+// 🧾 جدول العملاء
+export const customers = pgTable(
+  "customers",
+  {
+    id: varchar("id", { length: 20 }).primaryKey(), // Changed to varchar to match CID001 format
+    name: varchar("name", { length: 200 }).notNull(),
+    name_ar: varchar("name_ar", { length: 200 }),
+    code: varchar("code", { length: 20 }),
+    user_id: varchar("user_id", { length: 10 }),
+    plate_drawer_code: varchar("plate_drawer_code", { length: 20 }),
+    city: varchar("city", { length: 50 }),
+    address: text("address"),
+    tax_number: varchar("tax_number", { length: 20 }),
+    commercial_name: varchar("commercial_name", { length: 200 }),
+    unified_number: varchar("unified_number", { length: 10 }),
+    unique_customer_number: varchar("unique_customer_number", { length: 20 }),
+    is_active: boolean("is_active").default(true),
+    phone: varchar("phone", { length: 20 }),
+    sales_rep_id: integer("sales_rep_id").references(() => users.id),
+    created_at: timestamp("created_at").defaultNow(),
+  },
+  (table) => ({
+    unifiedNumberFormat: check(
+      "unified_number_format",
+      sql`${table.unified_number} IS NULL OR ${table.unified_number} ~ '^7[0-9]{9}$'`,
+    ),
+    taxNumberLength: check(
+      "tax_number_length",
+      sql`${table.tax_number} IS NULL OR (${table.tax_number} ~ '^[0-9]+$' AND LENGTH(${table.tax_number}) BETWEEN 10 AND 20)`,
+    ),
+  }),
+);
+
+// 🗂️ جدول المجموعات
+export const categories = pgTable("categories", {
+  id: varchar("id", { length: 20 }).primaryKey(), // Changed to varchar to match CAT001 format
+  name: varchar("name", { length: 100 }).notNull(),
+  name_ar: varchar("name_ar", { length: 100 }),
+  code: varchar("code", { length: 20 }),
+  parent_id: varchar("parent_id", { length: 20 }),
+});
+
+// 🛒 جدول منتجات العملاء (User's Custom Data Integration)
+export const customer_products = pgTable(
+  "customer_products",
+  {
+    id: serial("id").primaryKey(),
+    customer_id: varchar("customer_id", { length: 20 }).references(
+      () => customers.id,
+    ),
+    category_id: varchar("category_id", { length: 20 }).references(
+      () => categories.id,
+    ),
+    item_id: varchar("item_id", { length: 20 }).references(() => items.id),
+    size_caption: varchar("size_caption", { length: 50 }),
+    width: decimal("width", { precision: 8, scale: 2 }),
+    left_facing: decimal("left_facing", { precision: 8, scale: 2 }),
+    right_facing: decimal("right_facing", { precision: 8, scale: 2 }),
+    thickness: decimal("thickness", { precision: 8, scale: 3 }),
+    // السماكة العالمية — auto-computed, DB-only (not shown in the UI).
+    // Flat bag (no side gussets): thickness / 2 * 10.
+    // Gusseted bag (both sides folded): thickness / 4 * 10.
+    // Any other case (incl. a single gusset) falls back to the flat formula.
+    universal_thickness: decimal("universal_thickness", {
+      precision: 12,
+      scale: 4,
+    }).generatedAlwaysAs(
+      sql`CEIL(CASE
+        WHEN (COALESCE(left_facing, 0) = 0 AND COALESCE(right_facing, 0) = 0) THEN thickness / 2 * 10
+        WHEN (left_facing > 0 AND right_facing > 0) THEN thickness / 4 * 10
+        ELSE thickness / 2 * 10
+      END)`,
+    ),
+    // الكثافة (جم/سم³) — قابلة للتعديل، الافتراضي 0.95 (LDPE/HDPE نموذجي).
+    density: decimal("density", { precision: 6, scale: 3 }).default("0.95"),
+    // وزن الكيس (جم) ومعدّل الأكياس/كيلو — محسوبان على الخادم، للقراءة فقط في الواجهة.
+    bag_weight_grams: decimal("bag_weight_grams", { precision: 12, scale: 4 }),
+    bags_per_kilo: decimal("bags_per_kilo", { precision: 12, scale: 2 }),
+    printing_cylinder: varchar("printing_cylinder", { length: 10 }), // 8" to 38" + 39"
+    cutting_length_cm: integer("cutting_length_cm"),
+    raw_material: varchar("raw_material", { length: 20 }), // HDPE-LDPE-Regrind
+    master_batch_id: varchar("master_batch_id", { length: 20 }), // CLEAR-WHITE-BLACK etc
+    is_printed: boolean("is_printed").default(false),
+    cutting_unit: varchar("cutting_unit", { length: 20 }), // KG-ROLL-PKT
+    punching: varchar("punching", { length: 20 }), // NON-T-Shirt-T-shirt\Hook-Banana
+    unit_weight_kg: decimal("unit_weight_kg", { precision: 8, scale: 3 }),
+    unit_quantity: integer("unit_quantity"),
+    package_weight_kg: decimal("package_weight_kg", { precision: 8, scale: 2 }),
+    cliche_front_design: text("cliche_front_design"), // Base64 encoded image data
+    cliche_back_design: text("cliche_back_design"), // Base64 encoded image data
+    front_print_colors: text("front_print_colors").array(), // up to 4 print colors (front side)
+    back_print_colors: text("back_print_colors").array(), // up to 4 print colors (back side)
+    notes: text("notes"),
+    status: varchar("status", { length: 20 }).default("active"),
+    created_at: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_customer_products_customer_id").on(table.customer_id),
+    index("idx_customer_products_status").on(table.status),
+    index("idx_customer_products_created_at").on(table.created_at),
+  ],
+);
+
+// 🏭 جدول المكائن - Machine Management with Operational Constraints
+// INVARIANT E: Only machines with status = 'active' can be used for production
+// STATUS TRANSITIONS: active ↔ maintenance ↔ down (bidirectional transitions allowed)
+// CONSTRAINT: Machine must be assigned to valid section
+export const machines = pgTable(
+  "machines",
+  {
+    id: varchar("id", { length: 20 }).primaryKey(), // Format: M001, M002, etc.
+    name: varchar("name", { length: 100 }).notNull(), // Machine display name (English)
+    name_ar: varchar("name_ar", { length: 100 }), // Machine display name (Arabic)
+    type: varchar("type", { length: 50 }).notNull(), // ENUM: extruder / printer / cutter / quality_check
+    section_id: varchar("section_id", { length: 20 }).references(
+      () => sections.id,
+      { onDelete: "restrict" },
+    ), // ON DELETE RESTRICT
+    status: varchar("status", { length: 20 }).notNull().default("active"), // ENUM: active / maintenance / down
+
+    // قدرة الإنتاج بالكيلوجرام في الساعة حسب الحجم
+    capacity_small_kg_per_hour: decimal("capacity_small_kg_per_hour", {
+      precision: 8,
+      scale: 2,
+    }), // قدرة الإنتاج للحجم الصغير
+    capacity_medium_kg_per_hour: decimal("capacity_medium_kg_per_hour", {
+      precision: 8,
+      scale: 2,
+    }), // قدرة الإنتاج للحجم الوسط
+    capacity_large_kg_per_hour: decimal("capacity_large_kg_per_hour", {
+      precision: 8,
+      scale: 2,
+    }), // قدرة الإنتاج للحجم الكبير
+
+    // نوع السكرو لمكائن الفيلم (A أو ABA فقط)
+    screw_type: varchar("screw_type", { length: 10 }).default("A"), // 'A' للسكرو الواحد، 'ABA' لنظام السكروين
+
+    // نوع المادة الخام لمكائن الفيلم (HDPE / LDPE / HDPE\LDPE)
+    raw_material_type: varchar("raw_material_type", { length: 20 }),
+
+    // نطاق السماكة المدعوم لمكائن الفيلم (ميكرون) — يُستخدم في مطابقة التوزيع الذكي
+    min_thickness: decimal("min_thickness", { precision: 8, scale: 3 }),
+    max_thickness: decimal("max_thickness", { precision: 8, scale: 3 }),
+
+    // الطابعة الإنلاين المدمجة فيزيائياً مع ماكينة الفيلم (Extruder C/G/H ↔ Printer Inline C/G/H)
+    // عند ضبطها، يمكن لعامل الفيلم وضع علامة "طُبع الرول إنلاين" ليتخطى الرول قائمة الطباعة مباشرةً إلى التقطيع
+    inline_printer_id: varchar("inline_printer_id", { length: 20 }).references(
+      (): any => machines.id,
+      { onDelete: "set null" },
+    ),
+
+    // قيود الأبعاد حسب نوع الماكينة
+    // ماكينات الفيلم (extruder): الحد الأدنى/الأقصى لعرض الكيس بالسنتيمتر
+    min_width_cm: decimal("min_width_cm", { precision: 8, scale: 2 }),
+    max_width_cm: decimal("max_width_cm", { precision: 8, scale: 2 }),
+
+    // ماكينات الطباعة (printer): أقصى عدد ألوان الطباعة (1..4 تمثل N+N)
+    max_print_colors: integer("max_print_colors"),
+    // ماكينات الطباعة (printer): الحد الأدنى/الأقصى لمقاس السلندر بالإنش
+    min_cylinder_inch: decimal("min_cylinder_inch", { precision: 8, scale: 2 }),
+    max_cylinder_inch: decimal("max_cylinder_inch", { precision: 8, scale: 2 }),
+
+    // ماكينات التقطيع (cutter): الحد الأدنى/الأقصى لطول التقطيع بالسنتيمتر
+    min_length_cm: decimal("min_length_cm", { precision: 8, scale: 2 }),
+    max_length_cm: decimal("max_length_cm", { precision: 8, scale: 2 }),
+
+    // أبعاد الماكينة الفيزيائية ومعلومات الشركة المصنعة
+    width_cm: decimal("width_cm", { precision: 10, scale: 2 }), // عرض الماكينة (سم)
+    length_cm: decimal("length_cm", { precision: 10, scale: 2 }), // طول الماكينة (سم)
+    height_cm: decimal("height_cm", { precision: 10, scale: 2 }), // ارتفاع الماكينة (سم)
+    weight_kg: decimal("weight_kg", { precision: 10, scale: 2 }), // وزن الماكينة (كجم)
+    manufacturer: varchar("manufacturer", { length: 100 }), // الشركة المصنعة
+    metal_plate: text("metal_plate"), // اللوحة المعدنية
+    manufacture_date: date("manufacture_date"), // تاريخ الصنع
+    serial_number: varchar("serial_number", { length: 100 }), // الرقم التسلسلي
+  },
+  (table) => ({
+    // Check constraints for machine integrity
+    machineIdFormat: check(
+      "machine_id_format",
+      sql`${table.id} ~ '^M[0-9]{3}$'`,
+    ), // Format: M001, M002, etc.
+    typeValid: check(
+      "type_valid",
+      sql`${table.type} IN ('extruder', 'printer', 'cutter', 'quality_check')`,
+    ),
+    statusValid: check(
+      "status_valid",
+      sql`${table.status} IN ('active', 'maintenance', 'down')`,
+    ),
+    nameNotEmpty: check("name_not_empty", sql`LENGTH(TRIM(${table.name})) > 0`),
+    screwTypeValid: check(
+      "screw_type_valid",
+      sql`${table.screw_type} IS NULL OR ${table.screw_type} IN ('A', 'ABA')`,
+    ), // نوع السكرو يكون 'A' أو 'ABA' فقط
+  }),
+);
+
+// 🧾 جدول الطلبات - Order Management with Quantity Constraints
+// INVARIANT A: ∑(ProductionOrder.quantity_kg) ≤ Order.total_quantity + tolerance
+// STATUS TRANSITIONS: waiting → in_production → completed/cancelled
+// CONSTRAINT: delivery_date must be future date when status = 'waiting'
+export const orders = pgTable(
+  "orders",
+  {
+    id: serial("id").primaryKey(),
+    order_number: varchar("order_number", { length: 50 }).notNull().unique(), // Must be unique across system
+    customer_id: varchar("customer_id", { length: 20 })
+      .notNull()
+      .references(() => customers.id, { onDelete: "restrict" }), // ON DELETE RESTRICT
+    delivery_days: integer("delivery_days"), // Must be > 0 if specified
+    status: varchar("status", { length: 30 }).notNull().default("waiting"), // ENUM: waiting / on_hold / in_production / paused / cancelled / completed
+    previous_status: varchar("previous_status", { length: 30 }),
+    notes: text("notes"),
+    created_by: integer("created_by").references(() => users.id, {
+      onDelete: "set null",
+    }), // ON DELETE SET NULL
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    delivery_date: date("delivery_date"), // Must be >= CURRENT_DATE when order is created
+  },
+  (table) => ({
+    // Check constraints for data integrity
+    deliveryDaysPositive: check(
+      "delivery_days_positive",
+      sql`${table.delivery_days} IS NULL OR ${table.delivery_days} > 0`,
+    ),
+    statusValid: check(
+      "status_valid",
+      sql`${table.status} IN ('waiting', 'on_hold', 'in_production', 'for_production', 'paused', 'cancelled', 'completed', 'delivered', 'archived')`,
+    ),
+    // Temporal constraint: delivery_date must be in future when order is active
+    deliveryDateValid: check(
+      "delivery_date_valid",
+      sql`${table.delivery_date} IS NULL OR ${table.delivery_date} >= CURRENT_DATE`,
+    ),
+    // Performance index for customer-scoped lookups (e.g. production orders by customer)
+    idx_orders_customer_id: index("idx_orders_customer_id").on(
+      table.customer_id,
+    ),
+  }),
+);
+
+// 📋 جدول أوامر الإنتاج - NEW WORKFLOW: Multi-stage tracking with unlimited rolls
+// إزالة قيود الكمية والسماح بتتبع مراحل الإنتاج المتعددة
+// STATUS TRANSITIONS: pending → active → completed/cancelled
+export const production_orders = pgTable(
+  "production_orders",
+  {
+    id: serial("id").primaryKey(),
+    production_order_number: varchar("production_order_number", { length: 50 })
+      .notNull()
+      .unique(),
+    order_id: integer("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    customer_product_id: integer("customer_product_id")
+      .notNull()
+      .references(() => customer_products.id, { onDelete: "restrict" }),
+
+    // كمية الإنتاج الأساسية
+    quantity_kg: decimal("quantity_kg", { precision: 10, scale: 2 }).notNull(), // الكمية المطلوبة من الطلب
+    overrun_percentage: decimal("overrun_percentage", {
+      precision: 5,
+      scale: 2,
+    })
+      .notNull()
+      .default("5.00"),
+    final_quantity_kg: decimal("final_quantity_kg", {
+      precision: 10,
+      scale: 2,
+    }).notNull(), // للمراجع فقط
+
+    // NEW: حقول تتبع الكميات الفعلية لكل مرحلة
+    produced_quantity_kg: decimal("produced_quantity_kg", {
+      precision: 10,
+      scale: 2,
+    })
+      .notNull()
+      .default("0"), // مجموع أوزان جميع الرولات
+    printed_quantity_kg: decimal("printed_quantity_kg", {
+      precision: 10,
+      scale: 2,
+    })
+      .notNull()
+      .default("0"), // مجموع أوزان الرولات المطبوعة
+    net_quantity_kg: decimal("net_quantity_kg", { precision: 10, scale: 2 })
+      .notNull()
+      .default("0"), // الكمية الصافية (بعد التقطيع - الهدر)
+    waste_quantity_kg: decimal("waste_quantity_kg", { precision: 10, scale: 2 })
+      .notNull()
+      .default("0"), // مجموع هدر جميع الرولات
+
+    // NEW: نسب الإكمال لكل مرحلة
+    film_completion_percentage: decimal("film_completion_percentage", {
+      precision: 5,
+      scale: 2,
+    })
+      .notNull()
+      .default("0"), // نسبة إكمال الفيلم
+    printing_completion_percentage: decimal("printing_completion_percentage", {
+      precision: 5,
+      scale: 2,
+    })
+      .notNull()
+      .default("0"), // نسبة إكمال الطباعة
+    cutting_completion_percentage: decimal("cutting_completion_percentage", {
+      precision: 5,
+      scale: 2,
+    })
+      .notNull()
+      .default("0"), // نسبة إكمال التقطيع
+
+    // NEW: حقول تخصيص الماكينة والعامل
+    assigned_machine_id: varchar("assigned_machine_id", {
+      length: 20,
+    }).references(() => machines.id, { onDelete: "set null" }), // تخصيص ماكينة الفيلم
+    assigned_operator_id: integer("assigned_operator_id").references(
+      () => users.id,
+      { onDelete: "set null" },
+    ), // تخصيص العامل المسؤول
+
+    // NEW: حقول أوقات الإنتاج
+    production_start_time: timestamp("production_start_time"), // وقت بداية الإنتاج
+    production_end_time: timestamp("production_end_time"), // وقت نهاية الإنتاج
+    production_time_minutes: integer("production_time_minutes"), // المدة الإجمالية بالدقائق
+
+    // NEW: علامات اكتمال المراحل
+    film_completed: boolean("film_completed").default(false), // علامة اكتمال مرحلة الفيلم
+    printing_completed: boolean("printing_completed").default(false), // علامة اكتمال الطباعة
+    cutting_completed: boolean("cutting_completed").default(false), // علامة اكتمال التقطيع
+    is_final_roll_created: boolean("is_final_roll_created").default(false), // علامة إنشاء آخر رول
+
+    // الكمية المستلمة في المستودع من صالة الإنتاج
+    warehouse_received_kg: decimal("warehouse_received_kg", {
+      precision: 10,
+      scale: 2,
+    })
+      .notNull()
+      .default("0"),
+    // الكمية المسلّمة للعملاء من المستودع
+    warehouse_delivered_kg: decimal("warehouse_delivered_kg", {
+      precision: 10,
+      scale: 2,
+    })
+      .notNull()
+      .default("0"),
+
+    status: varchar("status", { length: 30 }).notNull().default("pending"),
+    previous_status: varchar("previous_status", { length: 30 }),
+    // مرحلة أمر الإنتاج (مستقلة عن status) - تُحسب تلقائياً من حالة الرولات
+    production_stage: varchar("production_stage", { length: 20 })
+      .notNull()
+      .default("film"),
+    // رقم الباتش (الدفعة) — يُولّد تلقائياً عند وصول أمر الإنتاج لمرحلة 'done'.
+    // فريد لكل أمر إنتاج/منتج، يُستخدم في ملصق الكمية النهائية وصفحة التتبع.
+    batch_number: varchar("batch_number", { length: 50 }).unique(),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    // تحديث القيود لتتناسب مع النظام الجديد
+    quantityPositive: check(
+      "quantity_kg_positive",
+      sql`${table.quantity_kg} > 0`,
+    ),
+    overrunPercentageValid: check(
+      "overrun_percentage_valid",
+      sql`${table.overrun_percentage} >= 0 AND ${table.overrun_percentage} <= 50`,
+    ),
+    finalQuantityPositive: check(
+      "final_quantity_kg_positive",
+      sql`${table.final_quantity_kg} > 0`,
+    ),
+    statusValid: check(
+      "production_status_valid",
+      sql`${table.status} IN ('pending', 'active', 'completed', 'cancelled', 'archived')`,
+    ),
+    productionStageValid: check(
+      "production_stage_valid",
+      sql`${table.production_stage} IN ('film', 'printing', 'cutting', 'done')`,
+    ),
+
+    // NEW: قيود الكميات الجديدة
+    producedQuantityNonNegative: check(
+      "produced_quantity_non_negative",
+      sql`${table.produced_quantity_kg} >= 0`,
+    ),
+    printedQuantityNonNegative: check(
+      "printed_quantity_non_negative",
+      sql`${table.printed_quantity_kg} >= 0`,
+    ),
+    netQuantityNonNegative: check(
+      "net_quantity_non_negative",
+      sql`${table.net_quantity_kg} >= 0`,
+    ),
+    wasteQuantityNonNegative: check(
+      "waste_quantity_non_negative",
+      sql`${table.waste_quantity_kg} >= 0`,
+    ),
+
+    // NEW: قيود نسب الإكمال
+    filmCompletionValid: check(
+      "film_completion_valid",
+      sql`${table.film_completion_percentage} >= 0 AND ${table.film_completion_percentage} <= 100`,
+    ),
+    printingCompletionValid: check(
+      "printing_completion_valid",
+      sql`${table.printing_completion_percentage} >= 0 AND ${table.printing_completion_percentage} <= 100`,
+    ),
+    cuttingCompletionValid: check(
+      "cutting_completion_valid",
+      sql`${table.cutting_completion_percentage} >= 0 AND ${table.cutting_completion_percentage} <= 100`,
+    ),
+    // Performance indexes for production_orders table
+    idx_production_orders_order_id: index("idx_production_orders_order_id").on(
+      table.order_id,
+    ),
+    idx_production_orders_status: index("idx_production_orders_status").on(
+      table.status,
+    ),
+    idx_production_orders_production_stage: index(
+      "idx_production_orders_production_stage",
+    ).on(table.production_stage),
+    idx_production_orders_created_at: index(
+      "idx_production_orders_created_at",
+    ).on(table.created_at),
+    idx_production_orders_assigned_machine_id: index(
+      "idx_production_orders_assigned_machine_id",
+    ).on(table.assigned_machine_id),
+  }),
+);
+
+// 🧵 جدول الرولات - Roll Management with Production Constraints
+// INVARIANT B: Sum of roll weights ≤ ProductionOrder.final_quantity_kg + tolerance
+// INVARIANT E: Machine must exist and have status = 'active' during creation
+// STAGE TRANSITIONS: film → printing → cutting → done (sequential only)
+// TEMPORAL CONSTRAINTS: created_at ≤ printed_at ≤ cut_completed_at ≤ completed_at
+export const rolls = pgTable(
+  "rolls",
+  {
+    id: serial("id").primaryKey(),
+    roll_seq: integer("roll_seq").notNull(), // Sequential number within production order, CHECK: > 0
+    roll_number: varchar("roll_number", { length: 64 }).notNull().unique(), // Auto-generated format: PO001-R001
+    production_order_id: integer("production_order_id")
+      .notNull()
+      .references(() => production_orders.id, { onDelete: "cascade" }), // ON DELETE CASCADE
+    qr_code_text: text("qr_code_text").notNull(), // JSON string with roll metadata
+    qr_png_base64: text("qr_png_base64"), // Base64 encoded QR code image
+    stage: varchar("stage", { length: 20 }).notNull().default("film"), // ENUM: film / printing / cutting / done - sequential transitions only
+    weight_kg: decimal("weight_kg", { precision: 12, scale: 3 }).notNull(), // CHECK: > 0, validates against production order limits
+    cut_weight_total_kg: decimal("cut_weight_total_kg", {
+      precision: 12,
+      scale: 3,
+    })
+      .notNull()
+      .default("0"), // CHECK: >= 0, <= weight_kg
+    waste_kg: decimal("waste_kg", { precision: 12, scale: 3 })
+      .notNull()
+      .default("0"), // CHECK: >= 0, <= weight_kg
+    printed_at: timestamp("printed_at"), // Set when stage changes to 'printing', must be >= created_at
+    cut_completed_at: timestamp("cut_completed_at"), // Set when stage changes to 'cutting', must be >= printed_at
+    performed_by: integer("performed_by").references(() => users.id, {
+      onDelete: "set null",
+    }), // Legacy field, ON DELETE SET NULL
+    film_machine_id: varchar("film_machine_id", { length: 20 })
+      .notNull()
+      .references(() => machines.id, { onDelete: "restrict" }), // Machine used for film production
+    printing_machine_id: varchar("printing_machine_id", {
+      length: 20,
+    }).references(() => machines.id, { onDelete: "restrict" }), // Machine used for printing (assigned in printing stage)
+    cutting_machine_id: varchar("cutting_machine_id", {
+      length: 20,
+    }).references(() => machines.id, { onDelete: "restrict" }), // Machine used for cutting (assigned in cutting stage)
+    machine_id: varchar("machine_id", { length: 20 }).references(
+      () => machines.id,
+      { onDelete: "restrict" },
+    ), // Legacy field for backward compatibility
+    employee_id: integer("employee_id").references(() => users.id, {
+      onDelete: "set null",
+    }), // Legacy field, ON DELETE SET NULL
+    created_by: integer("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }), // ON DELETE RESTRICT - user who created the roll
+    printed_by: integer("printed_by").references(() => users.id, {
+      onDelete: "set null",
+    }), // ON DELETE SET NULL - user who printed the roll
+    cut_by: integer("cut_by").references(() => users.id, {
+      onDelete: "set null",
+    }), // ON DELETE SET NULL - user who cut the roll
+
+    // NEW: حقول إضافية لتتبع الإنتاج
+    is_last_roll: boolean("is_last_roll").default(false), // لتحديد آخر رول في أمر الإنتاج
+    production_time_minutes: integer("production_time_minutes"), // وقت إنتاج الرول بالدقائق
+    roll_created_at: timestamp("roll_created_at").defaultNow(), // وقت إنشاء الرول بدقة
+
+    qr_code: varchar("qr_code", { length: 255 }), // Legacy field
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    completed_at: timestamp("completed_at"), // Set when stage = 'done'
+  },
+  (table) => ({
+    // Check constraints for roll integrity
+    rollSeqPositive: check("roll_seq_positive", sql`${table.roll_seq} > 0`),
+    weightPositive: check("weight_kg_positive", sql`${table.weight_kg} > 0`),
+    weightReasonable: check(
+      "weight_kg_reasonable",
+      sql`${table.weight_kg} <= 2000`,
+    ), // Max 2000kg per roll
+    cutWeightValid: check(
+      "cut_weight_valid",
+      sql`${table.cut_weight_total_kg} >= 0 AND ${table.cut_weight_total_kg} <= ${table.weight_kg}`,
+    ),
+    wasteValid: check(
+      "waste_valid",
+      sql`${table.waste_kg} >= 0 AND ${table.waste_kg} <= ${table.weight_kg}`,
+    ),
+    stageValid: check(
+      "stage_valid",
+      sql`${table.stage} IN ('film', 'printing', 'cutting', 'done')`,
+    ),
+    // Temporal constraints: timestamps must be in logical order
+    printedAtValid: check(
+      "printed_at_valid",
+      sql`${table.printed_at} IS NULL OR ${table.printed_at} >= ${table.created_at}`,
+    ),
+    cutCompletedAtValid: check(
+      "cut_completed_at_valid",
+      sql`${table.cut_completed_at} IS NULL OR (${table.cut_completed_at} >= ${table.created_at} AND (${table.printed_at} IS NULL OR ${table.cut_completed_at} >= ${table.printed_at}))`,
+    ),
+    completedAtValid: check(
+      "completed_at_valid",
+      sql`${table.completed_at} IS NULL OR ${table.completed_at} >= ${table.created_at}`,
+    ),
+    // INVARIANT E: Machine must be active for roll creation - enforced at application level
+    machineActiveForCreation: check("machine_active_for_creation", sql`TRUE`), // Placeholder - enforced in application layer
+    // Performance indexes for rolls table
+    idx_rolls_production_order_id: index("idx_rolls_production_order_id").on(
+      table.production_order_id,
+    ),
+    idx_rolls_stage: index("idx_rolls_stage").on(table.stage),
+    idx_rolls_created_at: index("idx_rolls_created_at").on(table.created_at),
+    idx_rolls_film_machine_id: index("idx_rolls_film_machine_id").on(
+      table.film_machine_id,
+    ),
+    idx_rolls_created_by: index("idx_rolls_created_by").on(table.created_by),
+  }),
+);
+
+// ✂️ جدول القطع (Cuts)
+export const cuts = pgTable("cuts", {
+  id: serial("id").primaryKey(),
+  roll_id: integer("roll_id")
+    .notNull()
+    .references(() => rolls.id, { onDelete: "cascade" }),
+  cut_weight_kg: decimal("cut_weight_kg", {
+    precision: 12,
+    scale: 3,
+  }).notNull(),
+  pieces_count: integer("pieces_count"),
+  performed_by: integer("performed_by").references(() => users.id),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+// 🏪 جدول إيصالات المستودع (Warehouse Receipts)
+export const warehouse_receipts = pgTable("warehouse_receipts", {
+  id: serial("id").primaryKey(),
+  production_order_id: integer("production_order_id")
+    .notNull()
+    .references(() => production_orders.id, { onDelete: "cascade" }),
+  cut_id: integer("cut_id").references(() => cuts.id, { onDelete: "set null" }),
+  received_weight_kg: decimal("received_weight_kg", {
+    precision: 12,
+    scale: 3,
+  }).notNull(),
+  received_by: integer("received_by").references(() => users.id),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+// 🏭 جدول طوابير الماكينات - Machine Queues for Production Scheduling
+export const machine_queues = pgTable("machine_queues", {
+  id: serial("id").primaryKey(),
+  machine_id: varchar("machine_id", { length: 20 })
+    .notNull()
+    .references(() => machines.id, { onDelete: "cascade" }), // مرجع للماكينة
+  production_order_id: integer("production_order_id")
+    .notNull()
+    .references(() => production_orders.id, { onDelete: "cascade" }), // مرجع لأمر الإنتاج
+  queue_position: integer("queue_position").notNull(), // الترتيب في الطابور
+  estimated_start_time: timestamp("estimated_start_time"), // الوقت التقديري للبدء
+  assigned_at: timestamp("assigned_at").defaultNow(), // وقت التخصيص
+  assigned_by: integer("assigned_by").references(() => users.id, {
+    onDelete: "set null",
+  }), // المستخدم الذي خصص
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+// ⚙️ جدول إعدادات الإنتاج (Production Settings)
+export const production_settings = pgTable("production_settings", {
+  id: serial("id").primaryKey(),
+  overrun_tolerance_percent: decimal("overrun_tolerance_percent", {
+    precision: 5,
+    scale: 2,
+  })
+    .notNull()
+    .default("3"),
+  allow_last_roll_overrun: boolean("allow_last_roll_overrun")
+    .notNull()
+    .default(true),
+  qr_prefix: varchar("qr_prefix", { length: 32 }).notNull().default("ROLL"),
+});
+
+// 🗑️ جدول الهدر
+export const waste = pgTable("waste", {
+  id: serial("id").primaryKey(),
+  roll_id: integer("roll_id").references(() => rolls.id, {
+    onDelete: "cascade",
+  }),
+  production_order_id: integer("production_order_id").references(
+    () => production_orders.id,
+    { onDelete: "cascade" },
+  ),
+  quantity_wasted: decimal("quantity_wasted", {
+    precision: 8,
+    scale: 2,
+  }).notNull(),
+  reason: varchar("reason", { length: 100 }),
+  stage: varchar("stage", { length: 50 }), // extruder / cutting / printing
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+// 🧪 جدول فحص الجودة
+export const quality_checks = pgTable("quality_checks", {
+  id: serial("id").primaryKey(),
+  target_type: varchar("target_type", { length: 20 }), // roll / material
+  target_id: integer("target_id"),
+  result: varchar("result", { length: 10 }), // pass / fail
+  score: integer("score"), // 1-5 stars
+  notes: text("notes"),
+  checked_by: integer("checked_by").references(() => users.id),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+// 🛠️ جدول طلبات الصيانة
+export const maintenance_requests = pgTable("maintenance_requests", {
+  id: serial("id").primaryKey(),
+  request_number: varchar("request_number", { length: 50 }).notNull().unique(), // MO001, MO002, etc.
+  machine_id: varchar("machine_id", { length: 20 }).references(
+    () => machines.id,
+  ),
+  reported_by: integer("reported_by").references(() => users.id),
+  issue_type: varchar("issue_type", { length: 50 }), // mechanical / electrical / other
+  description: text("description"),
+  urgency_level: varchar("urgency_level", { length: 20 }).default("normal"), // normal / medium / urgent
+  status: varchar("status", { length: 20 }).default("open"), // open / in_progress / resolved
+  assigned_to: integer("assigned_to").references(() => users.id),
+  action_taken: text("action_taken"),
+  date_reported: timestamp("date_reported").defaultNow(),
+  date_resolved: timestamp("date_resolved"),
+});
+
+// 🔧 جدول إجراءات الصيانة
+export const maintenance_actions = pgTable("maintenance_actions", {
+  id: serial("id").primaryKey(),
+  action_number: varchar("action_number", { length: 50 }).notNull().unique(), // MA001, MA002, etc.
+  maintenance_request_id: integer("maintenance_request_id")
+    .notNull()
+    .references(() => maintenance_requests.id, { onDelete: "cascade" }),
+  action_type: varchar("action_type", { length: 50 }).notNull(), // فحص مبدئي / تغيير قطعة غيار / إصلاح مكانيكي / إصلاح كهربائي / إيقاف الماكينة
+  description: text("description"),
+  text_report: text("text_report"), // التقرير النصي
+  spare_parts_request: text("spare_parts_request"), // طلب قطع غيار
+  machining_request: text("machining_request"), // طلب مخرطة
+  operator_negligence_report: text("operator_negligence_report"), // تبليغ اهمال المشغل
+
+  // User tracking
+  performed_by: integer("performed_by")
+    .notNull()
+    .references(() => users.id), // المستخدم الذي نفذ الإجراء
+  request_created_by: integer("request_created_by").references(() => users.id), // المستخدم الذي أنشأ طلب الصيانة
+
+  // Status and notifications
+  requires_management_action: boolean("requires_management_action").default(
+    false,
+  ), // يحتاج موافقة إدارية
+  management_notified: boolean("management_notified").default(false), // تم إبلاغ الإدارة
+
+  action_date: timestamp("action_date").defaultNow(),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+// 🔧 جدول قطع الغيار
+export const spare_parts = pgTable("spare_parts", {
+  id: serial("id").primaryKey(),
+  part_id: varchar("part_id", { length: 50 }).notNull().unique(),
+  machine_name: varchar("machine_name", { length: 100 }).notNull(),
+  part_name: varchar("part_name", { length: 100 }).notNull(),
+  code: varchar("code", { length: 50 }).notNull(),
+  serial_number: varchar("serial_number", { length: 100 }).notNull(),
+  specifications: text("specifications"),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+// 🔧 جدول قطع الغيار الاستهلاكية - Consumable Spare Parts
+export const consumable_parts = pgTable(
+  "consumable_parts",
+  {
+    id: serial("id").primaryKey(),
+    part_id: varchar("part_id", { length: 50 }).notNull().unique(), // CP001, CP002, etc.
+    type: varchar("type", { length: 100 }).notNull(), // نوع القطعة (سيور، بيرنقات، مسامير، الخ)
+    code: varchar("code", { length: 50 }).notNull(), // كود القطعة
+    current_quantity: integer("current_quantity").notNull().default(0), // الكمية الحالية
+    min_quantity: integer("min_quantity").default(0), // الحد الأدنى للكمية
+    max_quantity: integer("max_quantity").default(0), // الحد الأقصى للكمية
+    unit: varchar("unit", { length: 20 }).default("قطعة"), // الوحدة (قطعة، كيلو، متر، الخ)
+    barcode: varchar("barcode", { length: 100 }), // الباركود
+    location: varchar("location", { length: 100 }), // موقع التخزين
+    notes: text("notes"), // ملاحظات
+    status: varchar("status", { length: 20 }).default("active"), // active / inactive
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+  (table) => ({
+    // Check constraints for consumable parts integrity
+    currentQuantityNonNegative: check(
+      "current_quantity_non_negative",
+      sql`${table.current_quantity} >= 0`,
+    ),
+    minQuantityNonNegative: check(
+      "min_quantity_non_negative",
+      sql`${table.min_quantity} >= 0`,
+    ),
+    maxQuantityNonNegative: check(
+      "max_quantity_non_negative",
+      sql`${table.max_quantity} >= 0`,
+    ),
+    statusValid: check(
+      "consumable_status_valid",
+      sql`${table.status} IN ('active', 'inactive')`,
+    ),
+  }),
+);
+
+// 📊 جدول حركات قطع الغيار الاستهلاكية - Consumable Parts Transactions
+export const consumable_parts_transactions = pgTable(
+  "consumable_parts_transactions",
+  {
+    id: serial("id").primaryKey(),
+    transaction_id: varchar("transaction_id", { length: 50 })
+      .notNull()
+      .unique(), // CT001, CT002, etc.
+    consumable_part_id: integer("consumable_part_id")
+      .notNull()
+      .references(() => consumable_parts.id, { onDelete: "restrict" }),
+    transaction_type: varchar("transaction_type", { length: 10 }).notNull(), // in / out
+    quantity: integer("quantity").notNull(), // الكمية (سالبة للخروج، موجبة للدخول)
+    barcode_scanned: varchar("barcode_scanned", { length: 100 }), // الباركود الممسوح
+    manual_entry: boolean("manual_entry").default(false), // إدخال يدوي أم بالماسح
+    transaction_reason: varchar("transaction_reason", { length: 100 }), // سبب الحركة
+    notes: text("notes"), // ملاحظات
+    performed_by: integer("performed_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    created_at: timestamp("created_at").defaultNow(),
+  },
+  (table) => ({
+    // Check constraints for transaction integrity
+    quantityPositive: check("quantity_positive", sql`${table.quantity} > 0`),
+    transactionTypeValid: check(
+      "transaction_type_valid",
+      sql`${table.transaction_type} IN ('in', 'out')`,
+    ),
+  }),
+);
+
+// 📋 جدول بلاغات الصيانة (للإدارة)
+export const maintenance_reports = pgTable("maintenance_reports", {
+  id: serial("id").primaryKey(),
+  report_number: varchar("report_number", { length: 50 }).notNull().unique(), // MR001, MR002, etc.
+  maintenance_action_id: integer("maintenance_action_id")
+    .notNull()
+    .references(() => maintenance_actions.id),
+  report_type: varchar("report_type", { length: 30 }).notNull(), // spare_parts / machining / operator_negligence
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description").notNull(),
+  priority: varchar("priority", { length: 20 }).default("normal"), // low / normal / high / urgent
+
+  // Status tracking
+  status: varchar("status", { length: 20 }).default("pending"), // pending / reviewed / approved / rejected / completed
+  reviewed_by: integer("reviewed_by").references(() => users.id),
+  review_notes: text("review_notes"),
+  review_date: timestamp("review_date"),
+
+  created_by: integer("created_by")
+    .notNull()
+    .references(() => users.id),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+// ⚠️ جدول بلاغات إهمال المشغلين
+export const operator_negligence_reports = pgTable(
+  "operator_negligence_reports",
+  {
+    id: serial("id").primaryKey(),
+    report_number: varchar("report_number", { length: 50 }).notNull().unique(), // ON001, ON002, etc.
+    maintenance_action_id: integer("maintenance_action_id").references(
+      () => maintenance_actions.id,
+    ),
+    operator_id: integer("operator_id")
+      .notNull()
+      .references(() => users.id),
+    machine_id: varchar("machine_id", { length: 20 }).references(
+      () => machines.id,
+    ),
+    negligence_type: varchar("negligence_type", { length: 50 }).notNull(), // عدم صيانة / سوء استخدام / عدم اتباع تعليمات
+    description: text("description").notNull(),
+    evidence: text("evidence"), // الأدلة
+
+    // Impact assessment
+    damage_cost: decimal("damage_cost", { precision: 10, scale: 2 }),
+    downtime_hours: integer("downtime_hours"),
+
+    // Status and follow-up
+    status: varchar("status", { length: 20 }).default("reported"), // reported / under_investigation / action_taken / closed
+    action_taken: text("action_taken"),
+    disciplinary_action: varchar("disciplinary_action", { length: 50 }), // تحذير / خصم / إيقاف مؤقت
+
+    reported_by: integer("reported_by")
+      .notNull()
+      .references(() => users.id),
+    investigated_by: integer("investigated_by").references(() => users.id),
+    report_date: timestamp("report_date").defaultNow(),
+    investigation_date: timestamp("investigation_date"),
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+);
+
+// 🛠️ كتالوج مكوّنات الماكينات (للصيانة الوقائية) - Maintenance Component Catalog
+// Bilingual list of machine components keyed by machine type (extruder/printer/cutter)
+export const maintenance_component_catalog = pgTable(
+  "maintenance_component_catalog",
+  {
+    id: serial("id").primaryKey(),
+    machine_type: varchar("machine_type", { length: 30 }).notNull(), // extruder / printer / cutter
+    name_ar: varchar("name_ar", { length: 200 }).notNull(),
+    name_en: varchar("name_en", { length: 200 }).notNull(),
+    sort_order: integer("sort_order").notNull().default(0),
+    enabled: boolean("enabled").notNull().default(true),
+    created_at: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("uniq_component_catalog_type_name").on(
+      table.machine_type,
+      table.name_en,
+    ),
+    index("idx_component_catalog_type").on(table.machine_type),
+  ],
+);
+
+// 🧰 جدول الإجراءات الوقائية (رأس الإجراء، غير مرتبط بطلب صيانة) - Preventive Maintenance Actions
+export const preventive_maintenance_actions = pgTable(
+  "preventive_maintenance_actions",
+  {
+    id: serial("id").primaryKey(),
+    action_number: varchar("action_number", { length: 50 }).notNull().unique(), // PM001, PM002, ...
+    section_id: varchar("section_id", { length: 20 }).references(
+      () => sections.id,
+    ),
+    machine_id: varchar("machine_id", { length: 20 })
+      .notNull()
+      .references(() => machines.id),
+    performed_by: integer("performed_by")
+      .notNull()
+      .references(() => users.id),
+    action_date: timestamp("action_date").defaultNow(),
+    total_cost: decimal("total_cost", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
+    notes: text("notes"),
+    status: varchar("status", { length: 20 }).notNull().default("completed"), // completed / pending
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [index("idx_preventive_actions_machine").on(table.machine_id)],
+);
+
+// 🧩 بنود الإجراء الوقائي (سطر لكل مكوّن) - Preventive Maintenance Line Items
+export const preventive_maintenance_items = pgTable(
+  "preventive_maintenance_items",
+  {
+    id: serial("id").primaryKey(),
+    preventive_action_id: integer("preventive_action_id")
+      .notNull()
+      .references(() => preventive_maintenance_actions.id, {
+        onDelete: "cascade",
+      }),
+    component_id: integer("component_id").references(
+      () => maintenance_component_catalog.id,
+    ), // nullable: free-text components allowed
+    component_name_ar: varchar("component_name_ar", { length: 200 }).notNull(), // denormalized snapshot for history
+    component_name_en: varchar("component_name_en", { length: 200 }).notNull(),
+    action_type: varchar("action_type", { length: 40 }).notNull(), // inspection / cleaning / lubrication / adjustment / repair / replacement
+    quantity: integer("quantity").notNull().default(1),
+    cost: decimal("cost", { precision: 12, scale: 2 }).notNull().default("0"),
+    condition: varchar("condition", { length: 20 }), // good / worn / replaced
+    notes: text("notes"),
+    created_at: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_preventive_items_action").on(table.preventive_action_id),
+    index("idx_preventive_items_component").on(table.component_id),
+  ],
+);
+
+// 🔗 ربط الإجراء الوقائي بأكثر من ماكينة (إجراء واحد لعدة مكائن)
+export const preventive_maintenance_action_machines = pgTable(
+  "preventive_maintenance_action_machines",
+  {
+    id: serial("id").primaryKey(),
+    preventive_action_id: integer("preventive_action_id")
+      .notNull()
+      .references(() => preventive_maintenance_actions.id, {
+        onDelete: "cascade",
+      }),
+    machine_id: varchar("machine_id", { length: 20 })
+      .notNull()
+      .references(() => machines.id),
+  },
+  (table) => [
+    index("idx_pm_action_machines_action").on(table.preventive_action_id),
+    index("idx_pm_action_machines_machine").on(table.machine_id),
+    uniqueIndex("uniq_pm_action_machine").on(
+      table.preventive_action_id,
+      table.machine_id,
+    ),
+  ],
+);
+
+// 📋 جدول فترات الانسحاب من صفحة الحضور (Anti-fraud)
+export const attendance_withdrawals = pgTable(
+  "attendance_withdrawals",
+  {
+    id: serial("id").primaryKey(),
+    attendance_id: integer("attendance_id")
+      .notNull()
+      .references(() => attendance.id, { onDelete: "cascade" }),
+    user_id: integer("user_id")
+      .notNull()
+      .references(() => users.id),
+    date: date("date")
+      .notNull()
+      .default(sql`CURRENT_DATE`),
+    started_at: timestamp("started_at").notNull(),
+    ended_at: timestamp("ended_at"),
+    duration_minutes: integer("duration_minutes").default(0),
+    reason: varchar("reason", { length: 50 }).default("page_abandonment"), // page_abandonment | tab_hidden | navigation
+    previous_status: varchar("previous_status", { length: 20 }), // attendance.status before switching to "منسحب"
+    created_at: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_attendance_withdrawals_user_date").on(table.user_id, table.date),
+    index("idx_attendance_withdrawals_attendance").on(table.attendance_id),
+    // Only one open withdrawal per attendance at a time
+    uniqueIndex("uniq_attendance_open_withdrawal")
+      .on(table.attendance_id)
+      .where(sql`ended_at IS NULL`),
+  ],
+);
+
+// 📋 جدول جدولة الورديات الشهرية (تعيين كل موظف لوردية نهارية/ليلية لكل شهر)
+export const shift_assignments = pgTable(
+  "shift_assignments",
+  {
+    id: serial("id").primaryKey(),
+    user_id: integer("user_id")
+      .notNull()
+      .references(() => users.id),
+    year: integer("year").notNull(),
+    month: integer("month").notNull(), // 1-12
+    shift: varchar("shift", { length: 10 }).notNull(), // 'day' | 'night'
+    notes: text("notes"),
+    created_by: integer("created_by").references(() => users.id),
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_shift_assignments_user").on(table.user_id),
+    index("idx_shift_assignments_period").on(table.year, table.month),
+    uniqueIndex("uniq_shift_assignment_user_month").on(
+      table.user_id,
+      table.year,
+      table.month,
+    ),
+  ],
+);
+
+// 📋 جدول المخالفات
+export const violations = pgTable("violations", {
+  id: serial("id").primaryKey(),
+  employee_id: integer("employee_id").references(() => users.id),
+  violation_type: varchar("violation_type", { length: 50 }),
+  description: text("description"),
+  date: date("date").notNull(),
+  action_taken: text("action_taken"),
+  // قيمة الجزاء المالي المخصوم من الأجر (إن وجد)
+  penalty_amount: decimal("penalty_amount", { precision: 12, scale: 2 })
+    .notNull()
+    .default("0"),
+  // حالة المخالفة: open / resolved / cancelled
+  status: varchar("status", { length: 20 }).notNull().default("open"),
+  reported_by: integer("reported_by").references(() => users.id),
+});
+
+// 🎁 جدول المكافآت والحوافز لكل موظف
+export const rewards = pgTable("rewards", {
+  id: serial("id").primaryKey(),
+  employee_id: integer("employee_id")
+    .notNull()
+    .references(() => users.id),
+  reward_type: varchar("reward_type", { length: 50 }).notNull(), // bonus / incentive / appreciation
+  reason: text("reason"),
+  amount: decimal("amount", { precision: 12, scale: 2 })
+    .notNull()
+    .default("0"),
+  date: date("date").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("approved"), // approved / pending / cancelled
+  granted_by: integer("granted_by").references(() => users.id),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+// 📦 جدول العهد والأصول المسلّمة للموظف
+export const employee_custody = pgTable("employee_custody", {
+  id: serial("id").primaryKey(),
+  employee_id: integer("employee_id")
+    .notNull()
+    .references(() => users.id),
+  item_name: varchar("item_name", { length: 200 }).notNull(),
+  description: text("description"),
+  quantity: integer("quantity").notNull().default(1),
+  handover_date: date("handover_date").notNull(),
+  return_date: date("return_date"),
+  status: varchar("status", { length: 20 }).notNull().default("handed"), // handed / returned / lost / damaged
+  notes: text("notes"),
+  recorded_by: integer("recorded_by").references(() => users.id),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+// 🌟 جدول السمات الشخصية وتقييم الموظف
+export const employee_traits = pgTable("employee_traits", {
+  id: serial("id").primaryKey(),
+  employee_id: integer("employee_id")
+    .notNull()
+    .references(() => users.id),
+  trait: varchar("trait", { length: 200 }).notNull(),
+  category: varchar("category", { length: 50 }), // skill / behavior / strength / development
+  rating: integer("rating"), // 1-5 (اختياري)
+  notes: text("notes"),
+  recorded_by: integer("recorded_by").references(() => users.id),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+// 💰 جدول سجلات الأجور الشهرية (محسوبة من محرك الحضور)
+export const wage_records = pgTable(
+  "wage_records",
+  {
+    id: serial("id").primaryKey(),
+    employee_id: integer("employee_id")
+      .notNull()
+      .references(() => users.id),
+    year: integer("year").notNull(),
+    month: integer("month").notNull(), // 1-12
+    base_hourly_rate: decimal("base_hourly_rate", { precision: 10, scale: 2 })
+      .notNull()
+      .default("0"),
+    overtime_multiplier: decimal("overtime_multiplier", {
+      precision: 4,
+      scale: 2,
+    })
+      .notNull()
+      .default("1.50"),
+    base_hours: decimal("base_hours", { precision: 10, scale: 2 })
+      .notNull()
+      .default("0"),
+    basic_pay: decimal("basic_pay", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
+    overtime_hours: decimal("overtime_hours", { precision: 10, scale: 2 })
+      .notNull()
+      .default("0"),
+    overtime_pay: decimal("overtime_pay", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
+    deductions_amount: decimal("deductions_amount", {
+      precision: 12,
+      scale: 2,
+    })
+      .notNull()
+      .default("0"),
+    rewards_amount: decimal("rewards_amount", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
+    penalties_amount: decimal("penalties_amount", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
+    net_pay: decimal("net_pay", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
+    notes: text("notes"),
+    computed_by: integer("computed_by").references(() => users.id),
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+  (table) => ({
+    uniqueEmployeeMonth: uniqueIndex("wage_records_employee_month_uniq").on(
+      table.employee_id,
+      table.year,
+      table.month,
+    ),
+  }),
+);
+
+// 📦 جدول الأصناف والمواد
+export const items = pgTable("items", {
+  id: varchar("id", { length: 20 }).primaryKey(),
+  category_id: varchar("category_id", { length: 20 }),
+  name: varchar("name", { length: 100 }),
+  name_ar: varchar("name_ar", { length: 100 }),
+  code: varchar("code", { length: 50 }),
+  status: varchar("status", { length: 20 }).default("active"),
+});
+
+// 📦 جدول وحدات التعبئة - Packaging Units per item
+// Each item can have multiple packaging unit configurations used at warehouse receipt
+// Example: a 50-gallon roll item can be packed as either:
+//   - 20 rolls × 900g = 18 kg bundle
+//   - 20 rolls × 1000g = 20 kg bundle
+// Used ONLY at warehouse receipt — production-side flow is unaffected.
+export const packaging_units = pgTable(
+  "packaging_units",
+  {
+    id: serial("id").primaryKey(),
+    item_id: varchar("item_id", { length: 20 })
+      .notNull()
+      .references(() => items.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 100 }).notNull(), // e.g. "بندل 18 كجم"
+    roll_weight_g: decimal("roll_weight_g", {
+      precision: 10,
+      scale: 2,
+    }).notNull(), // weight of a single roll in grams
+    rolls_per_unit: integer("rolls_per_unit").notNull(), // number of rolls in the package
+    unit_weight_kg: decimal("unit_weight_kg", {
+      precision: 10,
+      scale: 3,
+    }).notNull(), // total package weight in kg = roll_weight_g * rolls_per_unit / 1000
+    is_default: boolean("is_default").default(false),
+    is_active: boolean("is_active").default(true),
+    created_at: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_packaging_units_item_id").on(table.item_id),
+    // Enforce a single default packaging unit per item at the database level.
+    // Partial unique index allows many rows with is_default = false (or NULL),
+    // but at most one row with is_default = true for any given item_id.
+    uniqueIndex("uniq_packaging_units_default_per_item")
+      .on(table.item_id)
+      .where(sql`${table.is_default} = true`),
+  ],
+);
+
+// 🌍 جدول المواقع الجغرافية
+export const locations = pgTable("locations", {
+  id: varchar("id", { length: 20 }).primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  name_ar: varchar("name_ar", { length: 100 }),
+  coordinates: varchar("coordinates", { length: 100 }),
+  tolerance_range: integer("tolerance_range"),
+});
+
+// 📦 جدول الموردين
+export const suppliers = pgTable("suppliers", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  name_ar: varchar("name_ar", { length: 100 }),
+  contact_person: varchar("contact_person", { length: 100 }),
+  phone: varchar("phone", { length: 20 }),
+  email: varchar("email", { length: 100 }),
+  address: text("address"),
+  materials_supplied: json("materials_supplied").$type<number[]>(),
+  is_active: boolean("is_active").default(true),
+});
+
+// 📦 جدول المخزون الحالي - Inventory Management with Stock Constraints
+// INVARIANT C: Inventory.current_stock ≥ 0 AT ALL TIMES
+// CONSTRAINT: current_stock must never go negative during any operation
+// VALIDATION: All inventory movements must be validated before execution
+// 📦 جدول المخزون - Inventory Management with Stock Constraints
+// INVARIANT C: current_stock ≥ 0 AT ALL TIMES - NEVER NEGATIVE
+// BUSINESS RULE: max_stock ≥ min_stock for proper threshold management
+export const inventory = pgTable(
+  "inventory",
+  {
+    id: serial("id").primaryKey(),
+    item_id: varchar("item_id", { length: 20 })
+      .notNull()
+      .references(() => items.id, { onDelete: "restrict" }), // ON DELETE RESTRICT
+    location_id: varchar("location_id", { length: 20 }).references(
+      () => locations.id,
+      { onDelete: "restrict" },
+    ), // ON DELETE RESTRICT
+    current_stock: decimal("current_stock", { precision: 10, scale: 2 })
+      .notNull()
+      .default("0"), // CHECK: >= 0 - NEVER NEGATIVE
+    min_stock: decimal("min_stock", { precision: 10, scale: 2 })
+      .notNull()
+      .default("0"), // CHECK: >= 0 - minimum stock threshold
+    max_stock: decimal("max_stock", { precision: 10, scale: 2 })
+      .notNull()
+      .default("0"), // CHECK: >= min_stock - maximum stock threshold
+    unit: varchar("unit", { length: 20 }).notNull().default("كيلو"), // ENUM: kg / piece / roll / package
+    cost_per_unit: decimal("cost_per_unit", { precision: 10, scale: 4 }), // CHECK: >= 0 if not null
+    last_updated: timestamp("last_updated").notNull().defaultNow(), // Updated on every stock change
+  },
+  (table) => ({
+    // INVARIANT C: Stock constraints for inventory integrity
+    currentStockNonNegative: check(
+      "current_stock_non_negative",
+      sql`${table.current_stock} >= 0`,
+    ),
+    minStockNonNegative: check(
+      "min_stock_non_negative",
+      sql`${table.min_stock} >= 0`,
+    ),
+    maxStockNonNegative: check(
+      "max_stock_non_negative",
+      sql`${table.max_stock} >= 0`,
+    ),
+    stockThresholdLogical: check(
+      "stock_threshold_logical",
+      sql`${table.max_stock} >= ${table.min_stock}`,
+    ),
+    costPerUnitValid: check(
+      "cost_per_unit_valid",
+      sql`${table.cost_per_unit} IS NULL OR ${table.cost_per_unit} >= 0`,
+    ),
+    unitValid: check(
+      "unit_valid",
+      sql`${table.unit} IN ('كيلو', 'قطعة', 'رول', 'علبة', 'kg', 'piece', 'roll', 'package')`,
+    ),
+    // Unique constraint: one inventory record per item-location combination
+    itemLocationUnique: check("item_location_unique", sql`TRUE`), // This will be handled as a unique index separately
+  }),
+);
+
+// 📋 جدول حركات المخزون - Inventory Movement Tracking with Validation
+// BUSINESS RULE: All movements must have positive quantities
+// REFERENTIAL INTEGRITY: Movements must reference valid inventory items
+// AUDIT TRAIL: Complete tracking of all stock changes with user accountability
+export const inventory_movements = pgTable(
+  "inventory_movements",
+  {
+    id: serial("id").primaryKey(),
+    inventory_id: integer("inventory_id")
+      .notNull()
+      .references(() => inventory.id, { onDelete: "restrict" }), // ON DELETE RESTRICT
+    movement_type: varchar("movement_type", { length: 20 }).notNull(), // in / out / transfer / adjustment
+    quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(), // CHECK: > 0
+    unit_cost: decimal("unit_cost", { precision: 10, scale: 4 }), // CHECK: >= 0 if not null
+    total_cost: decimal("total_cost", { precision: 10, scale: 4 }), // CHECK: >= 0 if not null
+    reference_number: varchar("reference_number", { length: 50 }),
+    reference_type: varchar("reference_type", { length: 20 }), // purchase / sale / production / adjustment
+    notes: text("notes"),
+    created_by: integer("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }), // ON DELETE RESTRICT for audit trail
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    // Check constraints for movement integrity
+    quantityPositive: check("quantity_positive", sql`${table.quantity} > 0`),
+    unitCostValid: check(
+      "unit_cost_valid",
+      sql`${table.unit_cost} IS NULL OR ${table.unit_cost} >= 0`,
+    ),
+    totalCostValid: check(
+      "total_cost_valid",
+      sql`${table.total_cost} IS NULL OR ${table.total_cost} >= 0`,
+    ),
+    movementTypeValid: check(
+      "movement_type_valid",
+      sql`${table.movement_type} IN ('in', 'out', 'transfer', 'adjustment')`,
+    ),
+    referenceTypeValid: check(
+      "reference_type_valid",
+      sql`${table.reference_type} IS NULL OR ${table.reference_type} IN ('purchase', 'sale', 'production', 'adjustment', 'transfer')`,
+    ),
+    // Logical constraint: if unit_cost and quantity are provided, total_cost should be reasonable
+    totalCostLogical: check(
+      "total_cost_logical",
+      sql`${table.total_cost} IS NULL OR ${table.unit_cost} IS NULL OR ${table.total_cost} = ${table.unit_cost} * ${table.quantity}`,
+    ),
+  }),
+);
+
+// 🏬 جدول حركات المستودع
+export const warehouse_transactions = pgTable("warehouse_transactions", {
+  id: serial("id").primaryKey(),
+  type: varchar("type", { length: 30 }), // incoming / issued / production / delivery
+  item_id: varchar("item_id", { length: 20 }).references(() => items.id),
+  quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(),
+  from_location: varchar("from_location", { length: 100 }),
+  to_location: varchar("to_location", { length: 100 }),
+  date: timestamp("date").defaultNow(),
+  reference_id: integer("reference_id"), // order_id, production_order_id, etc.
+  notes: text("notes"),
+});
+
+// 🧍‍♂️ جدول التدريب
+export const training_records = pgTable("training_records", {
+  id: serial("id").primaryKey(),
+  employee_id: integer("employee_id").references(() => users.id),
+  training_type: varchar("training_type", { length: 100 }),
+  training_name: varchar("training_name", { length: 200 }),
+  date: date("date").notNull(),
+  status: varchar("status", { length: 20 }).default("completed"), // completed / pending / cancelled
+  instructor: varchar("instructor", { length: 100 }),
+  notes: text("notes"),
+});
+
+// 📚 جدول البرامج التدريبية الميدانية
+export const training_programs = pgTable("training_programs", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 200 }).notNull(),
+  title_ar: varchar("title_ar", { length: 200 }),
+  description: text("description"),
+  description_ar: text("description_ar"),
+  type: varchar("type", { length: 20 }).default("field"), // field / online (للمستقبل)
+  category: varchar("category", { length: 50 }), // general / department_specific
+  training_scope: varchar("training_scope", { length: 50 }), // safety / first_aid / fire_safety / technical / film / printing / cutting
+  duration_hours: integer("duration_hours"),
+  max_participants: integer("max_participants"),
+  location: varchar("location", { length: 200 }), // مكان التدريب الميداني
+  prerequisites: text("prerequisites"),
+  learning_objectives: json("learning_objectives").$type<string[]>(),
+  practical_requirements: text("practical_requirements"), // المتطلبات العملية للتدريب
+  instructor_id: integer("instructor_id").references(() => users.id),
+  department_id: varchar("department_id", { length: 20 }).references(
+    () => sections.id,
+  ), // للتدريبات الخاصة بالقسم
+  status: varchar("status", { length: 20 }).default("active"), // active / inactive / draft
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+// 📖 جدول المواد التدريبية
+export const training_materials = pgTable("training_materials", {
+  id: serial("id").primaryKey(),
+  program_id: integer("program_id").references(() => training_programs.id),
+  title: varchar("title", { length: 200 }).notNull(),
+  title_ar: varchar("title_ar", { length: 200 }),
+  type: varchar("type", { length: 20 }), // video / document / quiz / assignment
+  content: text("content"),
+  file_url: varchar("file_url", { length: 500 }),
+  order_index: integer("order_index").default(0),
+  duration_minutes: integer("duration_minutes"),
+  is_mandatory: boolean("is_mandatory").default(true),
+});
+
+// 🎓 جدول تسجيل الموظفين في البرامج التدريبية
+export const training_enrollments = pgTable("training_enrollments", {
+  id: serial("id").primaryKey(),
+  program_id: integer("program_id").references(() => training_programs.id),
+  employee_id: integer("employee_id").references(() => users.id),
+  enrolled_date: timestamp("enrolled_date").defaultNow(),
+  training_date: date("training_date"), // تاريخ التدريب الميداني
+  attendance_status: varchar("attendance_status", { length: 20 }).default(
+    "enrolled",
+  ), // enrolled / attended / absent / cancelled
+  completion_status: varchar("completion_status", { length: 20 }).default(
+    "not_started",
+  ), // not_started / completed / failed
+  attendance_notes: text("attendance_notes"), // ملاحظات الحضور
+  practical_performance: varchar("practical_performance", { length: 20 }), // excellent / good / fair / poor
+  final_score: integer("final_score"), // 0-100
+  certificate_issued: boolean("certificate_issued").default(false),
+  certificate_number: varchar("certificate_number", { length: 50 }),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+// 📋 جدول تقييم التدريب الميداني
+export const training_evaluations = pgTable("training_evaluations", {
+  id: serial("id").primaryKey(),
+  enrollment_id: integer("enrollment_id").references(
+    () => training_enrollments.id,
+  ),
+  program_id: integer("program_id").references(() => training_programs.id),
+  employee_id: integer("employee_id").references(() => users.id),
+  evaluator_id: integer("evaluator_id").references(() => users.id),
+  evaluation_date: date("evaluation_date").notNull(),
+
+  // معايير التقييم البسيطة
+  theoretical_understanding: integer("theoretical_understanding"), // 1-5 فهم نظري
+  practical_skills: integer("practical_skills"), // 1-5 مهارات عملية
+  safety_compliance: integer("safety_compliance"), // 1-5 الالتزام بالسلامة
+  teamwork: integer("teamwork"), // 1-5 العمل الجماعي
+  communication: integer("communication"), // 1-5 التواصل
+
+  overall_rating: integer("overall_rating"), // 1-5 التقييم الإجمالي
+  strengths: text("strengths"), // نقاط القوة
+  areas_for_improvement: text("areas_for_improvement"), // مجالات التحسين
+  additional_notes: text("additional_notes"), // ملاحظات إضافية
+  recommendation: varchar("recommendation", { length: 20 }), // pass / fail / needs_retraining
+
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+// 🎖️ جدول شهادات التدريب
+export const training_certificates = pgTable("training_certificates", {
+  id: serial("id").primaryKey(),
+  enrollment_id: integer("enrollment_id")
+    .references(() => training_enrollments.id)
+    .unique(),
+  employee_id: integer("employee_id").references(() => users.id),
+  program_id: integer("program_id").references(() => training_programs.id),
+  certificate_number: varchar("certificate_number", { length: 50 })
+    .unique()
+    .notNull(),
+  issue_date: date("issue_date").notNull(),
+  expiry_date: date("expiry_date"), // بعض الشهادات تنتهي صلاحيتها
+  final_score: integer("final_score"),
+  certificate_status: varchar("certificate_status", { length: 20 }).default(
+    "active",
+  ), // active / expired / revoked
+  issued_by: integer("issued_by").references(() => users.id),
+  certificate_file_url: varchar("certificate_file_url", { length: 500 }), // رابط ملف الشهادة
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+// 📊 جدول تقييم الأداء
+export const performance_reviews = pgTable("performance_reviews", {
+  id: serial("id").primaryKey(),
+  employee_id: integer("employee_id")
+    .notNull()
+    .references(() => users.id),
+  reviewer_id: integer("reviewer_id")
+    .notNull()
+    .references(() => users.id),
+  review_period_start: date("review_period_start").notNull(),
+  review_period_end: date("review_period_end").notNull(),
+  review_type: varchar("review_type", { length: 20 }), // annual / semi_annual / quarterly / probation
+  overall_rating: integer("overall_rating"), // 1-5 scale
+  goals_achievement: integer("goals_achievement"), // 1-5 scale
+  skills_rating: integer("skills_rating"), // 1-5 scale
+  behavior_rating: integer("behavior_rating"), // 1-5 scale
+  strengths: text("strengths"),
+  areas_for_improvement: text("areas_for_improvement"),
+  development_plan: text("development_plan"),
+  goals_for_next_period: text("goals_for_next_period"),
+  employee_comments: text("employee_comments"),
+  reviewer_comments: text("reviewer_comments"),
+  hr_comments: text("hr_comments"),
+  status: varchar("status", { length: 20 }).default("draft"), // draft / completed / approved / archived
+  created_at: timestamp("created_at").defaultNow(),
+  completed_at: timestamp("completed_at"),
+});
+
+// 🎯 جدول معايير التقييم
+export const performance_criteria = pgTable("performance_criteria", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  name_ar: varchar("name_ar", { length: 100 }),
+  description: text("description"),
+  description_ar: text("description_ar"),
+  category: varchar("category", { length: 50 }), // technical / behavioral / leadership / productivity
+  weight_percentage: integer("weight_percentage").default(20), // وزن المعيار في التقييم الإجمالي
+  applicable_roles: json("applicable_roles").$type<number[]>(), // أيدي الأدوار المطبق عليها
+  is_active: boolean("is_active").default(true),
+});
+
+// 📋 جدول تفاصيل تقييم المعايير
+export const performance_ratings = pgTable("performance_ratings", {
+  id: serial("id").primaryKey(),
+  review_id: integer("review_id")
+    .notNull()
+    .references(() => performance_reviews.id),
+  criteria_id: integer("criteria_id")
+    .notNull()
+    .references(() => performance_criteria.id),
+  rating: integer("rating").notNull(), // 1-5 scale
+  comments: text("comments"),
+});
+
+// 🏖️ جدول أنواع الإجازات
+export const leave_types = pgTable("leave_types", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  name_ar: varchar("name_ar", { length: 100 }),
+  description: text("description"),
+  description_ar: text("description_ar"),
+  days_per_year: integer("days_per_year"), // عدد الأيام المسموحة سنوياً
+  is_paid: boolean("is_paid").default(true),
+  requires_medical_certificate: boolean("requires_medical_certificate").default(
+    false,
+  ),
+  min_notice_days: integer("min_notice_days").default(1), // الحد الأدنى للإشعار المسبق
+  max_consecutive_days: integer("max_consecutive_days"), // أقصى عدد أيام متتالية
+  applicable_after_months: integer("applicable_after_months").default(0), // يحق للموظف بعد كم شهر
+  color: varchar("color", { length: 20 }).default("#3b82f6"), // لون العرض في التقويم
+  is_active: boolean("is_active").default(true),
+});
+
+// 📝 جدول طلبات الإجازات
+export const leave_requests = pgTable("leave_requests", {
+  id: serial("id").primaryKey(),
+  employee_id: integer("employee_id")
+    .notNull()
+    .references(() => users.id),
+  leave_type_id: integer("leave_type_id")
+    .notNull()
+    .references(() => leave_types.id),
+  start_date: date("start_date").notNull(),
+  end_date: date("end_date").notNull(),
+  days_count: integer("days_count").notNull(),
+  reason: text("reason"),
+  medical_certificate_url: varchar("medical_certificate_url", { length: 500 }),
+  emergency_contact: varchar("emergency_contact", { length: 100 }),
+  work_handover: text("work_handover"), // تسليم العمل
+  replacement_employee_id: integer("replacement_employee_id").references(
+    () => users.id,
+  ),
+
+  // Approval workflow
+  direct_manager_id: integer("direct_manager_id").references(() => users.id),
+  direct_manager_status: varchar("direct_manager_status", {
+    length: 20,
+  }).default("pending"), // pending / approved / rejected
+  direct_manager_comments: text("direct_manager_comments"),
+  direct_manager_action_date: timestamp("direct_manager_action_date"),
+
+  hr_status: varchar("hr_status", { length: 20 }).default("pending"), // pending / approved / rejected
+  hr_comments: text("hr_comments"),
+  hr_action_date: timestamp("hr_action_date"),
+  hr_reviewed_by: integer("hr_reviewed_by").references(() => users.id),
+
+  final_status: varchar("final_status", { length: 20 }).default("pending"), // pending / approved / rejected / cancelled
+
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+// 💰 جدول رصيد الإجازات
+export const leave_balances = pgTable("leave_balances", {
+  id: serial("id").primaryKey(),
+  employee_id: integer("employee_id")
+    .notNull()
+    .references(() => users.id),
+  leave_type_id: integer("leave_type_id")
+    .notNull()
+    .references(() => leave_types.id),
+  year: integer("year").notNull(),
+  allocated_days: integer("allocated_days").notNull(), // الأيام المخصصة
+  used_days: integer("used_days").default(0), // الأيام المستخدمة
+  pending_days: integer("pending_days").default(0), // الأيام المعلقة (طلبات لم توافق عليها بعد)
+  remaining_days: integer("remaining_days").notNull(), // الأيام المتبقية
+  carried_forward: integer("carried_forward").default(0), // الأيام المنقولة من السنة السابقة
+  expires_at: date("expires_at"), // تاريخ انتهاء صلاحية الإجازات المنقولة
+});
+
+// 📢 جدول القرارات الإدارية
+export const admin_decisions = pgTable("admin_decisions", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 100 }).notNull(),
+  title_ar: varchar("title_ar", { length: 100 }),
+  description: text("description"),
+  target_type: varchar("target_type", { length: 20 }), // user / department / company
+  target_id: integer("target_id"),
+  date: date("date").notNull(),
+  issued_by: integer("issued_by").references(() => users.id),
+});
+
+// 🏢 جدول بيانات المصنع
+export const company_profile = pgTable("company_profile", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  name_ar: varchar("name_ar", { length: 100 }),
+  address: text("address"),
+  tax_number: varchar("tax_number", { length: 20 }),
+  phone: varchar("phone", { length: 20 }),
+  email: varchar("email", { length: 100 }),
+  logo_url: varchar("logo_url", { length: 255 }),
+  working_hours_per_day: integer("working_hours_per_day").default(8),
+  default_language: varchar("default_language", { length: 10 }).default("ar"),
+  letter_header_image_url: varchar("letter_header_image_url", { length: 255 }),
+  letter_footer_image_url: varchar("letter_footer_image_url", { length: 255 }),
+  letter_footer_text: text("letter_footer_text"),
+  letter_default_signatures: jsonb("letter_default_signatures"),
+});
+
+// 📢 جدول الإشعارات والرسائل
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 200 }).notNull(),
+  title_ar: varchar("title_ar", { length: 200 }),
+  message: text("message").notNull(),
+  message_ar: text("message_ar"),
+  type: varchar("type", { length: 30 }).notNull(), // whatsapp / sms / email / push / system
+  priority: varchar("priority", { length: 20 }).default("normal"), // low / normal / high / urgent
+
+  // Recipients
+  recipient_type: varchar("recipient_type", { length: 20 }).notNull(), // user / group / role / all
+  recipient_id: varchar("recipient_id", { length: 20 }), // user_id, role_id, or null for 'all'
+  phone_number: varchar("phone_number", { length: 20 }),
+
+  // Status tracking
+  status: varchar("status", { length: 20 }).default("pending"), // pending / sent / delivered / failed / read
+  sent_at: timestamp("sent_at"),
+  delivered_at: timestamp("delivered_at"),
+  read_at: timestamp("read_at"),
+
+  // Twilio/WhatsApp specific
+  twilio_sid: varchar("twilio_sid", { length: 100 }), // Twilio message SID
+  external_id: varchar("external_id", { length: 100 }), // Meta WhatsApp message ID
+  external_status: varchar("external_status", { length: 30 }), // Twilio/Meta status callback
+  error_message: text("error_message"),
+
+  // Metadata
+  scheduled_for: timestamp("scheduled_for"), // For scheduled messages
+  context_type: varchar("context_type", { length: 30 }), // attendance / order / maintenance / hr
+  context_id: varchar("context_id", { length: 50 }), // Related record ID
+
+  created_by: integer("created_by").references(() => users.id),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+// 📋 جدول قوالب الإشعارات
+export const notification_templates = pgTable("notification_templates", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  name_ar: varchar("name_ar", { length: 100 }),
+
+  // Template content
+  title_template: varchar("title_template", { length: 200 }).notNull(),
+  title_template_ar: varchar("title_template_ar", { length: 200 }),
+  message_template: text("message_template").notNull(),
+  message_template_ar: text("message_template_ar"),
+
+  // Configuration
+  type: varchar("type", { length: 30 }).notNull(), // whatsapp / sms / email / push
+  trigger_event: varchar("trigger_event", { length: 50 }).notNull(), // order_created / attendance_late / etc
+  is_active: boolean("is_active").default(true),
+
+  // Variables used in template (JSON array)
+  variables: json("variables").$type<string[]>(), // ["user_name", "order_number", etc.]
+
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+// 🔔 جدول إعدادات أحداث الإشعارات - Notification Event Settings
+export const notification_event_settings = pgTable(
+  "notification_event_settings",
+  {
+    id: serial("id").primaryKey(),
+
+    // Event identification
+    event_key: varchar("event_key", { length: 100 }).notNull().unique(), // unique event identifier
+    event_name: varchar("event_name", { length: 200 }).notNull(),
+    event_name_ar: varchar("event_name_ar", { length: 200 }).notNull(),
+    event_description: text("event_description"),
+    event_description_ar: text("event_description_ar"),
+    event_category: varchar("event_category", { length: 50 }).notNull(), // orders, production, quality, maintenance, hr, system
+
+    // Activation
+    is_enabled: boolean("is_enabled").default(true),
+
+    // WhatsApp settings
+    whatsapp_enabled: boolean("whatsapp_enabled").default(false),
+    whatsapp_template_id: integer("whatsapp_template_id").references(
+      () => notification_templates.id,
+    ),
+
+    // Message customization
+    message_template: text("message_template"), // Custom message template with variables
+    message_template_ar: text("message_template_ar"),
+
+    // Recipients configuration
+    recipient_type: varchar("recipient_type", { length: 30 }).default(
+      "specific_users",
+    ), // all_admins, specific_users, specific_roles, customer
+    recipient_user_ids: json("recipient_user_ids").$type<number[]>(), // Array of user IDs
+    recipient_role_ids: json("recipient_role_ids").$type<number[]>(), // Array of role IDs
+    recipient_phone_numbers: json("recipient_phone_numbers").$type<string[]>(), // Array of direct phone numbers
+    notify_customer: boolean("notify_customer").default(false), // Send to customer associated with the event
+
+    // Condition settings (for threshold-based events)
+    condition_enabled: boolean("condition_enabled").default(false),
+    condition_field: varchar("condition_field", { length: 100 }), // Field to check
+    condition_operator: varchar("condition_operator", { length: 20 }), // gt, lt, eq, gte, lte
+    condition_value: varchar("condition_value", { length: 100 }), // Threshold value
+
+    // Priority and timing
+    priority: varchar("priority", { length: 20 }).default("normal"), // low, normal, high, urgent
+    delay_minutes: integer("delay_minutes").default(0), // Delay before sending
+
+    // Audit
+    created_by: integer("created_by").references(() => users.id),
+    updated_by: integer("updated_by").references(() => users.id),
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+);
+
+// 📝 جدول سجل الإشعارات المرسلة - Notification Event Logs
+export const notification_event_logs = pgTable("notification_event_logs", {
+  id: serial("id").primaryKey(),
+
+  // Event reference
+  event_setting_id: integer("event_setting_id").references(
+    () => notification_event_settings.id,
+  ),
+  event_key: varchar("event_key", { length: 100 }).notNull(),
+
+  // Trigger context
+  trigger_context_type: varchar("trigger_context_type", { length: 50 }), // order, production_order, roll, maintenance, etc.
+  trigger_context_id: varchar("trigger_context_id", { length: 50 }),
+  trigger_data: json("trigger_data").$type<Record<string, any>>(), // Original event data
+
+  // Message sent
+  message_sent: text("message_sent"),
+  message_sent_ar: text("message_sent_ar"),
+
+  // Recipient info
+  recipient_phone: varchar("recipient_phone", { length: 30 }),
+  recipient_user_id: integer("recipient_user_id").references(() => users.id),
+  recipient_name: varchar("recipient_name", { length: 200 }),
+
+  // Status
+  status: varchar("status", { length: 30 }).default("pending"), // pending, sent, delivered, failed, read
+  error_message: text("error_message"),
+  external_message_id: varchar("external_message_id", { length: 100 }), // WhatsApp/Twilio message ID
+
+  // Timestamps
+  triggered_at: timestamp("triggered_at").defaultNow(),
+  sent_at: timestamp("sent_at"),
+  delivered_at: timestamp("delivered_at"),
+});
+
+// Insert schemas for new tables
+export const insertNotificationEventSettingSchema = createInsertSchema(
+  notification_event_settings,
+).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const insertNotificationEventLogSchema = createInsertSchema(
+  notification_event_logs,
+).omit({
+  id: true,
+  triggered_at: true,
+});
+
+export type InsertNotificationEventSetting = z.infer<
+  typeof insertNotificationEventSettingSchema
+>;
+export type NotificationEventSetting =
+  typeof notification_event_settings.$inferSelect;
+export type InsertNotificationEventLog = z.infer<
+  typeof insertNotificationEventLogSchema
+>;
+export type NotificationEventLog = typeof notification_event_logs.$inferSelect;
+
+// Relations
+export const usersRelations = relations(users, ({ one, many }) => ({
+  role: one(roles, { fields: [users.role_id], references: [roles.id] }),
+  section: one(sections, {
+    fields: [users.section_id],
+    references: [sections.id],
+  }),
+  attendance: many(attendance),
+  violations: many(violations),
+  trainingRecords: many(training_records),
+  trainingEnrollments: many(training_enrollments),
+  performanceReviews: many(performance_reviews, {
+    relationName: "employee_reviews",
+  }),
+  conductedReviews: many(performance_reviews, {
+    relationName: "reviewer_reviews",
+  }),
+  leaveRequests: many(leave_requests),
+  leaveBalances: many(leave_balances),
+  instructedPrograms: many(training_programs),
+}));
+
+export const customersRelations = relations(customers, ({ one, many }) => ({
+  salesRep: one(users, {
+    fields: [customers.sales_rep_id],
+    references: [users.id],
+  }),
+  orders: many(orders),
+}));
+
+export const ordersRelations = relations(orders, ({ one, many }) => ({
+  customer: one(customers, {
+    fields: [orders.customer_id],
+    references: [customers.id],
+  }),
+  productionOrders: many(production_orders),
+}));
+
+export const productionOrdersRelations = relations(
+  production_orders,
+  ({ one, many }) => ({
+    order: one(orders, {
+      fields: [production_orders.order_id],
+      references: [orders.id],
+    }),
+    customerProduct: one(customer_products, {
+      fields: [production_orders.customer_product_id],
+      references: [customer_products.id],
+    }),
+    rolls: many(rolls),
+    waste: many(waste),
+    warehouseReceipts: many(warehouse_receipts),
+  }),
+);
+
+export const rollsRelations = relations(rolls, ({ one, many }) => ({
+  productionOrder: one(production_orders, {
+    fields: [rolls.production_order_id],
+    references: [production_orders.id],
+  }),
+  filmMachine: one(machines, {
+    fields: [rolls.film_machine_id],
+    references: [machines.id],
+    relationName: "film_machine",
+  }),
+  printingMachine: one(machines, {
+    fields: [rolls.printing_machine_id],
+    references: [machines.id],
+    relationName: "printing_machine",
+  }),
+  cuttingMachine: one(machines, {
+    fields: [rolls.cutting_machine_id],
+    references: [machines.id],
+    relationName: "cutting_machine",
+  }),
+  machine: one(machines, {
+    fields: [rolls.machine_id],
+    references: [machines.id],
+  }),
+  employee: one(users, { fields: [rolls.employee_id], references: [users.id] }),
+  performedBy: one(users, {
+    fields: [rolls.performed_by],
+    references: [users.id],
+  }),
+  createdBy: one(users, {
+    fields: [rolls.created_by],
+    references: [users.id],
+    relationName: "created_by_user",
+  }),
+  printedBy: one(users, {
+    fields: [rolls.printed_by],
+    references: [users.id],
+    relationName: "printed_by_user",
+  }),
+  cutBy: one(users, {
+    fields: [rolls.cut_by],
+    references: [users.id],
+    relationName: "cut_by_user",
+  }),
+  waste: many(waste),
+  qualityChecks: many(quality_checks),
+  cuts: many(cuts),
+}));
+
+export const machinesRelations = relations(machines, ({ one, many }) => ({
+  section: one(sections, {
+    fields: [machines.section_id],
+    references: [sections.id],
+  }),
+  rolls: many(rolls),
+  maintenanceRequests: many(maintenance_requests),
+}));
+
+export const sectionsRelations = relations(sections, ({ many }) => ({
+  users: many(users),
+  machines: many(machines),
+}));
+
+export const rolesRelations = relations(roles, ({ many }) => ({
+  users: many(users),
+}));
+
+export const categoriesRelations = relations(categories, ({ one, many }) => ({
+  parent: one(categories, {
+    fields: [categories.parent_id],
+    references: [categories.id],
+    relationName: "parent_category",
+  }),
+  children: many(categories, { relationName: "parent_category" }),
+  items: many(items),
+  customerProducts: many(customer_products),
+}));
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  createdBy: one(users, {
+    fields: [notifications.created_by],
+    references: [users.id],
+  }),
+}));
+
+export const notificationTemplatesRelations = relations(
+  notification_templates,
+  ({ one }) => ({
+    // No direct relations needed for templates
+  }),
+);
+
+// Types for notifications
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = typeof notifications.$inferInsert;
+export type NotificationTemplate = typeof notification_templates.$inferSelect;
+export type InsertNotificationTemplate =
+  typeof notification_templates.$inferInsert;
+
+// Insert schemas for notifications
+export const insertNotificationSchema = createInsertSchema(notifications);
+export const insertNotificationTemplateSchema = createInsertSchema(
+  notification_templates,
+);
+
+export const itemsRelations = relations(items, ({ one, many }) => ({
+  category: one(categories, {
+    fields: [items.category_id],
+    references: [categories.id],
+  }),
+  customerProducts: many(customer_products),
+  warehouseTransactions: many(warehouse_transactions),
+  inventory: many(inventory),
+}));
+
+export const inventoryRelations = relations(inventory, ({ one }) => ({
+  item: one(items, { fields: [inventory.item_id], references: [items.id] }),
+  location: one(locations, {
+    fields: [inventory.location_id],
+    references: [locations.id],
+  }),
+}));
+
+export const customerProductsRelations = relations(
+  customer_products,
+  ({ one, many }) => ({
+    customer: one(customers, {
+      fields: [customer_products.customer_id],
+      references: [customers.id],
+    }),
+    category: one(categories, {
+      fields: [customer_products.category_id],
+      references: [categories.id],
+    }),
+    item: one(items, {
+      fields: [customer_products.item_id],
+      references: [items.id],
+    }),
+    productionOrders: many(production_orders),
+  }),
+);
+
+// تم حذف علاقات جدول المنتجات
+
+export const suppliersRelations = relations(suppliers, ({ many }) => ({
+  // يمكن إضافة علاقات الموردين مع الأصناف لاحقاً
+}));
+
+export const trainingRecordsRelations = relations(
+  training_records,
+  ({ one }) => ({
+    employee: one(users, {
+      fields: [training_records.employee_id],
+      references: [users.id],
+    }),
+  }),
+);
+
+export const cutsRelations = relations(cuts, ({ one, many }) => ({
+  roll: one(rolls, { fields: [cuts.roll_id], references: [rolls.id] }),
+  performedBy: one(users, {
+    fields: [cuts.performed_by],
+    references: [users.id],
+  }),
+  warehouseReceipts: many(warehouse_receipts),
+}));
+
+export const warehouseReceiptsRelations = relations(
+  warehouse_receipts,
+  ({ one }) => ({
+    productionOrder: one(production_orders, {
+      fields: [warehouse_receipts.production_order_id],
+      references: [production_orders.id],
+    }),
+    cut: one(cuts, {
+      fields: [warehouse_receipts.cut_id],
+      references: [cuts.id],
+    }),
+    receivedBy: one(users, {
+      fields: [warehouse_receipts.received_by],
+      references: [users.id],
+    }),
+  }),
+);
+
+export const adminDecisionsRelations = relations(
+  admin_decisions,
+  ({ one }) => ({
+    issuedBy: one(users, {
+      fields: [admin_decisions.issued_by],
+      references: [users.id],
+    }),
+  }),
+);
+
+// Insert schemas
+export const insertUserSchema = createInsertSchema(users)
+  .omit({
+    id: true,
+    created_at: true,
+  })
+  .extend({
+    role_id: z
+      .union([
+        z.number().int().positive(),
+        z.string().transform((val) => {
+          if (!val || val === "none" || val === "") return null;
+          const match = val.match(/ROLE0*(\d+)/);
+          if (match) {
+            return parseInt(match[1], 10);
+          }
+          const num = parseInt(val, 10);
+          return isNaN(num) ? null : num;
+        }),
+        z.null(),
+      ])
+      .nullable()
+      .optional(),
+    section_id: z
+      .union([
+        z.number().int().positive(),
+        z.string().transform((val) => {
+          if (!val || val === "none" || val === "") return null;
+          const num = parseInt(val, 10);
+          return isNaN(num) ? null : num;
+        }),
+        z.null(),
+      ])
+      .nullable()
+      .optional(),
+  });
+
+// Order schema (legacy - will be phased out)
+
+// Enhanced Roll Creation Schema with Business Rule Validation
+export const insertRollSchema = createInsertSchema(rolls)
+  .omit({
+    id: true,
+    created_at: true,
+    roll_number: true,
+    completed_at: true,
+    roll_seq: true,
+    qr_code_text: true,
+    qr_png_base64: true,
+    created_by: true, // Added on server-side from session
+    printed_by: true, // Added on server-side when printed
+    cut_by: true, // Added on server-side when cut
+  })
+  .extend({
+    // INVARIANT B: Enforce production order constraints
+    production_order_id: z.number().int().positive("معرف أمر الإنتاج مطلوب"),
+    // INVARIANT E: Machines must be valid and active
+    film_machine_id: z.string().min(1, "معرف ماكينة الفيلم مطلوب"),
+    // Printing and cutting machines are optional at creation, assigned in later stages
+    printing_machine_id: z.string().optional(),
+    cutting_machine_id: z.string().optional(),
+    // Weight validation with business rules
+    weight_kg: z
+      .union([z.string(), z.number()])
+      .transform((val) => {
+        if (val === null || val === undefined || val === "") {
+          throw new Error("الوزن مطلوب");
+        }
+        const num =
+          typeof val === "string" ? parseFloatSafe(val, "الوزن") : val;
+        return num;
+      })
+      .refine((val) => val > 0, "يجب أن يكون الوزن أكبر من صفر")
+      .refine((val) => val <= 2000, "الوزن لا يمكن أن يتجاوز 2000 كيلو"),
+    // Stage validation - must start at 'film'
+    stage: z
+      .string()
+      .default("film")
+      .refine(
+        (val) => ["film", "printing", "cutting", "done"].includes(val),
+        "مرحلة الإنتاج غير صحيحة",
+      ),
+    // User validation
+    created_by: z.number().int().positive("معرف المستخدم مطلوب"),
+  });
+
+export const insertCutSchema = createInsertSchema(cuts)
+  .omit({
+    id: true,
+    created_at: true,
+  })
+  .extend({
+    cut_weight_kg: z.number().positive("الوزن يجب أن يكون أكبر من صفر"),
+  });
+
+export const insertWarehouseReceiptSchema = createInsertSchema(
+  warehouse_receipts,
+)
+  .omit({
+    id: true,
+    created_at: true,
+  })
+  .extend({
+    received_weight_kg: z.number().positive("الوزن يجب أن يكون أكبر من صفر"),
+  });
+
+export const insertProductionSettingsSchema = createInsertSchema(
+  production_settings,
+)
+  .omit({
+    id: true,
+  })
+  .extend({
+    overrun_tolerance_percent: z
+      .number()
+      .min(0)
+      .max(10, "النسبة يجب أن تكون بين 0 و 10"),
+  });
+
+export const insertMaintenanceRequestSchema = createInsertSchema(
+  maintenance_requests,
+).omit({
+  id: true,
+  request_number: true,
+  date_reported: true,
+  date_resolved: true,
+});
+
+export const insertItemSchema = createInsertSchema(items).omit({
+  id: true,
+});
+
+// Insert schema for packaging units with sane validation
+export const insertPackagingUnitSchema = createInsertSchema(packaging_units)
+  .omit({
+    id: true,
+    created_at: true,
+    unit_weight_kg: true, // computed on the server from roll_weight_g * rolls_per_unit
+  })
+  .extend({
+    name: z.string().trim().min(1, "اسم وحدة التعبئة مطلوب"),
+    roll_weight_g: z.coerce
+      .number({ invalid_type_error: "وزن الرول يجب أن يكون رقماً" })
+      .positive("وزن الرول يجب أن يكون أكبر من صفر"),
+    rolls_per_unit: z.coerce
+      .number({ invalid_type_error: "عدد الرولات يجب أن يكون رقماً" })
+      .int("عدد الرولات يجب أن يكون عدداً صحيحاً")
+      .positive("عدد الرولات يجب أن يكون أكبر من صفر"),
+  });
+
+export type PackagingUnit = typeof packaging_units.$inferSelect;
+export type InsertPackagingUnit = z.infer<typeof insertPackagingUnitSchema>;
+
+export const insertSupplierSchema = createInsertSchema(suppliers).omit({
+  id: true,
+});
+
+export const insertWarehouseTransactionSchema = createInsertSchema(
+  warehouse_transactions,
+).omit({
+  id: true,
+  date: true,
+});
+
+export const insertInventorySchema = createInsertSchema(inventory)
+  .omit({
+    id: true,
+    last_updated: true,
+  })
+  .extend({
+    // location_id can be string or number from frontend
+    location_id: z
+      .union([z.string(), z.number(), z.null()])
+      .optional()
+      .transform((val) => {
+        if (val === null || val === undefined || val === "") return null;
+        return typeof val === "number" ? val.toString() : val;
+      }),
+    // current_stock can be string or number from frontend
+    current_stock: z
+      .union([z.string(), z.number()])
+      .transform((val) => {
+        if (val === null || val === undefined || val === "") return "0";
+        return typeof val === "number" ? val.toString() : val;
+      })
+      .refine(
+        (val) => parseFloat(val) >= 0,
+        "المخزون الحالي يجب أن يكون صفر أو أكثر",
+      ),
+    // min_stock validation
+    min_stock: z
+      .union([z.string(), z.number()])
+      .optional()
+      .transform((val) => {
+        if (val === null || val === undefined || val === "") return "0";
+        return typeof val === "number" ? val.toString() : val;
+      })
+      .refine(
+        (val) => parseFloat(val) >= 0,
+        "الحد الأدنى للمخزون يجب أن يكون صفر أو أكثر",
+      ),
+    // max_stock validation
+    max_stock: z
+      .union([z.string(), z.number()])
+      .optional()
+      .transform((val) => {
+        if (val === null || val === undefined || val === "") return "0";
+        return typeof val === "number" ? val.toString() : val;
+      })
+      .refine(
+        (val) => parseFloat(val) >= 0,
+        "الحد الأقصى للمخزون يجب أن يكون صفر أو أكثر",
+      ),
+    // cost_per_unit validation
+    cost_per_unit: z
+      .union([z.string(), z.number(), z.null()])
+      .optional()
+      .transform((val) => {
+        if (val === null || val === undefined || val === "") return null;
+        return typeof val === "number" ? val.toString() : val;
+      }),
+  });
+
+export const insertInventoryMovementSchema = createInsertSchema(
+  inventory_movements,
+).omit({
+  id: true,
+  created_at: true,
+});
+
+export const insertTrainingRecordSchema = createInsertSchema(
+  training_records,
+).omit({
+  id: true,
+});
+
+export const insertAdminDecisionSchema = createInsertSchema(
+  admin_decisions,
+).omit({
+  id: true,
+});
+
+export const insertLocationSchema = createInsertSchema(locations).omit({
+  id: true,
+});
+
+// Enhanced Order Creation Schema with Business Rule Validation
+export const insertNewOrderSchema = createInsertSchema(orders)
+  .omit({
+    id: true,
+    created_at: true,
+  })
+  .extend({
+    // Order number validation
+    order_number: z
+      .string()
+      .min(1, "رقم الطلب مطلوب")
+      .max(50, "رقم الطلب طويل جداً"),
+    // Customer validation - INVARIANT F: Must reference valid customer
+    customer_id: z.string().min(1, "معرف العميل مطلوب"),
+    // INVARIANT G: Delivery date must be in future
+    delivery_date: z
+      .union([z.string(), z.date(), z.null()])
+      .optional()
+      .transform((val) => {
+        if (!val) return null;
+        const date = typeof val === "string" ? new Date(val) : val;
+        return date instanceof Date && !isNaN(date.getTime()) ? date : null;
+      })
+      .refine((date) => {
+        if (!date) return true; // null is allowed
+        return date >= new Date(new Date().setHours(0, 0, 0, 0));
+      }, "يجب أن يكون تاريخ التسليم في المستقبل"),
+    // Delivery days validation
+    delivery_days: z
+      .union([z.string(), z.number(), z.null()])
+      .optional()
+      .transform((val) => {
+        if (val === null || val === undefined || val === "") return null;
+        const num =
+          typeof val === "string" ? parseIntSafe(val, "أيام التسليم") : val;
+        return num;
+      })
+      .refine(
+        (val) => val === null || val > 0,
+        "أيام التسليم يجب أن تكون أكبر من صفر",
+      ),
+    // Status validation
+    status: z
+      .enum(["waiting", "in_production", "paused", "cancelled", "completed"])
+      .default("waiting"),
+    // User reference
+    created_by: z.number().int().positive("معرف المستخدم مطلوب").optional(),
+  });
+
+// Enhanced Production Order Schema with NEW WORKFLOW tracking fields
+export const insertProductionOrderSchema = createInsertSchema(production_orders)
+  .omit({
+    id: true,
+    created_at: true,
+    production_order_number: true,
+    // SECURITY: final_quantity_kg calculated server-side only - never trust client values
+    final_quantity_kg: true,
+    // NEW: حقول التتبع تحسب تلقائياً - لا نحتاجها في الإدخال
+    produced_quantity_kg: true,
+    printed_quantity_kg: true,
+    net_quantity_kg: true,
+    waste_quantity_kg: true,
+    film_completion_percentage: true,
+    printing_completion_percentage: true,
+    cutting_completion_percentage: true,
+    // SECURITY: batch_number generated server-side at the 'done' transition only.
+    batch_number: true,
+  })
+  .extend({
+    // INVARIANT A & F: Order must exist and be valid
+    order_id: z.number().int().positive("معرف الطلب مطلوب"),
+    customer_product_id: z.number().int().positive("معرف منتج العميل مطلوب"),
+    // Quantity validation with business rules
+    quantity_kg: z
+      .union([z.string(), z.number()])
+      .transform((val) => {
+        if (val === null || val === undefined || val === "") {
+          throw new Error("الكمية مطلوبة");
+        }
+        const num =
+          typeof val === "string" ? parseFloatSafe(val, "الكمية") : val;
+        return num.toString();
+      })
+      .refine((val) => parseFloat(val) > 0, "يجب أن تكون الكمية أكبر من صفر")
+      .refine(
+        (val) => parseFloat(val) <= 10000,
+        "الكمية لا يمكن أن تتجاوز 10000 كيلو",
+      ),
+    // Overrun percentage validation
+    overrun_percentage: z
+      .union([z.string(), z.number()])
+      .transform((val) => {
+        if (val === null || val === undefined || val === "") return "5.00";
+        const num =
+          typeof val === "string" ? parseFloatSafe(val, "نسبة الزيادة") : val;
+        return num.toString();
+      })
+      .refine((val) => {
+        const num = parseFloat(val);
+        return num >= 0 && num <= 50;
+      }, "نسبة الزيادة يجب أن تكون بين 0 و 50 بالمئة"),
+    // Note: final_quantity_kg is omitted - calculated server-side for security
+    // Status validation
+    status: z
+      .enum(["pending", "active", "completed", "cancelled"])
+      .default("pending"),
+  });
+
+// Types
+export type User = typeof users.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type UpsertUser = {
+  id: string;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  profileImageUrl: string | null;
+  replit_user_id?: string;
+  display_name?: string;
+  display_name_ar?: string;
+  username?: string;
+};
+export type SparePart = typeof spare_parts.$inferSelect;
+export const insertSparePartSchema = createInsertSchema(spare_parts)
+  .omit({
+    id: true,
+    created_at: true,
+    updated_at: true,
+  })
+  .extend({
+    part_id: z.string().min(1).max(50),
+    machine_name: z.string().min(1).max(100),
+    part_name: z.string().min(1).max(100),
+    code: z.string().min(1).max(50),
+    serial_number: z.string().min(1).max(100),
+    specifications: z.string().optional().nullable(),
+  });
+export const updateSparePartSchema = insertSparePartSchema.partial();
+export type InsertSparePart = z.infer<typeof insertSparePartSchema>;
+
+// Forms submit empty strings ("") for cleared optional fields. Coercion would
+// otherwise turn them into invalid values (e.g. new Date("") -> Invalid Date,
+// Number("") -> 0 failing a positive()/min() check), causing a 400. Treat blanks
+// as absent so optional coerced date/number fields validate correctly.
+const blankToNull = (v: unknown) =>
+  v === "" || v === null || v === undefined ? null : v;
+const blankToUndefined = (v: unknown) =>
+  v === "" || v === null || v === undefined ? undefined : v;
+
+export const insertViolationSchema = createInsertSchema(violations)
+  .omit({
+    id: true,
+  })
+  .extend({
+    employee_id: z.coerce.number().int().positive(),
+    violation_type: z.string().min(1).max(50),
+    description: z.string().optional().nullable(),
+    date: z.coerce.date(),
+    action_taken: z.string().optional().nullable(),
+    penalty_amount: z.preprocess(
+      blankToUndefined,
+      z.coerce.number().min(0).optional(),
+    ),
+    status: z.enum(["open", "resolved", "cancelled"]).optional(),
+    reported_by: z.coerce.number().int().positive().optional().nullable(),
+  });
+export const updateViolationSchema = insertViolationSchema.partial();
+export type InsertViolation = z.infer<typeof insertViolationSchema>;
+
+// 🎁 المكافآت
+export const insertRewardSchema = createInsertSchema(rewards)
+  .omit({ id: true, created_at: true })
+  .extend({
+    employee_id: z.coerce.number().int().positive(),
+    reward_type: z.string().min(1).max(50),
+    reason: z.string().optional().nullable(),
+    amount: z.coerce.number().min(0),
+    date: z.coerce.date(),
+    status: z.enum(["approved", "pending", "cancelled"]).optional(),
+    granted_by: z.coerce.number().int().positive().optional().nullable(),
+  });
+export const updateRewardSchema = insertRewardSchema.partial();
+export type InsertReward = z.infer<typeof insertRewardSchema>;
+export type Reward = typeof rewards.$inferSelect;
+
+// 📦 العهد
+export const insertEmployeeCustodySchema = createInsertSchema(employee_custody)
+  .omit({ id: true, created_at: true })
+  .extend({
+    employee_id: z.coerce.number().int().positive(),
+    item_name: z.string().min(1).max(200),
+    description: z.string().optional().nullable(),
+    quantity: z.preprocess(
+      blankToUndefined,
+      z.coerce.number().int().positive().optional(),
+    ),
+    handover_date: z.coerce.date(),
+    return_date: z.preprocess(
+      blankToNull,
+      z.coerce.date().nullable(),
+    ).optional(),
+    status: z.enum(["handed", "returned", "lost", "damaged"]).optional(),
+    notes: z.string().optional().nullable(),
+    recorded_by: z.coerce.number().int().positive().optional().nullable(),
+  });
+export const updateEmployeeCustodySchema =
+  insertEmployeeCustodySchema.partial();
+export type InsertEmployeeCustody = z.infer<typeof insertEmployeeCustodySchema>;
+export type EmployeeCustody = typeof employee_custody.$inferSelect;
+
+// 🌟 السمات الشخصية
+export const insertEmployeeTraitSchema = createInsertSchema(employee_traits)
+  .omit({ id: true, created_at: true })
+  .extend({
+    employee_id: z.coerce.number().int().positive(),
+    trait: z.string().min(1).max(200),
+    category: z
+      .enum(["skill", "behavior", "strength", "development"])
+      .optional()
+      .nullable(),
+    rating: z.preprocess(
+      blankToNull,
+      z.coerce.number().int().min(1).max(5).nullable(),
+    ).optional(),
+    notes: z.string().optional().nullable(),
+    recorded_by: z.coerce.number().int().positive().optional().nullable(),
+  });
+export const updateEmployeeTraitSchema = insertEmployeeTraitSchema.partial();
+export type InsertEmployeeTrait = z.infer<typeof insertEmployeeTraitSchema>;
+export type EmployeeTrait = typeof employee_traits.$inferSelect;
+
+// 💰 سجلات الأجور
+export const insertWageRecordSchema = createInsertSchema(wage_records).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+export type InsertWageRecord = z.infer<typeof insertWageRecordSchema>;
+export type WageRecord = typeof wage_records.$inferSelect;
+
+export const createUserApiSchema = z
+  .object({
+    username: z.string().min(1).max(50),
+    password: z.string().min(6).max(200).optional(),
+    display_name: z.string().min(1).max(100),
+    display_name_ar: z.string().max(100).optional().nullable(),
+    full_name: z.string().max(100).optional().nullable(),
+    phone: z.string().max(30).optional().nullable(),
+    email: z.string().email().max(120).optional().nullable(),
+    status: z.enum(["active", "inactive", "suspended"]).optional(),
+    role_id: z.union([z.number().int().positive(), z.null()]).optional(),
+    section_id: z.union([z.number().int().positive(), z.null()]).optional(),
+  })
+  .strict();
+
+export const updateUserSchema = z
+  .object({
+    username: z.string().min(1).max(50).optional(),
+    display_name: z.string().min(1).max(100).optional(),
+    display_name_ar: z.string().max(100).optional().nullable(),
+    full_name: z.string().max(100).optional().nullable(),
+    phone: z.string().max(30).optional().nullable(),
+    email: z.string().email().max(120).optional().nullable(),
+    status: z.enum(["active", "inactive", "suspended"]).optional(),
+    password: z.string().min(6).max(200).optional(),
+    role_id: z.union([z.number().int().positive(), z.null()]).optional(),
+    section_id: z.union([z.number().int().positive(), z.null()]).optional(),
+  })
+  .strict();
+
+export const insertMixingRecipeSchema = z
+  .object({
+    name: z.string().min(1).max(200),
+    name_ar: z.string().max(200).optional().nullable(),
+    description: z.string().optional().nullable(),
+    ingredients: z.any().optional(),
+    total_weight: z.coerce.number().nonnegative().optional().nullable(),
+    notes: z.string().optional().nullable(),
+    is_active: z.boolean().optional(),
+  })
+  .strict();
+// Legacy order types - will be phased out
+export type Roll = typeof rolls.$inferSelect;
+export type InsertRoll = z.infer<typeof insertRollSchema>;
+export type Machine = typeof machines.$inferSelect;
+export type InsertMachine = typeof machines.$inferInsert;
+export type MaintenanceRequest = typeof maintenance_requests.$inferSelect;
+export type InsertMaintenanceRequest = z.infer<
+  typeof insertMaintenanceRequestSchema
+>;
+export type QualityCheck = typeof quality_checks.$inferSelect;
+export type Customer = typeof customers.$inferSelect;
+export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
+export type Item = typeof items.$inferSelect;
+export type InsertItem = z.infer<typeof insertItemSchema>;
+export type Supplier = typeof suppliers.$inferSelect;
+export type InsertSupplier = z.infer<typeof insertSupplierSchema>;
+export type WarehouseTransaction = typeof warehouse_transactions.$inferSelect;
+export type InsertWarehouseTransaction = z.infer<
+  typeof insertWarehouseTransactionSchema
+>;
+export type TrainingRecord = typeof training_records.$inferSelect;
+export type InsertTrainingRecord = z.infer<typeof insertTrainingRecordSchema>;
+export type AdminDecision = typeof admin_decisions.$inferSelect;
+export type InsertAdminDecision = z.infer<typeof insertAdminDecisionSchema>;
+export type Location = typeof locations.$inferSelect;
+export type InsertLocation = z.infer<typeof insertLocationSchema>;
+export type Inventory = typeof inventory.$inferSelect;
+export type NewOrder = typeof orders.$inferSelect;
+export type InsertNewOrder = z.infer<typeof insertNewOrderSchema>;
+export type ProductionOrder = typeof production_orders.$inferSelect;
+export type InsertProductionOrder = z.infer<typeof insertProductionOrderSchema>;
+export type InsertInventory = z.infer<typeof insertInventorySchema>;
+export type InventoryMovement = typeof inventory_movements.$inferSelect;
+export type InsertInventoryMovement = z.infer<
+  typeof insertInventoryMovementSchema
+>;
+export type Section = typeof sections.$inferSelect;
+export type Role = typeof roles.$inferSelect;
+export type Category = typeof categories.$inferSelect;
+export type Violation = typeof violations.$inferSelect;
+export type CompanyProfile = typeof company_profile.$inferSelect;
+// 🔧 جدول إعدادات النظام
+export const system_settings = pgTable("system_settings", {
+  id: serial("id").primaryKey(),
+  setting_key: varchar("setting_key", { length: 100 }).notNull().unique(),
+  setting_value: text("setting_value"),
+  setting_type: varchar("setting_type", { length: 20 }).default("string"), // string / number / boolean / json
+  description: text("description"),
+  is_editable: boolean("is_editable").default(true),
+  updated_at: timestamp("updated_at").defaultNow(),
+  updated_by: integer("updated_by").references(() => users.id),
+});
+
+// 📍 جدول مواقع المصانع
+export const factory_locations = pgTable("factory_locations", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  name_ar: varchar("name_ar", { length: 100 }).notNull(),
+  latitude: decimal("latitude", { precision: 10, scale: 7 }).notNull(),
+  longitude: decimal("longitude", { precision: 10, scale: 7 }).notNull(),
+  allowed_radius: integer("allowed_radius").notNull().default(500), // بالأمتار
+  is_active: boolean("is_active").notNull().default(true),
+  description: text("description"),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+  created_by: integer("created_by").references(() => users.id),
+});
+
+// 👤 جدول إعدادات المستخدمين
+export const user_settings = pgTable("user_settings", {
+  id: serial("id").primaryKey(),
+  user_id: integer("user_id")
+    .references(() => users.id)
+    .notNull(),
+  setting_key: varchar("setting_key", { length: 100 }).notNull(),
+  setting_value: text("setting_value"),
+  setting_type: varchar("setting_type", { length: 20 }).default("string"), // string / number / boolean / json
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+// Insert schemas for settings
+export const insertSystemSettingSchema = createInsertSchema(
+  system_settings,
+).omit({
+  id: true,
+  updated_at: true,
+});
+
+export const insertFactoryLocationSchema = createInsertSchema(
+  factory_locations,
+).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const insertUserSettingSchema = createInsertSchema(user_settings).omit({
+  id: true,
+  updated_at: true,
+});
+
+// Insert schema for machine_queues
+export const insertMachineQueueSchema = createInsertSchema(machine_queues).omit(
+  {
+    id: true,
+    created_at: true,
+    assigned_at: true,
+  },
+);
+
+export type CustomerProduct = typeof customer_products.$inferSelect & {
+  customer_name?: string;
+  customer_name_ar?: string;
+  customer_code?: string;
+};
+export type InsertCustomerProduct = z.infer<typeof insertCustomerProductSchema>;
+export type SystemSetting = typeof system_settings.$inferSelect;
+export type InsertSystemSetting = z.infer<typeof insertSystemSettingSchema>;
+export type FactoryLocation = typeof factory_locations.$inferSelect;
+export type InsertFactoryLocation = z.infer<typeof insertFactoryLocationSchema>;
+export type UserSetting = typeof user_settings.$inferSelect;
+export type InsertUserSetting = z.infer<typeof insertUserSettingSchema>;
+
+// Machine Queue types
+export type MachineQueue = typeof machine_queues.$inferSelect;
+export type InsertMachineQueue = z.infer<typeof insertMachineQueueSchema>;
+
+// Print color slots: up to 4 entries, each either empty (unused slot) or a
+// 6-digit hex color like #aabbcc. Rejects malformed/oversized data.
+const printColorsArraySchema = z
+  .array(
+    z
+      .string()
+      .refine((val) => val === "" || /^#[0-9a-fA-F]{6}$/.test(val), {
+        message: "لون الطباعة يجب أن يكون رمزاً سداسياً صحيحاً مثل ‎#aabbcc",
+      }),
+  )
+  .max(4, { message: "لا يمكن إضافة أكثر من 4 ألوان طباعة" })
+  .nullable()
+  .optional();
+
+export const insertCustomerProductSchema = createInsertSchema(customer_products)
+  .omit({
+    id: true,
+    created_at: true,
+    width: true,
+    left_facing: true,
+    right_facing: true,
+    thickness: true,
+    unit_weight_kg: true,
+    package_weight_kg: true,
+    bag_weight_grams: true,
+    bags_per_kilo: true,
+  })
+  .extend({
+    // Coerce empty strings and the UI's "none" sentinel on FK varchar fields
+    // to null so they don't violate foreign key constraints
+    // (e.g. item_id='' or item_id='none' -> NULL). The frontend Select
+    // components use "none" because shadcn Select cannot use "" as a value.
+    customer_id: z.preprocess(
+      (val) =>
+        val === "" || val === undefined || val === "none" ? null : val,
+      z.string().nullable().optional(),
+    ),
+    category_id: z.preprocess(
+      (val) =>
+        val === "" || val === undefined || val === "none" ? null : val,
+      z.string().nullable().optional(),
+    ),
+    item_id: z.preprocess(
+      (val) =>
+        val === "" || val === undefined || val === "none" ? null : val,
+      z.string().nullable().optional(),
+    ),
+    master_batch_id: z.preprocess(
+      (val) =>
+        val === "" || val === undefined || val === "none" ? null : val,
+      z.string().nullable().optional(),
+    ),
+    front_print_colors: printColorsArraySchema,
+    back_print_colors: printColorsArraySchema,
+    // Transform decimal fields to handle both string and number inputs
+    width: z.preprocess((val): string | undefined => {
+      if (val === null || val === undefined || val === "") return undefined;
+      const num = typeof val === "string" ? parseFloat(val) : (val as number);
+      return isNaN(num) ? undefined : num.toString();
+    }, z.string().optional()),
+    left_facing: z.preprocess((val): string | undefined => {
+      if (val === null || val === undefined || val === "") return undefined;
+      const num = typeof val === "string" ? parseFloat(val) : (val as number);
+      return isNaN(num) ? undefined : num.toString();
+    }, z.string().optional()),
+    right_facing: z.preprocess((val): string | undefined => {
+      if (val === null || val === undefined || val === "") return undefined;
+      const num = typeof val === "string" ? parseFloat(val) : (val as number);
+      return isNaN(num) ? undefined : num.toString();
+    }, z.string().optional()),
+    thickness: z.preprocess((val): string | undefined => {
+      if (val === null || val === undefined || val === "") return undefined;
+      const num = typeof val === "string" ? parseFloat(val) : (val as number);
+      return isNaN(num) ? undefined : num.toString();
+    }, z.string().optional()),
+    density: z.preprocess((val): string | undefined => {
+      if (val === null || val === undefined || val === "") return "0.95";
+      const num = typeof val === "string" ? parseFloat(val) : (val as number);
+      return isNaN(num) || num <= 0 ? "0.95" : num.toString();
+    }, z.string().optional()),
+    unit_weight_kg: z.preprocess((val): string | undefined => {
+      if (val === null || val === undefined || val === "") return undefined;
+      const num = typeof val === "string" ? parseFloat(val) : (val as number);
+      return isNaN(num) ? undefined : num.toString();
+    }, z.string().optional()),
+    package_weight_kg: z.preprocess((val): string | undefined => {
+      if (val === null || val === undefined || val === "") return undefined;
+      const num = typeof val === "string" ? parseFloat(val) : (val as number);
+      return isNaN(num) ? undefined : num.toString();
+    }, z.string().optional()),
+    cutting_length_cm: z
+      .union([z.string(), z.number()])
+      .optional()
+      .transform((val) => {
+        if (val === null || val === undefined || val === "") return undefined;
+        const raw = typeof val === "string" ? parseFloat(val) : Number(val);
+        if (!isFinite(raw)) return undefined;
+        const intVal = Math.round(raw);
+        if (intVal < 1 || intVal > 10000) return undefined;
+        return intVal;
+      }),
+    unit_quantity: z
+      .union([z.string(), z.number()])
+      .optional()
+      .transform((val) => {
+        if (val === null || val === undefined || val === "") return undefined;
+        const raw = typeof val === "string" ? parseFloat(val) : Number(val);
+        if (!isFinite(raw)) return undefined;
+        const intVal = Math.round(raw);
+        if (intVal < 1 || intVal > 1000000) return undefined;
+        return intVal;
+      }),
+  });
+
+export const insertCategorySchema = createInsertSchema(categories);
+export const insertCustomerSchema = createInsertSchema(customers)
+  .omit({
+    created_at: true,
+  })
+  .extend({
+    tax_number: z
+      .string()
+      .refine(
+        (val) =>
+          val === "" ||
+          val === null ||
+          val === undefined ||
+          /^\d{10,20}$/.test(val),
+        {
+          message:
+            "الرقم الضريبي يجب أن يكون أرقاماً فقط (10-20 خانة) أو اتركه فارغاً",
+        },
+      )
+      .optional()
+      .nullable(),
+    unified_number: z
+      .string()
+      .regex(/^7\d{9}$/, "الرقم الموحد يجب أن يكون 10 أرقام ويبدأ بـ 7")
+      .optional()
+      .or(z.literal("")),
+    unique_customer_number: z.string().optional().or(z.literal("")),
+    commercial_name: z.string().optional().or(z.literal("")),
+    is_active: z.boolean().default(true).optional(),
+  });
+
+// HR System Schemas
+export const insertTrainingProgramSchema = createInsertSchema(
+  training_programs,
+).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const insertTrainingMaterialSchema = createInsertSchema(
+  training_materials,
+).omit({
+  id: true,
+});
+
+export const insertTrainingEnrollmentSchema = createInsertSchema(
+  training_enrollments,
+).omit({
+  id: true,
+  enrolled_date: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const insertTrainingEvaluationSchema = createInsertSchema(
+  training_evaluations,
+).omit({
+  id: true,
+  created_at: true,
+});
+
+export const insertTrainingCertificateSchema = createInsertSchema(
+  training_certificates,
+).omit({
+  id: true,
+  created_at: true,
+});
+
+export const insertPerformanceReviewSchema = createInsertSchema(
+  performance_reviews,
+).omit({
+  id: true,
+  created_at: true,
+  completed_at: true,
+});
+
+export const insertPerformanceCriteriaSchema = createInsertSchema(
+  performance_criteria,
+).omit({
+  id: true,
+});
+
+export const insertPerformanceRatingSchema = createInsertSchema(
+  performance_ratings,
+).omit({
+  id: true,
+});
+
+export const insertLeaveTypeSchema = createInsertSchema(leave_types).omit({
+  id: true,
+});
+
+export const insertLeaveRequestSchema = createInsertSchema(leave_requests).omit(
+  {
+    id: true,
+    created_at: true,
+    updated_at: true,
+    direct_manager_action_date: true,
+    hr_action_date: true,
+  },
+);
+
+export const insertLeaveBalanceSchema = createInsertSchema(leave_balances).omit(
+  {
+    id: true,
+  },
+);
+
+export const insertAttendanceSchema = createInsertSchema(attendance).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const insertAttendanceWithdrawalSchema = createInsertSchema(
+  attendance_withdrawals,
+).omit({
+  id: true,
+  created_at: true,
+});
+export type AttendanceWithdrawal = typeof attendance_withdrawals.$inferSelect;
+export type InsertAttendanceWithdrawal = z.infer<
+  typeof insertAttendanceWithdrawalSchema
+>;
+
+export const insertShiftAssignmentSchema = createInsertSchema(
+  shift_assignments,
+).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+export type ShiftAssignment = typeof shift_assignments.$inferSelect;
+export type InsertShiftAssignment = z.infer<
+  typeof insertShiftAssignmentSchema
+>;
+
+// Maintenance Actions Schemas
+export const insertMaintenanceActionSchema = createInsertSchema(
+  maintenance_actions,
+).omit({
+  id: true,
+  action_number: true,
+  action_date: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const insertMaintenanceReportSchema = createInsertSchema(
+  maintenance_reports,
+).omit({
+  id: true,
+  report_number: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const insertOperatorNegligenceReportSchema = createInsertSchema(
+  operator_negligence_reports,
+).omit({
+  id: true,
+  report_number: true,
+  created_at: true,
+  updated_at: true,
+});
+
+// Consumable Parts Schemas
+export const insertConsumablePartSchema = createInsertSchema(
+  consumable_parts,
+).omit({
+  id: true,
+  part_id: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const insertConsumablePartTransactionSchema = createInsertSchema(
+  consumable_parts_transactions,
+).omit({
+  id: true,
+  transaction_id: true,
+  created_at: true,
+});
+
+// Preventive Maintenance Schemas
+export const insertMaintenanceComponentSchema = createInsertSchema(
+  maintenance_component_catalog,
+).omit({
+  id: true,
+  created_at: true,
+});
+
+export const updateMaintenanceComponentSchema =
+  insertMaintenanceComponentSchema.partial();
+
+export const insertPreventiveMaintenanceActionSchema = createInsertSchema(
+  preventive_maintenance_actions,
+).omit({
+  id: true,
+  action_number: true,
+  action_date: true,
+  total_cost: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const insertPreventiveMaintenanceItemSchema = createInsertSchema(
+  preventive_maintenance_items,
+).omit({
+  id: true,
+  preventive_action_id: true,
+  created_at: true,
+});
+
+// Combined payload for creating an action with its line items in one request.
+// An action can target one OR several machines (machine_ids); machine_id is
+// kept for backward compatibility and treated as the primary machine.
+export const createPreventiveMaintenanceSchema = z
+  .object({
+    section_id: z.string().nullish(),
+    machine_id: z.string().min(1).optional(),
+    machine_ids: z.array(z.string().min(1)).min(1).optional(),
+    performed_by: z.coerce.number().int().positive().optional(),
+    action_date: z.coerce.date().optional(),
+    notes: z.string().nullish(),
+    status: z.string().optional(),
+    items: z
+      .array(
+        z.object({
+          component_id: z.coerce.number().int().positive().nullish(),
+          component_name_ar: z.string().min(1),
+          component_name_en: z.string().min(1),
+          action_type: z.string().min(1),
+          quantity: z.coerce.number().int().positive().default(1),
+          cost: z.coerce.number().min(0).default(0),
+          condition: z.string().nullish(),
+          notes: z.string().nullish(),
+        }),
+      )
+      .min(1),
+  })
+  .refine((d) => (d.machine_ids?.length ?? 0) > 0 || !!d.machine_id, {
+    message: "At least one machine is required",
+    path: ["machine_ids"],
+  });
+
+// Editing an existing action reuses the same shape (machines + items replaced).
+export const updatePreventiveMaintenanceSchema =
+  createPreventiveMaintenanceSchema;
+
+// HR System Types
+export type Attendance = typeof attendance.$inferSelect;
+export type InsertAttendance = z.infer<typeof insertAttendanceSchema>;
+export type TrainingProgram = typeof training_programs.$inferSelect;
+export type InsertTrainingProgram = z.infer<typeof insertTrainingProgramSchema>;
+export type TrainingMaterial = typeof training_materials.$inferSelect;
+export type InsertTrainingMaterial = z.infer<
+  typeof insertTrainingMaterialSchema
+>;
+export type TrainingEnrollment = typeof training_enrollments.$inferSelect;
+export type InsertTrainingEnrollment = z.infer<
+  typeof insertTrainingEnrollmentSchema
+>;
+export type TrainingEvaluation = typeof training_evaluations.$inferSelect;
+export type InsertTrainingEvaluation = z.infer<
+  typeof insertTrainingEvaluationSchema
+>;
+export type TrainingCertificate = typeof training_certificates.$inferSelect;
+export type InsertTrainingCertificate = z.infer<
+  typeof insertTrainingCertificateSchema
+>;
+export type PerformanceReview = typeof performance_reviews.$inferSelect;
+export type InsertPerformanceReview = z.infer<
+  typeof insertPerformanceReviewSchema
+>;
+export type PerformanceCriteria = typeof performance_criteria.$inferSelect;
+export type InsertPerformanceCriteria = z.infer<
+  typeof insertPerformanceCriteriaSchema
+>;
+export type PerformanceRating = typeof performance_ratings.$inferSelect;
+export type InsertPerformanceRating = z.infer<
+  typeof insertPerformanceRatingSchema
+>;
+export type LeaveType = typeof leave_types.$inferSelect;
+export type InsertLeaveType = z.infer<typeof insertLeaveTypeSchema>;
+export type LeaveRequest = typeof leave_requests.$inferSelect;
+export type InsertLeaveRequest = z.infer<typeof insertLeaveRequestSchema>;
+export type LeaveBalance = typeof leave_balances.$inferSelect;
+export type InsertLeaveBalance = z.infer<typeof insertLeaveBalanceSchema>;
+
+// Maintenance Types
+export type MaintenanceAction = typeof maintenance_actions.$inferSelect;
+export type InsertMaintenanceAction = z.infer<
+  typeof insertMaintenanceActionSchema
+>;
+export type MaintenanceReport = typeof maintenance_reports.$inferSelect;
+export type InsertMaintenanceReport = z.infer<
+  typeof insertMaintenanceReportSchema
+>;
+export type OperatorNegligenceReport =
+  typeof operator_negligence_reports.$inferSelect;
+export type InsertOperatorNegligenceReport = z.infer<
+  typeof insertOperatorNegligenceReportSchema
+>;
+
+// Preventive Maintenance Types
+export type MaintenanceComponent =
+  typeof maintenance_component_catalog.$inferSelect;
+export type InsertMaintenanceComponent = z.infer<
+  typeof insertMaintenanceComponentSchema
+>;
+export type UpdateMaintenanceComponent = z.infer<
+  typeof updateMaintenanceComponentSchema
+>;
+export type PreventiveMaintenanceAction =
+  typeof preventive_maintenance_actions.$inferSelect;
+export type InsertPreventiveMaintenanceAction = z.infer<
+  typeof insertPreventiveMaintenanceActionSchema
+>;
+export type PreventiveMaintenanceItem =
+  typeof preventive_maintenance_items.$inferSelect;
+export type InsertPreventiveMaintenanceItem = z.infer<
+  typeof insertPreventiveMaintenanceItemSchema
+>;
+export type CreatePreventiveMaintenance = z.infer<
+  typeof createPreventiveMaintenanceSchema
+>;
+export type UpdatePreventiveMaintenance = z.infer<
+  typeof updatePreventiveMaintenanceSchema
+>;
+export type PreventiveMaintenanceActionMachine =
+  typeof preventive_maintenance_action_machines.$inferSelect;
+
+// Consumable Parts Types
+export type ConsumablePart = typeof consumable_parts.$inferSelect;
+export type InsertConsumablePart = z.infer<typeof insertConsumablePartSchema>;
+export type ConsumablePartTransaction =
+  typeof consumable_parts_transactions.$inferSelect;
+export type InsertConsumablePartTransaction = z.infer<
+  typeof insertConsumablePartTransactionSchema
+>;
+
+// Production Flow Types
+export type Cut = typeof cuts.$inferSelect;
+export type InsertCut = z.infer<typeof insertCutSchema>;
+export type WarehouseReceipt = typeof warehouse_receipts.$inferSelect;
+export type InsertWarehouseReceipt = z.infer<
+  typeof insertWarehouseReceiptSchema
+>;
+export type ProductionSettings = typeof production_settings.$inferSelect;
+export type InsertProductionSettings = z.infer<
+  typeof insertProductionSettingsSchema
+>;
+
+// HR Relations
+export const trainingProgramsRelations = relations(
+  training_programs,
+  ({ one, many }) => ({
+    instructor: one(users, {
+      fields: [training_programs.instructor_id],
+      references: [users.id],
+    }),
+    materials: many(training_materials),
+    enrollments: many(training_enrollments),
+  }),
+);
+
+export const trainingMaterialsRelations = relations(
+  training_materials,
+  ({ one }) => ({
+    program: one(training_programs, {
+      fields: [training_materials.program_id],
+      references: [training_programs.id],
+    }),
+  }),
+);
+
+export const trainingEnrollmentsRelations = relations(
+  training_enrollments,
+  ({ one, many }) => ({
+    program: one(training_programs, {
+      fields: [training_enrollments.program_id],
+      references: [training_programs.id],
+    }),
+    employee: one(users, {
+      fields: [training_enrollments.employee_id],
+      references: [users.id],
+    }),
+    evaluation: one(training_evaluations, {
+      fields: [training_enrollments.id],
+      references: [training_evaluations.enrollment_id],
+    }),
+    certificate: one(training_certificates, {
+      fields: [training_enrollments.id],
+      references: [training_certificates.enrollment_id],
+    }),
+  }),
+);
+
+export const trainingEvaluationsRelations = relations(
+  training_evaluations,
+  ({ one }) => ({
+    enrollment: one(training_enrollments, {
+      fields: [training_evaluations.enrollment_id],
+      references: [training_enrollments.id],
+    }),
+    program: one(training_programs, {
+      fields: [training_evaluations.program_id],
+      references: [training_programs.id],
+    }),
+    employee: one(users, {
+      fields: [training_evaluations.employee_id],
+      references: [users.id],
+    }),
+    evaluator: one(users, {
+      fields: [training_evaluations.evaluator_id],
+      references: [users.id],
+    }),
+  }),
+);
+
+export const trainingCertificatesRelations = relations(
+  training_certificates,
+  ({ one }) => ({
+    enrollment: one(training_enrollments, {
+      fields: [training_certificates.enrollment_id],
+      references: [training_enrollments.id],
+    }),
+    program: one(training_programs, {
+      fields: [training_certificates.program_id],
+      references: [training_programs.id],
+    }),
+    employee: one(users, {
+      fields: [training_certificates.employee_id],
+      references: [users.id],
+    }),
+    issuer: one(users, {
+      fields: [training_certificates.issued_by],
+      references: [users.id],
+    }),
+  }),
+);
+
+export const performanceReviewsRelations = relations(
+  performance_reviews,
+  ({ one, many }) => ({
+    employee: one(users, {
+      fields: [performance_reviews.employee_id],
+      references: [users.id],
+      relationName: "employee_reviews",
+    }),
+    reviewer: one(users, {
+      fields: [performance_reviews.reviewer_id],
+      references: [users.id],
+      relationName: "reviewer_reviews",
+    }),
+    ratings: many(performance_ratings),
+  }),
+);
+
+export const performanceCriteriaRelations = relations(
+  performance_criteria,
+  ({ many }) => ({
+    ratings: many(performance_ratings),
+  }),
+);
+
+export const performanceRatingsRelations = relations(
+  performance_ratings,
+  ({ one }) => ({
+    review: one(performance_reviews, {
+      fields: [performance_ratings.review_id],
+      references: [performance_reviews.id],
+    }),
+    criteria: one(performance_criteria, {
+      fields: [performance_ratings.criteria_id],
+      references: [performance_criteria.id],
+    }),
+  }),
+);
+
+export const leaveTypesRelations = relations(leave_types, ({ many }) => ({
+  requests: many(leave_requests),
+  balances: many(leave_balances),
+}));
+
+export const leaveRequestsRelations = relations(leave_requests, ({ one }) => ({
+  employee: one(users, {
+    fields: [leave_requests.employee_id],
+    references: [users.id],
+  }),
+  leaveType: one(leave_types, {
+    fields: [leave_requests.leave_type_id],
+    references: [leave_types.id],
+  }),
+  directManager: one(users, {
+    fields: [leave_requests.direct_manager_id],
+    references: [users.id],
+  }),
+  hrReviewer: one(users, {
+    fields: [leave_requests.hr_reviewed_by],
+    references: [users.id],
+  }),
+  replacementEmployee: one(users, {
+    fields: [leave_requests.replacement_employee_id],
+    references: [users.id],
+  }),
+}));
+
+export const leaveBalancesRelations = relations(leave_balances, ({ one }) => ({
+  employee: one(users, {
+    fields: [leave_balances.employee_id],
+    references: [users.id],
+  }),
+  leaveType: one(leave_types, {
+    fields: [leave_balances.leave_type_id],
+    references: [leave_types.id],
+  }),
+}));
+
+// 🚨 جداول نظام التحذيرات الذكية ومنع الأخطاء
+
+// جدول التحذيرات والتنبيهات الذكية
+export const system_alerts = pgTable("system_alerts", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 200 }).notNull(),
+  title_ar: varchar("title_ar", { length: 200 }),
+  message: text("message").notNull(),
+  message_ar: text("message_ar"),
+  type: varchar("type", { length: 30 }).notNull(), // system, production, quality, inventory, maintenance, security
+  category: varchar("category", { length: 30 }).notNull(), // warning, error, critical, info, success
+  severity: varchar("severity", { length: 20 }).notNull(), // low, medium, high, critical
+  source: varchar("source", { length: 50 }).notNull(), // system_health, production_monitor, data_validator, etc.
+  source_id: varchar("source_id", { length: 50 }), // ID of the source entity
+  status: varchar("status", { length: 20 }).notNull().default("active"), // active, resolved, dismissed, expired
+  is_automated: boolean("is_automated").default(true),
+  requires_action: boolean("requires_action").default(false),
+  action_taken: varchar("action_taken", { length: 500 }),
+  action_taken_by: integer("action_taken_by").references(() => users.id),
+  action_taken_at: timestamp("action_taken_at"),
+  resolved_by: integer("resolved_by").references(() => users.id),
+  resolved_at: timestamp("resolved_at"),
+  resolution_notes: text("resolution_notes"),
+  affected_systems: json("affected_systems").$type<string[]>(),
+  suggested_actions:
+    json("suggested_actions").$type<
+      { action: string; priority: number; description?: string }[]
+    >(),
+  context_data: json("context_data").$type<Record<string, any>>(),
+  notification_sent: boolean("notification_sent").default(false),
+  notification_methods: json("notification_methods").$type<string[]>(), // ['whatsapp', 'system', 'email']
+  target_users: json("target_users").$type<number[]>(),
+  target_roles: json("target_roles").$type<number[]>(),
+  expires_at: timestamp("expires_at"),
+  occurrences: integer("occurrences").default(1), // عدد مرات حدوث نفس التحذير
+  last_occurrence: timestamp("last_occurrence").defaultNow(),
+  first_occurrence: timestamp("first_occurrence").defaultNow(),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+// جدول قواعد التحذيرات والمراقبة
+export const alert_rules = pgTable("alert_rules", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  name_ar: varchar("name_ar", { length: 100 }),
+  description: text("description"),
+  description_ar: text("description_ar"),
+  monitor_type: varchar("monitor_type", { length: 50 }).notNull(), // database, performance, inventory, production, quality
+  rule_type: varchar("rule_type", { length: 30 }).notNull(), // threshold, pattern, anomaly, schedule
+  conditions: json("conditions").$type<Record<string, any>>().notNull(), // الشروط المطلوبة للتحذير
+  threshold_value: decimal("threshold_value", { precision: 15, scale: 4 }),
+  comparison_operator: varchar("comparison_operator", { length: 10 }), // >, <, >=, <=, =, !=
+  check_frequency: varchar("check_frequency", { length: 20 })
+    .notNull()
+    .default("5min"), // 1min, 5min, 15min, 1hour, daily
+  severity: varchar("severity", { length: 20 }).notNull().default("medium"),
+  is_enabled: boolean("is_enabled").default(true),
+  notification_template: text("notification_template"),
+  notification_template_ar: text("notification_template_ar"),
+  escalation_rules:
+    json("escalation_rules").$type<
+      { delay_minutes: number; severity: string; target_roles: number[] }[]
+    >(),
+  suppress_duration: integer("suppress_duration").default(60), // دقائق منع التكرار
+  created_by: integer("created_by").references(() => users.id),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+// جدول فحوصات سلامة النظام
+export const system_health_checks = pgTable("system_health_checks", {
+  id: serial("id").primaryKey(),
+  check_name: varchar("check_name", { length: 100 }).notNull(),
+  check_name_ar: varchar("check_name_ar", { length: 100 }),
+  check_type: varchar("check_type", { length: 30 }).notNull(), // database, api, service, disk, memory, cpu
+  status: varchar("status", { length: 20 }).notNull().default("unknown"), // healthy, warning, critical, unknown
+  last_check_time: timestamp("last_check_time").defaultNow(),
+  check_duration_ms: integer("check_duration_ms"),
+  success_rate_24h: decimal("success_rate_24h", {
+    precision: 5,
+    scale: 2,
+  }).default("100.00"),
+  average_response_time: integer("average_response_time"), // milliseconds
+  error_count_24h: integer("error_count_24h").default(0),
+  last_error: text("last_error"),
+  last_error_time: timestamp("last_error_time"),
+  check_details: json("check_details").$type<Record<string, any>>(),
+  thresholds: json("thresholds").$type<{
+    warning: number;
+    critical: number;
+    unit: string;
+  }>(),
+  is_critical: boolean("is_critical").default(false), // يؤثر على عمل النظام
+  auto_recovery: boolean("auto_recovery").default(false),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+// جدول مراقبة الأداء والموارد
+export const system_performance_metrics = pgTable(
+  "system_performance_metrics",
+  {
+    id: serial("id").primaryKey(),
+    metric_name: varchar("metric_name", { length: 255 }).notNull(),
+    metric_category: varchar("metric_category", { length: 30 }).notNull(), // system, database, application, business
+    value: decimal("value", { precision: 15, scale: 4 }).notNull(),
+    unit: varchar("unit", { length: 20 }), // ms, mb, percent, count, rate
+    timestamp: timestamp("timestamp").defaultNow(),
+    source: varchar("source", { length: 50 }), // server, database, application
+    tags: json("tags").$type<Record<string, string>>(), // إضافة tags للتصنيف
+    created_at: timestamp("created_at").defaultNow(),
+  },
+);
+
+// جدول تسجيل الإجراءات التصحيحية
+export const corrective_actions = pgTable("corrective_actions", {
+  id: serial("id").primaryKey(),
+  alert_id: integer("alert_id").references(() => system_alerts.id, {
+    onDelete: "cascade",
+  }),
+  action_type: varchar("action_type", { length: 30 }).notNull(), // manual, automated, escalated
+  action_title: varchar("action_title", { length: 200 }).notNull(),
+  action_description: text("action_description").notNull(),
+  action_description_ar: text("action_description_ar"),
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, in_progress, completed, failed
+  assigned_to: integer("assigned_to").references(() => users.id),
+  priority: varchar("priority", { length: 20 }).notNull().default("medium"),
+  estimated_duration: integer("estimated_duration"), // minutes
+  actual_duration: integer("actual_duration"),
+  success_rate: decimal("success_rate", { precision: 5, scale: 2 }),
+  notes: text("notes"),
+  created_by: integer("created_by").references(() => users.id),
+  completed_by: integer("completed_by").references(() => users.id),
+  completed_at: timestamp("completed_at"),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+// جدول إحصائيات النظام للتحليل
+export const system_analytics = pgTable("system_analytics", {
+  id: serial("id").primaryKey(),
+  date: date("date")
+    .notNull()
+    .default(sql`CURRENT_DATE`),
+  metric_type: varchar("metric_type", { length: 50 }).notNull(),
+  total_alerts: integer("total_alerts").default(0),
+  critical_alerts: integer("critical_alerts").default(0),
+  resolved_alerts: integer("resolved_alerts").default(0),
+  avg_resolution_time: integer("avg_resolution_time"), // minutes
+  system_uptime_percent: decimal("system_uptime_percent", {
+    precision: 5,
+    scale: 2,
+  }),
+  total_health_checks: integer("total_health_checks").default(0),
+  failed_health_checks: integer("failed_health_checks").default(0),
+  performance_score: decimal("performance_score", { precision: 5, scale: 2 }),
+  data: json("data").$type<Record<string, any>>(), // إضافة بيانات إحصائية
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+// أنواع البيانات للتحذيرات الذكية
+export type SystemAlert = typeof system_alerts.$inferSelect;
+export type InsertSystemAlert = typeof system_alerts.$inferInsert;
+export type AlertRule = typeof alert_rules.$inferSelect;
+export type InsertAlertRule = typeof alert_rules.$inferInsert;
+export type SystemHealthCheck = typeof system_health_checks.$inferSelect;
+export type InsertSystemHealthCheck = typeof system_health_checks.$inferInsert;
+export type SystemPerformanceMetric =
+  typeof system_performance_metrics.$inferSelect;
+export type InsertSystemPerformanceMetric =
+  typeof system_performance_metrics.$inferInsert;
+export type CorrectiveAction = typeof corrective_actions.$inferSelect;
+export type InsertCorrectiveAction = typeof corrective_actions.$inferInsert;
+export type SystemAnalytics = typeof system_analytics.$inferSelect;
+export type InsertSystemAnalytics = typeof system_analytics.$inferInsert;
+
+// مخططات التحقق من البيانات للتحذيرات
+export const insertSystemAlertSchema = createInsertSchema(system_alerts);
+export const insertAlertRuleSchema = createInsertSchema(alert_rules);
+export const insertSystemHealthCheckSchema =
+  createInsertSchema(system_health_checks);
+export const insertSystemPerformanceMetricSchema = createInsertSchema(
+  system_performance_metrics,
+);
+export const insertCorrectiveActionSchema =
+  createInsertSchema(corrective_actions);
+export const insertSystemAnalyticsSchema = createInsertSchema(system_analytics);
+
+// 📝 جدول الملاحظات السريعة
+export const quick_notes = pgTable("quick_notes", {
+  id: serial("id").primaryKey(),
+  content: text("content").notNull(),
+  note_type: varchar("note_type", { length: 50 }).notNull(), // order, design, statement, quote, delivery, call_customer, other
+  priority: varchar("priority", { length: 20 }).default("normal"), // low, normal, high, urgent
+  created_by: integer("created_by")
+    .notNull()
+    .references(() => users.id),
+  assigned_to: integer("assigned_to")
+    .notNull()
+    .references(() => users.id),
+  is_read: boolean("is_read").default(false),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+// 📎 جدول مرفقات الملاحظات
+export const note_attachments = pgTable("note_attachments", {
+  id: serial("id").primaryKey(),
+  note_id: integer("note_id")
+    .notNull()
+    .references(() => quick_notes.id, { onDelete: "cascade" }),
+  file_name: varchar("file_name", { length: 255 }).notNull(),
+  file_type: varchar("file_type", { length: 100 }).notNull(),
+  file_size: integer("file_size").notNull(),
+  file_url: text("file_url").notNull(),
+  uploaded_at: timestamp("uploaded_at").defaultNow(),
+});
+
+// علاقات الملاحظات
+export const quickNotesRelations = relations(quick_notes, ({ one, many }) => ({
+  creator: one(users, {
+    fields: [quick_notes.created_by],
+    references: [users.id],
+    relationName: "note_creator",
+  }),
+  assignee: one(users, {
+    fields: [quick_notes.assigned_to],
+    references: [users.id],
+    relationName: "note_assignee",
+  }),
+  attachments: many(note_attachments),
+}));
+
+export const noteAttachmentsRelations = relations(
+  note_attachments,
+  ({ one }) => ({
+    note: one(quick_notes, {
+      fields: [note_attachments.note_id],
+      references: [quick_notes.id],
+    }),
+  }),
+);
+
+// أنواع البيانات للملاحظات
+export type QuickNote = typeof quick_notes.$inferSelect;
+export type InsertQuickNote = typeof quick_notes.$inferInsert;
+export type NoteAttachment = typeof note_attachments.$inferSelect;
+export type InsertNoteAttachment = typeof note_attachments.$inferInsert;
+
+// مخططات التحقق من البيانات للملاحظات
+export const insertQuickNoteSchema = createInsertSchema(quick_notes).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+export const insertNoteAttachmentSchema = createInsertSchema(
+  note_attachments,
+).omit({
+  id: true,
+  uploaded_at: true,
+});
+
+// =================================================================
+// 🧪 SIMPLIFIED MATERIAL MIXING SYSTEM
+// =================================================================
+
+// 📦 جدول عمليات الخلط المباشرة (بدون وصفات مسبقة)
+export const mixing_batches = pgTable(
+  "mixing_batches",
+  {
+    id: serial("id").primaryKey(),
+    batch_number: varchar("batch_number", { length: 50 }).notNull().unique(), // رقم الخلطة تلقائي
+    production_order_id: integer("production_order_id")
+      .notNull()
+      .references(() => production_orders.id), // أمر الإنتاج المرتبط
+    machine_id: varchar("machine_id", { length: 20 })
+      .notNull()
+      .references(() => machines.id), // ماكينة الفيلم
+    screw_assignment: varchar("screw_assignment", { length: 10 })
+      .notNull()
+      .default("A"), // A أو B (للماكينات ذات السكروين)
+    operator_id: integer("operator_id")
+      .notNull()
+      .references(() => users.id), // العامل الذي قام بالخلط
+    total_weight_kg: decimal("total_weight_kg", {
+      precision: 10,
+      scale: 2,
+    }).notNull(), // الوزن الكلي للخلطة
+    status: varchar("status", { length: 30 }).notNull().default("completed"), // completed, cancelled
+    notes: text("notes"), // ملاحظات
+    created_at: timestamp("created_at").defaultNow().notNull(), // تاريخ ووقت الخلط
+  },
+  (table) => ({
+    totalWeightPositive: check(
+      "total_weight_positive",
+      sql`${table.total_weight_kg} > 0`,
+    ),
+    screwAssignmentValid: check(
+      "screw_assignment_valid",
+      sql`${table.screw_assignment} IN ('A', 'B')`,
+    ),
+  }),
+);
+
+// 🧬 جدول المكونات المخلوطة (المواد الخام والكميات الفعلية)
+export const batch_ingredients = pgTable(
+  "batch_ingredients",
+  {
+    id: serial("id").primaryKey(),
+    batch_id: integer("batch_id")
+      .notNull()
+      .references(() => mixing_batches.id, { onDelete: "cascade" }),
+    item_id: varchar("item_id", { length: 20 })
+      .notNull()
+      .references(() => items.id), // المادة الخام من جدول الأصناف
+    actual_weight_kg: decimal("actual_weight_kg", {
+      precision: 10,
+      scale: 2,
+    }).notNull(), // الوزن الفعلي المخلوط
+    percentage: decimal("percentage", { precision: 5, scale: 2 }), // النسبة المئوية (محسوبة تلقائياً)
+    notes: text("notes"),
+  },
+  (table) => ({
+    actualWeightPositive: check(
+      "actual_weight_positive",
+      sql`${table.actual_weight_kg} > 0`,
+    ),
+    percentageValid: check(
+      "percentage_valid",
+      sql`${table.percentage} IS NULL OR (${table.percentage} > 0 AND ${table.percentage} <= 100)`,
+    ),
+  }),
+);
+
+// علاقات نظام الخلط المبسط
+export const mixingBatchesRelations = relations(
+  mixing_batches,
+  ({ one, many }) => ({
+    productionOrder: one(production_orders, {
+      fields: [mixing_batches.production_order_id],
+      references: [production_orders.id],
+    }),
+    machine: one(machines, {
+      fields: [mixing_batches.machine_id],
+      references: [machines.id],
+    }),
+    operator: one(users, {
+      fields: [mixing_batches.operator_id],
+      references: [users.id],
+    }),
+    ingredients: many(batch_ingredients),
+  }),
+);
+
+export const batchIngredientsRelations = relations(
+  batch_ingredients,
+  ({ one }) => ({
+    batch: one(mixing_batches, {
+      fields: [batch_ingredients.batch_id],
+      references: [mixing_batches.id],
+    }),
+    item: one(items, {
+      fields: [batch_ingredients.item_id],
+      references: [items.id],
+    }),
+  }),
+);
+
+// أنواع البيانات
+export type MixingBatch = typeof mixing_batches.$inferSelect;
+export type InsertMixingBatch = typeof mixing_batches.$inferInsert;
+export type BatchIngredient = typeof batch_ingredients.$inferSelect;
+export type InsertBatchIngredient = typeof batch_ingredients.$inferInsert;
+
+// مخططات التحقق من البيانات
+export const insertMixingBatchSchema = createInsertSchema(mixing_batches)
+  .omit({
+    id: true,
+    batch_number: true,
+    created_at: true,
+  })
+  .extend({
+    total_weight_kg: z
+      .string()
+      .refine(
+        (val) => parseFloatSafe(val) > 0,
+        "الوزن الكلي يجب أن يكون أكبر من صفر",
+      ),
+    screw_assignment: z.enum(["A", "B"]).default("A"),
+  });
+
+export const insertBatchIngredientSchema = createInsertSchema(batch_ingredients)
+  .omit({
+    id: true,
+    percentage: true,
+  })
+  .extend({
+    actual_weight_kg: z
+      .string()
+      .refine(
+        (val) => parseFloatSafe(val) > 0,
+        "الوزن يجب أن يكون أكبر من صفر",
+      ),
+  });
+
+// Sanitized user type that excludes sensitive fields like password
+export type SafeUser = Omit<User, "password">;
+
+// ===== جداول عروض الأسعار للوكيل الذكي =====
+
+export const quotes = pgTable("quotes", {
+  id: serial("id").primaryKey(),
+  document_number: varchar("document_number", { length: 50 })
+    .notNull()
+    .unique(),
+  customer_name: varchar("customer_name", { length: 255 }).notNull(),
+  tax_number: varchar("tax_number", { length: 20 }).notNull(),
+  quote_date: date("quote_date")
+    .notNull()
+    .default(sql`CURRENT_DATE`),
+  total_before_tax: decimal("total_before_tax", { precision: 12, scale: 2 })
+    .notNull()
+    .default("0"),
+  tax_amount: decimal("tax_amount", { precision: 12, scale: 2 })
+    .notNull()
+    .default("0"),
+  total_with_tax: decimal("total_with_tax", { precision: 12, scale: 2 })
+    .notNull()
+    .default("0"),
+  status: varchar("status", { length: 20 }).notNull().default("draft"),
+  created_by_name: varchar("created_by_name", { length: 255 }),
+  created_by_phone: varchar("created_by_phone", { length: 20 }),
+  notes: text("notes"),
+  created_at: timestamp("created_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  updated_at: timestamp("updated_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+});
+
+export const quote_items = pgTable("quote_items", {
+  id: serial("id").primaryKey(),
+  quote_id: integer("quote_id")
+    .notNull()
+    .references(() => quotes.id, { onDelete: "cascade" }),
+  line_number: integer("line_number").notNull(),
+  item_name: varchar("item_name", { length: 255 }).notNull(),
+  unit: varchar("unit", { length: 20 }).notNull(), // كيلو، قطعة، كرتون، بندل
+  unit_price: decimal("unit_price", { precision: 12, scale: 2 }).notNull(),
+  quantity: decimal("quantity", { precision: 12, scale: 2 }).notNull(),
+  line_total: decimal("line_total", { precision: 12, scale: 2 }).notNull(),
+});
+
+// علاقات عروض الأسعار
+export const quotesRelations = relations(quotes, ({ many }) => ({
+  items: many(quote_items),
+}));
+
+export const quoteItemsRelations = relations(quote_items, ({ one }) => ({
+  quote: one(quotes, {
+    fields: [quote_items.quote_id],
+    references: [quotes.id],
+  }),
+}));
+
+// أنواع عروض الأسعار
+export type Quote = typeof quotes.$inferSelect;
+export type InsertQuote = typeof quotes.$inferInsert;
+export type QuoteItem = typeof quote_items.$inferSelect;
+export type InsertQuoteItem = typeof quote_items.$inferInsert;
+
+// مخططات التحقق لعروض الأسعار
+export const insertQuoteSchema = createInsertSchema(quotes)
+  .omit({
+    id: true,
+    document_number: true,
+    total_before_tax: true,
+    tax_amount: true,
+    total_with_tax: true,
+    created_at: true,
+    updated_at: true,
+  })
+  .extend({
+    customer_name: z.string().min(1, "اسم العميل مطلوب"),
+    tax_number: z
+      .string()
+      .regex(/^\d{10,20}$/, "الرقم الضريبي يجب أن يكون أرقاماً فقط (10-20 خانة)"),
+  });
+
+export const insertQuoteItemSchema = createInsertSchema(quote_items)
+  .omit({
+    id: true,
+    line_total: true,
+  })
+  .extend({
+    item_name: z.string().min(1, "اسم الصنف مطلوب"),
+    unit: z.enum(["كيلو", "قطعة", "كرتون", "بندل"]),
+    unit_price: z
+      .string()
+      .refine(
+        (val) => parseFloatSafe(val) > 0,
+        "السعر يجب أن يكون أكبر من صفر",
+      ),
+    quantity: z
+      .string()
+      .refine(
+        (val) => parseFloatSafe(val) > 0,
+        "الكمية يجب أن تكون أكبر من صفر",
+      ),
+  });
+
+// ===== نماذج عروض الأسعار =====
+
+export const quote_templates = pgTable("quote_templates", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  product_name: varchar("product_name", { length: 255 }).notNull(),
+  product_description: text("product_description"),
+  unit_price: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
+  unit: varchar("unit", { length: 50 }).notNull().default("كجم"),
+  min_quantity: decimal("min_quantity", { precision: 10, scale: 2 }),
+  specifications: jsonb("specifications").$type<Record<string, string>>(),
+  is_active: boolean("is_active").default(true).notNull(),
+  category: varchar("category", { length: 100 }),
+  created_at: timestamp("created_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  updated_at: timestamp("updated_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  created_by: integer("created_by").references(() => users.id),
+});
+
+export type QuoteTemplate = typeof quote_templates.$inferSelect;
+export type InsertQuoteTemplate = typeof quote_templates.$inferInsert;
+
+export const insertQuoteTemplateSchema = createInsertSchema(
+  quote_templates,
+).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+
+// ===== ألوان الماستر باتش =====
+
+export const master_batch_colors = pgTable("master_batch_colors", {
+  id: varchar("id", { length: 20 }).primaryKey(), // كود اللون مثل PT-111111, 225, KT331
+  name: varchar("name", { length: 100 }).notNull(), // الاسم بالإنجليزية
+  name_ar: varchar("name_ar", { length: 100 }).notNull(), // الاسم بالعربية
+  color_hex: varchar("color_hex", { length: 20 }).notNull().default("#FFFFFF"), // كود اللون للعرض
+  text_color: varchar("text_color", { length: 20 })
+    .notNull()
+    .default("#000000"), // لون النص للتباين
+  brand: varchar("brand", { length: 100 }), // المورد مثل AL-KHlaiwi, PolyTEC
+  aliases: text("aliases"), // أكواد بديلة مفصولة بفاصلة للتوافق مع البيانات القديمة
+  is_active: boolean("is_active").default(true).notNull(),
+  sort_order: integer("sort_order").default(0), // ترتيب العرض
+  created_at: timestamp("created_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  updated_at: timestamp("updated_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+});
+
+export type MasterBatchColor = typeof master_batch_colors.$inferSelect;
+export type InsertMasterBatchColor = typeof master_batch_colors.$inferInsert;
+
+export const insertMasterBatchColorSchema = createInsertSchema(
+  master_batch_colors,
+)
+  .omit({
+    created_at: true,
+    updated_at: true,
+  })
+  .extend({
+    id: z.string().min(1, "كود اللون مطلوب"),
+    name: z.string().min(1, "الاسم بالإنجليزية مطلوب"),
+    name_ar: z.string().min(1, "الاسم بالعربية مطلوب"),
+  });
+
+// Chat models for OpenAI integration
+export * from "./models/chat";
+
+// ===== نظام سندات المستودع الاحترافي =====
+// أربعة أنواع من السندات: إدخال مواد خام، إخراج مواد خام، استلام مواد تامة، إخراج مواد تامة
+
+// 📋 جدول سندات إدخال المواد الخام (من الموردين أو رصيد افتتاحي)
+export const raw_material_vouchers_in = pgTable("raw_material_vouchers_in", {
+  id: serial("id").primaryKey(),
+  voucher_number: varchar("voucher_number", { length: 50 }).notNull().unique(), // رقم السند التسلسلي RM-Rec.0001
+  voucher_type: varchar("voucher_type", { length: 30 })
+    .notNull()
+    .default("purchase"), // purchase / opening_balance / return
+  supplier_id: integer("supplier_id").references(() => suppliers.id), // المورد (اختياري للرصيد الافتتاحي)
+  item_id: varchar("item_id", { length: 20 })
+    .notNull()
+    .references(() => items.id), // الصنف
+  quantity: decimal("quantity", { precision: 12, scale: 3 }).notNull(), // الكمية
+  unit: varchar("unit", { length: 20 }).notNull().default("كيلو"), // الوحدة
+  unit_price: decimal("unit_price", { precision: 10, scale: 4 }), // سعر الوحدة (اختياري)
+  total_price: decimal("total_price", { precision: 12, scale: 4 }), // السعر الإجمالي
+  batch_number: varchar("batch_number", { length: 50 }), // رقم الدفعة
+  barcode: varchar("barcode", { length: 100 }), // الباركود
+  location_id: varchar("location_id", { length: 20 }).references(
+    () => locations.id,
+  ), // موقع التخزين
+  expiry_date: date("expiry_date"), // تاريخ الانتهاء
+  notes: text("notes"), // ملاحظات
+  received_by: integer("received_by")
+    .notNull()
+    .references(() => users.id), // أمين المستودع المستلم
+  voucher_date: date("voucher_date")
+    .notNull()
+    .default(sql`CURRENT_DATE`), // تاريخ السند
+  status: varchar("status", { length: 20 }).notNull().default("completed"), // draft / completed / cancelled
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+// 📋 جدول سندات إخراج المواد الخام (تحويل لصالة الإنتاج)
+export const raw_material_vouchers_out = pgTable("raw_material_vouchers_out", {
+  id: serial("id").primaryKey(),
+  voucher_number: varchar("voucher_number", { length: 50 }).notNull().unique(), // رقم السند التسلسلي RM-Del.0001
+  voucher_type: varchar("voucher_type", { length: 30 })
+    .notNull()
+    .default("production_transfer"), // production_transfer / return_to_supplier / adjustment
+  production_order_id: integer("production_order_id").references(
+    () => production_orders.id,
+  ), // أمر الإنتاج المرتبط (اختياري)
+  item_id: varchar("item_id", { length: 20 })
+    .notNull()
+    .references(() => items.id), // الصنف
+  quantity: decimal("quantity", { precision: 12, scale: 3 }).notNull(), // الكمية
+  unit: varchar("unit", { length: 20 }).notNull().default("كيلو"), // الوحدة
+  batch_number: varchar("batch_number", { length: 50 }), // رقم الدفعة
+  barcode: varchar("barcode", { length: 100 }), // الباركود
+  from_location_id: varchar("from_location_id", { length: 20 }).references(
+    () => locations.id,
+  ), // موقع الإخراج
+  to_destination: varchar("to_destination", { length: 100 }), // الجهة المستلمة (صالة الإنتاج)
+  issued_to: varchar("issued_to", { length: 100 }), // اسم المستلم في صالة الإنتاج
+  notes: text("notes"), // ملاحظات
+  issued_by: integer("issued_by")
+    .notNull()
+    .references(() => users.id), // أمين المستودع المصدر
+  voucher_date: date("voucher_date")
+    .notNull()
+    .default(sql`CURRENT_DATE`), // تاريخ السند
+  status: varchar("status", { length: 20 }).notNull().default("completed"), // draft / completed / cancelled
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+// 📋 جدول سندات استلام المواد التامة (من صالة الإنتاج)
+export const finished_goods_vouchers_in = pgTable(
+  "finished_goods_vouchers_in",
+  {
+    id: serial("id").primaryKey(),
+    voucher_number: varchar("voucher_number", { length: 50 })
+      .notNull()
+      .unique(),
+    voucher_date: timestamp("voucher_date").default(sql`CURRENT_TIMESTAMP`),
+    receipt_time: timestamp("receipt_time").default(sql`CURRENT_TIMESTAMP`),
+    voucher_type: varchar("voucher_type", { length: 50 }).default(
+      "production_receipt",
+    ),
+    item_id: varchar("item_id", { length: 100 }),
+    quantity: decimal("quantity", { precision: 15, scale: 3 }).default("0"),
+    unit: varchar("unit", { length: 50 }).default("كيلو"),
+    barcode: varchar("barcode", { length: 100 }),
+    batch_number: varchar("batch_number", { length: 100 }),
+    customer_id: varchar("customer_id", { length: 100 }),
+    production_order_id: integer("production_order_id"),
+    weight_kg: decimal("weight_kg", { precision: 15, scale: 3 }),
+    pieces_count: integer("pieces_count"),
+    from_production_line: varchar("from_production_line", { length: 100 }),
+    delivered_by: varchar("delivered_by", { length: 255 }),
+    location_id: integer("location_id"),
+    notes: text("notes"),
+    items: text("items"),
+    // 📦 وحدة التعبئة المختارة عند الاستلام (اختيارية للتوافق مع السجلات القديمة)
+    // Selected packaging unit at receipt time (nullable for backward compatibility).
+    // When present, units_count holds how many packages of this unit were received.
+    // The kg-quantity in `quantity` / `weight_kg` remains the source of truth for inventory.
+    packaging_unit_id: integer("packaging_unit_id").references(
+      () => packaging_units.id,
+    ),
+    units_count: decimal("units_count", { precision: 12, scale: 3 }),
+    status: varchar("status", { length: 50 }).default("completed"),
+    created_by: integer("created_by"),
+    created_at: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+  },
+);
+
+// 📋 جدول سندات إخراج المواد التامة (تسليم للعملاء)
+export const finished_goods_vouchers_out = pgTable(
+  "finished_goods_vouchers_out",
+  {
+    id: serial("id").primaryKey(),
+    voucher_number: varchar("voucher_number", { length: 50 })
+      .notNull()
+      .unique(),
+    voucher_date: timestamp("voucher_date").default(sql`CURRENT_TIMESTAMP`),
+    delivery_time: timestamp("delivery_time").default(sql`CURRENT_TIMESTAMP`),
+    voucher_type: varchar("voucher_type", { length: 50 }).default(
+      "customer_delivery",
+    ),
+    item_id: varchar("item_id", { length: 100 }),
+    quantity: decimal("quantity", { precision: 15, scale: 3 }).default("0"),
+    unit: varchar("unit", { length: 50 }).default("كيلو"),
+    barcode: varchar("barcode", { length: 100 }),
+    batch_number: varchar("batch_number", { length: 100 }),
+    customer_id: varchar("customer_id", { length: 100 }),
+    production_order_id: integer("production_order_id"),
+    driver_name: varchar("driver_name", { length: 255 }),
+    driver_phone: varchar("driver_phone", { length: 50 }),
+    vehicle_number: varchar("vehicle_number", { length: 100 }),
+    delivery_address: text("delivery_address"),
+    weight_kg: decimal("weight_kg", { precision: 15, scale: 3 }),
+    pieces_count: integer("pieces_count"),
+    location_id: integer("location_id"),
+    notes: text("notes"),
+    items: text("items"),
+    status: varchar("status", { length: 50 }).default("completed"),
+    created_by: integer("created_by"),
+    created_at: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+  },
+);
+
+// 📋 جدول سندات إدخال المخلفات الصناعية (TM-Rec)
+// المخلفات المهيئة للاتلاف تُدخل لحين إخراجها لإحدى الشركات المختصة
+export const industrial_waste_vouchers_in = pgTable(
+  "industrial_waste_vouchers_in",
+  {
+    id: serial("id").primaryKey(),
+    voucher_number: varchar("voucher_number", { length: 50 })
+      .notNull()
+      .unique(), // رقم السند التسلسلي TM-Rec.0001
+    waste_type: varchar("waste_type", { length: 200 }).notNull(), // نوع المخلفات
+    quantity: decimal("quantity", { precision: 12, scale: 3 }).notNull(), // الكمية
+    unit: varchar("unit", { length: 20 }).notNull().default("كيلو"), // الوحدة
+    source: varchar("source", { length: 200 }), // مصدر المخلفات (القسم / خط الإنتاج)
+    notes: text("notes"), // ملاحظات
+    received_by: integer("received_by")
+      .notNull()
+      .references(() => users.id), // أمين المستودع المستلم
+    voucher_date: date("voucher_date")
+      .notNull()
+      .default(sql`CURRENT_DATE`), // تاريخ السند
+    status: varchar("status", { length: 20 }).notNull().default("completed"), // draft / completed / cancelled
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+);
+
+// 📋 جدول سندات إخراج المخلفات الصناعية (TM-Del)
+// إخراج المخلفات المهيئة للاتلاف لإحدى الشركات المختصة
+export const industrial_waste_vouchers_out = pgTable(
+  "industrial_waste_vouchers_out",
+  {
+    id: serial("id").primaryKey(),
+    voucher_number: varchar("voucher_number", { length: 50 })
+      .notNull()
+      .unique(), // رقم السند التسلسلي TM-Del.0001
+    waste_type: varchar("waste_type", { length: 200 }).notNull(), // نوع المخلفات
+    quantity: decimal("quantity", { precision: 12, scale: 3 }).notNull(), // الكمية
+    unit: varchar("unit", { length: 20 }).notNull().default("كيلو"), // الوحدة
+    company_name: varchar("company_name", { length: 200 }).notNull(), // الشركة المختصة المستلمة
+    driver_name: varchar("driver_name", { length: 200 }), // اسم السائق
+    vehicle_number: varchar("vehicle_number", { length: 100 }), // رقم المركبة
+    notes: text("notes"), // ملاحظات
+    issued_by: integer("issued_by")
+      .notNull()
+      .references(() => users.id), // أمين المستودع المصدر
+    voucher_date: date("voucher_date")
+      .notNull()
+      .default(sql`CURRENT_DATE`), // تاريخ السند
+    status: varchar("status", { length: 20 }).notNull().default("completed"), // draft / completed / cancelled
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+);
+
+// 📋 جدول الجرد
+export const inventory_counts = pgTable("inventory_counts", {
+  id: serial("id").primaryKey(),
+  count_number: varchar("count_number", { length: 50 }).notNull().unique(), // رقم الجرد IC-001
+  count_type: varchar("count_type", { length: 30 })
+    .notNull()
+    .default("periodic"), // opening / periodic / annual / spot_check
+  count_date: date("count_date")
+    .notNull()
+    .default(sql`CURRENT_DATE`), // تاريخ الجرد
+  location_id: varchar("location_id", { length: 20 }).references(
+    () => locations.id,
+  ), // موقع الجرد
+  status: varchar("status", { length: 20 }).notNull().default("in_progress"), // draft / in_progress / completed / approved
+  notes: text("notes"), // ملاحظات
+  counted_by: integer("counted_by")
+    .notNull()
+    .references(() => users.id), // من قام بالجرد
+  approved_by: integer("approved_by").references(() => users.id), // من وافق على الجرد
+  approved_at: timestamp("approved_at"), // تاريخ الموافقة
+  total_items_counted: integer("total_items_counted").default(0), // عدد الأصناف المجرودة
+  total_discrepancies: integer("total_discrepancies").default(0), // عدد الفروقات
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+// 📋 جدول تفاصيل الجرد
+export const inventory_count_items = pgTable("inventory_count_items", {
+  id: serial("id").primaryKey(),
+  count_id: integer("count_id")
+    .notNull()
+    .references(() => inventory_counts.id, { onDelete: "cascade" }), // رقم الجرد
+  item_id: varchar("item_id", { length: 20 })
+    .notNull()
+    .references(() => items.id), // الصنف
+  barcode: varchar("barcode", { length: 100 }), // الباركود الممسوح
+  system_quantity: decimal("system_quantity", {
+    precision: 12,
+    scale: 3,
+  }).notNull(), // الكمية في النظام
+  counted_quantity: decimal("counted_quantity", {
+    precision: 12,
+    scale: 3,
+  }).notNull(), // الكمية المجرودة
+  difference: decimal("difference", { precision: 12, scale: 3 }).notNull(), // الفرق
+  unit: varchar("unit", { length: 20 }).notNull().default("كيلو"), // الوحدة
+  location_id: varchar("location_id", { length: 20 }).references(
+    () => locations.id,
+  ), // الموقع
+  notes: text("notes"), // ملاحظات
+  adjustment_created: boolean("adjustment_created").default(false), // هل تم إنشاء تسوية؟
+  counted_at: timestamp("counted_at").defaultNow(), // وقت الجرد
+});
+
+// ===== مخططات التحقق للسندات =====
+
+export const insertRawMaterialVoucherInSchema = createInsertSchema(
+  raw_material_vouchers_in,
+)
+  .omit({
+    id: true,
+    created_at: true,
+    updated_at: true,
+  })
+  .extend({
+    quantity: z
+      .string()
+      .refine(
+        (val) => parseFloatSafe(val) > 0,
+        "الكمية يجب أن تكون أكبر من صفر",
+      ),
+  });
+
+export const insertRawMaterialVoucherOutSchema = createInsertSchema(
+  raw_material_vouchers_out,
+)
+  .omit({
+    id: true,
+    created_at: true,
+    updated_at: true,
+  })
+  .extend({
+    quantity: z
+      .string()
+      .refine(
+        (val) => parseFloatSafe(val) > 0,
+        "الكمية يجب أن تكون أكبر من صفر",
+      ),
+  });
+
+export const insertFinishedGoodsVoucherInSchema = createInsertSchema(
+  finished_goods_vouchers_in,
+)
+  .omit({
+    id: true,
+    created_at: true,
+  })
+  .extend({
+    quantity: z
+      .string()
+      .refine(
+        (val) => parseFloatSafe(val) > 0,
+        "الكمية يجب أن تكون أكبر من صفر",
+      ),
+  });
+
+export const insertFinishedGoodsVoucherOutSchema = createInsertSchema(
+  finished_goods_vouchers_out,
+)
+  .omit({
+    id: true,
+    created_at: true,
+  })
+  .extend({
+    quantity: z
+      .string()
+      .refine(
+        (val) => parseFloatSafe(val) > 0,
+        "الكمية يجب أن تكون أكبر من صفر",
+      ),
+  });
+
+export const insertIndustrialWasteVoucherInSchema = createInsertSchema(
+  industrial_waste_vouchers_in,
+)
+  .omit({
+    id: true,
+    created_at: true,
+    updated_at: true,
+  })
+  .extend({
+    quantity: z
+      .string()
+      .refine(
+        (val) => parseFloatSafe(val) > 0,
+        "الكمية يجب أن تكون أكبر من صفر",
+      ),
+  });
+
+export const insertIndustrialWasteVoucherOutSchema = createInsertSchema(
+  industrial_waste_vouchers_out,
+)
+  .omit({
+    id: true,
+    created_at: true,
+    updated_at: true,
+  })
+  .extend({
+    quantity: z
+      .string()
+      .refine(
+        (val) => parseFloatSafe(val) > 0,
+        "الكمية يجب أن تكون أكبر من صفر",
+      ),
+  });
+
+export const updateIndustrialWasteVoucherInSchema =
+  insertIndustrialWasteVoucherInSchema
+    .omit({ voucher_number: true, received_by: true })
+    .partial();
+
+export const updateIndustrialWasteVoucherOutSchema =
+  insertIndustrialWasteVoucherOutSchema
+    .omit({ voucher_number: true, issued_by: true })
+    .partial();
+
+export const insertInventoryCountSchema = createInsertSchema(
+  inventory_counts,
+).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const insertInventoryCountItemSchema = createInsertSchema(
+  inventory_count_items,
+).omit({
+  id: true,
+  counted_at: true,
+});
+
+// ===== أنواع TypeScript للسندات =====
+
+export type RawMaterialVoucherIn = typeof raw_material_vouchers_in.$inferSelect;
+export type InsertRawMaterialVoucherIn = z.infer<
+  typeof insertRawMaterialVoucherInSchema
+>;
+export type RawMaterialVoucherOut =
+  typeof raw_material_vouchers_out.$inferSelect;
+export type InsertRawMaterialVoucherOut = z.infer<
+  typeof insertRawMaterialVoucherOutSchema
+>;
+export type FinishedGoodsVoucherIn =
+  typeof finished_goods_vouchers_in.$inferSelect;
+export type InsertFinishedGoodsVoucherIn = z.infer<
+  typeof insertFinishedGoodsVoucherInSchema
+>;
+export type FinishedGoodsVoucherOut =
+  typeof finished_goods_vouchers_out.$inferSelect;
+export type InsertFinishedGoodsVoucherOut = z.infer<
+  typeof insertFinishedGoodsVoucherOutSchema
+>;
+export type IndustrialWasteVoucherIn =
+  typeof industrial_waste_vouchers_in.$inferSelect;
+export type InsertIndustrialWasteVoucherIn = z.infer<
+  typeof insertIndustrialWasteVoucherInSchema
+>;
+export type IndustrialWasteVoucherOut =
+  typeof industrial_waste_vouchers_out.$inferSelect;
+export type InsertIndustrialWasteVoucherOut = z.infer<
+  typeof insertIndustrialWasteVoucherOutSchema
+>;
+export type InventoryCount = typeof inventory_counts.$inferSelect;
+export type InsertInventoryCount = z.infer<typeof insertInventoryCountSchema>;
+export type InventoryCountItem = typeof inventory_count_items.$inferSelect;
+export type InsertInventoryCountItem = z.infer<
+  typeof insertInventoryCountItemSchema
+>;
+
+// ===== علاقات السندات =====
+
+export const rawMaterialVouchersInRelations = relations(
+  raw_material_vouchers_in,
+  ({ one }) => ({
+    supplier: one(suppliers, {
+      fields: [raw_material_vouchers_in.supplier_id],
+      references: [suppliers.id],
+    }),
+    item: one(items, {
+      fields: [raw_material_vouchers_in.item_id],
+      references: [items.id],
+    }),
+    location: one(locations, {
+      fields: [raw_material_vouchers_in.location_id],
+      references: [locations.id],
+    }),
+    receivedByUser: one(users, {
+      fields: [raw_material_vouchers_in.received_by],
+      references: [users.id],
+    }),
+  }),
+);
+
+export const rawMaterialVouchersOutRelations = relations(
+  raw_material_vouchers_out,
+  ({ one }) => ({
+    productionOrder: one(production_orders, {
+      fields: [raw_material_vouchers_out.production_order_id],
+      references: [production_orders.id],
+    }),
+    item: one(items, {
+      fields: [raw_material_vouchers_out.item_id],
+      references: [items.id],
+    }),
+    fromLocation: one(locations, {
+      fields: [raw_material_vouchers_out.from_location_id],
+      references: [locations.id],
+    }),
+    issuedByUser: one(users, {
+      fields: [raw_material_vouchers_out.issued_by],
+      references: [users.id],
+    }),
+  }),
+);
+
+export const finishedGoodsVouchersInRelations = relations(
+  finished_goods_vouchers_in,
+  ({ one }) => ({
+    productionOrder: one(production_orders, {
+      fields: [finished_goods_vouchers_in.production_order_id],
+      references: [production_orders.id],
+    }),
+    customer: one(customers, {
+      fields: [finished_goods_vouchers_in.customer_id],
+      references: [customers.id],
+    }),
+    packagingUnit: one(packaging_units, {
+      fields: [finished_goods_vouchers_in.packaging_unit_id],
+      references: [packaging_units.id],
+    }),
+  }),
+);
+
+export const packagingUnitsRelations = relations(
+  packaging_units,
+  ({ one }) => ({
+    item: one(items, {
+      fields: [packaging_units.item_id],
+      references: [items.id],
+    }),
+  }),
+);
+
+export const finishedGoodsVouchersOutRelations = relations(
+  finished_goods_vouchers_out,
+  ({ one }) => ({
+    customer: one(customers, {
+      fields: [finished_goods_vouchers_out.customer_id],
+      references: [customers.id],
+    }),
+  }),
+);
+
+export const inventoryCountsRelations = relations(
+  inventory_counts,
+  ({ one, many }) => ({
+    location: one(locations, {
+      fields: [inventory_counts.location_id],
+      references: [locations.id],
+    }),
+    countedByUser: one(users, {
+      fields: [inventory_counts.counted_by],
+      references: [users.id],
+    }),
+    approvedByUser: one(users, {
+      fields: [inventory_counts.approved_by],
+      references: [users.id],
+    }),
+    items: many(inventory_count_items),
+  }),
+);
+
+export const inventoryCountItemsRelations = relations(
+  inventory_count_items,
+  ({ one }) => ({
+    count: one(inventory_counts, {
+      fields: [inventory_count_items.count_id],
+      references: [inventory_counts.id],
+    }),
+    item: one(items, {
+      fields: [inventory_count_items.item_id],
+      references: [items.id],
+    }),
+    location: one(locations, {
+      fields: [inventory_count_items.location_id],
+      references: [locations.id],
+    }),
+  }),
+);
+
+export const factory_layouts = pgTable("factory_layouts", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).default("default"),
+  layout_data: jsonb("layout_data").notNull(),
+  updated_at: timestamp("updated_at").defaultNow(),
+  updated_by: integer("updated_by"),
+});
+
+export type FactoryLayout = typeof factory_layouts.$inferSelect;
+
+export const factory_snapshots = pgTable("factory_snapshots", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  comment: text("comment"),
+  layout_data: jsonb("layout_data").notNull(),
+  share_token: varchar("share_token", { length: 64 }).unique(),
+  created_by: integer("created_by"),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+export const insertFactorySnapshotSchema = createInsertSchema(
+  factory_snapshots,
+).omit({ id: true, created_at: true });
+export type InsertFactorySnapshot = z.infer<typeof insertFactorySnapshotSchema>;
+export type FactorySnapshot = typeof factory_snapshots.$inferSelect;
+
+export const display_slides = pgTable("display_slides", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 200 }).notNull(),
+  slide_type: varchar("slide_type", { length: 50 }).notNull(),
+  content: jsonb("content"),
+  duration_seconds: integer("duration_seconds").default(10),
+  sort_order: integer("sort_order").default(0),
+  is_active: boolean("is_active").default(true),
+  created_by: integer("created_by"),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+export const insertDisplaySlideSchema = createInsertSchema(display_slides).omit(
+  { id: true, created_at: true, updated_at: true },
+);
+export type InsertDisplaySlide = z.infer<typeof insertDisplaySlideSchema>;
+export type DisplaySlide = typeof display_slides.$inferSelect;
+
+export const quality_issues = pgTable("quality_issues", {
+  id: serial("id").primaryKey(),
+  issue_number: varchar("issue_number", { length: 50 }).notNull().unique(),
+  source: varchar("source", { length: 30 }).notNull(),
+  severity: varchar("severity", { length: 20 }).notNull().default("medium"),
+  status: varchar("status", { length: 20 }).notNull().default("open"),
+  category: varchar("category", { length: 50 }).notNull(),
+  stage: varchar("stage", { length: 30 }),
+  production_order_id: integer("production_order_id").references(
+    () => production_orders.id,
+  ),
+  order_id: integer("order_id").references(() => orders.id),
+  roll_id: integer("roll_id").references(() => rolls.id),
+  customer_id: varchar("customer_id", { length: 20 }).references(
+    () => customers.id,
+  ),
+  description: text("description").notNull(),
+  customer_complaint_details: text("customer_complaint_details"),
+  customer_action_taken: text("customer_action_taken"),
+  root_cause: text("root_cause"),
+  corrective_action: text("corrective_action"),
+  preventive_action: text("preventive_action"),
+  estimated_loss: varchar("estimated_loss", { length: 50 }),
+  loss_details: text("loss_details"),
+  detected_by: integer("detected_by").references(() => users.id),
+  resolved_by: integer("resolved_by").references(() => users.id),
+  detected_at: timestamp("detected_at").defaultNow(),
+  resolved_at: timestamp("resolved_at"),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+export const quality_issue_responsibles = pgTable(
+  "quality_issue_responsibles",
+  {
+    id: serial("id").primaryKey(),
+    quality_issue_id: integer("quality_issue_id")
+      .notNull()
+      .references(() => quality_issues.id, { onDelete: "cascade" }),
+    user_id: integer("user_id")
+      .notNull()
+      .references(() => users.id),
+    department: varchar("department", { length: 30 }).notNull(),
+    responsibility_type: varchar("responsibility_type", { length: 20 })
+      .notNull()
+      .default("primary"),
+    action_taken: text("action_taken"),
+    penalty_type: varchar("penalty_type", { length: 30 }),
+    deduction_amount: varchar("deduction_amount", { length: 50 }),
+    notes: text("notes"),
+    created_at: timestamp("created_at").defaultNow(),
+  },
+);
+
+export const quality_issue_actions = pgTable("quality_issue_actions", {
+  id: serial("id").primaryKey(),
+  quality_issue_id: integer("quality_issue_id")
+    .notNull()
+    .references(() => quality_issues.id, { onDelete: "cascade" }),
+  action_type: varchar("action_type", { length: 30 }).notNull(),
+  description: text("description").notNull(),
+  performed_by: integer("performed_by").references(() => users.id),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  due_date: timestamp("due_date"),
+  completed_at: timestamp("completed_at"),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+export const insertQualityIssueSchema = createInsertSchema(quality_issues).omit(
+  { id: true, created_at: true, updated_at: true },
+);
+export type InsertQualityIssue = z.infer<typeof insertQualityIssueSchema>;
+export type QualityIssue = typeof quality_issues.$inferSelect;
+
+export const insertQualityIssueResponsibleSchema = createInsertSchema(
+  quality_issue_responsibles,
+).omit({ id: true, created_at: true });
+export type InsertQualityIssueResponsible = z.infer<
+  typeof insertQualityIssueResponsibleSchema
+>;
+export type QualityIssueResponsible =
+  typeof quality_issue_responsibles.$inferSelect;
+
+export const insertQualityIssueActionSchema = createInsertSchema(
+  quality_issue_actions,
+).omit({ id: true, created_at: true });
+export type InsertQualityIssueAction = z.infer<
+  typeof insertQualityIssueActionSchema
+>;
+export type QualityIssueAction = typeof quality_issue_actions.$inferSelect;
+
+export const face_registrations = pgTable("face_registrations", {
+  id: serial("id").primaryKey(),
+  user_id: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" })
+    .unique(),
+  face_hash: text("face_hash").notNull(),
+  registered_at: timestamp("registered_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+export type FaceRegistration = typeof face_registrations.$inferSelect;
+
+export const mobile_device_tokens = pgTable("mobile_device_tokens", {
+  id: serial("id").primaryKey(),
+  user_id: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  device_token: varchar("device_token", { length: 500 }).notNull(),
+  platform: varchar("platform", { length: 20 }).notNull(),
+  device_id: varchar("device_id", { length: 255 }),
+  device_name: varchar("device_name", { length: 200 }),
+  app_version: varchar("app_version", { length: 20 }),
+  is_active: boolean("is_active").default(true),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+export type MobileDeviceToken = typeof mobile_device_tokens.$inferSelect;
+
+export const mobile_sessions = pgTable("mobile_sessions", {
+  id: serial("id").primaryKey(),
+  user_id: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  token: varchar("token", { length: 128 }).notNull().unique(),
+  refresh_token: varchar("refresh_token", { length: 128 }).notNull().unique(),
+  device_id: varchar("device_id", { length: 255 }),
+  device_name: varchar("device_name", { length: 200 }),
+  platform: varchar("platform", { length: 20 }),
+  app_version: varchar("app_version", { length: 20 }),
+  ip_address: varchar("ip_address", { length: 45 }),
+  last_active_at: timestamp("last_active_at").defaultNow(),
+  expires_at: timestamp("expires_at").notNull(),
+  refresh_expires_at: timestamp("refresh_expires_at").notNull(),
+  is_active: boolean("is_active").default(true),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+export type MobileSession = typeof mobile_sessions.$inferSelect;
+
+export const mobile_sync_queue = pgTable("mobile_sync_queue", {
+  id: serial("id").primaryKey(),
+  user_id: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  action_type: varchar("action_type", { length: 50 }).notNull(),
+  entity_type: varchar("entity_type", { length: 50 }).notNull(),
+  entity_data: jsonb("entity_data").notNull(),
+  client_timestamp: timestamp("client_timestamp").notNull(),
+  server_timestamp: timestamp("server_timestamp").defaultNow(),
+  status: varchar("status", { length: 20 }).default("pending"),
+  error_message: text("error_message"),
+  resolved_at: timestamp("resolved_at"),
+});
+
+export const mcp_api_keys = pgTable("mcp_api_keys", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  key_hash: varchar("key_hash", { length: 128 }).notNull(),
+  key_prefix: varchar("key_prefix", { length: 12 }).notNull(),
+  created_by: integer("created_by")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  is_active: boolean("is_active").default(true),
+  last_used_at: timestamp("last_used_at"),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+export type McpApiKey = typeof mcp_api_keys.$inferSelect;
+export type InsertMcpApiKey = typeof mcp_api_keys.$inferInsert;
+export const insertMcpApiKeySchema = createInsertSchema(mcp_api_keys).omit({
+  id: true,
+  created_at: true,
+  last_used_at: true,
+});
+
+export const mcp_oauth_tokens = pgTable("mcp_oauth_tokens", {
+  id: serial("id").primaryKey(),
+  access_token_hash: varchar("access_token_hash", { length: 128 }).notNull(),
+  refresh_token_hash: varchar("refresh_token_hash", { length: 128 }),
+  api_key_hash: varchar("api_key_hash", { length: 128 }).notNull(),
+  client_id: varchar("client_id", { length: 100 }),
+  scope: varchar("scope", { length: 100 }).default("mcp:read"),
+  access_token_expires_at: timestamp("access_token_expires_at").notNull(),
+  refresh_token_expires_at: timestamp("refresh_token_expires_at"),
+  created_at: timestamp("created_at").defaultNow(),
+  revoked: boolean("revoked").default(false),
+});
+
+export const mcp_oauth_clients = pgTable("mcp_oauth_clients", {
+  id: serial("id").primaryKey(),
+  client_id: varchar("client_id", { length: 100 }).notNull().unique(),
+  client_secret_hash: varchar("client_secret_hash", { length: 128 }).notNull(),
+  client_name: varchar("client_name", { length: 200 }).default("MCP Client"),
+  redirect_uris: json("redirect_uris").$type<string[]>().notNull(),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+export const experimental_blends = pgTable("experimental_blends", {
+  id: serial("id").primaryKey(),
+  blend_number: varchar("blend_number", { length: 50 }).notNull(),
+  machine_id: varchar("machine_id", { length: 20 })
+    .notNull()
+    .references(() => machines.id),
+  screw_type: varchar("screw_type", { length: 10 }).notNull().default("A"),
+  notes: text("notes"),
+  motor_speed_a: decimal("motor_speed_a", { precision: 8, scale: 2 }),
+  heater1_a: decimal("heater1_a", { precision: 8, scale: 2 }),
+  heater2_a: decimal("heater2_a", { precision: 8, scale: 2 }),
+  heater3_a: decimal("heater3_a", { precision: 8, scale: 2 }),
+  motor_speed_b: decimal("motor_speed_b", { precision: 8, scale: 2 }),
+  heater1_b: decimal("heater1_b", { precision: 8, scale: 2 }),
+  heater2_b: decimal("heater2_b", { precision: 8, scale: 2 }),
+  heater3_b: decimal("heater3_b", { precision: 8, scale: 2 }),
+  heater_filter: decimal("heater_filter", { precision: 8, scale: 2 }),
+  heater_mold: decimal("heater_mold", { precision: 8, scale: 2 }),
+  heater_mold_head: decimal("heater_mold_head", { precision: 8, scale: 2 }),
+  film_size_cm: decimal("film_size_cm", { precision: 8, scale: 2 }),
+  thickness_u: decimal("thickness_u", { precision: 8, scale: 2 }),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const experimental_blend_items = pgTable("experimental_blend_items", {
+  id: serial("id").primaryKey(),
+  blend_id: integer("blend_id")
+    .notNull()
+    .references(() => experimental_blends.id, { onDelete: "cascade" }),
+  screw: varchar("screw", { length: 5 }).notNull().default("A"),
+  material_type: varchar("material_type", { length: 50 }).notNull(),
+  quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(),
+  percentage: decimal("percentage", { precision: 5, scale: 2 }),
+});
+
+export const experimentalBlendsRelations = relations(
+  experimental_blends,
+  ({ many }) => ({
+    items: many(experimental_blend_items),
+  }),
+);
+
+export const experimentalBlendItemsRelations = relations(
+  experimental_blend_items,
+  ({ one }) => ({
+    blend: one(experimental_blends, {
+      fields: [experimental_blend_items.blend_id],
+      references: [experimental_blends.id],
+    }),
+  }),
+);
+
+export type ExperimentalBlend = typeof experimental_blends.$inferSelect;
+export type InsertExperimentalBlend = typeof experimental_blends.$inferInsert;
+export type ExperimentalBlendItem =
+  typeof experimental_blend_items.$inferSelect;
+export type InsertExperimentalBlendItem =
+  typeof experimental_blend_items.$inferInsert;
+export const insertExperimentalBlendSchema = createInsertSchema(
+  experimental_blends,
+).omit({ id: true, created_at: true });
+export const insertExperimentalBlendItemSchema = createInsertSchema(
+  experimental_blend_items,
+).omit({ id: true });
+
+// 🧮 سجلات حاسبة وزن الكيس
+export const bag_weight_records = pgTable(
+  "bag_weight_records",
+  {
+    id: serial("id").primaryKey(),
+    user_id: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    bag_type: varchar("bag_type", { length: 30 }).notNull(),
+    width_cm: decimal("width_cm", { precision: 8, scale: 2 }).notNull(),
+    length_cm: decimal("length_cm", { precision: 8, scale: 2 }).notNull(),
+    side_gusset_cm: decimal("side_gusset_cm", { precision: 8, scale: 2 })
+      .notNull()
+      .default("0"),
+    thickness_micron: decimal("thickness_micron", {
+      precision: 8,
+      scale: 2,
+    }).notNull(),
+    layers: integer("layers").notNull().default(1),
+    density: decimal("density", { precision: 6, scale: 3 }).notNull(),
+    grams_per_bag: decimal("grams_per_bag", {
+      precision: 12,
+      scale: 4,
+    }).notNull(),
+    bags_per_kg: decimal("bags_per_kg", { precision: 12, scale: 2 }).notNull(),
+    area_m2: decimal("area_m2", { precision: 12, scale: 4 }).notNull(),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("idx_bag_weight_records_user_id").on(table.user_id),
+    index("idx_bag_weight_records_created_at").on(table.created_at),
+  ],
+);
+
+export type BagWeightRecord = typeof bag_weight_records.$inferSelect;
+export type InsertBagWeightRecord = typeof bag_weight_records.$inferInsert;
+export const insertBagWeightRecordSchema = createInsertSchema(
+  bag_weight_records,
+).omit({
+  id: true,
+  user_id: true,
+  created_at: true,
+});
+
+// 🚚 جدول كشوف التوصيل (Admin Tools - Delivery Route Manifests)
+export const delivery_manifests = pgTable("delivery_manifests", {
+  id: serial("id").primaryKey(),
+  reference: varchar("reference", { length: 50 }).notNull(),
+  delivery_date: varchar("delivery_date", { length: 20 }),
+  vehicle_plate: varchar("vehicle_plate", { length: 50 }),
+  driver: varchar("driver", { length: 100 }),
+  driver_phone: varchar("driver_phone", { length: 20 }),
+  stops: jsonb("stops").notNull(),
+  created_by: integer("created_by"),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+export const insertDeliveryManifestSchema = createInsertSchema(
+  delivery_manifests,
+).omit({
+  id: true,
+  created_by: true,
+  created_at: true,
+  updated_at: true,
+});
+export type InsertDeliveryManifest = z.infer<typeof insertDeliveryManifestSchema>;
+export type DeliveryManifest = typeof delivery_manifests.$inferSelect;
+
+// 🗂️ جدول مستندات الأدوات الإدارية (Admin Tools generic documents)
+export const admin_tool_documents = pgTable("admin_tool_documents", {
+  id: serial("id").primaryKey(),
+  doc_type: varchar("doc_type", { length: 50 }).notNull(),
+  reference: varchar("reference", { length: 100 }).notNull(),
+  title: varchar("title", { length: 300 }),
+  data: jsonb("data").notNull(),
+  created_by: integer("created_by"),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+export const insertAdminToolDocumentSchema = createInsertSchema(
+  admin_tool_documents,
+).omit({
+  id: true,
+  created_by: true,
+  created_at: true,
+  updated_at: true,
+});
+export type InsertAdminToolDocument = z.infer<
+  typeof insertAdminToolDocumentSchema
+>;
+export type AdminToolDocument = typeof admin_tool_documents.$inferSelect;
+
+/**
+ * =================================================================
+ * 🤖 MODERN AI AGENT (مودرن) — tables
+ * =================================================================
+ */
+
+// Singleton settings row (id = 1)
+export const modern_agent_settings = pgTable("modern_agent_settings", {
+  id: serial("id").primaryKey(),
+  model: varchar("model", { length: 100 }).notNull().default("gpt-5"),
+  default_language: varchar("default_language", { length: 10 })
+    .notNull()
+    .default("auto"), // ar | en | auto
+  base_persona: text("base_persona"),
+  temperature: decimal("temperature", { precision: 3, scale: 2 })
+    .notNull()
+    .default("0.30"),
+  max_tool_iterations: integer("max_tool_iterations").notNull().default(6),
+  enabled: boolean("enabled").notNull().default(true),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+export const insertModernAgentSettingsSchema = createInsertSchema(
+  modern_agent_settings,
+).omit({ id: true, updated_at: true });
+export type InsertModernAgentSettings = z.infer<
+  typeof insertModernAgentSettingsSchema
+>;
+export type ModernAgentSettings = typeof modern_agent_settings.$inferSelect;
+
+// Task definitions — each defines a capability: allowed tools, guidance, language, limits
+export const modern_agent_tasks = pgTable("modern_agent_tasks", {
+  id: serial("id").primaryKey(),
+  task_key: varchar("task_key", { length: 80 }).notNull().unique(),
+  name_ar: varchar("name_ar", { length: 200 }).notNull(),
+  name_en: varchar("name_en", { length: 200 }).notNull(),
+  description: text("description"),
+  response_guidance: text("response_guidance"),
+  language: varchar("language", { length: 10 }).notNull().default("auto"), // ar | en | auto
+  allowed_tools: text("allowed_tools").array().notNull().default(sql`'{}'::text[]`),
+  is_write: boolean("is_write").notNull().default(false),
+  required_permission: varchar("required_permission", { length: 80 }),
+  max_daily_interactions: integer("max_daily_interactions"),
+  sort_order: integer("sort_order").notNull().default(0),
+  enabled: boolean("enabled").notNull().default(true),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+export const insertModernAgentTaskSchema = createInsertSchema(
+  modern_agent_tasks,
+).omit({ id: true, created_at: true, updated_at: true });
+export type InsertModernAgentTask = z.infer<typeof insertModernAgentTaskSchema>;
+export type ModernAgentTask = typeof modern_agent_tasks.$inferSelect;
+
+// Knowledge base entries — public guidance, factory concepts, and private (never-disclosed) notes
+export const modern_agent_knowledge = pgTable("modern_agent_knowledge", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 300 }).notNull(),
+  content: text("content").notNull(),
+  category: varchar("category", { length: 40 }).notNull().default("general"), // general | factory_concept
+  is_private: boolean("is_private").notNull().default(false),
+  enabled: boolean("enabled").notNull().default(true),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+export const insertModernAgentKnowledgeSchema = createInsertSchema(
+  modern_agent_knowledge,
+).omit({ id: true, created_at: true, updated_at: true });
+export type InsertModernAgentKnowledge = z.infer<
+  typeof insertModernAgentKnowledgeSchema
+>;
+export type ModernAgentKnowledge = typeof modern_agent_knowledge.$inferSelect;
+
+// Per-user agent profile — name preference, notes, free-form preferences
+export const modern_agent_profiles = pgTable("modern_agent_profiles", {
+  id: serial("id").primaryKey(),
+  user_id: integer("user_id")
+    .notNull()
+    .unique()
+    .references(() => users.id),
+  display_name: varchar("display_name", { length: 200 }),
+  notes: text("notes"),
+  preferences: jsonb("preferences"),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+export const insertModernAgentProfileSchema = createInsertSchema(
+  modern_agent_profiles,
+).omit({ id: true, created_at: true, updated_at: true });
+export type InsertModernAgentProfile = z.infer<
+  typeof insertModernAgentProfileSchema
+>;
+export type ModernAgentProfile = typeof modern_agent_profiles.$inferSelect;
+
+// Access control — which users/roles may use the agent (when populated, restricts the allow-list)
+export const modern_agent_access = pgTable("modern_agent_access", {
+  id: serial("id").primaryKey(),
+  user_id: integer("user_id").references(() => users.id),
+  role_id: integer("role_id").references(() => roles.id),
+  enabled: boolean("enabled").notNull().default(true),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+export const insertModernAgentAccessSchema = createInsertSchema(
+  modern_agent_access,
+).omit({ id: true, created_at: true });
+export type InsertModernAgentAccess = z.infer<
+  typeof insertModernAgentAccessSchema
+>;
+export type ModernAgentAccess = typeof modern_agent_access.$inferSelect;
+
+// Conversations
+export const modern_agent_conversations = pgTable(
+  "modern_agent_conversations",
+  {
+    id: serial("id").primaryKey(),
+    user_id: integer("user_id")
+      .notNull()
+      .references(() => users.id),
+    title: varchar("title", { length: 300 }),
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [index("idx_modern_agent_conv_user").on(table.user_id)],
+);
+
+export const insertModernAgentConversationSchema = createInsertSchema(
+  modern_agent_conversations,
+).omit({ id: true, created_at: true, updated_at: true });
+export type InsertModernAgentConversation = z.infer<
+  typeof insertModernAgentConversationSchema
+>;
+export type ModernAgentConversation =
+  typeof modern_agent_conversations.$inferSelect;
+
+// Messages
+export const modern_agent_messages = pgTable(
+  "modern_agent_messages",
+  {
+    id: serial("id").primaryKey(),
+    conversation_id: integer("conversation_id")
+      .notNull()
+      .references(() => modern_agent_conversations.id),
+    role: varchar("role", { length: 20 }).notNull(), // user | assistant
+    content: text("content").notNull().default(""),
+    metadata: jsonb("metadata"), // documents, tool summaries, etc.
+    created_at: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_modern_agent_msg_conv").on(table.conversation_id),
+  ],
+);
+
+export const insertModernAgentMessageSchema = createInsertSchema(
+  modern_agent_messages,
+).omit({ id: true, created_at: true });
+export type InsertModernAgentMessage = z.infer<
+  typeof insertModernAgentMessageSchema
+>;
+export type ModernAgentMessage = typeof modern_agent_messages.$inferSelect;
+
+// Per-task daily usage counter
+export const modern_agent_usage = pgTable(
+  "modern_agent_usage",
+  {
+    id: serial("id").primaryKey(),
+    user_id: integer("user_id")
+      .notNull()
+      .references(() => users.id),
+    task_key: varchar("task_key", { length: 80 }).notNull(),
+    usage_date: date("usage_date").notNull(),
+    count: integer("count").notNull().default(0),
+  },
+  (table) => [
+    uniqueIndex("uq_modern_agent_usage").on(
+      table.user_id,
+      table.task_key,
+      table.usage_date,
+    ),
+  ],
+);
+
+export const insertModernAgentUsageSchema = createInsertSchema(
+  modern_agent_usage,
+).omit({ id: true });
+export type InsertModernAgentUsage = z.infer<
+  typeof insertModernAgentUsageSchema
+>;
+export type ModernAgentUsage = typeof modern_agent_usage.$inferSelect;
+
+// ════════════════════════════════════════════════════════════════════════
+// 🛠️ مهندس الصيانة الذكي - Smart Maintenance Engineer (read-only AI agent)
+// A dedicated AI agent specialized in plastic-bag extruders, flexographic
+// printers, and bag cutters. Distinct from the general "Modern" agent.
+// ════════════════════════════════════════════════════════════════════════
+
+// 📚 قاعدة معرفة مهندس الصيانة (كتالوجات/أدلة يتم تغذيتها بالملفات)
+// Knowledge base fed via file upload (PDF/Word/text) with extracted content.
+export const maintenance_engineer_knowledge = pgTable(
+  "maintenance_engineer_knowledge",
+  {
+    id: serial("id").primaryKey(),
+    title: varchar("title", { length: 300 }).notNull(),
+    content: text("content").notNull(), // extracted text content
+    machine_category: varchar("machine_category", { length: 20 })
+      .notNull()
+      .default("general"), // extruder / printer / cutter / general
+    source_type: varchar("source_type", { length: 20 })
+      .notNull()
+      .default("manual"), // upload / manual
+    file_name: varchar("file_name", { length: 300 }),
+    enabled: boolean("enabled").notNull().default(true),
+    created_by: integer("created_by").references(() => users.id),
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_maint_eng_knowledge_category").on(table.machine_category),
+  ],
+);
+
+export const insertMaintenanceEngineerKnowledgeSchema = createInsertSchema(
+  maintenance_engineer_knowledge,
+).omit({ id: true, created_at: true, updated_at: true });
+export type InsertMaintenanceEngineerKnowledge = z.infer<
+  typeof insertMaintenanceEngineerKnowledgeSchema
+>;
+export type MaintenanceEngineerKnowledge =
+  typeof maintenance_engineer_knowledge.$inferSelect;
+
+// 💬 محادثات مهندس الصيانة الذكي - Maintenance engineer conversations
+export const maintenance_engineer_conversations = pgTable(
+  "maintenance_engineer_conversations",
+  {
+    id: serial("id").primaryKey(),
+    user_id: integer("user_id")
+      .notNull()
+      .references(() => users.id),
+    title: varchar("title", { length: 300 }),
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [index("idx_maint_eng_conv_user").on(table.user_id)],
+);
+
+export const insertMaintenanceEngineerConversationSchema = createInsertSchema(
+  maintenance_engineer_conversations,
+).omit({ id: true, created_at: true, updated_at: true });
+export type InsertMaintenanceEngineerConversation = z.infer<
+  typeof insertMaintenanceEngineerConversationSchema
+>;
+export type MaintenanceEngineerConversation =
+  typeof maintenance_engineer_conversations.$inferSelect;
+
+// 🗨️ رسائل مهندس الصيانة الذكي - Maintenance engineer messages
+export const maintenance_engineer_messages = pgTable(
+  "maintenance_engineer_messages",
+  {
+    id: serial("id").primaryKey(),
+    conversation_id: integer("conversation_id")
+      .notNull()
+      .references(() => maintenance_engineer_conversations.id, {
+        onDelete: "cascade",
+      }),
+    role: varchar("role", { length: 20 }).notNull(), // user / assistant
+    content: text("content").notNull().default(""),
+    metadata: jsonb("metadata"),
+    created_at: timestamp("created_at").defaultNow(),
+  },
+  (table) => [index("idx_maint_eng_msg_conv").on(table.conversation_id)],
+);
+
+export const insertMaintenanceEngineerMessageSchema = createInsertSchema(
+  maintenance_engineer_messages,
+).omit({ id: true, created_at: true });
+export type InsertMaintenanceEngineerMessage = z.infer<
+  typeof insertMaintenanceEngineerMessageSchema
+>;
+export type MaintenanceEngineerMessage =
+  typeof maintenance_engineer_messages.$inferSelect;
+
+// 📝 سجل تغييرات الماكينة (ملاحظات حرة) - Free-form machine change log
+// Records ad-hoc changes/modifications made to a machine so the engineer can
+// factor them into diagnosis. Auxiliary notes, NOT production maintenance records.
+export const machine_change_log = pgTable(
+  "machine_change_log",
+  {
+    id: serial("id").primaryKey(),
+    machine_id: varchar("machine_id", { length: 20 })
+      .notNull()
+      .references(() => machines.id),
+    note: text("note").notNull(),
+    changed_by: integer("changed_by").references(() => users.id),
+    created_at: timestamp("created_at").defaultNow(),
+  },
+  (table) => [index("idx_machine_change_log_machine").on(table.machine_id)],
+);
+
+export const insertMachineChangeLogSchema = createInsertSchema(
+  machine_change_log,
+).omit({ id: true, created_at: true });
+export type InsertMachineChangeLog = z.infer<
+  typeof insertMachineChangeLogSchema
+>;
+export type MachineChangeLog = typeof machine_change_log.$inferSelect;
+
+// 📝 سجل تعديلات الرولات — يتتبع من قام بتعديل ماكينة الرول أو نقله لمنتج/أمر إنتاج آخر.
+// Roll edit audit log: records every manager correction to a roll (machine change
+// or product/production-order reassignment) so we always know who changed what.
+// `*_label` columns store the human-readable value (machine name / PO number) so the
+// history is readable without re-joining tables that may change later.
+export const roll_edit_logs = pgTable(
+  "roll_edit_logs",
+  {
+    id: serial("id").primaryKey(),
+    roll_id: integer("roll_id")
+      .notNull()
+      .references(() => rolls.id, { onDelete: "cascade" }),
+    field: varchar("field", { length: 40 }).notNull(), // film_machine_id | printing_machine_id | cutting_machine_id | production_order_id | roll_number
+    old_value: text("old_value"),
+    new_value: text("new_value"),
+    old_label: text("old_label"),
+    new_label: text("new_label"),
+    note: text("note"),
+    changed_by: integer("changed_by").references(() => users.id),
+    created_at: timestamp("created_at").defaultNow(),
+  },
+  (table) => [index("idx_roll_edit_logs_roll").on(table.roll_id)],
+);
+
+export const insertRollEditLogSchema = createInsertSchema(roll_edit_logs).omit({
+  id: true,
+  created_at: true,
+});
+export type InsertRollEditLog = z.infer<typeof insertRollEditLogSchema>;
+export type RollEditLog = typeof roll_edit_logs.$inferSelect;
+
+// 🔌 جدول اتصالات قاعدة البيانات الخارجية (Microsoft SQL Server) — للقراءة فقط
+// External Microsoft SQL Server connection profiles (READ-ONLY usage).
+// The password is stored encrypted at rest (AES-256-GCM) and is NEVER returned
+// to the client. Used to browse accounting/financial tables and run manual
+// SELECT-only queries to produce reports (account statements, sales invoices).
+export const external_db_connections = pgTable("external_db_connections", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 150 }).notNull(),
+  host: varchar("host", { length: 255 }).notNull(),
+  port: integer("port").notNull().default(1433),
+  database_name: varchar("database_name", { length: 200 }).notNull(),
+  username: varchar("username", { length: 200 }).notNull(),
+  // Encrypted password (AES-256-GCM, format: v<N>:iv:authTag:ciphertext, base64).
+  password_encrypted: text("password_encrypted").notNull(),
+  // Which key version encrypted password_encrypted (for safe SESSION_SECRET rotation).
+  key_version: integer("key_version").notNull().default(1),
+  encrypt: boolean("encrypt").notNull().default(true),
+  trust_server_certificate: boolean("trust_server_certificate")
+    .notNull()
+    .default(false),
+  is_active: boolean("is_active").notNull().default(true),
+  created_by: integer("created_by").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+export const insertExternalDbConnectionSchema = createInsertSchema(
+  external_db_connections,
+).omit({
+  id: true,
+  password_encrypted: true,
+  key_version: true,
+  created_by: true,
+  created_at: true,
+  updated_at: true,
+});
+export type InsertExternalDbConnection = z.infer<
+  typeof insertExternalDbConnectionSchema
+>;
+export type ExternalDbConnection =
+  typeof external_db_connections.$inferSelect;
+
+// A reusable, named SELECT query tied to an external connection. May declare
+// optional parameters (e.g. date range / account id) the user fills before run.
+export interface SavedQueryParam {
+  name: string;
+  label: string;
+  type: "text" | "number" | "date";
+}
+
+export const external_db_saved_queries = pgTable("external_db_saved_queries", {
+  id: serial("id").primaryKey(),
+  connection_id: integer("connection_id")
+    .notNull()
+    .references(() => external_db_connections.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 200 }).notNull(),
+  sql_text: text("sql_text").notNull(),
+  parameters: jsonb("parameters")
+    .$type<SavedQueryParam[]>()
+    .notNull()
+    .default([]),
+  created_by: integer("created_by").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+// Saved report definitions that map an external-DB query to a formatted Arabic
+// template (account statement / sales invoice). column_mapping links template
+// fields to result column names; header_info holds static header block values.
+export const external_db_reports = pgTable("external_db_reports", {
+  id: serial("id").primaryKey(),
+  connection_id: integer("connection_id")
+    .references(() => external_db_connections.id, { onDelete: "cascade" })
+    .notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  // table | account_statement | sales_invoice
+  template_type: varchar("template_type", { length: 30 })
+    .notNull()
+    .default("table"),
+  title_ar: varchar("title_ar", { length: 200 }),
+  sql_text: text("sql_text").notNull(),
+  column_mapping: jsonb("column_mapping"),
+  header_info: jsonb("header_info"),
+  created_by: integer("created_by").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+export const insertExternalDbSavedQuerySchema = createInsertSchema(
+  external_db_saved_queries,
+).omit({
+  id: true,
+  created_by: true,
+  created_at: true,
+  updated_at: true,
+});
+export type InsertExternalDbSavedQuery = z.infer<
+  typeof insertExternalDbSavedQuerySchema
+>;
+export type ExternalDbSavedQuery =
+  typeof external_db_saved_queries.$inferSelect;
+
+export const insertExternalDbReportSchema = createInsertSchema(
+  external_db_reports,
+).omit({
+  id: true,
+  created_by: true,
+  created_at: true,
+  updated_at: true,
+});
+export type InsertExternalDbReport = z.infer<
+  typeof insertExternalDbReportSchema
+>;
+export type ExternalDbReport = typeof external_db_reports.$inferSelect;

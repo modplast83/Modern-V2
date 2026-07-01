@@ -1,0 +1,314 @@
+/* High Contrast Enhancements for shadcn/ui components */
+
+/* تحسينات التباين العالي لمكونات shadcn */
+
+/* Card Component Enhancements */
+.card {
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  border: 1.5px solid var(--border) !important;
+}
+
+.card:hover {
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+  border-color: hsl(220, 13%, 60%) !important;
+}
+
+/* Button Component Enhancements */
+button {
+  border: 1px solid transparent !important;
+  box-shadow:
+    0 1px 3px 0 rgba(0, 0, 0, 0.1),
+    0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
+}
+
+button:hover {
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Input and Select Components */
+input,
+select,
+textarea {
+  border-width: 1.5px !important;
+  background-color: hsl(0, 0%, 99%) !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-width: 2px !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+/* Table Enhancements */
+table {
+  border: 1.5px solid var(--border) !important;
+}
+
+table thead {
+  background-color: hsl(0, 0%, 95%) !important;
+  border-bottom: 2px solid var(--border) !important;
+}
+
+table tbody tr {
+  border-bottom: 1px solid var(--border) !important;
+}
+
+table tbody tr:hover {
+  background-color: hsl(0, 0%, 97%) !important;
+}
+
+table th {
+  font-weight: 600 !important;
+  color: hsl(0, 0%, 20%) !important;
+  border-right: 1px solid var(--border) !important;
+}
+
+table td {
+  border-right: 1px solid hsl(220, 13%, 85%) !important;
+}
+
+table th:last-child,
+table td:last-child {
+  border-right: none !important;
+}
+
+/* Dialog/Modal Enhancements */
+[role="dialog"] {
+  border: 2px solid var(--border) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* Dropdown Menu Enhancements */
+[role="menu"] {
+  border: 1.5px solid var(--border) !important;
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+[role="menuitem"] {
+  border-bottom: 1px solid hsl(220, 13%, 95%) !important;
+}
+
+[role="menuitem"]:hover {
+  background-color: hsl(220, 13%, 96%) !important;
+}
+
+[role="menuitem"]:last-child {
+  border-bottom: none !important;
+}
+
+/* Tabs Component */
+[role="tablist"] {
+  border-bottom: 2px solid var(--border) !important;
+}
+
+[role="tab"][data-state="active"] {
+  border-bottom: 3px solid var(--primary) !important;
+  margin-bottom: -2px !important;
+}
+
+/* Badge/Tag Enhancements */
+.badge {
+  border: 1.5px solid currentColor !important;
+  opacity: 0.9 !important;
+}
+
+/* Separator Lines */
+[data-orientation="horizontal"] {
+  border-bottom: 1.5px solid var(--border) !important;
+}
+
+[data-orientation="vertical"] {
+  border-right: 1.5px solid var(--border) !important;
+}
+
+/* Alert Component */
+.alert {
+  border: 2px solid var(--border) !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Progress Bar */
+[role="progressbar"] {
+  border: 1px solid var(--border) !important;
+}
+
+/* Checkbox and Radio */
+input[type="checkbox"],
+input[type="radio"] {
+  border-width: 2px !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+/* ScrollArea Scrollbar */
+[data-radix-scroll-area-scrollbar] {
+  background: hsl(220, 13%, 85%) !important;
+}
+
+[data-radix-scroll-area-scrollbar-thumb] {
+  background: hsl(220, 13%, 60%) !important;
+}
+
+/* Toast/Notification */
+[data-sonner-toast] {
+  border: 2px solid var(--border) !important;
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Collapsible Content */
+[data-state="open"] {
+  border: 1px solid var(--border) !important;
+  padding: 1rem !important;
+  background: hsl(0, 0%, 99%) !important;
+}
+
+/* Hover Effects for Interactive Elements */
+[role="button"]:hover,
+[role="link"]:hover,
+[role="menuitem"]:hover,
+[role="tab"]:hover {
+  filter: brightness(0.95) !important;
+  transition: all 0.2s ease !important;
+}
+
+/* Focus States */
+*:focus-visible {
+  outline: 2px solid var(--primary) !important;
+  outline-offset: 2px !important;
+}
+
+/* Dark Mode Adjustments */
+.dark .card {
+  border-color: hsl(240, 3.7%, 40%) !important;
+}
+
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: hsl(240, 10%, 8%) !important;
+  border-color: hsl(240, 3.7%, 40%) !important;
+}
+
+.dark table {
+  border-color: hsl(240, 3.7%, 40%) !important;
+}
+
+.dark table thead {
+  background-color: hsl(240, 10%, 10%) !important;
+  border-color: hsl(240, 3.7%, 40%) !important;
+}
+
+.dark table tbody tr {
+  border-color: hsl(240, 3.7%, 35%) !important;
+}
+
+.dark table tbody tr:hover {
+  background-color: hsl(240, 10%, 12%) !important;
+}
+
+.dark [role="dialog"] {
+  border-color: hsl(240, 3.7%, 40%) !important;
+}
+
+.dark [role="menu"] {
+  border-color: hsl(240, 3.7%, 40%) !important;
+}
+
+.dark [role="menuitem"] {
+  border-color: hsl(240, 3.7%, 25%) !important;
+}
+
+.dark [role="menuitem"]:hover {
+  background-color: hsl(240, 10%, 15%) !important;
+}
+
+/* High Contrast for Text */
+.high-contrast {
+  --foreground: hsl(0, 0%, 0%) !important;
+  --muted-foreground: hsl(0, 0%, 30%) !important;
+}
+
+.dark.high-contrast {
+  --foreground: hsl(0, 0%, 100%) !important;
+  --muted-foreground: hsl(0, 0%, 80%) !important;
+}
+
+/* Sidebar Navigation High Contrast */
+.sidebar-item {
+  border: 1px solid transparent !important;
+}
+
+.sidebar-item:hover {
+  border: 1px solid var(--border) !important;
+  background-color: hsl(0, 0%, 97%) !important;
+}
+
+.dark .sidebar-item:hover {
+  border-color: hsl(240, 3.7%, 35%) !important;
+  background-color: hsl(240, 10%, 15%) !important;
+}
+
+.sidebar-item.active {
+  border: 2px solid var(--primary) !important;
+  font-weight: 600 !important;
+}
+
+/* Navigation Tabs High Contrast */
+.tabs-list {
+  border-bottom: 2px solid var(--border) !important;
+}
+
+.tabs-trigger {
+  border-bottom: 3px solid transparent !important;
+  font-weight: 500 !important;
+}
+
+.tabs-trigger[data-state="active"] {
+  border-bottom-color: var(--primary) !important;
+  font-weight: 600 !important;
+}
+
+/* Status Indicators with Better Contrast */
+.status-indicator {
+  border: 2px solid currentColor !important;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Accessibility Mode Toggle */
+@media (prefers-contrast: high) {
+  * {
+    border-width: 2px !important;
+  }
+
+  button {
+    border: 2px solid currentColor !important;
+  }
+
+  input,
+  select,
+  textarea {
+    border-width: 2px !important;
+  }
+
+  .card {
+    border-width: 2px !important;
+  }
+
+  table,
+  table thead,
+  table tbody tr,
+  table th,
+  table td {
+    border-width: 2px !important;
+  }
+}

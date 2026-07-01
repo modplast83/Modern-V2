@@ -1,0 +1,287 @@
+/* ====== إعدادات الصفحة للطباعة ====== */
+@page {
+  size: A4 landscape;
+  margin: 6mm 10mm; /* عدّل حسب رغبتك */
+}
+
+/* تحسين ألوان الطباعة */
+@media print {
+  html,
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    background: #fff !important;
+  }
+
+  /* إخفاء أي عناصر ليست للطباعة */
+  .no-print,
+  .print-preview-overlay,
+  .print-preview-toolbar,
+  .print-preview-paper,
+  .toolbar {
+    display: none !important;
+  }
+}
+
+/* ====== منطقة الطباعة ====== */
+.order-print-area,
+.production-print-area {
+  width: 297mm; /* عرض A4 Landscape */
+  min-height: 210mm; /* ارتفاع A4 Landscape */
+  padding: 10mm; /* حواف داخلية لضبط المحتوى */
+  box-sizing: border-box;
+  margin: 0 auto;
+  background: #ffffff;
+  overflow: hidden; /* يمنع خروج المحتوى خارج الصفحة */
+}
+
+.print-page {
+  width: 100%;
+  min-height: calc(210mm - 20mm); /* طرح Padding العلوي والسفلي */
+  box-sizing: border-box;
+}
+
+/* ====== رأس الصفحة ====== */
+.factory-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #1a365d;
+  margin-bottom: 10px;
+}
+.header-col {
+  display: flex;
+  flex-direction: column;
+}
+.header-col h1 {
+  font-size: 18px;
+  color: #1a365d;
+  margin: 0;
+}
+.header-col p {
+  font-size: 12px;
+  color: #666;
+  margin: 2px 0 0;
+}
+.company-details {
+  font-size: 10px;
+  color: #888;
+  margin-top: 4px;
+}
+.order-title-box {
+  text-align: center;
+}
+.order-title-box h2 {
+  font-size: 16px;
+  color: #1a365d;
+  margin: 0;
+}
+.order-title-box h3 {
+  font-size: 11px;
+  color: #666;
+  margin: 2px 0 0;
+  font-weight: normal;
+}
+.order-meta-box {
+  text-align: left;
+  font-size: 11px;
+}
+.meta-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+.meta-row .label {
+  color: #666;
+}
+.meta-row .value {
+  font-weight: bold;
+  color: #1a365d;
+}
+
+/* ====== معلومات عامة ====== */
+.info-section {
+  margin-bottom: 10px;
+}
+.info-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.info-table td {
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+}
+.label-cell {
+  background: #f8f9fa;
+  color: #666;
+  width: 80px;
+}
+.value-cell {
+  font-weight: 600;
+  color: #1a365d;
+}
+.highlight-label {
+  background: #1a365d !important;
+  color: #fff !important;
+}
+.highlight-value {
+  background: #e8f4fd;
+  font-size: 14px;
+  color: #1a365d;
+}
+
+/* ====== جدول الطلب ====== */
+.items-section {
+  margin-bottom: 10px;
+}
+
+.factory-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed; /* مهم جداً لمنع تمدد الأعمدة */
+  font-size: 10px;
+}
+
+.factory-table th {
+  background: #e8f4fd;
+  color: #000;
+  padding: 6px 4px;
+  border: 1px solid #ddd;
+  font-weight: 600;
+  text-align: center;
+}
+
+.factory-table td {
+  padding: 5px 4px;
+  border: 1px solid #ddd;
+  text-align: center;
+}
+
+.factory-table tbody tr:nth-child(even) {
+  background: #f9f9f9;
+}
+
+.item-name-ar {
+  font-weight: 600;
+  color: #1a365d;
+  text-align: right;
+}
+.item-caption {
+  font-size: 9px;
+  color: #888;
+  text-align: right;
+}
+.qty-cell {
+  font-weight: bold;
+  font-size: 12px;
+  color: #1a365d;
+}
+
+/* نسب الأعمدة (تتطابق مع رؤوس الجدول) */
+.factory-table th:nth-child(1),
+.factory-table td:nth-child(1) {
+  width: 4%;
+} /* # */
+.factory-table th:nth-child(2),
+.factory-table td:nth-child(2) {
+  width: 22%;
+} /* الصنف */
+.factory-table th:nth-child(3),
+.factory-table td:nth-child(3) {
+  width: 10%;
+} /* المقاس */
+.factory-table th:nth-child(4),
+.factory-table td:nth-child(4) {
+  width: 12%;
+} /* سمك/لون */
+.factory-table th:nth-child(5),
+.factory-table td:nth-child(5) {
+  width: 10%;
+} /* الخامة */
+.factory-table th:nth-child(6),
+.factory-table td:nth-child(6) {
+  width: 12%;
+} /* طباعة */
+.factory-table th:nth-child(7),
+.factory-table td:nth-child(7) {
+  width: 12%;
+} /* الكمية */
+.factory-table th:nth-child(8),
+.factory-table td:nth-child(8) {
+  width: 18%;
+} /* ملاحظات */
+
+/* منع تقطيع الصفوف أو الأقسام بين الصفحات */
+.factory-table,
+.factory-table thead,
+.factory-table tbody,
+.factory-table tr,
+.factory-table td,
+.factory-table th,
+.info-section,
+.items-section,
+.notes-section,
+.signatures-footer {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+/* ====== ملاحظات وتوقيعات ====== */
+.notes-section {
+  margin-bottom: 10px;
+}
+.section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1a365d;
+  margin-bottom: 4px;
+}
+.notes-box {
+  background: #f8f9fa;
+  border: 1px solid #ddd;
+  padding: 8px;
+  font-size: 10px;
+  color: #666;
+  min-height: 30px;
+  border-radius: 4px;
+}
+
+.signatures-footer {
+  display: flex;
+  justify-content: space-around;
+  padding-top: 10px;
+  border-top: 1px solid #ddd;
+}
+.signature-block {
+  text-align: center;
+  width: 120px;
+}
+.sig-title {
+  font-size: 10px;
+  color: #666;
+  margin-bottom: 20px;
+}
+.sig-line {
+  border-top: 1px solid #333;
+}
+
+.page-bottom-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 8px;
+  color: #999;
+  margin-top: 10px;
+  padding-top: 5px;
+  border-top: 1px dashed #ddd;
+}
+
+/* (اختياري) إن رغبت بتصغير ثابت للطباعة بدلاً من القياس التلقائي، فعّل التالي وعدل القيمة:
+@media print {
+  .print-area {
+    transform: scale(0.95);
+    transform-origin: top left;
+  }
+}
+*/

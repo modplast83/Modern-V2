@@ -1,0 +1,52 @@
+---
+name: Security & authz patterns
+description: Durable security/authorization patterns and gotchas for this codebase — apply these to avoid re-introducing known classes of bugs.
+---
+
+## Route authorization
+- Every business-data route needs `requirePermission`, not just `requireAuth`. Routes that only check `requireAuth` while exposing `manage_*`/`view_*` data are privilege-escalation paths.
+- Public endpoints must never return PII contact fields (phone, tax number). Public order/customer surfaces return names only.
+- An access allow-list must gate ALL of a feature's user routes (conversations, messages, profile, document download), not just the main chat/entry route. Holding the feature permission ≠ being on the allow-list; a blocked user can otherwise reach prior artifacts via secondary endpoints.
+
+## Webhooks
+- Verifying a signature header *exists* is not verification. Validate the full HMAC (e.g. Twilio: URL + sorted param pairs, `timingSafeEqual`).
+- **Why:** forged payloads can manipulate state (notification status, etc.) otherwise.
+- If the signing secret is unset, emit a loud `logger.warn` per request to surface misconfiguration rather than silently accepting.
+
+## Rate limiting
+- Auth-adjacent/setup endpoints need a rate limiter (in-memory IP window, e.g. 5/15min → 429). Key on first `x-forwarded-for` IP; self-expire entries.
+
+## AI agent / tool boundary
+- The AI tool layer bypasses route-level checks, so authorize EACH tool separately (per-tool `required_permission` + `userCanUseTool`).
+- AI write tools must also replicate the standard route's server-side business-rule computation; never trust model-supplied *derived* fields. E.g. production-order tools recompute final_quantity_kg/overrun via `calculateProductionQuantities(qty, product.punching)` and drop those fields from the tool schema, matching `/api/production-orders`.
+- Task-level gating alone is insufficient: a tool needs its own `permission` because `ensureSeeded` only inserts tasks when the table is empty, so existing-DB task rows won't pick up a newly-added `required_permission` (update the row separately for consistency).
+- AI-generated SQL: block `UPDATE`/`INSERT INTO` against sensitive tables (permissions, agent settings/knowledge, sessions); SELECT may stay allowed.
+- Per-user data isolation: scope sandbox/agent data by an owner prefix (`u{userId}_`) on reads/writes/deletes; admins may wipe all, regular users only their prefix.
+
+## Private knowledge non-disclosure (must be server-side, not prompt-only)
+- Prompt instructions ("never quote verbatim") are NOT a control. Use a deterministic substring leak detector that normalizes private content and checks it against any user-visible output.
+- Windowing: `win = min(60, content.length)`, step ~20, PLUS an always-checked trailing window `content.slice(-win)`. A fixed `win=60` silently skips secrets of length 40–59 (loop never runs) and skips the tail — both exploitable.
+- Apply to BOTH the final reply AND generated documents (concatenate title/intro/sections/table cells/footer before checking). Reply-only checks are bypassed by asking the agent to put the secret in a downloadable PDF/Word doc.
+- Fetch private contents once per request, pass into every tool's context, reuse for the final reply check. On a hit, return an error and write no file.
+
+## Agent-generated document IDOR
+- Bind temp-file docs to their creator via filename prefix `u{userId}-`; download route enforces `ownerId === req.user.id || isManager`.
+
+## Order-number generation under concurrency
+- `SELECT MAX(...)+1` then insert is racy. Wrap in a bounded retry loop: on unique-violation (`23505`) recompute and retry with the next number; rethrow non-dup errors; give up after N attempts with a deterministic error.
+- `storage` wraps DB errors in `DatabaseError` but preserves `.code` from the original pg error, so `e.code === "23505"` is detectable downstream.
+
+## Type-safety gotchas
+- `SafeUser = Omit<User, "password">`: any `db.select({...})` typed to return `SafeUser` must list EVERY non-password user column (esp. `must_change_password`), or tsc errors and the field is silently undefined at runtime.
+- `orders` has no `priority` column — `priority` lives on `user_requests`.
+- A storage-side interface mirroring a real service class must match its exact signature; a `[key: string]: unknown` index signature blocks assigning the real instance.
+
+## Session config
+- `resave: false` when middleware already calls `req.session.save()` manually; `resave: true` causes an extra write on every session-touching request.
+
+## Silent catch blocks
+- Replace `catch {}` with `logger.warn` so fs/IO errors surface. When adding `logger.*` to a file, confirm `import { logger } from "./lib/logger"` exists or the call throws `ReferenceError` on the error path.
+
+## PDF template path traversal / arbitrary file read
+- `/api/pdf/generate` accepts `templateName` and `templatePath`; both must resolve within `server/services/adobe-pdf/templates` and reject anything escaping it (`path.resolve` then `startsWith(dir + sep)`), else any authed user can read arbitrary server files (fed to Adobe docx merge).
+- `templatePath` branch has no frontend caller — safe to keep constrained (or remove entirely).

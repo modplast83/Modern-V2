@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1"
+    />
+    <title>MPBF Next - نظام إدارة مصنع الأكياس البلاستيكية</title>
+    <meta
+      name="description"
+      content="نظام ذكي حديث لتشغيل وإدارة مصنع أكياس بلاستيكية مع واجهة باللغة العربية ومساعد ذكي AI"
+    />
+
+    <!-- Open Graph tags for better social media sharing -->
+    <meta
+      property="og:title"
+      content="MPBF Next - نظام إدارة مصنع الأكياس البلاستيكية"
+    />
+    <meta
+      property="og:description"
+      content="نظام ذكي حديث لتشغيل وإدارة مصنع أكياس بلاستيكية مع واجهة باللغة العربية ومساعد ذكي AI"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="ar_SA" />
+
+    <!-- Preload critical fonts -->
+    <link
+      rel="preload"
+      href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap"
+      as="style"
+      onload="
+        this.onload = null;
+        this.rel = 'stylesheet';
+      "
+    />
+    <noscript
+      ><link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap"
+    /></noscript>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#3984F6" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-title" content="MPBF Next" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=2" />
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico?v=2" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/favicon-32x32.png?v=2"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/favicon-16x16.png?v=2"
+    />
+
+    <style>
+      /* Critical CSS for initial render */
+      body {
+        font-family:
+          "Cairo",
+          system-ui,
+          -apple-system,
+          sans-serif;
+        direction: rtl;
+        margin: 0;
+        padding: 0;
+        background-color: #fafafa;
+      }
+      .dark body {
+        background-color: #0a0a0f;
+        color: #fafafa;
+      }
+      .dark .loading-spinner {
+        border-color: #374151;
+        border-top-color: #60a5fa;
+      }
+      .dark #initial-loader p {
+        color: #9ca3af;
+      }
+
+      /* Loading spinner styles */
+      .loading-spinner {
+        display: inline-block;
+        width: 2rem;
+        height: 2rem;
+        border: 2px solid #f3f4f6;
+        border-radius: 50%;
+        border-top-color: #3984f6;
+        animation: spin 1s ease-in-out infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Smooth font swap - no visibility hidden to avoid flicker */
+      .fonts-loaded body {
+        font-family:
+          "Cairo",
+          system-ui,
+          -apple-system,
+          sans-serif;
+      }
+    </style>
+
+    <script>
+      // Font loading detection
+      if ("fonts" in document) {
+        document.fonts.ready.then(function () {
+          document.documentElement.classList.add("fonts-loaded");
+        });
+      } else {
+        // Fallback for browsers without Font Loading API
+        setTimeout(function () {
+          document.documentElement.classList.add("fonts-loaded");
+        }, 1000);
+      }
+
+      // Theme detection and application
+      (function () {
+        const theme = localStorage.getItem("mpbf_theme") || "light";
+        if (theme === "dark") {
+          document.documentElement.classList.add("dark");
+        }
+      })();
+
+      // Direction support
+      const lang = localStorage.getItem("mpbf_language") || "ar";
+      if (lang === "en") {
+        document.documentElement.setAttribute("lang", "en");
+        document.documentElement.setAttribute("dir", "ltr");
+        document.body.style.fontFamily =
+          "'Inter', 'Cairo', system-ui, -apple-system, sans-serif";
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root">
+      <div
+        id="initial-loader"
+        style="
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        "
+      >
+        <div style="text-align: center">
+          <div class="loading-spinner" style="margin: 0 auto 1rem"></div>
+          <p style="margin: 0; font-size: 0.875rem">جاري تحميل النظام...</p>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/client/src/main.tsx"></script>
+
+    <!-- Error boundary for production -->
+    <script>
+      window.addEventListener("error", function (e) {
+        console.error("Global error:", e.error);
+        // In production, you might want to send this to an error reporting service
+      });
+
+      window.addEventListener("unhandledrejection", function (e) {
+        console.error("Unhandled promise rejection:", e.reason);
+        // In production, you might want to send this to an error reporting service
+      });
+    </script>
+
+    <!-- Service Worker registration for PWA capabilities -->
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker
+            .register("/sw.js")
+            .then(function (registration) {
+              console.log("SW registered: ", registration);
+              registration.addEventListener("updatefound", function () {
+                var newWorker = registration.installing;
+                if (newWorker) {
+                  newWorker.addEventListener("statechange", function () {
+                    if (newWorker.state === "activated") {
+                      console.log("New service worker activated");
+                    }
+                  });
+                }
+              });
+            })
+            .catch(function (registrationError) {
+              console.log("SW registration failed: ", registrationError);
+            });
+        });
+      }
+    </script>
+
+    <!-- This is a replit script which adds a banner on the top of the page when opened in development mode outside the replit environment -->
+    <script
+      type="text/javascript"
+      src="https://replit.com/public/js/replit-dev-banner.js"
+    ></script>
+  </body>
+</html>
