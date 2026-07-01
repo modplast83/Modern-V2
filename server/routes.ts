@@ -5872,8 +5872,28 @@ export async function registerRoutes(
           outputFormat,
         );
       } else if (templatePath) {
+        const path = await import("path");
+        const templatesDir = path.resolve(
+          process.cwd(),
+          "server",
+          "services",
+          "adobe-pdf",
+          "templates",
+        );
+        const resolvedTemplatePath = path.resolve(
+          templatesDir,
+          String(templatePath),
+        );
+        if (
+          resolvedTemplatePath !== templatesDir &&
+          !resolvedTemplatePath.startsWith(templatesDir + path.sep)
+        ) {
+          return res
+            .status(400)
+            .json({ message: "مسار القالب غير صالح", success: false });
+        }
         pdfBuffer = await mergeDocumentToPDF({
-          templatePath,
+          templatePath: resolvedTemplatePath,
           jsonData,
           outputFormat,
         });

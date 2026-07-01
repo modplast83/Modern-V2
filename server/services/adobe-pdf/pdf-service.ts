@@ -102,7 +102,16 @@ export async function generatePDFFromTemplate(
     "adobe-pdf",
     "templates",
   );
-  const templatePath = path.join(templatesDir, templateName);
+  const templatePath = path.resolve(templatesDir, templateName);
+
+  // Prevent path traversal: the resolved path must stay inside templatesDir.
+  const resolvedDir = path.resolve(templatesDir);
+  if (
+    templatePath !== resolvedDir &&
+    !templatePath.startsWith(resolvedDir + path.sep)
+  ) {
+    throw new Error(`Invalid template name: ${templateName}`);
+  }
 
   if (!fs.existsSync(templatePath)) {
     throw new Error(`Template not found: ${templateName}`);
