@@ -13,7 +13,7 @@
     "machine": "Machine",
     "producedBy": "Produced by",
     "weight": "Weight (kg)",
-    "createdAt": "Created at",
+    "createdAt": "Date",
     "actions": "Actions",
     "edit": "Edit",
     "history": "History",

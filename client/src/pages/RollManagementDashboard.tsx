@@ -45,6 +45,9 @@ interface ManagedRoll {
   cut_weight_total_kg: string | null;
   waste_kg: string | null;
   created_at: string | null;
+  printed_at: string | null;
+  cut_completed_at: string | null;
+  completed_at: string | null;
   production_order_id: number;
   production_order_number: string | null;
   customer_name: string | null;
@@ -240,6 +243,24 @@ export default function RollManagementDashboard({ hideLayout }: Props) {
     }
   };
 
+  const stageDate = (r: ManagedRoll): string | null => {
+    switch (r.stage) {
+      case "printing":
+        return r.printed_at || r.created_at;
+      case "cutting":
+        return r.cut_completed_at || r.printed_at || r.created_at;
+      case "done":
+        return (
+          r.completed_at ||
+          r.cut_completed_at ||
+          r.printed_at ||
+          r.created_at
+        );
+      default:
+        return r.created_at;
+    }
+  };
+
   const formatDate = (d: string | null) => {
     if (!d) return "—";
     try {
@@ -377,7 +398,7 @@ export default function RollManagementDashboard({ hideLayout }: Props) {
                     {Number(r.weight_kg || 0).toFixed(2)}
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                    {formatDate(r.created_at)}
+                    {formatDate(stageDate(r))}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center justify-center gap-1">
