@@ -303,15 +303,7 @@ const insertCustomerSchema = createInsertSchema(customers)
       }),
   });
 const insertLocationSchema = createInsertSchema(locations).omit({ id: true });
-import {
-  createAlertsRouter,
-  createSystemHealthRouter,
-  createPerformanceRouter,
-  createCorrectiveActionsRouter,
-  createDataValidationRouter,
-} from "./routes/alerts";
-import { getSystemHealthMonitor } from "./services/system-health-monitor";
-import { getAlertManager } from "./services/alert-manager";
+import { createDataValidationRouter } from "./routes/alerts";
 import { getDataValidator } from "./services/data-validator";
 import QRCode from "qrcode";
 import { validateRequest, commonSchemas } from "./middleware/validation";
@@ -332,7 +324,6 @@ import {
   type AuthRequest,
 } from "./middleware/auth";
 import {
-  generateMobileToken,
   revokeMobileToken,
   invalidateRolesCache,
   getCachedRoles,
@@ -15022,18 +15013,10 @@ Input: ${text}`;
 
   // تم تعطيل خدمات المراقبة والتحذيرات التلقائية بناء على طلب المستخدم
   // الإشعارات من نوع system لن يتم إرسالها بعد الآن
-  // const healthMonitor = getSystemHealthMonitor(storage);
-  // const alertManager = getAlertManager(storage);
   const dataValidator = getDataValidator(storage);
 
   // إعداد routes التحذيرات الذكية (مُعطّلة جزئياً)
-  // app.use("/api/alerts", createAlertsRouter(storage));
-  // app.use("/api/system/health", createSystemHealthRouter(storage));
-  // app.use("/api/system/performance", createPerformanceRouter(storage));
-  // app.use("/api/corrective-actions", createCorrectiveActionsRouter(storage));
   app.use("/api/data-validation", createDataValidationRouter(storage));
-
-  // console.log("[SmartAlerts] نظام التحذيرات الذكية مُفعل ✅");
 
   // ============ Quick Notes API ============
 

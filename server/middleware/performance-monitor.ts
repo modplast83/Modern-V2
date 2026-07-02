@@ -49,10 +49,6 @@ export class PerformanceMonitor {
       const startTime = Date.now();
       const startMemory = process.memoryUsage().heapUsed;
 
-      // تخزين الـ statusCode الأصلي
-      const originalSend = res.send;
-      const originalJson = res.json;
-
       let responseFinished = false;
 
       const finishRequest = async () => {
